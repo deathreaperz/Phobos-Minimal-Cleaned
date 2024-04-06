@@ -603,32 +603,27 @@ DEFINE_HOOK(0x6EF4D0, TeamClass_GetRemainingTaskForceMembers, 0x8)
 	const auto pType = pThis->Type;
 	const auto pTaskForce = pType->TaskForce;
 
-	for (int a = 0; a < pTaskForce->CountEntries; ++a)
-	{
-		for (int i = 0; i < pTaskForce->Entries[a].Amount; ++i)
-		{
-			pVec->AddItem(pTaskForce->Entries[a].Type);
+	// Store needed types in a set for faster lookups
+	std::unordered_set<TechnoTypeClass*> neededTypes;
+	for (int a = 0; a < pTaskForce->CountEntries; ++a) {
+		if (auto pType = pTaskForce->Entries[a].Type) {
+			neededTypes.insert(pType);
 		}
 	}
 
-	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember)
-	{
-		for (auto pMemberNeeded : *pVec)
-		{
-			if ((pMemberNeeded == pMember->GetTechnoType()
-				|| TechnoExtContainer::Instance.Find(pMember)->Type == pMemberNeeded
-				|| TeamExtData::GroupAllowed(pMemberNeeded, pMember->GetTechnoType())
-				|| TeamExtData::GroupAllowed(pMemberNeeded, TechnoExtContainer::Instance.Find(pMember)->Type)
-
-				))
-			{
-				pVec->Remove(pMemberNeeded);
-			}
+	// Remove team members not needed in the task force
+	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember) {
+		if (neededTypes.find(pMember->GetTechnoType()) != neededTypes.end()
+			|| neededTypes.find(TechnoExtContainer::Instance.Find(pMember)->Type) != neededTypes.end()
+			|| TeamExtData::GroupAllowed(neededTypes, pMember->GetTechnoType())
+			|| TeamExtData::GroupAllowed(neededTypes, TechnoExtContainer::Instance.Find(pMember)->Type)) {
+			pVec->Remove(pMember->GetTechnoType());
 		}
 	}
 
 	return 0x6EF5B2;
 }
+
 
 DEFINE_HOOK(0x4FEEE0, HouseClass_AI_InfantryProduction, 6)
 {
