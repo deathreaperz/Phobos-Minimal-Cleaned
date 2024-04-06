@@ -19,7 +19,8 @@ DEFINE_HOOK(0x6F42ED, TechnoClass_Init_Early, 0xA)
 	if (!pType)
 		return 0x0;
 
-	if (pThis->Owner) {
+	if (pThis->Owner)
+	{
 		HouseExtContainer::Instance.Find(pThis->Owner)->LimboTechno.push_back(pThis);
 	}
 
@@ -58,7 +59,7 @@ DEFINE_HOOK(0x7355BA, UnitClass_Init_InitialStrength, 0x6)
 	GET(UnitClass*, pThis, ESI);
 	GET(UnitTypeClass*, pType, EAX);
 
-	if(TechnoTypeExtContainer::Instance.Find(pType)->Initial_DriverKilled)
+	if (TechnoTypeExtContainer::Instance.Find(pType)->Initial_DriverKilled)
 		TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled = true;
 
 	R->EAX(TechnoTypeExtContainer::Instance.Find(pType)->InitialStrength.Get(pType->Strength));

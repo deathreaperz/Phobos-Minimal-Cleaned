@@ -1,4 +1,4 @@
- #include "Body.h"
+#include "Body.h"
 
 #include <Ext/House/Body.h>
 #ifndef aaa
@@ -112,17 +112,17 @@ void HouseExtData::UpdateVehicleProduction()
 	creationFrames.assign(count, 0x7FFFFFFF);
 	values.assign(count, 0);
 
-//	std::vector<TeamClass*> Teams;
+	//	std::vector<TeamClass*> Teams;
 
 	for (auto currentTeam : *TeamClass::Array)
 	{
 		if (!currentTeam || currentTeam->Owner != pThis)
 			continue;
 
-//		if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G"))
-//			Debug::Log("HereIam\n");
+		//		if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G"))
+		//			Debug::Log("HereIam\n");
 
-//		Teams.push_back(currentTeam);
+		//		Teams.push_back(currentTeam);
 		int teamCreationFrame = currentTeam->CreationFrame;
 
 		if ((!currentTeam->Type->Reinforce || currentTeam->IsFullStrength)
@@ -146,25 +146,25 @@ void HouseExtData::UpdateVehicleProduction()
 			const auto index = static_cast<size_t>(((UnitTypeClass*)currentMember)->ArrayIndex);
 			++values[index];
 
-//			if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G")) {
-//				Debug::Log("0100003I Unit %s  idx %d AddedValueResult %d\n", currentMember->ID, index, values[index]);
-//			}
+			//			if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G")) {
+			//				Debug::Log("0100003I Unit %s  idx %d AddedValueResult %d\n", currentMember->ID, index, values[index]);
+			//			}
 
 			if (teamCreationFrame < creationFrames[index])
 				creationFrames[index] = teamCreationFrame;
 		}
 	}
 
-//	for (int i = 0; i < (int)Teams.size(); ++i) {
-//		Debug::Log("House [%s] Have [%d] Teams %s.\n", pThis->get_ID(), i, Teams[i]->get_ID());
-//	}
+	//	for (int i = 0; i < (int)Teams.size(); ++i) {
+	//		Debug::Log("House [%s] Have [%d] Teams %s.\n", pThis->get_ID(), i, Teams[i]->get_ID());
+	//	}
 
-	//std::vector<int> Toremove {};
-	for (int i = 0; i < UnitClass::Array->Count; ++i) {
+		//std::vector<int> Toremove {};
+	for (int i = 0; i < UnitClass::Array->Count; ++i)
+	{
 		const auto pUnit = UnitClass::Array->Items[i];
 
 		//if (VTable::Get(pUnit) != UnitClass::vtable){
-
 		//	const char* Caller = "unk";
 		//	//const char* Type = "unk";
 		//	if (MappedCaller.contains(pUnit)) {
@@ -235,7 +235,8 @@ void HouseExtData::UpdateVehicleProduction()
 	if (!skipGround)
 	{
 		int result_ground = earliestTypenameIndex;
-		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty]) {
+		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
+		{
 			if (!bestChoices.empty())
 				result_ground = bestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(bestChoices.size() - 1))];
 			else
@@ -360,25 +361,26 @@ DEFINE_HOOK(0x4CA07A, FactoryClass_AbandonProduction, 0x8)
 {
 	GET(FactoryClass*, pFactory, ESI);
 
-	if(HouseClass* pOwner = pFactory->Owner) {
+	if (HouseClass* pOwner = pFactory->Owner)
+	{
 		HouseExtData* pData = HouseExtContainer::Instance.Find(pOwner);
 
 		switch (pFactory->Object->WhatAmI())
 		{
 		case BuildingClass::AbsID:
-				pData->Factory_BuildingType = nullptr;
+			pData->Factory_BuildingType = nullptr;
 			break;
 		case UnitClass::AbsID:
 			if (!pFactory->Object->GetTechnoType()->Naval)
-					pData->Factory_VehicleType = nullptr;
+				pData->Factory_VehicleType = nullptr;
 			else
-					pData->Factory_NavyType = nullptr;
+				pData->Factory_NavyType = nullptr;
 			break;
 		case InfantryClass::AbsID:
-				pData->Factory_InfantryType = nullptr;
+			pData->Factory_InfantryType = nullptr;
 			break;
 		case AircraftClass::AbsID:
-				pData->Factory_AircraftType = nullptr;
+			pData->Factory_AircraftType = nullptr;
 			break;
 		default:
 			break;
@@ -399,19 +401,21 @@ DEFINE_HOOK(0x4502F4, BuildingClass_Update_Factory, 0x6)
 
 	auto pRules = RulesExtData::Instance();
 	HouseExtData* pData = HouseExtContainer::Instance.Find(pOwner);
-	const auto&[curFactory , block , type] = GetFactory(pThis->Type->Factory, pThis->Type->Naval, pData);
+	const auto& [curFactory, block, type] = GetFactory(pThis->Type->Factory, pThis->Type->Naval, pData);
 
-	if (!curFactory) {
+	if (!curFactory)
+	{
 		Game::RaiseError(E_POINTER);
 	}
 	else if (!*curFactory)
 	{
-		if(type != AircraftTypeClass::AbsID){
+		if (type != AircraftTypeClass::AbsID)
+		{
 			if (!pThis->IsPrimaryFactory)
 				pThis->IsPrimaryFactory = true;
 		}
 
-			*curFactory = pThis; //last check
+		*curFactory = pThis; //last check
 		return 0;
 	}
 	else if (*curFactory != pThis)
@@ -491,8 +495,8 @@ DEFINE_HOOK(0x4FEA60, HouseClass_AI_UnitProduction, 0x6)
 #include <Ext/Team/Body.h>
 
 template <class T, class Ttype >
-int NOINLINE GetTypeToProduceNew(HouseClass* pHouse) {
-
+int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
+{
 	auto& CreationFrames = HouseExtData::AIProduction_CreationFrames;
 	auto& Values = HouseExtData::AIProduction_Values;
 	auto& BestChoices = HouseExtData::AIProduction_BestChoices;
@@ -512,12 +516,13 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse) {
 
 		int TeamCreationFrame = CurrentTeam->CreationFrame;
 
-		if (CurrentTeam->Type->Reinforce && !CurrentTeam->IsFullStrength || !CurrentTeam->IsForcedActive && !CurrentTeam->IsHasBeen) {
+		if (CurrentTeam->Type->Reinforce && !CurrentTeam->IsFullStrength || !CurrentTeam->IsForcedActive && !CurrentTeam->IsHasBeen)
+		{
 			DynamicVectorClass<TechnoTypeClass*> arr;
 			CurrentTeam->GetTaskForceMissingMemberTypes(arr);
 
-			for (auto pMember : arr) {
-
+			for (auto pMember : arr)
+			{
 				if (pMember->WhatAmI() != Ttype::AbsID)
 				{
 					continue;
@@ -534,9 +539,11 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse) {
 		}
 	}
 
-	for (auto classPos = T::Array->begin(); classPos != T::Array->end(); ++classPos) {
+	for (auto classPos = T::Array->begin(); classPos != T::Array->end(); ++classPos)
+	{
 		auto const Idx = static_cast<unsigned int>((*classPos)->Type->ArrayIndex);
-		if (Values[Idx] > 0 && (*classPos)->CanBeRecruited(pHouse)) {
+		if (Values[Idx] > 0 && (*classPos)->CanBeRecruited(pHouse))
+		{
 			--Values[Idx];
 		}
 	}
@@ -577,8 +584,8 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse) {
 
 	const auto AIDiff = static_cast<int>(pHouse->GetAIDifficultyIndex());
 
-	if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDiff]) {
-
+	if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDiff])
+	{
 		if (!BestChoices.empty())
 			EarliestTypenameIndex = BestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(BestChoices.size() - 1))];
 		else
@@ -596,20 +603,25 @@ DEFINE_HOOK(0x6EF4D0, TeamClass_GetRemainingTaskForceMembers, 0x8)
 	const auto pType = pThis->Type;
 	const auto pTaskForce = pType->TaskForce;
 
-	for (int a = 0; a < pTaskForce->CountEntries; ++a) {
-		for (int i = 0; i < pTaskForce->Entries[a].Amount; ++i) {
+	for (int a = 0; a < pTaskForce->CountEntries; ++a)
+	{
+		for (int i = 0; i < pTaskForce->Entries[a].Amount; ++i)
+		{
 			pVec->AddItem(pTaskForce->Entries[a].Type);
 		}
 	}
 
-	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember) {
-		for (auto pMemberNeeded : *pVec) {
+	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember)
+	{
+		for (auto pMemberNeeded : *pVec)
+		{
 			if ((pMemberNeeded == pMember->GetTechnoType()
 				|| TechnoExtContainer::Instance.Find(pMember)->Type == pMemberNeeded
 				|| TeamExtData::GroupAllowed(pMemberNeeded, pMember->GetTechnoType())
 				|| TeamExtData::GroupAllowed(pMemberNeeded, TechnoExtContainer::Instance.Find(pMember)->Type)
 
-				)) {
+				))
+			{
 				pVec->Remove(pMemberNeeded);
 			}
 		}
@@ -622,9 +634,9 @@ DEFINE_HOOK(0x4FEEE0, HouseClass_AI_InfantryProduction, 6)
 {
 	GET(HouseClass*, pThis, ECX);
 
-	if (pThis->ProducingInfantryTypeIndex < 0) {
-
-		const int result = GetTypeToProduceNew<InfantryClass , InfantryTypeClass>(pThis);
+	if (pThis->ProducingInfantryTypeIndex < 0)
+	{
+		const int result = GetTypeToProduceNew<InfantryClass, InfantryTypeClass>(pThis);
 		if (result >= 0)
 			pThis->ProducingInfantryTypeIndex = result;
 	}
@@ -639,7 +651,6 @@ DEFINE_HOOK(0x4FF210, HouseClass_AI_AircraftProduction, 6)
 
 	if (pThis->ProducingAircraftTypeIndex < 0)
 	{
-
 		const int result = GetTypeToProduceNew<AircraftClass, AircraftTypeClass>(pThis);
 		if (result >= 0)
 			pThis->ProducingAircraftTypeIndex = result;

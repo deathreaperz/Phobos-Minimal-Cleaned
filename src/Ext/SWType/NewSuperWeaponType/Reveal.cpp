@@ -81,42 +81,42 @@ void SW_Reveal::RevealMap(const CellStruct& Coords, float range, int height, Hou
 	if (revealer.AffectsHouse(Owner))
 	{
 		auto Apply = [=, &revealer](bool add)
-		{
-			if (range < 0.0)
 			{
-				// reveal all cells without hundred thousands function calls
-				MapClass::Instance->CellIteratorReset();
-				while (auto const pCell = MapClass::Instance->CellIteratorNext())
+				if (range < 0.0)
 				{
-					if (revealer.IsCellAvailable(pCell->MapCoords) && revealer.IsCellAllowed(pCell->MapCoords))
+					// reveal all cells without hundred thousands function calls
+					MapClass::Instance->CellIteratorReset();
+					while (auto const pCell = MapClass::Instance->CellIteratorNext())
 					{
-						revealer.Process1(pCell, false, add);
-					}
-				}
-
-				//if (SessionClass::Instance->GameMode == GameMode::Internet || SessionClass::Instance->GameMode == GameMode::LAN)
-				//	AresNetEvent::Handlers::RaiseRevealMap(Owner);
-			}
-			else
-			{
-				// default way to reveal, but reveal one cell at a time.
-				auto const& base = revealer.Base();
-
-				Helpers::Alex::for_each_in_rect_or_range<CellClass>(base, range, height,
-					[=, &revealer](CellClass* pCell) -> bool
-				{
-					auto const& cell = pCell->MapCoords;
-					if (revealer.IsCellAvailable(cell) && revealer.IsCellAllowed(cell))
-					{
-						if (height > 0 || cell.DistanceFrom(base) < range)
+						if (revealer.IsCellAvailable(pCell->MapCoords) && revealer.IsCellAllowed(pCell->MapCoords))
 						{
 							revealer.Process1(pCell, false, add);
 						}
 					}
-					return true;
-				});
-			}
-		};
+
+					//if (SessionClass::Instance->GameMode == GameMode::Internet || SessionClass::Instance->GameMode == GameMode::LAN)
+					//	AresNetEvent::Handlers::RaiseRevealMap(Owner);
+				}
+				else
+				{
+					// default way to reveal, but reveal one cell at a time.
+					auto const& base = revealer.Base();
+
+					Helpers::Alex::for_each_in_rect_or_range<CellClass>(base, range, height,
+						[=, &revealer](CellClass* pCell) -> bool
+					{
+							auto const& cell = pCell->MapCoords;
+							if (revealer.IsCellAvailable(cell) && revealer.IsCellAllowed(cell))
+							{
+								if (height > 0 || cell.DistanceFrom(base) < range)
+								{
+									revealer.Process1(pCell, false, add);
+								}
+							}
+							return true;
+					});
+				}
+			};
 		Apply(false);
 		Apply(true);
 

@@ -62,7 +62,6 @@ void HouseExtData::InitializeTrackers(HouseClass* pHouse)
 RequirementStatus HouseExtData::RequirementsMet(
 	HouseClass* pHouse, TechnoTypeClass* pItem)
 {
-
 	const auto pData = TechnoTypeExtContainer::Instance.Find(pItem);
 	const auto pHouseExt = HouseExtContainer::Instance.Find(pHouse);
 	const bool IsHuman = pHouse->IsControlledByHuman();
@@ -151,7 +150,6 @@ RequirementStatus HouseExtData::RequirementsMet(
 
 	return (pHouse->TechLevel >= pItem->TechLevel) ?
 		RequirementStatus::Complete : RequirementStatus::Incomplete;
-
 }
 
 std::pair<NewFactoryState, BuildingClass*> HouseExtData::HasFactory(
@@ -162,7 +160,6 @@ std::pair<NewFactoryState, BuildingClass*> HouseExtData::HasFactory(
 	bool bCheckCanBuild,
 	bool b7)
 {
-
 	if (bCheckCanBuild && pHouse->CanBuild(pType, true, true) <= CanBuildResult::Unbuildable)
 	{
 		return { NewFactoryState::NoFactory  , nullptr };
@@ -177,7 +174,6 @@ std::pair<NewFactoryState, BuildingClass*> HouseExtData::HasFactory(
 
 	for (auto const& pBld : pHouse->Buildings)
 	{
-
 		if (pBld->InLimbo
 			|| pBld->GetCurrentMission() == Mission::Selling
 			|| pBld->QueuedMission == Mission::Selling
@@ -241,7 +237,6 @@ CanBuildResult HouseExtData::PrereqValidate(
 	HouseClass* pHouse, TechnoTypeClass* pItem,
 	bool buildLimitOnly, bool includeQueued)
 {
-
 	//	auto canBuiltresult = CanBuildResult::Unbuildable;
 	//	bool resultRetrieved = false;
 	//	std::string TemporarilyResult {};
@@ -256,7 +251,6 @@ CanBuildResult HouseExtData::PrereqValidate(
 
 		if (ReqsMet <= RequirementStatus::Incomplete)
 		{
-
 			//if (ReqsMet == RequirementStatus::Incomplete  &&
 			//	!pItemExt->Prerequisite_Display.empty())
 			//{
@@ -310,14 +304,17 @@ bool HouseExtData::CheckFactoryOwners(HouseClass* pHouse, TechnoTypeClass* pItem
 	auto const pExt = TechnoTypeExtContainer::Instance.Find(pItem);
 	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
 
-	if (!pExt->FactoryOwners.empty() || !pExt->FactoryOwners_Forbidden.empty()) {
-		for (auto& gather : pHouseExt->FactoryOwners_GatheredPlansOf) {
-
+	if (!pExt->FactoryOwners.empty() || !pExt->FactoryOwners_Forbidden.empty())
+	{
+		for (auto& gather : pHouseExt->FactoryOwners_GatheredPlansOf)
+		{
 			auto FactoryOwners_begin = pExt->FactoryOwners.begin();
 			const auto FactoryOwners_end = pExt->FactoryOwners.end();
 
-			if (FactoryOwners_begin != FactoryOwners_end) {
-				while (*FactoryOwners_begin != gather) {
+			if (FactoryOwners_begin != FactoryOwners_end)
+			{
+				while (*FactoryOwners_begin != gather)
+				{
 					if (++FactoryOwners_begin == FactoryOwners_end)
 						continue;
 				}
@@ -778,7 +775,6 @@ bool HouseExtData::InvalidateIgnorable(AbstractClass* ptr)
 	}
 
 	return true;
-
 }
 
 void HouseExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
@@ -813,13 +809,13 @@ int HouseExtData::ActiveHarvesterCount(HouseClass* pThis)
 		std::count_if(TechnoClass::Array->begin(), TechnoClass::Array->end(),
 		[pThis](TechnoClass* techno)
 		{
-				if (!techno->IsAlive || techno->Health <= 0 || techno->IsCrashing || techno->IsSinking || techno->Owner != pThis)
-					return false;
+			if (!techno->IsAlive || techno->Health <= 0 || techno->IsCrashing || techno->IsSinking || techno->Owner != pThis)
+				return false;
 
-				if (techno->WhatAmI() == UnitClass::AbsID && (static_cast<UnitClass*>(techno)->DeathFrameCounter > 0))
-					return false;
+			if (techno->WhatAmI() == UnitClass::AbsID && (static_cast<UnitClass*>(techno)->DeathFrameCounter > 0))
+				return false;
 
-				return TechnoTypeExtContainer::Instance.Find(techno->GetTechnoType())->IsCountedAsHarvester() && TechnoExtData::IsHarvesting(techno);
+			return TechnoTypeExtContainer::Instance.Find(techno->GetTechnoType())->IsCountedAsHarvester() && TechnoExtData::IsHarvesting(techno);
 		});
 
 	return result;
@@ -1080,7 +1076,6 @@ int HouseExtData::GetHouseIndex(int param, TeamClass* pTeam = nullptr, TActionCl
 		return -1;
 	}
 
-
 	// Positive index values check. Includes any kind of House
 	if (HouseClass* pHouse = HouseClass::FindByCountryIndex(param))
 	{
@@ -1091,7 +1086,6 @@ int HouseExtData::GetHouseIndex(int param, TeamClass* pTeam = nullptr, TActionCl
 
 		return -1;
 	}
-
 
 	return -1;
 }
@@ -1225,7 +1219,8 @@ BuildLimitStatus HouseExtData::CheckBuildLimit(
 	int BuildLimit = pItem->BuildLimit;
 
 	const auto& req = TechnoTypeExtContainer::Instance.Find(pItem)->BuildLimit_Requires;
-	if (!req.empty() && !Prereqs::HouseOwnsAll(pHouse, (int*)req.data(), req.size())) {
+	if (!req.empty() && !Prereqs::HouseOwnsAll(pHouse, (int*)req.data(), req.size()))
+	{
 		BuildLimit = INT_MAX;
 	}
 
@@ -1250,7 +1245,6 @@ BuildLimitStatus HouseExtData::CheckBuildLimit(
 			return !includeQueued || !pHouse->GetFactoryProducing(pItem) ?
 				BuildLimitStatus::ReachedPermanently : BuildLimitStatus::NotReached;
 		}
-
 
 		return (Remaining > 0)
 			? BuildLimitStatus::NotReached
@@ -1366,7 +1360,6 @@ void HouseExtData::UpdateTransportReloaders()
 {
 	for (auto& pTech : this->LimboTechno)
 	{
-
 		if (pTech->IsAlive
 			&& pTech->WhatAmI() != AircraftClass::AbsID
 			&& pTech->WhatAmI() != BuildingClass::AbsID

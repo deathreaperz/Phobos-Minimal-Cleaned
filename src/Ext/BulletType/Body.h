@@ -161,7 +161,6 @@ private:
 public:
 	static const Leptons DefaultBulletScatterMin;
 	static const Leptons DefaultBulletScatterMax;
-
 };
 
 class BulletTypeExtContainer final : public Container<BulletTypeExtData>
@@ -172,7 +171,8 @@ public:
 
 	virtual bool Load(BulletTypeClass* key, IStream* pStm);
 
-	void Clear() {
+	void Clear()
+	{
 		this->Map.clear();
 	}
 

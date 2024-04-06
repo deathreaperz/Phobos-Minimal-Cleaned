@@ -8,16 +8,15 @@ public:
 
 	Valueable<double> Height { 0.0 };
 	Valueable<bool> Anti { false };
-	
+
 	BombardTrajectoryType() : PhobosTrajectoryType { TrajectoryFlag::Bombard } { }
 	virtual ~BombardTrajectoryType() = default;
 
-	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override  { }
+	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }
 	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange) override;
 	virtual bool Save(PhobosStreamWriter& Stm) const override;
 
 	virtual bool Read(CCINIClass* const pINI, const char* pSection) override;
-
 };
 
 class BombardTrajectory final : public PhobosTrajectory
@@ -27,10 +26,11 @@ public:
 	bool IsFalling { false };
 	double Height { 0.0 };
 
-	BombardTrajectory() : PhobosTrajectory { TrajectoryFlag::Bombard } {}
-	BombardTrajectory(BulletClass* pBullet , PhobosTrajectoryType* pType) :
+	BombardTrajectory() : PhobosTrajectory { TrajectoryFlag::Bombard } { }
+	BombardTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Bombard , pBullet,  pType }
-	{}
+	{
+	}
 	virtual ~BombardTrajectory() = default;
 
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }
@@ -45,5 +45,4 @@ public:
 	virtual void OnAIVelocity(VelocityClass* pSpeed, VelocityClass* pPosition) override;
 	virtual TrajectoryCheckReturnType OnAITargetCoordCheck(CoordStruct& coords) override;
 	virtual TrajectoryCheckReturnType OnAITechnoCheck(TechnoClass* pTechno) override;
-
 };

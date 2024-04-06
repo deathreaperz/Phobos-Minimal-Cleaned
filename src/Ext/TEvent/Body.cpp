@@ -62,7 +62,7 @@ TechnoTypeClass* TEventExtData::GetTechnoType()
 
 		if (!pType)
 		{
-			Debug::Log("Event[%x] with Team[%s - %x] references non-existing techno type \"%s\".", this->AttachedToObject, this->AttachedToObject->TeamType ? this->AttachedToObject->TeamType->ID : NONE_STR, this->AttachedToObject ,  eventTechno);
+			Debug::Log("Event[%x] with Team[%s - %x] references non-existing techno type \"%s\".", this->AttachedToObject, this->AttachedToObject->TeamType ? this->AttachedToObject->TeamType->ID : NONE_STR, this->AttachedToObject, eventTechno);
 		}
 
 		this->TechnoType = pType;
@@ -196,11 +196,11 @@ bool TEventExtData::Occured(TEventClass* pThis, EventArgs const& args, bool& res
 		break;
 #pragma endregion
 
-	/*
-	*	- PersistableFlag ?
-	*	- LogcNeed ?
-	*   - AttachFlags ?
-	*/
+		/*
+		*	- PersistableFlag ?
+		*	- LogcNeed ?
+		*   - AttachFlags ?
+		*/
 	case PhobosTriggerEvent::ShieldBroken:
 		result = ShieldClass::TEventIsShieldBroken(args.Object);
 		break;
@@ -225,7 +225,8 @@ bool TEventExtData::VariableCheck(TEventClass* pThis)
 {
 	const auto nVar = ScenarioExtData::GetVariables(IsGlobal);
 
-	if (auto itr = nVar->tryfind(pThis->Value)) {
+	if (auto itr = nVar->tryfind(pThis->Value))
+	{
 		// We uses TechnoName for our operator number
 		int nOpt = atoi(pThis->String);
 		return _Pr()(itr->Value, nOpt);

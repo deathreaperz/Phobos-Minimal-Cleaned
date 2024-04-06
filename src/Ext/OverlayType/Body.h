@@ -58,4 +58,3 @@ private:
 	OverlayTypeExtContainer(OverlayTypeExtContainer&&) = delete;
 	OverlayTypeExtContainer& operator=(const OverlayTypeExtContainer& other) = delete;
 };
-

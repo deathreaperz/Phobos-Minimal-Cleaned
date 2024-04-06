@@ -17,9 +17,10 @@ DEFINE_HOOK(0x4666F7, BulletClass_AI_Trajectories, 0x6)
 			return pTraj->OnAI() ? Detonate : 0x0;
 	}
 
-	if (!pThis->IsAlive) {
-        return 0x467FEE;
-    }
+	if (!pThis->IsAlive)
+	{
+		return 0x467FEE;
+	}
 
 	return 0;
 }
@@ -97,7 +98,6 @@ DEFINE_HOOK(0x46745C, BulletClass_AI_Position_Trajectories, 0x7)
 
 DEFINE_HOOK(0x4677D3, BulletClass_AI_TargetCoordCheck_Trajectories, 0x5)
 {
-
 	GET(BulletClass*, pThis, EBP);
 	REF_STACK(CoordStruct, coords, STACK_OFFS(0x1A8, 0x184));
 
@@ -106,7 +106,6 @@ DEFINE_HOOK(0x4677D3, BulletClass_AI_TargetCoordCheck_Trajectories, 0x5)
 
 DEFINE_HOOK(0x467927, BulletClass_AI_TechnoCheck_Trajectories, 0x5)
 {
-
 	GET(BulletClass*, pThis, EBP);
 	GET(TechnoClass*, pTechno, ESI);
 

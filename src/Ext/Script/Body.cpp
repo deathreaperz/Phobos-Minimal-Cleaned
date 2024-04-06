@@ -941,8 +941,6 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 
 			return false;
 		}
-
-
 	}
 
 	return true;
@@ -964,7 +962,6 @@ void NOINLINE ScriptExtData::ExecuteTimedAreaGuardAction(TeamClass* pTeam)
 
 	if (!Isticking && !TimeLeft)
 	{
-
 		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 		{
 			if (TechnoExtData::IsInWarfactory(pUnit))
@@ -974,7 +971,6 @@ void NOINLINE ScriptExtData::ExecuteTimedAreaGuardAction(TeamClass* pTeam)
 		}
 
 		pTeam->GuardAreaTimer.Start(15 * pScriptType->ScriptActions[pScript->CurrentMission].Argument);
-
 	}
 	else if (Isticking && !TimeLeft)
 	{
@@ -1406,10 +1402,8 @@ void ScriptExtData::SetCloseEnoughDistance(TeamClass* pTeam, double distance = -
 
 	auto const pTeamData = TeamExtContainer::Instance.Find(pTeam);
 
-
 	if (distance > 0)
 		pTeamData->CloseEnough = distance;
-
 
 	if (distance <= 0)
 		pTeamData->CloseEnough = RulesClass::Instance->CloseEnough.ToCell();
@@ -1446,7 +1440,6 @@ void ScriptExtData::SetMoveMissionEndMode(TeamClass* pTeam, int mode = 0)
 
 bool ScriptExtData::MoveMissionEndStatus(TeamClass* pTeam, TechnoClass* pFocus, FootClass* pLeader = nullptr, int mode = 0)
 {
-
 	if (!pTeam || mode < 0)
 		return false;
 

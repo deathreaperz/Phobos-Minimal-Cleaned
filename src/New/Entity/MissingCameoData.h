@@ -17,11 +17,13 @@ struct MissingCameoData
 		GameDelete<true>(m_SHP_Fallback);
 	}
 
-	MissingCameoData() : m_SHP { nullptr }, m_PCX {}, m_SHPToPcxSurface {} {
+	MissingCameoData() : m_SHP { nullptr }, m_PCX {}, m_SHPToPcxSurface {}
+	{
 		m_SHP_Fallback = (SHPStruct*)FileSystem::LoadFile(GameStrings::XXICON_SHP(), true);
 	}
 
-	void Initialize() {
+	void Initialize()
+	{
 		m_SHP = (SHPStruct*)FileSystem::LoadFile(RulesExtData::Instance()->MissingCameo.data(), true);
 		m_PCX = RulesExtData::Instance()->MissingCameo;
 
@@ -30,11 +32,13 @@ struct MissingCameoData
 		// if shp exist but pcx dont , make copy of it from shp
 	}
 
-	BSurface* GetPCXSurface() {
+	BSurface* GetPCXSurface()
+	{
 		return this->m_PCX.GetSurface();
 	}
 
-	SHPStruct* GetSHPFile() {
+	SHPStruct* GetSHPFile()
+	{
 		return !this->m_SHP ? this->m_SHP_Fallback : this->m_SHP;
 	}
 };

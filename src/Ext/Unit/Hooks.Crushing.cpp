@@ -39,7 +39,7 @@ DEFINE_HOOK(0x0741941, UnitClass_OverrunSquare_TiltWhenCrushes, 0x6)
 	if (!pTypeExt->CrushForwardTiltPerFrame.isset())
 		return 0x0;
 
-	if(pThis->RockingForwardsPerFrame == 0.0)
+	if (pThis->RockingForwardsPerFrame == 0.0)
 		pThis->RockingForwardsPerFrame = static_cast<float>(pTypeExt->CrushForwardTiltPerFrame);
 
 	return SkipGameCode;
@@ -60,7 +60,6 @@ DEFINE_HOOK(0x4B1150, DriveLocomotionClass_WhileMoving_CrushSlowdown, 0x9)
 	__asm { fld slowdownCoefficient };
 
 	return SkipGameCode;
-
 }
 
 DEFINE_HOOK_AGAIN(0x4B1A4B, DriveLocomotionClass_WhileMoving_CrushTilt, 0xD)
@@ -73,7 +72,8 @@ DEFINE_HOOK(0x4B19F7, DriveLocomotionClass_WhileMoving_CrushTilt, 0xD)
 	auto const pLinkedTo = pThis->LinkedTo;
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pLinkedTo->GetTechnoType());
 
-	if(pTypeExt->CrushForwardTiltPerFrame.isset()){
+	if (pTypeExt->CrushForwardTiltPerFrame.isset())
+	{
 		pLinkedTo->RockingForwardsPerFrame = static_cast<float>(pTypeExt->CrushForwardTiltPerFrame.Get());
 		return R->Origin() == 0x4B19F7 ? SkipGameCode1 : SkipGameCode2;
 	}
@@ -107,7 +107,8 @@ DEFINE_HOOK(0x6A108D, ShipLocomotionClass_WhileMoving_CrushTilt, 0xD)
 	auto const pLinkedTo = pThis->LinkedTo;
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pLinkedTo->GetTechnoType());
 
-	if (pTypeExt->CrushForwardTiltPerFrame.isset()) {
+	if (pTypeExt->CrushForwardTiltPerFrame.isset())
+	{
 		pLinkedTo->RockingForwardsPerFrame = static_cast<float>(pTypeExt->CrushForwardTiltPerFrame.Get());
 		return SkipGameCode;
 	}

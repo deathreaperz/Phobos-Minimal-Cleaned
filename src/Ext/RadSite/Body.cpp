@@ -9,7 +9,7 @@
 
 void RadSiteExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	AnnounceInvalidPointer(TechOwner, ptr , bRemoved);
+	AnnounceInvalidPointer(TechOwner, ptr, bRemoved);
 	AnnounceInvalidPointer(HouseOwner, ptr);
 }
 
@@ -55,7 +55,7 @@ void RadSiteExtData::CreateLight()
 
 	const auto nTintFactor = this->Type->GetTintFactor();
 	const auto nRadLevelFactor = pThis->RadLevel * this->Type->GetLightFactor();
-	const auto nLightFactor = std::clamp(nRadLevelFactor , 1.0 , 2000.0 );
+	const auto nLightFactor = std::clamp(nRadLevelFactor, 1.0, 2000.0);
 	const auto nDuration = (double)pThis->RadDuration;
 
 	pThis->RadLevelTimer.Start(nLevelDelay);
@@ -103,7 +103,7 @@ void RadSiteExtData::SetRadLevel(int amount)
 {
 	const auto pThis = this->AttachedToObject;
 	const auto nMax = this->Type->GetLevelMax();
-	const auto nDecidedamount = MinImpl(amount,  nMax);
+	const auto nDecidedamount = MinImpl(amount, nMax);
 	const int mult = this->Type->GetDurationMultiple();
 	pThis->RadLevel = nDecidedamount;
 	pThis->RadDuration = mult * nDecidedamount;
@@ -129,7 +129,8 @@ const double RadSiteExtData::GetRadLevelAt(CellStruct const& cell)
 		? 0.0 : (nMax - nDistance) / nMax * currentLevel;
 }
 
-bool NOINLINE IsFiniteNumber(double x) {
+bool NOINLINE IsFiniteNumber(double x)
+{
 	return (x <= DBL_MAX && x >= -DBL_MAX);
 }
 
@@ -146,7 +147,7 @@ const double RadSiteExtData::GetRadLevelAt(double distance)
 	if (!nMax && !distance)
 		return currentLevel;
 
-	const auto result =  (distance > nMax)
+	const auto result = (distance > nMax)
 		? 0.0 : (nMax - distance) / nMax * currentLevel;
 
 	//if (!IsFiniteNumber(result))
@@ -182,14 +183,14 @@ const RadSiteExtData::DamagingState RadSiteExtData::ApplyRadiationDamage(TechnoC
 		{
 			auto const coords = pTarget->GetCoords();
 			HouseClass* const pOwner = this->TechOwner ? this->TechOwner->Owner : this->HouseOwner;
-			WarheadTypeExtData::DetonateAt(pWarhead, pTarget, coords , this->TechOwner, damage , pOwner);
+			WarheadTypeExtData::DetonateAt(pWarhead, pTarget, coords, this->TechOwner, damage, pOwner);
 
 			if ((pUnit && pUnit->DeathFrameCounter > 0))
 				return RadSiteExtData::DamagingState::Ignore;
 		}
 	}
 
-	const auto res =  pTarget->IsAlive && !pTarget->InLimbo && pTarget->Health > 0 && !pTarget->IsSinking && !pTarget->IsCrashing;
+	const auto res = pTarget->IsAlive && !pTarget->InLimbo && pTarget->Health > 0 && !pTarget->IsSinking && !pTarget->IsCrashing;
 
 	return res ? RadSiteExtData::DamagingState::Continue : RadSiteExtData::DamagingState::Dead;
 }
@@ -258,7 +259,7 @@ DEFINE_HOOK(0x65B450, RadSiteClass_SaveLoad_Prefix, 0x8)
 
 // Before :
  // DEFINE_HOOK(0x65B43F, RadSiteClass_Load_Suffix, 0x7)
-DEFINE_HOOK(0x65B431 , RadSiteClass_Load_Suffix , 0x9)
+DEFINE_HOOK(0x65B431, RadSiteClass_Load_Suffix, 0x9)
 {
 	GET(RadSiteClass*, pThis, ESI);
 
@@ -273,10 +274,12 @@ DEFINE_HOOK(0x65B431 , RadSiteClass_Load_Suffix , 0x9)
 
 DEFINE_HOOK(0x65B464, RadSiteClass_Save_Suffix, 0x5)
 {
-	GET(const HRESULT , nRes, EAX);
+	GET(const HRESULT, nRes, EAX);
 
-	if(SUCCEEDED(nRes)) {
-		if (!Phobos::Otamaa::DisableCustomRadSite) {
+	if (SUCCEEDED(nRes))
+	{
+		if (!Phobos::Otamaa::DisableCustomRadSite)
+		{
 			RadSiteExtContainer::Instance.SaveStatic();
 		}
 	}
@@ -327,7 +330,8 @@ DEFINE_HOOK(0x65B464, RadSiteClass_Save_Suffix, 0x5)
 
 static void __fastcall RadSiteClass_Detach(RadSiteClass* pThis, void* _, AbstractClass* pTarget, bool bRemove)
 {
-	if (!Phobos::Otamaa::DisableCustomRadSite){
+	if (!Phobos::Otamaa::DisableCustomRadSite)
+	{
 		RadSiteExtContainer::Instance.InvalidatePointerFor(pThis, pTarget, bRemove);
 	}
 }
@@ -336,8 +340,10 @@ DEFINE_JUMP(VTABLE, 0x7F0838, GET_OFFSET(RadSiteClass_Detach));
 
 static HouseClass* __fastcall RadSiteClass_OwningHouse(RadSiteClass* pThis, void* _)
 {
-	if (!Phobos::Otamaa::DisableCustomRadSite){
-		if (const auto pExt = RadSiteExtContainer::Instance.Find(pThis)){
+	if (!Phobos::Otamaa::DisableCustomRadSite)
+	{
+		if (const auto pExt = RadSiteExtContainer::Instance.Find(pThis))
+		{
 			return pExt->HouseOwner;
 		}
 	}

@@ -1,12 +1,16 @@
 #include "Body.h"
 
-void ParticleTypeExtData::Initialize() {
+void ParticleTypeExtData::Initialize()
+{
 	LaserTrail_Types.reserve(2);
 }
 
-void ReadWinDirMult(std::array<Point2D, (size_t)FacingType::Count>& arr, INI_EX& exINI, const char* pID, const int* beginX , const int* beginY) {
-	for (size_t i = 0; i < arr.size(); ++i) {
-		if(!detail::read(arr[i], exINI, pID, (std::string("WindDirectionMult") + std::to_string(i)).c_str())) {
+void ReadWinDirMult(std::array<Point2D, (size_t)FacingType::Count>& arr, INI_EX& exINI, const char* pID, const int* beginX, const int* beginY)
+{
+	for (size_t i = 0; i < arr.size(); ++i)
+	{
+		if (!detail::read(arr[i], exINI, pID, (std::string("WindDirectionMult") + std::to_string(i)).c_str()))
+		{
 			arr[i].X = *(beginX + i);
 			arr[i].Y = *(beginY + i);
 		}
@@ -25,7 +29,8 @@ void ParticleTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	switch (pThis->BehavesLike)
 	{
-	case ParticleTypeBehavesLike::Smoke: {
+	case ParticleTypeBehavesLike::Smoke:
+	{
 		/*
 			WindFacingMult Smoke[at 0 - value(x:0, y : -2)]
 			WindFacingMult Smoke[at 1 - value(x:2, y : -2)]
@@ -37,20 +42,23 @@ void ParticleTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			WindFacingMult Smoke[at 7 - value(x:-2, y : -2)]
 		*/
 		this->DeleteWhenReachWater.Read(exINI, pID, "Smoke.DeleteWhenReachWater");
-		ReadWinDirMult(this->WindMult, exINI , pID, ParticleClass::SmokeWind_X.begin(), ParticleClass::SmokeWind_Y.begin());
+		ReadWinDirMult(this->WindMult, exINI, pID, ParticleClass::SmokeWind_X.begin(), ParticleClass::SmokeWind_Y.begin());
 	}
 	break;
-	case ParticleTypeBehavesLike::Fire: {
-	//	this->ExpireAfterDamaging.Read(exINI, pID, "Fire.ExpireAfterDamaging");
+	case ParticleTypeBehavesLike::Fire:
+	{
+		//	this->ExpireAfterDamaging.Read(exINI, pID, "Fire.ExpireAfterDamaging");
 		this->Fire_DamagingAnim.Read(exINI, pID, "Fire.DamagingAnim");
-		this->ReadjustZ.Read(exINI, pID , "ReadjustZCoord");
+		this->ReadjustZ.Read(exINI, pID, "ReadjustZCoord");
 	}
 	break;
-	case ParticleTypeBehavesLike::Railgun: {
-		this->ReadjustZ.Read(exINI, pID , "ReadjustZCoord");
+	case ParticleTypeBehavesLike::Railgun:
+	{
+		this->ReadjustZ.Read(exINI, pID, "ReadjustZCoord");
 		break;
 	}
-	case ParticleTypeBehavesLike::Gas: {
+	case ParticleTypeBehavesLike::Gas:
+	{
 		/*
 			[at 0 - value(x:0, y : -2)]
 			[at 1 - value(x:2, y : -2)]
@@ -64,9 +72,10 @@ void ParticleTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		ReadWinDirMult(this->WindMult, exINI, pID, ParticleClass::GasWind_X.begin(), ParticleClass::GasWind_Y.begin());
 
-		if(!Phobos::Otamaa::CompatibilityMode)
+		if (!Phobos::Otamaa::CompatibilityMode)
 			this->Gas_DriftSpeed.Read(exINI, pID, "Gas.DriftSpeed");
-		else {
+		else
+		{
 			this->Gas_DriftSpeed.GetEx()->Y = 0;
 			detail::read<int>(this->Gas_DriftSpeed.GetEx()->X, exINI, pID, "Gas.MaxDriftSpeed");
 		}
@@ -160,12 +169,12 @@ DEFINE_HOOK(0x64580A, ParticleTypeClass_Save_Suffix, 0x7)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x645414 , ParticleTypeClass_LoadFromINI, 0x5)
+DEFINE_HOOK_AGAIN(0x645414, ParticleTypeClass_LoadFromINI, 0x5)
 DEFINE_HOOK(0x645405, ParticleTypeClass_LoadFromINI, 0x5)
 {
 	GET(ParticleTypeClass*, pItem, ESI);
-	GET_STACK(CCINIClass*, pINI, STACK_OFFS(0xDC , -0x4));
+	GET_STACK(CCINIClass*, pINI, STACK_OFFS(0xDC, -0x4));
 
-	ParticleTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x645414);
+	ParticleTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x645414);
 	return 0;
 }

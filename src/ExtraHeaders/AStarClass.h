@@ -55,7 +55,8 @@ struct PriorityQueueClass_AStarHierarchical
 	void* MaxNodePointer;
 	void* MinNodePointer;
 
-	void Heapify(bool shortitems = true) {
+	void Heapify(bool shortitems = true)
+	{
 		JMP_THIS(0x42DCA0);
 	}
 };
@@ -92,17 +93,17 @@ public:
 	AStarClass__Plot_Straight_Line_Regular        0042BE20
 	*/
 	void AStarClass__Clear_Pointers()     JMP_THIS(0x42C1C0)
-	/*AStarClass__AStar_Find_Path_Hierarchical        0042C290
-	AStarClass__Find_Path        0042C900
-	AStarClass__Init_Cell_Index_Sets        0042CCD0
-	AStarClass__Is_Cell_Index_Set_Registered        0042CEB0
-	AStarClass__Register_Cell_Index_Set        0042CF10
-	AStarClass__Register_Cell_Index_Sets        0042CF80
-	AStarClass__Test_Cell_Walk        0042D170
-	__thiscall Cell::Cell(short,short)        0042D470
-	Find_Adjacent_Cell_0        0042D490
-	Cell const __thiscall Cell::operator+(Cell const &)        0042D510
-	*/
+		/*AStarClass__AStar_Find_Path_Hierarchical        0042C290
+		AStarClass__Find_Path        0042C900
+		AStarClass__Init_Cell_Index_Sets        0042CCD0
+		AStarClass__Is_Cell_Index_Set_Registered        0042CEB0
+		AStarClass__Register_Cell_Index_Set        0042CF10
+		AStarClass__Register_Cell_Index_Sets        0042CF80
+		AStarClass__Test_Cell_Walk        0042D170
+		__thiscall Cell::Cell(short,short)        0042D470
+		Find_Adjacent_Cell_0        0042D490
+		Cell const __thiscall Cell::operator+(Cell const &)        0042D510
+		*/
 public:
 	bool bool_0;                                            // always false
 	bool bool_1;                                            // skips 004299D2 if false
@@ -151,7 +152,6 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 		if (threat <= 0.00001)
 		{
 			Avaible = false;
-
 		}
 
 		int some_startIndex = 2;
@@ -186,7 +186,6 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 
 				pThis->somearray_BC[500 * some_startIndex] = CellsArray_From;
 				pThis->maxvalues_field_C74[some_startIndex] = 0;
-
 			}
 
 			pThis->BufferForHierarchicalQueue->BufferDelta = -1;
@@ -237,7 +236,6 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 					pThis->HierarchicalQueue->Heapify();
 				}
 
-
 				if (!someIdx_here)
 				{
 					return false;
@@ -255,7 +253,6 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 					const auto data_Item = data->SubzoneConnections.Items + someIdx_here->Index;
 
 					for (int i = data->SubzoneConnections.Count; i > 0; --i) {
-
 					}
 				}
 			}

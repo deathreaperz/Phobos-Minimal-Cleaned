@@ -32,7 +32,7 @@ HRESULT PhobosSwizzle::RegisterForChange_Hook(void** p)
 	return E_POINTER;
 }
 
-HRESULT PhobosSwizzle::RegisterChange_Hook(DWORD caller , void* was, void* is)
+HRESULT PhobosSwizzle::RegisterChange_Hook(DWORD caller, void* was, void* is)
 {
 	auto exist = this->Changes.find(was);
 	//the requested `was` not found
@@ -45,7 +45,7 @@ HRESULT PhobosSwizzle::RegisterChange_Hook(DWORD caller , void* was, void* is)
 	//the requested `was` found
 	else if (exist->second != is)
 	{
-		Debug::Log("PhobosSwizze[0x%x] :: Pointer [%p] declared change to both [%p] AND [%p]!\n",caller, was, exist->second, is);
+		Debug::Log("PhobosSwizze[0x%x] :: Pointer [%p] declared change to both [%p] AND [%p]!\n", caller, was, exist->second, is);
 	}
 	return S_OK;
 }
@@ -62,7 +62,7 @@ void PhobosSwizzle::ConvertNodes() const
 			auto change = this->Changes.find(it->first);
 			if (change == this->Changes.end())
 			{
-				Debug::Log("PhobosSwizze :: Pointer [%p] could not be remapped from [%p] !\n", it->second , it->first );
+				Debug::Log("PhobosSwizze :: Pointer [%p] could not be remapped from [%p] !\n", it->second, it->first);
 			}
 			else
 			{

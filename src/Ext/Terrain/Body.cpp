@@ -6,16 +6,19 @@
 
 void TerrainExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	if (this->LighSource.get() == ptr) {
+	if (this->LighSource.get() == ptr)
+	{
 		this->LighSource.release();
 	}
 
-	if (this->AttachedAnim == ptr) {
+	if (this->AttachedAnim == ptr)
+	{
 		this->AttachedAnim.release();
 	}
 }
 
-bool TerrainExtData::CanMoveHere(TechnoClass* pThis, TerrainClass* pTerrain) {
+bool TerrainExtData::CanMoveHere(TechnoClass* pThis, TerrainClass* pTerrain)
+{
 	const auto pExt = TerrainTypeExtContainer::Instance.Find(pTerrain->Type);
 
 	if (pExt->IsPassable)
@@ -103,7 +106,6 @@ void TerrainExtData::Unlimbo(TerrainClass* pThis, CoordStruct* pCoord)
 		TerrainExt->InitializeLightSource();
 		TerrainExt->InitializeAnim();
 	}
-
 }
 
 // =============================
@@ -125,7 +127,7 @@ TerrainExtContainer TerrainExtContainer::Instance;
 // container hooks
 #include <Notifications.h>
 
-DEFINE_JUMP(LJMP, 0x71BC31 , 0x71BC86);
+DEFINE_JUMP(LJMP, 0x71BC31, 0x71BC86);
 
 DEFINE_HOOK(0x71BE74, TerrainClass_CTOR, 0x5)
 {
@@ -142,9 +144,11 @@ DEFINE_HOOK(0x71BCA5, TerrainClass_CTOR_MoveAndAllocate, 0x5)
 
 	TerrainExtContainer::Instance.FindOrAllocate(pItem);
 
-	if (pCoord->IsValid()) {
+	if (pCoord->IsValid())
+	{
 		//vtable may not instantiated
-		if (!pItem->TerrainClass::Unlimbo(CellClass::Cell2Coord(*pCoord), static_cast<DirType>(0))) {
+		if (!pItem->TerrainClass::Unlimbo(CellClass::Cell2Coord(*pCoord), static_cast<DirType>(0)))
+		{
 			pItem->ObjectClass::UnInit();
 		}
 	}
@@ -157,14 +161,15 @@ DEFINE_HOOK(0x71B824, TerrainClass_DTOR, 0x5)
 {
 	GET(TerrainClass*, pItem, ESI);
 
-	if(Unsorted::WTFMode() || pItem->Type)
+	if (Unsorted::WTFMode() || pItem->Type)
 	{
 		pItem->IsAlive = true;
 		if (!pItem->Limbo())
 			pItem->AnnounceExpiredPointer();
 	}
 
-	if(auto pExt = TerrainExtContainer::Instance.TryFind(pItem)) {
+	if (auto pExt = TerrainExtContainer::Instance.TryFind(pItem))
+	{
 		delete pExt;
 		TerrainExtContainer::Instance.ClearExtAttribute(pItem);
 		//PointerExpiredNotification::NotifyInvalidObject->Remove(pItem);

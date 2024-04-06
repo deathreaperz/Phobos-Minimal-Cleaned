@@ -24,18 +24,23 @@ namespace detail
 			return false;
 
 		// Semantic locomotor aliases
-		if (parser.value()[0] != '{') {
-			for (size_t i = 0; i < EnumFunctions::LocomotorPairs_ToStrings.size(); ++i) {
-				if (IS_SAME_STR_(parser.value(), EnumFunctions::LocomotorPairs_ToStrings[i].first)) {
+		if (parser.value()[0] != '{')
+		{
+			for (size_t i = 0; i < EnumFunctions::LocomotorPairs_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(parser.value(), EnumFunctions::LocomotorPairs_ToStrings[i].first))
+				{
 					CLSID dummy;
-					if (CLSIDFromString(LPCOLESTR(EnumFunctions::LocomotorPairs_ToWideStrings[i].second), &dummy) == NOERROR) {
+					if (CLSIDFromString(LPCOLESTR(EnumFunctions::LocomotorPairs_ToWideStrings[i].second), &dummy) == NOERROR)
+					{
 						value = dummy;
 						return true;
 					}
 				}
 			}
 
-			if (IS_SAME_STR_(parser.value(), Test_data.s_name)) {
+			if (IS_SAME_STR_(parser.value(), Test_data.s_name))
+			{
 				CLSID dummy;
 				if (CLSIDFromString(LPCOLESTR(Test_data.w_CLSID), &dummy) == NOERROR)
 				{
@@ -44,7 +49,8 @@ namespace detail
 				}
 			}
 
-			if (IS_SAME_STR_(parser.value(), Levitate_data.s_name)) {
+			if (IS_SAME_STR_(parser.value(), Levitate_data.s_name))
+			{
 				CLSID dummy;
 				if (CLSIDFromString(LPCOLESTR(Levitate_data.w_CLSID), &dummy) == NOERROR)
 				{
@@ -152,18 +158,18 @@ namespace INIInheritance
 	int ReadStringUseCRC(CCINIClass* ini, int sectionCRC, int entryCRC, char* defaultValue, char* buffer, int length, bool useCurrentSection)
 	{
 		const auto finalize = [buffer, length](char* result)
-		{
-			if (!result)
 			{
-				*buffer = NULL;
-				return 0;
-			}
-			strncpy(buffer, result, length);
-			buffer[length - 1] = NULL;
-			CRT::strtrim(buffer);
+				if (!result)
+				{
+					*buffer = NULL;
+					return 0;
+				}
+				strncpy(buffer, result, length);
+				buffer[length - 1] = NULL;
+				CRT::strtrim(buffer);
 
-			return (int)strlen(buffer);
-		};
+				return (int)strlen(buffer);
+			};
 
 		if (!buffer || length < 2)
 			return 0;
@@ -193,12 +199,12 @@ namespace INIInheritance
 		GET_STACK(int, sectionCRC, STACK_OFFSET(stackOffset, 0x4));
 
 		const auto finalize = [R, buffer, address](const char* value)
-		{
-			R->EDI(buffer);
-			R->EAX(0);
-			R->ECX(value);
-			return address;
-		};
+			{
+				R->EDI(buffer);
+				R->EAX(0);
+				R->ECX(value);
+				return address;
+			};
 
 		const constexpr int inheritsCRC = -1871638965; // CRCEngine()("$Inherits", 9)
 
@@ -340,7 +346,6 @@ DEFINE_HOOK(0x474230, CCINIClass_Load_Inheritance, 0x5)
 	return 0;
 }
 
-
 #else
 
 // Fix issue with TilesInSet caused by incorrect vanilla INIs and the fixed parser returning correct default value (-1) instead of 0 for existing non-integer values
@@ -361,8 +366,10 @@ DEFINE_HOOK(0x527B0A, INIClass_Get_UUID, 0x8)
 
 	if (buffer[0] != L'{')
 	{
-		for (auto const&[name , CLSID] : EnumFunctions::LocomotorPairs_ToWideStrings) {
-			if (CRT::wcsicmp(buffer, name) == 0) {
+		for (auto const& [name, CLSID] : EnumFunctions::LocomotorPairs_ToWideStrings)
+		{
+			if (CRT::wcsicmp(buffer, name) == 0)
+			{
 				wcscpy_s(buffer, BufferSize, CLSID);
 				return 0;
 			}
@@ -373,7 +380,8 @@ DEFINE_HOOK(0x527B0A, INIClass_Get_UUID, 0x8)
 		//	return 0;
 		//}
 
-		if (IS_SAME_WSTR(buffer, Levitate_data.w_name)) {
+		if (IS_SAME_WSTR(buffer, Levitate_data.w_name))
+		{
 			wcscpy_s(buffer, BufferSize, Levitate_data.w_CLSID);
 			return 0;
 		}

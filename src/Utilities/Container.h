@@ -29,7 +29,7 @@ concept Initable = requires(T t) { t.Initialize(); };
 
 template <typename T>
 concept CanLoadFromINIFile =
-	requires (T t , CCINIClass* pINI, bool parseFailAddr) { t.LoadFromINIFile(pINI, parseFailAddr); };
+	requires (T t, CCINIClass * pINI, bool parseFailAddr) { t.LoadFromINIFile(pINI, parseFailAddr); };
 
 template <typename T>
 concept CanLoadFromRulesFile =
@@ -39,18 +39,17 @@ template <typename T>
 concept CTORInitable =
 	requires (T t) { t.InitializeConstant(); };
 
-
 template <typename T>
 concept PointerInvalidationSubscribable =
-	requires (AbstractClass* ptr, bool removed) { T::InvalidatePointer(ptr, removed); };
+	requires (AbstractClass * ptr, bool removed) { T::InvalidatePointer(ptr, removed); };
 
 template <typename T>
 concept ThisPointerInvalidationSubscribable =
-	requires (T t, AbstractClass* ptr, bool removed) { t.InvalidatePointer(ptr, removed); };
+	requires (T t, AbstractClass * ptr, bool removed) { t.InvalidatePointer(ptr, removed); };
 
 template <typename T>
 concept PointerInvalidationIgnorAble =
-	requires (AbstractClass* ptr) { T::InvalidateIgnorable(ptr); };
+	requires (AbstractClass * ptr) { T::InvalidateIgnorable(ptr); };
 
 //template <typename T>
 //concept ThisPointerInvalidationIgnorAble =
@@ -208,8 +207,9 @@ public:
 		if (extension_type_ptr val = new extension_type())
 		{
 			val->AttachedToObject = key;
-			if constexpr (CTORInitable<T>) { 
-				if(!Phobos::Otamaa::DoingLoadGame)
+			if constexpr (CTORInitable<T>)
+			{
+				if (!Phobos::Otamaa::DoingLoadGame)
 					val->InitializeConstant();
 			}
 
@@ -288,49 +288,54 @@ public:
 		{
 			if (extension_type_ptr ptr = this->TryFind(key))
 			{
-				if (!pINI) {
+				if (!pINI)
+				{
 					Debug::Log("[%s] LoadFrom INI Called WithInvalid CCINIClass ptr ! \n", typeid(T).name());
 					return;
 				}
 
-				switch (ptr->Initialized) {
-					case InitState::Blank:
+				switch (ptr->Initialized)
+				{
+				case InitState::Blank:
+				{
+					if constexpr (Initable<T>)
+						ptr->Initialize();
+
+					ptr->Initialized = InitState::Inited;
+
+					if constexpr (CanLoadFromRulesFile<T>)
 					{
-						if constexpr (Initable<T>)
-							ptr->Initialize();
-
-						ptr->Initialized = InitState::Inited;
-
-						if constexpr (CanLoadFromRulesFile<T>) {
-							if (pINI == CCINIClass::INI_Rules) {
-								ptr->LoadFromRulesFile(pINI);
-							}
+						if (pINI == CCINIClass::INI_Rules)
+						{
+							ptr->LoadFromRulesFile(pINI);
 						}
+					}
 
-						//Load from rules INI File
-						ptr->LoadFromINIFile(pINI, parseFailAddr);
-						ptr->Initialized = InitState::Ruled;
-					}
+					//Load from rules INI File
+					ptr->LoadFromINIFile(pINI, parseFailAddr);
+					ptr->Initialized = InitState::Ruled;
+				}
+				break;
+				case InitState::Ruled:
+				case InitState::Constanted:
+				{
+					//load anywhere other than rules
+					ptr->LoadFromINIFile(pINI, parseFailAddr);
+					//this function can be called again multiple time but without need to re-init the data
+					ptr->Initialized = InitState::Ruled;
+				}
+				break;
+				{
+				default:
 					break;
-					case InitState::Ruled:
-					case InitState::Constanted:
-					{
-						//load anywhere other than rules
-						ptr->LoadFromINIFile(pINI, parseFailAddr);
-						//this function can be called again multiple time but without need to re-init the data
-						ptr->Initialized = InitState::Ruled;
-					}
-					break;
-					{
-					default:
-						break;
-					}
+				}
 				}
 			}
 		}
 	}
 
-	void Clear() {
+	void Clear()
+	{
 		//if (this->Map.size()) {
 		//	this->Map.clear();
 		//}
@@ -338,7 +343,8 @@ public:
 
 	void InvalidatePointerFor(base_type_ptr key, AbstractClass* const ptr, bool bRemoved)
 	{
-		if constexpr (ThisPointerInvalidationSubscribable<T>){
+		if constexpr (ThisPointerInvalidationSubscribable<T>)
+		{
 			if (Phobos::Otamaa::ExeTerminated || !ptr)
 				return;
 
@@ -347,11 +353,14 @@ public:
 			if (!Extptr)
 				return;
 
-			if constexpr (PointerInvalidationIgnorAble<T>){
+			if constexpr (PointerInvalidationIgnorAble<T>)
+			{
 				if (!extension_type::InvalidateIgnorable(ptr))
 					Extptr->InvalidatePointer(ptr, bRemoved);
-			} else {
-					Extptr->InvalidatePointer(ptr, bRemoved);
+			}
+			else
+			{
+				Extptr->InvalidatePointer(ptr, bRemoved);
 			}
 		}
 	}
@@ -382,7 +391,8 @@ public:
 	void SaveStatic()
 	{
 		Debug::Log("[SaveStatic] For object %p as '%s\n", this->SavingObject, this->Name.data());
-		if (this->SavingObject && this->SavingStream) {
+		if (this->SavingObject && this->SavingStream)
+		{
 			if (!this->Save(this->SavingObject, this->SavingStream))
 				Debug::FatalErrorAndExit("[SaveStatic] Saving failed!\n");
 		}
@@ -396,7 +406,8 @@ public:
 		Debug::Log("[LoadStatic] For object %p as '%s\n", this->SavingObject, this->Name.data());
 		if (this->SavingObject && this->SavingStream)
 		{
-			if (!this->Load(this->SavingObject, this->SavingStream)){
+			if (!this->Load(this->SavingObject, this->SavingStream))
+			{
 				Debug::FatalErrorAndExit("[LoadStatic] Loading object %p as '%s failed!\n", this->SavingObject, this->Name.data());
 				return false;
 			}
@@ -486,7 +497,6 @@ protected:
 
 		return false;
 	}
-
 
 private:
 	Container<T>(const Container<T>&) = delete;

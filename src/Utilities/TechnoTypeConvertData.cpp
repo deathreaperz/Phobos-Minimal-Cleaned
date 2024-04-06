@@ -3,7 +3,7 @@
 #include <Misc/Ares/Hooks/Header.h>
 #include <Utilities/Debug.h>
 
-void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData>& nPairs , HouseClass * pHouse, TechnoClass * pTarget, AnimTypeClass* SucceededAnim)
+void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData>& nPairs, HouseClass* pHouse, TechnoClass* pTarget, AnimTypeClass* SucceededAnim)
 {
 	if (nPairs.empty())
 		return;
@@ -20,8 +20,8 @@ void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData
 
 		if (!pFrom.empty())
 		{
-			for (auto* pFrm : pFrom) {
-
+			for (auto* pFrm : pFrom)
+			{
 				if (pFrm != pCurType)
 					continue;
 
@@ -38,7 +38,9 @@ void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData
 					}
 				}
 			}
-		} else {
+		}
+		else
+		{
 			const auto bConvertStatus = TechnoExt_ExtData::ConvertToType(pTarget, pTo);
 
 			if (!bConvertStatus)
@@ -133,7 +135,7 @@ void TechnoTypeConvertData::Parse(bool useDevelopversion, std::vector<TechnoType
 			ValueableVector<TechnoTypeClass*> convertFrom;
 			Nullable<TechnoTypeClass*> convertTo;
 			Nullable<AffectedHouse> convertAffectedHouses;
-			convertFrom.Read(exINI, pSection, (base_+ ".From").c_str());
+			convertFrom.Read(exINI, pSection, (base_ + ".From").c_str());
 			convertTo.Read(exINI, pSection, (base_ + ".To").c_str());
 			convertAffectedHouses.Read(exINI, pSection, (base_ + ".AffectedHouses").c_str());
 

@@ -34,7 +34,7 @@ struct dllData
 		, BaseAddr { baseaddr }
 		, Impors {}
 		, Exports {}
-	//	, Patches {}
+		//	, Patches {}
 	{
 	}
 
@@ -121,7 +121,6 @@ struct __declspec(novtable)
 		Patch::Apply_RAW(offset, data.size() * sizeof(T), const_cast<byte*>(reinterpret_cast<const byte*>(data.begin())));
 	};
 
-
 	static void Apply_LJMP(uintptr_t offset, uintptr_t pointer);
 	static inline void Apply_LJMP(uintptr_t offset, void* pointer)
 	{
@@ -146,12 +145,10 @@ struct __declspec(novtable)
 		Patch::Apply_VTABLE(offset, reinterpret_cast<uintptr_t>(pointer));
 	};
 
-
 	static void Apply_OFFSET(uintptr_t offset, uintptr_t pointer)
 	{
 		Patch::Apply_TYPED<uintptr_t>(offset, { pointer });
 	};
-
 
 	static inline void Apply_OFFSET(uintptr_t offset, uintptr_t* pointer)
 	{

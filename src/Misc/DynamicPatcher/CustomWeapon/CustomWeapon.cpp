@@ -1,6 +1,5 @@
 #include "CustomWeapon.h"
 
-
 #include <Ext/Techno/Body.h>
 #include <Ext/WeaponType/Body.h>
 #include <Ext/BulletType/Body.h>
@@ -24,10 +23,8 @@ void CustomWeaponManager::Update(TechnoClass* pAttacker)
 	}
 	else
 	{
-
 		for (; !simulateBurstQueue.empty();)
 		{
-
 			SimulateBurst burst = *simulateBurstQueue.begin();
 			simulateBurstQueue.erase(simulateBurstQueue.begin());
 
@@ -100,7 +97,6 @@ bool CustomWeaponManager::FireCustomWeapon(TechnoClass* pShooter,
 
 		if (burst > 1 && fireData.SimulateBurst)
 		{
-
 			int flipY = 1;
 
 			//if (BulletTypeClass* pBulletType = pWeapon->Projectile)
@@ -138,7 +134,6 @@ void CustomWeaponManager::SimulateBurstFire(TechnoClass* pShooter, TechnoClass* 
 	}
 
 	SimulateBurstFireOnce(pShooter, pAttacker, pTarget, pWeapon, burst);
-
 }
 
 void GetBulletVelocity(VelocityClass& nVel, CoordStruct& sourcePos, CoordStruct& targetPos, TechnoClass* pShooter, int burst, int radial, bool radialFire, int idx)
@@ -172,8 +167,9 @@ TechnoClass* CustomWeaponManager::WhoIsShooter(TechnoClass* pAttacker) const
 
 void  CustomWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	auto iter_sibulateBursts = std::remove_if(this->simulateBurstQueue.begin(), this->simulateBurstQueue.end(), [ptr, bRemoved](const auto& queue) {
-		return (queue.Target == ptr || queue.Shooter == ptr) && bRemoved;
+	auto iter_sibulateBursts = std::remove_if(this->simulateBurstQueue.begin(), this->simulateBurstQueue.end(), [ptr, bRemoved](const auto& queue)
+ {
+	 return (queue.Target == ptr || queue.Shooter == ptr) && bRemoved;
 	});
 
 	this->simulateBurstQueue.erase(iter_sibulateBursts, this->simulateBurstQueue.end());
@@ -208,8 +204,9 @@ bool FireWeaponManager::FireCustomWeapon(TechnoClass* pShooter, TechnoClass* pAt
 
 void FireWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	auto iter_delayfires = std::remove_if(this->DelayFires.begin(), this->DelayFires.end(), [ptr , bRemoved](const auto& queue) {
-		return queue.Target == ptr && bRemoved;
+	auto iter_delayfires = std::remove_if(this->DelayFires.begin(), this->DelayFires.end(), [ptr, bRemoved](const auto& queue)
+ {
+	 return queue.Target == ptr && bRemoved;
 	});
 
 	this->DelayFires.erase(iter_delayfires, this->DelayFires.end());

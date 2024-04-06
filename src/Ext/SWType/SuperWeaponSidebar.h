@@ -51,5 +51,4 @@ protected:
 	void DrawToolTip(SuperClass* pSuper, Point2D* pLoc);
 	std::pair<SHPStruct*, ConvertClass*> GetBarData(BarPos pos);
 	void DrawBordeBar(BarPos pos, Point2D* pLoc);
-
 };

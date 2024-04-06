@@ -68,7 +68,7 @@ public:
 			.Process(Fade)
 			.Success()
 			//&& Stm.RegisterChange(this)
-		;
+			;
 	}
 };
 
@@ -117,7 +117,7 @@ public:
 			.Process(Amplitude)
 			.Success()
 			//&& Stm.RegisterChange(this)
-		;
+			;
 	}
 };
 
@@ -169,8 +169,8 @@ public:
 			.Process(Color2_disable)
 			.Process(Color3_disable)
 			.Success()
-		//	&& Stm.RegisterChange(this)
-		;
+			//	&& Stm.RegisterChange(this)
+			;
 	}
 };
 
@@ -274,7 +274,6 @@ public:
 
 	static void DrawLine(CoordStruct sourcePos, CoordStruct targetPos, ColorStruct innerColor, ColorStruct outerColor = ColorStruct::Empty, int thickness = 2, int duration = 15)
 	{
-
 		LaserType type = LaserType(true);
 		type.InnerColor = innerColor;
 		type.OuterColor = outerColor;
@@ -328,8 +327,8 @@ public:
 
 	static void DrawBolt(CoordStruct& sourcePos, CoordStruct& targetPos, BoltType& type)
 	{
-		ElectricBoltClass::Create(sourcePos, targetPos, type.Color1 , type.Color2 , type.Color3,
-		type.Color1_disable, type.Color2_disable, type.Color3_disable ,
+		ElectricBoltClass::Create(sourcePos, targetPos, type.Color1, type.Color2, type.Color3,
+		type.Color1_disable, type.Color2_disable, type.Color3_disable,
 		0, type.ParticleSystem.Get(), type.ParticleSystem_coordFlip.Get());
 	}
 
@@ -356,10 +355,9 @@ public:
 
 	static void DrawParticle(ParticleSystemTypeClass* psType, CoordStruct& sourcePos, AbstractClass* pTarget, TechnoClass* pOwner, CoordStruct& targetPos, HouseClass* pOwnerHouse)
 	{
-		if(psType->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
+		if (psType->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
 			sourcePos.Z += 100;
 
 		GameCreate<ParticleSystemClass>(psType, sourcePos, pTarget, pOwner, targetPos, pOwnerHouse);
 	}
-
 };

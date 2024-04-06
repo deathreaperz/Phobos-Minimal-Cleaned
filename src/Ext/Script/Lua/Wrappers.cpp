@@ -1,4 +1,3 @@
-
 #include "Wrapper.h"
 
 #include <Phobos.Lua.h>
@@ -46,7 +45,6 @@ struct TeamClassWrapper
 
 	static int GetAreaGuardTimerTimeLeft(lua_State* L)
 	{
-
 		TeamClass* pTeam = (TeamClass*)lua_tointeger(L, -1);
 		const int result = pTeam->GuardAreaTimer.GetTimeLeft();
 		lua_pushnumber(L, result);
@@ -83,7 +81,6 @@ struct _Unit
 		lua_pushnumber(L, (uintptr_t)pFoot->NextTeamMember);
 		return 1;
 	}
-
 };
 
 struct _MissionClass
@@ -140,9 +137,7 @@ struct LuaScript
 				State["_MissionClass_QueueMission"] = _MissionClass::QueueMission;
 				State["_Unit_GetNextTeamMember"] = _Unit::GetNextTeamMember;
 			}
-
 		}catch(const sol::error& what) {
-
 			Debug::Log("Cannot Find [%s] File ! Reason (%s)\n", Lua_Name.c_str(), what.what());
 			State = nullptr;
 		}
@@ -150,7 +145,8 @@ struct LuaScript
 };
 
 //static std::vector<LuaScript> LuaScripts {};
-struct PairOfNumbers {
+struct PairOfNumbers
+{
 	int Original;
 	int Alternate;
 };
@@ -197,7 +193,8 @@ void LuaBridge::InitScriptLuaList(unique_luastate& sol_state)
 	if (luaL_dofile(L, filename.c_str()) == LUA_OK)
 	{
 		lua_getglobal(L, "Scripts");
-		if (lua_istable(L, -1)) {
+		if (lua_istable(L, -1))
+		{
 			const size_t scriptSize = (size_t)lua_rawlen(L, -1);
 			SriptNumbers.resize(scriptSize);
 			for (size_t i = 0; i < scriptSize; i++)
@@ -220,13 +217,14 @@ void LuaBridge::InitScriptLuaList(unique_luastate& sol_state)
 			}
 		}
 	}
-
 }
 
 int LuaBridge::GetAppropriateAction(int from)
 {
-	for (auto& cur : SriptNumbers) {
-		if (cur.Alternate == from){
+	for (auto& cur : SriptNumbers)
+	{
+		if (cur.Alternate == from)
+		{
 			return cur.Original;
 		}
 	}

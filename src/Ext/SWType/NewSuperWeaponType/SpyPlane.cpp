@@ -79,7 +79,7 @@ void SW_SpyPlane::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 	INI_EX exINI(pINI);
 
-	pData->SpyPlanes_TypeIndex.Read(exINI ,section , "SpyPlane.Type");
+	pData->SpyPlanes_TypeIndex.Read(exINI, section, "SpyPlane.Type");
 	pData->SpyPlanes_Count.Read(exINI, section, "SpyPlane.Count");
 	pData->SpyPlanes_Mission.Read(exINI, section, "SpyPlane.Mission");
 	pData->SpyPlanes_Rank.Read(exINI, section, "SpyPlane.Rank");

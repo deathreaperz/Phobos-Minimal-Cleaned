@@ -58,8 +58,8 @@ DEFINE_HOOK(0x508C30, HouseClass_UpdatePower_UpdateCounter, 0x5)
 				|| pBld->IsBeingWarpedOut())
 				continue;
 
-			for(auto const pType : pBld->GetTypes()){
-
+			for (auto const pType : pBld->GetTypes())
+			{
 				if (!pType)
 					continue;
 
@@ -74,7 +74,8 @@ DEFINE_HOOK(0x508C30, HouseClass_UpdatePower_UpdateCounter, 0x5)
 
 				const auto pExt = BuildingTypeExtContainer::Instance.Find(pType);
 
-				if(HasPower) {
+				if (HasPower)
+				{
 					if (!pExt->PowerPlantEnhancer_Buildings.empty() &&
 						(pExt->PowerPlantEnhancer_Amount != 0 || pExt->PowerPlantEnhancer_Factor != 1.0f))
 					{
@@ -135,7 +136,8 @@ DEFINE_HOOK(0x6F6BC9, TechnoClass_Limbo_AddTracking, 0x6)
 {
 	GET(TechnoClass* const, pThis, ESI);
 
-	if(pThis->IsAlive){
+	if (pThis->IsAlive)
+	{
 		HouseExtContainer::Instance.Find(pThis->Owner)->LimboTechno.push_back_unique(pThis);
 	}
 
@@ -162,11 +164,13 @@ DEFINE_HOOK(0x7015C9, TechnoClass_ChangeOwnership_UpdateTracking, 0x6)
 
 	//this kind a dangerous
 	const KillMethod nMethod = pTypeExt->Death_Method.Get();
-	if (pTypeExt->Death_IfChangeOwnership && nMethod != KillMethod::None) {
+	if (pTypeExt->Death_IfChangeOwnership && nMethod != KillMethod::None)
+	{
 		TechnoExtData::KillSelf(pThis, nMethod, pTypeExt->AutoDeath_VanishAnimation);
 	}
 
-	if (pThis->InLimbo) {
+	if (pThis->InLimbo)
+	{
 		pOldOwnerExt->LimboTechno.remove(pThis);
 
 		if (pThis->IsAlive)
@@ -178,7 +182,7 @@ DEFINE_HOOK(0x7015C9, TechnoClass_ChangeOwnership_UpdateTracking, 0x6)
 	{
 		pOldOwnerExt->AutoDeathObjects.erase(pThis);
 
-		if(pThis->IsAlive)
+		if (pThis->IsAlive)
 			pNewOwnerExt->AutoDeathObjects.insert(pThis, Item->second);
 	}
 

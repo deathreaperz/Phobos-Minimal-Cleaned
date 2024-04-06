@@ -48,7 +48,7 @@ enum class PhobosTriggerAction : unsigned int
 	RandomTriggerEnable = 12002,
 	ScoreCampaignText = 19000,
 	ScoreCampaignTheme = 19001,
-	SetNextMission = 19002 ,
+	SetNextMission = 19002,
 
 	//DrawLaserBetweenWeaypoints = 9940,
 	//AdjustLighting = 505,
@@ -58,69 +58,69 @@ enum class PhobosTriggerAction : unsigned int
 class TActionExt
 {
 public:
-/*
-	static std::map<int, std::vector<TriggerClass*>> RandomTriggerPool;
+	/*
+		static std::map<int, std::vector<TriggerClass*>> RandomTriggerPool;
 
-	class ExtData final : public Extension<TActionClass>
-	{
-	public:
-		static constexpr size_t Canary = 0x87154321;
-		using base_type = TActionClass;
-
-	public:
-
-		//std::string Value1 { };
-		//std::string Value2 { };
-		//std::string Parm3 { };
-		//std::string Parm4 { };
-		//std::string Parm5 { };
-		//std::string Parm6 { };
-
-		ExtData(TActionClass* const OwnerObject) : Extension<base_type>(OwnerObject)
-		{ }
-
-		virtual ~ExtData() override = default;
-
-		void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
-		void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
-
-	private:
-		template <typename T>
-		void Serialize(T& Stm);
-	};
-
-	class ExtContainer final : public Container<TActionExt::ExtData>
-	{
-	public:
-		CONSTEXPR_NOCOPY_CLASS(TActionExt::ExtData, "TActionClass");
-	public:
-
-		void Clear() {
-			RandomTriggerPool.clear();
-		}
-
-		void InvalidatePointer(AbstractClass* ptr, bool bRemoved) {
-			for (auto& nMap : RandomTriggerPool) {
-				AnnounceInvalidPointer(nMap.second, ptr);
-			}
-		}
-
-		static bool InvalidateIgnorable(AbstractClass* ptr)
+		class ExtData final : public Extension<TActionClass>
 		{
-			switch (ptr->WhatAmI())
-			{
-			case TriggerClass::AbsID:
-				return false;
+		public:
+			static constexpr size_t Canary = 0x87154321;
+			using base_type = TActionClass;
+
+		public:
+
+			//std::string Value1 { };
+			//std::string Value2 { };
+			//std::string Parm3 { };
+			//std::string Parm4 { };
+			//std::string Parm5 { };
+			//std::string Parm6 { };
+
+			ExtData(TActionClass* const OwnerObject) : Extension<base_type>(OwnerObject)
+			{ }
+
+			virtual ~ExtData() override = default;
+
+			void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
+			void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
+
+		private:
+			template <typename T>
+			void Serialize(T& Stm);
+		};
+
+		class ExtContainer final : public Container<TActionExt::ExtData>
+		{
+		public:
+			CONSTEXPR_NOCOPY_CLASS(TActionExt::ExtData, "TActionClass");
+		public:
+
+			void Clear() {
+				RandomTriggerPool.clear();
 			}
 
-			return true;
-		}
-	};
+			void InvalidatePointer(AbstractClass* ptr, bool bRemoved) {
+				for (auto& nMap : RandomTriggerPool) {
+					AnnounceInvalidPointer(nMap.second, ptr);
+				}
+			}
 
-	static ExtContainer ExtMap;
-*/
+			static bool InvalidateIgnorable(AbstractClass* ptr)
+			{
+				switch (ptr->WhatAmI())
+				{
+				case TriggerClass::AbsID:
+					return false;
+				}
+
+				return true;
+			}
+		};
+
+		static ExtContainer ExtMap;
+	*/
 	static void RecreateLightSources();
-	static bool Occured(TActionClass* pThis, ActionArgs const& args , bool& bHandled);
+	static bool Occured(TActionClass* pThis, ActionArgs const& args, bool& bHandled);
 	static bool RunSuperWeaponAt(TActionClass* pThis, int X, int Y);
 
 #define ACTION_FUNC(name) \

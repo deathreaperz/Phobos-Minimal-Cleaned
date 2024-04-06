@@ -17,17 +17,20 @@ struct LocationMark
 	LocationMark(CoordStruct location, DirStruct direction) :
 		Location { location }
 		, Direction { direction }
-	{ }
+	{
+	}
 
-	LocationMark(DirStruct direction , CoordStruct location) :
+	LocationMark(DirStruct direction, CoordStruct location) :
 		Location { location }
 		, Direction { direction }
-	{ }
+	{
+	}
 
 	LocationMark() :
 		Location { 0,0,0 }
 		, Direction { }
-	{ }
+	{
+	}
 
 	LocationMark(const LocationMark& other) = default;
 	LocationMark& operator=(const LocationMark& other) = default;

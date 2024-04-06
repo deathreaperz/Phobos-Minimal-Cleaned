@@ -19,7 +19,6 @@
 #include <RadarEventClass.h>
 #include <TacticalClass.h>
 
-
 ShieldClass::ShieldClass() : Techno { nullptr }
 , HP { 0 }
 , Timers { }
@@ -105,13 +104,13 @@ void ShieldClass::SyncShieldToAnother(TechnoClass* pFrom, TechnoClass* pTo)
 
 	if (pTypeExt->ShieldType && pFromExt->CurrentShieldType != pTypeExt->ShieldType)
 	{
-		if(pToExt->Shield) {
+		if (pToExt->Shield)
+		{
 			const auto nFromPrecentage = int(pFromExt->Shield->GetHealthRatio() * pToExt->Shield->Type->Strength);
 			pToExt->Shield->SetHP((int)nFromPrecentage);
 
 			if (pToExt->Shield->GetHP() == 0)
 				pToExt->Shield->SetRespawn(pTypeExt->ShieldType->Respawn_Rate, pTypeExt->ShieldType->Respawn, pTypeExt->ShieldType->Respawn_Rate, true);
-
 		}
 	}
 	else
@@ -155,17 +154,20 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 		return;
 	}
 
-	if (*args->Damage < 0) {
-		if (auto const pFoot = abstract_cast<FootClass*>(this->Techno)) {
-			if (auto const pParasite = pFoot->ParasiteEatingMe) {
-					// Remove parasite.
-					pParasite->ParasiteImUsing->SuppressionTimer.Start(50);
-					pParasite->ParasiteImUsing->ExitUnit();
+	if (*args->Damage < 0)
+	{
+		if (auto const pFoot = abstract_cast<FootClass*>(this->Techno))
+		{
+			if (auto const pParasite = pFoot->ParasiteEatingMe)
+			{
+				// Remove parasite.
+				pParasite->ParasiteImUsing->SuppressionTimer.Start(50);
+				pParasite->ParasiteImUsing->ExitUnit();
 			}
 		}
 	}
 
-	if(this->Techno->IsIronCurtained() || CanBePenetrated(args->WH) || TechnoExtData::IsTypeImmune(this->Techno, args->Attacker))
+	if (this->Techno->IsIronCurtained() || CanBePenetrated(args->WH) || TechnoExtData::IsTypeImmune(this->Techno, args->Attacker))
 		return;
 
 	const auto pSource = args->Attacker ? args->Attacker->Owner : args->SourceHouse;
@@ -237,9 +239,9 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 		//the shield will be broken
 		if (residueDamage >= 0)
 		{
-			residueDamage = MaxImpl(0 ,int((double)(residueDamage) /
-			//GeneralUtils::GetWarheadVersusArmor(args->WH , this->Type->Armor)
-			pWHExt->GetVerses(this->Type->Armor).Verses)
+			residueDamage = MaxImpl(0, int((double)(residueDamage) /
+				//GeneralUtils::GetWarheadVersusArmor(args->WH , this->Type->Armor)
+				pWHExt->GetVerses(this->Type->Armor).Verses)
 			); //only absord percentage damage
 
 			if (Phobos::Debug_DisplayDamageNumbers && (nHPCopy) != 0)
@@ -253,7 +255,7 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 		else //negative residual damage
 			// that mean the damage can be sustained with the sield
 		{
-			if (Phobos::Debug_DisplayDamageNumbers && (-DamageToShield)  != 0)
+			if (Phobos::Debug_DisplayDamageNumbers && (-DamageToShield) != 0)
 				FlyingStrings::DisplayDamageNumberString((-DamageToShield), DamageDisplayType::Shield, this->Techno->GetRenderCoords(), TechnoExtContainer::Instance.Find(this->Techno)->DamageNumberOffset);
 
 			this->WeaponNullifyAnim(pWHExt->Shield_HitAnim.Get(nullptr));
@@ -267,15 +269,19 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 	{
 		// if the shield still in full HP
 		// heal the shield user instead
-		if (ShieldStillInfullHP) {
+		if (ShieldStillInfullHP)
+		{
 			if (MapClass::GetTotalDamage(DamageToShieldAfterMinMax,
-				 args->WH,
-				 TechnoExtData::GetArmor(this->Techno),
-				 args->DistanceToEpicenter) < 0
+				args->WH,
+				TechnoExtData::GetArmor(this->Techno),
+				args->DistanceToEpicenter) < 0
 				 )
 				IsShielRequreFeeback = !this->Type->PassthruNegativeDamage;
-		} else { //otherwise we heal the shield
-			if (this->Type->CanBeHealed) {
+		}
+		else
+		{ //otherwise we heal the shield
+			if (this->Type->CanBeHealed)
+			{
 				auto nDamageCopy = DamageToShieldAfterMinMax;
 
 				if (Phobos::Debug_DisplayDamageNumbers && DamageToShieldAfterMinMax != 0)
@@ -290,7 +296,8 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 	}
 
 	//replace damage
-	if (!nDamageResult && this->HP == 0) {
+	if (!nDamageResult && this->HP == 0)
+	{
 		if (auto const pTag = this->Techno->AttachedTag)
 			pTag->RaiseEvent((TriggerEvent)PhobosTriggerEvent::ShieldBroken, this->Techno,
 				CellStruct::Empty, false, args->Attacker);//where is this? is this correct?
@@ -301,7 +308,6 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 		*args->Damage = nDamageResult;
 		TechnoExtContainer::Instance.Find(this->Techno)->SkipLowDamageCheck = true;
 	}
-
 }
 
 void ShieldClass::ResponseAttack() const
@@ -357,7 +363,7 @@ bool ShieldClass::CanBeTargeted(WeaponTypeClass* pWeapon) const
 		return true;
 
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
-	return (std::abs( pWHExt->GetVerses(this->Type->Armor).Verses ) >= 0.001);
+	return (std::abs(pWHExt->GetVerses(this->Type->Armor).Verses) >= 0.001);
 }
 
 bool ShieldClass::CanBePenetrated(WarheadTypeClass* pWarhead) const
@@ -457,10 +463,12 @@ void ShieldClass::OnUpdate()
 	const auto selfHealingCheck = this->SelfHealEnabledByCheck();
 	auto timer = (this->HP <= 0) ? &this->Timers.Respawn : &this->Timers.SelfHealing;
 
-	if (selfHealingCheck == SelfHealingStatus::Offline) {
+	if (selfHealingCheck == SelfHealingStatus::Offline)
+	{
 		timer->Pause();
 	}
-	else if(selfHealingCheck == SelfHealingStatus::Online) {
+	else if (selfHealingCheck == SelfHealingStatus::Online)
+	{
 		timer->Resume();
 		this->RespawnShield();
 		this->SelfHealing();
@@ -637,11 +645,14 @@ bool ShieldClass::ConvertCheck()
 
 SelfHealingStatus ShieldClass::SelfHealEnabledByCheck()
 {
-	if (!this->Type->SelfHealing_EnabledBy.empty()) {
-		for (auto const pBuilding : this->Techno->Owner->Buildings) {
+	if (!this->Type->SelfHealing_EnabledBy.empty())
+	{
+		for (auto const pBuilding : this->Techno->Owner->Buildings)
+		{
 			bool isActive = !(pBuilding->Deactivated || pBuilding->IsUnderEMP()) && pBuilding->IsPowerOnline();
 
-			if (this->Type->SelfHealing_EnabledBy.Contains(pBuilding->Type) && isActive) {
+			if (this->Type->SelfHealing_EnabledBy.Contains(pBuilding->Type) && isActive)
+			{
 				return SelfHealingStatus::Online;
 			}
 		}
@@ -659,7 +670,8 @@ void ShieldClass::SelfHealing()
 	auto timerWHModifier = &this->Timers.SelfHealing_Warhead;
 	auto timerSelfHealCombat = &this->Timers.SelfHealing_CombatRestart;
 
-	if (timerSelfHealCombat->InProgress()) {
+	if (timerSelfHealCombat->InProgress())
+	{
 		return;
 	}
 	else if (timerSelfHealCombat->Completed())
@@ -897,7 +909,6 @@ void ShieldClass::DrawShieldBar_Building(int iLength, Point2D* pLocation, Rectan
 			position = TechnoExtData::GetBuildingSelectBracketPosition(Techno, BuildingSelectBracketPosition::Top);
 			position.X -= deltaX + 6;
 			position.Y -= deltaY + 3;
-
 
 			DSurface::Temp->DrawSHP(FileSystem::PALETTE_PAL, FileSystem::PIPS_SHP,
 				emptyFrame, &position, pBound, BlitterFlags(0x600), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);

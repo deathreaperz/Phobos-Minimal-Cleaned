@@ -82,7 +82,8 @@ DEFINE_HOOK(0x449ADA, BuildingClass_MissionConstruction_DeployToFireFix, 0x6) //
 	GET(BuildingClass*, pThis, ESI);
 
 	Mission nMission = Mission::Guard;
-	if (BuildingExtContainer::Instance.Find(pThis)->DeployedTechno && pThis->LastTarget) {
+	if (BuildingExtContainer::Instance.Find(pThis)->DeployedTechno && pThis->LastTarget)
+	{
 		pThis->SetTarget(pThis->LastTarget);
 		nMission = Mission::Attack;
 	}
@@ -113,23 +114,23 @@ DEFINE_HOOK(0x449ADA, BuildingClass_MissionConstruction_DeployToFireFix, 0x6) //
 
 DEFINE_HOOK(0x44224F, BuildingClass_ReceiveDamage_DamageSelf, 0x5)
 {
-	enum { SkipCheck = 0x442268 , Continue = 0x0 };
+	enum { SkipCheck = 0x442268, Continue = 0x0 };
 
 	REF_STACK(args_ReceiveDamage const, args, STACK_OFFS(0x9C, -0x4));
 
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(args.WH);
 	return pWHExt->AllowDamageOnSelf.isset() && pWHExt->AllowDamageOnSelf.Get() ?
-	SkipCheck : Continue;
+		SkipCheck : Continue;
 }
 
 DEFINE_HOOK(0x440B4F, BuildingClass_Unlimbo_SetShouldRebuild, 0x5)
 {
-    enum { ContinueCheck = 0x440B58, ShouldNotRebuild = 0x440B81 };
+	enum { ContinueCheck = 0x440B58, ShouldNotRebuild = 0x440B81 };
 	GET(BuildingClass* const, pThis, ESI);
 
-	if(SessionClass::IsCampaign())
+	if (SessionClass::IsCampaign())
 	{
-		if(!pThis->BeingProduced)
+		if (!pThis->BeingProduced)
 			return ShouldNotRebuild;
 
 		// Preplaced structures are already managed before
@@ -137,7 +138,7 @@ DEFINE_HOOK(0x440B4F, BuildingClass_Unlimbo_SetShouldRebuild, 0x5)
 			return ShouldNotRebuild;
 
 		if (!HouseExtContainer::Instance.Find(pThis->Owner)->RepairBaseNodes[GameOptionsClass::Instance->Difficulty])
-		return ShouldNotRebuild;
+			return ShouldNotRebuild;
 	}
 
 	// Vanilla instruction: always repairable in other game modes
@@ -146,13 +147,13 @@ DEFINE_HOOK(0x440B4F, BuildingClass_Unlimbo_SetShouldRebuild, 0x5)
 
 DEFINE_HOOK(0x465D40, BuildingTypeClass_IsUndeployable_ConsideredVehicle, 0x6)
 {
-	enum { ReturnFromFunction = 0x465D6A , Continue = 0x0 };
+	enum { ReturnFromFunction = 0x465D6A, Continue = 0x0 };
 
 	GET(BuildingTypeClass*, pThis, ECX);
 
 	const auto pBldExt = BuildingTypeExtContainer::Instance.Find(pThis);
 	const bool IsCustomEligible = pThis->Foundation == BuildingTypeExtData::CustomFoundation
-			&& pBldExt->CustomHeight == 1 && pBldExt->CustomWidth == 1;
+		&& pBldExt->CustomHeight == 1 && pBldExt->CustomWidth == 1;
 
 	const bool FoundationEligible = IsCustomEligible || pThis->Foundation == Foundation::_1x1;
 

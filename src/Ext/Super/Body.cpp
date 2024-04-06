@@ -16,77 +16,80 @@ void SuperExtData::UpdateSuperWeaponStatuses(HouseClass* pHouse)
 	// look at every sane building this player owns, if it is not defeated already.
 	if (!pHouse->Defeated && !pHouse->IsObserver())
 	{
-		if (pHouse->Supers.Count > 0) {
-			pHouse->Supers.for_each([pHouse](SuperClass* pSuper) {
-				auto pExt = SuperExtContainer::Instance.Find(pSuper);
-				pExt->Statusses.reset();
+		if (pHouse->Supers.Count > 0)
+		{
+			pHouse->Supers.for_each([pHouse](SuperClass* pSuper)
+ {
+	 auto pExt = SuperExtContainer::Instance.Find(pSuper);
+	 pExt->Statusses.reset();
 
-				//if AlwaysGranted and SWAvaible
-				pExt->Statusses.PowerSourced = !pSuper->IsPowered();
-				if (pExt->Type->SW_AlwaysGranted && pExt->Type->IsAvailable(pHouse))
-				{
-					pExt->Statusses.Available = true;
-					pExt->Statusses.Charging = true;
-					pExt->Statusses.PowerSourced = true;
-				}
+	 //if AlwaysGranted and SWAvaible
+	 pExt->Statusses.PowerSourced = !pSuper->IsPowered();
+	 if (pExt->Type->SW_AlwaysGranted && pExt->Type->IsAvailable(pHouse))
+	 {
+		 pExt->Statusses.Available = true;
+		 pExt->Statusses.Charging = true;
+		 pExt->Statusses.PowerSourced = true;
+	 }
 			});
 		}
 
-		pHouse->Buildings.for_each([=](BuildingClass* pBld) {
-			if (pBld->IsAlive && !pBld->InLimbo)
-			{
-				bool PowerChecked = false;
-				bool HasPower = false;
+		pHouse->Buildings.for_each([=](BuildingClass* pBld)
+ {
+	 if (pBld->IsAlive && !pBld->InLimbo)
+	 {
+		 bool PowerChecked = false;
+		 bool HasPower = false;
 
-				// check for upgrades. upgrades can give super weapons, too.
-				for (const auto type : pBld->GetTypes())
-				{
-					if (auto pUpgradeExt = BuildingTypeExtContainer::Instance.TryFind(const_cast<BuildingTypeClass*>(type)))
-					{
-						for (auto i = 0; i < pUpgradeExt->GetSuperWeaponCount(); ++i)
-						{
-							const auto idxSW = pUpgradeExt->GetSuperWeaponIndex(i);
+		 // check for upgrades. upgrades can give super weapons, too.
+		 for (const auto type : pBld->GetTypes())
+		 {
+			 if (auto pUpgradeExt = BuildingTypeExtContainer::Instance.TryFind(const_cast<BuildingTypeClass*>(type)))
+			 {
+				 for (auto i = 0; i < pUpgradeExt->GetSuperWeaponCount(); ++i)
+				 {
+					 const auto idxSW = pUpgradeExt->GetSuperWeaponIndex(i);
 
-							if (idxSW >= 0)
-							{
-								const auto pSuperExt = SuperExtContainer::Instance.Find(pHouse->Supers[idxSW]);
-								auto& status = pSuperExt->Statusses;
+					 if (idxSW >= 0)
+					 {
+						 const auto pSuperExt = SuperExtContainer::Instance.Find(pHouse->Supers[idxSW]);
+						 auto& status = pSuperExt->Statusses;
 
-								if (!status.Charging)
-								{
-									if (pSuperExt->Type->IsAvailable(pHouse))
-									{
-										status.Available = true;
+						 if (!status.Charging)
+						 {
+							 if (pSuperExt->Type->IsAvailable(pHouse))
+							 {
+								 status.Available = true;
 
-										if (!PowerChecked)
-										{
-											HasPower = pBld->HasPower
-												&& !pBld->IsUnderEMP()
-												&& (TechnoExtContainer::Instance.Find(pBld)->Is_Operated || TechnoExt_ExtData::IsOperated(pBld));
+								 if (!PowerChecked)
+								 {
+									 HasPower = pBld->HasPower
+										 && !pBld->IsUnderEMP()
+										 && (TechnoExtContainer::Instance.Find(pBld)->Is_Operated || TechnoExt_ExtData::IsOperated(pBld));
 
-											PowerChecked = true;
-										}
+									 PowerChecked = true;
+								 }
 
-										if (!status.Charging && HasPower)
-										{
-											status.PowerSourced = true;
+								 if (!status.Charging && HasPower)
+								 {
+									 status.PowerSourced = true;
 
-											if (!pBld->IsBeingWarpedOut()
-												&& (pBld->CurrentMission != Mission::Construction)
-												&& (pBld->CurrentMission != Mission::Selling)
-												&& (pBld->QueuedMission != Mission::Construction)
-												&& (pBld->QueuedMission != Mission::Selling))
-											{
-												status.Charging = true;
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+									 if (!pBld->IsBeingWarpedOut()
+										 && (pBld->CurrentMission != Mission::Construction)
+										 && (pBld->CurrentMission != Mission::Selling)
+										 && (pBld->QueuedMission != Mission::Construction)
+										 && (pBld->QueuedMission != Mission::Selling))
+									 {
+										 status.Charging = true;
+									 }
+								 }
+							 }
+						 }
+					 }
+				 }
+			 }
+		 }
+	 }
 		});
 
 		// kill off super weapons that are disallowed and
@@ -94,36 +97,36 @@ void SuperExtData::UpdateSuperWeaponStatuses(HouseClass* pHouse)
 		const bool hasPower = pHouse->HasFullPower();
 		const bool bIsSWShellEnabled = Unsorted::SWAllowed || SessionClass::Instance->GameMode == GameMode::Campaign;
 
-		if (!hasPower || !bIsSWShellEnabled) {
-			pHouse->Supers.for_each([&](SuperClass* pSuper) {
+		if (!hasPower || !bIsSWShellEnabled)
+		{
+			pHouse->Supers.for_each([&](SuperClass* pSuper)
+ {
+	 const auto pExt = SuperExtContainer::Instance.Find(pSuper);
+	 auto& nStatus = pExt->Statusses;
 
-				const auto pExt = SuperExtContainer::Instance.Find(pSuper);
-				auto& nStatus = pExt->Statusses;
+	 // turn off super weapons that are disallowed.
+	 if (!bIsSWShellEnabled && pSuper->Type->DisableableFromShell)
+	 {
+		 nStatus.Available = false;
+	 }
 
-				// turn off super weapons that are disallowed.
-				if (!bIsSWShellEnabled && pSuper->Type->DisableableFromShell)
-				{
-					nStatus.Available = false;
-				}
-
-				// if the house is generally on low power,
-				// powered super weapons aren't powered
-				if (!hasPower && pSuper->IsPowered())
-				{
-					nStatus.PowerSourced &= hasPower;
-				}
+	 // if the house is generally on low power,
+	 // powered super weapons aren't powered
+	 if (!hasPower && pSuper->IsPowered())
+	 {
+		 nStatus.PowerSourced &= hasPower;
+	 }
 			});
 		}
 	}
 }
 
-
 // =============================
 // load / save
 
 template <typename T>
-void SuperExtData::Serialize(T& Stm) {
-
+void SuperExtData::Serialize(T& Stm)
+{
 	Stm
 		.Process(this->Initialized)
 		.Process(this->Type)
@@ -143,12 +146,13 @@ SuperExtContainer SuperExtContainer::Instance;
 // =============================
 // container hooks
 
-DEFINE_HOOK_AGAIN(0x6CAF32 , SuperClass_CTOR, 0x6)
+DEFINE_HOOK_AGAIN(0x6CAF32, SuperClass_CTOR, 0x6)
 DEFINE_HOOK(0x6CB10E, SuperClass_CTOR, 0x7)
 {
 	GET(SuperClass*, pItem, ESI);
 
-	if (auto pExt = SuperExtContainer::Instance.FindOrAllocate(pItem)) {
+	if (auto pExt = SuperExtContainer::Instance.FindOrAllocate(pItem))
+	{
 		pExt->Type = SWTypeExtContainer::Instance.TryFind(pItem->Type);
 	}
 

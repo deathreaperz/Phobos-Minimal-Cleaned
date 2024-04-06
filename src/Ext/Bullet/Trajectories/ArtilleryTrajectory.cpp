@@ -5,7 +5,7 @@
 bool ArtilleryTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectoryType::Load(Stm, RegisterForChange) &&
-	Stm
+		Stm
 		.Process(this->MaxHeight)
 		.Process(this->DistanceToHeight)
 		.Process(this->DistanceToHeight_Multiplier)
@@ -15,12 +15,11 @@ bool ArtilleryTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChan
 bool ArtilleryTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectoryType::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->MaxHeight)
 		.Process(this->DistanceToHeight)
 		.Process(this->DistanceToHeight_Multiplier)
 		;
-
 }
 
 bool ArtilleryTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
@@ -40,7 +39,7 @@ bool ArtilleryTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 bool ArtilleryTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectory::Load(Stm, RegisterForChange) &&
-	Stm
+		Stm
 		.Process(this->InitialTargetLocation)
 		.Process(this->InitialSourceLocation)
 		.Process(this->CenterLocation)
@@ -52,7 +51,7 @@ bool ArtilleryTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 bool ArtilleryTrajectory::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectory::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->InitialTargetLocation)
 		.Process(this->InitialSourceLocation)
 		.Process(this->CenterLocation)

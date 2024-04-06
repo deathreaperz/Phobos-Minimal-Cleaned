@@ -33,14 +33,14 @@ public:
 	static std::array<const char*, (size_t)NewMouseCursorType::count> NewMouseCursorTypeToStrings;
 	static std::array<const MouseCursor, (size_t)NewMouseCursorType::count> NewMouseCursorTypeData;
 
-	static inline constexpr void AllocateWithDefault(const char* Title , MouseCursor cursor) {
-		Array.emplace_back(std::make_unique<CursorTypeClass>(Title , cursor));
+	static inline constexpr void AllocateWithDefault(const char* Title, MouseCursor cursor)
+	{
+		Array.emplace_back(std::make_unique<CursorTypeClass>(Title, cursor));
 	}
 
 private:
 	template <typename T>
 	void Serialize(T& Stm);
-
 };
 
 //template <>

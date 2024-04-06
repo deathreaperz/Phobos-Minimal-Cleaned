@@ -25,7 +25,6 @@ ArmorTypeClass::ArmorTypeClass(const char* const pTitle) : Enumerable<ArmorTypeC
 	RT_Tag = BaseTag + ".Retaliate";
 	PA_Tag = BaseTag + ".PassiveAcquire";
 	HitAnim_Tag += pTitle;
-
 }
 
 const char* Enumerable<ArmorTypeClass>::GetMainSection()
@@ -74,7 +73,8 @@ void ArmorTypeClass::LoadFromINI(CCINIClass* pINI)
 
 void ArmorTypeClass::EvaluateDefault()
 {
-	for (size_t i = 0; i < Array.size(); ++i) {
+	for (size_t i = 0; i < Array.size(); ++i)
+	{
 		auto& pArmor = Array[i];
 
 		if (IsDefault(pArmor->Name.data()) || pArmor->DefaultString.empty() || !strlen(pArmor->DefaultString.c_str()))
@@ -193,7 +193,6 @@ void ArmorTypeClass::LoadForWarhead_NoParse(WarheadTypeClass* pWH)
 					section, i, pArmor->Name.data(), nDefault, ArmorTypeClass::Array[nDefault]->Name.data());
 
 				pWHExt->Verses[i] = ArmorTypeClass::Array[nDefault]->DefaultVersesValue;
-
 			}
 			else
 			{
@@ -209,7 +208,6 @@ void ArmorTypeClass::LoadForWarhead_NoParse(WarheadTypeClass* pWH)
 
 void ArmorTypeClass::PrepareForWarhead(CCINIClass* pINI, WarheadTypeClass* pWH)
 {
-
 }
 
 template <typename T>

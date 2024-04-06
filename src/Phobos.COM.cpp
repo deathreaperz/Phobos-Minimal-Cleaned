@@ -4,7 +4,6 @@
 
 #include <New/Interfaces/LevitateLocomotionClass.h>
 
-
 template<typename T>
 class TClassFactory : public IClassFactory
 {

@@ -3,7 +3,6 @@
 #include <SuperClass.h>
 #include <SuperWeaponTypeClass.h>
 
-
 #include <Helpers/Macro.h>
 #include <Utilities/Container.h>
 #include <Utilities/TemplateDef.h>
@@ -250,7 +249,7 @@ public:
 	int OutlineLength { 0 };
 	std::vector<CellStruct> CustomData {};
 	std::vector<CellStruct> OutlineData {};
-	DynamicVectorClass<Point2D , DllAllocator<Point2D>> FoundationRadarShape {};
+	DynamicVectorClass<Point2D, DllAllocator<Point2D>> FoundationRadarShape {};
 
 	// new secret lab
 	NullableVector<TechnoTypeClass*> Secret_Boons {};
@@ -344,7 +343,6 @@ public:
 	{
 		constexpr void operator ()(BuildingClass* pThis)
 		{
-
 			if constexpr (UpSound == BunkerSoundMode::Up)
 			{
 				const auto nSound = BuildingTypeExtContainer::Instance.Find(pThis->Type)->BunkerWallsUpSound.Get(RulesClass::Instance->BunkerWallsUpSound);
@@ -404,7 +402,6 @@ public:
 			;
 	}
 
-
 	void Clear()
 	{
 		this->Map.clear();
@@ -421,5 +418,4 @@ private:
 	BuildingTypeExtContainer(const BuildingTypeExtContainer&) = delete;
 	BuildingTypeExtContainer(BuildingTypeExtContainer&&) = delete;
 	BuildingTypeExtContainer& operator=(const BuildingTypeExtContainer& other) = delete;
-
 };

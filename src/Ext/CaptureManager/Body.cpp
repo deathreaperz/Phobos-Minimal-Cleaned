@@ -57,8 +57,9 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 
 			if (pTarget == pNode->Unit)
 			{
-				if (pTarget->MindControlRingAnim) {
-					GameDelete<true,false>(pTarget->MindControlRingAnim);
+				if (pTarget->MindControlRingAnim)
+				{
+					GameDelete<true, false>(pTarget->MindControlRingAnim);
 					//pTarget->MindControlRingAnim->TimeToDie = true;
 					//pTarget->MindControlRingAnim->UnInit();
 					pTarget->MindControlRingAnim = nullptr;
@@ -109,10 +110,10 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget
 		if (!pManager->InfiniteMindControl)
 		{
 			if (pManager->MaxControlNodes == 1 && pManager->ControlNodes.Count == 1)
-				CaptureExt::FreeUnit(pManager, pManager->ControlNodes[0]->Unit , bSilent);
+				CaptureExt::FreeUnit(pManager, pManager->ControlNodes[0]->Unit, bSilent);
 			else if (pManager->ControlNodes.Count == pManager->MaxControlNodes)
 				if (bRemoveFirst)
-					CaptureExt::FreeUnit(pManager, pManager->ControlNodes[0]->Unit , bSilent);
+					CaptureExt::FreeUnit(pManager, pManager->ControlNodes[0]->Unit, bSilent);
 		}
 
 		{
@@ -120,7 +121,8 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget
 			pManager->ControlNodes.AddItem(pControlNode);
 			const auto pBld = specific_cast<BuildingClass*>(pTarget);
 
-			if (pBld) {
+			if (pBld)
+			{
 				BuildingExtContainer::Instance.Find(pBld)->BeignMCEd = true;
 			}
 
@@ -154,7 +156,8 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget
 			}
 			else
 			{
-				if (pBld) {
+				if (pBld)
+				{
 					BuildingExtContainer::Instance.Find(pBld)->BeignMCEd = false;
 				}
 			}
@@ -178,7 +181,7 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTechno
 	return false;
 }
 
-void CaptureExt::DecideUnitFate(CaptureManagerClass* pManager, FootClass* pFoot , bool Captured)
+void CaptureExt::DecideUnitFate(CaptureManagerClass* pManager, FootClass* pFoot, bool Captured)
 {
 	// to be implemented (if needed). - secsome
 }

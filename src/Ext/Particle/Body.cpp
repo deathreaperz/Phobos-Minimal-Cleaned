@@ -23,7 +23,6 @@ std::pair<TechnoClass*, HouseClass*> ParticleExtData::GetOwnership(ParticleClass
 				pBullet = static_cast<BulletClass*>(pSystemOwner);
 				pAttacker = static_cast<BulletClass*>(pSystemOwner)->Owner;
 			}
-
 		}
 
 		if (pAttacker)
@@ -34,7 +33,6 @@ std::pair<TechnoClass*, HouseClass*> ParticleExtData::GetOwnership(ParticleClass
 
 	return { pAttacker , pOwner };
 }
-
 
 // =============================
 // load / save
@@ -114,10 +112,11 @@ DEFINE_HOOK(0x62D801, ParticleClass_Load_Suffix, 0x6)
 
 DEFINE_HOOK(0x62D825, ParticleClass_Save_Suffix, 0x7)
 {
-	GET(const HRESULT , nRest, EAX);
+	GET(const HRESULT, nRest, EAX);
 
 	ParticleExtContainer::Instance.GetSavingObject()->byte130 = true;
-	if (SUCCEEDED(nRest)) {
+	if (SUCCEEDED(nRest))
+	{
 		ParticleExtContainer::Instance.SaveStatic();
 	}
 
@@ -126,7 +125,7 @@ DEFINE_HOOK(0x62D825, ParticleClass_Save_Suffix, 0x7)
 
 static void __fastcall ParticleClass_Detach(ParticleClass* pThis, void* _, AbstractClass* pTarget, bool bRemove)
 {
-	pThis->ObjectClass::PointerExpired(pTarget ,bRemove);
+	pThis->ObjectClass::PointerExpired(pTarget, bRemove);
 
 	//ParticleExt::ExtMap.InvalidatePointerFor(pThis, pTarget, bRemove);
 }

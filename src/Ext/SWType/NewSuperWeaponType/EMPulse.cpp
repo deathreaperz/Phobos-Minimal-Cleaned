@@ -24,9 +24,10 @@ bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 	// if linked, only one needs to be in range (and CanFireAt checked that already).
 	const bool ignoreRange = pData->EMPulse_Linked || pData->EMPulse_TargetSelf;
 
-	auto IsEligible = [=](BuildingClass* pBld) {
-		return this->IsLaunchSiteEligible(pData, Coords, pBld, ignoreRange);
-	};
+	auto IsEligible = [=](BuildingClass* pBld)
+		{
+			return this->IsLaunchSiteEligible(pData, Coords, pBld, ignoreRange);
+		};
 
 	// only call on up to Count buildings that suffice IsEligible
 	Helpers::Alex::for_each_if_n(pThis->Owner->Buildings.begin(), pThis->Owner->Buildings.end(),
@@ -47,7 +48,7 @@ bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 			// create a bullet and detonate immediately
 			if (auto pWeapon = pBld->GetWeapon(0)->WeaponType)
 			{
-				if (auto pBullet = BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->CreateBullet(pBld, pBld, pWeapon , false , true))
+				if (auto pBullet = BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->CreateBullet(pBld, pBld, pWeapon, false, true))
 				{
 					pBullet->Limbo();
 					pBullet->Detonate(BuildingExtData::GetCenterCoords(pBld));
@@ -88,20 +89,20 @@ void SW_EMPulse::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	pData->EMPulse_Cannons.Read(exINI, section, "EMPulse.Cannons");
 
 	pData->AttachedToObject->Action = pData->EMPulse_TargetSelf ? Action::None : (Action)AresNewActionType::SuperWeaponAllowed;
-
 }
 
 bool SW_EMPulse::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
 	const auto pBldExt = BuildingExtContainer::Instance.Find(pBuilding);
-	if(pBldExt->LimboID != -1)
+	if (pBldExt->LimboID != -1)
 		return false;
 
-	if(!this->IsLaunchsiteAlive(pBuilding))
+	if (!this->IsLaunchsiteAlive(pBuilding))
 		return false;
 
 	// don't further question the types in this list
-	if (!pData->EMPulse_Cannons.empty() && pData->EMPulse_Cannons.Contains(pBuilding->Type)) {
+	if (!pData->EMPulse_Cannons.empty() && pData->EMPulse_Cannons.Contains(pBuilding->Type))
+	{
 		return true; //quick exit
 	}
 

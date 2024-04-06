@@ -48,9 +48,10 @@ public:
 		IsometricTileTypeExtension(),
 		BuildingTypeExtension(),
 		FallbackTheaterExtension()
-	{}
+	{
+	}
 
-	TheaterTypeClass(const char* const pTitle, const Theater& theater ,bool IsArtic , bool AllowMapGen) : Enumerable<TheaterTypeClass>(pTitle),
+	TheaterTypeClass(const char* const pTitle, const Theater& theater, bool IsArtic, bool AllowMapGen) : Enumerable<TheaterTypeClass>(pTitle),
 		UIName(),
 		ControlFileName(theater.ControlFileName),
 		ArtFileName(theater.ArtFileName),
@@ -99,16 +100,18 @@ public:
 #if _HAS_CXX23 == 1
 		constexpr
 #endif
-		TheaterTypeClass* FindFromTheaterType_NoCheck(TheaterType nType) {
+		TheaterTypeClass* FindFromTheaterType_NoCheck(TheaterType nType)
+	{
 		return Array[(int)nType].get();
 	}
 
-	static inline constexpr void AllocateWithDefault(const char* Title, const Theater& theater, bool IsArtic, bool AllowMapGen) {
-		Array.emplace_back(std::make_unique<TheaterTypeClass>(Title, theater , IsArtic , AllowMapGen));
+	static inline constexpr void AllocateWithDefault(const char* Title, const Theater& theater, bool IsArtic, bool AllowMapGen)
+	{
+		Array.emplace_back(std::make_unique<TheaterTypeClass>(Title, theater, IsArtic, AllowMapGen));
 	}
 
 	// no !
-	static inline constexpr void Clear() {}
+	static inline constexpr void Clear() { }
 
 private:
 
@@ -197,5 +200,4 @@ public:
 	PhobosFixedString<4> BuildingTypeExtension;
 
 	PhobosFixedString<4> FallbackTheaterExtension;
-
 };

@@ -66,7 +66,6 @@ void ScriptExtData::ModifyHateHouses_List(TeamClass* pTeam, int idxHousesList = 
 					}
 				}
 			}
-
 		}
 	}
 
@@ -601,7 +600,6 @@ HouseClass* ScriptExtData::GetTheMostHatedHouse(TeamClass* pTeam, int mask = 0, 
 			enemyHouse->Type->ID,
 			enemyHouse->ArrayIndex
 			);
-
 	}
 	break;
 	case -10:
@@ -745,7 +743,6 @@ HouseClass* ScriptExtData::GetTheMostHatedHouse(TeamClass* pTeam, int mask = 0, 
 			enemyHouse->Type->ID,
 			enemyHouse->ArrayIndex
 			);
-
 	}
 	break;
 	}

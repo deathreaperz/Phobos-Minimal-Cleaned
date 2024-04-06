@@ -127,7 +127,7 @@ public:
 			 );
 	}
 
-	static void ProcessDestroyAnims(FootClass* pThis, TechnoClass* pKiller = nullptr , WarheadTypeClass* pWH = nullptr);
+	static void ProcessDestroyAnims(FootClass* pThis, TechnoClass* pKiller = nullptr, WarheadTypeClass* pWH = nullptr);
 	static void CreateUnit_MarkCell(AnimClass* pThis);
 	static void CreateUnit_Spawn(AnimClass* pThis);
 

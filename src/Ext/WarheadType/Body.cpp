@@ -242,7 +242,6 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		AnimTypeClass* pAnimReaded;
 		if (detail::read(pAnimReaded, exINI, pSection, ArmorType->HitAnim_Tag.c_str(), true) && pAnimReaded)
 			ArmorHitAnim[ArmorType.get()] = pAnimReaded;
-
 	}
 
 	this->IsNukeWarhead.Read(exINI, pSection, "IsNukeWarhead");
@@ -439,8 +438,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SpawnsCrate_Types.clear();
 	this->SpawnsCrate_Weights.clear();
 
-	for (size_t i = 0; ; i++) {
-
+	for (size_t i = 0; ; i++)
+	{
 		std::string base("SpawnsCrate");
 		std::string base_Num = base + std::to_string(i);
 
@@ -687,7 +686,6 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, int damageIn, int d
 	}
 
 	return true;
-
 }
 
 FullMapDetonateResult WarheadTypeExtData::EligibleForFullMapDetonation(TechnoClass* pTechno, HouseClass* pOwner) const
@@ -779,7 +777,6 @@ void WarheadTypeExtData::applyWebby(TechnoClass* pTarget, HouseClass* pKillerHou
 			// is already on.
 			if (newValue > 0)
 			{
-
 				// set new length and reset the anim ownership
 				pInf->ParalysisTimer.Start(newValue);
 
@@ -945,14 +942,12 @@ bool WarheadTypeExtData::GoBerzerkFor(FootClass* pVictim, int* damage) const
 		}
 		else
 		{
-
 			if (newValue > 0)
 			{
 				pVictim->GoBerzerkFor(newValue);
 			}
 			else
 			{
-
 				auto const nLeft = pVictim->BerzerkDurationLeft - newValue;
 				if (nLeft <= 0)
 				{
@@ -1105,7 +1100,6 @@ void WarheadTypeExtData::applyEMP(WarheadTypeClass* pWH, const CoordStruct& coor
 
 	if (pWHExt->EMP_Duration)
 		AresEMPulse::CreateEMPulse(pWH, coords, source);
-
 }
 
 // =============================

@@ -14,7 +14,8 @@ DEFINE_HOOK(0x466556, BulletClass_Init_Phobos, 0x6)
 		if (auto const pTypeExt = BulletTypeExtContainer::Instance.Find(pThis->Type))
 		{
 			pExt->CurrentStrength = pTypeExt->Health.Get();
-			if (!pTypeExt->LaserTrail_Types.empty()) {
+			if (!pTypeExt->LaserTrail_Types.empty())
+			{
 				pExt->LaserTrails.reserve(pTypeExt->LaserTrail_Types.size());
 				pExt->InitializeLaserTrails();
 			}

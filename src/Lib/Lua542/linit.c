@@ -4,7 +4,6 @@
 ** See Copyright Notice in lua.h
 */
 
-
 #define linit_c
 #define LUA_LIB
 
@@ -26,14 +25,12 @@
 
 #include "lprefix.h"
 
-
 #include <stddef.h>
 
 #include "lua.h"
 
 #include "lualib.h"
 #include "lauxlib.h"
-
 
 /*
 ** these libs are loaded by lua.c and are readily available to any Lua
@@ -53,13 +50,11 @@ static const luaL_Reg loadedlibs[] = {
   {NULL, NULL}
 };
 
-
-LUALIB_API void luaL_openlibs (lua_State *L) {
-  const luaL_Reg *lib;
-  /* "require" functions from 'loadedlibs' and set results to global table */
-  for (lib = loadedlibs; lib->func; lib++) {
-    luaL_requiref(L, lib->name, lib->func, 1);
-    lua_pop(L, 1);  /* remove lib */
-  }
+LUALIB_API void luaL_openlibs(lua_State* L) {
+	const luaL_Reg* lib;
+	/* "require" functions from 'loadedlibs' and set results to global table */
+	for (lib = loadedlibs; lib->func; lib++) {
+		luaL_requiref(L, lib->name, lib->func, 1);
+		lua_pop(L, 1);  /* remove lib */
+	}
 }
-

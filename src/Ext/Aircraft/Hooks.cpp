@@ -41,11 +41,14 @@ DEFINE_HOOK(0x417FE9, AircraftClass_Mission_Attack_StrafeShots, 0x7)
 
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	if (const auto pWeaponStr = pThis->GetWeapon(pThis->SelectWeapon(pThis->Target))) {
-		if (pWeaponStr->WeaponType) {
+	if (const auto pWeaponStr = pThis->GetWeapon(pThis->SelectWeapon(pThis->Target)))
+	{
+		if (pWeaponStr->WeaponType)
+		{
 			int fireCount = pThis->MissionStatus - 4;
 
-			if (fireCount > 1 && WeaponTypeExtContainer::Instance.Find(pWeaponStr->WeaponType)->Strafing_Shots < fireCount) {
+			if (fireCount > 1 && WeaponTypeExtContainer::Instance.Find(pWeaponStr->WeaponType)->Strafing_Shots < fireCount)
+			{
 				if (!pThis->Ammo)
 					pThis->__DoingOverfly = false;
 
@@ -63,12 +66,11 @@ DEFINE_HOOK(addr , AircraftClass_Mission_Attack_##Mode##_Strafe_BurstFix,0x6){ \
 GET(AircraftClass* const, pThis, ESI); \
 AircraftExt::FireBurst(pThis, pThis->Target, AircraftFireMode::##Mode##); return ret; }
 
-
-	Hook_AircraftBurstFix(0x4186B6, FireAt, 0x4186D7)
-	Hook_AircraftBurstFix(0x418805, Strafe2, 0x418826)
-	Hook_AircraftBurstFix(0x418914, Strafe3, 0x418935)
-	Hook_AircraftBurstFix(0x418A23, Strafe4, 0x418A44)
-	Hook_AircraftBurstFix(0x418B1F, Strafe5, 0x418B40)
+Hook_AircraftBurstFix(0x4186B6, FireAt, 0x4186D7)
+Hook_AircraftBurstFix(0x418805, Strafe2, 0x418826)
+Hook_AircraftBurstFix(0x418914, Strafe3, 0x418935)
+Hook_AircraftBurstFix(0x418A23, Strafe4, 0x418A44)
+Hook_AircraftBurstFix(0x418B1F, Strafe5, 0x418B40)
 
 DEFINE_HOOK(0x418403, AircraftClass_Mission_Attack_FireAtTarget_BurstFix, 0x6) //8
 {

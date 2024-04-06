@@ -41,14 +41,14 @@ void QuickSaveCommandClass::Execute(WWKey eInput) const
 		}
 
 		auto PrintMessage = [](const wchar_t* pMessage)
-		{
-			MessageListClass::Instance->PrintMessage(
-				pMessage,
-				RulesClass::Instance->MessageDelay,
-				HouseClass::CurrentPlayer->ColorSchemeIndex,
-				true
-			);
-		};
+			{
+				MessageListClass::Instance->PrintMessage(
+					pMessage,
+					RulesClass::Instance->MessageDelay,
+					HouseClass::CurrentPlayer->ColorSchemeIndex,
+					true
+				);
+			};
 
 		char fName[0x80];
 		SYSTEMTIME time {};

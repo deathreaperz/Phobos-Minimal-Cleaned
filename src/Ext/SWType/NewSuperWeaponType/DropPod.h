@@ -15,7 +15,8 @@ public:
 
 	using TStateMachine = DroppodStateMachine;
 
-	void newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper) {
+	void newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper)
+	{
 		SWStateMachine::Register(std::make_unique<TStateMachine>(Deferment, XY, pSuper, this));
 	}
 };

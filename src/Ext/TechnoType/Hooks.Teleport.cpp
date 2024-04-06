@@ -17,10 +17,10 @@ DEFINE_HOOK(0x7193F6, TeleportLocomotionClass_ILocomotion_Process_WarpoutAnim, 0
 {
 	GET_LOCO(ESI);
 
-	TechnoExtData::PlayAnim(pExt->WarpOut.GetOrDefault(pOwner , RulesClass::Instance->WarpOut), pOwner);
+	TechnoExtData::PlayAnim(pExt->WarpOut.GetOrDefault(pOwner, RulesClass::Instance->WarpOut), pOwner);
 
 	if (const auto pWeapon = pExt->WarpOutWeapon.Get(pOwner))
-		WeaponTypeExtData::DetonateAt(pWeapon, pOwner, pOwner , true , nullptr);
+		WeaponTypeExtData::DetonateAt(pWeapon, pOwner, pOwner, true, nullptr);
 
 	return 0x719447;
 }
@@ -30,17 +30,18 @@ DEFINE_HOOK(0x719742, TeleportLocomotionClass_ILocomotion_Process_WarpInAnim, 0x
 	GET_LOCO(ESI);
 
 	//WarpIn is unused , maybe a type on WW side
-	TechnoExtData::PlayAnim(pExt->WarpIn.GetOrDefault(pOwner ,RulesClass::Instance->WarpOut), pOwner);
+	TechnoExtData::PlayAnim(pExt->WarpIn.GetOrDefault(pOwner, RulesClass::Instance->WarpOut), pOwner);
 
 	const auto pTechnoExt = TechnoExtContainer::Instance.Find(pOwner);
 
 	const auto Rank = pOwner->CurrentRanking;
 	const auto pWarpInWeapon = pExt->WarpInWeapon.GetFromSpecificRank(Rank);
 
-	const auto pWeapon = pTechnoExt->LastWarpDistance < pExt->ChronoRangeMinimum.GetOrDefault(pOwner ,RulesClass::Instance->ChronoRangeMinimum)
+	const auto pWeapon = pTechnoExt->LastWarpDistance < pExt->ChronoRangeMinimum.GetOrDefault(pOwner, RulesClass::Instance->ChronoRangeMinimum)
 		? pExt->WarpInMinRangeWeapon.GetFromSpecificRank(Rank)->Get(pWarpInWeapon) : pWarpInWeapon;
 
-	if (pWeapon) {
+	if (pWeapon)
+	{
 		const int damage = pExt->WarpInWeapon_UseDistanceAsDamage.Get(pOwner) ?
 			(pTechnoExt->LastWarpDistance / Unsorted::LeptonsPerCell) : pWeapon->Damage;
 
@@ -54,7 +55,7 @@ DEFINE_HOOK(0x719827, TeleportLocomotionClass_ILocomotion_Process_WarpAway, 0x6)
 {
 	GET_LOCO(ESI);
 
-	TechnoExtData::PlayAnim(pExt->WarpAway.GetOrDefault(pOwner , RulesClass::Instance->WarpOut), pOwner);
+	TechnoExtData::PlayAnim(pExt->WarpAway.GetOrDefault(pOwner, RulesClass::Instance->WarpOut), pOwner);
 	return 0x719878;
 }
 
@@ -65,8 +66,8 @@ DEFINE_HOOK(0x7194D0, TeleportLocomotionClass_ILocomotion_Process_ChronoTrigger,
 	GET(int, val, EDX);
 	enum { SetTimer = 0x7194E9, CheckTheTimer = 0x7194FD };
 
-	if (pExt->ChronoTrigger.GetOrDefault(pOwner, pRules->ChronoTrigger)) {
-
+	if (pExt->ChronoTrigger.GetOrDefault(pOwner, pRules->ChronoTrigger))
+	{
 		R->ECX(Unsorted::CurrentFrame());
 
 		const auto nDecided = pExt->ChronoDistanceFactor.GetOrDefault(pOwner, pRules->ChronoDistanceFactor);
@@ -99,7 +100,8 @@ DEFINE_HOOK(0x719555, TeleportLocomotionClass_ILocomotion_Process_ChronoRangeMin
 	TechnoExtContainer::Instance.Find(pOwner)->LastWarpDistance = comparator;
 	const auto factor = pExt->ChronoRangeMinimum.GetOrDefault(pOwner, pRules->ChronoRangeMinimum);
 
-	if(comparator < factor) {
+	if (comparator < factor)
+	{
 		R->EAX(Unsorted::CurrentFrame());
 		R->ECX(pExt->ChronoMinimumDelay.GetOrDefault(pOwner, pRules->ChronoMinimumDelay));
 		return SetTimer;
@@ -146,11 +148,14 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 	if (pIndex && pIndex->Is_Valid_Key())
 		*(int*)(pIndex) = slope_idx + (*(int*)(pIndex) << 6);
 
-	if (slope_idx && pIndex && pIndex->Is_Valid_Key()){
-		loco->LocomotionClass::Draw_Matrix(ret,pIndex);
+	if (slope_idx && pIndex && pIndex->Is_Valid_Key())
+	{
+		loco->LocomotionClass::Draw_Matrix(ret, pIndex);
 		*ret = Game::VoxelRampMatrix[slope_idx] * (*ret);
-	} else {
-		loco->LocomotionClass::Draw_Matrix(ret,pIndex);
+	}
+	else
+	{
+		loco->LocomotionClass::Draw_Matrix(ret, pIndex);
 	}
 
 	float arf = loco->Owner->AngleRotatedForwards;
@@ -181,7 +186,7 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 
 DEFINE_JUMP(VTABLE, 0x7F5028, 0x5142A0);//TeleportLocomotionClass_Shadow_Matrix : just use hover's to save my ass
 
-DEFINE_JUMP(VTABLE , 0x7F5024, GET_OFFSET(LocomotionClass_Draw_Matrix))
+DEFINE_JUMP(VTABLE, 0x7F5024, GET_OFFSET(LocomotionClass_Draw_Matrix))
 
 DEFINE_HOOK(0x729B5D, TunnelLocomotionClass_DrawMatrix_Tilt, 0x8)
 {

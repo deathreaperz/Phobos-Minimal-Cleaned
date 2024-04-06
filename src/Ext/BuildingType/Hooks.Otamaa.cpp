@@ -1,4 +1,3 @@
-
 #include "Body.h"
 
 #include <TacticalClass.h>
@@ -19,7 +18,8 @@ DEFINE_HOOK(0x6FE3F1, TechnoClass_FireAt_OccupyDamageBonus, 0x9) //B
 	enum { ApplyDamageBonus = 0x6FE405, Nothing = 0x0 };
 	GET(TechnoClass* const, pThis, ESI);
 
-	if (auto const Building = specific_cast<BuildingClass*>(pThis)) {
+	if (auto const Building = specific_cast<BuildingClass*>(pThis))
+	{
 		GET_STACK(int, nDamage, 0x2C);
 		R->EAX(int(nDamage * BuildingTypeExtContainer::Instance.Find(Building->Type)->BuildingOccupyDamageMult.Get(RulesClass::Instance->OccupyDamageMultiplier)));
 		return ApplyDamageBonus;
@@ -33,7 +33,8 @@ DEFINE_HOOK(0x6FE421, TechnoClass_FireAt_BunkerDamageBonus, 0x9) //B
 	enum { ApplyDamageBonus = 0x6FE435, Nothing = 0x0 };
 	GET(TechnoClass* const, pThis, ESI);
 
-	if (auto const Building = specific_cast<BuildingClass*>(pThis->BunkerLinkedItem)) {
+	if (auto const Building = specific_cast<BuildingClass*>(pThis->BunkerLinkedItem))
+	{
 		GET_STACK(int, nDamage, 0x2C);
 		R->EAX(int(nDamage * BuildingTypeExtContainer::Instance.Find(Building->Type)->BuildingBunkerDamageMult.Get(RulesClass::Instance->OccupyDamageMultiplier)));
 		return ApplyDamageBonus;
@@ -47,10 +48,12 @@ DEFINE_HOOK(0x6FD183, TechnoClass_RearmDelay_BuildingOccupyROFMult, 0x6) // C
 	enum { ApplyRofMod = 0x6FD1AB, SkipRofMod = 0x6FD1B1, Nothing = 0x0 };
 	GET(TechnoClass*, pThis, ESI);
 
-	if (auto const Building = specific_cast<BuildingClass*>(pThis)) {
+	if (auto const Building = specific_cast<BuildingClass*>(pThis))
+	{
 		auto const nMult = BuildingTypeExtContainer::Instance.Find(Building->Type)->BuildingOccupyROFMult.Get(RulesClass::Instance->OccupyROFMultiplier);
 
-		if (nMult != 0.0f) {
+		if (nMult != 0.0f)
+		{
 			GET_STACK(int, nROF, STACK_OFFS(0x10, -0x4));
 			R->EAX(int(((double)nROF) / nMult));
 			return ApplyRofMod;
@@ -67,12 +70,14 @@ DEFINE_HOOK(0x6FD1C7, TechnoClass_RearmDelay_BuildingBunkerROFMult, 0x6) //C
 	enum { ApplyRofMod = 0x6FD1EF, SkipRofMod = 0x6FD1F1, Nothing = 0x0 };
 	GET(TechnoClass*, pThis, ESI);
 
-	if (auto const Building = specific_cast<BuildingClass*>(pThis->BunkerLinkedItem)) {
-			auto const nMult = BuildingTypeExtContainer::Instance.Find(Building->Type)->BuildingBunkerROFMult.Get(RulesClass::Instance->BunkerROFMultiplier);
-		if (nMult != 0.0f) {
+	if (auto const Building = specific_cast<BuildingClass*>(pThis->BunkerLinkedItem))
+	{
+		auto const nMult = BuildingTypeExtContainer::Instance.Find(Building->Type)->BuildingBunkerROFMult.Get(RulesClass::Instance->BunkerROFMultiplier);
+		if (nMult != 0.0f)
+		{
 			GET_STACK(int, nROF, STACK_OFFS(0x10, -0x4));
 			R->EAX(int(((double)nROF) / nMult));
-				return ApplyRofMod;
+			return ApplyRofMod;
 		}
 
 		return SkipRofMod;
@@ -134,7 +139,7 @@ DEFINE_HOOK(0x450821, BuildingClass_Repair_AI_Step, 0x5)// B
 	GET(BuildingClass* const, pThis, ESI);
 
 	R->EAX(int(BuildingTypeExtContainer::Instance.Find(pThis->Type)
-			->RepairRate.Get(RulesClass::Instance->RepairRate) * 900.0));
+		->RepairRate.Get(RulesClass::Instance->RepairRate) * 900.0));
 
 	return 0x450837;
 }
@@ -219,11 +224,13 @@ DEFINE_HOOK(0x505F6C, HouseClass_GenerateAIBuildList_AIBuildInstead, 0x6)
 {
 	GET(HouseClass*, pHouse, ESI);
 
-	if (!pHouse->IsControlledByHuman() && !pHouse->IsNeutral()) {
-		for (auto& nNodes : pHouse->Base.BaseNodes) {
+	if (!pHouse->IsControlledByHuman() && !pHouse->IsNeutral())
+	{
+		for (auto& nNodes : pHouse->Base.BaseNodes)
+		{
 			auto nIdx = nNodes.BuildingTypeIndex;
-			if (nIdx >= 0) {
-
+			if (nIdx >= 0)
+			{
 				const auto pBldTypeExt = BuildingTypeExtContainer::Instance.Find(BuildingTypeClass::Array->Items[nIdx]);
 
 				if (!pBldTypeExt->AIBuildInsteadPerDiff.empty() && pBldTypeExt->AIBuildInsteadPerDiff[pHouse->GetCorrectAIDifficultyIndex()] != -1)

@@ -13,7 +13,6 @@ DEFINE_HOOK(0x6F7481, TechnoClass_Targeting_ApplyGravity, 0x6)
 	return 0x6F74A4;
 }
 
-
 DEFINE_HOOK_AGAIN(0x44D2AE, BuildingClass_Mission_Missile_ApplyGravity, 0x6)
 DEFINE_HOOK_AGAIN(0x44D264, BuildingClass_Mission_Missile_ApplyGravity, 0x6)
 DEFINE_HOOK(0x44D074, BuildingClass_Mission_Missile_ApplyGravity, 0x6)

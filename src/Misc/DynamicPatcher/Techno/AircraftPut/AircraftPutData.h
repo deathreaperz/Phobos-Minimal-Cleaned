@@ -11,7 +11,6 @@ public:
 
 	void Read(INI_EX& parser, const char* pSection);
 
-
 	template <typename T>
 	void  Serialize(T& Stm)
 	{

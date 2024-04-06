@@ -40,7 +40,8 @@ int PrismForwarding::AcquireSlaves_MultiStage(PrismForwarding* TargetTower, int 
 	else
 	{
 		// do not think of using iterators or a ranged-for here. Senders grows and might reallocate.
-		for (auto& sender : TargetTower->Senders) {
+		for (auto& sender : TargetTower->Senders)
+		{
 			countSlaves += this->AcquireSlaves_MultiStage(sender, stage - 1, chain + 1, NetworkSize, LongestChain);
 		}
 	}
@@ -114,7 +115,7 @@ int PrismForwarding::AcquireSlaves_SingleStage(PrismForwarding* TargetTower, int
 		++NetworkSize;
 
 		CoordStruct FLH;
-		TargetTower->GetOwner()->GetFLH(&FLH ,0, CoordStruct::Empty);
+		TargetTower->GetOwner()->GetFLH(&FLH, 0, CoordStruct::Empty);
 		eligible.Tower->Owner->DelayBeforeFiring = eligible.Tower->Owner->Type->DelayedFireDelay;
 		eligible.Tower->Owner->PrismStage = PrismChargeState::Slave;
 		eligible.Tower->Owner->PrismTargetCoords = FLH;
@@ -227,7 +228,8 @@ void PrismForwarding::SetChargeDelay(int LongestChain)
 	std::vector<DWORD> LongestCDelay(ArrayLen, 0);
 	std::vector<DWORD> LongestFDelay(ArrayLen, 0);
 
-	for (auto endChain = LongestChain; endChain >= 0; --endChain) {
+	for (auto endChain = LongestChain; endChain >= 0; --endChain)
+	{
 		this->SetChargeDelay_Get(0, endChain, LongestChain, LongestCDelay.data(), LongestFDelay.data());
 	}
 
@@ -258,7 +260,8 @@ void PrismForwarding::SetChargeDelay_Get(int chain, int endChain, int LongestCha
 	else
 	{
 		//ascend to the next chain
-		for (auto& SenderTower : this->Senders) {
+		for (auto& SenderTower : this->Senders)
+		{
 			SenderTower->SetChargeDelay_Get(chain + 1, endChain, LongestChain, LongestCDelay, LongestFDelay);
 		}
 	}
@@ -271,16 +274,18 @@ void PrismForwarding::SetChargeDelay_Set(int chain, DWORD const* LongestCDelay, 
 	this->PrismChargeDelay = (LongestFDelay[chain] - pTargetTower->DelayBeforeFiring) + LongestCDelay[chain];
 	pTargetTower->SupportingPrisms = (LongestChain - chain);
 
-	if (this->PrismChargeDelay == 0) {
+	if (this->PrismChargeDelay == 0)
+	{
 		//no delay, so start animations now
 		if (pTargetTower->Type->GetBuildingAnim(BuildingAnimSlot::Special).Anim[0])
 		{ //only if it actually has a special anim
 			pTargetTower->DestroyNthAnim(BuildingAnimSlot::Active);
-			pTargetTower->Game_PlayNthAnim(BuildingAnimSlot::Special ,!pTargetTower->IsGreenHP() ,pTargetTower->GetOccupantCount() > 0 , 0);
+			pTargetTower->Game_PlayNthAnim(BuildingAnimSlot::Special, !pTargetTower->IsGreenHP(), pTargetTower->GetOccupantCount() > 0, 0);
 		}
 	}
 
-	for (auto& Sender : this->Senders) {
+	for (auto& Sender : this->Senders)
+	{
 		Sender->SetChargeDelay_Set(chain + 1, LongestCDelay, LongestFDelay, LongestChain);
 	}
 }
@@ -303,7 +308,8 @@ void PrismForwarding::RemoveFromNetwork(bool bCease)
 	this->SetSupportTarget(nullptr);
 
 	//finally, remove all the preceding slaves from the network
-	for (int senderIdx = ((int)this->Senders.size()) - 1; senderIdx > 0; --senderIdx) {
+	for (int senderIdx = ((int)this->Senders.size()) - 1; senderIdx > 0; --senderIdx)
+	{
 		this->Senders[senderIdx]->RemoveFromNetwork(false);
 	}
 }
@@ -311,7 +317,8 @@ void PrismForwarding::RemoveFromNetwork(bool bCease)
 void PrismForwarding::SetSupportTarget(PrismForwarding* pTargetTower)
 {
 	// meet the new tower, same as the old tower
-	if (this->SupportTarget == pTargetTower) {
+	if (this->SupportTarget == pTargetTower)
+	{
 		return;
 	}
 
@@ -328,7 +335,8 @@ void PrismForwarding::SetSupportTarget(PrismForwarding* pTargetTower)
 	this->SupportTarget = pTargetTower;
 
 	// set the new tower as support target
-	if (pTargetTower) {
+	if (pTargetTower)
+	{
 		pTargetTower->Senders.push_back_unique(this);
 	}
 }
@@ -336,7 +344,8 @@ void PrismForwarding::SetSupportTarget(PrismForwarding* pTargetTower)
 void PrismForwarding::RemoveAllSenders()
 {
 	// disconnect all sender towers from their support target, which is me
-	for (auto senderIdx = ((int)this->Senders.size()) - 1; senderIdx > 0; senderIdx--) {
+	for (auto senderIdx = ((int)this->Senders.size()) - 1; senderIdx > 0; senderIdx--)
+	{
 		this->Senders[senderIdx]->SetSupportTarget(nullptr);
 	}
 
@@ -346,7 +355,8 @@ void PrismForwarding::RemoveAllSenders()
 		Debug::Log("PrismForwarding::RemoveAllSenders: Tower (%p) still has %d senders after removal completed.\n",
 			this->GetOwner(), this->Senders.size());
 
-		for (size_t i = 0; i < this->Senders.size(); ++i) {
+		for (size_t i = 0; i < this->Senders.size(); ++i)
+		{
 			Debug::Log("Sender %03d: %p\n", i, this->Senders[i]->GetOwner());
 		}
 

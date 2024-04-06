@@ -23,7 +23,6 @@ void UnitDeployConvertHelpers::RemoveDeploying(REGISTERS* R)
 	if (skipMinimum && skipMaximum)
 		return;
 
-
 	const bool moreThanMinimum = pThis->Ammo >= pThisType->Ammo_DeployUnlockMinimumAmount;
 	const bool lessThanMaximum = pThis->Ammo <= pThisType->Ammo_DeployUnlockMaximumAmount;
 
@@ -32,7 +31,6 @@ void UnitDeployConvertHelpers::RemoveDeploying(REGISTERS* R)
 
 	R->AL(false);
 }
-
 
 DEFINE_HOOK(0x73FFE6, UnitClass_WhatAction_RemoveDeploying, 0xA)
 {
@@ -44,7 +42,8 @@ DEFINE_HOOK(0x730C70, DeployClass_Execute_RemoveDeploying, 0xA)
 {
 	GET(TechnoClass*, pThis, ESI);
 
-	if (specific_cast<UnitClass*>(pThis)) {
+	if (specific_cast<UnitClass*>(pThis))
+	{
 		UnitDeployConvertHelpers::RemoveDeploying(R);
 		return 0x730C7A;
 	}

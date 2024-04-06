@@ -1,6 +1,5 @@
 #include "MultipleFactoryCaps.h"
 
-
 void MultipleFactoryCaps::Read(INI_EX& exINI, const char* pSection)
 {
 	this->AbsUnit.Read(exINI, pSection, "MultipleFactoryCap.UnitType");

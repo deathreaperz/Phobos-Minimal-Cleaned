@@ -117,10 +117,14 @@ void PhobosTrajectoryType::CreateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 
 	TrajectoryFlag nFlag = TrajectoryFlag::Invalid;
 
-	if(pINI->ReadString(pSection, pKey, "", Phobos::readBuffer)  > 0) {
-		if (!GameStrings::IsBlank(Phobos::readBuffer)) {
-			for (size_t i = 0; i < TrajectoryTypeToSrings.size(); ++i) {
-				if (IS_SAME_STR_(Phobos::readBuffer, TrajectoryTypeToSrings[i])) {
+	if (pINI->ReadString(pSection, pKey, "", Phobos::readBuffer) > 0)
+	{
+		if (!GameStrings::IsBlank(Phobos::readBuffer))
+		{
+			for (size_t i = 0; i < TrajectoryTypeToSrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(Phobos::readBuffer, TrajectoryTypeToSrings[i]))
+				{
 					nFlag = static_cast<TrajectoryFlag>(i);
 					break;
 				}
@@ -132,7 +136,7 @@ void PhobosTrajectoryType::CreateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 		return;
 	else
 	{
-		if (PhobosTrajectoryType::UpdateType(pType,nFlag))
+		if (PhobosTrajectoryType::UpdateType(pType, nFlag))
 		{
 			if (!pType->Read(pINI, pSection))
 				Debug::Log("Failed When Reading Projectile[%s] With TrajectoryType %s ! \n", pSection, Phobos::readBuffer);
@@ -143,12 +147,11 @@ void PhobosTrajectoryType::CreateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 				//const auto pBounceType = reinterpret_cast<BounceTrajectoryType*>(pType.get());
 				//if (!(pBounceType->BounceAmount > 0))
 				//{
-					pType.release();
+				pType.release();
 				//}
 			}
 		}
 	}
-
 }
 
 void PhobosTrajectoryType::ProcessFromStream(PhobosStreamReader& Stm, std::unique_ptr<PhobosTrajectoryType>& pType)
@@ -167,7 +170,8 @@ void PhobosTrajectoryType::ProcessFromStream(PhobosStreamReader& Stm, std::uniqu
 			return;
 
 		//create the new type
-		if(PhobosTrajectoryType::UpdateType(pType, nFlag)) {
+		if (PhobosTrajectoryType::UpdateType(pType, nFlag))
+		{
 			// register the change if succeeded
 			PhobosSwizzle::Instance.RegisterChange(pOld, pType.get());
 			pType->Load(Stm, false);
@@ -183,13 +187,13 @@ void PhobosTrajectoryType::ProcessFromStream(PhobosStreamWriter& Stm, std::uniqu
 	{
 		Stm.Process(pType->Flag, false);
 		//write the pointer value
-		if(Savegame::WritePhobosStream(Stm, pType.get()))
+		if (Savegame::WritePhobosStream(Stm, pType.get()))
 			pType->Save(Stm);
 	}
 }
 
-bool PhobosTrajectoryType::TrajectoryValidation(BulletTypeClass* pAttached) {
-
+bool PhobosTrajectoryType::TrajectoryValidation(BulletTypeClass* pAttached)
+{
 	bool ret = false;
 
 	// Trajectory validation combined with other projectile behaviour.
@@ -201,25 +205,29 @@ bool PhobosTrajectoryType::TrajectoryValidation(BulletTypeClass* pAttached) {
 		const char* pSection = pAttached->ID;
 		const char* pTrjType = PhobosTrajectoryType::TrajectoryTypeToSrings[(int)pTraj->Flag];
 
-		if (pAttached->Arcing) {
-			Debug::Log("Bullet[%s] has Trajectory[%s] set together with Arcing. Arcing has been set to false.\n", pSection , pTrjType);
+		if (pAttached->Arcing)
+		{
+			Debug::Log("Bullet[%s] has Trajectory[%s] set together with Arcing. Arcing has been set to false.\n", pSection, pTrjType);
 			pAttached->Arcing = false;
 			ret = true;
 		}
 
-		if (pAttached->Inviso) {
+		if (pAttached->Inviso)
+		{
 			Debug::Log("Bullet[%s] has Trajectory[%s] set together with Inviso. Inviso has been set to false.\n", pSection, pTrjType);
 			pAttached->Inviso = false;
 			ret = true;
 		}
 
-		if (pAttached->ROT) {
+		if (pAttached->ROT)
+		{
 			Debug::Log("Bullet[%s] has Trajectory[%s] set together with ROT value other than 0. ROT has been set to 0.\n", pSection, pTrjType);
 			pAttached->ROT = 0;
 			ret = true;
 		}
 
-		if (pAttached->Vertical) {
+		if (pAttached->Vertical)
+		{
 			Debug::Log("Bullet[%s] has Trajectory[%s] set together with Vertical. Vertical has been set to false.\n", pSection, pTrjType);
 			pAttached->Vertical = false;
 			ret = true;
@@ -233,7 +241,8 @@ double PhobosTrajectory::GetTrajectorySpeed() const
 {
 	auto const pBullet = this->AttachedTo;
 
-	if (pBullet->WeaponType) {
+	if (pBullet->WeaponType)
+	{
 		const auto result = WeaponTypeExtContainer::Instance.Find(pBullet->WeaponType)->Trajectory_Speed.Get(BulletTypeExtContainer::Instance.Find(pBullet->Type)->Trajectory_Speed.Get(pBullet->Speed));
 
 		if (result != 0.0)
@@ -275,7 +284,7 @@ bool PhobosTrajectory::UpdateType(BulletClass* pBullet, std::unique_ptr<PhobosTr
 	switch (pType->Flag)
 	{
 	case TrajectoryFlag::Straight:
-		pTraj = std::make_unique<StraightTrajectory>(pBullet , pType);
+		pTraj = std::make_unique<StraightTrajectory>(pBullet, pType);
 		break;
 
 	case TrajectoryFlag::Bombard:
@@ -326,10 +335,10 @@ void PhobosTrajectory::CreateInstance(BulletClass* pBullet, CoordStruct* pCoord,
 
 	auto const pBulletExt = BulletExtContainer::Instance.Find(pBullet);
 
-	if (PhobosTrajectory::UpdateType(pBullet , pBulletExt->Trajectory ,pBulletTypeExt->TrajectoryType.get())) {
+	if (PhobosTrajectory::UpdateType(pBullet, pBulletExt->Trajectory, pBulletTypeExt->TrajectoryType.get()))
+	{
 		pBulletExt->Trajectory->OnUnlimbo(pCoord, pVelocity);
 	}
-
 }
 
 void PhobosTrajectory::ProcessFromStream(PhobosStreamReader& Stm, std::unique_ptr<PhobosTrajectory>& pTraj)
@@ -399,7 +408,6 @@ void PhobosTrajectory::ProcessFromStream(PhobosStreamWriter& Stm, std::unique_pt
 	}
 }
 
-
 DWORD PhobosTrajectory::OnAITargetCoordCheck(BulletClass* pBullet, CoordStruct& coords)
 {
 	enum { SkipCheck = 0x4678F8, ContinueAfterCheck = 0x467879, Detonate = 0x467E53 };
@@ -411,7 +419,7 @@ DWORD PhobosTrajectory::OnAITargetCoordCheck(BulletClass* pBullet, CoordStruct& 
 #else
 		const auto result = pTraj->OnAITargetCoordCheck(coords);
 		Debug::Log(__FUNCTION__" Bullet[%s - %p] with Trajectory[%d] result [%s]\n", pBullet->get_ID(), pBullet, TrajectoryTypeToSrings[(int)pTraj->Flag], EnumFunctions::TrajectoryCheckReturnType_to_strings[(int)result]);
-		switch(result)
+		switch (result)
 #endif
 		{
 		case TrajectoryCheckReturnType::SkipGameCheck:
@@ -426,7 +434,6 @@ DWORD PhobosTrajectory::OnAITargetCoordCheck(BulletClass* pBullet, CoordStruct& 
 	}
 
 	return 0;
-
 }
 
 DWORD PhobosTrajectory::OnAITechnoCheck(BulletClass* pBullet, TechnoClass* pTechno)

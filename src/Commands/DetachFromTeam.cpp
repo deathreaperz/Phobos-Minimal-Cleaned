@@ -33,13 +33,16 @@ void DetachFromTeamCommandClass::Execute(WWKey eInput) const
 	if (this->CheckDebugDeactivated() || !ObjectClass::CurrentObjects->Count)
 		return;
 
-	ObjectClass::CurrentObjects->for_each([](ObjectClass* const object) {
-	    if (FootClass* techno = generic_cast<FootClass*>(object)) {
-		  if (techno->BelongsToATeam()) {
-			  auto pTeam = techno->Team;
-			  pTeam->RemoveMember(techno);
-			  pTeam->Reacalculate();
-		  }
-	    }
+	ObjectClass::CurrentObjects->for_each([](ObjectClass* const object)
+ {
+	 if (FootClass* techno = generic_cast<FootClass*>(object))
+	 {
+		 if (techno->BelongsToATeam())
+		 {
+			 auto pTeam = techno->Team;
+			 pTeam->RemoveMember(techno);
+			 pTeam->Reacalculate();
+		 }
+	 }
 	});
 }

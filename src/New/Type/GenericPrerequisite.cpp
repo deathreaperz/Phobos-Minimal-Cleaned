@@ -31,15 +31,20 @@ void GenericPrerequisite::Parse(CCINIClass* pINI, const char* section, const cha
 			cur = strtok_s(nullptr, Phobos::readDelims, &context))
 		{
 			int idx = BuildingTypeClass::FindIndexById(cur);
-			if (idx > -1) {
+			if (idx > -1)
+			{
 				Vec.push_back(idx);
-			} else {
+			}
+			else
+			{
 				idx = GenericPrerequisite::FindIndexById(cur);
-				if (idx > -1) {
+				if (idx > -1)
+				{
 					Vec.push_back(-1 - idx);
 				}
-				else if (!GameStrings::IsBlank(cur)) {
-					Debug::INIParseFailed(section, key, cur , "Expect valid GenericPrerequisite data");
+				else if (!GameStrings::IsBlank(cur))
+				{
+					Debug::INIParseFailed(section, key, cur, "Expect valid GenericPrerequisite data");
 				}
 			}
 		}
@@ -128,7 +133,8 @@ void GenericPrerequisite::LoadFromINIList_New(CCINIClass* pINI, bool bDebug)
 	if (!pINI)
 		return;
 
-	for(auto& defaultItem : Array) { //load all the default data first
+	for (auto& defaultItem : Array)
+	{ //load all the default data first
 		defaultItem->LoadFromINI(pINI);
 	}
 
@@ -145,8 +151,8 @@ void GenericPrerequisite::LoadFromINIList_New(CCINIClass* pINI, bool bDebug)
 	if (pkeyCount > (int)Array.size())
 		Array.reserve(pkeyCount);
 
-	for (int i = 0; i < pkeyCount; ++i) { //load for all keys
-
+	for (int i = 0; i < pkeyCount; ++i)
+	{ //load for all keys
 		FindOrAllocate(pINI->GetKeyName(pSection, i))->LoadFromINI(pINI);
 	}
 }
@@ -186,7 +192,8 @@ bool Prereqs::HouseOwnsSpecific(HouseClass const* const pHouse, int const Index)
 	{
 		auto const pCore = BuildingTypeClass::Find(pPowerup);
 
-		if (!pCore || pHouse->ActiveBuildingTypes.GetItemCount(pCore->ArrayIndex) < 1) {
+		if (!pCore || pHouse->ActiveBuildingTypes.GetItemCount(pCore->ArrayIndex) < 1)
+		{
 			return false;
 		}
 
@@ -194,11 +201,13 @@ bool Prereqs::HouseOwnsSpecific(HouseClass const* const pHouse, int const Index)
 		{
 			const auto Types = pBld->GetTypes();
 
-			if (Types[0] != pCore) {
+			if (Types[0] != pCore)
+			{
 				continue;
 			}
 
-			if(Types[1] == pType || Types[2] == pType || Types[3] == pType) {
+			if (Types[1] == pType || Types[2] == pType || Types[3] == pType)
+			{
 				return true;
 			}
 		}
@@ -221,8 +230,10 @@ bool Prereqs::HouseOwnsPrereq(HouseClass const* const pHouse, int const Index)
 
 bool Prereqs::HouseOwnsAll(HouseClass const* const pHouse, const DynamicVectorClass<int>& list)
 {
-	for (const auto index : list) {
-		if (!Prereqs::HouseOwnsPrereq(pHouse, index)) {
+	for (const auto index : list)
+	{
+		if (!Prereqs::HouseOwnsPrereq(pHouse, index))
+		{
 			return false;
 		}
 	}
@@ -234,8 +245,10 @@ bool Prereqs::HouseOwnsAll(HouseClass const* const pHouse, int* intitems, int in
 {
 	const auto end = intitems + intsize;
 
-	for (auto find = intitems; find != end; ++find) {
-		if (!Prereqs::HouseOwnsPrereq(pHouse, *find)) {
+	for (auto find = intitems; find != end; ++find)
+	{
+		if (!Prereqs::HouseOwnsPrereq(pHouse, *find))
+		{
 			return false;
 		}
 	}
@@ -245,8 +258,10 @@ bool Prereqs::HouseOwnsAll(HouseClass const* const pHouse, int* intitems, int in
 
 bool Prereqs::HouseOwnsAny(HouseClass const* const pHouse, const DynamicVectorClass<int>& list)
 {
-	for (const auto index : list) {
-		if (Prereqs::HouseOwnsPrereq(pHouse, index)) {
+	for (const auto index : list)
+	{
+		if (Prereqs::HouseOwnsPrereq(pHouse, index))
+		{
 			return true;
 		}
 	}
@@ -258,8 +273,10 @@ bool Prereqs::HouseOwnsAny(HouseClass const* const pHouse, int* intitems, int in
 {
 	const auto end = intitems + intsize;
 
-	for (auto find = intitems; find != end; ++find) {
-		if (Prereqs::HouseOwnsPrereq(pHouse, *find)) {
+	for (auto find = intitems; find != end; ++find)
+	{
+		if (Prereqs::HouseOwnsPrereq(pHouse, *find))
+		{
 			return true;
 		}
 	}
@@ -271,8 +288,9 @@ bool Prereqs::ListContainsSpecific(BuildingTypeClass** items, int size, int cons
 {
 	const auto lookingfor = BuildingTypeClass::Array->Items[Index];
 
-	return std::any_of(items, items + size, [&](BuildingTypeClass* item) {
-		return item == lookingfor;
+	return std::any_of(items, items + size, [&](BuildingTypeClass* item)
+ {
+	 return item == lookingfor;
 	});
 }
 
@@ -280,9 +298,12 @@ bool Prereqs::ListContainsGeneric(BuildingTypeClass** items, int size, int const
 {
 	// hack - POWER is -1 , this way converts to 0, and onwards
 	const auto idxPrereq = static_cast<size_t>(-1 - Index);
-	if (idxPrereq < GenericPrerequisite::Array.size()) {
-		for (const auto& index : GenericPrerequisite::Array[idxPrereq]->Prereqs) {
-			if (Prereqs::ListContainsSpecific(items, size, index)) {
+	if (idxPrereq < GenericPrerequisite::Array.size())
+	{
+		for (const auto& index : GenericPrerequisite::Array[idxPrereq]->Prereqs)
+		{
+			if (Prereqs::ListContainsSpecific(items, size, index))
+			{
 				return true;
 			}
 		}
@@ -302,8 +323,10 @@ bool Prereqs::ListContainsAll(BuildingTypeClass** items, int size, int* intitems
 {
 	const auto end = intitems + intsize;
 
-	for (auto begin = intitems; begin != end; ++begin) {
-		if (!Prereqs::ListContainsPrereq(items, size, *begin)) {
+	for (auto begin = intitems; begin != end; ++begin)
+	{
+		if (!Prereqs::ListContainsPrereq(items, size, *begin))
+		{
 			return false;
 		}
 	}
@@ -313,8 +336,10 @@ bool Prereqs::ListContainsAll(BuildingTypeClass** items, int size, int* intitems
 
 bool Prereqs::ListContainsAny(BuildingTypeClass** items, int size, const DynamicVectorClass<int>& Requirements)
 {
-	for (const auto index : Requirements) {
-		if (Prereqs::ListContainsPrereq(items, size, index)) {
+	for (const auto index : Requirements)
+	{
+		if (Prereqs::ListContainsPrereq(items, size, index))
+		{
 			return true;
 		}
 	}
@@ -324,8 +349,10 @@ bool Prereqs::ListContainsAny(BuildingTypeClass** items, int size, const Dynamic
 
 bool Prereqs::PrerequisitesListed(BuildingTypeClass** items, int size, TechnoTypeClass* pItem)
 {
-	for(auto& prereq : TechnoTypeExtContainer::Instance.Find(pItem)->Prerequisites) {
-		if (Prereqs::ListContainsAll(items , size,  prereq.data() , prereq.size() )) {
+	for (auto& prereq : TechnoTypeExtContainer::Instance.Find(pItem)->Prerequisites)
+	{
+		if (Prereqs::ListContainsAll(items, size, prereq.data(), prereq.size()))
+		{
 			return true;
 		}
 	}

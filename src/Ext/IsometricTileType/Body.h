@@ -19,7 +19,7 @@ public:
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 
-public :
+public:
 	Valueable<int> Tileset { -1 };
 	Valueable<PaletteManager*> Palette {};
 
@@ -36,7 +36,7 @@ public :
 			(4u //AttachedToObject
 			 );
 	}
-	static LightConvertClass* GetLightConvert(IsometricTileTypeClass* pOvrl , int r, int g, int b);
+	static LightConvertClass* GetLightConvert(IsometricTileTypeClass* pOvrl, int r, int g, int b);
 
 private:
 	template <typename T>
@@ -50,7 +50,8 @@ public:
 	static std::map<std::string, std::map<TintStruct, LightConvertClass*>> LightConvertEntities;
 	static int CurrentTileset;
 
-	void Clear() {
+	void Clear()
+	{
 		LightConvertEntities.clear();
 	}
 

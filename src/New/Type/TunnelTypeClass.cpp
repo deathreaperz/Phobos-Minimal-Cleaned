@@ -25,10 +25,12 @@ void TunnelTypeClass::Serialize(T& Stm)
 		;
 }
 
-void TunnelTypeClass::LoadFromStream(PhobosStreamReader& Stm) { 
+void TunnelTypeClass::LoadFromStream(PhobosStreamReader& Stm)
+{
 	this->Serialize(Stm);
 }
 
-void TunnelTypeClass::SaveToStream(PhobosStreamWriter& Stm) { 
+void TunnelTypeClass::SaveToStream(PhobosStreamWriter& Stm)
+{
 	this->Serialize(Stm);
 }

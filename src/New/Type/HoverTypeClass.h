@@ -29,50 +29,60 @@ public:
 		, HoverAcceleration {}
 		, HoverBrake {}
 		, HoverBoost()
-	{ }
+	{
+	}
 
 	virtual ~HoverTypeClass() override = default;
 
-	inline AnimTypeClass* GetAboveWaterAnim() const {
+	inline AnimTypeClass* GetAboveWaterAnim() const
+	{
 		return this->AboveWaterAnim.Get(RulesClass::Instance->Wake);
 	}
 
-	inline int GetScoldSound() const {
+	inline int GetScoldSound() const
+	{
 		return this->ScoldSound.Get(RulesClass::Instance->ScoldSound);
 	}
 
-	inline 	int GetHeight() const {
+	inline 	int GetHeight() const
+	{
 		return this->HoverHeight.Get(RulesClass::Instance->HoverHeight);
 	}
 
-	inline double GetBob() const {
+	inline double GetBob() const
+	{
 		return this->HoverBob.Get(RulesClass::Instance->HoverBob);
 	}
 
-	inline double GetDampen() const {
+	inline double GetDampen() const
+	{
 		return this->HoverDampen.Get(RulesClass::Instance->HoverDampen);
 	}
 
-	inline double GetAccel() const {
+	inline double GetAccel() const
+	{
 		return this->HoverAcceleration.Get(RulesClass::Instance->HoverAcceleration);
 	}
 
-	inline double GetBrake() const {
+	inline double GetBrake() const
+	{
 		return this->HoverBrake.Get(RulesClass::Instance->HoverBrake);
 	}
 
-	inline double GetBoost() const {
+	inline double GetBoost() const
+	{
 		return this->HoverBoost.Get(RulesClass::Instance->HoverBoost);
 	}
 
-	inline static void AddDefaults() {
+	inline static void AddDefaults()
+	{
 		FindOrAllocate(DEFAULT_STR2);
 	}
 
 	static const HoverTypeClass* GetMyHover(int nIdx)
 	{ return HoverTypeClass::FindFromIndex(nIdx); }
 
-	virtual void LoadFromINI(CCINIClass *pINI) override;
+	virtual void LoadFromINI(CCINIClass* pINI) override;
 	virtual void LoadFromStream(PhobosStreamReader& Stm) override;
 	virtual void SaveToStream(PhobosStreamWriter& Stm) override;
 

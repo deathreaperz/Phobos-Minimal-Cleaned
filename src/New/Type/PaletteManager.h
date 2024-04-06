@@ -13,7 +13,7 @@ public:
 	};
 
 	FixedString<32> CachedName;
-	Handle<ConvertClass* , UninitConvert> Convert_Temperate;
+	Handle<ConvertClass*, UninitConvert> Convert_Temperate;
 	Handle<ConvertClass*, UninitConvert> Convert;
 	UniqueGamePtr<BytePalette> Palette;
 	DynamicVectorClass<ColorScheme*>* ColorschemeDataVector;
@@ -45,5 +45,4 @@ private:
 	void Clear_Internal();
 	void CreateConvert();
 	void LoadFromName(const char* PaletteName);
-
 };

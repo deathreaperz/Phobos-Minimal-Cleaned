@@ -46,5 +46,5 @@ public:
 	static bool ListContainsAll(BuildingTypeClass** items, int size, int* intitems, int intsize);
 	static bool ListContainsAny(BuildingTypeClass** items, int size, const DynamicVectorClass<int>& Requirements);
 
-	static bool PrerequisitesListed(BuildingTypeClass** items , int size , TechnoTypeClass* pItem);
+	static bool PrerequisitesListed(BuildingTypeClass** items, int size, TechnoTypeClass* pItem);
 };

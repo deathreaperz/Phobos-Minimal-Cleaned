@@ -45,8 +45,10 @@ DEFINE_HOOK(0x4232CE, AnimClass_Draw_SetPalette, 6)
 
 	const auto pData = AnimTypeExtContainer::Instance.TryFind(pThis->Type);
 
-	if (pData ) {
-		if(const auto pConvertData = pData->Palette) {
+	if (pData)
+	{
+		if (const auto pConvertData = pData->Palette)
+		{
 			R->ECX<ConvertClass*>(pConvertData->GetConvert<PaletteManager::Mode::Temperate>());
 			return 0x4232D4;
 		}
@@ -54,7 +56,6 @@ DEFINE_HOOK(0x4232CE, AnimClass_Draw_SetPalette, 6)
 
 	return 0;
 }
-
 
 // MakeInfantry that fails to place will just end the source animation and cleanup instead of memleaking to game end
 DEFINE_HOOK(0x424B23, AnimClass_Update_FailedToUnlimboInfantry, 0x6)
@@ -93,7 +94,8 @@ DEFINE_HOOK(0x4239F0, AnimClass_UpdateBounce_Damage, 0x8)
 	const auto nLoc = pObj->Location;
 	const auto nDist = abs(nLoc.Y - nCoord.Y) + abs(nLoc.X - nCoord.X);
 
-	if (nDist < nRadius) {
+	if (nDist < nRadius)
+	{
 		auto nDamage = (int)pType->Damage;
 		pObj->ReceiveDamage(&nDamage, Game::AdjustHeight(nDist), pType->Warhead,
 					  pInvoker, false, false, pInvoker ? pInvoker->Owner : pThis->Owner);
@@ -150,7 +152,6 @@ DEFINE_HOOK(0x42513F, AnimClass_Expired_ScorchFlamer, 0x7)
 			if (auto const pAnim3 = TechnoExt_ExtData::SpawnAnim(crd, RulesClass::Instance->LargeFire, 112))
 				AnimExtData::SetAnimOwnerHouseKind(pAnim3, pAnim3->Owner, nullptr);
 		}
-
 	}
 	else if (pType->Scorch)
 	{

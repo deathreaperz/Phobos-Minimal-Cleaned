@@ -124,5 +124,4 @@ private:
 	HouseTypeExtContainer(const HouseTypeExtContainer&) = delete;
 	HouseTypeExtContainer(HouseTypeExtContainer&&) = delete;
 	HouseTypeExtContainer& operator=(const HouseTypeExtContainer& other) = delete;
-
 };

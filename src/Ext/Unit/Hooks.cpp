@@ -38,7 +38,8 @@ DEFINE_HOOK(0x7394FF, UnitClass_TryToDeploy_CantDeployVoice, 0x8)
 
 	VoxClass::Play(GameStrings::EVA_CannotDeployHere());
 
-	if (pThisTechno->VoiceCantDeploy.isset()) {
+	if (pThisTechno->VoiceCantDeploy.isset())
+	{
 		//pThis->QueueVoice(pThisTechno->VoiceCantDeploy);
 		VocClass::PlayAt(pThisTechno->VoiceCantDeploy, pThis->Location);
 	}

@@ -227,7 +227,6 @@ public:
 	NullableVector<TechnoTypeClass*> AttachTag_Types {};
 	NullableVector<TechnoTypeClass*> AttachTag_Ignore {};
 
-
 	Valueable<bool> RecalculateDistanceDamage { false };
 	Valueable<bool> RecalculateDistanceDamage_IgnoreMaxDamage { false };
 	Valueable<int> RecalculateDistanceDamage_Add { 0 };
@@ -280,7 +279,7 @@ public:
 	Valueable<bool> Supress_LostEva { false };
 	Valueable<double> Temporal_HealthFactor { 1.0 };
 
-	PhobosMap<InfantryTypeClass* , AnimTypeClass*> InfDeathAnims {};
+	PhobosMap<InfantryTypeClass*, AnimTypeClass*> InfDeathAnims {};
 
 	Valueable<int> Sonar_Duration { 0 };
 	Valueable<int> DisableWeapons_Duration { 0 };
@@ -490,4 +489,3 @@ public:
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
 	static void Clear();
 };
-

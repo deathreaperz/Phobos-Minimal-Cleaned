@@ -10,7 +10,6 @@
 
 struct LevitateCharacteristics
 {
-
 	double Drag { 0.05 }; // rate that jellyfish slows down
 	// max velocity that jellyfish can move again when...
 	double Vel_Max_Happy { 4.0 }; //   ...just puttering around
@@ -34,7 +33,7 @@ DEFINE_LOCO(Levitate, 3DC0B295-6546-11D3-80B0-00902792494C)
 public:
 
 	//IUnknown
-	virtual HRESULT __stdcall QueryInterface(REFIID iid, LPVOID* ppvObject)
+	virtual HRESULT __stdcall QueryInterface(REFIID iid, LPVOID * ppvObject)
 	{
 		return LocomotionClass::QueryInterface(iid, ppvObject);
 	}
@@ -43,9 +42,10 @@ public:
 	virtual ULONG __stdcall Release() { return LocomotionClass::Release(); }
 
 	//IPersist
-	virtual HRESULT __stdcall GetClassID(CLSID* pClassID) {
-
-		if (pClassID == nullptr) {
+	virtual HRESULT __stdcall GetClassID(CLSID * pClassID)
+	{
+		if (pClassID == nullptr)
+		{
 			return E_POINTER;
 		}
 
@@ -57,16 +57,16 @@ public:
 	//IPersistStream
 	virtual HRESULT __stdcall IsDirty() { return LocomotionClass::IsDirty(); }
 
-	virtual HRESULT __stdcall Load(IStream* pStm) {
-
-		HRESULT hr = LocomotionClass::Internal_Load(this,pStm);
+	virtual HRESULT __stdcall Load(IStream * pStm)
+	{
+		HRESULT hr = LocomotionClass::Internal_Load(this, pStm);
 		return hr;
 	}
 
-	virtual HRESULT __stdcall Save(IStream* pStm, BOOL fClearDirty)  {
-
+	virtual HRESULT __stdcall Save(IStream * pStm, BOOL fClearDirty)
+	{
 		this->Characteristic.Drag = 1.00;
-		HRESULT hr = LocomotionClass::Internal_Save(this, pStm , fClearDirty);
+		HRESULT hr = LocomotionClass::Internal_Save(this, pStm, fClearDirty);
 		if (SUCCEEDED(hr))
 		{
 			GameDebugLog::Log("LevitateLoco Save !\n");
@@ -88,7 +88,8 @@ public:
 	virtual ~LevitateLocomotionClass() override = default; // should be SDDTOR in fact
 	virtual int Size() override { return sizeof(*this); }
 
-	virtual HRESULT __stdcall Link_To_Object(void* pointer) override {
+	virtual HRESULT __stdcall Link_To_Object(void* pointer) override
+	{
 		HRESULT hr = LocomotionClass::Link_To_Object(pointer);
 		//if (SUCCEEDED(hr)) {
 		//	GameDebugLog::Log("LevitateLocomotionClass - Sucessfully linked to \"%s\"\n", Owner->get_ID());
@@ -97,7 +98,8 @@ public:
 	}
 
 	virtual bool __stdcall Is_Moving() override { return IsMoving; };
-	virtual CoordStruct __stdcall Destination() override {
+	virtual CoordStruct __stdcall Destination() override
+	{
 		if (IsMoving)
 		{
 			return DestinationCoord;
@@ -106,14 +108,16 @@ public:
 		return CoordStruct::Empty;
 	}
 
-	virtual CoordStruct __stdcall Head_To_Coord() override {
+	virtual CoordStruct __stdcall Head_To_Coord() override
+	{
 		if (IsMoving)
 			return HeadToCoord;
 
 		return LinkedTo->GetCenterCoords();
 	}
 
-	virtual Move __stdcall Can_Enter_Cell(CellStruct cell) override {
+	virtual Move __stdcall Can_Enter_Cell(CellStruct cell) override
+	{
 		return LinkedTo->IsCellOccupied(MapClass::Instance->GetCellAt(cell), FacingType::None, -1, nullptr, false);
 	}
 
@@ -127,14 +131,16 @@ public:
 	//virtual ZGradient __stdcall Z_Gradient() override { return LocomotionClass::Z_Gradient(); }
 	virtual bool __stdcall Process() override;
 
-	virtual void __stdcall Move_To(CoordStruct to) override {
+	virtual void __stdcall Move_To(CoordStruct to) override
+	{
 		DestinationCoord = to;
 
 		IsMoving = HeadToCoord != CoordStruct::Empty
 			|| DestinationCoord != CoordStruct::Empty;
 	}
 
-	virtual void __stdcall Stop_Moving() override {
+	virtual void __stdcall Stop_Moving() override
+	{
 		HeadToCoord = CoordStruct::Empty;
 		DestinationCoord = CoordStruct::Empty;
 
@@ -153,7 +159,8 @@ public:
 	virtual Layer __stdcall In_Which_Layer()override { return Layer::Ground; }
 	virtual void __stdcall Force_Immediate_Destination(CoordStruct coord) override { DestinationCoord = coord; }
 	//virtual void __stdcall Force_New_Slope(int ramp) override { }
-	virtual bool __stdcall Is_Moving_Now() override {
+	virtual bool __stdcall Is_Moving_Now() override
+	{
 		if (LinkedTo->PrimaryFacing.Is_Rotating())
 			return true;
 
@@ -168,7 +175,8 @@ public:
 	//virtual int __stdcall Get_Status() override { return 0; }
 	//virtual void __stdcall Acquire_Hunter_Seeker_Target() override { }
 	//virtual bool __stdcall Is_Surfacing() override { return LocomotionClass::Is_Surfacing(); }
-	virtual void __stdcall Mark_All_Occupation_Bits(int mark) override {
+	virtual void __stdcall Mark_All_Occupation_Bits(int mark) override
+	{
 		auto headto = Head_To_Coord();
 		if (mark != 0)
 		{
@@ -180,7 +188,8 @@ public:
 		}
 	}
 
-	virtual bool __stdcall Is_Moving_Here(CoordStruct to) override {
+	virtual bool __stdcall Is_Moving_Here(CoordStruct to) override
+	{
 		auto nBuff = CellClass::Coord2Cell(Head_To_Coord());
 		CoordStruct headto_cell { nBuff.X , nBuff.Y ,0 };
 		return nBuff.X == headto_cell.X && nBuff.Y == headto_cell.Y && std::abs(headto_cell.Z - to.Z) <= Unsorted::CellHeight;
@@ -230,9 +239,10 @@ public:
 		, IsMoving { false }
 		, DestinationCoord { }
 		, HeadToCoord { }
-	{ }
+	{
+	}
 
-	LevitateLocomotionClass(noinit_t) : LocomotionClass {noinit_t()}
+	LevitateLocomotionClass(noinit_t) : LocomotionClass { noinit_t() }
 	{ }
 
 public:

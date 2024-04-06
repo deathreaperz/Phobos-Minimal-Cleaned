@@ -10,7 +10,8 @@
 
 #include <New/Type/ShieldTypeClass.h>
 
-enum class SelfHealingStatus : char {
+enum class SelfHealingStatus : char
+{
 	Online = 1, Offline = 2
 };
 
@@ -27,7 +28,7 @@ class ShieldClass final
 public:
 	ShieldClass();
 	ShieldClass(TechnoClass* pTechno, bool isAttached);
-	ShieldClass(TechnoClass* pTechno) : ShieldClass(pTechno, false) {};
+	ShieldClass(TechnoClass* pTechno) : ShieldClass(pTechno, false) { };
 	~ShieldClass() noexcept = default;
 
 	//void OnInit() { }
@@ -188,10 +189,10 @@ private:
 	TechnoTypeClass* CurTechnoType;
 	int HP;
 
-	struct Timers {
-
-		bool Load(PhobosStreamReader& Stm, bool RegisterForChange) {
-
+	struct Timers
+	{
+		bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+		{
 			return Stm
 				.Process(this->SelfHealing_CombatRestart)
 				.Process(this->SelfHealing)
@@ -201,8 +202,8 @@ private:
 				.Success();
 		}
 
-		bool Save(PhobosStreamWriter& Stm) const {
-
+		bool Save(PhobosStreamWriter& Stm) const
+		{
 			return Stm
 				.Process(this->SelfHealing_CombatRestart)
 				.Process(this->SelfHealing)
@@ -217,10 +218,9 @@ private:
 		CDTimerClass SelfHealing_Warhead;
 		CDTimerClass Respawn;
 		CDTimerClass Respawn_Warhead;
-
 	} Timers;
 
-	Handle<AnimClass* , UninitAnim> IdleAnim;
+	Handle<AnimClass*, UninitAnim> IdleAnim;
 	bool Cloak;
 	bool Online;
 	bool Temporal;

@@ -13,7 +13,8 @@ UniqueGamePtrB<ConvertClass> SideExtData::s_DialogBackgroundConvert = nullptr;
 
 int SideExtData::CurrentLoadTextColor = -1;
 
-void SideExtData::Initialize() {
+void SideExtData::Initialize()
+{
 	const char* pID = this->AttachedToObject->ID;
 
 	if (IS_SAME_STR_(pID, "Nod"))
@@ -89,7 +90,7 @@ const char* SideExtData::GetMultiplayerScoreBarFilename(unsigned int index) cons
 
 	if (auto const pMarker = strstr(filename, "~~"))
 	{
-		std::string number_ = std::format("{:02}" ,index + 1);
+		std::string number_ = std::format("{:02}", index + 1);
 		pMarker[0] = number_[0];
 		pMarker[1] = number_[1];
 	}
@@ -100,14 +101,16 @@ const char* SideExtData::GetMultiplayerScoreBarFilename(unsigned int index) cons
 bool SideExtData::isNODSidebar()
 {
 	auto const PlayerSideIndex = ScenarioClass::Instance->PlayerSideIndex;
-	if (const auto pSide = SideClass::Array->GetItemOrDefault(PlayerSideIndex)) {
+	if (const auto pSide = SideClass::Array->GetItemOrDefault(PlayerSideIndex))
+	{
 		return !SideExtContainer::Instance.Find(pSide)->Sidebar_GDIPositions.Get(PlayerSideIndex == 0);
 	}
 
 	return PlayerSideIndex == 0;
 }
 
-int SideExtData::GetSurvivorDivisor() const {
+int SideExtData::GetSurvivorDivisor() const
+{
 	return this->SurvivorDivisor.Get(this->GetDefaultSurvivorDivisor());
 }
 
@@ -172,7 +175,6 @@ Iterator<TechnoTypeClass*> SideExtData::GetParaDropTypes() const
 
 Iterator<InfantryTypeClass*> SideExtData::GetDefaultParaDropTypes() const
 {
-
 	switch (this->ArrayIndex)
 	{
 	case 1:
@@ -201,7 +203,8 @@ Iterator<int> SideExtData::GetDefaultParaDropNum() const
 
 Iterator<int> SideExtData::GetParaDropNum() const
 {
-	if (this->ParaDropTypes.HasValue() && this->ParaDropNum.HasValue()) {
+	if (this->ParaDropTypes.HasValue() && this->ParaDropNum.HasValue())
+	{
 		return this->ParaDropNum;
 	}
 
@@ -210,7 +213,8 @@ Iterator<int> SideExtData::GetParaDropNum() const
 
 Iterator<int> SideExtData::GetBaseDefenseCounts() const
 {
-	if (this->BaseDefenseCounts.HasValue()) {
+	if (this->BaseDefenseCounts.HasValue())
+	{
 		return this->BaseDefenseCounts;
 	}
 
@@ -235,7 +239,8 @@ Iterator<int> SideExtData::GetDefaultBaseDefenseCounts() const
 
 Iterator<BuildingTypeClass*> SideExtData::GetBaseDefenses() const
 {
-	if (this->BaseDefenses.HasValue()) {
+	if (this->BaseDefenses.HasValue())
+	{
 		return this->BaseDefenses;
 	}
 
@@ -260,7 +265,8 @@ Iterator<BuildingTypeClass*> SideExtData::GetDefaultBaseDefenses() const
 
 InfantryTypeClass* SideExtData::GetDisguise() const
 {
-	if (this->Disguise.isset()) {
+	if (this->Disguise.isset())
+	{
 		return this->Disguise;
 	}
 
@@ -319,10 +325,10 @@ void SideExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Engineer.Read(exINI, pSection, "Engineer", true);
 	this->Technician.Read(exINI, pSection, "Technician", true);
 	this->ParaDropPlane.Read(exINI, pSection, "ParaDrop.Aircraft");
-	this->SpyPlane.Read(exINI, pSection, "SpyPlane.Aircraft" , true);
+	this->SpyPlane.Read(exINI, pSection, "SpyPlane.Aircraft", true);
 	this->HunterSeeker.Read(exINI, pSection, "HunterSeeker", true);
 
-	this->ParaDropTypes.Read(exINI, pSection, "ParaDrop.Types" , true);
+	this->ParaDropTypes.Read(exINI, pSection, "ParaDrop.Types", true);
 	this->ParaDropNum.Read(exINI, pSection, "ParaDrop.Num");
 
 	this->MessageTextColorIndex.Read(exINI, pSection, "MessageTextColor");
@@ -354,9 +360,11 @@ void SideExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->ScoreMultiplayPalette.Read(pINI, pSection, "MultiplayerScore.Palette");
 	this->ScoreMultiplayBars.Read(pINI, pSection, "MultiplayerScore.Bars");
 
-	for (unsigned int i = 0; i < 10; ++i) {
+	for (unsigned int i = 0; i < 10; ++i)
+	{
 		auto pFilename = this->GetMultiplayerScoreBarFilename(i);
-		if (!PCX::Instance->GetSurface(pFilename)) {
+		if (!PCX::Instance->GetSurface(pFilename))
+		{
 			PCX::Instance->LoadFile(pFilename);
 		}
 	}
@@ -478,7 +486,6 @@ void SideExtData::Serialize(T& Stm)
 		.Process(this->GClock_Transculency)
 		//.Process(this->GClock_Palette)
 
-
 		.Process(this->SurvivorDivisor)
 		.Process(this->Crew)
 		.Process(this->Engineer)
@@ -552,7 +559,7 @@ DEFINE_HOOK(0x6A4600, SideClass_CTOR, 0x6)
 	GET(SideClass*, pItem, ESI);
 	GET(int, nIdx, EAX);
 
-	if(auto pExt = SideExtContainer::Instance.Allocate(pItem))
+	if (auto pExt = SideExtContainer::Instance.Allocate(pItem))
 		pExt->ArrayIndex = nIdx;
 
 	return 0;
@@ -579,7 +586,7 @@ DEFINE_HOOK(0x6A4780, SideClass_SaveLoad_Prefix, 0x6)
 
 DEFINE_HOOK(0x6A488B, SideClass_Load_Suffix, 0x6)
 {
-   	SideExtContainer::Instance.LoadStatic();
+	SideExtContainer::Instance.LoadStatic();
 
 	return 0;
 }
@@ -590,16 +597,16 @@ DEFINE_HOOK(0x6A48FC, SideClass_Save_Suffix, 0x5)
 	return 0;
 }
 
- //DEFINE_HOOK(0x679A10, SideClass_LoadAllFromINI, 0x5)
- //{
- //	GET_STACK(CCINIClass*, pINI, 0x4);
+//DEFINE_HOOK(0x679A10, SideClass_LoadAllFromINI, 0x5)
+//{
+//	GET_STACK(CCINIClass*, pINI, 0x4);
 
- //	for (auto pSide : *SideClass::Array) {
- //		SideExtContainer::Instance.LoadFromINI(pSide, pINI, !pINI->GetSection(pSide->ID));
- //	}
+//	for (auto pSide : *SideClass::Array) {
+//		SideExtContainer::Instance.LoadFromINI(pSide, pINI, !pINI->GetSection(pSide->ID));
+//	}
 
- //	return 0;
- //}
+//	return 0;
+//}
 
 /*
 FINE_HOOK(6725C4, RulesClass_Addition_Sides, 8)

@@ -11,46 +11,46 @@
 class TacticalExt
 {
 public:
-/*
-	static IStream* g_pStm;
+	/*
+		static IStream* g_pStm;
 
-	class ExtData final : public Extension<TacticalClass>
-	{
-	public:
-		static constexpr size_t Canary = 0x52DEBA12;
-		using base_type = TacticalClass;
+		class ExtData final : public Extension<TacticalClass>
+		{
+		public:
+			static constexpr size_t Canary = 0x52DEBA12;
+			using base_type = TacticalClass;
 
-	public:
+		public:
 
-		ExtData(TacticalClass* OwnerObject) : Extension<TacticalClass>(OwnerObject)
-		{ }
+			ExtData(TacticalClass* OwnerObject) : Extension<TacticalClass>(OwnerObject)
+			{ }
 
-		virtual ~ExtData() override = default;
-		void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
-		void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
+			virtual ~ExtData() override = default;
+			void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
+			void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
+
+		private:
+			template <typename T>
+			void Serialize(T& Stm);
+		};
 
 	private:
-		template <typename T>
-		void Serialize(T& Stm);
-	};
+		static std::unique_ptr<ExtData> Data;
+	public:
 
-private:
-	static std::unique_ptr<ExtData> Data;
-public:
+		static void Allocate(TacticalClass* pThis);
+		static void Remove(TacticalClass* pThis);
 
-	static void Allocate(TacticalClass* pThis);
-	static void Remove(TacticalClass* pThis);
+		static ExtData* Global()
+		{
+			return Data.get();
+		}
 
-	static ExtData* Global()
-	{
-		return Data.get();
-	}
-
-	static void Clear()
-	{
-		Allocate(TacticalClass::Instance);
-	}
-*/
+		static void Clear()
+		{
+			Allocate(TacticalClass::Instance);
+		}
+	*/
 	//void DrawDebugOverlay();
 	//bool DrawCurrentCell(); //TODO
 	//bool DebugDrawAllCellInfo(); //TODO

@@ -17,8 +17,8 @@ DEFINE_HOOK(0x47C20B, CellClass_CellColor_TiberiumRadarColor, 5)
 	const auto pTib = TiberiumClass::Array->Items[nTibIDx];
 	const auto pTiberiumExt = TiberiumExtContainer::Instance.Find(pTib);
 
-	if (pTiberiumExt->MinimapColor.isset()) {
-
+	if (pTiberiumExt->MinimapColor.isset())
+	{
 		auto& color = pTiberiumExt->MinimapColor.Get();
 
 		arg0->R = color.R;

@@ -108,4 +108,3 @@ DEFINE_HOOK(0x6EA6D3, TeamClass_CanAdd_ReplaceLoop, 0x7)
 		|| TeamExtData::GroupAllowed(pForce->Entries[idx].Type, TechnoExtContainer::Instance.Find(pGoingToBeRecuited)->Type)
 		? ContinueCheck : ContinueLoop;
 }
-

@@ -44,7 +44,7 @@ DEFINE_HOOK(0x46A290, BulletClass_Logics_Return, 0x5)
 	GET_BASE(CoordStruct*, coords, 0x8);
 	PhobosGlobal::Instance()->DetonateDamageArea = true;
 
-	if (pThis->WeaponType )
+	if (pThis->WeaponType)
 	{
 		auto const pWeaponExt = WeaponTypeExtContainer::Instance.Find(pThis->WeaponType);
 		int defaultDamage = pThis->WeaponType->Damage;
@@ -59,11 +59,11 @@ DEFINE_HOOK(0x46A290, BulletClass_Logics_Return, 0x5)
 				damage = pWeaponExt->ExtraWarheads_DamageOverrides[i];
 
 			AbstractClass* pTarget = pThis->Target ? pThis->Target : MapClass::Instance->GetCellAt(coords);
-			WarheadTypeExtData::DetonateAt(pWH, pThis->Target, *coords, pThis->Owner, damage , pOwner);
+			WarheadTypeExtData::DetonateAt(pWH, pThis->Target, *coords, pThis->Owner, damage, pOwner);
 		}
 	}
 
-		// Return to sender
+	// Return to sender
 	if (pThis->Type && pThis->Owner)
 	{
 		auto const pTypeExt = BulletTypeExtContainer::Instance.Find(pThis->Type);
@@ -93,7 +93,7 @@ DEFINE_HOOK(0x489286, MapClass_DamageArea, 0x6)
 
 	if (auto const pWHExt = WarheadTypeExtContainer::Instance.TryFind(pWH))
 	{
-		 GET(const int, Damage, EDX);
+		GET(const int, Damage, EDX);
 		// GET_BASE(const bool, AffectsTiberium, 0x10);
 		GET(CoordStruct*, pCoords, ECX);
 		GET_BASE(TechnoClass*, pOwner, 0x08);
@@ -103,22 +103,24 @@ DEFINE_HOOK(0x489286, MapClass_DamageArea, 0x6)
 		if (!pWHExt->ShakeIsLocal || TacticalClass::Instance->CoordsToClient(pCoords, &screenCoords))
 		{
 			if (pWH->ShakeXhi || pWH->ShakeXlo)
-				GeneralUtils::CalculateShakeVal(GScreenClass::Instance->ScreenShakeX, Random2Class::NonCriticalRandomNumber->RandomRanged(pWH->ShakeXhi, pWH->ShakeXlo) , pWHExt->Shake_UseAlternativeCalculation);
+				GeneralUtils::CalculateShakeVal(GScreenClass::Instance->ScreenShakeX, Random2Class::NonCriticalRandomNumber->RandomRanged(pWH->ShakeXhi, pWH->ShakeXlo), pWHExt->Shake_UseAlternativeCalculation);
 
 			if (pWH->ShakeYhi || pWH->ShakeYlo)
-				GeneralUtils::CalculateShakeVal(GScreenClass::Instance->ScreenShakeY, Random2Class::NonCriticalRandomNumber->RandomRanged(pWH->ShakeYhi, pWH->ShakeYlo) , pWHExt->Shake_UseAlternativeCalculation);
+				GeneralUtils::CalculateShakeVal(GScreenClass::Instance->ScreenShakeY, Random2Class::NonCriticalRandomNumber->RandomRanged(pWH->ShakeYhi, pWH->ShakeYlo), pWHExt->Shake_UseAlternativeCalculation);
 		}
 
 		auto const pDecidedOwner = !pHouse && pOwner ? pOwner->Owner : pHouse;
 
-		for (const auto& Lauch : pWHExt->Launchs) {
-			if (Lauch.LaunchWhat) {
+		for (const auto& Lauch : pWHExt->Launchs)
+		{
+			if (Lauch.LaunchWhat)
+			{
 				Helpers::Otamaa::LauchSW(Lauch, pDecidedOwner, *pCoords, pOwner);
 			}
 		}
 
 		if (PhobosGlobal::Instance()->DetonateDamageArea)
-			pWHExt->Detonate(pOwner, pDecidedOwner, nullptr, *pCoords , Damage);
+			pWHExt->Detonate(pOwner, pDecidedOwner, nullptr, *pCoords, Damage);
 	}
 
 	return 0;

@@ -10,13 +10,15 @@ namespace Helper
 	{
 		inline AnimTypeClass* PickSplashAnim(NullableVector<AnimTypeClass*> const& nSplash, Nullable<AnimTypeClass*> const& nWake, bool Random, bool IsMeteor)
 		{
-			if (nSplash.HasValue()) {
-				if (nSplash.size() > 0) {
+			if (nSplash.HasValue())
+			{
+				if (nSplash.size() > 0)
+				{
 					return nSplash[Random ? ScenarioClass::Instance->Random.RandomFromMax((nSplash.size() - 1)) : 0];
 				}
 			}
 
-			return !IsMeteor && nWake.isset()  ? nWake.Get() : RulesClass::Instance->Wake;
+			return !IsMeteor && nWake.isset() ? nWake.Get() : RulesClass::Instance->Wake;
 		}
 
 		inline std::pair<bool, int> DetonateWarhead(int nDamage, WarheadTypeClass* pWarhead, bool bWarheadDetonate, const CoordStruct& Where, TechnoClass* pInvoker, HouseClass* pOwner, bool DamageConsiderVet)
@@ -27,7 +29,7 @@ namespace Helper
 
 				if (bWarheadDetonate)
 				{
-					WarheadTypeExtData::DetonateAt(pWarhead, Where, pInvoker, nDamage , pOwner);
+					WarheadTypeExtData::DetonateAt(pWarhead, Where, pInvoker, nDamage, pOwner);
 				}
 				else
 				{
@@ -40,9 +42,10 @@ namespace Helper
 			return { false , 0 };
 		}
 
-		inline std::pair<bool ,int> Detonate(Nullable<WeaponTypeClass*> const& pWeapon, int nDamage, WarheadTypeClass* pWarhead, bool bWarheadDetonate, const CoordStruct& Where, TechnoClass* pInvoker, HouseClass* pOwner, bool DamageConsiderVet)
+		inline std::pair<bool, int> Detonate(Nullable<WeaponTypeClass*> const& pWeapon, int nDamage, WarheadTypeClass* pWarhead, bool bWarheadDetonate, const CoordStruct& Where, TechnoClass* pInvoker, HouseClass* pOwner, bool DamageConsiderVet)
 		{
-			if (!pWeapon.isset()) {
+			if (!pWeapon.isset())
+			{
 				return DetonateWarhead(nDamage, pWarhead, bWarheadDetonate, Where, pInvoker, pOwner, DamageConsiderVet);
 			}
 
@@ -56,20 +59,20 @@ namespace Helper
 			if (!nAnims.empty())
 			{
 				auto nCreateAnim = [&](int nIndex)
-				{
-					if (auto const pMultipleSelected = nAnims[nIndex])
 					{
-						for (int k = nAmount[nIndex]; k > 0; --k)
+						if (auto const pMultipleSelected = nAnims[nIndex])
 						{
-							AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pMultipleSelected, Where),
-								pOwner,
-								nullptr,
-								pInvoker,
-								false
-							) ;
+							for (int k = nAmount[nIndex]; k > 0; --k)
+							{
+								AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pMultipleSelected, Where),
+									pOwner,
+									nullptr,
+									pInvoker,
+									false
+								);
+							}
 						}
-					}
-				};
+					};
 
 				if (!bRandom)
 				{
@@ -85,13 +88,13 @@ namespace Helper
 			}
 		}
 
-		inline std::tuple<bool ,int , int> CheckMinMax(double nMin, double nMax)
+		inline std::tuple<bool, int, int> CheckMinMax(double nMin, double nMax)
 		{
 			int nMinL = (int)(std::abs(nMin) * 256.0);
 			int nMaxL = (int)(std::abs(nMax) * 256.0);
 
 			if (!nMinL && !nMaxL)
-				return {false ,0,0};
+				return { false ,0,0 };
 
 			if (nMinL > nMaxL)
 				std::swap(nMinL, nMaxL);
@@ -103,10 +106,11 @@ namespace Helper
 		{
 			auto const& [nMinMax, nMinL, nMaxL] = CheckMinMax(nMin, nMax);
 
-			if (nMinMax) {
+			if (nMinMax)
+			{
 				auto nRandomCoords = MapClass::GetRandomCoordsNear(nPos,
 					(std::abs(ScenarioClass::Instance->Random.RandomRanged(nMinL, nMaxL)) *
-					MaxImpl(Increment, 1)),
+						MaxImpl(Increment, 1)),
 					ScenarioClass::Instance->Random.RandomBool());
 
 				nRandomCoords.Z = nPos.Z + MapClass::Instance->GetCellFloorHeight(nRandomCoords);

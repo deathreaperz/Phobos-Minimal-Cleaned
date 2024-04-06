@@ -22,5 +22,5 @@ public:
 	BuildingClass* GetAlternateLauchSite(const SWTypeExtData* pData, SuperClass* pThis) const;
 
 	static SuperWeaponTypeClass* CurrentNukeType;
-	static bool DropNukeAt(SuperWeaponTypeClass* pSuper , CoordStruct const& to, TechnoClass* Owner , HouseClass* OwnerHouse , WeaponTypeClass* pPayload);
+	static bool DropNukeAt(SuperWeaponTypeClass* pSuper, CoordStruct const& to, TechnoClass* Owner, HouseClass* OwnerHouse, WeaponTypeClass* pPayload);
 };

@@ -85,7 +85,6 @@ void Phobos::ExecuteLua()
 						// do not exceed maximum length of the string , otherwise it will broke the .exe file
 						Patch::Apply_withmemcpy(addr, result.c_str(), protectFlag, PAGE_READWRITE, (size_t)maxlen);
 					}
-
 				}
 				lua_pop(L, 1);
 			}

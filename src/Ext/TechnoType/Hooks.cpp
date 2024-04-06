@@ -42,17 +42,19 @@ DEFINE_HOOK(0x6F64A0, TechnoClass_DrawHealthBar_Hide, 0x5)
 
 	const auto what = pThis->WhatAmI();
 
-	if(what == UnitClass::AbsID) {
+	if (what == UnitClass::AbsID)
+	{
 		const auto pUnit = (UnitClass*)pThis;
 
 		if (pUnit->DeathFrameCounter > 0)
 			return DoNotDraw;
 	}
 
-	if(what == BuildingClass::AbsID) {
+	if (what == BuildingClass::AbsID)
+	{
 		const auto pBld = (BuildingClass*)pThis;
 
-		if(BuildingTypeExtContainer::Instance.Find(pBld->Type)->Firestorm_Wall)
+		if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->Firestorm_Wall)
 			return DoNotDraw;
 	}
 
@@ -83,7 +85,6 @@ DEFINE_HOOK(0x6F3C56, TechnoClass_GetFLH_TurretMultiOffset, 0x5) //0
 
 DEFINE_HOOK(0x6F3E6E, FootClass_firecoord_6F3D60_TurretMultiOffset, 0x6) //0
 {
-
 	GET(TechnoTypeClass*, pType, EBP);
 	LEA_STACK(Matrix3D*, mtx, STACK_OFFS(0xCC, 0x90));
 
@@ -299,25 +300,28 @@ AnimTypeClass* GetDeployAnim(UnitClass* pThis)
 	return pThis->Type->DeployingAnim;
 }
 
-bool NOINLINE SetAnim(AnimTypeClass* pAnimType , UnitClass* pUnit , bool isDeploying)
+bool NOINLINE SetAnim(AnimTypeClass* pAnimType, UnitClass* pUnit, bool isDeploying)
 {
-	if(pUnit->DeployAnim) {
+	if (pUnit->DeployAnim)
+	{
 		return true;
 	}
 
 	auto const pExt = TechnoTypeExtContainer::Instance.Find(pUnit->Type);
 
-	if (pAnimType) {
+	if (pAnimType)
+	{
 		auto const pAnim = GameCreate<AnimClass>(pAnimType,
 			pUnit->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0,
 				!isDeploying ? pExt->DeployingAnim_ReverseForUndeploy.Get() : false);
 
-			pUnit->DeployAnim = pAnim;
-			pAnim->SetOwnerObject(pUnit);
+		pUnit->DeployAnim = pAnim;
+		pAnim->SetOwnerObject(pUnit);
 
-			if (pExt->DeployingAnim_UseUnitDrawer) {
-				pAnim->LightConvert = pUnit->GetRemapColour();
-			}
+		if (pExt->DeployingAnim_UseUnitDrawer)
+		{
+			pAnim->LightConvert = pUnit->GetRemapColour();
+		}
 
 		return true;
 	}
@@ -325,29 +329,29 @@ bool NOINLINE SetAnim(AnimTypeClass* pAnimType , UnitClass* pUnit , bool isDeplo
 	return false;
 }
 
-DEFINE_HOOK(0x739B90 , UnitClass_Deploy_DeployAnim , 0x6)
+DEFINE_HOOK(0x739B90, UnitClass_Deploy_DeployAnim, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 
 	const auto pAnimType = GetDeployAnim(pThis);
 
-	if(!pAnimType)
+	if (!pAnimType)
 		return 0x739C6A;
 
-	return SetAnim(pAnimType , pThis , true) ?
+	return SetAnim(pAnimType, pThis, true) ?
 		0x739C20 : 0x739C62;
 }
 
-DEFINE_HOOK(0x739D73 , UnitClass_UnDeploy_DeployAnim , 0x6)
+DEFINE_HOOK(0x739D73, UnitClass_UnDeploy_DeployAnim, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 
 	const auto pAnimType = GetDeployAnim(pThis);
 
-	if(!pAnimType)
+	if (!pAnimType)
 		return 0x739E4F;
 
-	return SetAnim(pAnimType , pThis , false) ?
+	return SetAnim(pAnimType, pThis, false) ?
 		0x739E04 : 0x739E46;
 }
 

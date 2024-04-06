@@ -63,7 +63,6 @@ void BuildingTypeExtData::UpdateFoundationRadarShape()
 		// are special-cased to not draw the pixels outside the
 		// foundation.
 
-
 		if (rows > 0)
 		{
 			int increment = 0;
@@ -286,7 +285,6 @@ void BuildingTypeExtData::DisplayPlacementPreview()
 		{
 			pDecidedPal = pCustom->GetConvert<PaletteManager::Mode::Temperate>();
 		}
-
 	}
 	else
 	{
@@ -383,7 +381,6 @@ int BuildingTypeExtData::GetBuildingAnimTypeIndex(BuildingClass* pThis, const Bu
 			const auto nIndex = pThis->Occupants[0]->Owner->Type->ArrayIndex;
 			if (nIndex != -1)
 			{
-
 				AnimTypeClass* pDecidedAnim = nullptr;
 
 				switch (nSlot)
@@ -416,7 +413,6 @@ int BuildingTypeExtData::GetBuildingAnimTypeIndex(BuildingClass* pThis, const Bu
 	}
 
 	return AnimTypeClass::FindIndexById(pDefault);
-
 }
 
 bool __fastcall BuildingTypeExtData::IsFactory(BuildingClass* pThis, void* _)
@@ -638,7 +634,6 @@ int BuildingTypeExtData::GetUpgradesAmount(BuildingTypeClass* pBuilding, HouseCl
 			checkUpgrade(pTPowersUp);
 	}
 
-
 	for (auto pTPowersUp : BuildingTypeExtContainer::Instance.Find(pBuilding)->PowersUp_Buildings)
 		checkUpgrade(pTPowersUp);
 
@@ -826,7 +821,6 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 					Debug::Log("BuildingType %s has a SpyEffect.StolenTechIndex of %d. The value has to be less than 32.\n", pSection, (*pos));
 					Debug::RegisterParserError();
 				}
-
 			}
 			while (++pos != end);
 		}
@@ -958,12 +952,13 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->Explodes_DuringBuildup.Read(exINI, pSection, "Explodes.DuringBuildup");
 
-		if (Phobos::Otamaa::CompatibilityMode) {
+		if (Phobos::Otamaa::CompatibilityMode)
+		{
 			if (pThis->NumberOfDocks > 0)
 			{
 				this->DockPoseDir.clear();
 				this->DockPoseDir.resize(pThis->NumberOfDocks);
-				std::string base_tag ("AircraftDockingDir");
+				std::string base_tag("AircraftDockingDir");
 
 				Nullable<DirType> nLandingDir;
 				nLandingDir.Read(exINI, pSection, "AircraftDockingDir");
@@ -1036,7 +1031,6 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 				//char keyDock[0x40];
 				this->DockPoseDir.clear();
 				this->DockPoseDir.resize(pThis->NumberOfDocks);
-
 
 				for (int i = 0; i < pThis->NumberOfDocks; ++i)
 				{

@@ -116,7 +116,8 @@ namespace detail
 {
 #pragma region getresult
 	template <typename T>
-	inline bool getresult(T& value, const std::string& parser, const char* pSection, const char* pKey, bool allocate = false) {
+	inline bool getresult(T& value, const std::string& parser, const char* pSection, const char* pKey, bool allocate = false)
+	{
 		static_assert(true, "Not Implemented!");
 		return true;
 	}
@@ -161,8 +162,8 @@ namespace detail
 	template <>
 	inline bool getresult<TechnoTypeConvertData>(TechnoTypeConvertData& value, const std::string& parser, const char* pSection, const char* pKey, bool allocate)
 	{
-		if (!parser.empty()) {
-
+		if (!parser.empty())
+		{
 			std::string copy = parser;
 			std::erase(copy, ' ');
 
@@ -175,7 +176,8 @@ namespace detail
 			auto nSecondPair = copy.substr(nDelim + 1);
 			const auto nDelim2 = nSecondPair.find(":");
 
-			if (nDelim2 != std::string::npos) {
+			if (nDelim2 != std::string::npos)
+			{
 				auto nSecondPair_1 = nSecondPair.substr(0, nDelim2);
 				auto nSecondPair_2 = nSecondPair.substr(nDelim2 + 1);
 
@@ -197,7 +199,9 @@ namespace detail
 				detail::getresult<AffectedHouse>(value.Eligible, nSecondPair_2, pSection, pKey, allocate);
 
 				//Debug::Log("parsing[%s]%s with 3 values [%s - %s - %s]\n", pSection , pKey , nFirst.c_str() , nSecondPair_1.c_str() , nSecondPair_2.c_str());
-			} else {
+			}
+			else
+			{
 				value.From.clear();
 				char* context = nullptr;
 				for (auto pCur = strtok_s(nFirst.data(), Phobos::readDelims, &context);
@@ -224,15 +228,18 @@ namespace detail
 	template <>
 	inline bool getresult<TileType>(TileType& value, const std::string& parser, const char* pSection, const char* pKey, bool bAllocate)
 	{
-		if (!parser.empty()) {
-
-			if (GameStrings::IsBlank(parser.c_str())) {
+		if (!parser.empty())
+		{
+			if (GameStrings::IsBlank(parser.c_str()))
+			{
 				value = TileType::ClearToSandLAT;
 				return true;
 			}
 
-			for (size_t i = 1; i < EnumFunctions::TileType_ToStrings.size(); ++i) {
-				if (IS_SAME_STR_(parser.c_str(), EnumFunctions::TileType_ToStrings[i])) {
+			for (size_t i = 1; i < EnumFunctions::TileType_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(parser.c_str(), EnumFunctions::TileType_ToStrings[i]))
+				{
 					value = TileType(i);
 					return true;
 				}
@@ -246,15 +253,18 @@ namespace detail
 	template <>
 	inline bool getresult<LandType>(LandType& value, const std::string& parser, const char* pSection, const char* pKey, bool bAllocate)
 	{
-		if (!parser.empty()) {
-
-			if (GameStrings::IsBlank(parser.c_str())) {
+		if (!parser.empty())
+		{
+			if (GameStrings::IsBlank(parser.c_str()))
+			{
 				value = LandType::Clear;
 				return true;
 			}
 
-			for (size_t i = 0; i < CellClass::LandTypeToStrings.size(); ++i) {
-				if (IS_SAME_STR_(CellClass::LandTypeToStrings[i], parser.c_str())) {
+			for (size_t i = 0; i < CellClass::LandTypeToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(CellClass::LandTypeToStrings[i], parser.c_str()))
+				{
 					value = LandType(i);
 					return true;
 				}
@@ -271,21 +281,25 @@ namespace detail
 	{
 		if (!parser.empty())
 		{
-			for (size_t i = 0; i < EnumFunctions::PhobosAbilityType_ToStrings.size(); ++i) {
-				if (IS_SAME_STR_(EnumFunctions::PhobosAbilityType_ToStrings[i], parser.c_str())) {
+			for (size_t i = 0; i < EnumFunctions::PhobosAbilityType_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(EnumFunctions::PhobosAbilityType_ToStrings[i], parser.c_str()))
+				{
 					value = PhobosAbilityType(i);
 					return true;
 				}
 			}
 
 			bool found = false;
-			for (size_t a = 0; a < TechnoTypeClass::AbilityTypeToStrings.c_size(); ++a) {
-				if (IS_SAME_STR_(TechnoTypeClass::AbilityTypeToStrings[a], parser.c_str())) {
+			for (size_t a = 0; a < TechnoTypeClass::AbilityTypeToStrings.c_size(); ++a)
+			{
+				if (IS_SAME_STR_(TechnoTypeClass::AbilityTypeToStrings[a], parser.c_str()))
+				{
 					found = true;
 				}
 			}
 
-			if(!found)
+			if (!found)
 				Debug::INIParseFailed(pSection, pKey, parser.c_str(), "Expect Valind AbilityTypes");
 		}
 
@@ -346,7 +360,8 @@ namespace detail
 				value = parsed;
 				return true;
 			}
-			else {
+			else
+			{
 				Debug::INIParseFailed(pSection, pKey, pValue, nullptr);
 			}
 		}
@@ -364,7 +379,8 @@ namespace detail
 				return false;
 
 			std::string flag = _strlwr(parser.value());
-			if (flag.find(".pal") == std::string::npos) {
+			if (flag.find(".pal") == std::string::npos)
+			{
 				flag += ".pal";
 			}
 
@@ -398,7 +414,8 @@ namespace detail
 				value = parsed;
 				return true;
 			}
-			else {
+			else
+			{
 				Debug::INIParseFailed(pSection, pKey, pValue, nullptr);
 			}
 		}
@@ -458,8 +475,10 @@ namespace detail
 	}
 
 	template <>
-	inline bool read<std::string> (std::string& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate) {
-		if (parser.ReadString(pSection, pKey)) {
+	inline bool read<std::string>(std::string& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
+	{
+		if (parser.ReadString(pSection, pKey))
+		{
 			value = parser.value();
 			return true;
 		}
@@ -541,8 +560,8 @@ namespace detail
 	template <>
 	inline bool read<bool>(bool& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
 	{
-		if (!parser.ReadBool(pSection, pKey, &value)) {
-
+		if (!parser.ReadBool(pSection, pKey, &value))
+		{
 			if (!parser.empty())
 				Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid boolean value [1, true, yes, 0, false, no]");
 
@@ -561,7 +580,6 @@ namespace detail
 				Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid number");
 
 			return false;
-
 		}
 
 		return true;
@@ -571,7 +589,8 @@ namespace detail
 	inline bool read<unsigned int>(unsigned int& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
 	{
 		int buffer { 0 };
-		if (parser.ReadInteger(pSection, pKey, &buffer) && buffer > 0 && (unsigned int)buffer <= MAX_VAL(unsigned int)) {
+		if (parser.ReadInteger(pSection, pKey, &buffer) && buffer > 0 && (unsigned int)buffer <= MAX_VAL(unsigned int))
+		{
 			value = (unsigned int)buffer;
 			return true;
 		}
@@ -586,12 +605,13 @@ namespace detail
 	inline bool read<unsigned short>(unsigned short& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
 	{
 		short buffer { 0 };
-		if (parser.ReadShort(pSection, pKey, &buffer) && buffer > 0 && (unsigned short)buffer <= MAX_VAL(unsigned short)) {
+		if (parser.ReadShort(pSection, pKey, &buffer) && buffer > 0 && (unsigned short)buffer <= MAX_VAL(unsigned short))
+		{
 			value = (unsigned short)buffer;
 			return true;
 		}
 
-		if(!parser.empty())
+		if (!parser.empty())
 			Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid unsigned short between 0 and 65535 inclusive");
 
 		return false;
@@ -602,7 +622,8 @@ namespace detail
 	{
 		if (!parser.ReadShort(pSection, pKey, &value))
 		{
-			if (!parser.empty()) {
+			if (!parser.empty())
+			{
 				Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid short");
 			}
 
@@ -615,9 +636,9 @@ namespace detail
 	template <>
 	inline bool read<BYTE>(BYTE& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
 	{
-		if (!parser.ReadBytes(pSection, pKey, &value)) {
-
-			if(!parser.empty())
+		if (!parser.ReadBytes(pSection, pKey, &value))
+		{
+			if (!parser.empty())
 				Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid number");
 
 			return false;
@@ -659,7 +680,7 @@ namespace detail
 	{
 		if (!parser.Read2Short(pSection, pKey, (short*)&value))
 		{
-			if(!parser.empty())
+			if (!parser.empty())
 				Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid CellStruct");
 
 			return false;
@@ -756,7 +777,8 @@ namespace detail
 	{
 		if (!parser.Read3Bytes(pSection, pKey, (BYTE*)&value))
 		{
-			if (!parser.empty()) {
+			if (!parser.empty())
+			{
 				Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid 3 BYTE Value");
 			}
 
@@ -769,9 +791,10 @@ namespace detail
 	template <>
 	inline bool read<Vector2D<double>>(Vector2D<double>& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
 	{
-		if(parser.Read2Double(pSection, pKey, (double*)&value))
+		if (parser.Read2Double(pSection, pKey, (double*)&value))
 			return true;
-		else if (!parser.empty()) {
+		else if (!parser.empty())
+		{
 			Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid 2 floating point Value");
 		}
 
@@ -825,7 +848,8 @@ namespace detail
 	{
 		double buffer;
 		//vanilla : return false if -1.0
-		if (read(buffer,parser ,pSection ,pKey ,allocate ) && buffer != -1.0) {
+		if (read(buffer, parser, pSection, pKey, allocate) && buffer != -1.0)
+		{
 			value = Leptons(buffer);
 			return true;
 		}
@@ -906,7 +930,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (auto const& [pString , val] : EnumFunctions::HorizontalPosition_ToStrings)
+			for (auto const& [pString, val] : EnumFunctions::HorizontalPosition_ToStrings)
 			{
 				if (IS_SAME_STR_(parser.value(), pString))
 				{
@@ -956,7 +980,6 @@ namespace detail
 			}
 
 			Debug::INIParseFailed(pSection, pKey, parser.value(), "Vertical Position can be either Top, Center/Centre or Bottom");
-
 		}
 		return false;
 	}
@@ -966,8 +989,10 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (size_t i = 0; i < EnumFunctions::SelfHealGainType_ToStrings.size(); ++i) {
-				if (IS_SAME_STR_(parser.value(), EnumFunctions::SelfHealGainType_ToStrings[i])) {
+			for (size_t i = 0; i < EnumFunctions::SelfHealGainType_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(parser.value(), EnumFunctions::SelfHealGainType_ToStrings[i]))
+				{
 					value = SelfHealGainType(i);
 					return true;
 				}
@@ -984,7 +1009,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (const auto& [pString , val] : EnumFunctions::SlaveReturnTo_ToStrings)
+			for (const auto& [pString, val] : EnumFunctions::SlaveReturnTo_ToStrings)
 			{
 				if (IS_SAME_STR_(parser.value(), pString))
 				{
@@ -1023,7 +1048,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (auto const& [pStrings ,val]: EnumFunctions::IronCurtainFlag_ToStrings)
+			for (auto const& [pStrings, val] : EnumFunctions::IronCurtainFlag_ToStrings)
 			{
 				if (IS_SAME_STR_(parser.value(), pStrings))
 				{
@@ -1101,7 +1126,7 @@ namespace detail
 				cur = strtok_s(nullptr, Phobos::readDelims, &context))
 			{
 				bool found = false;
-				for (const auto& [pStrings , val] : EnumFunctions::AffectedTarget_ToStrings)
+				for (const auto& [pStrings, val] : EnumFunctions::AffectedTarget_ToStrings)
 				{
 					if (IS_SAME_STR_(cur, pStrings))
 					{
@@ -1137,7 +1162,7 @@ namespace detail
 				cur = strtok_s(nullptr, Phobos::readDelims, &context))
 			{
 				bool found = false;
-				for (const auto& [pStrings , val] : EnumFunctions::ChronoSparkleDisplayPosition_ToStrings)
+				for (const auto& [pStrings, val] : EnumFunctions::ChronoSparkleDisplayPosition_ToStrings)
 				{
 					if (IS_SAME_STR_(cur, pStrings))
 					{
@@ -1147,7 +1172,8 @@ namespace detail
 					}
 				}
 
-				if (!found) {
+				if (!found)
+				{
 					Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a chrono sparkle position type");
 				}
 			}
@@ -1234,15 +1260,18 @@ namespace detail
 				cur = strtok_s(nullptr, Phobos::readDelims, &context))
 			{
 				bool found = false;
-				for (const auto& [pStrings , val] : EnumFunctions::TargetingConstraints_ToStrings) {
-					if (IS_SAME_STR_(cur, pStrings)) {
+				for (const auto& [pStrings, val] : EnumFunctions::TargetingConstraints_ToStrings)
+				{
+					if (IS_SAME_STR_(cur, pStrings))
+					{
 						resultData |= val;
 						found = true;
 						break;
 					}
 				}
 
-				if (!found) {
+				if (!found)
+				{
 					Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a targeting constraint");
 					return false;
 				}
@@ -1259,8 +1288,10 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (size_t i = 0; i < EnumFunctions::TargetingPreference_ToStrings.size(); ++i) {
-				if(IS_SAME_STR_(parser.value(), EnumFunctions::TargetingPreference_ToStrings[i])){
+			for (size_t i = 0; i < EnumFunctions::TargetingPreference_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(parser.value(), EnumFunctions::TargetingPreference_ToStrings[i]))
+				{
 					value = TargetingPreference(i);
 					return true;
 				}
@@ -1290,7 +1321,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (const auto& [pString , val] : EnumFunctions::AttachedAnimFlag_ToStrings)
+			for (const auto& [pString, val] : EnumFunctions::AttachedAnimFlag_ToStrings)
 			{
 				if (IS_SAME_STR_(parser.value(), pString))
 				{
@@ -1320,7 +1351,6 @@ namespace detail
 			}
 
 			Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected an AreaFire target");
-
 		}
 
 		return false;
@@ -1331,7 +1361,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (auto const& [pString , val]: EnumFunctions::TextAlign_ToStrings)
+			for (auto const& [pString, val] : EnumFunctions::TextAlign_ToStrings)
 			{
 				if (IS_SAME_STR_(parser.value(), pString))
 				{
@@ -1351,7 +1381,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			if(GameStrings::IsBlank(parser.value()))
+			if (GameStrings::IsBlank(parser.value()))
 				return false;
 
 			for (size_t i = 0; i < CellClass::LayerToStrings.size(); ++i)
@@ -1374,13 +1404,16 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			if (IS_SAME_STR_(parser.value(), GameStrings::NoneStrb())) {
+			if (IS_SAME_STR_(parser.value(), GameStrings::NoneStrb()))
+			{
 				value = AbstractType::None;
 				return true;
 			}
 
-			for (size_t i = 0; i < AbstractClass::RTTIToString.size(); ++i) {
-				if (IS_SAME_STR_(parser.value(), AbstractClass::RTTIToString[i].Name)) {
+			for (size_t i = 0; i < AbstractClass::RTTIToString.size(); ++i)
+			{
+				if (IS_SAME_STR_(parser.value(), AbstractClass::RTTIToString[i].Name))
+				{
 					value = AbstractType(i);
 					return true;
 				}
@@ -1400,7 +1433,8 @@ namespace detail
 			for (size_t i = 0; i < EnumFunctions::LocomotorPairs_ToStrings.size(); ++i)
 			{
 				const auto& [name, ID] = EnumFunctions::LocomotorPairs_ToStrings[i];
-				if (IS_SAME_STR_(parser.value(), name) || IS_SAME_STR_(parser.value(), ID)) {
+				if (IS_SAME_STR_(parser.value(), name) || IS_SAME_STR_(parser.value(), ID))
+				{
 					value = Locomotors(i);
 					return true;
 				}
@@ -1449,7 +1483,7 @@ namespace detail
 	}
 
 	//WARNING : this not checking for read first , make sure before using it !
-	template <typename T , bool clearvec = true>
+	template <typename T, bool clearvec = true>
 	inline void parse_values(std::vector<T>& vector, INI_EX& parser, const char* pSection, const char* pKey, bool allocate = false)
 	{
 		if constexpr (clearvec)
@@ -1509,7 +1543,7 @@ namespace detail
 
 			if (parseSucceeded)
 				vector.push_back(buffer);
-			else if(!GameStrings::IsBlank(pCur))
+			else if (!GameStrings::IsBlank(pCur))
 				Debug::INIParseFailed(pSection, pKey, pCur, nullptr);
 		}
 	}
@@ -1633,10 +1667,12 @@ namespace detail
 			pCur = strtok_s(nullptr, Phobos::readDelims, &context))
 		{
 			int idx = -1;
-			if constexpr (std::is_pointer<Lookuper>::value) {
+			if constexpr (std::is_pointer<Lookuper>::value)
+			{
 				using base_type = std::remove_pointer_t<Lookuper>;
 				idx = base_type::FindIndexById(pCur);
-			} else { idx = Lookuper::FindIndexById(pCur); }
+			}
+			else { idx = Lookuper::FindIndexById(pCur); }
 
 			if (idx != -1 || GameStrings::IsBlank(pCur))
 			{
@@ -1652,8 +1688,9 @@ namespace detail
 #pragma endregion
 
 	template <typename T>
-	inline bool getindex(int& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate = false) {
-		return IndexFinder<T>::getindex(value , parser , pSection , pKey , allocate);
+	inline bool getindex(int& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate = false)
+	{
+		return IndexFinder<T>::getindex(value, parser, pSection, pKey, allocate);
 	}
 }
 
@@ -1691,9 +1728,12 @@ void NOINLINE Nullable<T>::Read(INI_EX& parser, const char* pSection, const char
 	{
 		const char* val = parser.value();
 
-		if (IS_SAME_STR_(val, DEFAULT_STR2)) {
+		if (IS_SAME_STR_(val, DEFAULT_STR2))
+		{
 			this->Reset();
-		} else {
+		}
+		else
+		{
 			this->HasValue = true;
 		}
 	}
@@ -1726,7 +1766,7 @@ bool Nullable<T>::Save(PhobosStreamWriter& Stm) const
 template <typename Lookuper>
 void NOINLINE NullableIdx<Lookuper>::Read(INI_EX& parser, const char* pSection, const char* pKey)
 {
-	if(detail::getindex<Lookuper>(this->Value , parser , pSection , pKey))
+	if (detail::getindex<Lookuper>(this->Value, parser, pSection, pKey))
 		this->HasValue = true;
 }
 
@@ -1734,7 +1774,6 @@ void NOINLINE NullableIdx<Lookuper>::Read(INI_EX& parser, const char* pSection, 
 template <typename T>
 void NOINLINE Promotable<T>::Read(INI_EX& parser, const char* const pSection, const char* const pBaseFlag, const char* const pSingleFlag, bool allocate)
 {
-
 	// read the common flag, with the trailing dot being stripped
 	char flagbuffer[0x80];
 	const auto res = IMPL_SNPRNINTF(flagbuffer, sizeof(flagbuffer), pSingleFlag ? pSingleFlag : pBaseFlag, Phobos::readDefval); //remove the formatting
@@ -1746,11 +1785,11 @@ void NOINLINE Promotable<T>::Read(INI_EX& parser, const char* const pSection, co
 
 		if (flagbuffer[0] == '.')
 			strcpy_s(flagbuffer, flagbuffer + 1);
-
 	}
 
 	T placeholder {};
-	if (detail::read(placeholder, parser, pSection, flagbuffer, allocate)) {
+	if (detail::read(placeholder, parser, pSection, flagbuffer, allocate))
+	{
 		this->SetAll(placeholder);
 	}
 
@@ -1796,8 +1835,6 @@ void NOINLINE NullablePromotable<T>::Read(INI_EX& parser, const char* const pSec
 
 		if (flagbuffer[0] == '.')
 			strcpy_s(flagbuffer, flagbuffer + 1);
-
-
 	}
 
 	T placeholder {};
@@ -1865,7 +1902,6 @@ bool ValueableVector<T>::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	size_t size = 0;
 	if (Savegame::ReadPhobosStream(Stm, size, RegisterForChange))
 	{
-
 		if (!size)
 			return true;
 
@@ -1959,7 +1995,7 @@ void NOINLINE NullableVector<T>::Read(INI_EX& parser, const char* pSection, cons
 
 		if (non_default)
 		{
-			detail::parse_values<T>(*this, parser, pSection, pKey , allocate);
+			detail::parse_values<T>(*this, parser, pSection, pKey, allocate);
 		}
 	}
 }
@@ -2023,14 +2059,15 @@ void NOINLINE Damageable<T>::Read(INI_EX& parser, const char* const pSection, co
 	auto const pSingleFormat = pSingleFlag ? pSingleFlag : pBaseFlag;
 	auto res = IMPL_SNPRNINTF(flagName, sizeof(flagName), pSingleFormat, Phobos::readDefval);
 
-	if (res > 0) {
+	if (res > 0)
+	{
 		if (flagName[res - 1] == '.') //dot in the end
 			flagName[res - 1] = '\0';
 		else if (flagName[0] == '.') //dot in the first
 			flagName[0] = '\0';
 	}
 
-	this->BaseValue.Read(parser, pSection, flagName , Alloc);
+	this->BaseValue.Read(parser, pSection, flagName, Alloc);
 
 	IMPL_SNPRNINTF(flagName, sizeof(flagName), pBaseFlag, EnumFunctions::HealthCondition_ToStrings[1]);
 	this->ConditionYellow.Read(parser, pSection, flagName, Alloc);

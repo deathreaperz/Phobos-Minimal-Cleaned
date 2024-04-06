@@ -93,7 +93,6 @@
 #include <utility>
 #include <LoadOptionsClass.h>
 
-
 #pragma region Implementation details
 
 #pragma region Concepts
@@ -273,8 +272,10 @@ void Phobos::LoadGameDataAfter(IStream* pStm)
 	//clear the loadgame flag
 	Phobos::Otamaa::DoingLoadGame = false;
 
-	if (auto pPlayerSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex)) {
-		if (auto pSideMouse = SideExtContainer::Instance.Find(pPlayerSide)->MouseShape) {
+	if (auto pPlayerSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex))
+	{
+		if (auto pSideMouse = SideExtContainer::Instance.Find(pPlayerSide)->MouseShape)
+		{
 			GameDelete<true, true>(std::exchange(MouseClass::ShapeData(), pSideMouse));
 		}
 	}
@@ -291,12 +292,14 @@ FORCEINLINE void Process_InvalidatePtr(AbstractClass* pInvalid, bool const remov
 	if constexpr (HasExtMap<T>)
 	{
 		if constexpr (PointerInvalidationIgnorAble<decltype(T::ExtMap)> &&
-				PointerInvalidationSubscribable<decltype(T::ExtMap)>) {
-			if (!T::ExtMap.InvalidateIgnorable(pInvalid)) {
+				PointerInvalidationSubscribable<decltype(T::ExtMap)>)
+		{
+			if (!T::ExtMap.InvalidateIgnorable(pInvalid))
+			{
 				T::ExtMap.InvalidatePointer(pInvalid, removed);
 			}
 		}
-		else if(PointerInvalidationSubscribable<decltype(T::ExtMap)>)
+		else if (PointerInvalidationSubscribable<decltype(T::ExtMap)>)
 		{
 			T::ExtMap.InvalidatePointer(pInvalid, removed);
 		}
@@ -304,12 +307,14 @@ FORCEINLINE void Process_InvalidatePtr(AbstractClass* pInvalid, bool const remov
 	else
 	{
 		if constexpr (PointerInvalidationIgnorAble<T> &&
-				PointerInvalidationSubscribable<T>) {
-			if (!T::InvalidateIgnorable(pInvalid)) {
+				PointerInvalidationSubscribable<T>)
+		{
+			if (!T::InvalidateIgnorable(pInvalid))
+			{
 				T::InvalidatePointer(pInvalid, removed);
 			}
 		}
-		else if(PointerInvalidationSubscribable<T>)
+		else if (PointerInvalidationSubscribable<T>)
 		{
 			T::InvalidatePointer(pInvalid, removed);
 		}
@@ -325,7 +330,7 @@ DEFINE_HOOK(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	GET(AbstractClass* const, pInvalid, ECX);
 	GET(bool const, removed, EDX);
 
-	if(Phobos::Otamaa::ExeTerminated)
+	if (Phobos::Otamaa::ExeTerminated)
 		return 0;
 
 	PhobosGlobal::PointerGotInvalid(pInvalid, removed);
@@ -446,38 +451,38 @@ FORCEINLINE bool Process_Save(IStream* pStm)
 //
 DEFINE_HOOK(0x67E826, LoadGame_Phobos_Global_Early, 0x6)
 {
-//	Debug::Log("Loading global Phobos data\n");
-//	GET(IStream*, pStm, ESI);
+	//	Debug::Log("Loading global Phobos data\n");
+	//	GET(IStream*, pStm, ESI);
 	Phobos::Otamaa::DoingLoadGame = true;
-//
-//	bool ret =
-//		Process_Load<PaletteManager>(pStm) &&
-//		Process_Load<CursorTypeClass>(pStm) &&
-//		Process_Load<MouseClassExt>(pStm) &&
-//		Process_Load<DigitalDisplayTypeClass>(pStm) &&
-//		Process_Load<ArmorTypeClass>(pStm) &&
-//		Process_Load<ImmunityTypeClass>(pStm) &&
-//		Process_Load<ColorTypeClass>(pStm) &&
-//		Process_Load<HouseExtContainer>(pStm) &&
-//		Process_Load<WeaponTypeExtContainer>(pStm) &&
-//		Process_Load<SWTypeExtContainer>(pStm) &&
-//		Process_Load<BuildingTypeExtContainer>(pStm) &&
-//		Process_Load<RadTypeClass>(pStm) &&
-//		Process_Load<ShieldTypeClass>(pStm) &&
-//		Process_Load<HoverTypeClass>(pStm) &&
-//		Process_Load<BannerTypeClass>(pStm) &&
-//		Process_Load<TrailType>(pStm) &&
-//		Process_Load<LaserTrailTypeClass>(pStm) &&
-//		Process_Load<TunnelTypeClass>(pStm) &&
-//		Process_Load<SWStateMachine>(pStm) &&
-//		Process_Load<PhobosGlobal>(pStm) &&
-//		Process_Load<GenericPrerequisite>(pStm) &&
-//		Process_Load<CrateTypeClass>(pStm)
-//		;
-//
-//	if (!ret)
-//		Debug::Log("[Phobos] Global LoadGame Failed !\n");
-//
+	//
+	//	bool ret =
+	//		Process_Load<PaletteManager>(pStm) &&
+	//		Process_Load<CursorTypeClass>(pStm) &&
+	//		Process_Load<MouseClassExt>(pStm) &&
+	//		Process_Load<DigitalDisplayTypeClass>(pStm) &&
+	//		Process_Load<ArmorTypeClass>(pStm) &&
+	//		Process_Load<ImmunityTypeClass>(pStm) &&
+	//		Process_Load<ColorTypeClass>(pStm) &&
+	//		Process_Load<HouseExtContainer>(pStm) &&
+	//		Process_Load<WeaponTypeExtContainer>(pStm) &&
+	//		Process_Load<SWTypeExtContainer>(pStm) &&
+	//		Process_Load<BuildingTypeExtContainer>(pStm) &&
+	//		Process_Load<RadTypeClass>(pStm) &&
+	//		Process_Load<ShieldTypeClass>(pStm) &&
+	//		Process_Load<HoverTypeClass>(pStm) &&
+	//		Process_Load<BannerTypeClass>(pStm) &&
+	//		Process_Load<TrailType>(pStm) &&
+	//		Process_Load<LaserTrailTypeClass>(pStm) &&
+	//		Process_Load<TunnelTypeClass>(pStm) &&
+	//		Process_Load<SWStateMachine>(pStm) &&
+	//		Process_Load<PhobosGlobal>(pStm) &&
+	//		Process_Load<GenericPrerequisite>(pStm) &&
+	//		Process_Load<CrateTypeClass>(pStm)
+	//		;
+	//
+	//	if (!ret)
+	//		Debug::Log("[Phobos] Global LoadGame Failed !\n");
+	//
 	return 0;
 }
 
@@ -545,7 +550,7 @@ DEFINE_HOOK(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 		Debug::Log("[Phobos] Global LoadGame Failed !\n");
 
 	// add more variable that need to be reset after loading an saved games
-	if(SessionClass::Instance->GameMode == GameMode::Campaign)
+	if (SessionClass::Instance->GameMode == GameMode::Campaign)
 	{
 		Unsorted::MuteSWLaunches = false; // this will also make radar unusable
 		// this variable need to be reset , especially after you play as an observer on skirmish

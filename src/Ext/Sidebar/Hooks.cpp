@@ -8,8 +8,10 @@
 
 DEFINE_HOOK(0x6A593E, SidebarClass_InitForHouse_AdditionalFiles, 0x5)
 {
-	for (int i = 0; i < (int)SidebarExtData::TabProducingProgress.size(); i++) {
-		if(!SidebarExtData::TabProducingProgress[i]) {
+	for (int i = 0; i < (int)SidebarExtData::TabProducingProgress.size(); i++)
+	{
+		if (!SidebarExtData::TabProducingProgress[i])
+		{
 			SidebarExtData::TabProducingProgress[i] = GameCreate<SHPReference>(std::format("tab{:02}pp.SHP", i).c_str());
 		}
 	}
@@ -22,7 +24,8 @@ DEFINE_HOOK(0x6A5EA1, SidebarClass_UnloadShapes_AdditionalFiles, 0x5)
 	for (int i = 0; i < (int)SidebarExtData::TabProducingProgress.size(); i++)
 	{
 		//the shape is already invalid if the name not event there ,..
-		if(SidebarExtData::TabProducingProgress[i] && SidebarExtData::TabProducingProgress[i]->Filename){
+		if (SidebarExtData::TabProducingProgress[i] && SidebarExtData::TabProducingProgress[i]->Filename)
+		{
 			//GameDelete<false, false>(SidebarExt::TabProducingProgress[i]);
 			SidebarExtData::TabProducingProgress[i] = nullptr;
 		}

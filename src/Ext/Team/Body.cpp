@@ -2,8 +2,8 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
 
-bool TeamExtData::InvalidateIgnorable(AbstractClass* ptr) {
-
+bool TeamExtData::InvalidateIgnorable(AbstractClass* ptr)
+{
 	switch (ptr->WhatAmI())
 	{
 	case BuildingClass::AbsID:
@@ -22,7 +22,7 @@ bool TeamExtData::InvalidateIgnorable(AbstractClass* ptr) {
 
 void TeamExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	AnnounceInvalidPointer(TeamLeader, ptr , bRemoved);
+	AnnounceInvalidPointer(TeamLeader, ptr, bRemoved);
 	AnnounceInvalidPointer(LastFoundSW, ptr);
 	AnnounceInvalidPointer(PreviousScript, ptr);
 }
@@ -474,17 +474,17 @@ DEFINE_HOOK(0x6EC55A, TeamClass_Save_Suffix, 0x5)
 	return 0;
 }
 
- DEFINE_HOOK(0x6EAE60, TeamClass_Detach, 0x7)
- {
- 	GET(TeamClass*, pThis, ECX);
- 	GET_STACK(AbstractClass*, target, 0x4);
- 	GET_STACK(bool, all, 0x8);
+DEFINE_HOOK(0x6EAE60, TeamClass_Detach, 0x7)
+{
+	GET(TeamClass*, pThis, ECX);
+	GET_STACK(AbstractClass*, target, 0x4);
+	GET_STACK(bool, all, 0x8);
 
- 	TeamExtContainer::Instance.InvalidatePointerFor(pThis, target, true);
+	TeamExtContainer::Instance.InvalidatePointerFor(pThis, target, true);
 
- 	//return pThis->Target == target ? 0x6EAECC : 0x6EAECF;
- 	return 0x0;
- }
+	//return pThis->Target == target ? 0x6EAECC : 0x6EAECF;
+	return 0x0;
+}
 
 //void __fastcall TeamClass_Detach_Wrapper(TeamClass* pThis ,DWORD , AbstractClass* target , bool all)\
 //{

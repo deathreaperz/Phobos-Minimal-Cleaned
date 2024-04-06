@@ -71,7 +71,7 @@ void AircraftExt::FireBurst(AircraftClass* pThis, AbstractClass* pTarget, Aircra
 	if (!weaponType)
 		return;
 
-	AircraftExt::FireBurst(pThis , pTarget, shotNumber, WeaponIdx, weaponType);
+	AircraftExt::FireBurst(pThis, pTarget, shotNumber, WeaponIdx, weaponType);
 }
 
 void AircraftExt::FireBurst(AircraftClass* pThis, AbstractClass* pTarget, AircraftFireMode shotNumber, int WeaponIdx, WeaponTypeClass* pWeapon)
@@ -104,7 +104,6 @@ bool AircraftExt::IsValidLandingZone(AircraftClass* pThis)
 	}
 
 	return false;
-
 }
 
 #ifdef ENABLE_NEWHOOKS

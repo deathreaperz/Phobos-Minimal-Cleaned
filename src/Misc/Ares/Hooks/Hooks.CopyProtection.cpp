@@ -12,7 +12,8 @@ void NAKED CopyProtection_DontBlowMeUp_Ret_()
 	PUSH_REG(esi);
 	JMP(0x55D059);
 }
-DEFINE_HOOK(0x55CFD8, CopyProtection_DontBlowMeUp, 0x5) {
+DEFINE_HOOK(0x55CFD8, CopyProtection_DontBlowMeUp, 0x5)
+{
 	return (DWORD)CopyProtection_DontBlowMeUp_Ret_;
 }
 // Allows run game without the launcher

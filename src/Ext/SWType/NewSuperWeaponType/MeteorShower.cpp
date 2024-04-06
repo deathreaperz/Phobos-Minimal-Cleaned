@@ -21,8 +21,7 @@ bool SW_MeteorShower::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 
 			const auto nCoord = pCell->GetCoordsWithBridge();
 
-			const int count =  ScenarioClass::Instance->Random.RandomFromMax(pData->MeteorCounts);
-
+			const int count = ScenarioClass::Instance->Random.RandomFromMax(pData->MeteorCounts);
 
 			AnimTypeClass* large_meteor = pData->MeteorLarge;
 			AnimTypeClass* small_meteor = pData->MeteorSmall;
@@ -70,7 +69,8 @@ bool SW_MeteorShower::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 
 					im_where.Z = MapClass::Instance->GetCellFloorHeight(im_where);
 					if (VoxelAnimTypeClass* impact = ScenarioClass::Instance->Random.PercentChance(pData->MeteorImpactKindChance) ?
-						large_Impact : small_Impact) {
+						large_Impact : small_Impact)
+					{
 						VoxelAnimExtContainer::Instance.Find(GameCreate<VoxelAnimClass>(impact, &im_where, pThis->Owner))->Invoker = pFirer;
 					}
 				}
@@ -98,7 +98,7 @@ void SW_MeteorShower::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	const auto pSection = pData->AttachedToObject->ID;
 	INI_EX exINI(pINI);
 
-	pData->MeteorCounts.Read(exINI ,pSection,"Meteor.Count");
+	pData->MeteorCounts.Read(exINI, pSection, "Meteor.Count");
 	pData->MeteorImactCounts.Read(exINI, pSection, "Meteor.ImpactCount");
 	pData->MeteorAddImpactChance.Read(exINI, pSection, "Meteor.AddImpactChance");
 	pData->MeteorKindChance.Read(exINI, pSection, "Meteor.KindChance");

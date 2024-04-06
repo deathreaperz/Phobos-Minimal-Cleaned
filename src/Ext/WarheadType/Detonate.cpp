@@ -188,7 +188,6 @@ void WarheadTypeExtData::applyIronCurtain(TechnoClass* curTechno, HouseClass* Ow
 {
 	if (this->IC_Duration != 0)
 	{
-
 		// affect each object
 		{
 			// duration modifier
@@ -371,7 +370,6 @@ void WarheadTypeExtData::applyStealMoney(TechnoClass* const Owner, TechnoClass* 
 						FlyingStrings::AddMoneyString(Steal_Display.Get(), nStealAmout, Owner, Steal_Display_Houses.Get(), Owner->GetCoords(), Steal_Display_Offset.Get());
 						pBulletTargetHouse->TransactMoney(-nStealAmout);
 						FlyingStrings::AddMoneyString(Steal_Display.Get(), -nStealAmout, Target, Steal_Display_Houses.Get(), Target->GetCoords(), Steal_Display_Offset.Get());
-
 					}
 				}
 			}
@@ -499,10 +497,12 @@ void WarheadTypeExtData::InterceptBullets(TechnoClass* pOwner, WeaponTypeClass* 
 
 void SpawnCrate(std::vector<int>& types, std::vector<int>& weights, CoordStruct& place)
 {
-	if (!types.empty()) {
+	if (!types.empty())
+	{
 		const int index = GeneralUtils::ChooseOneWeighted(ScenarioClass::Instance->Random.RandomDouble(), weights);
 
-		if ((size_t)index < types.size()) {
+		if ((size_t)index < types.size())
+		{
 			MapClass::Instance->Place_Crate(CellClass::Coord2Cell(place), (PowerupEffects)types[index]);
 		}
 	}
@@ -564,7 +564,6 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 		//TechnoExtData::PutPassengersInCoords(pBullet->Owner, coords, RulesGlobal->WarpIn, RulesGlobal->BunkerWallsUpSound, false);
 	}
 
-
 	if (pHouse)
 	{
 		if (this->BigGap)
@@ -617,7 +616,6 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 			{
 				this->TransactOnAllUnits(pTargetv, pHouse, pOwner);
 			}
-
 		}
 		else
 		{
@@ -645,7 +643,6 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 
 					if (this->Transact)
 						this->TransactOnOneUnit(Eligible(static_cast<TechnoClass*>(pBullet->Target)), pOwner, 1);
-
 				}break;
 				case CellClass::AbsID:
 				{
@@ -748,16 +745,12 @@ void WarheadTypeExtData::ApplyShieldModifiers(TechnoClass* pTarget) const
 
 	auto pExt = TechnoExtContainer::Instance.Find(pTarget);
 
-
 	int shieldIndex = -1;
 	double oldRatio = 1.0;
 
 	// Remove shield.
 	if (pExt->GetShield())
 	{
-
-
-
 		shieldIndex = this->Shield_RemoveTypes.IndexOf(pExt->Shield->GetType());
 
 		if (shieldIndex >= 0)
@@ -780,7 +773,6 @@ void WarheadTypeExtData::ApplyShieldModifiers(TechnoClass* pTarget) const
 				const int nMax = (Shield_AttachTypes.size() - 1);
 				shieldType = Shield_AttachTypes[MinImpl(shieldIndex, nMax)];
 			}
-
 		}
 		else
 		{

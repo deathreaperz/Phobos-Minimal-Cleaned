@@ -1,4 +1,3 @@
-
 #include "Body.h"
 #include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
@@ -13,11 +12,12 @@ DEFINE_HOOK(0x4721E6, CaptureManagerClass_DrawLinkToVictim, 0x6) //C
 
 	const auto pAttacker = pThis->Owner;
 	const auto pAttackerType = pAttacker->GetTechnoType();
-	if (CaptureExt::AllowDrawLink(pAttackerType)) {
+	if (CaptureExt::AllowDrawLink(pAttackerType))
+	{
 		auto nVictimCoord = pVictim->Location;
 		nVictimCoord.Z += pAttackerType->LeptonMindControlOffset;
-		CoordStruct nFLH ;
-		pAttacker->GetFLH(&nFLH ,-1 - nNodeCount % 5, CoordStruct::Empty);
+		CoordStruct nFLH;
+		pAttacker->GetFLH(&nFLH, -1 - nNodeCount % 5, CoordStruct::Empty);
 		Drawing::DrawLinesTo(nFLH, nVictimCoord, pAttacker->Owner->Color);
 	}
 
@@ -51,5 +51,5 @@ DEFINE_HOOK(0x6FCB34, TechnoClass_CanFire_CanCapture, 0x6)
 	GET(TechnoClass*, pTarget, EBP);
 
 	return CaptureExt::CanCapture(pThis->CaptureManager, pTarget) ?
-	 0x6FCB53  : 0x6FCB44 ;
+		0x6FCB53 : 0x6FCB44;
 }

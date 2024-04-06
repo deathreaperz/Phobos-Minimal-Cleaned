@@ -13,10 +13,10 @@ enum class SWStateMachineIdentifier : int
 	UnitDelivery = 0,
 	ChronoWarp = 1,
 	PsychicDominator = 2,
-	CloneableLighningStorm = 3 ,
+	CloneableLighningStorm = 3,
 	DropPod = 4,
 	IonCannon = 5,
-	LaserStrike = 6 ,
+	LaserStrike = 6,
 	GenericWarhead = 7,
 	count
 };
@@ -46,7 +46,8 @@ public:
 	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 	virtual bool Save(PhobosStreamWriter& Stm) const;
 
-	inline int TimePassed() const {
+	inline int TimePassed() const
+	{
 		return Unsorted::CurrentFrame - Clock.StartTime;
 	}
 
@@ -57,12 +58,14 @@ public:
 #endif
 		void Register(std::unique_ptr<SWStateMachine> Machine)
 	{
-		if (Machine) {
+		if (Machine)
+		{
 			Array.push_back(std::move(Machine));
 		}
 	}
 
-	inline SWTypeExtData * GetTypeExtData() const {
+	inline SWTypeExtData* GetTypeExtData() const
+	{
 		return SWTypeExtContainer::Instance.Find(Super->Type);
 	}
 
@@ -141,8 +144,7 @@ public:
 
 	static void SendDroppods(SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, const CellStruct& loc);
 
-	static void PlaceUnits(SuperClass* pSuper, double veterancy, Iterator<TechnoTypeClass*> const Types, int cMin, int cMax, const CellStruct& Coords ,bool retries);
-
+	static void PlaceUnits(SuperClass* pSuper, double veterancy, Iterator<TechnoTypeClass*> const Types, int cMin, int cMax, const CellStruct& Coords, bool retries);
 };
 
 class ChronoWarpStateMachine : public SWStateMachine
@@ -225,10 +227,13 @@ public:
 		this->Deferment = pData->SW_Deferment.Get(0);
 
 		// make the game happy
-		if (!pSuper->Owner) {
+		if (!pSuper->Owner)
+		{
 			Debug::Log("Psydom[%s] Firing Without Ownership!\n", pSuper->Type->ID);
 			PsyDom::Owner = HouseExtData::FindSpecial();
-		}else{
+		}
+		else
+		{
 			PsyDom::Owner = pSuper->Owner;
 		}
 
@@ -281,12 +286,12 @@ public:
 	{
 	}
 
-	IonCannonStateMachine(CellStruct XY, SuperClass* pSuper,TechnoClass* pFirer , NewSWType* pSWType)
+	IonCannonStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer, NewSWType* pSWType)
 		: SWStateMachine(MAXINT32, XY, pSuper, pSWType),
-		Deferment(0) ,
-		Status(IonCannonStatus::FirstAnim) ,
-		Owner (pSuper->Owner) ,
-		Anim(nullptr) ,
+		Deferment(0),
+		Status(IonCannonStatus::FirstAnim),
+		Owner(pSuper->Owner),
+		Anim(nullptr),
 		Firer(pFirer)
 	{
 		// the initial deferment
@@ -335,12 +340,12 @@ public:
 	static constexpr double CloudHeightFactor { 6.968466256176567 };
 
 	CloneableLighningStormStateMachine()
-		: SWStateMachine(), ActualDuration(0), StartTime(0), Deferment(0), IsActive(false), TimeToEnd(false) , Invoker(nullptr)
+		: SWStateMachine(), ActualDuration(0), StartTime(0), Deferment(0), IsActive(false), TimeToEnd(false), Invoker(nullptr)
 	{
 	}
 
 	CloneableLighningStormStateMachine(int Duration, int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer, NewSWType* pSWType)
-		: SWStateMachine(Duration, XY, pSuper, pSWType), ActualDuration(0), StartTime(0), Deferment(0), IsActive(false), TimeToEnd(false) , Invoker(pFirer)
+		: SWStateMachine(Duration, XY, pSuper, pSWType), ActualDuration(0), StartTime(0), Deferment(0), IsActive(false), TimeToEnd(false), Invoker(pFirer)
 	{
 		Start(XY, Duration, Deferment);
 	}
@@ -358,7 +363,8 @@ public:
 	{
 		for (auto& CP : CloudsPresent)
 		{
-			if (CP && CP->IsAlive && CP->Type) {
+			if (CP && CP->IsAlive && CP->Type)
+			{
 				CP->UnInit();
 			}
 
@@ -367,7 +373,8 @@ public:
 
 		for (auto& CM : CloudsManifest)
 		{
-			if (CM && CM->IsAlive && CM->Type) {
+			if (CM && CM->IsAlive && CM->Type)
+			{
 				CM->UnInit();
 			}
 			CM = nullptr;
@@ -375,13 +382,13 @@ public:
 
 		for (auto& BP : BoltsPresent)
 		{
-			if (BP && BP->IsAlive && BP->Type) {
+			if (BP && BP->IsAlive && BP->Type)
+			{
 				BP->UnInit();
 			}
 
 			BP = nullptr;
 		}
-
 	}
 
 	virtual SWStateMachineIdentifier GetIdentifier() const override
@@ -438,9 +445,10 @@ public:
 		, Deferment { -1 }
 		, MaxCount { 1 }
 		, MaxCountCounter { 1 }
-	{ }
+	{
+	}
 
-	LaserStrikeStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer, int maxcount , int deferment , NewSWType* pSWType, int duration)
+	LaserStrikeStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer, int maxcount, int deferment, NewSWType* pSWType, int duration)
 		: SWStateMachine(duration, XY, pSuper, pSWType)
 		, Firer { pFirer }
 		, LaserStrikesetRadius { true }
@@ -458,7 +466,8 @@ public:
 		, Deferment { deferment }
 		, MaxCount { abs(maxcount) }
 		, MaxCountCounter { abs(maxcount) }
-	{ }
+	{
+	}
 
 	virtual void Update();
 
@@ -501,11 +510,11 @@ class GenericWarheadStateMachine : public SWStateMachine
 {
 public:
 	GenericWarheadStateMachine()
-		: SWStateMachine() , Firer { nullptr }
+		: SWStateMachine(), Firer { nullptr }
 	{
 	}
 
-	GenericWarheadStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer ,  NewSWType* pSWType)
+	GenericWarheadStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer, NewSWType* pSWType)
 		: SWStateMachine(Deferment, XY, pSuper, pSWType), Firer { pfirer }
 	{
 	}
@@ -526,7 +535,7 @@ public:
 	virtual bool Save(PhobosStreamWriter& Stm) const override;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool remove) override;
 
-	static void SentPayload(TechnoClass* pFirer ,SuperClass* pSuper , SWTypeExtData* pData , NewSWType* pNewType, const CellStruct& loc);
+	static void SentPayload(TechnoClass* pFirer, SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, const CellStruct& loc);
 
 protected:
 	TechnoClass* Firer;

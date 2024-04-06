@@ -17,8 +17,6 @@ public:
 	virtual bool Save(PhobosStreamWriter& Stm) const override;
 
 	virtual bool Read(CCINIClass* const pINI, const char* pSection) override;
-
-
 };
 
 class VerticalTrajectory final : public PhobosTrajectory
@@ -31,9 +29,10 @@ public:
 	VerticalTrajectory() : PhobosTrajectory { TrajectoryFlag::Vertical }
 	{ }
 
-	VerticalTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) : 
+	VerticalTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Vertical , pBullet , pType }
-	{ }
+	{
+	}
 
 	virtual ~VerticalTrajectory() = default;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }
@@ -48,6 +47,5 @@ public:
 	virtual void OnAIVelocity(VelocityClass* pSpeed, VelocityClass* pPosition) override;
 	virtual TrajectoryCheckReturnType OnAITargetCoordCheck(CoordStruct& coords) override;
 	virtual TrajectoryCheckReturnType OnAITechnoCheck(TechnoClass* pTechno) override;
-
 };
 #pragma once

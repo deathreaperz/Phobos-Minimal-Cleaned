@@ -31,7 +31,8 @@ bool LauchSWData::Read(INI_EX& exINI, const char* pID, int Prefix, SuperWeaponTy
 	std::string _buff_DisplayMoney = (_buff + ".DisplayMoney");
 	LaunchSW_DisplayMoney.Read(exINI, pID, _buff_DisplayMoney.c_str());
 
-	if(LaunchSW_DisplayMoney) {
+	if (LaunchSW_DisplayMoney)
+	{
 		LaunchSW_DisplayMoney_Houses.Read(exINI, pID, (_buff_DisplayMoney + ".Houses").c_str());
 		LaunchSW_DisplayMoney_Offset.Read(exINI, pID, (_buff_DisplayMoney + ".Offset").c_str());
 	}

@@ -6,7 +6,7 @@
 bool SpiralTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return  this->PhobosTrajectoryType::Load(Stm, false) &&
-	Stm
+		Stm
 		.Process(this->MaxRadius, false)
 		.Process(this->Length, false)
 		.Process(this->Angel, false)
@@ -16,13 +16,12 @@ bool SpiralTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 bool SpiralTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return this->PhobosTrajectoryType::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->MaxRadius)
 		.Process(this->Length)
 		.Process(this->Angel)
 		;
 }
-
 
 bool SpiralTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 {
@@ -41,7 +40,7 @@ bool SpiralTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 bool SpiralTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return  this->PhobosTrajectory::Load(Stm, false) &&
-	Stm
+		Stm
 		.Process(this->CenterLocation, false)
 		.Process(this->DirectionAngel, false)
 		.Process(this->CurrentRadius, false)
@@ -53,7 +52,7 @@ bool SpiralTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 bool SpiralTrajectory::Save(PhobosStreamWriter& Stm) const
 {
 	return this->PhobosTrajectory::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->CenterLocation)
 		.Process(this->DirectionAngel)
 		.Process(this->CurrentRadius)
@@ -70,7 +69,7 @@ void SpiralTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
 
 	constexpr auto halfpi = (Math::Pi / 2);
 
-	this->DirectionAngel = Math::atan2((double)(pBullet->TargetCoords.Y - pBullet->SourceCoords.Y), 
+	this->DirectionAngel = Math::atan2((double)(pBullet->TargetCoords.Y - pBullet->SourceCoords.Y),
 		(double)(pBullet->TargetCoords.X - pBullet->SourceCoords.X)) + halfpi;
 
 	pBullet->Velocity.X = static_cast<double>(pBullet->TargetCoords.X - pBullet->SourceCoords.X);

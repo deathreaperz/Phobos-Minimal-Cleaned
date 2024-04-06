@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <CoordStruct.h>
@@ -9,7 +8,7 @@
 #include <Unsorted.h>
 #include <Utilities/SavegameDef.h>
 
-constexpr auto EBOLT_DEFAULT_DEVIATION  = 1.0f;
+constexpr auto EBOLT_DEFAULT_DEVIATION = 1.0f;
 constexpr auto  EBOLT_DEFAULT_INTERATIONS = 1;
 constexpr auto EBOLT_DEFAULT_LINE_SEGEMENTS = 8;
 constexpr auto EBOLT_DEFAULT_SEGMENT_LINES = 3;
@@ -35,8 +34,8 @@ struct BoltData
 	{
 		return
 			stm
-			.Process(count , registerForChange)
-			.Process(ColorData , registerForChange)
+			.Process(count, registerForChange)
+			.Process(ColorData, registerForChange)
 			.Process(Disabled, registerForChange)
 			.Success()
 			;
@@ -72,7 +71,6 @@ struct LineDrawDataStruct
 
 constexpr ColorStruct DefaultColor[EBOLT_DEFAULT_SEGMENT_LINES] {
 	{ 255,255,255 } , { 82,81,255 } , { 82,81,255 }
-
 };
 
 class ParticleSystemTypeClass;
@@ -82,13 +80,13 @@ public:
 	ElectricBoltClass() :
 		StartCoord {},
 		EndCoord {},
-		ZAdjust {0},
+		ZAdjust { 0 },
 		Deviation { EBOLT_DEFAULT_DEVIATION },
 		Lifetime { EBOLT_DEFAULT_LIFETIME },
 		IterationCount { EBOLT_DEFAULT_INTERATIONS },
 		LineSegmentCount { EBOLT_DEFAULT_LINE_SEGEMENTS },
 		LineDrawList {},
-		DrawFrame {-1},
+		DrawFrame { -1 },
 		Random { 0 },
 		Data {}
 	{
@@ -97,7 +95,7 @@ public:
 			Data.ColorData.push_back(DefaultColor[i]);
 	}
 
-	ElectricBoltClass(CoordStruct const& start, CoordStruct const& end, const BoltData& nData , int z_adjust) :
+	ElectricBoltClass(CoordStruct const& start, CoordStruct const& end, const BoltData& nData, int z_adjust) :
 		StartCoord { start },
 		EndCoord { end },
 		ZAdjust { z_adjust },
@@ -109,19 +107,20 @@ public:
 		DrawFrame { -1 },
 		Random { 0 },
 		Data { nData }
-	{ }
+	{
+	}
 
 	ElectricBoltClass
-		(CoordStruct const& start,
-		 CoordStruct const& end,
-		 ColorStruct const& col1,
-		 ColorStruct const& col2,
-		 ColorStruct const& col3,
-		 bool col1_disable,
-		 bool col2_disable,
-		 bool col3_disable,
-		 int z_adjust
-		) :
+	(CoordStruct const& start,
+	 CoordStruct const& end,
+	 ColorStruct const& col1,
+	 ColorStruct const& col2,
+	 ColorStruct const& col3,
+	 bool col1_disable,
+	 bool col2_disable,
+	 bool col3_disable,
+	 int z_adjust
+	) :
 		StartCoord { start },
 		EndCoord { end },
 		ZAdjust { z_adjust },
@@ -145,14 +144,15 @@ public:
 		Data.Disabled[2] = col3_disable;
 	}
 
-	~ElectricBoltClass() {
+	~ElectricBoltClass()
+	{
 		Clear();
 	}
 
 	void Draw_It();
 	static void Create(CoordStruct const& start, CoordStruct const& end,
 		ColorStruct const& col1, ColorStruct const& col2, ColorStruct const& col3,
-		bool col1_disable = false,  bool col2_disable = false, bool col3_disable = false,
+		bool col1_disable = false, bool col2_disable = false, bool col3_disable = false,
 		int z_adjust = 0, ParticleSystemTypeClass* pSys = nullptr, bool particleSysCoordFlip = false);
 	static void Create(CoordStruct const& start, CoordStruct const& end, const BoltData& nData, int z_adjust, ParticleSystemTypeClass* pSys = nullptr, bool particleSysCoordFlip = false);
 
@@ -160,15 +160,16 @@ public:
 
 	static inline auto Distance(const CoordStruct& coord1, const CoordStruct& coord2)
 	{
-		 CoordStruct coord = coord1 - coord2;
-		 return int(Math::sqrt(
-			 static_cast<double>(coord.X) * static_cast<double>(coord.X) +
-			 static_cast<double>(coord.Y) * static_cast<double>(coord.Y) +
-			 static_cast<double>(coord.Z) * static_cast<double>(coord.Z)
-		 ));
+		CoordStruct coord = coord1 - coord2;
+		return int(Math::sqrt(
+			static_cast<double>(coord.X) * static_cast<double>(coord.X) +
+			static_cast<double>(coord.Y) * static_cast<double>(coord.Y) +
+			static_cast<double>(coord.Z) * static_cast<double>(coord.Z)
+		));
 	}
 
-	static inline int Sim_Random_Pick(int a, int b) {
+	static inline int Sim_Random_Pick(int a, int b)
+	{
 		return Random2Class::NonCriticalRandomNumber()(a, b);
 	}
 
@@ -178,7 +179,8 @@ public:
 private:
 	void Clear();
 
-	void Add_Plot_Line(CoordStruct& start, CoordStruct& end, ColorStruct& line_color, int start_z, int end_z) {
+	void Add_Plot_Line(CoordStruct& start, CoordStruct& end, ColorStruct& line_color, int start_z, int end_z)
+	{
 		LineDrawList.emplace_back(start, end, line_color, start_z, end_z);
 	}
 

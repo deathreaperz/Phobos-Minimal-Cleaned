@@ -26,7 +26,7 @@ DEFINE_HOOK(0x517ACC, InfantryClass_CTOR, 0x6)
 {
 	GET(InfantryClass*, pItem, ESI);
 
-	if(pItem->Type)
+	if (pItem->Type)
 		InfantryExtContainer::Instance.Allocate(pItem);
 
 	return 0;

@@ -24,11 +24,11 @@ DEFINE_HOOK(0x6870D7, ReadScenario_LoadingScreens, 0x5)
 	pINI->ReadString(defaultsSection, "DefaultLS800BkgdPal", pScenario->LS800BkgdPal, pScenario->LS800BkgdPal, 64);
 	pINI->ReadString(scenarioName, "LS800BkgdPal", pScenario->LS800BkgdPal, pScenario->LS800BkgdPal, 64);
 
-
-	if(SessionClass::Instance->GameMode == GameMode::Campaign) {
+	if (SessionClass::Instance->GameMode == GameMode::Campaign)
+	{
 		RulesClass::Instance()->Read_Sides(CCINIClass::INI_Rules);
-		for(auto pSide : *SideClass::Array)
-			SideExtContainer::Instance.LoadFromINI(pSide , CCINIClass::INI_Rules , false);
+		for (auto pSide : *SideClass::Array)
+			SideExtContainer::Instance.LoadFromINI(pSide, CCINIClass::INI_Rules, false);
 	}
 
 	//R->EAX(0x1180);

@@ -16,7 +16,8 @@ public:
 
 	using TStateMachine = LaserStrikeStateMachine;
 
-	void newStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer, int maxcount, int deferment , int duration) {
-		SWStateMachine::Register(std::make_unique<TStateMachine>(XY, pSuper, pFirer, maxcount, deferment , this , duration));
+	void newStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer, int maxcount, int deferment, int duration)
+	{
+		SWStateMachine::Register(std::make_unique<TStateMachine>(XY, pSuper, pFirer, maxcount, deferment, this, duration));
 	}
 };

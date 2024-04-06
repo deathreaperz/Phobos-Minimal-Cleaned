@@ -9,14 +9,17 @@ void ScenarioExtData::SaveVariablesToFile(bool isGlobal)
 	const auto fileName = isGlobal ? "globals.ini" : "locals.ini";
 	CCFileClass file { fileName };
 
-	if(!file.Exists()){
-		if(!file.CreateFileA()) {
+	if (!file.Exists())
+	{
+		if (!file.CreateFileA())
+		{
 			return;
 		}
 	}
 
-	if(!file.Open(FileAccessMode::Write)) {
-		Debug::Log(" %s Failed to Open file %s for\n" , __FUNCTION__ , fileName);
+	if (!file.Open(FileAccessMode::Write))
+	{
+		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, fileName);
 		return;
 	}
 
@@ -24,8 +27,9 @@ void ScenarioExtData::SaveVariablesToFile(bool isGlobal)
 	ini.ReadCCFile(&file);
 
 	const auto variables = ScenarioExtData::GetVariables(isGlobal);
-	std::for_each(variables->begin(), variables->end(), [&](const auto& variable) {
-		ini.WriteInteger(ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value, false);
+	std::for_each(variables->begin(), variables->end(), [&](const auto& variable)
+ {
+	 ini.WriteInteger(ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value, false);
 	});
 
 	ini.WriteCCFile(&file);
@@ -57,7 +61,7 @@ void ScenarioExtData::SetVariableToByID(const bool IsGlobal, int nIndex, char bS
 	}
 }
 
-void ScenarioExtData::GetVariableStateByID(const bool IsGlobal,int nIndex, char* pOut)
+void ScenarioExtData::GetVariableStateByID(const bool IsGlobal, int nIndex, char* pOut)
 {
 	//Debug::Log("%s , Executed !\n", __FUNCTION__);
 
@@ -67,7 +71,6 @@ void ScenarioExtData::GetVariableStateByID(const bool IsGlobal,int nIndex, char*
 		*pOut = static_cast<char>(itr->Value);
 	else
 		Debug::Log("Failed When Trying to Get [%d]Variables with Indx [%d] \n", (int)IsGlobal, nIndex);
-
 }
 
 void ScenarioExtData::ReadVariables(const bool IsGlobal, CCINIClass* pINI)
@@ -118,7 +121,7 @@ void ScenarioExtData::Remove(ScenarioClass* pThis)
 void ScenarioExtData::s_LoadFromINIFile(ScenarioClass* pThis, CCINIClass* pINI)
 {
 	//Data->Initialize();
-	Data->LoadFromINIFile(pINI , false);
+	Data->LoadFromINIFile(pINI, false);
 }
 
 void ScenarioExtData::LoadBasicFromINIFile(CCINIClass* pINI)
@@ -141,12 +144,14 @@ void ScenarioExtData::ReadMissionMDINI()
 {
 	CCFileClass file { GameStrings::MISSIONMD_INI };
 
-	if (!file.Exists()) {
+	if (!file.Exists())
+	{
 		Debug::Log(" %s Failed to Find file %s for\n", __FUNCTION__, file.FileName);
 		return;
 	}
 
-	if (!file.Open(FileAccessMode::ReadWrite)) {
+	if (!file.Open(FileAccessMode::ReadWrite))
+	{
 		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, file.FileName);
 		return;
 	}
@@ -170,20 +175,18 @@ void ScenarioExtData::ReadMissionMDINI()
 
 	this->ShowBriefing.Read(exINI, scenarioName, "ShowBriefing");
 	this->BriefingTheme = ini.ReadTheme(scenarioName, "BriefingTheme", this->BriefingTheme);
-
 }
 
 void ScenarioExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 {
 	//auto pThis = this->AttachedToObject;
 
-	 INI_EX exINI(pINI);
+	INI_EX exINI(pINI);
 
 	this->ShowBriefing.Read(exINI, GameStrings::Basic, "ShowBriefing");
 	this->BriefingTheme = pINI->ReadTheme(GameStrings::Basic, "BriefingTheme", this->BriefingTheme);
 	this->OriginalFilename.Read(exINI, GameStrings::Basic, "OriginalFilename");
 	this->ReadMissionMDINI();
-
 }
 
 // =============================
@@ -219,8 +222,6 @@ void ScenarioExtData::Serialize(T& Stm)
 		.Process(ShowBriefing)
 		.Process(BriefingTheme)
 		;
-
-
 }
 
 // =============================
@@ -285,7 +286,7 @@ DEFINE_HOOK(0x68945B, ScenarioClass_Save_Suffix, 0x8)
 	buffer->SaveToStream(writer);
 	//if (!
 	saver.WriteBlockToStream(ScenarioExtData::g_pStm)
-	//) Debug::Log("Faild To Write ScenarioExtData to the Stream ! ")
+		//) Debug::Log("Faild To Write ScenarioExtData to the Stream ! ")
 		;
 
 	return 0;
@@ -307,7 +308,8 @@ DEFINE_HOOK(0x68AD2F, ScenarioClass_LoadFromINI_AfterPlayerDataInit, 0x5)
 
 	INI_EX exINI(pINI);
 
-	if (SessionClass::IsCampaign()) {
+	if (SessionClass::IsCampaign())
+	{
 		GameModeOptionsClass::Instance->MCVRedeploy = pINI->ReadBool(GameStrings::Basic(), GameStrings::MCVRedeploys(), false);
 	}
 

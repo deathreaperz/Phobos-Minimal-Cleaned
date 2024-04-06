@@ -230,7 +230,7 @@ public:
 	static bool IsObserverPlayer(HouseClass* pCur);
 
 	static bool PrerequisitesMet(HouseClass* const pThis, TechnoTypeClass* const pItem);
-	static bool PrerequisitesMet(HouseClass* pThis, int* items , int size);
+	static bool PrerequisitesMet(HouseClass* pThis, int* items, int size);
 
 	//static bool HasGenericPrerequisite(int idx, const Iterator<BuildingTypeClass*>& ownedBuildingTypes);
 	//static int FindGenericPrerequisite(const char* id);
@@ -248,10 +248,12 @@ public:
 			if (!items[i])
 				continue;
 
-			if (pHouse->CanExpectToBuild(items[i], idxParentCountry)) {
-
-				if constexpr (T::AbsID == BuildingTypeClass::AbsID) {
-					if (HouseExtData::IsDisabledFromShell(pHouse, (const BuildingTypeClass*)items[i])) {
+			if (pHouse->CanExpectToBuild(items[i], idxParentCountry))
+			{
+				if constexpr (T::AbsID == BuildingTypeClass::AbsID)
+				{
+					if (HouseExtData::IsDisabledFromShell(pHouse, (const BuildingTypeClass*)items[i]))
+					{
 						continue;
 					}
 				}

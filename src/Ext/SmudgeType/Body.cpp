@@ -22,7 +22,6 @@ void SmudgeTypeExtData::Serialize(T& Stm)
 		.Process(this->Initialized)
 		.Process(this->Clearable)
 		;
-
 }
 
 // =============================
@@ -56,7 +55,7 @@ DEFINE_HOOK(0x6B58B0, SmudgeTypeClass_SaveLoad_Prefix, 0x8)
 }
 
 // Before : DEFINE_HOOK(0x6B589F, SmudgeTypeClass_Load_Suffix, 0x5)
-DEFINE_HOOK(0x6B589D , SmudgeTypeClass_Load_Suffix, 0x6)
+DEFINE_HOOK(0x6B589D, SmudgeTypeClass_Load_Suffix, 0x6)
 {
 	SmudgeTypeExtContainer::Instance.LoadStatic();
 	return 0;
@@ -69,11 +68,11 @@ DEFINE_HOOK(0x6B58C8, SmudgeTypeClass_Save_Suffix, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x6B57DA , SmudgeTypeClass_LoadFromINI, 0xA)
+DEFINE_HOOK_AGAIN(0x6B57DA, SmudgeTypeClass_LoadFromINI, 0xA)
 DEFINE_HOOK(0x6B57CD, SmudgeTypeClass_LoadFromINI, 0xA)
 {
 	GET(SmudgeTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, STACK_OFFS(0x208, -0x4));
-	SmudgeTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x6B57DA);
+	SmudgeTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x6B57DA);
 	return 0x0;
 }

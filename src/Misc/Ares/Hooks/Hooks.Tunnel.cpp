@@ -183,15 +183,16 @@ DEFINE_HOOK(0x7014B9, TechnoClass_SetOwningHouse_Tunnel, 0x6)
 {
 	GET(TechnoClass*, pThis, ESI);
 
-	if (auto pBuilding = specific_cast<BuildingClass*>(pThis)) {
-
+	if (auto pBuilding = specific_cast<BuildingClass*>(pThis))
+	{
 		const auto nTunnelVec = HouseExtData::GetTunnelVector(pBuilding->Type, pThis->Owner);
 
 		if (!nTunnelVec || TunnelFuncs::FindSameTunnel(pBuilding))
 			return 0x0;
 
 		for (auto nPos = nTunnelVec->Vector.begin();
-			nPos != nTunnelVec->Vector.end(); ++nPos) {
+			nPos != nTunnelVec->Vector.end(); ++nPos)
+		{
 			TunnelFuncs::KillFootClass(*nPos, nullptr);
 		}
 
@@ -239,12 +240,13 @@ DEFINE_HOOK(0x44D880, BuildingClass_Mi_Unload_Tunnel, 5)
 	const auto nTunnelVec = HouseExtData::GetTunnelVector(pThisType, pThis->Owner);
 
 	if (!nTunnelVec)
-		return 0x0; //something on `TechnoClass::AI` is causing building uneable to 
+		return 0x0; //something on `TechnoClass::AI` is causing building uneable to
 	// properly reset the mission after Unload + Turret
 	// seems strange
-	// method used below is one that working for the thing 
+	// method used below is one that working for the thing
 
-	if (!nTunnelVec->Vector.empty()) {
+	if (!nTunnelVec->Vector.empty())
+	{
 		TunnelFuncs::HandleUnload(&nTunnelVec->Vector, pThis);
 
 		if (nTunnelVec->Vector.empty())
@@ -333,10 +335,13 @@ DEFINE_HOOK(0x43C326, BuildingClass_ReceivedRadioCommand_QueryCanEnter_Tunnel, 0
 	}
 
 	//next is for absorbers
-	if(IsAbsorber) {
-		if ((IsUnitAbsorber && whatRept == UnitClass::AbsID) || (IsInfAbsorber && whatRept == InfantryClass::AbsID)) {
+	if (IsAbsorber)
+	{
+		if ((IsUnitAbsorber && whatRept == UnitClass::AbsID) || (IsInfAbsorber && whatRept == InfantryClass::AbsID))
+		{
 			if (pThisBld->Passengers.NumPassengers >= pBldType->Passengers
-				|| pBldType->SizeLimit < pRectpType->Size) {
+				|| pBldType->SizeLimit < pRectpType->Size)
+			{
 				R->EBX(pBldType);
 				return ContineCheck;
 			}

@@ -2,8 +2,10 @@
 
 void ReadFacingDirMult(std::array<Point2D, (size_t)FacingType::Count>& arr, INI_EX& exINI, const char* pID, const int* beginX, const int* beginY)
 {
-	for (size_t i = 0; i < arr.size(); ++i) {
-		if(!detail::read(arr[i], exINI, pID, (std::string("FacingDirectionMult") + std::to_string(i)).c_str())) {
+	for (size_t i = 0; i < arr.size(); ++i)
+	{
+		if (!detail::read(arr[i], exINI, pID, (std::string("FacingDirectionMult") + std::to_string(i)).c_str()))
+		{
 			arr[i].X = *(beginX + i);
 			arr[i].Y = *(beginY + i);
 		}
@@ -27,7 +29,8 @@ void ParticleSystemTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFail
 	}
 	break;
 	case ParticleSystemTypeBehavesLike::Spark:
-		if (pThis->ParticleCap < 2){
+		if (pThis->ParticleCap < 2)
+		{
 			Debug::Log("ParticleSystem[%s] BehavesLike=Spark ParticleCap need to be more than 1 , fixing\n", pID);
 			pThis->ParticleCap = 2;
 		}
@@ -40,8 +43,7 @@ void ParticleSystemTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFail
 	this->AdjustTargetCoordsOnRotation.Read(exINI, pID, "AdjustTargetCoordsOnRotation");
 
 	if (pThis->LightSize > 94)
-		Debug::Log("ParticleSystem[%s] with LightSize > 94 value [%d]\n", pID , pThis->LightSize);
-
+		Debug::Log("ParticleSystem[%s] with LightSize > 94 value [%d]\n", pID, pThis->LightSize);
 }
 
 // =============================
@@ -108,6 +110,6 @@ DEFINE_HOOK(0x644617, ParticleSystemTypeClass_LoadFromINI, 0x5)
 	GET(ParticleSystemTypeClass*, pItem, ESI);
 	GET(CCINIClass*, pINI, EBX);
 
-	ParticleSystemTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x644620);
+	ParticleSystemTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x644620);
 	return 0;
 }

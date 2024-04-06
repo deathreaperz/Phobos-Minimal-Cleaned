@@ -340,7 +340,7 @@ DEFINE_HOOK(0x6F3432, TechnoClass_WhatWeaponShouldIUse_Gattling, 0xA)
 	int oddWeaponIndex = 2 * pThis->CurrentGattlingStage;
 	int evenWeaponIndex = oddWeaponIndex + 1;
 	int chosenWeaponIndex = oddWeaponIndex;
-	int eligibleWeaponIndex = TechnoExtData::PickWeaponIndex(pThis, pTargetTechno, pTarget, oddWeaponIndex, evenWeaponIndex, true,true);
+	int eligibleWeaponIndex = TechnoExtData::PickWeaponIndex(pThis, pTargetTechno, pTarget, oddWeaponIndex, evenWeaponIndex, true, true);
 
 	if (eligibleWeaponIndex != -1)
 	{
@@ -363,7 +363,6 @@ DEFINE_HOOK(0x6F3432, TechnoClass_WhatWeaponShouldIUse_Gattling, 0xA)
 
 		if (!skipRemainingChecks)
 		{
-
 			if (std::abs(
 				//GeneralUtils::GetWarheadVersusArmor(pWeaponOdd->Warhead , pTargetTechno->GetTechnoType()->Armor)
 				WarheadTypeExtContainer::Instance.Find(pWeaponOdd->Warhead)->GetVerses(TechnoExtData::GetArmor(pTargetTechno)).Verses
@@ -433,7 +432,8 @@ DEFINE_HOOK(0x70E1A0, TechnoClass_GetTurretWeapon_LaserWeapon, 0x5)
 	{
 		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
-		if (!pExt->CurrentLaserWeaponIndex.empty()) {
+		if (!pExt->CurrentLaserWeaponIndex.empty())
+		{
 			R->EAX(pThis->GetWeapon(pExt->CurrentLaserWeaponIndex));
 			return 0x70E1C8;
 		}

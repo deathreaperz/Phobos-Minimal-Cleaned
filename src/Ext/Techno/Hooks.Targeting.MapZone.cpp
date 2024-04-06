@@ -9,7 +9,7 @@ DEFINE_HOOK(0x6F7E24, TechnoClass_EvaluateObject_MapZone, 0x6)
 	GET(TechnoClass*, pThis, EDI);
 	GET(ObjectClass*, pTarget, ESI);
 	GET(WeaponTypeClass*, pWeapon, EBP);
-	GET_STACK(ZoneType, zone, STACK_OFFSET(0x3C ,0x18));
+	GET_STACK(ZoneType, zone, STACK_OFFSET(0x3C, 0x18));
 
 	auto pThisTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 

@@ -31,8 +31,9 @@ void PaletteManager::Clear_Internal()
 
 void PaletteManager::CreateConvert()
 {
-	if (!this->Palette) {
-		Debug::Log("[%s] Missing Palette Data ! \n" , this->Name.data());
+	if (!this->Palette)
+	{
+		Debug::Log("[%s] Missing Palette Data ! \n", this->Name.data());
 		return;
 	}
 
@@ -42,14 +43,17 @@ void PaletteManager::CreateConvert()
 	std::string realname = _strlwr(this->Name.data());
 
 	// the function will handle the name change
-	if(realname.find("~~~") != std::string::npos){
+	if (realname.find("~~~") != std::string::npos)
+	{
 		realname.erase(realname.find("~~~"));
 
 		if (realname.find(".pal") != std::string::npos)
 			realname.erase(realname.find(".pal"));
 
 		this->ColorschemeDataVector = (ColorScheme::GeneratePalette(realname.data()));
-	} else { //dont need extension
+	}
+	else
+	{ //dont need extension
 		std::string cachedWithExt = _strlwr(this->CachedName.data());
 
 		if (cachedWithExt.find(".pal") != std::string::npos)
@@ -117,7 +121,8 @@ void PaletteManager::LoadFromStream(PhobosStreamReader& Stm)
 	if (!Stm.Load(hasPalette))
 		return;
 
-	if (hasPalette) {
+	if (hasPalette)
+	{
 		this->Palette.reset(GameCreate<BytePalette>());
 
 		if (!Stm.Load(*this->Palette))
@@ -130,7 +135,8 @@ void PaletteManager::LoadFromStream(PhobosStreamReader& Stm)
 void PaletteManager::SaveToStream(PhobosStreamWriter& Stm)
 {
 	Stm.Save(this->Palette != nullptr);
-	if (this->Palette) {
+	if (this->Palette)
+	{
 		Stm.Save(*this->Palette);
 	}
 }

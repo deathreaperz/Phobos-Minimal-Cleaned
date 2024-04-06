@@ -16,7 +16,6 @@
 
 #include <Utilities/GeneralUtils.h>
 
-
 //TODO :
 // Parasite Heal
 // Parasite Able To target friendly
@@ -29,19 +28,20 @@ DEFINE_HOOK(0x62AB88, ParasiteClass_PassableTerrain, 0x5)
 
 	GET(ParasiteClass*, pThis, ESI);
 
-	const auto pTerrain = [](CellClass* pCell)->TerrainClass* {
-		for (ObjectClass* pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject)
+	const auto pTerrain = [](CellClass* pCell)->TerrainClass*
 		{
-			const auto pTerrain = specific_cast<TerrainClass*>(pObject);
+			for (ObjectClass* pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject)
+			{
+				const auto pTerrain = specific_cast<TerrainClass*>(pObject);
 
-			if (pTerrain && !TerrainTypeExtContainer::Instance.Find(pTerrain->Type)->IsPassable)
-				return pTerrain;
-		}
+				if (pTerrain && !TerrainTypeExtContainer::Instance.Find(pTerrain->Type)->IsPassable)
+					return pTerrain;
+			}
 
-		return nullptr;
-	}(pThis->Victim->GetCell());
+			return nullptr;
+		}(pThis->Victim->GetCell());
 
-	return pTerrain ? ReturnZero : SkipGameCode;
+		return pTerrain ? ReturnZero : SkipGameCode;
 }
 
 DEFINE_HOOK(0x62ABB6, ParasiteClass_LandCost, 0x5)
@@ -51,13 +51,13 @@ DEFINE_HOOK(0x62ABB6, ParasiteClass_LandCost, 0x5)
 	GET(ParasiteClass*, pThis, ESI);
 	GET(LandType, land, EAX);
 
-	return GroundType::GetCost(land , pThis->Owner->GetTechnoType()->SpeedType) > 0.0
+	return GroundType::GetCost(land, pThis->Owner->GetTechnoType()->SpeedType) > 0.0
 		? Skip : ContinueIn;
 }
 
 DEFINE_HOOK(0x629FE4, ParasiteClass_IsGrapplingAttack, 0x5)
 {
-	enum { DoGrapple = 0x62A00E , DoParasite = 0x62A01D };
+	enum { DoGrapple = 0x62A00E, DoParasite = 0x62A01D };
 	GET(ParasiteClass*, pThis, ESI);
 
 	auto const pOwnerType = pThis->Owner->GetTechnoType();
@@ -78,10 +78,10 @@ DEFINE_HOOK(0x62A0D3, ParasiteClass_AI_Particle, 0x5)
 	if (auto pParticle = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead)->Parasite_ParticleSys.Get(RulesClass::Instance->DefaultSparkSystem))
 	{
 		auto nLocHere = *pCoord;
-		if(pParticle->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
+		if (pParticle->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
 			nLocHere.Z += 100;
 
-		GameCreate<ParticleSystemClass>(pParticle, nLocHere, pThis->Victim , pThis->Owner ,CoordStruct::Empty , pThis->Owner->Owner);
+		GameCreate<ParticleSystemClass>(pParticle, nLocHere, pThis->Victim, pThis->Owner, CoordStruct::Empty, pThis->Owner->Owner);
 	}
 
 	return 0x62A108;
@@ -93,7 +93,7 @@ DEFINE_HOOK(0x62A13F, ParasiteClass_AI_WeaponAnim, 0x5)
 	GET(AnimTypeClass* const, pAnimType, EBP);
 	LEA_STACK(CoordStruct*, pStack, STACK_OFFS(0x4C, 0x18));
 
-	AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pStack,0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200 , 0 , 0),
+	AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pStack, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0),
 		pThis->Owner ? pThis->Owner->GetOwningHouse() : nullptr,
 		pThis->Victim ? pThis->Victim->GetOwningHouse() : nullptr,
 		pThis->Owner,
@@ -105,7 +105,8 @@ DEFINE_HOOK(0x62A13F, ParasiteClass_AI_WeaponAnim, 0x5)
 
 DEFINE_HOOK(0x62A074, ParasiteClass_AI_DamagingAction, 0x6)
 {
-	enum {
+	enum
+	{
 		SkippAll = 0x62A24D,
 		ReceiveDamage = 0x62A0B7,
 		ReceiveDamage_LikeVehicle = 0x62A0D3 // not instant kill the infantry , but gave it damage per second
@@ -120,7 +121,8 @@ DEFINE_HOOK(0x62A074, ParasiteClass_AI_DamagingAction, 0x6)
 
 	if (pThis->Victim->WhatAmI() == InfantryClass::AbsID
 		&& !WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead)->Parasite_TreatInfantryAsVehicle
-		.Get(static_cast<InfantryClass*>(pThis->Victim)->Type->Cyborg)) {
+		.Get(static_cast<InfantryClass*>(pThis->Victim)->Type->Cyborg))
+	{
 		return ReceiveDamage;
 	}
 
@@ -149,7 +151,7 @@ DEFINE_HOOK(0x62A074, ParasiteClass_AI_DamagingAction, 0x6)
 
 DEFINE_HOOK(0x62A16A, ParasiteClass_AI_DisableRocking, 0x5)
 {
-	enum { DealDamage = 0x62A222 , Continue = 0x0 };
+	enum { DealDamage = 0x62A222, Continue = 0x0 };
 	GET(ParasiteClass* const, pThis, ESI);
 	GET(WeaponTypeClass* const, pWeapon, EDI);
 
@@ -157,40 +159,43 @@ DEFINE_HOOK(0x62A16A, ParasiteClass_AI_DisableRocking, 0x5)
 		return DealDamage;
 
 	return (WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead)->Parasite_DisableRocking.Get())
-			|| pThis->Victim->WhatAmI() == InfantryClass::AbsID
+		|| pThis->Victim->WhatAmI() == InfantryClass::AbsID
 		? DealDamage : Continue;
 }
 
- DEFINE_HOOK(0x62A222, ParasiteClass_AI_DealDamage, 0x6)
- {
- 	enum { SkipDamaging = 0x62A24D , VictimTakeDamage = 0x0 };
+DEFINE_HOOK(0x62A222, ParasiteClass_AI_DealDamage, 0x6)
+{
+	enum { SkipDamaging = 0x62A24D, VictimTakeDamage = 0x0 };
 
- 	GET(ParasiteClass*, pThis, ESI);
- 	GET(WeaponTypeClass* const, pWeapon, EDI);
+	GET(ParasiteClass*, pThis, ESI);
+	GET(WeaponTypeClass* const, pWeapon, EDI);
 
- 	auto const pWarheadTypeExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
+	auto const pWarheadTypeExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
 
- 	if (pWarheadTypeExt->Parasite_Damaging_Chance.isset()
- 		&& ScenarioClass::Instance->Random.RandomDouble() >=
- 		abs(pWarheadTypeExt->Parasite_Damaging_Chance.Get())
- 		) {
- 		return SkipDamaging;
- 	}
+	if (pWarheadTypeExt->Parasite_Damaging_Chance.isset()
+		&& ScenarioClass::Instance->Random.RandomDouble() >=
+		abs(pWarheadTypeExt->Parasite_Damaging_Chance.Get())
+		)
+	{
+		return SkipDamaging;
+	}
 
- 	if (auto const pInvestationWP = pWarheadTypeExt->Parasite_InvestationWP.Get(nullptr)) {
- 		WeaponTypeExtData::DetonateAt(pInvestationWP,pThis->Victim, pThis->Owner , true , nullptr);
- 		return SkipDamaging;
- 	}
+	if (auto const pInvestationWP = pWarheadTypeExt->Parasite_InvestationWP.Get(nullptr))
+	{
+		WeaponTypeExtData::DetonateAt(pInvestationWP, pThis->Victim, pThis->Owner, true, nullptr);
+		return SkipDamaging;
+	}
 
- 	return VictimTakeDamage;
- }
+	return VictimTakeDamage;
+}
 
 DEFINE_HOOK_AGAIN(0x62A399, ParasiteClass_ExitUnit_ExitSound, 0x9) //ParasiteClass_Detach
 DEFINE_HOOK(0x62A735, ParasiteClass_ExitUnit_ExitSound, 0xA) //ParasiteClass_Uninfect
 {
 	GET(ParasiteClass* const, pParasite, ESI);
 
-	if (auto const pParasiteOwner = pParasite->Owner) {
+	if (auto const pParasiteOwner = pParasite->Owner)
+	{
 		auto nCoord = pParasiteOwner->GetCoords();
 		VoxClass::PlayAtPos(TechnoTypeExtContainer::Instance.Find(pParasiteOwner->GetTechnoType())
 			->ParasiteExit_Sound.Get(), &nCoord);
@@ -210,7 +215,7 @@ DEFINE_HOOK(0x629B3F, ParasiteClass_SquiddyGrab_DeharcodeSplash, 0x5) // 7
 	GET(ParasiteClass* const, pThis, ESI);
 	CoordStruct nCoord { nX , nY , nZ };
 
-	if(!MapClass::Instance->GetCellAt(nCoord)->Tile_Is_Water())
+	if (!MapClass::Instance->GetCellAt(nCoord)->Tile_Is_Water())
 		return Handled;
 
 	if (auto const AnimType = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead)->SquidSplash.GetElements(RulesClass::Instance->SplashList))
@@ -238,7 +243,7 @@ DEFINE_HOOK(0x62991C, ParasiteClass_GrappleAI_GrappleAnimCreated, 0x8)
 
 DEFINE_HOOK(0x6298CC, ParasiteClass_GrappleAI_AnimType, 0x5)
 {
-	enum{ NoAnim = 0x629972 , CreateAnim = 0x6298F0 };
+	enum { NoAnim = 0x629972, CreateAnim = 0x6298F0 };
 
 	//GET(ParasiteClass*, pThis, ESI);
 	GET_STACK(WeaponTypeClass* const, pWeapon, STACK_OFFS(0x6C, 0x4C));

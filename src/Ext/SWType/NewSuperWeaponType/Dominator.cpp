@@ -67,7 +67,6 @@ void SW_PsychicDominator::Initialize(SWTypeExtData* pData)
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::PsychicDominator;
 	pData->SW_AffectsTarget = SuperWeaponTarget::Infantry | SuperWeaponTarget::Unit;
 	pData->CursorType = (int)MouseCursorType::PsychicDominator;
-
 }
 
 void SW_PsychicDominator::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
@@ -138,7 +137,8 @@ void PsychicDominatorStateMachine::Update()
 		coords.Z += pData->Dominator_FirstAnimHeight;
 
 		AnimClass* pAnim = nullptr;
-		if (AnimTypeClass* pAnimType = pData->Dominator_FirstAnim.Get(RulesClass::Instance->DominatorFirstAnim)) {
+		if (AnimTypeClass* pAnimType = pData->Dominator_FirstAnim.Get(RulesClass::Instance->DominatorFirstAnim))
+		{
 			auto pCreated = GameCreate<AnimClass>(pAnimType, coords);
 			pCreated->SetHouse(this->Super->Owner);
 			pAnim = pCreated;

@@ -2,7 +2,6 @@
 #include "Macro.h"
 #include <Phobos.h>
 
-
 #include <MouseClass.h>
 #include <WWMouseClass.h>
 #include <Surface.h>
@@ -41,21 +40,22 @@ void Debug::WriteTimestamp()
 
 void Debug::DumpStack(REGISTERS* R, size_t len, int startAt)
 {
-	if (!Debug::LogFileActive()) {
+	if (!Debug::LogFileActive())
+	{
 		return;
 	}
 
 	Debug::LogUnflushed("Dumping %X bytes of stack\n", len);
 	auto const end = len / 4;
 	auto const* const mem = R->lea_Stack<DWORD*>(startAt);
-	for (auto i = 0u; i < end; ++i) {
-
+	for (auto i = 0u; i < end; ++i)
+	{
 		const char* suffix = "";
 		const uintptr_t ptr = mem[i];
 		if (ptr >= 0x401000 && ptr <= 0xB79BE4)
 			suffix = "GameMemory!";
 
-		Debug::LogUnflushed("esp+%04X = %08X %s\n", i * 4, mem[i] , suffix);
+		Debug::LogUnflushed("esp+%04X = %08X %s\n", i * 4, mem[i], suffix);
 	}
 
 	Debug::Log("====================Done.\n"); // flushes
@@ -147,7 +147,8 @@ void Debug::LogFileOpen()
 
 	LogFile = _wfsopen(Debug::LogFileTempName.c_str(), L"w", SH_DENYNO);
 
-	if (!LogFile) {
+	if (!LogFile)
+	{
 		wchar_t msg[100] = L"\0";
 		wsprintfW(msg, L"Log file failed to open. Error code = %X", errno);
 		MessageBoxW(Game::hWnd.get(), Debug::LogFileTempName.c_str(), msg, MB_OK | MB_ICONEXCLAMATION);
@@ -185,7 +186,7 @@ void Debug::MakeLogFile()
 		CreateDirectoryW(Debug::LogFileName.c_str(), nullptr);
 
 		Debug::LogFileTempName = Debug::LogFileName + L"\\debug.log";
-		Debug::LogFileName += std::format(L"\\debug.{:04}{:02}{:02}-{:02}{:02}{:02}.log" ,
+		Debug::LogFileName += std::format(L"\\debug.{:04}{:02}{:02}-{:02}{:02}{:02}.log",
 		time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond);
 
 		made = 1;
@@ -203,31 +204,37 @@ void Debug::FreeMouse()
 	Game::StreamerThreadFlush();
 	const auto pMouse = MouseClass::Instance();
 
-	if (pMouse) {
+	if (pMouse)
+	{
 		const auto pMouseVtable = VTable::Get(pMouse);
 
-		if (pMouseVtable == 0x7E1964) {
+		if (pMouseVtable == 0x7E1964)
+		{
 			pMouse->UpdateCursor(MouseCursorType::Default, false);
 		}
 	}
 
 	const auto pWWMouse = WWMouseClass::Instance();
 
-	if (pWWMouse) {
+	if (pWWMouse)
+	{
 		const auto pWWMouseVtable = VTable::Get(pWWMouse);
 
-		if (pWWMouseVtable == 0x7F7B2C) {
+		if (pWWMouseVtable == 0x7F7B2C)
+		{
 			pWWMouse->ReleaseMouse();
 		}
 	}
 
 	ShowCursor(TRUE);
 
-	auto const BlackSurface = [](DSurface* pSurface) {
-		if (pSurface && VTable::Get(pSurface) == DSurface::vtable && pSurface->BufferPtr) {
-			pSurface->Fill(0);
-		}
-	};
+	auto const BlackSurface = [](DSurface* pSurface)
+		{
+			if (pSurface && VTable::Get(pSurface) == DSurface::vtable && pSurface->BufferPtr)
+			{
+				pSurface->Fill(0);
+			}
+		};
 
 	BlackSurface(DSurface::Alternate);
 	BlackSurface(DSurface::Composite);
@@ -250,7 +257,7 @@ void Debug::FatalError(bool Dump)
 		L"%hs",
 		Phobos::readBuffer);
 
-	Debug::Log("\nFatal Error: \n%s\n" , Phobos::readBuffer);
+	Debug::Log("\nFatal Error: \n%s\n", Phobos::readBuffer);
 	Debug::FreeMouse();
 	MessageBoxW(Game::hWnd, Message, L"Fatal Error - Yuri's Revenge", MB_OK | MB_ICONERROR);
 

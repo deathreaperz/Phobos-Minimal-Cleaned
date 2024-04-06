@@ -44,7 +44,6 @@
 #include <BitFont.h>
 #include <format>
 
-
 #include <Ext/SWType/Body.h>
 #include <New/Type/CrateTypeClass.h>
 
@@ -451,7 +450,6 @@ DEFINE_HOOK(0x738703, UnitClass_Explode_ExplodeAnim, 0x5)
 
 	if (pExplType)
 	{
-
 		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pExplType, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false),
 			pThis->GetOwningHouse(),
 			nullptr,
@@ -599,7 +597,6 @@ DEFINE_HOOK(0x7091FC, TechnoClass_CanPassiveAquire_AI, 0x6)
 			&& !owner->IsControlledByHuman()
 			)
 		{
-
 			R->CL(pTypeExt->PassiveAcquire_AI.Get());
 			return 0x709202;
 		}
@@ -827,7 +824,6 @@ DEFINE_HOOK(0x71ADE0, TemporalClass_LetGo_Replace, 0x6)
 		pOwner->EnterIdleMode(false, 1);
 
 	return 0x71AE49;
-
 }
 
 DEFINE_HOOK(0x4DA64D, FootClass_Update_IsInPlayField, 0x6)
@@ -1176,7 +1172,6 @@ void DrawTiberiumPip(TechnoClass* pTechno, Point2D* nPoints, RectangleStruct* pR
 
 	for (size_t i = 0; i < Amounts.size(); i++)
 	{
-
 		int FrameIdx = 0;
 		int amount = 0;
 
@@ -1303,7 +1298,6 @@ void DrawSpawnerPip(TechnoClass* pTechno, Point2D* nPoints, RectangleStruct* pRe
 			nPal = pTechno->GetRemapColour();
 		else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette)
 			nPal = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
-
 	}
 
 	for (int i = 0; i < nMax; i++)
@@ -1652,7 +1646,6 @@ DEFINE_HOOK(0x4FB7CA, HouseClass_RegisterJustBuild_CreateSound_PlayerOnly, 0x6) 
 
 		if (pTechnoTypeExt->VoiceCreate >= 0)
 		{
-
 			if (!pTechnoTypeExt->VoiceCreate_Instant)
 				pTechno->QueueVoice(pTechnoTypeExt->VoiceCreate);
 			else
@@ -2180,7 +2173,6 @@ BuildingClass* IsAnySpysatActive(HouseClass* pThis)
 
 			for (auto begin = pTypes.begin(); begin != pTypes.end() && *begin; ++begin)
 			{
-
 				const auto pExt = BuildingTypeExtContainer::Instance.Find(*begin);
 				//const auto Powered_ = pBld->IsOverpowered || (!PowerDown && !((*begin)->PowerDrain && LowpOwerHouse));
 
@@ -2390,7 +2382,6 @@ DEFINE_HOOK(0x709B79, TechnoClass_DrawPip_Spawner, 0x6)
 			pPal = pThis->GetRemapColour();
 		else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette)
 			pPal = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
-
 	}
 
 	int currentSpawnsCount = pThis->SpawnManager->CountDockedSpawns();
@@ -2539,7 +2530,6 @@ DEFINE_HOOK(0x73D4DA, UnitClass_Harvest_VeinsStorageAmount, 0x6)
 
 	if (pThis->Type->Weeder)
 	{
-
 		pCell->RemoveWeed();
 		TechnoExtContainer::Instance.Find(pThis)->TiberiumStorage.IncreaseAmount(RulesExtData::Instance()->Veins_PerCellAmount, 0);
 		return 0x73D502;
@@ -2674,7 +2664,6 @@ DEFINE_HOOK(0x489671, MapClass_DamageArea_Veinhole, 0x6)
 					pSource && !pHouse ? pSource->Owner : pHouse
 				) == DamageState::NowDead)
 					Debug::Log("Veinhole at Destroyed!\n");
-
 		}
 
 		return 0x4896B2;
@@ -2740,7 +2729,6 @@ DEFINE_HOOK(0x44E809, BuildingClass_PowerOutput_Absorber, 0x6)
 		pPas;
 		pPas = generic_cast<FootClass*>(pPas->NextObject))
 	{
-
 		powertotal += abs(TechnoTypeExtContainer::Instance.Find(pPas->GetTechnoType())
 			->ExtraPower_Amount.Get(pThis->Type->ExtraPowerBonus));
 	}
@@ -3035,7 +3023,6 @@ static void Tactical_Draw_Radial(
 
 	for (size_t i = 0; i < ARRAY_SIZE(_line_alpha); ++i)
 	{
-
 		static int _offset = 0;
 		static MSTimerClass sweep_rate(_rate);
 
@@ -3054,21 +3041,16 @@ static void Tactical_Draw_Radial(
 
 		if (std::fabs(angle - DEG_TO_RADF(90)) < 0.001)
 		{
-
 			line_start = center_pixel;
 			line_end = Point2D(center_pixel.X, int(center_pixel.Y + (-size_half)));
-
 		}
 		else if (std::fabs(angle - DEG_TO_RADF(270)) < 0.001)
 		{
-
 			line_start = center_pixel;
 			line_end = Point2D(center_pixel.X, int(center_pixel.Y + size_half));
-
 		}
 		else
 		{
-
 			double angle_tan = Math::tan(angle);
 			double xdist = Math::sqrt(1.0 / ((angle_tan * angle_tan) / (size_half * size_half) + 1.0 / (d_size * d_size)));
 			double ydist = Math::sqrt((1.0 - (xdist * xdist) / (d_size * d_size)) * (size_half * size_half));
@@ -3085,7 +3067,6 @@ static void Tactical_Draw_Radial(
 
 			line_start = center_pixel;
 			line_end = Point2D(int(center_pixel.X + xdist), int(center_pixel.Y + ydist));
-
 		}
 
 		line_start.X -= DSurface::ViewBounds().X;
@@ -3109,7 +3090,6 @@ static void Tactical_Draw_Radial(
 										enable_green_channel,
 										enable_blue_channel,
 										(float)_line_alpha[i]);
-
 	}
 }
 
@@ -3216,7 +3196,6 @@ DEFINE_HOOK(0x6D47A6, TacticalClass_Render_Techno, 0x6)
 			{
 				if (auto const pTeamLeader = pTeam->FetchLeader())
 				{
-
 					if (pTeamLeader != pFoot)
 						Drawing::DrawLinesTo(pTeamLeader->GetRenderCoords(), pThis->Location, pTeamLeader->Owner->Color);
 				}
@@ -3614,7 +3593,6 @@ DEFINE_HOOK(0x73730E, UnitClass_Visceroid_HealthCheckRestore, 0x6)
 	{
 		if (pThis->IsRedHP() && (pThis->Type->TiberiumHeal || pThis->HasAbility(AbilityType::TiberiumHeal)))
 		{
-
 			if (pThis->GetCell()->LandType != LandType::Tiberium)
 			{
 				// search tiberium and abort current mission
@@ -3629,7 +3607,6 @@ DEFINE_HOOK(0x73730E, UnitClass_Visceroid_HealthCheckRestore, 0x6)
 					pThis->QueueMission(Mission::Move, false);
 					pThis->NextMission();
 				}
-
 			}
 			else
 			{
@@ -3658,7 +3635,6 @@ DEFINE_HOOK(0x6D4764, TechnoClass_PsyhicSensor_DisableWhenTechnoDies, 0x7)
 
 	if (pThis)
 	{
-
 		const auto vtable = VTable::Get(pThis);
 		if (vtable != UnitClass::vtable
 			&& vtable != InfantryClass::vtable
@@ -3920,7 +3896,7 @@ DEFINE_HOOK(0x41F783, AITriggerTypeClass_ParseConditionType, 0x5)
 		result = BuildingTypeClass::Find(pBuffer);
 
 	if (Phobos::Otamaa::IsAdmin)
-		Debug::Log("Condition Object[%s - %s] for [%s]\n", pBuffer , result ? result->GetThisClassName() : NONE_STR2, pThis->ID);
+		Debug::Log("Condition Object[%s - %s] for [%s]\n", pBuffer, result ? result->GetThisClassName() : NONE_STR2, pThis->ID);
 
 	R->ESI(result);
 	return 0x41F7DE;
@@ -3995,14 +3971,12 @@ DEFINE_HOOK(0x447110, BuildingClass_Sell_Handled, 0x9)
 
 	if (pThis->HasBuildup)
 	{
-
 		switch (control)
 		{
 		case -1:
 		{
 			if (pThis->GetCurrentMission() != Mission::Selling)
 			{
-
 				pThis->QueueMission(Mission::Selling, false);
 				pThis->NextMission();
 			}
@@ -4226,7 +4200,6 @@ DEFINE_HOOK(0x461225, BuildingTypeClass_ReadFromINI_Foundation, 0x6)
 			{
 				if (++iter == pBldext->CustomData.end())
 					Debug::Log("BuildingType %s has a custom foundation which does not include cell 0,0. This breaks AI base building.\n", pSection);
-
 			}
 		}
 	}
@@ -4444,7 +4417,6 @@ DEFINE_HOOK(0x42C4FE, AstarClass_FindPath_nullptr, 0x9)
 
 	return 0x42C740;
 	*/
-
 }
 #pragma optimize("", on )
 #endif
@@ -4556,8 +4528,9 @@ DEFINE_HOOK(0x483226, CellClass_CrateBeingCollected_Firepower2, 6)
 #endif
 
 #pragma region CRATE_HOOKS
-enum class MoveResult : char {
-	cannot , can
+enum class MoveResult : char
+{
+	cannot, can
 };
 
 // what is the boolean return for , heh
@@ -4649,7 +4622,6 @@ MoveResult CollecCrate(CellClass* pCell, FootClass* pCollector)
 					}
 					case Powerup::Cloak:
 					{
-
 						if (!TechnoTypeExtContainer::Instance.Find(pCollector->GetTechnoType())->CloakAllowed || pCollector->CanICloakByDefault() || TechnoExtContainer::Instance.Find(pCollector)->AE_Cloak)
 							data = Powerup::Money;
 
@@ -4721,8 +4693,7 @@ MoveResult CollecCrate(CellClass* pCell, FootClass* pCollector)
 						data = Powerup::Unit;
 					}
 
-					HouseExtData::IncremetCrateTracking(pCollectorOwner ,data);
-
+					HouseExtData::IncremetCrateTracking(pCollectorOwner, data);
 				}
 				else if (!pCell->OverlayData)
 				{
@@ -4777,7 +4748,6 @@ MoveResult CollecCrate(CellClass* pCell, FootClass* pCollector)
 
 				auto GeiveMoney = [&]()
 					{
-
 						Debug::Log("Crate at %d,%d contains money\n", pCell->MapCoords.X, pCell->MapCoords.Y);
 
 						if (!soloCrateMoney)
@@ -5138,7 +5108,6 @@ MoveResult CollecCrate(CellClass* pCell, FootClass* pCollector)
 
 									if ((int)place.Length() < RulesClass::Instance->CrateRadius)
 									{
-
 										if (pTechno->Veterancy.IsVeteran())
 											pTechno->Veterancy.SetElite();
 
@@ -5165,7 +5134,6 @@ MoveResult CollecCrate(CellClass* pCell, FootClass* pCollector)
 
 					if (auto WH = WarheadTypeClass::Array->GetItemOrDefault(WarheadTypeClass::FindIndexById("GAS")))
 					{
-
 						bool randomizeCoord = true;
 						auto collector_loc = pCell->GetCoords();
 
@@ -5317,8 +5285,9 @@ DEFINE_HOOK(0x475A44, CCINIClass_Put_CrateType, 0x7)
 	GET_STACK(int, crateType, 0x8);
 
 	const auto pCrate = CrateTypeClass::FindFromIndexFix(crateType);
-	if (!pCrate) {
-		Debug::FatalErrorAndExit(__FUNCTION__" Missing CrateType Pointer for[%d]!\n" ,crateType);
+	if (!pCrate)
+	{
+		Debug::FatalErrorAndExit(__FUNCTION__" Missing CrateType Pointer for[%d]!\n", crateType);
 	}
 
 	R->EDX(pCrate->Name.data());
@@ -5329,7 +5298,8 @@ DEFINE_HOOK(0x475A1F, RulesClass_Put_CrateType, 0x5)
 	GET(const char*, crate, ECX);
 
 	const int idx = CrateTypeClass::FindIndexById(crate);
-	if (idx <= -1) {
+	if (idx <= -1)
+	{
 		Debug::FatalErrorAndExit(__FUNCTION__" Missing CrateType index for[%s]!\n", crate);
 	}
 	R->EAX(idx);
@@ -5358,14 +5328,14 @@ DEFINE_HOOK(0x73844A, UnitClass_Destroyed_PlaceCrate, 0x8)
 
 	const auto CrateType = &TechnoTypeExtContainer::Instance.Find(pThis->Type)->Destroyed_CrateType;
 	PowerupEffects crate = CrateType->isset() ? (PowerupEffects)CrateType->Get() : (PowerupEffects)CrateTypeClass::Array.size();
-	MapClass::Instance->Place_Crate(cell , crate);
+	MapClass::Instance->Place_Crate(cell, crate);
 	return 0x738457;
 }
 
 DEFINE_HOOK(0x4421F2, BuildingClass_Destroyed_PlaceCrate, 0x6)
 {
 	//GET(BuildingClass*, pThis, ESI);
-	GET(BuildingTypeClass* , pThisType , EDX);
+	GET(BuildingTypeClass*, pThisType, EDX);
 	GET_STACK(CellStruct, cell, 0x10);
 
 	const PowerupEffects defaultcrate = pThisType->CrateBeneathIsMoney ? PowerupEffects::Money : (PowerupEffects)CrateTypeClass::Array.size();
@@ -5427,7 +5397,6 @@ DEFINE_HOOK(0x441B30, BuildingClass_Destroy_Refinery, 0x6)
 
 			if (amount > 0.0)
 			{
-
 				store.DecreaseLevel((float)amount, i);
 				total.DecreaseLevel((float)amount, i);
 
@@ -5608,7 +5577,6 @@ DEFINE_HOOK(0x73E3BF, UnitClass_Mi_Unload_replace, 0x6)
 
 			BuildingExtContainer::Instance.Find(pBld)->AccumulatedIncome +=
 				pBld->Owner->Available_Money() - HouseExtData::LastHarvesterBalance;
-
 		}
 
 	return 0x73E539;
@@ -5661,7 +5629,6 @@ DEFINE_HOOK(0x738749, UnitClass_Destroy_TiberiumExplosive, 0x6)
 
 		if (morePower > 0)
 		{
-
 			CoordStruct crd = pThis->GetCoords();
 			if (auto pWH = RulesExtData::Instance()->Tiberium_ExplosiveWarhead)
 			{
@@ -5867,7 +5834,6 @@ DEFINE_HOOK(0x4F9790, HouseClass_SpendMoney_Handle, 0x6)
 		{
 			for (auto& pBld : pThis->Buildings)
 			{
-
 				if (pBld)
 				{
 					auto bldStorage = &TechnoExtContainer::Instance.Find(pBld)->TiberiumStorage;
@@ -5901,7 +5867,6 @@ DEFINE_HOOK(0x4F9790, HouseClass_SpendMoney_Handle, 0x6)
 						}
 					}
 				}
-
 
 				if (deduced == 0)
 					break;
@@ -6178,8 +6143,8 @@ DEFINE_HOOK(0x520820, InfantryClass_FiringAI_SecondaryFireFly, 0x5)
 	DoType result = weaponIdx == 0 ? DoType::FireFly :
 		DoType(42);
 
-	if(!pThis->Type->Sequence->GetSequence(result).CountFrames)
-	  return 0;
+	if (!pThis->Type->Sequence->GetSequence(result).CountFrames)
+		return 0;
 
 	pThis->PlayAnim(result);
 	return 0x520831;
@@ -6187,13 +6152,13 @@ DEFINE_HOOK(0x520820, InfantryClass_FiringAI_SecondaryFireFly, 0x5)
 
 DEFINE_HOOK(0x51D7E0, InfantryClass_DoAction_SecondaryWetAttack, 0x5)
 {
-	GET(InfantryClass*, pThis , ESI);
+	GET(InfantryClass*, pThis, ESI);
 	GET(DoType, type, EDI);
 
-	if (type == DoType::SecondaryFire || type == DoType::SecondaryProne) {
-
-		if(!pThis->Type->Sequence->GetSequence(DoType(43)).CountFrames)
-		   return 0x0;
+	if (type == DoType::SecondaryFire || type == DoType::SecondaryProne)
+	{
+		if (!pThis->Type->Sequence->GetSequence(DoType(43)).CountFrames)
+			return 0x0;
 
 		type = DoType(43);
 

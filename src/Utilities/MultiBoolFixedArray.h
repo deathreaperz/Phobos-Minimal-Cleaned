@@ -6,14 +6,19 @@
 template<int Amount>
 struct MultiBoolFixedArray
 {
-	inline void Read(INI_EX& parser, const char* const pSection, const char* const pKey, const std::array<const char* const, Amount>& nKeysArray) {
-		if (parser.ReadString(pSection, pKey) > 0) {
+	inline void Read(INI_EX& parser, const char* const pSection, const char* const pKey, const std::array<const char* const, Amount>& nKeysArray)
+	{
+		if (parser.ReadString(pSection, pKey) > 0)
+		{
 			Reset();
 			char* context = nullptr;
 			for (char* cur = strtok_s(parser.value(), Phobos::readDelims, &context);
-				cur; cur = strtok_s(nullptr, Phobos::readDelims, &context)) {
-				for (int i = 0; i < Amount; ++i) {
-					if (IS_SAME_STR_(cur, nKeysArray[i])) {
+				cur; cur = strtok_s(nullptr, Phobos::readDelims, &context))
+			{
+				for (int i = 0; i < Amount; ++i)
+				{
+					if (IS_SAME_STR_(cur, nKeysArray[i]))
+					{
 						this->Datas[i] = true;
 						break;
 					}
@@ -22,13 +27,14 @@ struct MultiBoolFixedArray
 		}
 	}
 
-	constexpr int size() const { return Amount;	}
+	constexpr int size() const { return Amount; }
 
 	// no index validation
-	bool at(int Index) const { 	return Datas[Index]; }
+	bool at(int Index) const { return Datas[Index]; }
 
 	// index validation manually done
-	bool Get(int Index) const {
+	bool Get(int Index) const
+	{
 		const size_t compare = size_t(Index);
 		return Datas[compare >= Amount ? Amount - 1 : Index];
 	}
@@ -42,7 +48,8 @@ struct MultiBoolFixedArray
 	{
 		Reset();
 
-		for (int i = 0; i < Amount; ++i) {
+		for (int i = 0; i < Amount; ++i)
+		{
 			if (!Savegame::ReadPhobosStream(Stm, this->Datas[i]))
 				return false;
 		}
@@ -52,7 +59,8 @@ struct MultiBoolFixedArray
 
 	inline bool Save(PhobosStreamWriter& Stm) const
 	{
-		for (auto nData : this->Datas) {
+		for (auto nData : this->Datas)
+		{
 			if (!Savegame::WritePhobosStream(Stm, nData))
 				return false;
 		}
@@ -67,5 +75,4 @@ struct MultiBoolFixedArray
 
 protected:
 	bool Datas[Amount] { false };
-
 };

@@ -88,7 +88,7 @@ void DigitalDisplayTypeClass::DisplayText(Point2D& position, int length, int val
 	}
 
 	double ratio = static_cast<double>(value) / maxValue;
-	COLORREF color = Drawing::RGB_To_Int(this->Text_Color.Get(ratio , RulesClass::Instance->ConditionYellow, RulesClass::Instance->ConditionRed));
+	COLORREF color = Drawing::RGB_To_Int(this->Text_Color.Get(ratio, RulesClass::Instance->ConditionYellow, RulesClass::Instance->ConditionRed));
 	RectangleStruct rect = DSurface::Composite->Get_Rect_WithoutBottomBar();
 	const int textHeight = 12;
 	const int pipsHeight = hasShield ? 4 : 0;
@@ -126,7 +126,7 @@ void DigitalDisplayTypeClass::DisplayShape(Point2D& position, int length, int va
 		std::to_string(value)
 	));
 
-	Point2D spacing = GetSpacing(this->Shape_Spacing,isBuilding);
+	Point2D spacing = GetSpacing(this->Shape_Spacing, isBuilding);
 	const int pipsHeight = hasShield ? 4 : 0;
 
 	if (Percentage)

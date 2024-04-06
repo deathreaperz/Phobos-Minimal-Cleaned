@@ -124,9 +124,10 @@ public:
 		return result;
 	}
 
-	static void CalculateShakeVal(int& pShakeVal, int nInput , bool Alternate = true)
+	static void CalculateShakeVal(int& pShakeVal, int nInput, bool Alternate = true)
 	{
-		if (!Alternate) {
+		if (!Alternate)
+		{
 			pShakeVal = nInput;
 			return;
 		}
@@ -378,7 +379,6 @@ public:
 		return { (BYTE)(R * 255), (BYTE)(G * 255), (BYTE)(B * 255) };
 	}
 
-
 	static const char* GetLocomotionName(const CLSID& clsid);
 
 	static int CountDigitsInNumber(int number)
@@ -393,7 +393,6 @@ public:
 
 		return digits;
 	}
-
 
 	// Calculates a new coordinates based on current & target coordinates within specified distance (can be negative to switch the direction) in leptons.
 	static CoordStruct CalculateCoordsFromDistance(CoordStruct currentCoords, CoordStruct targetCoords, int distance)
@@ -425,7 +424,6 @@ public:
 		value = std::clamp(value, 0.0f, 1.0f);
 		return static_cast<int>(value * scale);
 	}
-
 
 	//Point2Dir
 	static const DirStruct Desired_Facing(int x1, int y1, int x2, int y2)
@@ -484,7 +482,7 @@ public:
 	}
 
 	template<typename T>
-	static inline T GetItemByHealthRatio(double ratio, T green , T yellow , T red)
+	static inline T GetItemByHealthRatio(double ratio, T green, T yellow, T red)
 	{
 		if (ratio <= RulesClass::Instance->ConditionRed)
 			return red;
@@ -494,9 +492,8 @@ public:
 		return green;
 	}
 
-	static int GetLSAnimHeightFactor(AnimTypeClass* pType, CellClass* pCell , bool checklevel = false);
+	static int GetLSAnimHeightFactor(AnimTypeClass* pType, CellClass* pCell, bool checklevel = false);
 #pragma endregion
-
 };
 
 struct StopwatchLogger
@@ -505,9 +502,10 @@ struct StopwatchLogger
 	const char* func;
 	const char* name;
 
-	StopwatchLogger(const char* pFunc = nullptr, const char* pName = nullptr) : func(pFunc), name(pName) {}
+	StopwatchLogger(const char* pFunc = nullptr, const char* pName = nullptr) : func(pFunc), name(pName) { }
 
-	~StopwatchLogger() {
+	~StopwatchLogger()
+	{
 		Debug::Log("STOPWATCH %s (%s): %lld\n", func, name, watch.get_nano().QuadPart);
 	}
 };

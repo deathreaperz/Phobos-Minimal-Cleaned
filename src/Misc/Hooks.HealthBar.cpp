@@ -1,4 +1,3 @@
-
 #include <Utilities/Macro.h>
 
 #include <Ext/Techno/Body.h>
@@ -57,10 +56,12 @@ DEFINE_HOOK(0x6F6759, TechnoClass_DrawHealth_Building_PipFile_B_pal, 0x6)
 	const auto pBuildingTypeExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
 	ConvertClass* nPal = FileSystem::THEATER_PAL();
 
-	if (pBuildingTypeExt->PipShapes01Remap) {
+	if (pBuildingTypeExt->PipShapes01Remap)
+	{
 		nPal = pThis->GetRemapColour();
 	}
-	else if(const auto pConvertData = pBuildingTypeExt->PipShapes01Palette) {
+	else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette)
+	{
 		nPal = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
 	}
 
@@ -76,10 +77,12 @@ DEFINE_HOOK(0x6F66B3, TechnoClass_DrawHealth_Building_PipFile_A, 0x6)
 	const auto pBuildingTypeExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
 	ConvertClass* nPal = FileSystem::THEATER_PAL();
 
-	if (pBuildingTypeExt->PipShapes01Remap) {
+	if (pBuildingTypeExt->PipShapes01Remap)
+	{
 		nPal = pThis->GetRemapColour();
 	}
-	else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette) {
+	else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette)
+	{
 		nPal = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
 	}
 
@@ -111,57 +114,57 @@ namespace DrawHeathData
 		int	YOffset = 0;
 
 		auto GetFrame = [pThis, pShpGreen](char nInput)
-		{
-			int nFrameResult = -1;
-			int nInputToFrame = -1;
-
-			switch (nInput)
 			{
-			case (*" "):
-				nInputToFrame = 12;//blank frame
-				break;
-			case (*"%"):
-				nInputToFrame = 10;
-				break;
-			case (*"/"):
-				nInputToFrame = 11;
-				break;
-			default:
-				nInputToFrame = nInput - 48;
-				break;
-			}
+				int nFrameResult = -1;
+				int nInputToFrame = -1;
 
-			int const nFrame_Total = std::clamp((int)pShpGreen->Frames, 12 + 1, 36 + 1);
-			nFrameResult = nInputToFrame;
-
-			// blank frames on the end (+1) !
-			// 0  1  2  3  4  5  6  7  8  9 10 11
-
-			// 12 13 14 15 16 17 18 19 20 21 22	23
-			if (nFrame_Total == 25 && (pThis->IsYellowHP() || pThis->IsRedHP()))
-			{
-				nFrameResult = nInputToFrame + 12;
-			}
-			// 24 25 26 27 28 29 30 31 32 33 34 35
-			else if (nFrame_Total == 37)
-			{
-				if (!pThis->IsGreenHP())
+				switch (nInput)
 				{
-					if (!(nInputToFrame == 12) && pThis->IsYellowHP())
-						nFrameResult = nInputToFrame + 12;
-
-					nFrameResult = nInputToFrame + 24;
+				case (*" "):
+					nInputToFrame = 12;//blank frame
+					break;
+				case (*"%"):
+					nInputToFrame = 10;
+					break;
+				case (*"/"):
+					nInputToFrame = 11;
+					break;
+				default:
+					nInputToFrame = nInput - 48;
+					break;
 				}
-			}
 
-			return nFrameResult;
-		};
+				int const nFrame_Total = std::clamp((int)pShpGreen->Frames, 12 + 1, 36 + 1);
+				nFrameResult = nInputToFrame;
+
+				// blank frames on the end (+1) !
+				// 0  1  2  3  4  5  6  7  8  9 10 11
+
+				// 12 13 14 15 16 17 18 19 20 21 22	23
+				if (nFrame_Total == 25 && (pThis->IsYellowHP() || pThis->IsRedHP()))
+				{
+					nFrameResult = nInputToFrame + 12;
+				}
+				// 24 25 26 27 28 29 30 31 32 33 34 35
+				else if (nFrame_Total == 37)
+				{
+					if (!pThis->IsGreenHP())
+					{
+						if (!(nInputToFrame == 12) && pThis->IsYellowHP())
+							nFrameResult = nInputToFrame + 12;
+
+						nFrameResult = nInputToFrame + 24;
+					}
+				}
+
+				return nFrameResult;
+			};
 
 		//char nBuffer[0x100];
 		std::string _buffer = !pTypeExt->HealthNumber_Percent.Get() ?
-			std::format("{}/{}",pThis->Health, pThis->GetTechnoType()->Strength )
-		:
-			std::format("{}%" , (int)(pThis->GetHealthPercentage() * 100.0));
+			std::format("{}/{}", pThis->Health, pThis->GetTechnoType()->Strength)
+			:
+			std::format("{}%", (int)(pThis->GetHealthPercentage() * 100.0));
 
 		auto const bIsBuilding = pThis->WhatAmI() == BuildingClass::AbsID;
 
@@ -228,12 +231,13 @@ namespace DrawHeathData
 
 	void DrawBar(TechnoClass* pThis, Point2D* pLocation, RectangleStruct* pBound)
 	{
-		auto const&[pType , pOwner]= TechnoExtData::GetDisguiseType(pThis, false, true);
+		auto const& [pType, pOwner] = TechnoExtData::GetDisguiseType(pThis, false, true);
 		LightConvertClass* pTechConvert = pThis->GetRemapColour();
 		const bool bIsInfantry = pThis->WhatAmI() == InfantryClass::AbsID;
 		bool IsDisguised = false;
 
-		if (pThis->IsDisguised() && !pThis->IsClearlyVisibleTo(HouseClass::CurrentPlayer)) {
+		if (pThis->IsDisguised() && !pThis->IsClearlyVisibleTo(HouseClass::CurrentPlayer))
+		{
 			IsDisguised = true;
 		}
 
@@ -402,7 +406,6 @@ namespace DrawHeathData
 		//auto imax = pThis->TemporalTargetingMe->GetWarpPerStep();
 		//draw it here ? 0x71A88D
 	}
-
 }
 
 DEFINE_HOOK(0x6F65D1, TechnoClass_DrawdBar_Building, 0x6)
@@ -413,7 +416,8 @@ DEFINE_HOOK(0x6F65D1, TechnoClass_DrawdBar_Building, 0x6)
 	GET_STACK(RectangleStruct*, pBound, STACK_OFFS(0x4C, -0x8));
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	if (const auto pShieldData = pExt->Shield.get()) {
+	if (const auto pShieldData = pExt->Shield.get())
+	{
 		if (pShieldData->IsAvailable())
 			pShieldData->DrawShieldBar(iLength, pLocation, pBound);
 	}
@@ -433,8 +437,10 @@ DEFINE_HOOK(0x6F683C, TechnoClass_DrawBar_Foot, 0x7)
 	const int iLength = pThis->WhatAmI() == InfantryClass::AbsID ? 8 : 17;
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	if (const auto pShieldData = pExt->Shield.get()) {
-		if (pShieldData->IsAvailable()) {
+	if (const auto pShieldData = pExt->Shield.get())
+	{
+		if (pShieldData->IsAvailable())
+		{
 			pShieldData->DrawShieldBar(iLength, pLocation, pBound);
 		}
 	}

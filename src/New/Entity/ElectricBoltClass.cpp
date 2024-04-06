@@ -17,28 +17,32 @@ void ElectricBoltClass::Clear()
 
 void ElectricBoltClass::Draw_It()
 {
-	if (DrawFrame == Unsorted::CurrentFrame) {
+	if (DrawFrame == Unsorted::CurrentFrame)
+	{
 		/**
 		 *  This is our draw frame, so draw!
 		 */
-		if (LineDrawList.size()) {
+		if (LineDrawList.size())
+		{
 			Draw_Bolts();
 		}
-
-	} else {
-
+	}
+	else
+	{
 		/**
 		 *  Clear previous lines, we are about to plot a new set.
 		 */
 		LineDrawList.clear();
 
-		for (int i = 0; i < IterationCount; ++i) {
-			if (Lifetime) {
+		for (int i = 0; i < IterationCount; ++i)
+		{
+			if (Lifetime)
+			{
 				Point2D pixel_start {};
 				Point2D pixel_end {};
 
-				TacticalClass::Instance->CoordsToClient(&StartCoord,&pixel_start);
-				TacticalClass::Instance->CoordsToClient(&EndCoord,&pixel_end);
+				TacticalClass::Instance->CoordsToClient(&StartCoord, &pixel_start);
+				TacticalClass::Instance->CoordsToClient(&EndCoord, &pixel_end);
 
 				if (Game::Clip_Line(&pixel_start, &pixel_end, &Drawing::SurfaceDimensions_Hidden()))
 					Plot_Bolt(StartCoord, EndCoord);
@@ -48,7 +52,8 @@ void ElectricBoltClass::Draw_It()
 		/**
 		 *  Draw the initial set of lines.
 		 */
-		if (LineDrawList.size()) {
+		if (LineDrawList.size())
+		{
 			Draw_Bolts();
 
 			++Random;
@@ -63,9 +68,8 @@ void ElectricBoltClass::Draw_It()
 	}
 }
 
-void ElectricBoltClass::Create(CoordStruct const& start, CoordStruct const& end, const BoltData& nData, int z_adjust, ParticleSystemTypeClass* pSys , bool particleSysCoordFlip)
+void ElectricBoltClass::Create(CoordStruct const& start, CoordStruct const& end, const BoltData& nData, int z_adjust, ParticleSystemTypeClass* pSys, bool particleSysCoordFlip)
 {
-
 	ElectricBoltManager::ElectricBoltArray.emplace_back(start, end, nData, z_adjust);
 
 	/**
@@ -83,18 +87,19 @@ void ElectricBoltClass::Create(CoordStruct const& start, CoordStruct const& end,
 
 void ElectricBoltClass::Create(CoordStruct const& start, CoordStruct const& end,
 	ColorStruct const& col1, ColorStruct const& col2, ColorStruct const& col3,
-	bool col1_disable , bool col2_disable , bool col3_disable ,
-	int z_adjust ,ParticleSystemTypeClass* pSys , bool particleSysCoordFlip)
+	bool col1_disable, bool col2_disable, bool col3_disable,
+	int z_adjust, ParticleSystemTypeClass* pSys, bool particleSysCoordFlip)
 {
-	ElectricBoltManager::ElectricBoltArray.emplace_back(start, end, col1, col2, col3 ,
-		col1_disable , col2_disable , col3_disable , z_adjust);
+	ElectricBoltManager::ElectricBoltArray.emplace_back(start, end, col1, col2, col3,
+		col1_disable, col2_disable, col3_disable, z_adjust);
 
 	/**
 	 *  Spawn a spark particle at the destination of the electric bolt.
 	 */
-	if(pSys){
+	if (pSys)
+	{
 		auto nLoc = particleSysCoordFlip ? start : end;
-		if(pSys->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
+		if (pSys->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
 			nLoc.Z += 100;
 
 		GameCreate<ParticleSystemClass>(pSys, nLoc);
@@ -113,13 +118,14 @@ void ElectricBoltClass::Plot_Bolt(CoordStruct& start, CoordStruct& end)
 		int EndZ;
 
 		EBoltPlotStruct(int count) :
-			StartCoords { size_t(count) ,CoordStruct::Empty}
-			, EndCoords { size_t(count) ,CoordStruct::Empty}
+			StartCoords { size_t(count) ,CoordStruct::Empty }
+			, EndCoords { size_t(count) ,CoordStruct::Empty }
 			, Distance {}
 			, Deviation {}
 			, StartZ {}
 			, EndZ {}
-		{ }
+		{
+		}
 
 		EBoltPlotStruct() = default;
 		~EBoltPlotStruct() = default;
@@ -161,7 +167,6 @@ void ElectricBoltClass::Plot_Bolt(CoordStruct& start, CoordStruct& end)
 		{
 			while (distance > (Unsorted::LeptonsPerCell / 4) && plot_index < static_cast<int>(ebolt_plots.size()))
 			{
-
 				for (int i = 0; i < BoltCount; ++i)
 				{
 					working_coords[i].X = (end_coords[i].X + start_coords[i].X) / 2;
@@ -174,7 +179,6 @@ void ElectricBoltClass::Plot_Bolt(CoordStruct& start, CoordStruct& end)
 				 */
 				if (init_deviation_values)
 				{
-
 					for (int i = 0; i < ARRAY_SIZE(deviation_values); ++i)
 					{
 						deviation_values[i] = static_cast<int>(Math::sin(static_cast<double>(this->Random * Math::Pi / static_cast<double>(i + 7)) * static_cast<double>(line_deviation)));
@@ -245,14 +249,16 @@ void ElectricBoltClass::Plot_Bolt(CoordStruct& start, CoordStruct& end)
 			 *  Add the line segments to the draw list.
 			 */
 
-			// plot-line was in 1 - 2 - 0 , order
-			// there is may error on disable tag
-			for(int i = 0; i < BoltCount; ++i){
-				if(!Data.Disabled[i])
+			 // plot-line was in 1 - 2 - 0 , order
+			 // there is may error on disable tag
+			for (int i = 0; i < BoltCount; ++i)
+			{
+				if (!Data.Disabled[i])
 					Add_Plot_Line(start_coords[i], end_coords[i], Data.ColorData[i], line_start_z, line_end_z);
 			}
 
-			if (--plot_index < 0) {
+			if (--plot_index < 0)
+			{
 				break;
 			}
 
@@ -278,8 +284,8 @@ void ElectricBoltClass::Draw_Bolts()
 		Point2D start_pixel {};
 		Point2D end_pixel {};
 
-		TacticalClass::Instance->CoordsToClient(&data.Start,&start_pixel);
-		TacticalClass::Instance->CoordsToClient(&data.End,&end_pixel);
+		TacticalClass::Instance->CoordsToClient(&data.Start, &start_pixel);
+		TacticalClass::Instance->CoordsToClient(&data.End, &end_pixel);
 
 		RectangleStruct nRect = DSurface::ViewBounds();
 
@@ -302,12 +308,12 @@ void ElectricBoltManager::Draw_All()
 	if (ElectricBoltArray.empty())
 		return;
 
-	auto iter = std::remove_if(ElectricBoltArray.begin(), ElectricBoltArray.end(), [](ElectricBoltClass& bolt) {
+	auto iter = std::remove_if(ElectricBoltArray.begin(), ElectricBoltArray.end(), [](ElectricBoltClass& bolt)
+ {
+	 if (bolt.Lifetime > 0)
+		 bolt.Draw_It();
 
-		if (bolt.Lifetime > 0)
-			bolt.Draw_It();
-
-		return bolt.Lifetime <= 0;
+	 return bolt.Lifetime <= 0;
 	});
 
 	ElectricBoltArray.erase(iter, ElectricBoltArray.end());

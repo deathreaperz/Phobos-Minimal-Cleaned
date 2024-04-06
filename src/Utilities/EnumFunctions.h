@@ -99,12 +99,12 @@ public:
 	static std::array<std::pair<const char* const, SlaveReturnTo>, 9u> SlaveReturnTo_ToStrings;
 	static std::array<const char* const, 3u> VerticalPosition_ToStrings;
 	static std::array<std::pair<const char* const, BannerNumberType>, 5u> BannerNumberType_ToStrings;
-	static std::array<std::pair<const char* const , TargetingConstraints> , 10u> TargetingConstraints_ToStrings;
+	static std::array<std::pair<const char* const, TargetingConstraints>, 10u> TargetingConstraints_ToStrings;
 	static std::array<const char* const, 3u> TargetingPreference_ToStrings;
 	static std::array<const char* const, 3u> SelfHealGainType_ToStrings;
 	static std::array<std::pair<const char* const, ChronoSparkleDisplayPosition>, 5u> ChronoSparkleDisplayPosition_ToStrings;
 	static std::array<std::pair<const char* const, SpotlightFlags>, 5u> SpotlightFlags_ToStrings;
-	static std::array<std::pair<const char* ,AffectPlayerType>, 5u> AffectPlayerType_ToStrings;
+	static std::array<std::pair<const char*, AffectPlayerType>, 5u> AffectPlayerType_ToStrings;
 	static std::array<const char*, 3u> SpotlightAttachment_ToStrings;
 	static std::array<const char*, 3u> ShowTimerType_ToStrings;
 	static std::array<const char*, (size_t)BountyValueOption::count> BountyValueOption_ToStrings;
@@ -118,8 +118,8 @@ public:
 
 	static std::array<const char*, (size_t)TrajectoryCheckReturnType::count> TrajectoryCheckReturnType_to_strings;
 
-	static bool CanTargetHouse(AffectedHouse const &flags, HouseClass* ownerHouse, HouseClass* targetHouse);
-	static bool IsCellEligible(CellClass* const pCell, AffectedTarget const&  allowed, bool explicitEmptyCells = false, bool considerBridgesLand = false);
+	static bool CanTargetHouse(AffectedHouse const& flags, HouseClass* ownerHouse, HouseClass* targetHouse);
+	static bool IsCellEligible(CellClass* const pCell, AffectedTarget const& allowed, bool explicitEmptyCells = false, bool considerBridgesLand = false);
 	static bool IsTechnoEligible(TechnoClass* const pTechno, AffectedTarget  const& allowed, bool considerAircraftSeparately = false);
 	static bool IsTechnoEligibleB(TechnoClass* const pTechno, AffectedTarget const& allowed);
 	static bool AreCellAndObjectsEligible(CellClass* const pCell, AffectedTarget  const& allowed, AffectedHouse  const& allowedHouses, HouseClass* owner, bool explicitEmptyCells = false, bool considerAircraftSeparately = false, bool allowBridges = false);

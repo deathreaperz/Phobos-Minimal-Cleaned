@@ -12,7 +12,7 @@ void OverlayTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	auto const pArtINI = &CCINIClass::INI_Art();
 	auto pArtSection = pThis->ImageFile;
 
-	this->Palette.Read(exINI , pArtSection, "Palette");
+	this->Palette.Read(exINI, pArtSection, "Palette");
 }
 
 // =============================
@@ -26,7 +26,6 @@ void OverlayTypeExtData::Serialize(T& Stm)
 		.Process(this->Palette)
 		;
 }
-
 
 // =============================
 // container
@@ -49,12 +48,15 @@ bool OverlayTypeExtContainer::Load(OverlayTypeClass* key, IStream* pStm)
 	this->SetExtAttribute(key, Iter->second);
 
 	PhobosByteStream loader { 0 };
-	if (loader.ReadBlockFromStream(pStm)) {
+	if (loader.ReadBlockFromStream(pStm))
+	{
 		PhobosStreamReader reader { loader };
 		if (reader.Expect(OverlayTypeExtData::Canary)
-			&& reader.RegisterChange(Iter->second)) {
+			&& reader.RegisterChange(Iter->second))
+		{
 			Iter->second->LoadFromStream(reader);
-			if (reader.ExpectEndOfBlock()) {
+			if (reader.ExpectEndOfBlock())
+			{
 				return true;
 			}
 		}
@@ -126,7 +128,7 @@ DEFINE_HOOK(0x5FEA1E, OverlayTypeClass_LoadFromINI, 0xA)
 	GET(OverlayTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, STACK_OFFSET(0x28C, 0x4));
 
-	OverlayTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x5FEA1E);
+	OverlayTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x5FEA1E);
 
 	return 0;
 }

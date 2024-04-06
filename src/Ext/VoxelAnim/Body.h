@@ -36,7 +36,6 @@ public:
 
 	static bool InvalidateIgnorable(AbstractClass* ptr)
 	{
-
 		switch (ptr->WhatAmI())
 		{
 		case AircraftClass::AbsID:
@@ -75,4 +74,3 @@ public:
 
 	CONSTEXPR_NOCOPY_CLASSB(VoxelAnimExtContainer, VoxelAnimExtData, "VoxelAnimClass");
 };
-

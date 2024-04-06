@@ -27,7 +27,8 @@ BulletTypeClass* BulletTypeExtData::GetDefaultBulletType(const char* pBullet)
 	return pType;
 }
 
-CoordStruct BulletTypeExtData::CalculateInaccurate(BulletTypeClass* pBulletType) {
+CoordStruct BulletTypeExtData::CalculateInaccurate(BulletTypeClass* pBulletType)
+{
 	if (pBulletType->Inaccurate)
 	{
 		const auto pTypeExt = BulletTypeExtContainer::Instance.Find(pBulletType);
@@ -51,13 +52,15 @@ CoordStruct BulletTypeExtData::CalculateInaccurate(BulletTypeClass* pBulletType)
 
 const ConvertClass* BulletTypeExtData::GetBulletConvert()
 {
-	if(!this->ImageConvert.empty())
+	if (!this->ImageConvert.empty())
 		return  this->ImageConvert;
 	else
 	{
 		ConvertClass* pConvert = nullptr;
-		if (const auto pAnimType = AnimTypeClass::Find(this->AttachedToObject->ImageFile)) {
-			if(const auto pConvertData = AnimTypeExtContainer::Instance.Find(pAnimType)->Palette){
+		if (const auto pAnimType = AnimTypeClass::Find(this->AttachedToObject->ImageFile))
+		{
+			if (const auto pConvertData = AnimTypeExtContainer::Instance.Find(pAnimType)->Palette)
+			{
 				pConvert = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
 			}
 		}
@@ -72,7 +75,7 @@ BulletClass* BulletTypeExtData::CreateBullet(AbstractClass* pTarget, TechnoClass
 	if (auto pBullet = this->CreateBullet(pTarget, pOwner, pWeapon->Damage, pWeapon->Warhead,
 		pWeapon->Speed, WeaponTypeExtContainer::Instance.Find(pWeapon)->GetProjectileRange(), pWeapon->Bright || pWeapon->Warhead->Bright, addDamage))
 	{
-		if(SetWeaponType)
+		if (SetWeaponType)
 			pBullet->SetWeaponType(pWeapon);
 
 		return pBullet;
@@ -167,7 +170,7 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Cluster_Scatter_Max.Read(exINI, pSection, "ClusterScatter.Max");
 
 		this->Interceptable_DeleteOnIntercept.Read(exINI, pSection, "Interceptable.DeleteOnIntercept");
-		this->Interceptable_WeaponOverride.Read(exINI, pSection, "Interceptable.WeaponOverride" , true);
+		this->Interceptable_WeaponOverride.Read(exINI, pSection, "Interceptable.WeaponOverride", true);
 
 		this->BallisticScatterMin.Read(exINI, pSection, "BallisticScatter.Min");
 		this->BallisticScatterMax.Read(exINI, pSection, "BallisticScatter.Max");
@@ -191,10 +194,11 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->AnimLength.Read(exINI, pThis->ID, "AnimLength");
 		this->Arcing_AllowElevationInaccuracy.Read(exINI, pSection, "Arcing.AllowElevationInaccuracy");
 		this->AttachedSystem.Read(exINI, pSection, "AttachedSystem");
-		this->ReturnWeapon.Read(exINI, pSection, "ReturnWeapon" , true);
+		this->ReturnWeapon.Read(exINI, pSection, "ReturnWeapon", true);
 	}
 
-	if (pArtInI && pArtInI->GetSection(pArtSection)){
+	if (pArtInI && pArtInI->GetSection(pArtSection))
+	{
 		INI_EX exArtINI(pArtInI);
 
 		this->LaserTrail_Types.Read(exArtINI, pArtSection, "LaserTrail.Types");
@@ -387,7 +391,7 @@ DEFINE_HOOK(0x46C41C, BulletTypeClass_LoadFromINI, 0xA)
 {
 	GET(BulletTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, 0x90);
-	BulletTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x46C429);
+	BulletTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x46C429);
 
 	return 0;
 }

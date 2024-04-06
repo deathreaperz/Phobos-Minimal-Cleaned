@@ -5,7 +5,7 @@
 bool BombardTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectoryType::Load(Stm, RegisterForChange) &&
-	Stm
+		Stm
 		.Process(this->Height, false)
 		.Process(this->Anti, false)
 		;
@@ -14,7 +14,7 @@ bool BombardTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange
 bool BombardTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectoryType::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->Height)
 		.Process(this->Anti)
 		;
@@ -28,14 +28,14 @@ bool BombardTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 	INI_EX exINI { pINI };
 	this->Height.Read(exINI, pSection, "Trajectory.Bombard.Height");
 	this->Anti.Read(exINI, pSection, "Trajectory.Bombard.Anti");
-	
+
 	return true;
 }
 
 bool BombardTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectory::Load(Stm, RegisterForChange) &&
-	Stm
+		Stm
 		.Process(this->IsFalling, false)
 		.Process(this->Height, false)
 		;
@@ -44,11 +44,10 @@ bool BombardTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 bool BombardTrajectory::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectory::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->IsFalling, false)
 		.Process(this->Height, false)
 		;
-
 }
 
 void BombardTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
@@ -79,7 +78,7 @@ bool BombardTrajectory::OnAI()
 	auto const pBullet = this->AttachedTo;
 
 	// Close enough
-	if (pBullet->TargetCoords.DistanceFrom(pBullet->Location) <  this->DetonationDistance) // This value maybe adjusted?
+	if (pBullet->TargetCoords.DistanceFrom(pBullet->Location) < this->DetonationDistance) // This value maybe adjusted?
 		return true;
 
 	return false;
@@ -104,7 +103,6 @@ void BombardTrajectory::OnAIVelocity(VelocityClass* pSpeed, VelocityClass* pPosi
 			pPosition->Y = pBullet->TargetCoords.Y;
 		}
 	}
-
 }
 
 TrajectoryCheckReturnType BombardTrajectory::OnAITargetCoordCheck(CoordStruct& coords)

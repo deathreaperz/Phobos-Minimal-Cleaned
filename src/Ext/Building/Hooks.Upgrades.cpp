@@ -1,22 +1,23 @@
 #include "Body.h"
 
-DEFINE_HOOK(0x44AAD3 , BuildingClass_Mi_Selling_Upgrades, 9)
+DEFINE_HOOK(0x44AAD3, BuildingClass_Mi_Selling_Upgrades, 9)
 {
 	GET(BuildingTypeClass*, pUpgrades, ECX);
 	GET(BuildingClass*, pThis, EBP);
 
-	if (pUpgrades) {
+	if (pUpgrades)
+	{
 		if (int UnitsGainSelfHeal = pUpgrades->UnitsGainSelfHeal)
 			pThis->Owner->UnitsSelfHeal -= UnitsGainSelfHeal;
 
-			if (pThis->Owner->UnitsSelfHeal < 0)
-				pThis->Owner->UnitsSelfHeal = 0;
+		if (pThis->Owner->UnitsSelfHeal < 0)
+			pThis->Owner->UnitsSelfHeal = 0;
 
-		if(int InfGainSelfHeall = pUpgrades->InfantryGainSelfHeal)
+		if (int InfGainSelfHeall = pUpgrades->InfantryGainSelfHeal)
 			pThis->Owner->InfantrySelfHeal -= InfGainSelfHeall;
 
 		if (pThis->Owner->InfantrySelfHeal < 0)
-				pThis->Owner->InfantrySelfHeal = 0;
+			pThis->Owner->InfantrySelfHeal = 0;
 	}
 
 	return 0;

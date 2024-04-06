@@ -90,7 +90,8 @@ public:
 	//	return this->Get();
 	//}
 
-	auto operator->() const noexcept {
+	auto operator->() const noexcept
+	{
 		if constexpr (std::is_pointer<T>::type())
 			return this->Value;
 		else
@@ -176,7 +177,8 @@ public:
 		return *this;
 	}
 
-	size_t ToUnsigned() const noexcept {
+	size_t ToUnsigned() const noexcept
+	{
 		return (size_t)this->Value;
 	}
 
@@ -219,7 +221,8 @@ public:
 
 	// return a copy of the value instead
 	// this can be used to fill an vector after reading
-	T GetCopy() const noexcept{
+	T GetCopy() const noexcept
+	{
 		return this->Value;
 	}
 
@@ -340,8 +343,10 @@ public:
 	Promotable() = default;
 	explicit Promotable(T const& all) noexcept(noexcept(T { all })) : Rookie(all), Veteran(all), Elite(all) { }
 	explicit Promotable(T const& r, T const& v, T const& e)
-	noexcept(noexcept(T { r }) && noexcept(T { v }) && noexcept(T { e })) :
-		Rookie(r), Veteran(v), Elite(e) { }
+		noexcept(noexcept(T { r }) && noexcept(T { v }) && noexcept(T { e })) :
+		Rookie(r), Veteran(v), Elite(e)
+	{
+	}
 
 	Promotable(const Promotable&) = default;
 	Promotable(Promotable&&) = default;
@@ -349,13 +354,15 @@ public:
 
 	~Promotable() = default;
 
-	void SetAll(const T& val) {
+	void SetAll(const T& val)
+	{
 		this->Elite = this->Veteran = this->Rookie = val;
 	}
 
 	inline void Read(INI_EX& parser, const char* pSection, const char* pBaseFlag, const char* pSingleFlag = nullptr, bool allocate = false);
 
-	const T* GetEx(TechnoClass* pTechno) const noexcept {
+	const T* GetEx(TechnoClass* pTechno) const noexcept
+	{
 		return &this->Get(pTechno);
 	}
 
@@ -374,7 +381,8 @@ public:
 		return this->Rookie;
 	}
 
-	const T& Get(TechnoClass* pTechno) const noexcept {
+	const T& Get(TechnoClass* pTechno) const noexcept
+	{
 		auto const rank = pTechno->Veterancy.GetRemainingLevel();
 		if (rank == Rank::Elite)
 		{
@@ -387,7 +395,8 @@ public:
 		return this->Rookie;
 	}
 
-	const T& GetFromCurrentRank(TechnoClass* pTechno) const noexcept {
+	const T& GetFromCurrentRank(TechnoClass* pTechno) const noexcept
+	{
 		if (pTechno->CurrentRanking == Rank::Elite)
 		{
 			return this->Elite;
@@ -399,7 +408,8 @@ public:
 		return this->Rookie;
 	}
 
-	const T& GetOrDefault(TechnoClass* pTechno, const T& nDefault) const noexcept {
+	const T& GetOrDefault(TechnoClass* pTechno, const T& nDefault) const noexcept
+	{
 		auto nRes = Get(pTechno);
 		return nRes ? nRes : nDefault;
 	}
@@ -433,22 +443,28 @@ public:
 
 	auto Find(const T& item) const
 	{
-		if constexpr (direct_comparable<T>) {
+		if constexpr (direct_comparable<T>)
+		{
 			auto i = this->begin();
 
-			for (; i != this->end(); ++i) {
-				if (*i == item) {
+			for (; i != this->end(); ++i)
+			{
+				if (*i == item)
+				{
 					break;
 				}
 			}
 
 			return i;
-		} else {
+		}
+		else
+		{
 			return std::find(this->begin(), this->end(), other);
 		}
 	}
 
-	bool Contains(const T& other) const {
+	bool Contains(const T& other) const
+	{
 		return this->Find(other) != this->end();
 	}
 
@@ -458,12 +474,13 @@ public:
 		return it != this->end() ? std::distance(this->begin(), it) : -1;
 	}
 
-	bool ValidIndex(int index) const {
+	bool ValidIndex(int index) const
+	{
 		return static_cast<size_t>(index) < this->size();
 	}
 
-	T GetItemAt(int nIdx) const {
-
+	T GetItemAt(int nIdx) const
+	{
 		if (!this->ValidIndex(nIdx))
 			return T();
 
@@ -478,7 +495,7 @@ public:
 		return *(this->begin() + nIdx);
 	}
 
-	T GetItemAtOrDefault(int nIdx , const T& other) const
+	T GetItemAtOrDefault(int nIdx, const T& other) const
 	{
 		if (!this->ValidIndex(nIdx))
 			return other;
@@ -501,51 +518,59 @@ public:
 	template <typename Func>
 	void For_Each(Func&& act) const
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-        	act(*i);
-    	}
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			act(*i);
+		}
 	}
 
 	template <typename Func>
 	void For_Each(Func&& act)
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-        	act(*i);
-    	}
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			act(*i);
+		}
 	}
 
 	template<typename func>
 	bool None_Of(func&& fn) const
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-       	 	if (fn(*i)) {
-           	 	return false;
-        	}
-    	}
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			if (fn(*i))
+			{
+				return false;
+			}
+		}
 
-    	return true;
+		return true;
 	}
 
 	template<typename func>
 	bool None_Of(func&& fn)
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-       	 	if (fn(*i)) {
-           	 	return false;
-        	}
-    	}
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			if (fn(*i))
+			{
+				return false;
+			}
+		}
 
-    	return true;
+		return true;
 	}
 
 	template<typename func>
 	bool Any_Of(func&& fn) const
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-       		if (fn(*i)) {
-            	return true;
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			if (fn(*i))
+			{
+				return true;
 			}
-        }
+		}
 
 		return false;
 	}
@@ -553,11 +578,13 @@ public:
 	template<typename func>
 	bool Any_Of(func&& fn)
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-       		if (fn(*i)) {
-            	return true;
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			if (fn(*i))
+			{
+				return true;
 			}
-        }
+		}
 
 		return false;
 	}
@@ -565,8 +592,10 @@ public:
 	template<typename func>
 	bool All_Of(func&& fn) const
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-			if (!fn(*i)) {
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			if (!fn(*i))
+			{
 				return false;
 			}
 		}
@@ -577,8 +606,10 @@ public:
 	template<typename func>
 	bool All_Of(func&& fn)
 	{
-		for (auto i = this->begin(); i != this->end(); ++i) {
-			if (!fn(*i)) {
+		for (auto i = this->begin(); i != this->end(); ++i)
+		{
+			if (!fn(*i))
+			{
 				return false;
 			}
 		}
@@ -604,7 +635,7 @@ protected:
 public:
 	//NullableVector() noexcept = default;
 	//~NullableVector() = default;
-	inline void Read(INI_EX& parser, const char* pSection, const char* pKey , bool allocate = false);
+	inline void Read(INI_EX& parser, const char* pSection, const char* pKey, bool allocate = false);
 
 	bool HasValue() const noexcept
 	{
@@ -636,7 +667,7 @@ public:
 		return this->GetElements();
 	}
 
-	bool Eligible(const ValueableVector<T>& ndefault , const T& other) const
+	bool Eligible(const ValueableVector<T>& ndefault, const T& other) const
 	{
 		if (!this->hasValue)
 			return ndefault.Eligible(other);
@@ -709,7 +740,7 @@ public:
 	Damageable(Damageable&&) = default;
 	Damageable& operator=(const Damageable& other) = default;
 
-	inline void Read(INI_EX& parser, const char* pSection, const char* pBaseFlag, const char* pSingleFlag = nullptr , bool Alloc = false);
+	inline void Read(INI_EX& parser, const char* pSection, const char* pBaseFlag, const char* pSingleFlag = nullptr, bool Alloc = false);
 
 	const T* GetEx(TechnoClass* pTechno) const noexcept
 	{
@@ -726,7 +757,7 @@ public:
 		return &this->Get(ratio);
 	}
 
-	const T& Get(double ratio, double conditionYellow , double conditionRed) const noexcept
+	const T& Get(double ratio, double conditionYellow, double conditionRed) const noexcept
 	{
 		if (this->ConditionRed.isset() && ratio <= conditionRed)
 			return this->ConditionRed;
@@ -804,7 +835,7 @@ public:
 	NullableVector<T> ConditionRed {};
 	NullableVector<T> MaxValue {};
 
-	DamageableVector() noexcept  = default;
+	DamageableVector() noexcept = default;
 
 	explicit DamageableVector(ValueableVector<T> const& all)
 		noexcept(noexcept(ValueableVector<T> { all }))
@@ -885,7 +916,7 @@ public:
 	std::unordered_map<int, T> Veteran {};
 	std::unordered_map<int, T> Elite {};
 
-	PromotableVector() noexcept  = default;
+	PromotableVector() noexcept = default;
 
 	explicit PromotableVector(ValueableVector<T> const& all)
 		noexcept(noexcept(ValueableVector<T> { all }))
@@ -941,7 +972,7 @@ class TimedWarheadValue
 public:
 	T Value { };
 	CDTimerClass Timer { };
-	AffectedHouse ApplyToHouses  { AffectedHouse::None };
+	AffectedHouse ApplyToHouses { AffectedHouse::None };
 	WarheadTypeClass* SourceWarhead { };
 
 	TimedWarheadValue(const TimedWarheadValue&) = default;
@@ -974,7 +1005,6 @@ public:
 	inline bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 	inline bool Save(PhobosStreamWriter& Stm) const;
 };
-
 
 template<typename T>
 class NullablePromotable

@@ -5,12 +5,13 @@
 
 struct PaintballType
 {
-	PaintballType():
+	PaintballType() :
 		Color { {0,0,0} }
 		, IsHouseColor { false }
 		, BrightMultiplier { 1.0f }
 		, CommonData {}
-	{}
+	{
+	}
 
 	Valueable<ColorStruct> Color; // 颜色
 	Valueable<bool> IsHouseColor; // 使用所属色
@@ -29,5 +30,4 @@ struct PaintballType
 		CommonData.Serialize(Stm);
 		//Stm.RegisterChange(this); // announce this type
 	}
-
 };

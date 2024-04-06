@@ -21,7 +21,7 @@
 
 DEFINE_HOOK(0x466705, BulletClass_AI, 0x6) //8
 {
-	enum { retContunue = 0x0 , retDead = 0x466781 };
+	enum { retContunue = 0x0, retDead = 0x466781 };
 	GET(BulletClass* const, pThis, EBP);
 
 	const auto pBulletExt = BulletExtContainer::Instance.Find(pThis);
@@ -56,7 +56,8 @@ DEFINE_HOOK(0x466705, BulletClass_AI, 0x6) //8
 				return retDead;
 	}
 
-	if (pBulletExt->InterceptedStatus == InterceptedStatus::Intercepted) {
+	if (pBulletExt->InterceptedStatus == InterceptedStatus::Intercepted)
+	{
 		if (BulletExtData::HandleBulletRemove(pThis, pBulletExt->Intercepted_Detonate, true))
 			return retDead;
 	}
@@ -109,7 +110,7 @@ DEFINE_HOOK(0x4692BD, BulletClass_Logics_ApplyMindControl_Override, 0x6)
 	const auto Controller = pThis->Owner;
 
 	R->AL(CaptureExt::CaptureUnit(Controller->CaptureManager,
-		pTechno, TechnoTypeExtContainer::Instance.Find(Controller->GetTechnoType())->MultiMindControl_ReleaseVictim, false  , pControlledAnimType));
+		pTechno, TechnoTypeExtContainer::Instance.Find(Controller->GetTechnoType())->MultiMindControl_ReleaseVictim, false, pControlledAnimType));
 
 	return 0x4692D5;
 }
@@ -158,7 +159,8 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 
 	GET(BulletClass* const, pThis, ESI);
 
-	if (!BulletExtData::IsReallyAlive(pThis)) {
+	if (!BulletExtData::IsReallyAlive(pThis))
+	{
 		return ReturnFromFunction;
 	}
 
@@ -172,37 +174,42 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 			const auto pHouse = BulletExtData::GetHouse(pThis);
 			std::vector<TechnoClass*> targets;
 
-			 for (auto const pTechno : *TechnoClass::Array) {
-			 	const auto nRes = pWHExt->EligibleForFullMapDetonation(pTechno, pHouse);
+			for (auto const pTechno : *TechnoClass::Array)
+			{
+				const auto nRes = pWHExt->EligibleForFullMapDetonation(pTechno, pHouse);
 
-			 	if (nRes == FullMapDetonateResult::TargetValid) {
+				if (nRes == FullMapDetonateResult::TargetValid)
+				{
 					targets.push_back(pTechno);
-			 	}
-			 }
+				}
+			}
 
-			 for(auto pTarget : targets) {
+			for (auto pTarget : targets)
+			{
+				if (pTarget->InLimbo
+				|| !pTarget->IsAlive
+				|| !pTarget->Health
+				|| pTarget->IsSinking
+				|| pTarget->IsCrashing
+				)
+					continue;
 
-				 if (pTarget->InLimbo
-				 || !pTarget->IsAlive
-				 || !pTarget->Health
-				 || pTarget->IsSinking
-				 || pTarget->IsCrashing
-				 )
-					 continue;
+				if (pTarget->WhatAmI() == UnitClass::AbsID)
+				{
+					if (static_cast<const UnitClass*>(pTarget)->DeathFrameCounter > 0)
+					{
+						continue;
+					}
+				}
 
-				 if (pTarget->WhatAmI() == UnitClass::AbsID) {
-					 if (static_cast<const UnitClass*>(pTarget)->DeathFrameCounter > 0) {
-						 continue;
-					 }
-				 }
+				pThis->Target = pTarget;
+				pThis->Detonate(pTarget->GetCoords());
 
-				 pThis->Target = pTarget;
-				 pThis->Detonate(pTarget->GetCoords());
-
-				 if (!BulletExtData::IsReallyAlive(pThis))  {
-					 break;
-				 }
-			 }
+				if (!BulletExtData::IsReallyAlive(pThis))
+				{
+					break;
+				}
+			}
 
 			pWHExt->WasDetonatedOnAllMapObjects = false;
 			return ReturnFromFunction;
@@ -221,7 +228,7 @@ DEFINE_HOOK(0x469D1A, BulletClass_Logics_Debris_Checks, 0x6)
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pThis->WH);
 	auto const pCell = pThis->GetCell();
 	const bool isLand = !pCell ? true :
-	pCell->LandType != LandType::Water || pCell->ContainsBridge();
+		pCell->LandType != LandType::Water || pCell->ContainsBridge();
 
 	if (!isLand && pWHExt->Debris_Conventional.Get())
 		return SkipGameCode;

@@ -14,9 +14,11 @@ LightConvertClass* IsometricTileTypeExtData::GetLightConvert(IsometricTileTypeCl
 	const char* ConverName = "ISO_X.PAL";
 	BytePalette* pISOPal = &FileSystem::ISOx_PAL;
 
-	if(pOvrl) {
+	if (pOvrl)
+	{
 		auto pExt = IsometricTileTypeExtContainer::Instance.Find(pOvrl);
-		if(pExt->Palette) {
+		if (pExt->Palette)
+		{
 			ConverName = pExt->Palette->Name;
 			pISOPal = pExt->Palette->Palette.get();
 		}
@@ -81,7 +83,7 @@ void IsometricTileTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailA
 
 	INI_EX exINI(pINI);
 
-	this->Palette.Read(exINI, std::format("Tileset{:04}" ,IsometricTileTypeExtContainer::CurrentTileset).c_str(), "CustomPalette");
+	this->Palette.Read(exINI, std::format("Tileset{:04}", IsometricTileTypeExtContainer::CurrentTileset).c_str(), "CustomPalette");
 }
 
 template <typename T>

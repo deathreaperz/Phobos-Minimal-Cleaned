@@ -58,7 +58,7 @@ public:
 		return this->RadWarhead_Detonate.Get(RulesExtData::Instance()->RadWarhead_Detonate);
 	}
 
-	inline bool GetHasOwner(const Nullable<bool>&nOwner) const
+	inline bool GetHasOwner(const Nullable<bool>& nOwner) const
 	{
 		return nOwner.Get(this->RadHasOwner.Get(RulesExtData::Instance()->RadHasOwner));
 	}

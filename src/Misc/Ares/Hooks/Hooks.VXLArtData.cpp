@@ -83,7 +83,7 @@ DEFINE_HOOK(0x5F887B, ObjectTypeClass_Load3DArt_Barrels, 6)
 		//	return 0x5F8844;
 		//}
 
-		auto &nArr = i < TechnoTypeClass::MaxWeapons ?
+		auto& nArr = i < TechnoTypeClass::MaxWeapons ?
 			pThis->ChargerBarrels[i] :
 			pTypeExt->BarrelImageData[i - TechnoTypeClass::MaxWeapons];
 
@@ -130,7 +130,7 @@ DEFINE_HOOK(0x5F865F, ObjectTypeClass_Load3DArt_Turrets, 6)
 		auto& nArr = i < TechnoTypeClass::MaxWeapons ?
 			pThis->ChargerTurrets[i] :
 			pTypeExt->TurretImageData[i - TechnoTypeClass::MaxWeapons];
-			;
+		;
 
 		ImageStatusses nPairStatus = ImageStatusses::ReadVoxel(_buffer.c_str(), 1);
 		nPairStatus.swap(nArr);
@@ -140,7 +140,6 @@ DEFINE_HOOK(0x5F865F, ObjectTypeClass_Load3DArt_Turrets, 6)
 			Debug::Log("%s Techno Turret [%s] at[%d] cannot be loaded , breaking the loop ! \n", pThis->ID, _buffer.c_str(), i);
 			break;
 		}
-
 	}
 
 	return 0x5F868C;
@@ -232,12 +231,11 @@ DEFINE_HOOK(0x4DB157, FootClass_DrawVoxelShadow_TurretShadow, 0x8)
 	auto pType = TechnoExt_ExtData::GetImage(pThis);
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-	if(pTypeExt->TurretShadow.Get(RulesExtData::Instance()->DrawTurretShadow))
+	if (pTypeExt->TurretShadow.Get(RulesExtData::Instance()->DrawTurretShadow))
 	{
-
 		const auto tur = pType->Gunner || pType->IsChargeTurret
-		? TechnoTypeExtData::GetTurretsVoxel(pType, pThis->CurrentTurretNumber)
-		: &pType->TurretVoxel;
+			? TechnoTypeExtData::GetTurretsVoxel(pType, pThis->CurrentTurretNumber)
+			: &pType->TurretVoxel;
 
 		if (tur && tur->VXL && tur->HVA)
 		{

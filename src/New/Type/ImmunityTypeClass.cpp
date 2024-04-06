@@ -7,7 +7,7 @@ const char* Enumerable<ImmunityTypeClass>::GetMainSection()
 	return "ImmunityTypes";
 }
 
-void ImmunityTypeClass::LoadFromINIList(CCINIClass * pINI, bool bDebug)
+void ImmunityTypeClass::LoadFromINIList(CCINIClass* pINI, bool bDebug)
 {
 	if (!pINI)
 		return;

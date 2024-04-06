@@ -1,4 +1,3 @@
-
 #include <Ext/Anim/Body.h>
 #include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
@@ -68,12 +67,14 @@ void UpdateWebbed(FootClass* pThis)
 	if (!pExt->IsWebbed)
 		return;
 
-	if (auto pInf = specific_cast<InfantryClass*>(pThis)){
-		if (pInf->ParalysisTimer.Completed()) {
-
+	if (auto pInf = specific_cast<InfantryClass*>(pThis))
+	{
+		if (pInf->ParalysisTimer.Completed())
+		{
 			pExt->IsWebbed = false;
 
-			if (pExt->WebbedAnim) {
+			if (pExt->WebbedAnim)
+			{
 				pExt->WebbedAnim.clear();
 			}
 
@@ -111,13 +112,16 @@ DEFINE_HOOK(0x6F9E50, TechnoClass_AI_Early, 0x5)
 	const auto IsBuilding = pThis->WhatAmI() == BuildingClass::AbsID;
 	bool IsInLimboDelivered = false;
 
-	if(IsBuilding) {
+	if (IsBuilding)
+	{
 		IsInLimboDelivered = BuildingExtContainer::Instance.Find(static_cast<BuildingClass*>(pThis))->LimboID >= 0;
 	}
 
 #ifdef ENABLE_THESE
-	if (pThis->IsAlive && pThis->Location == CoordStruct::Empty || pThis->InlineMapCoords() == CellStruct::Empty) {
-		if (!pType->Spawned && !IsInLimboDelivered && !pThis->InLimbo) {
+	if (pThis->IsAlive && pThis->Location == CoordStruct::Empty || pThis->InlineMapCoords() == CellStruct::Empty)
+	{
+		if (!pType->Spawned && !IsInLimboDelivered && !pThis->InLimbo)
+		{
 			Debug::Log("Techno[%x : %s] With Invalid Location ! , Removing ! \n", pThis, pThis->get_ID());
 			TechnoExtData::HandleRemove(pThis, nullptr, false, false);
 			return retDead;
@@ -139,11 +143,13 @@ DEFINE_HOOK(0x6F9E50, TechnoClass_AI_Early, 0x5)
 	}
 
 #ifdef ENABLE_THESE
-	if (pExt->UpdateKillSelf_Slave()) {
+	if (pExt->UpdateKillSelf_Slave())
+	{
 		return retDead;
 	}
 
-	if (pExt->CheckDeathConditions()) {
+	if (pExt->CheckDeathConditions())
+	{
 		return retDead;
 	}
 
@@ -157,14 +163,16 @@ DEFINE_HOOK(0x6F9E50, TechnoClass_AI_Early, 0x5)
 	pExt->UpdateSpawnLimitRange();
 	pExt->UpdateEatPassengers();
 	pExt->UpdateGattlingOverloadDamage();
-	if(!pThis->IsAlive) {
+	if (!pThis->IsAlive)
+	{
 		return retDead;
 	}
 	//TODO : improve this to better handle delay anims !
 	//pExt->UpdateDelayFireAnim();
 
 	pExt->UpdateRevengeWeapons();
-	if (!pThis->IsAlive) {
+	if (!pThis->IsAlive)
+	{
 		return retDead;
 	}
 
@@ -207,15 +215,18 @@ DEFINE_HOOK(0x6F9EAD, TechnoClass_AI_AfterAres, 0x7)
 
 	pExt->MyWeaponManager.TechnoClass_Update_CustomWeapon(pThis);
 
-	if(pThis->IsAlive)
+	if (pThis->IsAlive)
 		GiftBoxFunctional::AI(pExt, pTypeExt);
 
-	if(pThis->IsAlive){
-		if (auto& pPBState = pExt->PaintBallState) {
+	if (pThis->IsAlive)
+	{
+		if (auto& pPBState = pExt->PaintBallState)
+		{
 			pPBState->Update(pThis);
 		}
 
-		if (auto& pDSState = pExt->DamageSelfState) {
+		if (auto& pDSState = pExt->DamageSelfState)
+		{
 			pDSState->TechnoClass_Update_DamageSelf(pThis);
 		}
 	}
@@ -257,8 +268,8 @@ DEFINE_HOOK(0x4DA698, FootClass_AI_IsMovingNow, 0x8)
 #ifdef ENABLE_THESE
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	 DriveDataFunctional::AI(pExt);
-	 //UpdateWebbed(pThis);
+	DriveDataFunctional::AI(pExt);
+	//UpdateWebbed(pThis);
 #endif
 	if (IsMovingNow)
 	{
@@ -337,7 +348,6 @@ DEFINE_HOOK(0x71A88D, TemporalClass_AI_Add, 0x8) //0
 //	GET(TechnoClass*, pThis, ESI);
 //	return 0;
 //}
-
 
 //DEFINE_HOOK(0x736479, UnitClass_AI_FootClass_AI, 0x7)
 //{

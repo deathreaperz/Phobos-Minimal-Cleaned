@@ -30,16 +30,19 @@ bool RageQuit = false;
 
 DEFINE_HOOK(0x77786B, MainWindowProc_HandleRageQuit, 0x5)
 {
-	if (SpawnerMain::GetMainConfigs()->QuickExit) {
-
-		if (Game::IsActive && HouseClass::CurrentPlayer && !Game::ScoreStuffLoad) {
+	if (SpawnerMain::GetMainConfigs()->QuickExit)
+	{
+		if (Game::IsActive && HouseClass::CurrentPlayer && !Game::ScoreStuffLoad)
+		{
 			RageQuit = true;
 			//CALL(0x6471A0);
 			EventClass e_DESTRUCT { HouseClass::CurrentPlayer->ArrayIndex, EventType::DESTRUCT };
 			EventClass::AddEvent(&e_DESTRUCT);
 			EventClass e_EXIT { HouseClass::CurrentPlayer->ArrayIndex, EventType::EXIT };
 			EventClass::AddEvent(&e_EXIT);
-		} else {
+		}
+		else
+		{
 			Debug::ExitGame(0u);
 		}
 	}

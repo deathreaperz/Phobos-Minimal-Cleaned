@@ -33,7 +33,7 @@ DEFINE_HOOK(0x71B98B, TerrainClass_ReceiveDamage_Add, 0x7)
 		const auto pWarheadExt = WarheadTypeExtContainer::Instance.Find(args.WH);
 
 		if (!pWarheadExt->Flammability.isset() || ScenarioClass::Instance->Random.PercentChance
-		   (abs(pWarheadExt->Flammability.Get())))
+		(abs(pWarheadExt->Flammability.Get())))
 			pThis->Ignite();
 	}
 
@@ -60,7 +60,8 @@ DEFINE_HOOK(0x71BB2C, TerrainClass_ReceiveDamage_NowDead_Add_light, 0x6)
 	VocClass::PlayIndexAtPos(pTerrainExt->DestroySound.Get(-1), nCoords);
 	const auto pAttackerHoue = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
 
-	if (auto const pAnimType = pTerrainExt->DestroyAnim.Get(nullptr)) {
+	if (auto const pAnimType = pTerrainExt->DestroyAnim.Get(nullptr))
+	{
 		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, nCoords),
 			args.SourceHouse,
 			pThis->GetOwningHouse(),
@@ -69,8 +70,10 @@ DEFINE_HOOK(0x71BB2C, TerrainClass_ReceiveDamage_NowDead_Add_light, 0x6)
 		);
 	}
 
-	if (const auto nBounty = pTerrainExt->Bounty.Get()) {
-		if (pAttackerHoue && pAttackerHoue->CanTransactMoney(nBounty)) {
+	if (const auto nBounty = pTerrainExt->Bounty.Get())
+	{
+		if (pAttackerHoue && pAttackerHoue->CanTransactMoney(nBounty))
+		{
 			pAttackerHoue->TransactMoney(nBounty);
 			FlyingStrings::AddMoneyString(true, nBounty, pAttackerHoue, AffectedHouse::All, nCoords);
 		}
@@ -109,7 +112,8 @@ DEFINE_HOOK(0x71C2BC, TerrainClass_Draw_CustomPal, 0x6)
 
 	const auto pTerrainExt = TerrainTypeExtContainer::Instance.Find(pThisType);
 
-	if (const auto pConvertData = pTerrainExt->CustomPalette) {
+	if (const auto pConvertData = pTerrainExt->CustomPalette)
+	{
 		pConvert = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
 	}
 
@@ -163,20 +167,24 @@ DEFINE_HOOK(0x5F4FEF, ObjectClass_Put_RegisterLogic_Terrain, 0x6)
 
 	enum { FurtherCheck = 0x5F501B, NoUpdate = 0x5F5045 };
 
-	if(pThis->WhatAmI() == AbstractType::VeinholeMonster) {
+	if (pThis->WhatAmI() == AbstractType::VeinholeMonster)
+	{
 		return FurtherCheck;
 	}
 
-	if (!pType->IsLogic) {
+	if (!pType->IsLogic)
+	{
 		return NoUpdate;
 	}
 
-	if (pType->WhatAmI() == TerrainTypeClass::AbsID) {
+	if (pType->WhatAmI() == TerrainTypeClass::AbsID)
+	{
 		auto const pTerrainType = static_cast<TerrainTypeClass* const>(pType);
 		if (!pTerrainType->SpawnsTiberium
 			&& !pTerrainType->IsFlammable
 			&& !pTerrainType->IsAnimated
-			&& !pTerrainType->IsVeinhole) {
+			&& !pTerrainType->IsVeinhole)
+		{
 			return NoUpdate;
 		}
 	}

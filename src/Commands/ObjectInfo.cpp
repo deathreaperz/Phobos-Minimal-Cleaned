@@ -59,10 +59,12 @@ void Display(T& buffer)
 {
 	memset(Phobos::wideBuffer, 0, sizeof(Phobos::wideBuffer));
 	mbstowcs(Phobos::wideBuffer, buffer, strlen(buffer));
-	if (!WhiteColorSearched) {
-		const auto WhiteIndex = ColorScheme::FindIndex("White",53);
+	if (!WhiteColorSearched)
+	{
+		const auto WhiteIndex = ColorScheme::FindIndex("White", 53);
 
-		if (WhiteIndex != -1) {
+		if (WhiteIndex != -1)
+		{
 			ColorIdx = WhiteIndex;
 		}
 
@@ -301,7 +303,6 @@ void PrintBuilding(T& buffer, BuildingClass* pBuilding)
 		{
 			auto const pShieldArmor = ArmorTypeClass::FindFromIndex((int)pTechnoExt->CurrentShieldType->Armor.Get());
 			Append(buffer, "CurShield (%s) , Armor = %s (%d) , HP = (%d / %d) ", pShieldData->GetType()->Name.data(), pShieldArmor->Name.data(), (int)pTechnoExt->CurrentShieldType->Armor.Get(), pShieldData->GetHP(), pTechnoExt->CurrentShieldType->Strength);
-
 		}
 	}
 
@@ -373,14 +374,15 @@ void ObjectInfoCommandClass::Execute(WWKey eInput) const
 					Append(buffer, "[%d]OverlayType is %s\n", nOverlay, pOverlay->ID);
 
 					const auto tibIdx = pCell->GetContainedTiberiumIndex();
-					if(tibIdx != -1)
+					if (tibIdx != -1)
 						Append(buffer, "[%d]TiberiumType is %s\n", tibIdx, TiberiumClass::Array->Items[tibIdx]->ID);
-					else if(pOverlay->Wall){
+					else if (pOverlay->Wall)
+					{
 						const auto pHouse = HouseClass::Array->Items[pCell->WallOwnerIndex];
 						const char* pPlainName = pHouse ? pHouse->PlainName : GameStrings::NoneStr();
 						const char* pID = pHouse ? pHouse->Type->ID : GameStrings::NoneStr();
 
-						Append(buffer, "[%d]Wall Owner Is [%s - %s(%d)]\n" , nOverlay , pPlainName , pID , pCell->WallOwnerIndex);
+						Append(buffer, "[%d]Wall Owner Is [%s - %s(%d)]\n", nOverlay, pPlainName, pID, pCell->WallOwnerIndex);
 					}
 				}
 

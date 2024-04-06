@@ -301,7 +301,6 @@ public class ExtractTheAlternativeNumbering
                     string mod_1 = dummy.Insert(0, "{");
                     string mod_2 = mod_1.Insert(mod_1.Length, "},");
                     Console.WriteLine(mod_2);
-
                 }
             }
         }

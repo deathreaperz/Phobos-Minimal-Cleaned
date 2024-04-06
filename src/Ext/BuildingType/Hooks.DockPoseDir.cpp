@@ -1,25 +1,29 @@
 #include "Body.h"
 
-FacingType GetPoseDir(AircraftClass* pAir , BuildingClass* pBld)
+FacingType GetPoseDir(AircraftClass* pAir, BuildingClass* pBld)
 {
 	FacingType ret = (FacingType)TechnoTypeExtContainer::Instance.Find(pAir->Type)->LandingDir.Get(RulesClass::Instance->PoseDir);
 
 	if (pBld || pAir->HasAnyLink())
 	{
-		if (!pBld){
-
-			for (auto i = 0; i < pAir->RadioLinks.Capacity; ++i) {
-				if (auto possiblebld = specific_cast<BuildingClass*>(pAir->RadioLinks[i])) {
+		if (!pBld)
+		{
+			for (auto i = 0; i < pAir->RadioLinks.Capacity; ++i)
+			{
+				if (auto possiblebld = specific_cast<BuildingClass*>(pAir->RadioLinks[i]))
+				{
 					pBld = possiblebld;
 				}
 			}
 
-			if(!pBld && pAir->RadioLinks[0] && ret < FacingType::Min) { //spawner
+			if (!pBld && pAir->RadioLinks[0] && ret < FacingType::Min)
+			{ //spawner
 				return FacingType((((pAir->PrimaryFacing.Current().Raw >> 12) + 1) >> 1) & 7);
 			}
 		}
 
-		if(pBld) {
+		if (pBld)
+		{
 			const auto pBldTypeExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
 			const int nIdx = pBld->FindLinkIndex(pAir);
 			const auto dir = &pBldTypeExt->DockPoseDir;
@@ -27,14 +31,14 @@ FacingType GetPoseDir(AircraftClass* pAir , BuildingClass* pBld)
 			if (nIdx <= -1 || (size_t)nIdx >= dir->size() || ret < FacingType::Min)
 			{
 				return pBldTypeExt->LandingDir.Get(FacingType((((pBld->PrimaryFacing.Current().Raw >> 12) + 1) >> 1) & 7));
-
 			}
 			else
 				return (*dir)[nIdx];
 		}
 	}
 
-	if (!pAir->Type->AirportBound && ret < FacingType::Min) {
+	if (!pAir->Type->AirportBound && ret < FacingType::Min)
+	{
 		return FacingType((((pAir->PrimaryFacing.Current().Raw >> 12) + 1) >> 1) & 7);
 	}
 
@@ -60,8 +64,8 @@ DEFINE_HOOK(0x446FA2, BuildingClass_GrandOpening_PoseDir, 0x6)
 	const DirStruct dir { GetPoseDir(pAir, pThis) };
 	pAir->SecondaryFacing.Set_Current(dir);
 
-//	if (pThis->GetHeight() > 0)
-//		AircraftTrackerClass::Instance->Add(pThis);
+	//	if (pThis->GetHeight() > 0)
+	//		AircraftTrackerClass::Instance->Add(pThis);
 
 	return 0x446FB0;
 }
@@ -114,24 +118,29 @@ DEFINE_HOOK(0x443FD8, BuildingClass_ExitObject_PoseDir_NotAirportBound, 0x8)
 
 DEFINE_HOOK(0x687AF4, CCINIClass_InitializeStuffOnMap_AdjustAircrafts, 0x5)
 {
-	AircraftClass::Array->for_each([](AircraftClass* const pThis) {
-		if (pThis && pThis->Type->AirportBound) {
-			if (auto pCell = pThis->GetCell()) {
-				if (auto pBuilding = pCell->GetBuilding()) {	
-					if (pBuilding->Type->Helipad && pThis->Type->Dock.Contains(pBuilding->Type)) {
-						pBuilding->SendCommand(RadioCommand::RequestLink, pThis);
-						pBuilding->SendCommand(RadioCommand::RequestTether, pThis);
-						pThis->SetLocation(pBuilding->GetDockCoords(pThis));
-						pThis->DockedTo = pBuilding;
-						const DirStruct dir { ((int)GetPoseDir(pThis, pBuilding) << 13) };
-						pThis->SecondaryFacing.Set_Current(dir);
+	AircraftClass::Array->for_each([](AircraftClass* const pThis)
+ {
+	 if (pThis && pThis->Type->AirportBound)
+	 {
+		 if (auto pCell = pThis->GetCell())
+		 {
+			 if (auto pBuilding = pCell->GetBuilding())
+			 {
+				 if (pBuilding->Type->Helipad && pThis->Type->Dock.Contains(pBuilding->Type))
+				 {
+					 pBuilding->SendCommand(RadioCommand::RequestLink, pThis);
+					 pBuilding->SendCommand(RadioCommand::RequestTether, pThis);
+					 pThis->SetLocation(pBuilding->GetDockCoords(pThis));
+					 pThis->DockedTo = pBuilding;
+					 const DirStruct dir { ((int)GetPoseDir(pThis, pBuilding) << 13) };
+					 pThis->SecondaryFacing.Set_Current(dir);
 
-						if (pThis->GetHeight() > 0)
-							AircraftTrackerClass::Instance->Add(pThis);
-					}
-				}
-			}
-		}
+					 if (pThis->GetHeight() > 0)
+						 AircraftTrackerClass::Instance->Add(pThis);
+				 }
+			 }
+		 }
+	 }
 	});
 
 	return 0x0;

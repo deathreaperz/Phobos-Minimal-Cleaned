@@ -30,7 +30,8 @@ DEFINE_HOOK(0x6FF329, TechnoCllass_FireAt_OccupyAnims, 0x6)
 	AnimTypeClass* pDecidedMuzzle = pWeapon->OccupantAnim;
 
 	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
-	if (pWeaponExt->OccupantAnim_UseMultiple.Get() && !pWeaponExt->OccupantAnims.empty()) {
+	if (pWeaponExt->OccupantAnim_UseMultiple.Get() && !pWeaponExt->OccupantAnims.empty())
+	{
 		pDecidedMuzzle = pWeaponExt->OccupantAnims[ScenarioClass::Instance->Random.RandomFromMax(pWeaponExt->OccupantAnims.size() - 1)];
 	}
 
@@ -153,7 +154,7 @@ DEFINE_HOOK(0x70D690, TechnoClass_FireDeathWeapon_Replace, 0x5) //4
 
 		if (pPrimary && pPrimary->WeaponType)
 		{
-			if(pTypeExt->DeathWeapon_CheckAmmo && pThis->Ammo <= 0 )
+			if (pTypeExt->DeathWeapon_CheckAmmo && pThis->Ammo <= 0)
 				return 0x70D796;
 
 			DetonateDeathWeapon(pThis, pType, pPrimary->WeaponType, nMult, false);
@@ -162,7 +163,6 @@ DEFINE_HOOK(0x70D690, TechnoClass_FireDeathWeapon_Replace, 0x5) //4
 		{
 			DetonateDeathWeapon(pThis, pType, RulesClass::Instance->DeathWeapon, nMult, true);
 		}
-
 	}
 	else
 	{
@@ -180,7 +180,7 @@ DEFINE_HOOK(0x4DABBC, ObjectClass_WasFallingDown, 0x6)
 	if (pThis->IsFallingDown)
 		return 0x0;
 
-	if (((pThis->AbstractFlags & AbstractFlags::Techno) == AbstractFlags::None) || pThis->WhatAmI() == AircraftClass::AbsID )
+	if (((pThis->AbstractFlags & AbstractFlags::Techno) == AbstractFlags::None) || pThis->WhatAmI() == AircraftClass::AbsID)
 		return 0x0;
 
 	auto const pTechno = static_cast<TechnoClass*>(pThis);
@@ -190,16 +190,16 @@ DEFINE_HOOK(0x4DABBC, ObjectClass_WasFallingDown, 0x6)
 
 		{
 			auto const GetLandingAnim = [pExt, pTechno]()
-			{
-				auto pDecidedAnim = pExt->Landing_Anim.Get();
-				if (auto const pCell = pTechno->GetCell())
 				{
-					if (!pCell->ContainsBridge() && pCell->LandType == LandType::Water)
-						pDecidedAnim = pExt->Landing_AnimOnWater.Get();
-				}
+					auto pDecidedAnim = pExt->Landing_Anim.Get();
+					if (auto const pCell = pTechno->GetCell())
+					{
+						if (!pCell->ContainsBridge() && pCell->LandType == LandType::Water)
+							pDecidedAnim = pExt->Landing_AnimOnWater.Get();
+					}
 
-				return pDecidedAnim;
-			};
+					return pDecidedAnim;
+				};
 
 			if (auto pDecidedAnim = GetLandingAnim())
 			{
@@ -255,14 +255,14 @@ DEFINE_HOOK(0x4CEB51, FlyLocomotionClass_LandingAnim, 0x8)
 
 	{
 		auto GetDefaultType = [pType]()
-		{
-			if (pType->IsDropship)
-				return RulesExtData::Instance()->DropShip_LandAnim.Get();
-			else if (pType->Carryall)
-				return RulesExtData::Instance()->CarryAll_LandAnim.Get();
+			{
+				if (pType->IsDropship)
+					return RulesExtData::Instance()->DropShip_LandAnim.Get();
+				else if (pType->Carryall)
+					return RulesExtData::Instance()->CarryAll_LandAnim.Get();
 
-			return (AnimTypeClass*)nullptr;
-		};
+				return (AnimTypeClass*)nullptr;
+			};
 
 		const auto pCell = pLinked->GetCell();
 		const auto pFirst = pCell->LandType == LandType::Water && !pCell->ContainsBridge() && pExt->Landing_AnimOnWater.Get()
@@ -294,13 +294,14 @@ DEFINE_HOOK(0x6FD0A6, TechnoClass_RearmDelay_RandomROF, 0x5)
 
 	if (pExt->ROF_Random.Get())
 	{
-		const auto nDefault = Point2D{RulesExtData::Instance()->ROF_RandomDelay->X , RulesExtData::Instance()->ROF_RandomDelay->Y };
+		const auto nDefault = Point2D { RulesExtData::Instance()->ROF_RandomDelay->X , RulesExtData::Instance()->ROF_RandomDelay->Y };
 		nResult += GeneralUtils::GetRangedRandomOrSingleValue(pExt->Rof_RandomMinMax.Get(nDefault));
 	}
 
 	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
 
-	if(pWeaponExt->ROF_RandomDelay.isset()){
+	if (pWeaponExt->ROF_RandomDelay.isset())
+	{
 		nResult += GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->ROF_RandomDelay);
 	}
 
@@ -321,7 +322,6 @@ DEFINE_HOOK(0x4DECBB, FootClass_Destroy_SpinSpeed, 0x5) //A
 
 	pThis->RockingForwardsPerFrame = static_cast<float>(ScenarioClass::Instance->Random.RandomDouble() * 0.1 * pExt->CrashSpinVerticalRate.Get());
 
-
 	return 0x4DED4B;
 }
 
@@ -331,8 +331,10 @@ DEFINE_HOOK(0x4D42C4, FootClass_Mission_Patrol_IsCow, 0x6) //8
 
 	GET(FootClass* const, pThis, ESI);
 
-	if(const auto pInf = specific_cast<InfantryClass*>(pThis)) {
-		if (InfantryTypeExtContainer::Instance.Find(pInf->Type)->Is_Cow) {
+	if (const auto pInf = specific_cast<InfantryClass*>(pThis))
+	{
+		if (InfantryTypeExtContainer::Instance.Find(pInf->Type)->Is_Cow)
+		{
 			pThis->UpdateIdleAction();
 			return pThis->Destination ? Skip : SetMissionRate;
 		}
@@ -383,7 +385,6 @@ DEFINE_HOOK(0x70FDC2, TechnoClass_Drain_LocalDrainAnim, 0x5) //A
 	return 0x0;
 }
 
-
 DEFINE_HOOK(0x5184F7, InfantryClass_ReceiveDamage_NotHuman, 0x6)
 {
 	enum
@@ -410,14 +411,17 @@ DEFINE_HOOK(0x5184F7, InfantryClass_ReceiveDamage_NotHuman, 0x6)
 		if (pThis->GetHeight() < 10)
 		{
 			AnimTypeClass* pTypeAnim = pWarheadExt->InfDeathAnim;
-			for(auto begin = pWarheadExt->InfDeathAnims.begin(); begin != pWarheadExt->InfDeathAnims.end(); ++begin) {
-				if(begin->first == pThis->Type){
+			for (auto begin = pWarheadExt->InfDeathAnims.begin(); begin != pWarheadExt->InfDeathAnims.end(); ++begin)
+			{
+				if (begin->first == pThis->Type)
+				{
 					pTypeAnim = begin->second;
 					break;
 				}
 			}
 
-			if(pTypeAnim){
+			if (pTypeAnim)
+			{
 				auto pAnim = GameCreate<AnimClass>(pTypeAnim, pThis->Location);
 				HouseClass* const Invoker = (args.Attacker)
 					? args.Attacker->Owner

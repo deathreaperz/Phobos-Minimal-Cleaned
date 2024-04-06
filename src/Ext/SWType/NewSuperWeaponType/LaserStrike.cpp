@@ -12,11 +12,12 @@ SuperWeaponFlags SW_LaserStrike::Flags(const SWTypeExtData* pData) const
 
 bool SW_LaserStrike::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
 {
-	if (pThis->IsCharged) {
+	if (pThis->IsCharged)
+	{
 		const auto pData = SWTypeExtContainer::Instance.Find(pThis->Type);
-		this->newStateMachine(Coords, pThis, this->GetFirer(pThis , Coords, false),
-			ScenarioClass::Instance->Random.RandomRanged(pData->LaserStrikeMin, pData->LaserStrikeMax) ,
-			pData->SW_Deferment ,
+		this->newStateMachine(Coords, pThis, this->GetFirer(pThis, Coords, false),
+			ScenarioClass::Instance->Random.RandomRanged(pData->LaserStrikeMin, pData->LaserStrikeMax),
+			pData->SW_Deferment,
 			pData->LaserStrikeDuration
 		);
 	}
@@ -59,7 +60,7 @@ void SW_LaserStrike::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	pData->LaserStrikeAngleAcceleration.Read(exINI, section, "LaserStrike.AngleAccel");
 	pData->LaserStrikeAngleMax.Read(exINI, section, "LaserStrike.AngleMax");
 	pData->LaserStrikeAngleMin.Read(exINI, section, "LaserStrike.AngleMin");
-	pData->LaserStrikeZeroRadius_Weapon.Read(exINI, section, "LaserStrike.ZeroRadiusWeapon" , true);
+	pData->LaserStrikeZeroRadius_Weapon.Read(exINI, section, "LaserStrike.ZeroRadiusWeapon", true);
 	pData->LaserStrikeInnerColor.Read(exINI, section, "LaserStrike.InnerColor");
 	pData->LaserStrikeOuterColor.Read(exINI, section, "LaserStrike.OuterColor");
 	pData->LaserStrikeOuterSpread.Read(exINI, section, "LaserStrike.OuterSpread");
@@ -237,9 +238,11 @@ void LaserStrikeStateMachine::Update()
 				if (pData->LaserStrikeZeroRadius_Weapon)
 					WeaponTypeExtData::DetonateAt(pData->LaserStrikeZeroRadius_Weapon, center, Firer, pData->LaserStrikeZeroRadius_Weapon->Damage, false);
 
-				if (this->MaxCount > 0){
+				if (this->MaxCount > 0)
+				{
 					this->MaxCountCounter--;
-					if (this->MaxCountCounter <= 0){
+					if (this->MaxCountCounter <= 0)
+					{
 						this->Clock.Stop();
 						return;
 					}

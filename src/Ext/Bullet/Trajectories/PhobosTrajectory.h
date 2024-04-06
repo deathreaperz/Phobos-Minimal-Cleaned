@@ -9,7 +9,7 @@ enum class TrajectoryFlag : int
 	Straight = 0,
 	Bombard = 1,
 	Artillery = 2,
-	Bounce= 3 ,
+	Bounce = 3,
 	Vertical = 4,
 	Meteor = 5,
 	Spiral = 6,
@@ -28,9 +28,9 @@ public:
 	TrajectoryFlag Flag { TrajectoryFlag::Invalid };
 	Nullable<Leptons> DetonationDistance { };
 
-	PhobosTrajectoryType(noinit_t){ }
+	PhobosTrajectoryType(noinit_t) { }
 	PhobosTrajectoryType(TrajectoryFlag flag) : Flag { flag }
-	{}
+	{ }
 
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) { }
 	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
@@ -46,10 +46,9 @@ public:
 
 	static std::array<const char*, (size_t)TrajectoryFlag::Count> TrajectoryTypeToSrings;
 
-protected :
-	static bool UpdateType(std::unique_ptr<PhobosTrajectoryType>& pType , TrajectoryFlag flag);
+protected:
+	static bool UpdateType(std::unique_ptr<PhobosTrajectoryType>& pType, TrajectoryFlag flag);
 };
-
 
 template<typename T>
 concept TrajectoryType = std::is_base_of<PhobosTrajectoryType, T>::value;
@@ -64,14 +63,15 @@ public:
 	Leptons DetonationDistance { 0 };
 
 	PhobosTrajectory(noinit_t) { }
-	PhobosTrajectory(TrajectoryFlag flag ) : Flag { flag }
+	PhobosTrajectory(TrajectoryFlag flag) : Flag { flag }
 	{ }
 
-	PhobosTrajectory(TrajectoryFlag flag , BulletClass* pBullet , PhobosTrajectoryType* type) : Flag { flag }
+	PhobosTrajectory(TrajectoryFlag flag, BulletClass* pBullet, PhobosTrajectoryType* type) : Flag { flag }
 		, AttachedTo { pBullet }
 		, Type { type }
 		, DetonationDistance { 0 }
-	{ }
+	{
+	}
 
 	virtual ~PhobosTrajectory() = default;
 
@@ -95,10 +95,10 @@ public:
 	static void ProcessFromStream(PhobosStreamReader& Stm, std::unique_ptr<PhobosTrajectory>& pTraj);
 	static void ProcessFromStream(PhobosStreamWriter& Stm, std::unique_ptr<PhobosTrajectory>& pTraj);
 
-	static DWORD OnAITargetCoordCheck(BulletClass* pBullet , CoordStruct& coords);
+	static DWORD OnAITargetCoordCheck(BulletClass* pBullet, CoordStruct& coords);
 	static DWORD OnAITechnoCheck(BulletClass* pBullet, TechnoClass* pTechno);
 protected:
-	static bool UpdateType(BulletClass* pBullet , std::unique_ptr<PhobosTrajectory>& pTraj , PhobosTrajectoryType*  pType);
+	static bool UpdateType(BulletClass* pBullet, std::unique_ptr<PhobosTrajectory>& pTraj, PhobosTrajectoryType* pType);
 };
 
 /*

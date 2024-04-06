@@ -57,11 +57,12 @@ public:
 
 	void CreateAttachedSystem();
 
-	constexpr FORCEINLINE static size_t size_Of(){
+	constexpr FORCEINLINE static size_t size_Of()
+	{
 		return sizeof(BulletExtData) -
-		( 4u //AttachedToObject
-		 	+ 4u //DamageNumberOffset
-		 );
+			(4u //AttachedToObject
+				+ 4u //DamageNumberOffset
+			 );
 	}
 
 	static void InterceptBullet(BulletClass* pThis, TechnoClass* pSource, WeaponTypeClass* pWeapon);

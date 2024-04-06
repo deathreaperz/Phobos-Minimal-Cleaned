@@ -11,14 +11,17 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (size_t i = 0; i < TechnoTypeClass::BuildingFoundationName.size(); ++i) {
-				if (IS_SAME_STR_(TechnoTypeClass::BuildingFoundationName[i].Name, parser.c_str())) {
+			for (size_t i = 0; i < TechnoTypeClass::BuildingFoundationName.size(); ++i)
+			{
+				if (IS_SAME_STR_(TechnoTypeClass::BuildingFoundationName[i].Name, parser.c_str()))
+				{
 					value = TechnoTypeClass::BuildingFoundationName[i].Value;
 					return true;
 				}
 			}
 
-			if (IS_SAME_STR_(parser.c_str(), "Custom")) {
+			if (IS_SAME_STR_(parser.c_str(), "Custom"))
+			{
 				value = (Foundation)127;
 				return true;
 			}
@@ -34,8 +37,10 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			for (size_t i = 0; i < EnumFunctions::FacingType_to_strings.size(); ++i) {
-				if (IS_SAME_STR_(EnumFunctions::FacingType_to_strings[i], parser.c_str())) {
+			for (size_t i = 0; i < EnumFunctions::FacingType_to_strings.size(); ++i)
+			{
+				if (IS_SAME_STR_(EnumFunctions::FacingType_to_strings[i], parser.c_str()))
+				{
 					value = DoTypeFacing(i);
 					return true;
 				}
@@ -70,7 +75,8 @@ namespace detail
 					}
 				}
 
-				if (!found) {
+				if (!found)
+				{
 					Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected valid AffectPlayerType value");
 				}
 			}
@@ -95,7 +101,7 @@ namespace detail
 				cur = strtok_s(nullptr, Phobos::readDelims, &context))
 			{
 				bool found = false;
-				for (const auto& [pStrings , val]: EnumFunctions::SpotlightFlags_ToStrings)
+				for (const auto& [pStrings, val] : EnumFunctions::SpotlightFlags_ToStrings)
 				{
 					if (IS_SAME_STR_(cur, pStrings))
 					{
@@ -105,7 +111,8 @@ namespace detail
 					}
 				}
 
-				if (!found) {
+				if (!found)
+				{
 					Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected valid SpotlightFlags value");
 				}
 			}
@@ -162,7 +169,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			if(GameStrings::IsBlank(parser.value()))
+			if (GameStrings::IsBlank(parser.value()))
 				return false;
 
 			for (size_t i = 0; i < EnumFunctions::DamageDelayTargetFlag_ToStrings.size(); ++i)
@@ -205,7 +212,7 @@ namespace detail
 	{
 		if (parser.ReadString(pSection, pKey))
 		{
-			if(GameStrings::IsBlank(parser.value()))
+			if (GameStrings::IsBlank(parser.value()))
 				return false;
 
 			for (size_t i = 0; i < EnumFunctions::TargetZoneScanType_ToStrings.size(); ++i)
@@ -274,7 +281,8 @@ namespace detail
 		auto ret = false;
 		std::string _key(pKey);
 
-		for (size_t i = 0; i < EnumFunctions::MouseCursorData_ToStrings.size(); ++i) {
+		for (size_t i = 0; i < EnumFunctions::MouseCursorData_ToStrings.size(); ++i)
+		{
 			ret |= read(value.OriginalData.StartFrame, parser, pSection, (_key + EnumFunctions::MouseCursorData_ToStrings[i]).c_str());
 		}
 
@@ -302,7 +310,8 @@ namespace detail
 	template <>
 	inline bool read<FacingType>(FacingType& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
 	{
-		if (parser.ReadString(pSection, pKey) && detail::getresult(value,parser.value(), pSection , pKey)) {
+		if (parser.ReadString(pSection, pKey) && detail::getresult(value, parser.value(), pSection, pKey))
+		{
 			return true;
 		}
 
@@ -315,7 +324,8 @@ namespace detail
 		int nBuffer = -1;
 		if (parser.ReadInteger(pSection, pKey, &nBuffer))
 		{
-			if(nBuffer >= (int)DirType32::Min && nBuffer <= (int)DirType32::Max){
+			if (nBuffer >= (int)DirType32::Min && nBuffer <= (int)DirType32::Max)
+			{
 				value = (DirType32)nBuffer;
 				return true;
 			}
@@ -335,7 +345,8 @@ namespace detail
 			const bool IsNegative = nBuffer < 0;
 			const DirType nVal = (DirType)abs(nBuffer);
 
-			if(DirType::North <= nVal && nVal <= DirType::Max){
+			if (DirType::North <= nVal && nVal <= DirType::Max)
+			{
 				value = (IsNegative ? (DirType)((int)DirType::Max - (int)nVal) : nVal);
 				return true;
 			}
@@ -379,7 +390,7 @@ namespace detail
 				}
 			}
 
-			Debug::INIParseFailed(pSection, pKey, parser.value(),"Expect valid SpotlightAttachment");
+			Debug::INIParseFailed(pSection, pKey, parser.value(), "Expect valid SpotlightAttachment");
 		}
 
 		return false;
@@ -434,8 +445,10 @@ namespace detail
 		{
 			const auto str = parser.value();
 
-			for (size_t i = 0; i < EnumFunctions::BuildingSelectBracketPosition_ToStrings.size(); ++i) {
-				if (IS_SAME_STR_(str, EnumFunctions::BuildingSelectBracketPosition_ToStrings[i])) {
+			for (size_t i = 0; i < EnumFunctions::BuildingSelectBracketPosition_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(str, EnumFunctions::BuildingSelectBracketPosition_ToStrings[i]))
+				{
 					value = BuildingSelectBracketPosition(i);
 					return true;
 				}
@@ -454,8 +467,10 @@ namespace detail
 		{
 			auto str = parser.value();
 
-			for (size_t i = 0; i < EnumFunctions::DisplayInfoType_ToStrings.size(); ++i) {
-				if (IS_SAME_STR_(str, EnumFunctions::DisplayInfoType_ToStrings[i])) {
+			for (size_t i = 0; i < EnumFunctions::DisplayInfoType_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(str, EnumFunctions::DisplayInfoType_ToStrings[i]))
+				{
 					value = DisplayInfoType(i);
 					return true;
 				}
@@ -504,9 +519,12 @@ namespace detail
 				if (bVerbose)
 					Debug::Log("ParseVector DEBUG: [%s][%d]: Verose parsing [%s]\n", pSection, i, res.c_str());
 
-				if (buffer) {
+				if (buffer)
+				{
 					nVecDest[i].push_back(buffer);
-				}else if (bDebug && !GameStrings::IsBlank(cur)) {
+				}
+				else if (bDebug && !GameStrings::IsBlank(cur))
+				{
 					Debug::Log("ParseVector DEBUG: [%s][%d]: Error parsing [%s]\n", pSection, i, res.c_str());
 				}
 			}
@@ -548,9 +566,9 @@ namespace detail
 	}
 
 	template<typename T, bool Allocate = false, bool Unique = false>
-	inline void ParseVector(DynamicVectorClass<T>& List, INI_EX& IniEx , const char* section, const char* key , const char* message = nullptr)
+	inline void ParseVector(DynamicVectorClass<T>& List, INI_EX& IniEx, const char* section, const char* key, const char* message = nullptr)
 	{
-		if (IniEx.ReadString(section,key))
+		if (IniEx.ReadString(section, key))
 		{
 			List.Reset();
 			char* context = nullptr;
@@ -578,12 +596,12 @@ namespace detail
 						{
 							List.AddItem(buffer);
 						}
-						else if(!GameStrings::IsBlank(cur))
+						else if (!GameStrings::IsBlank(cur))
 						{
 							List.AddUnique(buffer);
 						}
 					}
-					else if(!GameStrings::IsBlank(cur))
+					else if (!GameStrings::IsBlank(cur))
 					{
 						Debug::INIParseFailed(section, key, cur, message);
 					}

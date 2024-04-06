@@ -19,5 +19,4 @@ public:
 	{
 		SWStateMachine::Register(std::make_unique<ChronoWarpStateMachine>(Duration, XY, pSuper, this, std::move(Buildings)));
 	}
-
 };

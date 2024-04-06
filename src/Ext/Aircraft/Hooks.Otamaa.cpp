@@ -8,7 +8,8 @@
 #include <Ext/BulletType/Body.h>
 
 #pragma region Otamaa
-static void __fastcall TriggerCrashWeapon_Wrapper(AircraftClass* pThis, DWORD, int nMult) {
+static void __fastcall TriggerCrashWeapon_Wrapper(AircraftClass* pThis, DWORD, int nMult)
+{
 	AircraftExt::TriggerCrashWeapon(pThis, nMult);
 }
 
@@ -170,9 +171,12 @@ DEFINE_HOOK(0x416FFD, AircraftClass_MI_Move_Carryall_AllowWater_LZClear, 0x6) //
 {
 	GET(AircraftClass*, pThis, ESI);
 
-	if (AircraftExt::IsValidLandingZone(pThis)) {
+	if (AircraftExt::IsValidLandingZone(pThis))
+	{
 		R->AL(true);
-	} else {
+	}
+	else
+	{
 		R->AL(pThis->IsLandingZoneClear(pThis->Destination));
 	}
 
@@ -212,7 +216,7 @@ DEFINE_HOOK(0x418782, AircraftClass_CurleyShuffle_D, 0x6)
 }
 
 //DEFINE_HOOK(0x41B7F0, AircraftClass_IFlyControl_Is_Strafe, 0x6)
-//{ 
+//{
 //	GET_STACK(IFlyControl*, ptr, 0x4);
 //
 //	AircraftClass* pAircraft = static_cast<AircraftClass*>(ptr);

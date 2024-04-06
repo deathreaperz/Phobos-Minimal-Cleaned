@@ -15,10 +15,10 @@ GET(TechnoClass* , pThis , techreg);\
 	if (auto const  pTransport = pThis->Transporter) {\
 	  if (TechnoTypeExtContainer::Instance.Find(pTransport->GetTechnoType())->Passengers_SyncOwner.Get()) return ret; } return 0; }
 
-SET_THREATEVALS(0x6FA33C,ESI,TechnoClass_AI_ThreatEvals_OpenToppedOwner,0x6,0x6FA37A) //
-SET_THREATEVALSB(0x6F89F4,ESI,TechnoClass_EvaluateCell_ThreatEvals_OpenToppedOwner,0x6,0x6F8A0F)
-SET_THREATEVALS(0x6F8FD7,ESI,TechnoClass_Greatest_Threat_ThreatEvals_OpenToppedOwner,0x5,0x6F8FDC)
-SET_THREATEVALS(0x6F7EC2,EDI,TechnoClass_EvaluateObject_ThreatEvals_OpenToppedOwner,0x6,0x6F7EDA)
+SET_THREATEVALS(0x6FA33C, ESI, TechnoClass_AI_ThreatEvals_OpenToppedOwner, 0x6, 0x6FA37A) //
+SET_THREATEVALSB(0x6F89F4, ESI, TechnoClass_EvaluateCell_ThreatEvals_OpenToppedOwner, 0x6, 0x6F8A0F)
+SET_THREATEVALS(0x6F8FD7, ESI, TechnoClass_Greatest_Threat_ThreatEvals_OpenToppedOwner, 0x5, 0x6F8FDC)
+SET_THREATEVALS(0x6F7EC2, EDI, TechnoClass_EvaluateObject_ThreatEvals_OpenToppedOwner, 0x6, 0x6F7EDA)
 
 #undef SET_THREATEVALS
 #undef SET_THREATEVALSB
@@ -71,18 +71,18 @@ DEFINE_HOOK(0x701881, TechnoClass_ChangeHouse_Passenger_SyncOwner, 0x5)
 
 	if (TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->Passengers_SyncOwner && pThis->Passengers.NumPassengers > 0)
 	{
-			FootClass* pPassenger = pThis->Passengers.GetFirstPassenger();
+		FootClass* pPassenger = pThis->Passengers.GetFirstPassenger();
+
+		if (pPassenger)
+			pPassenger->SetOwningHouse(pThis->Owner, false);
+
+		while (pPassenger && pPassenger->NextObject)
+		{
+			pPassenger = abstract_cast<FootClass*>(pPassenger->NextObject);
 
 			if (pPassenger)
 				pPassenger->SetOwningHouse(pThis->Owner, false);
-
-			while (pPassenger && pPassenger->NextObject)
-			{
-				pPassenger = abstract_cast<FootClass*>(pPassenger->NextObject);
-
-				if (pPassenger)
-					pPassenger->SetOwningHouse(pThis->Owner, false);
-			}
+		}
 	}
 
 	return 0;
@@ -171,7 +171,7 @@ DEFINE_HOOK(0x737F80, TechnoClass_ReceiveDamage_Cargo_SyncOwner, 0x6)
 
 DEFINE_HOOK(0x710552, TechnoClass_SetOpenTransportCargoTarget_ShareTarget, 0x6)
 {
-	enum { ReturnFromFunction = 0x71057F , Continue = 0x0 };
+	enum { ReturnFromFunction = 0x71057F, Continue = 0x0 };
 
 	GET(TechnoClass* const, pThis, ECX);
 	GET_STACK(AbstractClass* const, pTarget, STACK_OFFSET(0x8, 0x4));

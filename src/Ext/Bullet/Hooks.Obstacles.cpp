@@ -77,7 +77,7 @@ public:
 		const bool isLevel = pBulletType->Level ? pCurrentCell->IsOnFloor() : false;
 		const auto pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pBulletType);
 
-		if (!isTargetingCheck &&isLevel && !pBulletTypeExt->SubjectToLand.isset() && !pBulletTypeExt->SubjectToWater.isset())
+		if (!isTargetingCheck && isLevel && !pBulletTypeExt->SubjectToLand.isset() && !pBulletTypeExt->SubjectToWater.isset())
 			return true;
 		else if (!isCellWater && pBulletTypeExt->SubjectToLand.Get(false))
 			return !isTargetingCheck ? pBulletTypeExt->SubjectToLand_Detonate : true;
@@ -90,33 +90,33 @@ public:
 
 // Hooks
 
- DEFINE_HOOK(0x4688A9, BulletClass_Unlimbo_Obstacles, 0x6)
- {
- 	enum { SkipGameCode = 0x468A3F, Continue = 0x4688BD };
+DEFINE_HOOK(0x4688A9, BulletClass_Unlimbo_Obstacles, 0x6)
+{
+	enum { SkipGameCode = 0x468A3F, Continue = 0x4688BD };
 
- 	GET(BulletClass*, pThis, EBX);
- 	GET(CoordStruct const* const, sourceCoords, EDI);
- 	REF_STACK(CoordStruct const, targetCoords, STACK_OFFSET(0x54, -0x10));
+	GET(BulletClass*, pThis, EBX);
+	GET(CoordStruct const* const, sourceCoords, EDI);
+	REF_STACK(CoordStruct const, targetCoords, STACK_OFFSET(0x54, -0x10));
 
- 	if (pThis->Type->Inviso)
- 	{
- 		auto const pOwner = pThis->Owner ? pThis->Owner->Owner : BulletExtContainer::Instance.Find(pThis)->Owner;
- 		const auto pObstacleCell = BulletObstacleHelper::FindFirstObstacle(*sourceCoords, targetCoords, pThis->Owner, pThis->Target, pOwner, pThis->Type, false);
+	if (pThis->Type->Inviso)
+	{
+		auto const pOwner = pThis->Owner ? pThis->Owner->Owner : BulletExtContainer::Instance.Find(pThis)->Owner;
+		const auto pObstacleCell = BulletObstacleHelper::FindFirstObstacle(*sourceCoords, targetCoords, pThis->Owner, pThis->Target, pOwner, pThis->Type, false);
 
- 		if (pObstacleCell)
- 		{
- 			pThis->SetLocation(pObstacleCell->GetCoords());
- 			pThis->Speed = 0;
- 			pThis->Velocity = {0,0,0};
+		if (pObstacleCell)
+		{
+			pThis->SetLocation(pObstacleCell->GetCoords());
+			pThis->Speed = 0;
+			pThis->Velocity = { 0,0,0 };
 
- 			return SkipGameCode;
- 		}
+			return SkipGameCode;
+		}
 
- 		return Continue;
- 	}
+		return Continue;
+	}
 
- 	return 0;
- }
+	return 0;
+}
 
 DEFINE_HOOK(0x468C86, BulletClass_ShouldExplode_Obstacles, 0xA)
 {
@@ -135,7 +135,6 @@ DEFINE_HOOK(0x468C86, BulletClass_ShouldExplode_Obstacles, 0xA)
 		if (pObstacleCell)
 			return Explode;
 	}
-
 
 	// Restore overridden instructions.
 	R->EAX(pThis->GetHeight());
@@ -176,7 +175,6 @@ DEFINE_HOOK(0x6F7647, TechnoClass_InRange_Obstacles, 0x5)
 
 	if (!pResult) // disable it for in air stuffs for now , broke some Aircraft targeting
 		pResult = BulletObstacleHelper::FindFirstImpenetrableObstacle(*pSourceCoords, targetCoords, pThis, pTarget, pThis->Owner, pWeapon, true);
-
 
 	R->EAX(pResult);
 	return 0;

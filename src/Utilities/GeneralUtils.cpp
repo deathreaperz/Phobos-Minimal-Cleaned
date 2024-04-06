@@ -19,7 +19,7 @@ bool GeneralUtils::IsValidString(const char* str)
 	if (str == nullptr || strlen(str) == 0 || GameStrings::IsBlank(str))
 		return false;
 
-	if (IS_SAME_STR_(str , DEFAULT_STR) || IS_SAME_STR_(str, DEFAULT_STR2))
+	if (IS_SAME_STR_(str, DEFAULT_STR) || IS_SAME_STR_(str, DEFAULT_STR2))
 		return false;
 
 	return true;
@@ -171,7 +171,7 @@ bool GeneralUtils::ApplyTheaterExtToString(std::string& flag)
 	const auto nPos = flag.find("~");
 	if (nPos != std::string::npos)
 	{
-		std::string pTheater = TheaterTypeClass::Array.empty() ? Theater::Get(ScenarioClass::Instance->Theater)->Letter:
+		std::string pTheater = TheaterTypeClass::Array.empty() ? Theater::Get(ScenarioClass::Instance->Theater)->Letter :
 			TheaterTypeClass::FindFromTheaterType(ScenarioClass::Instance->Theater)->Letter.c_str();
 		pTheater = GeneralUtils::lowercase(pTheater);
 
@@ -199,7 +199,6 @@ std::string GeneralUtils::ApplyTheaterSuffixToString(const std::string& str)
 
 		//Debug::Log("Found designated string at [%d] Replacing [%s] to [%s] \n",
 		//	nPos, str.c_str(), buffer.c_str());
-
 	}
 
 	return buffer;
@@ -209,7 +208,7 @@ std::string GeneralUtils::ApplyTheaterSuffixToString(const std::string& str)
 
 AnimTypeClass* GeneralUtils::GetAnimFacingFromVector(TechnoClass* pFirer, const Iterator<AnimTypeClass*> iter)
 {
-	return iter.GetItemAtOrDefault(GeneralUtils::GetAnimIndexFromFacing(pFirer, iter.size()),nullptr);
+	return iter.GetItemAtOrDefault(GeneralUtils::GetAnimIndexFromFacing(pFirer, iter.size()), nullptr);
 }
 
 const int GeneralUtils::GetAnimIndexFromFacing(TechnoClass* pFirer, int nVectorSize)
@@ -231,7 +230,8 @@ const int GeneralUtils::GetAnimIndexFromFacing(TechnoClass* pFirer, int nVectorS
 
 const int GeneralUtils::GetAnimIndexFromFacing(FootClass* pFoot, int nVectorSize)
 {
-	if (pFoot) {
+	if (pFoot)
+	{
 		auto highest = Conversions::Int2Highest(nVectorSize);
 
 		// 2^highest is the frame count, 3 means 8 frames

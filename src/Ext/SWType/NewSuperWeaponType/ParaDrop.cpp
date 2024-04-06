@@ -36,7 +36,7 @@ void SW_ParaDrop::Initialize(SWTypeExtData* pData)
 		// the American paradrop will be the same for every country,
 		// thus we use the SW's default here.
 		auto& nData = pData->ParaDropDatas[pData->AttachedToObject];
- 		auto& pPlane = nData.emplace_back();
+		auto& pPlane = nData.emplace_back();
 
 		auto const& Inf = RulesClass::Instance->AmerParaDropInf;
 		pPlane.Types.insert(pPlane.Types.end(), Inf.begin(), Inf.end());
@@ -61,63 +61,67 @@ void SW_ParaDrop::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	std::string _base;
 
 	auto CreateParaDropBase = [](char* pID, std::string& base)
-	{
-		// put a string like "Paradrop.Americans" into the buffer
-		if (pID && strlen(pID)) {
-			base = "ParaDrop.";
-			base += pID;
-		}
-		else {
-			base = GameStrings::ParaDrop();
-		}
-	};
+		{
+			// put a string like "Paradrop.Americans" into the buffer
+			if (pID && strlen(pID))
+			{
+				base = "ParaDrop.";
+				base += pID;
+			}
+			else
+			{
+				base = GameStrings::ParaDrop();
+			}
+		};
 
-	auto ParseParaDrop = [section, &exINI](const char* pID, int Plane , ParadropData& out)
-	{
-		// create the plane part of this request. this will be
-		// an empty string for the first plane for this is the default.
-		//char plane[0x10] = "";
-		std::string _plane(".Plane");
-		if (Plane) {
-			_plane += std::to_string(Plane + 1);
-		}
+	auto ParseParaDrop = [section, &exINI](const char* pID, int Plane, ParadropData& out)
+		{
+			// create the plane part of this request. this will be
+			// an empty string for the first plane for this is the default.
+			//char plane[0x10] = "";
+			std::string _plane(".Plane");
+			if (Plane)
+			{
+				_plane += std::to_string(Plane + 1);
+			}
 
-		// construct the full tag name base
-		std::string _ID = pID;
-		// parse the plane contents
-		out.Aircraft.Read(exINI, section, (_ID + _plane + ".Aircraft").c_str());
+			// construct the full tag name base
+			std::string _ID = pID;
+			// parse the plane contents
+			out.Aircraft.Read(exINI, section, (_ID + _plane + ".Aircraft").c_str());
 
-		// a list of UnitTypes and InfantryTypes
+			// a list of UnitTypes and InfantryTypes
 
-		out.Types.Read(exINI, section, (_ID + _plane + ".Types").c_str());
+			out.Types.Read(exINI, section, (_ID + _plane + ".Types").c_str());
 
-		// don't parse nums if there are no types
-		if (!out.Aircraft && out.Types.empty()) {
+			// don't parse nums if there are no types
+			if (!out.Aircraft && out.Types.empty())
+			{
+				return;
+			}
+
+			// the number how many times each item is created
+			out.Num.Read(exINI, section, (_ID + _plane + ".Num").c_str());
+
 			return;
-		}
-
-		// the number how many times each item is created
-		out.Num.Read(exINI, section, (_ID + _plane + ".Num").c_str());
-
-		return;
-	};
+		};
 
 	auto GetParadropPlane = [=, &_base](char const* pID, size_t defaultCount, AbstractTypeClass* pKey)
-	{
+		{
+			auto& ParaDrop = pData->ParaDropDatas[pKey];
+			auto const lastCount = ParaDrop.size() ? ParaDrop.size() : defaultCount;
 
-		auto& ParaDrop = pData->ParaDropDatas[pKey];
-		auto const lastCount = ParaDrop.size() ? ParaDrop.size() : defaultCount;
+			// get the number of planes for this house or side
+			std::string _key = pID;
+			auto const count = pINI->ReadInteger(section, (_key + ".Count").c_str(), lastCount);
 
-		// get the number of planes for this house or side
-		std::string _key = pID;
-		auto const count = pINI->ReadInteger(section, (_key + ".Count").c_str(), lastCount);
-
-		// parse every plane
-		ParaDrop.resize(static_cast<size_t>(count));
-		for (int i = 0; i < count; ++i) {
-			ParseParaDrop(_base.c_str(), i , ParaDrop[i]);
-		}
-	};
+			// parse every plane
+			ParaDrop.resize(static_cast<size_t>(count));
+			for (int i = 0; i < count; ++i)
+			{
+				ParseParaDrop(_base.c_str(), i, ParaDrop[i]);
+			}
+		};
 
 	// now load the paradrops
 	// 0: default
@@ -173,7 +177,7 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 	Iterator<TechnoTypeClass*> FallbackTypes;
 	Iterator<int> FallbackNum;
 
-	HouseExtData::GetParadropContent(pHouse , FallbackTypes, FallbackNum);
+	HouseExtData::GetParadropContent(pHouse, FallbackTypes, FallbackNum);
 	pFallbackPlane = HouseExtData::GetParadropPlane(pHouse);
 
 	// use paradrop lists from house, side and default
@@ -185,8 +189,10 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 
 	// how many planes shall we launch?
 	int count = 1;
-	for (auto const& planes : drops) {
-		if (!planes->empty()) {
+	for (auto const& planes : drops)
+	{
+		if (!planes->empty())
+		{
 			count = planes->size();
 			break;
 		}
@@ -211,7 +217,6 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 		{ // factor 1 or 0: "plane * j" => "plane" or "0" (default)
 			for (auto const& planes : drops)
 			{ // get the country/side-specific plane list
-
 				// only do something if there is data missing
 				if (!(ParaDropTypes && ParaDropNum && pParaDropPlane))
 				{
@@ -225,9 +230,8 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 					auto const pPlane = &(*planes)[index];
 
 					// get the plane at specified index
-					if(!pPlane->Num.empty())
+					if (!pPlane->Num.empty())
 					{
-
 						// get the contents, if not already set
 						if (!ParaDropTypes || !ParaDropNum)
 						{
@@ -256,7 +260,8 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 		}
 
 		// house fallback for the plane
-		if (!pParaDropPlane) {
+		if (!pParaDropPlane)
+		{
 			pParaDropPlane = pFallbackPlane;
 		}
 
@@ -304,7 +309,7 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 
 	if (!bSpawned)
 	{
-		GameDelete<true , false>(pPlane);
+		GameDelete<true, false>(pPlane);
 		return;
 	}
 
@@ -315,10 +320,11 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 		// find the nearest cell the paradrop troopers can land on
 		// the movement zone etc is checked within first types of the passanger
 		CellClass* pDest = pTarget;
-		bool allowBridges = GroundType::GetCost(LandType::Clear,pType->SpeedType) > 0.0;
+		bool allowBridges = GroundType::GetCost(LandType::Clear, pType->SpeedType) > 0.0;
 		bool isBridge = allowBridges && pDest->ContainsBridge();
 
-		while (!pDest->IsClearToMove(pType->SpeedType, 0, 0, ZoneType::None, pType->MovementZone, -1, isBridge)) {
+		while (!pDest->IsClearToMove(pType->SpeedType, 0, 0, ZoneType::None, pType->MovementZone, -1, isBridge))
+		{
 			pDest = MapClass::Instance->GetCellAt(
 				MapClass::Instance->NearByLocation(
 					pDest->MapCoords,
@@ -341,14 +347,16 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 			{
 				auto const pNew = static_cast<FootClass*>(pType->CreateObject(pOwner));
 
-				if (!pNew) {
+				if (!pNew)
+				{
 					continue;
 				}
 
 				pNew->SetLocation(pPlane->Location);
 				pNew->Limbo();
 
-				if (pPlane->Type->OpenTopped) {
+				if (pPlane->Type->OpenTopped)
+				{
 					pPlane->EnteredOpenTopped(pNew);
 				}
 

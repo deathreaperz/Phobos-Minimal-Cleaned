@@ -13,7 +13,8 @@ DEFINE_HOOK(0x568432, MapClass_PlaceDown_0x0TerrainTypes, 0x8)
 {
 	GET(ObjectClass*, pObject, EDI);
 
-	if (auto pTerrain = specific_cast<TerrainClass*>(pObject)) {
+	if (auto pTerrain = specific_cast<TerrainClass*>(pObject))
+	{
 		if (pTerrain->Type->Foundation == 21)
 			return 0x5687DF;
 	}
@@ -45,7 +46,7 @@ DEFINE_HOOK(0x7002E9, TechnoClass_WhatAction_PassableTerrain, 0x5)
 
 	if (auto const pTerrain = specific_cast<TerrainClass*>(pTarget))
 	{
-		if (TerrainExtData::CanMoveHere(pThis , pTerrain) && !isForceFire)
+		if (TerrainExtData::CanMoveHere(pThis, pTerrain) && !isForceFire)
 		{
 			R->EBP(Action::Move);
 			return ReturnAction;
@@ -63,7 +64,8 @@ DEFINE_HOOK(0x483DDF, CellClass_CheckPassability_PassableTerrain, 0x6)
 	GET(CellClass*, pThis, EDI);
 	GET(TerrainClass*, pTerrain, ESI);
 
-	if (TerrainTypeExtContainer::Instance.Find(pTerrain->Type)->IsPassable) {
+	if (TerrainTypeExtContainer::Instance.Find(pTerrain->Type)->IsPassable)
+	{
 		pThis->Passability = PassabilityType::Passable;
 		return ReturnFromFunction;
 	}
@@ -79,7 +81,8 @@ DEFINE_HOOK(0x73FBA7, UnitClass_CanEnterCell_PassableTerrain, 0x5)
 	GET(UnitClass*, pThis, EBX);
 	GET(TerrainClass*, pTerrain, ESI);
 
-	if (TerrainExtData::CanMoveHere(pThis, pTerrain)) {
+	if (TerrainExtData::CanMoveHere(pThis, pTerrain))
+	{
 		if (IS_CELL_OCCUPIED(pTerrain->GetCell()))
 			return SkipTerrainChecks;
 
@@ -129,8 +132,10 @@ DEFINE_HOOK(0x47C657, CellClass_IsClearTo_Build_BuildableTerrain_LF, 0x6)
 
 			isEligible = what != BuildingClass::AbsID;
 
-			if(what == TerrainClass::AbsID) {
-				if (auto const pTerrain = static_cast<TerrainClass*>(pObj)) {
+			if (what == TerrainClass::AbsID)
+			{
+				if (auto const pTerrain = static_cast<TerrainClass*>(pObj))
+				{
 					isEligible = TerrainTypeExtContainer::Instance.Find(pTerrain->Type)->CanBeBuiltOn;
 				}
 			}

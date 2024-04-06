@@ -21,14 +21,14 @@ void AircraftPutDataFunctional::OnPut(TechnoExtData* pExt, TechnoTypeExtData* pT
 			// remove extra pad Aircraft
 			if (pType->AirportBound && bRemoveIfNoDock)
 			{
-				int const count = Helpers_DP::CountAircraft(pTechno->Owner,Iter);
+				int const count = Helpers_DP::CountAircraft(pTechno->Owner, Iter);
 				if (pTechno->Owner->AirportDocks <= 0 ||
 					pTechno->Owner->AirportDocks < count)
 				{
 					pTechno->Owner->TransactMoney(pType->Cost);
 					pTechno->Limbo();
 					Debug::Log(__FUNCTION__" Called \n");
-					TechnoExtData::HandleRemove(pTechno , nullptr , false , false);
+					TechnoExtData::HandleRemove(pTechno, nullptr, false, false);
 
 					return;
 				}
@@ -54,7 +54,6 @@ void AircraftPutDataFunctional::OnPut(TechnoExtData* pExt, TechnoTypeExtData* pT
 
 				if (pExt->aircraftPutOffset)
 					*pCoord += nOffset;
-
 			}
 		}
 	}

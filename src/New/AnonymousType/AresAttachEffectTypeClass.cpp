@@ -47,7 +47,8 @@ bool AresAttachEffectTypeClass::Save(PhobosStreamWriter& Stm) const
 
 void AresAttachEffectTypeClass::Read(INI_EX& exINI)
 {
-	if (!this->Owner){
+	if (!this->Owner)
+	{
 		Debug::FatalErrorAndExit("AttahedAffectType Is Missing OwnerPointer!\n");
 	}
 

@@ -24,8 +24,8 @@ static const HoverTypeClass* GetHover(TechnoClass* pThis)
 	else
 		defaulthover = HoverTypeClass::Array[0].get();
 
-
-	if (pThis) {
+	if (pThis)
+	{
 		auto const pTechnoType = pThis->GetTechnoType();
 		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechnoType);
 
@@ -64,7 +64,8 @@ DEFINE_HOOK(0x513EAA, HoverLocomotionClass_513D20_HoverHeight3, 0x5)
 {
 	GET(HoverLocomotionClass* const, pLoco, ESI);
 
-	if(!pLoco->LinkedTo->InAir) {
+	if (!pLoco->LinkedTo->InAir)
+	{
 		const auto height = GetHover(GetOwner(pLoco))->GetHeight();
 		_asm fild height;
 		R->EAX(RulesClass::Instance());
@@ -155,7 +156,7 @@ DEFINE_HOOK(0x5167FC, HoverLocomotionClass_515ED0_ScoldSound, 0x5)
 
 DEFINE_HOOK(0x51613B, HoverLocomotionClass_515ED0_HoverBoost, 0x6) // C
 {
-	GET(HoverLocomotionClass* , pLoco, ESI);
+	GET(HoverLocomotionClass*, pLoco, ESI);
 	const auto pThis = GetOwner(pLoco);
 	const auto nBoostExt = GetHover(pThis)->GetBoost();
 	pLoco->__Boost = nBoostExt;

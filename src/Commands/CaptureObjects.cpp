@@ -41,27 +41,28 @@ void CaptureObjectsCommandClass::Execute(WWKey eInput) const
 	if (!ObjectClass::CurrentObjects->Count)
 		return;
 
-	ObjectClass::CurrentObjects->for_each([](ObjectClass* const object) {
-		if (TechnoClass* techno = generic_cast<TechnoClass*>(object)) {
+	ObjectClass::CurrentObjects->for_each([](ObjectClass* const object)
+ {
+	 if (TechnoClass* techno = generic_cast<TechnoClass*>(object))
+	 {
+		 auto const pToOwner = HouseClass::CurrentPlayer();
 
-			auto const pToOwner = HouseClass::CurrentPlayer();
+		 if (techno->GetOwningHouse() == pToOwner)
+		 {
+			 return;
+			 //if ((techno->AbstractFlags & AbstractFlags::Foot) && !Is_DriverKilled(techno)){
+			 //	techno->SetOwningHouse(HouseExtData::FindSpecial(), false);
+			 //	techno->QueueMission(Mission::Harmless, true);
+			 //}
+		 }
+		 else
+		 {
+			 if (TechnoExtContainer::Instance.Find(techno)->Is_DriverKilled)
+				 TechnoExtContainer::Instance.Find(techno)->Is_DriverKilled = false;
 
-			if (techno->GetOwningHouse() == pToOwner)
-			{
-				return;
-				//if ((techno->AbstractFlags & AbstractFlags::Foot) && !Is_DriverKilled(techno)){
-				//	techno->SetOwningHouse(HouseExtData::FindSpecial(), false);
-				//	techno->QueueMission(Mission::Harmless, true);
-				//}
-			}
-			else
-			{
-				if (TechnoExtContainer::Instance.Find(techno)->Is_DriverKilled)
-					TechnoExtContainer::Instance.Find(techno)->Is_DriverKilled = false;
-
-				techno->SetOwningHouse(pToOwner, false);
-			}
-		}
+			 techno->SetOwningHouse(pToOwner, false);
+		 }
+	 }
 	});
 
 	auto const pHouseExt = HouseExtContainer::Instance.TryFind(HouseClass::CurrentPlayer());

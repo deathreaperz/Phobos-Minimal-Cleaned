@@ -7,7 +7,7 @@ const char* Enumerable<HoverTypeClass>::GetMainSection()
 	return "HoverCharacteristic";
 }
 
-void HoverTypeClass::LoadFromINI(CCINIClass * pINI)
+void HoverTypeClass::LoadFromINI(CCINIClass* pINI)
 {
 	const char* pSection = this->Name;
 	INI_EX exINI(pINI);
@@ -18,13 +18,12 @@ void HoverTypeClass::LoadFromINI(CCINIClass * pINI)
 	this->HoverAcceleration.Read(exINI, pSection, "Hover.Acceleration");
 	this->HoverBrake.Read(exINI, pSection, "Hover.Brake");
 	this->HoverBoost.Read(exINI, pSection, "Hover.Boost");
-	this->AboveWaterAnim.Read(exINI, pSection, "Hover.AboveWaterAnim",true);
+	this->AboveWaterAnim.Read(exINI, pSection, "Hover.AboveWaterAnim", true);
 	this->ScoldSound.Read(exINI, pSection, "Hover.ScoldSound");
-
 }
 
 template <typename T>
-void HoverTypeClass::Serialize(T & Stm)
+void HoverTypeClass::Serialize(T& Stm)
 {
 	Stm
 		.Process(this->HoverHeight)
@@ -38,5 +37,5 @@ void HoverTypeClass::Serialize(T & Stm)
 		;
 };
 
-void HoverTypeClass::LoadFromStream(PhobosStreamReader & Stm){this->Serialize(Stm);}
-void HoverTypeClass::SaveToStream(PhobosStreamWriter & Stm){this->Serialize(Stm);}
+void HoverTypeClass::LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
+void HoverTypeClass::SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }

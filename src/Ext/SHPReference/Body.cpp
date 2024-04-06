@@ -45,7 +45,6 @@ void SHPRefExt::ExtData::Initialize()
 	//		}
 	//	}
 	//}
-
 }
 */
 // =============================

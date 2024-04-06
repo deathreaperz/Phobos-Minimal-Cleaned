@@ -6,13 +6,13 @@
 bool VerticalTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectoryType::Load(Stm, false) &&
-	Stm.Process(this->Height, false);
+		Stm.Process(this->Height, false);
 }
 
 bool VerticalTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectoryType::Save(Stm) &&
-	Stm.Process(this->Height);
+		Stm.Process(this->Height);
 }
 
 bool VerticalTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
@@ -30,7 +30,7 @@ bool VerticalTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 bool VerticalTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return this->PhobosTrajectory::Load(Stm, false) &&
-	Stm
+		Stm
 		.Process(this->IsFalling, false)
 		.Process(this->Height, false)
 		;
@@ -39,7 +39,7 @@ bool VerticalTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 bool VerticalTrajectory::Save(PhobosStreamWriter& Stm) const
 {
 	return this->PhobosTrajectory::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->IsFalling)
 		.Process(this->Height)
 		;
@@ -101,7 +101,6 @@ void VerticalTrajectory::OnAIVelocity(VelocityClass* pSpeed, VelocityClass* pPos
 			pExt->InitializeLaserTrails();
 
 			TrailsManager::Construct(pBullet);
-
 		}
 	}
 }

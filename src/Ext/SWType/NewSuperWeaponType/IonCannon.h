@@ -19,7 +19,8 @@ public:
 
 	using TStateMachine = IonCannonStateMachine;
 
-	void newStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer) {
+	void newStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer)
+	{
 		SWStateMachine::Register(std::make_unique<TStateMachine>(XY, pSuper, pFirer, this));
 	}
 };

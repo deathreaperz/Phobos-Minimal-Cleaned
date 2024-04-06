@@ -193,29 +193,37 @@ DEFINE_HOOK(0x6EB432, TeamClass_AttackedBy_Retaliate, 9)
 	auto pFocus = abstract_cast<TechnoClass*>(pThis->Focus);
 	auto pSpawn = pThis->SpawnCell;
 
-	if (!pFocus || !pFocus->IsArmed() || !pSpawn || pFocus->IsCloseEnoughToAttackCoords(pSpawn->GetCoords())) {
+	if (!pFocus || !pFocus->IsArmed() || !pSpawn || pFocus->IsCloseEnoughToAttackCoords(pSpawn->GetCoords()))
+	{
 		// disallow aircraft, or units considered as aircraft, or stuff not on map like parasites
-		if (pAttacker->WhatAmI() != AircraftClass::AbsID) {
-			if (pFocus) {
-				if (auto pFocusOwner = pFocus->GetOwningHouse()) {
+		if (pAttacker->WhatAmI() != AircraftClass::AbsID)
+		{
+			if (pFocus)
+			{
+				if (auto pFocusOwner = pFocus->GetOwningHouse())
+				{
 					if (pFocusOwner->IsAlliedWith(pAttacker))
 						return 0x6EB47A;
 				}
 			}
 
-			if (auto pAttackerFoot = abstract_cast<FootClass*>(pAttacker)) {
-				if (pAttackerFoot->InLimbo || pAttackerFoot->GetTechnoType()->ConsideredAircraft) {
+			if (auto pAttackerFoot = abstract_cast<FootClass*>(pAttacker))
+			{
+				if (pAttackerFoot->InLimbo || pAttackerFoot->GetTechnoType()->ConsideredAircraft)
+				{
 					return 0x6EB47A;
 				}
 
 				auto first = pThis->FirstUnit;
-				if (first) {
+				if (first)
+				{
 					auto next = first->NextTeamMember;
 					while (!first->IsAlive
 						|| !first->Health
 						|| !first->IsArmed()
 						|| !first->IsTeamLeader && first->WhatAmI() != AircraftClass::AbsID
-					) {
+					)
+					{
 						first = next;
 						if (!next)
 							return 0x6EB47A;

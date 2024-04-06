@@ -4,7 +4,7 @@
 
 struct AircraftPutDataFunctional
 {
-	static void OnPut(TechnoExtData* pExt, TechnoTypeExtData* pTypeExt , CoordStruct* pCoord);
+	static void OnPut(TechnoExtData* pExt, TechnoTypeExtData* pTypeExt, CoordStruct* pCoord);
 	static void AI(TechnoExtData* pExt, TechnoTypeExtData* pTypeExt);
 	static CoordStruct GetOffset(AircraftPutData& nData);
 	static bool IsForceOffset(AircraftPutData& nData);

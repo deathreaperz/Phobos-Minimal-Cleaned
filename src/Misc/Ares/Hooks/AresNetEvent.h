@@ -5,10 +5,12 @@
 class HouseClass;
 class BuildingClass;
 class CellStruct;
-class AresNetEvent {
+class AresNetEvent
+{
 public:
 
-	enum class Events : uint8_t {
+	enum class Events : uint8_t
+	{
 		TrenchRedirectClick = 0x60,
 		FirewallToggle = 0x61,
 
@@ -21,7 +23,8 @@ public:
 		TrenchRedirectClick(CellStruct* target, BuildingClass* source);
 
 		static inline constexpr size_t size() { return sizeof(TrenchRedirectClick); }
-		static inline constexpr EventType AsEventType() {
+		static inline constexpr EventType AsEventType()
+		{
 			return (EventType)Events::TrenchRedirectClick;
 		}
 
@@ -35,7 +38,8 @@ public:
 	struct FirewallToggle
 	{
 		static inline constexpr size_t size() { return sizeof(FirewallToggle); }
-		static inline constexpr EventType AsEventType() {
+		static inline constexpr EventType AsEventType()
+		{
 			return (EventType)Events::FirewallToggle;
 		}
 
@@ -56,19 +60,22 @@ public:
 			return TrenchRedirectClick::size();
 		case Events::FirewallToggle:
 			return FirewallToggle::size();
-		default :
+		default:
 			return 0;
 		}
 	}
 
-	static void RespondEvent(EventClass* pEvent , Events type) {
+	static void RespondEvent(EventClass* pEvent, Events type)
+	{
 		switch (type)
 		{
-		case AresNetEvent::Events::TrenchRedirectClick: {
+		case AresNetEvent::Events::TrenchRedirectClick:
+		{
 			AresNetEvent::TrenchRedirectClick::Respond(pEvent);
 			break;
 		}
-		case AresNetEvent::Events::FirewallToggle: {
+		case AresNetEvent::Events::FirewallToggle:
+		{
 			AresNetEvent::FirewallToggle::Respond(pEvent);
 			break;
 		}

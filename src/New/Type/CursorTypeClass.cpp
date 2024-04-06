@@ -32,10 +32,10 @@ std::array<const char*, (size_t)NewMouseCursorType::count> CursorTypeClass::NewM
 {
 		//86       //87					//88
 	{ "Tote" }, { "EngineerDamage" }, { "TogglePower" },
-	   //89					//90				//91
-	{ "NoTogglePower" }, { "InfantryHeal" }, { "UnitRepair" },
-	   //92					//93				//94
-	{ "TakeVehicle" }, { "Sabotage" }, { "RepairTrench" },
+	//89					//90				//91
+ { "NoTogglePower" }, { "InfantryHeal" }, { "UnitRepair" },
+ //92					//93				//94
+{ "TakeVehicle" }, { "Sabotage" }, { "RepairTrench" },
 }
 };
 
@@ -66,11 +66,13 @@ void CursorTypeClass::AddDefaults()
 	if (!Array.empty())
 		return;
 
-	for (size_t i = 0; i < MouseCursorTypeToStrings.size(); ++i) {
+	for (size_t i = 0; i < MouseCursorTypeToStrings.size(); ++i)
+	{
 		AllocateWithDefault(MouseCursorTypeToStrings[i], MouseCursor::DefaultCursors[i]);
 	}
 
-	for (size_t a = 0; a < NewMouseCursorTypeToStrings.size(); ++a) {
+	for (size_t a = 0; a < NewMouseCursorTypeToStrings.size(); ++a)
+	{
 		AllocateWithDefault(NewMouseCursorTypeToStrings[a], CursorTypeClass::NewMouseCursorTypeData[a]);
 	}
 }
@@ -114,8 +116,10 @@ void CursorTypeClass::LoadFromINIList_New(CCINIClass* pINI, bool bDebug)
 
 	Array.reserve(pKeyCount);
 
-	for (int i = 0; i < pKeyCount; ++i) {
-		if (auto const pItem = FindOrAllocate(pINI->GetKeyName(section, i))) {
+	for (int i = 0; i < pKeyCount; ++i)
+	{
+		if (auto const pItem = FindOrAllocate(pINI->GetKeyName(section, i)))
+		{
 			pItem->LoadFromINI(pINI);
 		}
 	}

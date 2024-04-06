@@ -15,7 +15,8 @@ bool SW_Battery::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 	auto pHouseExt = HouseExtContainer::Instance.Find(pThis->Owner);
 
 	//this check prevent same SW activated multiple times
-	if(!pHouseExt->Batteries.contains(pThis)) {
+	if (!pHouseExt->Batteries.contains(pThis))
+	{
 		pHouseExt->Batteries.push_back(pThis);
 
 		pThis->Owner->RecheckPower = true;
@@ -27,7 +28,7 @@ void SW_Battery::Deactivate(SuperClass* pSW, CellStruct cell, bool isPlayer)
 {
 	auto pHouseExt = HouseExtContainer::Instance.Find(pSW->Owner);
 
-	if(pHouseExt->Batteries.remove(pSW))
+	if (pHouseExt->Batteries.remove(pSW))
 		pSW->Owner->RecheckPower = true;
 }
 
@@ -39,7 +40,7 @@ void SW_Battery::Initialize(SWTypeExtData* pData)
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::LowPower;
 }
 
-void SW_Battery::LoadFromINI(SWTypeExtData * pData,CCINIClass * pINI)
+void SW_Battery::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const auto pSection = pData->AttachedToObject->ID;
 	INI_EX exINI(pINI);
@@ -47,7 +48,7 @@ void SW_Battery::LoadFromINI(SWTypeExtData * pData,CCINIClass * pINI)
 	pData->Battery_Overpower.Read(exINI, pSection, "Battery.Overpower");
 	pData->Battery_KeepOnline.Read(exINI, pSection, "Battery.KeepOnline");
 
-	if(!pData->SW_Power.isset())
+	if (!pData->SW_Power.isset())
 		pData->SW_Power.Read(exINI, pSection, "Battery.Power");
 
 	pData->AttachedToObject->Action = Action::None;

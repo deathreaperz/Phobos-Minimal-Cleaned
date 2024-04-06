@@ -11,7 +11,7 @@ public:
 	Valueable<double> Angel { 30 };
 
 	SpiralTrajectoryType() : PhobosTrajectoryType { TrajectoryFlag::Spiral }
-	{}
+	{ }
 
 	virtual ~SpiralTrajectoryType() = default;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }
@@ -19,7 +19,6 @@ public:
 	virtual bool Save(PhobosStreamWriter& Stm) const override;
 
 	virtual bool Read(CCINIClass* const pINI, const char* pSection) override;
-
 };
 
 class SpiralTrajectory final : public PhobosTrajectory
@@ -33,11 +32,12 @@ public:
 	bool close { false };
 
 	SpiralTrajectory() : PhobosTrajectory { TrajectoryFlag::Spiral }
-	{}
+	{ }
 
-	SpiralTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) : 
+	SpiralTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Spiral , pBullet , pType }
-	{}
+	{
+	}
 
 	virtual ~SpiralTrajectory() = default;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }

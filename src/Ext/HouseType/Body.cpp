@@ -30,7 +30,7 @@ void HouseTypeExtData::Initialize()
 	switch ((Countries)index)
 	{
 	case Countries::Americans: // USA
-		std::memcpy(this->TauntFileName.GetEx()->data() , "taunts\\tauam~~.wav" , 19u);
+		std::memcpy(this->TauntFileName.GetEx()->data(), "taunts\\tauam~~.wav", 19u);
 		this->LoadScreenPalette = "mplsu.pal";
 		this->LoadScreenBackground = "ls%sustates.shp";
 
@@ -171,7 +171,7 @@ void HouseTypeExtData::Initialize()
 		this->ObserverFlagYuriPAL = true;
 		break;
 	default: //Unknown
-		std::memcpy(this->TauntFileName.GetEx()->data(), "taunts\\tauam~~.wav",19u);
+		std::memcpy(this->TauntFileName.GetEx()->data(), "taunts\\tauam~~.wav", 19u);
 		this->LoadScreenPalette = "mplsobs.pal";
 		this->LoadScreenBackground = "ls%sobs.shp";
 
@@ -206,8 +206,10 @@ void HouseTypeExtData::Initialize()
 
 void HouseTypeExtData::InheritSettings(HouseTypeClass* pThis)
 {
-	if (auto ParentCountry = pThis->FindParentCountry()) {
-		if (const auto ParentData = HouseTypeExtContainer::Instance.Find(ParentCountry)) {
+	if (auto ParentCountry = pThis->FindParentCountry())
+	{
+		if (const auto ParentData = HouseTypeExtContainer::Instance.Find(ParentCountry))
+		{
 			this->SurvivorDivisor = ParentData->SurvivorDivisor;
 			this->Crew = ParentData->Crew;
 			this->Engineer = ParentData->Engineer;
@@ -274,7 +276,7 @@ void HouseTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Crew.Read(exINI, pSection, "Crew", true);
 	this->Engineer.Read(exINI, pSection, "Engineer", true);
 	this->Technician.Read(exINI, pSection, "Technician", true);
-	this->ParaDropPlane.Read(exINI, pSection, "ParaDrop.Aircraft" , true);
+	this->ParaDropPlane.Read(exINI, pSection, "ParaDrop.Aircraft", true);
 	this->HunterSeeker.Read(exINI, pSection, "HunterSeeker", true);
 	this->SpyPlane.Read(exINI, pSection, "SpyPlane.Aircraft", true);
 	this->ParaDropTypes.Read(exINI, pSection, "ParaDrop.Types", true);
@@ -293,7 +295,7 @@ void HouseTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->NewTeamsSelector_NavalCategoryPercentage.Read(exINI, pSection, "NewTeamsSelector.NavalCategoryPercentage");
 	//
 
-	this->ParachuteAnim.Read(exINI, pSection, "Parachute.Anim" , true);
+	this->ParachuteAnim.Read(exINI, pSection, "Parachute.Anim", true);
 	this->StartInMultiplayer_WithConst.Read(exINI, pSection, "StartInMultiplayer.WithConst");
 	this->Powerplants.Read(exINI, pSection, "AI.PowerPlants", true);
 	this->VeteranBuildings.Read(exINI, pSection, "VeteranBuildings", true);
@@ -302,63 +304,63 @@ void HouseTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Disguise.Read(exINI, pSection, "DefaultDisguise", true);
 
 	this->LoadTextColor.Read(exINI, pSection, "LoadScreenText.Color");
-
 }
 
-void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI) {
+void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI)
+{
 	auto pThis = this->AttachedToObject;
 	const char* pSection = pThis->ID;
 
 	INI_EX exINI(pINI);
 
 	auto ReadShpOrPcxImage = [pINI, pSection](const char* key, PhobosPCXFile& Pcx, SHPStruct** ppShp)
-	{
-			// read the key and convert it to lower case
-		if (pINI->ReadString(pSection, key, Pcx.GetFilename(), Phobos::readBuffer))
 		{
-			// parse the value
-			if (GameStrings::IsBlank(Phobos::readBuffer))
+			// read the key and convert it to lower case
+			if (pINI->ReadString(pSection, key, Pcx.GetFilename(), Phobos::readBuffer))
 			{
+				// parse the value
+				if (GameStrings::IsBlank(Phobos::readBuffer))
+				{
 					// explicitly set to no image
-				if (ppShp)
-				{
-					*ppShp = nullptr;
+					if (ppShp)
+					{
+						*ppShp = nullptr;
+					}
+					Pcx = nullptr;
 				}
-				Pcx = nullptr;
-			}
-			else if (!ppShp || strstr(Phobos::readBuffer, ".pcx"))
-			{
+				else if (!ppShp || strstr(Phobos::readBuffer, ".pcx"))
+				{
 					// clear shp and load pcx
-				if (ppShp)
-				{
-					*ppShp = nullptr;
+					if (ppShp)
+					{
+						*ppShp = nullptr;
+					}
+					Pcx = Phobos::readBuffer;
+					if (!Pcx.Exists())
+					{
+						// log error and clear invalid name
+						Debug::INIParseFailed(pSection, key, Phobos::readBuffer);
+						Pcx = nullptr;
+					}
 				}
-				Pcx = Phobos::readBuffer;
-				if (!Pcx.Exists())
+				else if (ppShp)
 				{
-					// log error and clear invalid name
-					Debug::INIParseFailed(pSection, key, Phobos::readBuffer);
-					Pcx = nullptr;
+					// allowed to load as shp
+					*ppShp = FileSystem::LoadSHPFile(Phobos::readBuffer);
+					if (!*ppShp)
+					{
+						// log error and clear invalid name
+						Debug::INIParseFailed(pSection, key, Phobos::readBuffer);
+						Pcx = nullptr;
+					}
+				}
+				else
+				{
+					// disallowed file type
+					Debug::INIParseFailed(pSection, key, Phobos::readBuffer, "File type not allowed.");
 				}
 			}
-			else if (ppShp)
-			{
-				// allowed to load as shp
-				*ppShp = FileSystem::LoadSHPFile(Phobos::readBuffer);
-				if (!*ppShp)
-				{
-					// log error and clear invalid name
-					Debug::INIParseFailed(pSection, key, Phobos::readBuffer);
-					Pcx = nullptr;
-				}
-			}
-			else
-			{
-				// disallowed file type
-				Debug::INIParseFailed(pSection, key, Phobos::readBuffer, "File type not allowed.");
-			}
-		}
-	};
+		};
 
 	ReadShpOrPcxImage("File.Flag", this->FlagFile, nullptr);
 	ReadShpOrPcxImage("File.ObserverFlag", this->ObserverFlag, &this->ObserverFlagSHP);
@@ -369,15 +371,17 @@ void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI) {
 	this->TauntFileName.Read(exINI, pSection, "File.Taunt");
 	constexpr char digits[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 
-	if(!this->TauntFileName->empty()) {
-
+	if (!this->TauntFileName->empty())
+	{
 		const auto nPos = this->TauntFileName->find("~~");
 		this->TauntFile.clear();
 
-		if (nPos != std::string::npos) {
+		if (nPos != std::string::npos)
+		{
 			this->TauntFile.resize((sizeof(digits) - 1), this->TauntFileName.Get());
 
-			for (size_t i = 0; i < this->TauntFile.size(); ++i) {
+			for (size_t i = 0; i < this->TauntFile.size(); ++i)
+			{
 				this->TauntFile[i][nPos] = digits[0];
 				this->TauntFile[i][nPos + 1] = digits[i + 1];
 
@@ -398,7 +402,8 @@ void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI) {
 
 Iterator<BuildingTypeClass*> HouseTypeExtData::GetPowerplants() const
 {
-	if (!this->Powerplants.empty()) {
+	if (!this->Powerplants.empty())
+	{
 		return this->Powerplants;
 	}
 
@@ -427,18 +432,21 @@ Iterator<BuildingTypeClass*> HouseTypeExtData::GetDefaultPowerplants() const
 
 int HouseTypeExtData::PickRandomCountry()
 {
-	DiscreteDistributionClass<int , DllAllocator<DistributionObject<int>>> items;
+	DiscreteDistributionClass<int, DllAllocator<DistributionObject<int>>> items;
 
-	for (int i = 0; i < HouseTypeClass::Array->Count; i++) {
+	for (int i = 0; i < HouseTypeClass::Array->Count; i++)
+	{
 		HouseTypeClass* pCountry = HouseTypeClass::Array->Items[i];
-		if (pCountry->Multiplay) {
-				items.Add(i,
-				HouseTypeExtContainer::Instance.Find(pCountry)->RandomSelectionWeight);
+		if (pCountry->Multiplay)
+		{
+			items.Add(i,
+			HouseTypeExtContainer::Instance.Find(pCountry)->RandomSelectionWeight);
 		}
 	}
 
 	int ret = 0;
-	if (!items.Select(ScenarioClass::Instance->Random, &ret)) {
+	if (!items.Select(ScenarioClass::Instance->Random, &ret))
+	{
 		Debug::FatalErrorAndExit("No countries eligible for random selection!");
 	}
 
@@ -534,12 +542,10 @@ bool HouseTypeExtContainer::Load(HouseTypeClass* key, IStream* pStm)
 		}
 	}
 
-
 	return false;
 }
 // =============================
 // container hooks
-
 
 DEFINE_HOOK_AGAIN(0x511635, HouseTypeClass_CTOR, 0x5)
 DEFINE_HOOK(0x511643, HouseTypeClass_CTOR, 0x5)
@@ -601,7 +607,7 @@ DEFINE_HOOK(0x51214F, HouseTypeClass_LoadFromINI, 0x5)
 	GET(HouseTypeClass*, pItem, EBX);
 	GET_BASE(CCINIClass*, pINI, 0x8);
 
-	HouseTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x51215A);
+	HouseTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x51215A);
 
 	return 0;
 }

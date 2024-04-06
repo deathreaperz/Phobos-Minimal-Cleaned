@@ -31,7 +31,6 @@ public:
 
 	static bool InvalidateIgnorable(AbstractClass* ptr)
 	{
-
 		switch (VTable::Get(ptr))
 		{
 		case BuildingClass::vtable:

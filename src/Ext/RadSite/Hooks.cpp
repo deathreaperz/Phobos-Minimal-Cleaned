@@ -62,23 +62,25 @@ DEFINE_HOOK(0x46ADE0, BulletClass_ApplyRadiation_NoBullet, 0x5)
 		if (!pCell)
 			return Handled;
 
-		if (!pThis) {
+		if (!pThis)
+		{
 			const auto pDefault = RadTypeClass::Array[0].get();
-			auto const it = RadSiteClass::Array->find_if([=](auto const pSite) {
-				 auto const pRadExt = RadSiteExtContainer::Instance.Find(pSite);
-				 if (pRadExt->Type != pDefault)
-					 return false;
+			auto const it = RadSiteClass::Array->find_if([=](auto const pSite)
+ {
+	 auto const pRadExt = RadSiteExtContainer::Instance.Find(pSite);
+	 if (pRadExt->Type != pDefault)
+		 return false;
 
-				 if (pSite->BaseCell != location)
-					 return false;
+	 if (pSite->BaseCell != location)
+		 return false;
 
-				 if (spread != pSite->Spread)
-					 return false;
+	 if (spread != pSite->Spread)
+		 return false;
 
-				 if (pThis->WeaponType != pRadExt->Weapon)
-					 return false;
+	 if (pThis->WeaponType != pRadExt->Weapon)
+		 return false;
 
-				 return true;
+	 return true;
 			});
 
 			if (it != RadSiteClass::Array->end())
@@ -97,7 +99,6 @@ DEFINE_HOOK(0x46ADE0, BulletClass_ApplyRadiation_NoBullet, 0x5)
 			}
 
 			RadSiteExtData::CreateInstance(pCell->GetCoordsWithBridge(), spread, amount, nullptr, nullptr);
-
 		}
 		else
 		{
@@ -148,7 +149,6 @@ DEFINE_HOOK(0x5213B4, InfantryClass_AIDeployment_CheckRad, 0x7)
 						return pRadExt->TechOwner == pThis;
 
 					return true;
-
 				});
 
 				if (it != RadSiteClass::Array->end())
@@ -261,7 +261,6 @@ DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
 				if (damage == 0)
 					continue;
 
-
 				switch (pRadExt->ApplyRadiationDamage(pBuilding, damage, static_cast<int>(orDistance)))
 				{
 				case RadSiteExtData::DamagingState::Dead:
@@ -317,7 +316,6 @@ DEFINE_HOOK(0x4DA554, FootClass_AI_ReplaceRadiationDamageProcessing, 0x5)
 
 				pThis->SpawnOwner->SpawnManager->ResetTarget();
 			}
-
 		}
 		else if (pSpawnTechnoTypeExt->MySpawnSupportDatas.Enable && pThis->SpawnOwner->GetCurrentMission() != Mission::Attack && pThis->GetCurrentMission() == Mission::Attack)
 		{
@@ -336,7 +334,7 @@ DEFINE_HOOK(0x4DA554, FootClass_AI_ReplaceRadiationDamageProcessing, 0x5)
 	if ((pUnit && pUnit->DeathFrameCounter > 0) || !RadSiteClass::Array->Count)
 		return (CheckOtherState);
 
-	if (pThis->TemporalTargetingMe ||pThis->InLimbo || !pThis->Health || pThis->IsSinking || pThis->IsCrashing)
+	if (pThis->TemporalTargetingMe || pThis->InLimbo || !pThis->Health || pThis->IsSinking || pThis->IsCrashing)
 		return (CheckOtherState);
 
 	if (pThis->IsInAir())

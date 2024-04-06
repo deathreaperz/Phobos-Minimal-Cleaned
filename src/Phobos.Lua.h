@@ -4,7 +4,8 @@
 #include <string>
 #include <memory>
 
-struct LuaData {
+struct LuaData
+{
 	static std::string LuaDir;
 };
 

@@ -5,7 +5,8 @@
 
 DEFINE_HOOK(0x6FA726, TechnoClass_AI_MCOverload, 0x6)
 {
-	enum {
+	enum
+	{
 		SelfHeal = 0x6FA743, //continue ares check here
 		DoNotSelfHeal = 0x6FA941,
 		ReturnFunc = 0x6FAFFD,
@@ -17,23 +18,26 @@ DEFINE_HOOK(0x6FA726, TechnoClass_AI_MCOverload, 0x6)
 
 	TechnoExtData::UpdateMCOverloadDamage(pThis);
 
-	if(!pThis->IsAlive)
+	if (!pThis->IsAlive)
 		return ReturnFunc;
 
-		// prevent crashing and sinking technos from self-healing
-	if (pThis->InLimbo || pThis->IsCrashing || pThis->IsSinking || TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled) {
+	// prevent crashing and sinking technos from self-healing
+	if (pThis->InLimbo || pThis->IsCrashing || pThis->IsSinking || TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled)
+	{
 		return DoNotSelfHeal;
 	}
 
 	const auto nUnit = specific_cast<UnitClass*>(pThis);
-	if (nUnit && nUnit->DeathFrameCounter > 0) {
+	if (nUnit && nUnit->DeathFrameCounter > 0)
+	{
 		return DoNotSelfHeal;
 	}
 
 	// this replaces the call to pThis->ShouldSelfHealOneStep()
 	const auto nAmount = TechnoExt_ExtData::GetSelfHealAmount(pThis);
 	bool wasDamaged = pThis->GetHealthPercentage() <= RulesClass::Instance->ConditionYellow;
-	if (nAmount > 0 || nAmount != 0) {
+	if (nAmount > 0 || nAmount != 0)
+	{
 		pThis->Health += nAmount;
 	}
 

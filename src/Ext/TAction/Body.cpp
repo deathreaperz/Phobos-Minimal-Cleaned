@@ -47,7 +47,8 @@ bool TActionExt::UndeployToWaypoint(TActionClass* pThis, HouseClass* pHouse, Obj
 {
 	AbstractClass* pCell = MapClass::Instance->TryGetCellAt(ScenarioExtData::Instance()->Waypoints[pThis->Param5]);
 
-	if (!pCell) {
+	if (!pCell)
+	{
 		return true;
 	}
 
@@ -228,7 +229,6 @@ bool TActionExt::SetTriggerTechnoVeterancy(TActionClass* pThis, HouseClass* pHou
 	}
 
 	return IsEligible;
-
 }
 
 bool TActionExt::TransactMoneyFor(TActionClass* pThis, HouseClass* pHouse, ObjectClass* pObject,
@@ -327,7 +327,7 @@ bool TActionExt::DrawAnimWithin(TActionClass* pThis, HouseClass* pHouse, ObjectC
 			do
 			{
 				Vector3D<float> Vec3Dresult = Matrix3D::MatrixMultiply(TacticalClass::Instance->IsoTransformMatrix, { v29 * 1.0f, nDimension * 1.0f, 0.0f });
-				GameCreate<AnimClass>(pAnimType, CoordStruct{ (int)Vec3Dresult.X , (int)Vec3Dresult.Y , 0 });
+				GameCreate<AnimClass>(pAnimType, CoordStruct { (int)Vec3Dresult.X , (int)Vec3Dresult.Y , 0 });
 				nDimension += nShpWidth_;
 			}
 			while (nDimension < v33);
@@ -335,7 +335,6 @@ bool TActionExt::DrawAnimWithin(TActionClass* pThis, HouseClass* pHouse, ObjectC
 		v29 += nHeight;
 	}
 	while (v29 < nRectByt);
-
 
 	return true;
 }
@@ -423,7 +422,7 @@ bool TActionExt::GameDeleteTechno(TActionClass* pThis, HouseClass* pHouse, Objec
 	{
 		if (pTech && pTech->IsAlive && pTech->IsOnMap && !pTech->InLimbo && !(pTech->IsCrashing || pTech->IsSinking))
 		{
-			GameDelete<true,false>(pTech);
+			GameDelete<true, false>(pTech);
 		}
 	}
 
@@ -464,9 +463,10 @@ bool TActionExt::Occured(TActionClass* pThis, ActionArgs const& args, bool& ret)
 	HouseClass* pHouse = args.pHouse;
 	ObjectClass* pObject = args.pObject;
 	TriggerClass* pTrigger = args.pTrigger;
-	if ( pObject && !pObject->IsAlive) {
-        pObject = nullptr;
-    }
+	if (pObject && !pObject->IsAlive)
+	{
+		pObject = nullptr;
+	}
 
 	// Phobos
 	switch ((PhobosTriggerAction)pThis->ActionKind)
@@ -522,15 +522,15 @@ bool TActionExt::Occured(TActionClass* pThis, ActionArgs const& args, bool& ret)
 	case PhobosTriggerAction::LightningStormStrikeAtObject:
 		ret = LightningStormStrikeAtObject(pThis, pHouse, pObject, pTrigger, args.plocation);
 		break;
-	//case PhobosTriggerAction::RandomTriggerPut:
-	//	ret = TActionExt::RandomTriggerPut(pThis, pHouse, pObject, pTrigger, args.plocation);
-	//	break;
-	//case PhobosTriggerAction::RandomTriggerEnable:
-	//	ret = TActionExt::RandomTriggerEnable(pThis, pHouse, pObject, pTrigger, args.plocation);
-	//	break;
-	//case PhobosTriggerAction::RandomTriggerRemove:
-	//	ret = TActionExt::RandomTriggerRemove(pThis, pHouse, pObject, pTrigger, args.plocation);
-	//	break;
+		//case PhobosTriggerAction::RandomTriggerPut:
+		//	ret = TActionExt::RandomTriggerPut(pThis, pHouse, pObject, pTrigger, args.plocation);
+		//	break;
+		//case PhobosTriggerAction::RandomTriggerEnable:
+		//	ret = TActionExt::RandomTriggerEnable(pThis, pHouse, pObject, pTrigger, args.plocation);
+		//	break;
+		//case PhobosTriggerAction::RandomTriggerRemove:
+		//	ret = TActionExt::RandomTriggerRemove(pThis, pHouse, pObject, pTrigger, args.plocation);
+		//	break;
 	case PhobosTriggerAction::ScoreCampaignText:
 		ret = TActionExt::ScoreCampaignText(pThis, pHouse, pObject, pTrigger, args.plocation);
 		break;
@@ -553,7 +553,6 @@ bool TActionExt::Occured(TActionClass* pThis, ActionArgs const& args, bool& ret)
 		break;
 	default:
 	{
-
 		// Vanilla overriden
 		switch (pThis->ActionKind)
 		{
@@ -637,14 +636,14 @@ bool TActionExt::SaveGame(TActionClass* pThis, HouseClass* pHouse, ObjectClass* 
 		}
 
 		auto PrintMessage = [](const wchar_t* pMessage)
-		{
-			MessageListClass::Instance->PrintMessage(
-				pMessage,
-				RulesClass::Instance->MessageDelay,
-				HouseClass::CurrentPlayer->ColorSchemeIndex,
-				true
-			);
-		};
+			{
+				MessageListClass::Instance->PrintMessage(
+					pMessage,
+					RulesClass::Instance->MessageDelay,
+					HouseClass::CurrentPlayer->ColorSchemeIndex,
+					true
+				);
+			};
 
 		char fName[0x80];
 
@@ -814,7 +813,8 @@ bool TActionExt::RunSuperWeaponAtWaypoint(TActionClass* pThis, HouseClass* pHous
 	const auto& waypoints = ScenarioExtData::Instance()->Waypoints;
 
 	// Check if is a valid Waypoint
-	if (auto iter = waypoints.tryfind(pThis->Param5)) {
+	if (auto iter = waypoints.tryfind(pThis->Param5))
+	{
 		if (iter->X && iter->Y)
 			return TActionExt::RunSuperWeaponAt(pThis, iter->X, iter->Y);
 	}
@@ -981,8 +981,8 @@ void TActionExt::RecreateLightSources()
 		 auto intensity = pRadSite->LightSource->LightIntensity;
 		 auto visibility = pRadSite->LightSource->LightVisibility;
 
-		 GameDelete<true , false>(std::exchange(pRadSite->LightSource ,
-		 	GameCreate<LightSourceClass>(coord, visibility, intensity, color)));
+		 GameDelete<true, false>(std::exchange(pRadSite->LightSource,
+			 GameCreate<LightSourceClass>(coord, visibility, intensity, color)));
 
 		 if (activated)
 			 pRadSite->LightSource->Activate();
@@ -999,7 +999,6 @@ void TActionExt::RecreateLightSources()
 		 TerrainExtContainer::Instance.Find(nPair)->InitializeLightSource();
 	 }
 	});
-
 }
 
 //bool TActionExt::AdjustLighting(TActionClass* pThis, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct* plocation)
@@ -1065,13 +1064,11 @@ bool TActionExt::RandomTriggerPut(TActionClass* pThis, HouseClass* pHouse, Objec
 
 	if (!nPool.empty())
 	{
-
 		auto const iter = std::find_if(nPool.begin(), nPool.end(),
 			[&](auto const pTrigger) { return pTrigger == pTarget; });
 
 		if (iter == nPool.end())
 			nPool.push_back(pTarget);
-
 	}
 	else
 	{
@@ -1164,22 +1161,26 @@ bool TActionExt::DumpVariables(TActionClass* pThis, HouseClass* pHouse, ObjectCl
 	const auto fileName = (pThis->Param3 != 0) ? "globals.ini" : "locals.ini";
 	CCFileClass file { fileName };
 
-	if (!file.Exists()) {
-		if(!file.CreateFileA()) {
+	if (!file.Exists())
+	{
+		if (!file.CreateFileA())
+		{
 			return false;
 		}
 	}
 
-	if(!file.Open(FileAccessMode::ReadWrite)) {
-		Debug::Log(" %s Failed to Open file %s for\n" , __FUNCTION__ , fileName);
+	if (!file.Open(FileAccessMode::ReadWrite))
+	{
+		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, fileName);
 		return false;
 	}
 
 	CCINIClass ini {};
 	ini.ReadCCFile(&file);
 	const auto variables = ScenarioExtData::GetVariables(pThis->Param3 != 0);
-	std::for_each(variables->begin(), variables->end(), [&](const auto& variable) {
-		ini.WriteInteger(ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value, false);
+	std::for_each(variables->begin(), variables->end(), [&](const auto& variable)
+ {
+	 ini.WriteInteger(ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value, false);
 	});
 
 	ini.WriteCCFile(&file);

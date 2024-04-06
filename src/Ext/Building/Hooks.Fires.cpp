@@ -19,9 +19,11 @@ namespace DamageFireAnims
 		if (!pExt)
 			return;
 
-		for (auto& nFires : pExt->DamageFireAnims) {
-			if (nFires && nFires->Type) {
- 				//GameDelete<true,false>(nFires);
+		for (auto& nFires : pExt->DamageFireAnims)
+		{
+			if (nFires && nFires->Type)
+			{
+				//GameDelete<true,false>(nFires);
 				nFires->TimeToDie = true;
 				nFires->UnInit();
 				nFires = nullptr;
@@ -29,18 +31,22 @@ namespace DamageFireAnims
 		}
 	}
 
-	void HandleRemove(BuildingClass* pThis) {
+	void HandleRemove(BuildingClass* pThis)
+	{
 		auto pExt = BuildingExtContainer::Instance.Find(pThis);
 		HandleRemoveAsExt(pExt);
 	}
 
-	void HandleInvalidPtr(BuildingClass* pThis, void* ptr) {
+	void HandleInvalidPtr(BuildingClass* pThis, void* ptr)
+	{
 		auto const pExt = BuildingExtContainer::Instance.Find(pThis);
 		if (!pExt)
 			return;
 
-		for (auto& nFires : pExt->DamageFireAnims) {
-			if (nFires == ptr) {
+		for (auto& nFires : pExt->DamageFireAnims)
+		{
+			if (nFires == ptr)
+			{
 				nFires = nullptr;
 			}
 		}
@@ -64,7 +70,7 @@ namespace DamageFireAnims
 			for (int i = 0; i < (int)pTypeext->DamageFire_Offs.size(); ++i)
 			{
 				const auto& nFireOffs = pTypeext->DamageFire_Offs[i];
-				const auto&[nPiX ,nPiY] = TacticalClass::Instance->ApplyOffsetPixel(nFireOffs);
+				const auto& [nPiX, nPiY] = TacticalClass::Instance->ApplyOffsetPixel(nFireOffs);
 
 				CoordStruct nPixCoord { nPiX, nPiY, 0 };
 				nPixCoord += pThis->GetRenderCoords();
@@ -96,7 +102,7 @@ DEFINE_HOOK(0x43FC90, BuildingClass_CreateDamageFireAnims, 0x7)
 }
 
 //DEFINE_JUMP(CALL, 0x43FC92, GET_OFFSET(DamageFireAnims::Construct));
-DEFINE_HOOK(0x46038A , BuildingTypeClass_ReadINI_SkipDamageFireAnims, 0x6)
+DEFINE_HOOK(0x46038A, BuildingTypeClass_ReadINI_SkipDamageFireAnims, 0x6)
 {
 	return 0x46048E;
 }
@@ -110,11 +116,11 @@ DEFINE_HOOK(addr , BuildingClass_##name##_DamageFireAnims , size ) { \
 	return ret;\
 }
 
-HANDLEREMOVE_HOOKS(0x43BDD5,ESI, DTOR, 0x6, 0x43BDF6)
-HANDLEREMOVE_HOOKS(0x44AB87,EBP, Fire1, 0x6, 0x44ABAC)
-HANDLEREMOVE_HOOKS(0x440076,ESI, Fire2, 0x6, 0x44009B)
-HANDLEREMOVE_HOOKS(0x43FC99,ESI, Fire3, 0x6, 0x43FCBE)
-HANDLEREMOVE_HOOKS(0x4458E4,ESI, Fire4, 0x6, 0x445905)
+HANDLEREMOVE_HOOKS(0x43BDD5, ESI, DTOR, 0x6, 0x43BDF6)
+HANDLEREMOVE_HOOKS(0x44AB87, EBP, Fire1, 0x6, 0x44ABAC)
+HANDLEREMOVE_HOOKS(0x440076, ESI, Fire2, 0x6, 0x44009B)
+HANDLEREMOVE_HOOKS(0x43FC99, ESI, Fire3, 0x6, 0x43FCBE)
+HANDLEREMOVE_HOOKS(0x4458E4, ESI, Fire4, 0x6, 0x445905)
 
 #undef HANDLEREMOVE_HOOKS
 
@@ -144,7 +150,8 @@ DEFINE_HOOK(0x44EA1C, BuildingClass_DetachOrInvalidPtr_handle, 0x6)
 
 //remove it from load
 //DEFINE_JUMP(LJMP, 0x454154, 0x454170);
-DEFINE_HOOK(0x454154 , BuildingClass_LoadGame_DamageFireAnims , 0x6) {
+DEFINE_HOOK(0x454154, BuildingClass_LoadGame_DamageFireAnims, 0x6)
+{
 	return 0x454170;
 }
 #endif
@@ -161,25 +168,26 @@ DEFINE_HOOK(0x44270B, BuildingClass_ReceiveDamge_OnFire, 0x9)
 		const bool Onfire = pTypeExt->HealthOnfire.Get(pThis->GetHealthStatus());
 		auto const pFireType = pTypeExt->OnFireTypes.GetElements(RulesClass::Instance->OnFire);
 
-		if (Onfire && pFireType.size() >= 3) {
+		if (Onfire && pFireType.size() >= 3)
+		{
 			for (; (pFoundationArray->X != 0x7FFF || pFoundationArray->Y != 0x7FFF); ++pFoundationArray)
 			{
-				auto const&[nCellX , nCellY] = pThis->InlineMapCoords() + *pFoundationArray;
+				auto const& [nCellX, nCellY] = pThis->InlineMapCoords() + *pFoundationArray;
 				CoordStruct nDestCoord { (nCellX * 256) + 128, (nCellY * 256) + 128, 0 };
 				nDestCoord.Z = MapClass::Instance->GetCellFloorHeight(nDestCoord);
 
 				auto PlayFireAnim = [&](int nLoop = 1, int nFireTypeAt = 2)
-				{
-					if (auto pAnimType = pFireType[nFireTypeAt])
 					{
-						nDestCoord = MapClass::GetRandomCoordsNear(nDestCoord, 96, false);
-						auto const pAnim = GameCreate<AnimClass>(pAnimType, nDestCoord, 0, nLoop);
-						pAnim->SetOwnerObject(pThis);
-						const auto pKiller = args.Attacker;
-						const auto Invoker = (pKiller) ? pKiller->Owner : args.SourceHouse;
-						AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, pKiller, false);
-					}
-				};
+						if (auto pAnimType = pFireType[nFireTypeAt])
+						{
+							nDestCoord = MapClass::GetRandomCoordsNear(nDestCoord, 96, false);
+							auto const pAnim = GameCreate<AnimClass>(pAnimType, nDestCoord, 0, nLoop);
+							pAnim->SetOwnerObject(pThis);
+							const auto pKiller = args.Attacker;
+							const auto Invoker = (pKiller) ? pKiller->Owner : args.SourceHouse;
+							AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, pKiller, false);
+						}
+					};
 
 				switch (ScenarioClass::Instance->Random.RandomFromMax(pThis->Type->GetFoundationWidth() + pThis->Type->GetFoundationHeight(false) + 5))
 				{

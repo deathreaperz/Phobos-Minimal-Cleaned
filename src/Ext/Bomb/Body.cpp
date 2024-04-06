@@ -3,19 +3,19 @@
 #include <Ext/Anim/Body.h>
 #include <Ext/WarheadType/Body.h>
 
-HouseClass*  __fastcall BombExtData::GetOwningHouse(BombClass* pThis, void*)
+HouseClass* __fastcall BombExtData::GetOwningHouse(BombClass* pThis, void*)
 {
 	return pThis->OwnerHouse;
 }
 
-void __fastcall BombExtData::InvalidatePointer(BombClass* pThis, void*, void* const ptr, bool removed){ }
+void __fastcall BombExtData::InvalidatePointer(BombClass* pThis, void*, void* const ptr, bool removed) { }
 
 // =============================
 // load / save
 
 template <typename T>
-void BombExtData::Serialize(T& Stm) {
-
+void BombExtData::Serialize(T& Stm)
+{
 	Stm
 		.Process(this->Initialized)
 		.Process(this->Weapon)
@@ -26,7 +26,6 @@ void BombExtData::Serialize(T& Stm) {
 // container
 BombExtContainer BombExtContainer::Instance;
 
-
 // =============================
 // container hooks
 
@@ -35,7 +34,7 @@ BombExtContainer BombExtContainer::Instance;
 // target
 // state
 // ticksound
-DEFINE_HOOK_AGAIN(0x438EE9, BombClass_CTOR , 0x6)
+DEFINE_HOOK_AGAIN(0x438EE9, BombClass_CTOR, 0x6)
 DEFINE_HOOK(0x4385FC, BombClass_CTOR, 0x6)
 {
 	GET(BombClass*, pItem, ESI);
@@ -47,7 +46,7 @@ DEFINE_HOOK(0x4385FC, BombClass_CTOR, 0x6)
 
 DEFINE_HOOK(0x4393F2, BombClass_SDDTOR, 0x5)
 {
-	GET(BombClass *, pItem, ECX);
+	GET(BombClass*, pItem, ECX);
 	BombExtContainer::Instance.Remove(pItem);
 	return 0;
 }
@@ -73,7 +72,7 @@ DEFINE_HOOK(0x438BE4, BombClass_Save_Suffix, 0x5)
 {
 	GET(HRESULT, nRes, EAX);
 
-	if(SUCCEEDED(nRes))
+	if (SUCCEEDED(nRes))
 		BombExtContainer::Instance.SaveStatic();
 
 	return 0;

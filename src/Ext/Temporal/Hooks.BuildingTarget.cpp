@@ -4,7 +4,6 @@
 #include <Ext/TechnoType/Body.h>
 #include <Ext/Building/Body.h>
 
-
 DEFINE_HOOK(0x71A9F1, TemporalClass_Update_RemoveBuildingTarget, 0x6)
 {
 	GET(TemporalClass* const, pThis, ESI);

@@ -8,7 +8,8 @@ class REGISTERS;
 class Debug final
 {
 public:
-	enum class Severity : int {
+	enum class Severity : int
+	{
 		None = 0,
 		Verbose = 1,
 		Notice = 2,
@@ -37,32 +38,39 @@ public:
 	static std::wstring FullDump(std::wstring destinationFolder);
 
 	template <typename... TArgs>
-	static void Log(bool enabled, Debug::Severity severity, const char* const pFormat, TArgs&&... args) {
-		if (enabled) {
+	static void Log(bool enabled, Debug::Severity severity, const char* const pFormat, TArgs&&... args)
+	{
+		if (enabled)
+		{
 			Debug::Log(severity, pFormat, std::forward<TArgs>(args)...);
 		}
 	}
 
 	template <typename... TArgs>
-	static void Log(bool enabled, const char* const pFormat, TArgs&&... args) {
-		if (enabled) {
+	static void Log(bool enabled, const char* const pFormat, TArgs&&... args)
+	{
+		if (enabled)
+		{
 			Debug::Log(pFormat, std::forward<TArgs>(args)...);
 		}
 	}
 
 	template <typename... TArgs>
-	static void Log(Debug::Severity severity, const char* const pFormat, TArgs&&... args) {
+	static void Log(Debug::Severity severity, const char* const pFormat, TArgs&&... args)
+	{
 		Debug::LogFlushed(severity, pFormat, std::forward<TArgs>(args)...);
 	}
 
 	template <typename... TArgs>
-	static void Log(const char* const pFormat, TArgs&&... args) {
+	static void Log(const char* const pFormat, TArgs&&... args)
+	{
 		Debug::LogFlushed(pFormat, std::forward<TArgs>(args)...);
 	}
 
 	static void LogWithVArgs(const char* const pFormat, va_list args);
 
-	static bool LogFileActive() {
+	static bool LogFileActive()
+	{
 		return Debug::LogEnabled && Debug::LogFile;
 	}
 
@@ -86,8 +94,10 @@ public:
 	[[noreturn]] static void FatalErrorAndExit(ExitCode nExitCode, const char* pFormat, ...);
 	[[noreturn]] static void FatalErrorAndExit(const char* pFormat, ...);
 
-	static void RegisterParserError() {
-		if (Phobos::Otamaa::TrackParserErrors) {
+	static void RegisterParserError()
+	{
+		if (Phobos::Otamaa::TrackParserErrors)
+		{
 			Phobos::Otamaa::ParserErrorDetected = true;
 		}
 	}
@@ -95,7 +105,8 @@ public:
 	static void DumpObj(void const* data, size_t len);
 
 	template <typename T>
-	static void DumpObj(const T& object) {
+	static void DumpObj(const T& object)
+	{
 		DumpObj(&object, sizeof(object));
 	}
 

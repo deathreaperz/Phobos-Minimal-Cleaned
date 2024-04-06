@@ -24,11 +24,13 @@ struct MiscTools
 	}
 
 	template<typename T>
-	volatile T& Memory(const uintptr_t ptr) {
+	volatile T& Memory(const uintptr_t ptr)
+	{
 		return *reinterpret_cast<T*>(ptr);
 	}
 
-	volatile uint8_t& Memory(const uint16_t ptr) {
+	volatile uint8_t& Memory(const uint16_t ptr)
+	{
 		return *reinterpret_cast<uint8_t*>(ptr);
 	}
 };
@@ -61,7 +63,8 @@ struct _LJMP
 	{
 	};
 
-	constexpr FORCEINLINE size_t size() const{
+	constexpr FORCEINLINE size_t size() const
+	{
 		return sizeof(*this);
 	}
 };
@@ -79,7 +82,8 @@ struct _CALL
 	{
 	};
 
-	constexpr FORCEINLINE size_t size() const {
+	constexpr FORCEINLINE size_t size() const
+	{
 		return sizeof(*this);
 	}
 };
@@ -99,7 +103,8 @@ struct _CALL6
 	{
 	};
 
-	constexpr FORCEINLINE size_t size() const {
+	constexpr FORCEINLINE size_t size() const
+	{
 		return sizeof(*this);
 	}
 };
@@ -115,7 +120,8 @@ struct _VTABLE
 	{
 	};
 
-	constexpr FORCEINLINE size_t size() const {
+	constexpr FORCEINLINE size_t size() const
+	{
 		return sizeof(*this);
 	}
 };

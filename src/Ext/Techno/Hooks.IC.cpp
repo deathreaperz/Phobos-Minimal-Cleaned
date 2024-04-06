@@ -66,12 +66,16 @@ DEFINE_HOOK(0x4DEAEE, FootClass_IronCurtain, 0x6)
 }
 #endif
 
-static DamageState __fastcall InfantryClass_IronCurtain(InfantryClass* pThis, void* _, int nDur, HouseClass* pSource, bool bIsFC) {
-
-	if (pThis->Type->Engineer && pThis->TemporalTargetingMe && pThis->Destination) {
-		if (auto const pCell = pThis->GetCell()) {
-			if (auto const pBld = pCell->GetBuilding()) {
-				if (pThis->Destination == pBld && pBld->Type->BridgeRepairHut) {
+static DamageState __fastcall InfantryClass_IronCurtain(InfantryClass* pThis, void* _, int nDur, HouseClass* pSource, bool bIsFC)
+{
+	if (pThis->Type->Engineer && pThis->TemporalTargetingMe && pThis->Destination)
+	{
+		if (auto const pCell = pThis->GetCell())
+		{
+			if (auto const pBld = pCell->GetBuilding())
+			{
+				if (pThis->Destination == pBld && pBld->Type->BridgeRepairHut)
+				{
 					return DamageState::Unaffected;
 				}
 			}
@@ -115,7 +119,6 @@ DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 				pSource
 			)
 		);
-
 	}break;
 	default:
 	{
@@ -123,8 +126,8 @@ DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 			return MakeInvunlnerable;
 		else
 		{
-			R->EAX (
-			pThis->ReceiveDamage (
+			R->EAX(
+			pThis->ReceiveDamage(
 				&pThis->Health,
 				0,
 				pTypeExt->IronCurtain_KillWarhead.Get(RulesClass::Instance->C4Warhead),
@@ -134,7 +137,6 @@ DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 				pSource
 			));
 		}
-
 	}break;
 	}
 

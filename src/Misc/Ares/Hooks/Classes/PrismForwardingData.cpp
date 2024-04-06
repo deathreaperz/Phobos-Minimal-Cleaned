@@ -6,7 +6,8 @@ signed int PrismForwardingData::GetUnusedWeaponSlot(BuildingTypeClass* pThis, bo
 	{ //13-18 is AlternateFLH0-4
 		auto Weapon = (elite ? pThis->GetEliteWeapon(idxWeapon) : pThis->GetWeapon(idxWeapon))->WeaponType;
 
-		if (!Weapon) {
+		if (!Weapon)
+		{
 			return static_cast<int>(idxWeapon);
 		}
 	}
@@ -89,7 +90,8 @@ void PrismForwardingData::LoadFromINIFile(BuildingTypeClass* pThis, CCINIClass* 
 
 						pSetting = idxWeapon;
 
-						if (!pWeapon->Warhead) {
+						if (!pWeapon->Warhead)
+						{
 							pWeapon->Warhead = RulesClass::Instance->C4Warhead;
 						}
 

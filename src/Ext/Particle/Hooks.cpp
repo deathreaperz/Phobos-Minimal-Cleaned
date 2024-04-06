@@ -15,14 +15,14 @@ static CoordStruct GetFLHAbsoluteCoords(CoordStruct nFLH, CoordStruct nCurLoc)
 }
 */
 
-
 DEFINE_HOOK(0x62CE86, ParticleClass_AI, 0x7) // F , this is the end, here's the beginning: 0x62CE49 0x6
 {
 	GET(ParticleClass*, pThis, ESI);
 
 	const auto pParticleExt = ParticleExtContainer::Instance.TryFind(pThis);
 
-	if (!pParticleExt) {
+	if (!pParticleExt)
+	{
 		Debug::Log("Particle[%x - %s] , Without Ext , Returning ! \n", pThis, pThis->get_ID());
 		return 0;
 	}
@@ -91,7 +91,6 @@ DEFINE_HOOK(0x62C361, ParticleClass_ProcessGasBehaviour_DisOnWater, 6)
 	}
 	else
 	{
-
 		if (!pTypeExt->DeleteWhenReachWater)
 			return 0;
 
@@ -118,7 +117,6 @@ DEFINE_HOOK(0x62BE30, ParticleClass_Gas_AI_DriftSpeed, 0x8)
 
 	pParticle->GasVelocity.X = std::clamp(pParticle->GasVelocity.X, minDriftSpeed, maxDriftSpeed);
 	pParticle->GasVelocity.Y = std::clamp(pParticle->GasVelocity.X, minDriftSpeed, maxDriftSpeed);
-
 
 	return ContinueAI;
 }

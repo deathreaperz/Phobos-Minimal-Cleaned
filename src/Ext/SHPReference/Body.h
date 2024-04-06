@@ -26,7 +26,6 @@ public:
 
 		virtual ~ExtData() override = default;
 		void Initialize();
-
 	};
 
 	class ExtContainer final : public Container<SHPRefExt::ExtData>

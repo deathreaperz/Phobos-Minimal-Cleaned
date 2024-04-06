@@ -65,8 +65,6 @@ bool TheaterTypeClass::IsDefaultTheater()
 
 CCINIClass* TheaterTypeClass::GetConfigINI()
 {
-
-
 	return nullptr;
 }
 
@@ -77,17 +75,21 @@ void TheaterTypeClass::LoadAllTheatersToArray()
 	const auto filename = "Theaters.ini";
 	CCFileClass file { filename };
 
-	if (file.Exists() && file.Open(FileAccessMode::Read)) {
+	if (file.Exists() && file.Open(FileAccessMode::Read))
+	{
 		CCINIClass ini {};
 		ini.ReadCCFile(&file);
 		const char* pSection = TheaterTypeClass::GetMainSection();
-		if (ini.GetSection(pSection)) {
-			for (int i = 0; i < ini.GetKeyCount(pSection); ++i) {
+		if (ini.GetSection(pSection))
+		{
+			for (int i = 0; i < ini.GetKeyCount(pSection); ++i)
+			{
 				if (ini.ReadString(pSection,
 					ini.GetKeyName(pSection, i),
 					Phobos::readDefval,
-					Phobos::readBuffer)  > 0
-					) {
+					Phobos::readBuffer) > 0
+					)
+				{
 					if (auto pTheater = FindOrAllocate(Phobos::readBuffer))
 						pTheater->LoadFromINI(&ini);
 					else
@@ -95,7 +97,9 @@ void TheaterTypeClass::LoadAllTheatersToArray()
 				}
 			}
 		}
-	} else {
+	}
+	else
+	{
 		Debug::Log("Theaters.ini not found!\n");
 	}
 }
@@ -106,12 +110,13 @@ void TheaterTypeClass::AddDefaults()
 	{
 		Array.reserve(Theater::Array.size());
 
-		for (size_t i = 0; i < Theater::Array.size(); ++i) {
+		for (size_t i = 0; i < Theater::Array.size(); ++i)
+		{
 			Debug::Log("Allocating Default Theater [%s] ! \n", Theater::Array[i].Identifier);
 			AllocateWithDefault(
-				Theater::Array[i].Identifier ,
-				Theater::Array[i] ,
-				i == (size_t)TheaterType::Snow ,
+				Theater::Array[i].Identifier,
+				Theater::Array[i],
+				i == (size_t)TheaterType::Snow,
 				!(i == (size_t)TheaterType::NewUrban || i == (size_t)TheaterType::Lunar)
 			);
 		}
@@ -159,9 +164,12 @@ DEFINE_STRONG_HOOK(0x54547F, IsometricTileTypeClass_ReadINI_SetPaletteISO, 0x6)
 	const auto pTheater = TheaterTypeClass::FindFromTheaterType_NoCheck(CURRENT_THEATER);
 
 	char* buffer = nullptr;
-	if (auto& data = pTheater->PaletteISO) {
+	if (auto& data = pTheater->PaletteISO)
+	{
 		buffer = (data.data());
-	} else {
+	}
+	else
+	{
 		//Isometric pal = ISO+Extension.pal
 		buffer = (pTheater->IsometricTileTypeExtension ? pTheater->IsometricTileTypeExtension : pTheater->Extension).data();
 	}
@@ -171,13 +179,16 @@ DEFINE_STRONG_HOOK(0x54547F, IsometricTileTypeClass_ReadINI_SetPaletteISO, 0x6)
 	file_c->CCFileClass::CCFileClass(outBuffs);
 	const bool Exist = file_c->Exists();
 
-	if(!Exist)
-		GameDebugLog::Log("Failed to load IsometricTileTypeClass Palette %s For [%s]\n", outBuffs,pTheater->Name.data());
-	else{
-		if(file_c->Read(FileSystem::ISOx_PAL(), sizeof(BytePalette))){
+	if (!Exist)
+		GameDebugLog::Log("Failed to load IsometricTileTypeClass Palette %s For [%s]\n", outBuffs, pTheater->Name.data());
+	else
+	{
+		if (file_c->Read(FileSystem::ISOx_PAL(), sizeof(BytePalette)))
+		{
 			GameDebugLog::Log("Loaded IsometricTileTypeClass Palette %s For [%s]\n", outBuffs, pTheater->Name.data());
 
-			for (size_t i = 0; i < BytePalette::EntriesCount; ++i) {
+			for (size_t i = 0; i < BytePalette::EntriesCount; ++i)
+			{
 				auto& data = FileSystem::ISOx_PAL->at(i);
 				data.R *= 4;
 				data.G *= 4;
@@ -187,7 +198,6 @@ DEFINE_STRONG_HOOK(0x54547F, IsometricTileTypeClass_ReadINI_SetPaletteISO, 0x6)
 	}
 
 	return 0x5454EB;
-
 }
 
 DEFINE_HOOK(0x5454F0, IsometricTileTypeClass_ReadINI_TerrainControl, 0x6)
@@ -267,7 +277,7 @@ DEFINE_HOOK(0x5F9070, ObjectTypeClass_Load2DArt, 6)
 
 	auto const scenarioTheater = ScenarioClass::Instance->Theater;
 	if (scenarioTheater == TheaterType::None)
-		Debug::FatalError(__FUNCTION__" for [(%s) %s] Cannot Proceed With Negative theater Index! \n" , pType->ID ,pType->GetThisClassName());
+		Debug::FatalError(__FUNCTION__" for [(%s) %s] Cannot Proceed With Negative theater Index! \n", pType->ID, pType->GetThisClassName());
 
 	auto const TheaterData = TheaterTypeClass::FindFromTheaterType_NoCheck(scenarioTheater);
 	const auto what = pType->WhatAmI();
@@ -336,9 +346,8 @@ DEFINE_HOOK(0x5F9070, ObjectTypeClass_Load2DArt, 6)
 	pType->Image = nullptr;
 	pType->ImageAllocated = false;
 
-
 	// what? it's what the game does, evidently those load somewhere else
-	const bool IsTerrainOrSmudge = what == SmudgeTypeClass::AbsID|| what == TerrainTypeClass::AbsID;
+	const bool IsTerrainOrSmudge = what == SmudgeTypeClass::AbsID || what == TerrainTypeClass::AbsID;
 
 	if (!IsTerrainOrSmudge)
 	{
@@ -407,7 +416,8 @@ DEFINE_HOOK(0x5349E3, ScenarioClass_InitTheater_Handle, 0x6)
 	typedef int(*wsprintfA_ptr)(LPSTR, LPCSTR, ...);
 	GET(wsprintfA_ptr, pFunc, EBP);
 
-	if (nType == TheaterType::None) {
+	if (nType == TheaterType::None)
+	{
 		//for some stupid reason this return to invalid
 		//that mean it not parsed properly ?
 		Debug::Log("TheaterType is invalid ! , fallback to Temperate!");
@@ -429,7 +439,7 @@ DEFINE_HOOK(0x5349E3, ScenarioClass_InitTheater_Handle, 0x6)
 	LEA_STACK(char*, pRootMixMD, STACK_OFFS(0x6C, 0x40));
 
 	if (!pTheater->RootMixMD)
-		pFunc(pRootMixMD, GameStrings::STRFORMAT_MD_DOT_MIX(),  pTheater->ControlFileName.data());
+		pFunc(pRootMixMD, GameStrings::STRFORMAT_MD_DOT_MIX(), pTheater->ControlFileName.data());
 	else
 		CRT::strcpy(pRootMixMD, pTheater->RootMixMD.c_str());
 
@@ -624,14 +634,15 @@ DEFINE_HOOK(0x71C076, TerrainClass_ClearOccupyBit_Theater, 0x7)
 	enum { setArticOccupy = 0x71C08D, setTemperatOccupy = 0x71C07F };
 	GET(ScenarioClass*, pScen, EAX);
 
-	if ((int)pScen->Theater == -1) {
+	if ((int)pScen->Theater == -1)
+	{
 		Debug::Log("Scenario is negative idx , default to Temperate");
 		return setTemperatOccupy;
 	}
 
 	const auto pTheater = TheaterTypeClass::FindFromTheaterType_NoCheck(pScen->Theater);
 	return pTheater->IsArctic ?
-	setArticOccupy : setTemperatOccupy;
+		setArticOccupy : setTemperatOccupy;
 }
 
 DEFINE_HOOK(0x71C116, TerrainClass_SetOccupyBit_Theater, 0x7)
@@ -639,14 +650,15 @@ DEFINE_HOOK(0x71C116, TerrainClass_SetOccupyBit_Theater, 0x7)
 	enum { setArticOccupy = 0x71C12D, setTemperatOccupy = 0x71C11F };
 	GET(ScenarioClass*, pScen, EAX);
 
-	if ((int)pScen->Theater == -1) {
+	if ((int)pScen->Theater == -1)
+	{
 		Debug::Log("Scenario is negative idx , default to Temperate");
 		return setTemperatOccupy;
 	}
 
 	const auto pTheater = TheaterTypeClass::FindFromTheaterType_NoCheck(pScen->Theater);
 	return pTheater->IsArctic ?
-	 setArticOccupy : setTemperatOccupy;
+		setArticOccupy : setTemperatOccupy;
 }
 
 DEFINE_HOOK(0x47C30C, CellClass_CellColor_AdjustBrightness, 0x7)
@@ -712,14 +724,15 @@ DEFINE_HOOK(0x74D450, TheaterTypeClass_ProcessVeinhole, 0x7)
 {
 	GET(TheaterType, index, ECX);
 	char buffer[32];
-	CRT::sprintf(buffer ,GameStrings::VEINHOLE_(), TheaterTypeClass::FindFromTheaterType_NoCheck(index)->Extension.c_str());
+	CRT::sprintf(buffer, GameStrings::VEINHOLE_(), TheaterTypeClass::FindFromTheaterType_NoCheck(index)->Extension.c_str());
 	VeinholeMonsterClass::VeinSHPData = (SHPFrame*)MixFileClass::Retrieve(buffer);
 	return 0x74D48A;
 }
 
 DEFINE_HOOK(0x534CA9, Init_Theaters_SetPaletteUnit, 0x8)
 {
-	if (auto const& data = TheaterTypeClass::FindFromTheaterType_NoCheck(CURRENT_THEATER)->PaletteUnit) {
+	if (auto const& data = TheaterTypeClass::FindFromTheaterType_NoCheck(CURRENT_THEATER)->PaletteUnit)
+	{
 		R->ESI(MixFileClass::Retrieve(data.c_str(), false));
 		return 0x534CCA;
 	}
@@ -729,7 +742,8 @@ DEFINE_HOOK(0x534CA9, Init_Theaters_SetPaletteUnit, 0x8)
 
 DEFINE_HOOK(0x534BEE, ScenarioClass_initTheater_TheaterType_OverlayPalette, 0x5)
 {
-	if (const auto& data = TheaterTypeClass::FindFromTheaterType_NoCheck(CURRENT_THEATER)->PaletteOverlay) {
+	if (const auto& data = TheaterTypeClass::FindFromTheaterType_NoCheck(CURRENT_THEATER)->PaletteOverlay)
+	{
 		R->EAX(MixFileClass::Retrieve(data.c_str(), false));
 		return 0x534C09;
 	}

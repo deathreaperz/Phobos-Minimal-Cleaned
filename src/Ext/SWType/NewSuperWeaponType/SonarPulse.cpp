@@ -23,32 +23,32 @@ bool SW_SonarPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 	auto const pData = SWTypeExtContainer::Instance.Find(pType);
 
 	auto Detect = [pThis, pData](TechnoClass* const pTechno) -> bool
-	{
-		// is this thing affected at all?
-		if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner))
 		{
+			// is this thing affected at all?
+			if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner))
+			{
+				return true;
+			}
+
+			if (!pData->IsTechnoAffected(pTechno))
+			{
+				return true;
+			}
+
+			auto& nTime = TechnoExtContainer::Instance.Find(pTechno)->CloakSkipTimer;
+
+			nTime.Start(MaxImpl(
+				nTime.GetTimeLeft(), pData->Sonar_Delay.Get()));
+
+			// actually detect this
+			if (pTechno->CloakState != CloakState::Uncloaked)
+			{
+				pTechno->Uncloak(true);
+				pTechno->NeedsRedraw = true;
+			}
+
 			return true;
-		}
-
-		if (!pData->IsTechnoAffected(pTechno))
-		{
-			return true;
-		}
-
-		auto& nTime = TechnoExtContainer::Instance.Find(pTechno)->CloakSkipTimer;
-
-		nTime.Start(MaxImpl(
-			nTime.GetTimeLeft(), pData->Sonar_Delay.Get()));
-
-		// actually detect this
-		if (pTechno->CloakState != CloakState::Uncloaked)
-		{
-			pTechno->Uncloak(true);
-			pTechno->NeedsRedraw = true;
-		}
-
-		return true;
-	};
+		};
 
 	auto const range = this->GetRange(pData);
 
@@ -115,5 +115,5 @@ bool SW_SonarPulse::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBui
 
 SWRange SW_SonarPulse::GetRange(const SWTypeExtData* pData) const
 {
-	return pData->SW_Range->empty() ? SWRange{ 10 } :pData->SW_Range.Get();
+	return pData->SW_Range->empty() ? SWRange { 10 } : pData->SW_Range.Get();
 }

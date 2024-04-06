@@ -30,12 +30,11 @@ FORCEINLINE T GetLocomotor(FootClass* pThis)
 		return static_cast<T>(pThis->Locomotor.get());
 	else
 		return static_cast<T>(pThis->Locomotor);
-
 }
 
-template <class JumpjetLocomotionClass , bool CheckInterface>
+template <class JumpjetLocomotionClass, bool CheckInterface>
 JumpjetLocomotionClass* GetLocomotorType(FootClass* pThis)
 {
-	const auto pILoco = GetLocomotor<JumpjetLocomotionClass* , CheckInterface>(pThis);
+	const auto pILoco = GetLocomotor<JumpjetLocomotionClass*, CheckInterface>(pThis);
 	return locomotion_cast<JumpjetLocomotionClass*>(pILoco);
 }

@@ -48,12 +48,13 @@ bool SW_GenericWarhead::Activate(SuperClass* pThis, const CellStruct& Coords, bo
 	const auto nDeferement = pData->SW_Deferment.Get(-1);
 	const auto pWarhead = this->GetWarhead(pData);
 
-	if (!pWarhead) {
+	if (!pWarhead)
+	{
 		Debug::Log("launch GenericWarhead SW ([%s]) Without Waarhead\n", pThis->Type->ID);
 		return true;
 	}
 
-	if(nDeferement <= 0)
+	if (nDeferement <= 0)
 		GenericWarheadStateMachine::SentPayload(pFirer, pThis, pData, this, Coords);
 	else
 		this->newStateMachine(nDeferement, Coords, pThis, pFirer);
@@ -84,16 +85,17 @@ void GenericWarheadStateMachine::Update()
 {
 	if (this->Finished())
 	{
-		this->SentPayload(this->Firer , this->Super , this->GetTypeExtData() , this->Type , this->Coords);
+		this->SentPayload(this->Firer, this->Super, this->GetTypeExtData(), this->Type, this->Coords);
 	}
 }
 
-void GenericWarheadStateMachine::SentPayload(TechnoClass* pFirer, SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType , const CellStruct& loc)
+void GenericWarheadStateMachine::SentPayload(TechnoClass* pFirer, SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, const CellStruct& loc)
 {
 	pData->PrintMessage(pData->Message_Activate, pSuper->Owner);
 
 	const auto sound = pData->SW_ActivationSound.Get(-1);
-	if (sound != -1) {
+	if (sound != -1)
+	{
 		VocClass::PlayGlobal(sound, Panning::Center, 1.0);
 	}
 
@@ -122,10 +124,10 @@ void GenericWarheadStateMachine::SentPayload(TechnoClass* pFirer, SuperClass* pS
 		pWHExt->applyIronCurtain(detonationCoords, pSuper->Owner, damage);
 		WarheadTypeExtData::applyEMP(pWarhead, detonationCoords, pFirer);
 		AresAE::applyAttachedEffect(pWarhead, detonationCoords, pSuper->Owner);
-		
-		// Otamaa : design changes here is intended 
-		// as MC now part of bigger `Detonate` function , that also check various state 
-		// TODO : make everything work together better , for now this may give an headache for 
+
+		// Otamaa : design changes here is intended
+		// as MC now part of bigger `Detonate` function , that also check various state
+		// TODO : make everything work together better , for now this may give an headache for
 		//		  someone that touching the code  , please bear it with me for a while !
 		MapClass::DamageArea(detonationCoords, damage, pFirer, pWarhead, pWarhead->Tiberium, pSuper->Owner);
 
@@ -142,7 +144,7 @@ void GenericWarheadStateMachine::SentPayload(TechnoClass* pFirer, SuperClass* pS
 
 bool  GenericWarheadStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
-	return SWStateMachine::Load(Stm , RegisterForChange)
+	return SWStateMachine::Load(Stm, RegisterForChange)
 		&& Stm
 		.Process(Firer)
 		.Success();
@@ -158,5 +160,5 @@ bool  GenericWarheadStateMachine::Save(PhobosStreamWriter& Stm) const
 
 void  GenericWarheadStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
 {
-	AnnounceInvalidPointer(Firer, ptr ,remove);
+	AnnounceInvalidPointer(Firer, ptr, remove);
 }

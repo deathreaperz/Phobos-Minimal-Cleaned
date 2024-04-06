@@ -17,7 +17,7 @@ struct ExtendedVariable
 	{
 		return
 			stm
-			.Process(Name , registerForChange)
+			.Process(Name, registerForChange)
 			.Process(Value, registerForChange)
 			.Success()
 			;
@@ -74,7 +74,6 @@ public:
 	void SetVariableToByID(const bool IsGlobal, int nIndex, char bState);
 	void GetVariableStateByID(const bool IsGlobal, int nIndex, char* pOut);
 	void ReadVariables(const bool IsGlobal, CCINIClass* pINI);
-
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void ReadMissionMDINI();

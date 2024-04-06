@@ -6,25 +6,23 @@
 bool StraightTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectoryType::Load(Stm, RegisterForChange) &&
-	Stm
+		Stm
 		.Process(this->SnapOnTarget, false)
 		.Process(this->SnapThreshold, false)
 		.Process(TargetSnapDistance, false)
 		.Process(this->PassThrough, false)
 		;
-
 }
 
 bool StraightTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectoryType::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->SnapOnTarget, false)
 		.Process(this->SnapThreshold, false)
-		.Process(TargetSnapDistance , false)
+		.Process(TargetSnapDistance, false)
 		.Process(this->PassThrough, false)
 		;
-
 }
 
 int StraightTrajectory::GetVelocityZ(CoordStruct& source) const
@@ -46,7 +44,8 @@ int StraightTrajectory::GetFirerZPosition() const
 {
 	CoordStruct coords = AttachedTo->SourceCoords;
 
-	if (AttachedTo->Owner) {
+	if (AttachedTo->Owner)
+	{
 		if (auto const pCell = AttachedTo->Owner->GetCell())
 			coords = pCell->GetCoordsWithBridge();
 	}
@@ -58,7 +57,8 @@ CoordStruct StraightTrajectory::GetTargetPosition() const
 {
 	CoordStruct coords = AttachedTo->TargetCoords;
 
-	if (auto pTarget = AttachedTo->Target) {
+	if (auto pTarget = AttachedTo->Target)
+	{
 		if (auto const pCell = MapClass::Instance()->TryGetCellAt(pTarget->GetCoords()))
 			coords = pCell->GetCoordsWithBridge();
 	}
@@ -112,7 +112,7 @@ bool StraightTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 bool StraightTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectory::Load(Stm, RegisterForChange) &&
-	Stm
+		Stm
 		.Process(this->FirerZPosition, RegisterForChange)
 		.Process(this->TargetZPosition, RegisterForChange)
 		;
@@ -120,8 +120,8 @@ bool StraightTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 
 bool StraightTrajectory::Save(PhobosStreamWriter& Stm) const
 {
-	return PhobosTrajectory::Save(Stm)  &&
-	Stm
+	return PhobosTrajectory::Save(Stm) &&
+		Stm
 		.Process(this->FirerZPosition)
 		.Process(this->TargetZPosition)
 		;
@@ -138,7 +138,7 @@ void StraightTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity
 
 	pBullet->Velocity.X = static_cast<double>(pBullet->TargetCoords.X - pBullet->SourceCoords.X);
 	pBullet->Velocity.Y = static_cast<double>(pBullet->TargetCoords.Y - pBullet->SourceCoords.Y);
-	pBullet->Velocity.Z = pBullet->Owner && pBullet->Owner->IsInAir() ?  0 : this->GetVelocityZ(pBullet->SourceCoords);
+	pBullet->Velocity.Z = pBullet->Owner && pBullet->Owner->IsInAir() ? 0 : this->GetVelocityZ(pBullet->SourceCoords);
 	pBullet->Velocity *= this->GetTrajectorySpeed() / pBullet->Velocity.Length();
 }
 
@@ -157,7 +157,6 @@ bool StraightTrajectory::OnAI()
 	}
 
 	return (pBullet->TargetCoords.DistanceFrom(pBullet->Location) < (double)this->DetonationDistance.value);
-
 }
 
 void StraightTrajectory::OnAIPreDetonate()
@@ -205,4 +204,3 @@ TrajectoryCheckReturnType StraightTrajectory::OnAITechnoCheck(TechnoClass* pTech
 {
 	return TrajectoryCheckReturnType::SkipGameCheck; // Bypass game checks entirely.
 }
-

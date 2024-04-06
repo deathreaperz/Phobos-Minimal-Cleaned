@@ -8,11 +8,13 @@ void DroppodProperties::Read(INI_EX& exINI, const char* pSection)
 	this->Droppod_Puff.Read(exINI, pSection, "DropPod.Puff");
 	this->Droppod_Angle.Read(exINI, pSection, "DropPod.Angle");
 
-	if (this->Droppod_Angle >= 1.178097245096172) {
+	if (this->Droppod_Angle >= 1.178097245096172)
+	{
 		this->Droppod_Angle = 1.178097245096172;
 	}
 
-	if (this->Droppod_Angle <= 0.3926990816987241) {
+	if (this->Droppod_Angle <= 0.3926990816987241)
+	{
 		this->Droppod_Angle = 0.3926990816987241;
 	}
 
@@ -46,7 +48,6 @@ void DroppodProperties::Initialize()
 
 void NullableDroppodProperties::Read(INI_EX& exINI, const char* pSection)
 {
-
 	this->Droppod_PodImage_Infantry.Read(exINI, pSection, "DropPod.PodImageInfantry");
 	this->Droppod_Puff.Read(exINI, pSection, "DropPod.Puff");
 	this->Droppod_Angle.Read(exINI, pSection, "DropPod.Angle");

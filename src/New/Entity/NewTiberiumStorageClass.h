@@ -43,9 +43,10 @@ struct NewTiberiumStorageClass
 		return (int)sum;
 	}
 
-	int GetFirstSlotUsed() const {
-
-		for (size_t i = 0; i < m_values.size(); ++i) {
+	int GetFirstSlotUsed() const
+	{
+		for (size_t i = 0; i < m_values.size(); ++i)
+		{
 			if (m_values[i] > 0.0)
 				return i;
 		}
@@ -53,34 +54,41 @@ struct NewTiberiumStorageClass
 		return -1;
 	}
 
-	float DecreaseLevel(float amount, int idx) {
-		if (this->m_values[idx] >= amount) {
+	float DecreaseLevel(float amount, int idx)
+	{
+		if (this->m_values[idx] >= amount)
+		{
 			this->m_values[idx] -= amount;
 			return amount;
-		} else {
+		}
+		else
+		{
 			float cur = this->m_values[idx];
 			this->m_values[idx] = cur - cur;
 			return cur;
 		}
 	}
 
-	double GetAmounts() const {
+	double GetAmounts() const
+	{
 		double sum = 0.0;
-		for (size_t i = 0; i < m_values.size(); ++i) {
+		for (size_t i = 0; i < m_values.size(); ++i)
+		{
 			sum += m_values[i];
 		}
 
 		return sum;
 	}
 
-	double GetAmount(int idx) const {
+	double GetAmount(int idx) const
+	{
 		return m_values[idx];
 	}
 
-	float IncreaseAmount(float amount , int idx)
+	float IncreaseAmount(float amount, int idx)
 	{
 		float fal = amount + m_values[idx];
-		m_values[idx]= fal;
+		m_values[idx] = fal;
 		return fal;
 	}
 

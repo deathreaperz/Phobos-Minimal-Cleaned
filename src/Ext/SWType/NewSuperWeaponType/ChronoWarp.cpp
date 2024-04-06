@@ -14,27 +14,29 @@ SuperWeaponFlags SW_ChronoWarp::Flags(const SWTypeExtData* pData) const
 	return SuperWeaponFlags::NoAnim | SuperWeaponFlags::NoEvent | SuperWeaponFlags::PostClick;
 }
 
-void KillCargo(TechnoClass* pTech , HouseClass* killer)
+void KillCargo(TechnoClass* pTech, HouseClass* killer)
 {
-	if(auto pBuilding = specific_cast<BuildingClass*>(pTech)) {
-		for(auto& pOcc : pBuilding->Occupants) {
+	if (auto pBuilding = specific_cast<BuildingClass*>(pTech))
+	{
+		for (auto& pOcc : pBuilding->Occupants)
+		{
 			pOcc->RegisterKill(killer);
 			pOcc->UnInit();
-				TechnoExtContainer::Instance.Find(pOcc)->GarrisonedIn = nullptr;
-			}
+			TechnoExtContainer::Instance.Find(pOcc)->GarrisonedIn = nullptr;
+		}
 		pBuilding->Occupants.Count = 0;
 	}
 
 	const auto pFoot = generic_cast<FootClass*>(pTech);
 
-	while(pTech->Passengers.GetFirstPassenger())
+	while (pTech->Passengers.GetFirstPassenger())
 	{
 		FootClass* pPassenger = pFoot ? pFoot->RemoveFirstPassenger() : pTech->Passengers.RemoveFirstPassenger();
 
-		if(pPassenger->Team)
+		if (pPassenger->Team)
 			pPassenger->Team->RemoveMember(pPassenger);
 
-		KillCargo(pPassenger , killer);
+		KillCargo(pPassenger, killer);
 		pPassenger->RegisterKill(killer);
 		pPassenger->UnInit();
 	}
@@ -87,218 +89,223 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 	std::vector<ChronoWarpStateMachine::ChronoWarpContainer> RegisteredBuildings;
 
 	auto Chronoport = [pThis, pSourceSWExt, pSource, Coords, &RegisteredBuildings](TechnoClass* const pTechno) -> bool
-	{
-		// is this thing affected at all?
-		if (!pSourceSWExt->IsHouseAffected(pThis->Owner, pTechno->Owner)) {
-			return true;
-		}
-
-		if (!pSourceSWExt->IsTechnoAffected(pTechno)) {
-			return true;
-		}
-
-		auto const pType = pTechno->GetTechnoType();
-		auto const pExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-		// can this techno be chronoshifted?
-		if (!pExt->Chronoshift_Allow)
 		{
-			return true;
-		}
-
-		// differentiate between buildings and vehicle-type buildings
-		bool IsVehicle = false;
-		if (auto const pBld = specific_cast<BuildingClass*>(pTechno))
-		{
-			// always ignore bridge repair huts
-			if (pBld->Type->BridgeRepairHut || pBld->Type->InvisibleInGame)
+			// is this thing affected at all?
+			if (!pSourceSWExt->IsHouseAffected(pThis->Owner, pTechno->Owner))
 			{
 				return true;
 			}
 
-			// use "smart" detection of vehicular building types?
-			if (pSourceSWExt->Chronosphere_ReconsiderBuildings)
+			if (!pSourceSWExt->IsTechnoAffected(pTechno))
 			{
-				IsVehicle = pExt->Chronoshift_IsVehicle;
-			}
-
-			// always let undeployers pass if all undeployers are affected
-			if (!pSourceSWExt->Chronosphere_AffectUndeployable || !pBld->Type->UndeploysInto)
-			{
-				// we don't handle buildings and this is a real one
-				if (!IsVehicle && !pSourceSWExt->Chronosphere_AffectBuildings)
-				{
-					return true;
-				}
-
-				// this is a vehicle in disguise and we don't handle them
-				if (IsVehicle && !(pSourceSWExt->SW_AffectsTarget & SuperWeaponTarget::Unit))
-				{
-					return true;
-				}
-			}
-			else
-			{
-				// force vehicle placement rules
-				IsVehicle = true;
-			}
-		}
-
-		// some quick exclusion criteria
-		if (pTechno->IsImmobilized
-			|| pTechno->IsInAir()
-			|| pTechno->IsBeingWarpedOut()
-			|| pTechno->IsWarpingIn())
-		{
-			return true;
-		}
-
-		// unwarpable unit
-		if (TechnoExtData::IsUnwarpable(pTechno) && !pSourceSWExt->Chronosphere_AffectUnwarpable) {
-			return true;
-		}
-
-		// iron curtained units
-		if (pTechno->IsIronCurtained() && !pSourceSWExt->Chronosphere_AffectIronCurtain) {
-			return true;
-		}
-
-		// if this is a newly produced unit that still is in its
-		// weapons factory, this skips it.
-		if (TechnoExtData::IsInWarfactory(pTechno, true)) {
-			return true;
-		}
-
-		// behind this point, the units are affected.
-
-		// organics are destroyed as long as they aren't teleporters
-		if (pType->Organic && pSourceSWExt->Chronosphere_KillOrganic)
-		{
-			if (!pType->Teleporter || pSourceSWExt->Chronosphere_KillTeleporters)
-			{
-				int strength = pType->Strength;
-				pTechno->ReceiveDamage(&strength, 0, RulesClass::Instance->C4Warhead,
-					nullptr, true, false, pSource->Owner);
 				return true;
 			}
-		}
 
-		// remove squids. terror drones stay inside.
-		if (auto const pFoot = abstract_cast<FootClass*>(pTechno))
-		{
-			if (auto const pSquid = pFoot->ParasiteEatingMe)
+			auto const pType = pTechno->GetTechnoType();
+			auto const pExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+			// can this techno be chronoshifted?
+			if (!pExt->Chronoshift_Allow)
 			{
-				if (pType->Naval)
+				return true;
+			}
+
+			// differentiate between buildings and vehicle-type buildings
+			bool IsVehicle = false;
+			if (auto const pBld = specific_cast<BuildingClass*>(pTechno))
+			{
+				// always ignore bridge repair huts
+				if (pBld->Type->BridgeRepairHut || pBld->Type->InvisibleInGame)
 				{
-					if (auto const pSquidParasite = pSquid->ParasiteImUsing)
+					return true;
+				}
+
+				// use "smart" detection of vehicular building types?
+				if (pSourceSWExt->Chronosphere_ReconsiderBuildings)
+				{
+					IsVehicle = pExt->Chronoshift_IsVehicle;
+				}
+
+				// always let undeployers pass if all undeployers are affected
+				if (!pSourceSWExt->Chronosphere_AffectUndeployable || !pBld->Type->UndeploysInto)
+				{
+					// we don't handle buildings and this is a real one
+					if (!IsVehicle && !pSourceSWExt->Chronosphere_AffectBuildings)
 					{
-						pSquidParasite->SuppressionTimer.Start(500);
-						pSquidParasite->ExitUnit();
+						return true;
+					}
+
+					// this is a vehicle in disguise and we don't handle them
+					if (IsVehicle && !(pSourceSWExt->SW_AffectsTarget & SuperWeaponTarget::Unit))
+					{
+						return true;
+					}
+				}
+				else
+				{
+					// force vehicle placement rules
+					IsVehicle = true;
+				}
+			}
+
+			// some quick exclusion criteria
+			if (pTechno->IsImmobilized
+				|| pTechno->IsInAir()
+				|| pTechno->IsBeingWarpedOut()
+				|| pTechno->IsWarpingIn())
+			{
+				return true;
+			}
+
+			// unwarpable unit
+			if (TechnoExtData::IsUnwarpable(pTechno) && !pSourceSWExt->Chronosphere_AffectUnwarpable)
+			{
+				return true;
+			}
+
+			// iron curtained units
+			if (pTechno->IsIronCurtained() && !pSourceSWExt->Chronosphere_AffectIronCurtain)
+			{
+				return true;
+			}
+
+			// if this is a newly produced unit that still is in its
+			// weapons factory, this skips it.
+			if (TechnoExtData::IsInWarfactory(pTechno, true))
+			{
+				return true;
+			}
+
+			// behind this point, the units are affected.
+
+			// organics are destroyed as long as they aren't teleporters
+			if (pType->Organic && pSourceSWExt->Chronosphere_KillOrganic)
+			{
+				if (!pType->Teleporter || pSourceSWExt->Chronosphere_KillTeleporters)
+				{
+					int strength = pType->Strength;
+					pTechno->ReceiveDamage(&strength, 0, RulesClass::Instance->C4Warhead,
+						nullptr, true, false, pSource->Owner);
+					return true;
+				}
+			}
+
+			// remove squids. terror drones stay inside.
+			if (auto const pFoot = abstract_cast<FootClass*>(pTechno))
+			{
+				if (auto const pSquid = pFoot->ParasiteEatingMe)
+				{
+					if (pType->Naval)
+					{
+						if (auto const pSquidParasite = pSquid->ParasiteImUsing)
+						{
+							pSquidParasite->SuppressionTimer.Start(500);
+							pSquidParasite->ExitUnit();
+						}
 					}
 				}
 			}
-		}
 
-		// disconnect bunker and contents
-		if (pTechno->BunkerLinkedItem)
-		{
-			if (auto const pBunkerLink = specific_cast<BuildingClass*>(pTechno->BunkerLinkedItem))
+			// disconnect bunker and contents
+			if (pTechno->BunkerLinkedItem)
 			{
-				// unit will be destroyed or chronoported. in every case the bunker will be empty.
-				pBunkerLink->ClearBunker();
-			}
-			else if (auto const pBunker = specific_cast<BuildingClass*>(pTechno))
-			{
-				// the bunker leaves...
-				pBunker->UnloadBunker();
-				pBunker->EmptyBunker();
-			}
-		}
-
-		// building specific preparations
-		if (auto const pBld = specific_cast<BuildingClass*>(pTechno))
-		{
-			// tell all linked units to get off
-			pBld->SendToEachLink(RadioCommand::RequestRedraw);
-			pBld->SendToEachLink(RadioCommand::NotifyUnlink);
-
-			// destroy the building light source
-			if (pBld->LightSource)
-			{
-				pBld->LightSource->Deactivate();
-				GameDelete<true, false>(std::exchange(pBld->LightSource , nullptr));
-			}
-
-			// shut down cloak generation
-			if (pBld->Type->CloakGenerator && pBld->CloakRadius)
-			{
-				pBld->HasCloakingData = -1;
-				pBld->NeedsRedraw = true;
-				pBld->CloakRadius = 1;
-				pBld->UpdateCloak();
-			}
-		}
-
-		// get the cells and coordinates
-		auto const coordsUnitSource = pTechno->GetCoords();
-		auto const cellUnitTarget = pTechno->GetCell()->MapCoords - pSource->ChronoMapCoords + Coords;
-
-		if(pSourceSWExt->Chronosphere_KillCargo)
-			KillCargo(pTechno , false);
-
-		if (auto const pFoot = abstract_cast<FootClass*>(pTechno))
-		{
-#pragma region ChangeLoco
-			// move the unit to the new position
-			auto const pCellUnitTarget = MapClass::Instance->GetCellAt(cellUnitTarget);
-			auto const offset = Coords - pSource->ChronoMapCoords;
-			auto const coordsUnitTarget = pCellUnitTarget->FixHeight(
-				coordsUnitSource + CoordStruct{offset.X * 256, offset.Y * 256, 0});
-
-			// clean up the unit's current cell
-			pFoot->Locomotor->Mark_All_Occupation_Bits(0);
-			pFoot->Locomotor->Force_Track(-1, coordsUnitSource);
-			pFoot->MarkAllOccupationBits(coordsUnitSource);
-			pFoot->FrozenStill = true;
-
-			// piggyback the original locomotor onto a new teleport locomotor and
-			// use that for the next move order.
-			LocomotionClass::ChangeLocomotorTo(pFoot, CLSIDs::Teleport);
-
-			// order unit to move to target location
-			pFoot->IsImmobilized = true;
-			pFoot->ChronoDestCoords = coordsUnitTarget;
-			pFoot->SendToEachLink(RadioCommand::NotifyUnlink);
-			pFoot->ChronoWarpedByHouse = pThis->Owner;
-			pFoot->SetDestination(pCellUnitTarget, true);
-		}
-		else if (auto const pBld = specific_cast<BuildingClass*>(pTechno))
-		{
-			// begin the building chronoshift
-			pBld->RemoveFromTargetingAndTeam();
-			for (auto const pBullet : *BulletClass::Array)
-			{
-				if (pBullet->Target == pBld)
+				if (auto const pBunkerLink = specific_cast<BuildingClass*>(pTechno->BunkerLinkedItem))
 				{
-					pBullet->LoseTarget();
+					// unit will be destroyed or chronoported. in every case the bunker will be empty.
+					pBunkerLink->ClearBunker();
+				}
+				else if (auto const pBunker = specific_cast<BuildingClass*>(pTechno))
+				{
+					// the bunker leaves...
+					pBunker->UnloadBunker();
+					pBunker->EmptyBunker();
 				}
 			}
 
-			// the buidling counts as warped until it reappears
-			pBld->BeingWarpedOut = true;
-			pBld->Owner->RecheckTechTree = true;
-			pBld->Owner->RecheckPower = true;
-			pBld->DisableTemporal();
-			pBld->UpdatePlacement(PlacementType::Redraw);
+			// building specific preparations
+			if (auto const pBld = specific_cast<BuildingClass*>(pTechno))
+			{
+				// tell all linked units to get off
+				pBld->SendToEachLink(RadioCommand::RequestRedraw);
+				pBld->SendToEachLink(RadioCommand::NotifyUnlink);
 
-			BuildingExtContainer::Instance.Find(pBld)->AboutToChronoshift = true;
+				// destroy the building light source
+				if (pBld->LightSource)
+				{
+					pBld->LightSource->Deactivate();
+					GameDelete<true, false>(std::exchange(pBld->LightSource, nullptr));
+				}
 
-			// register for chronoshift
-			RegisteredBuildings.emplace_back(pBld, cellUnitTarget, pBld->Location, IsVehicle);
-		}
+				// shut down cloak generation
+				if (pBld->Type->CloakGenerator && pBld->CloakRadius)
+				{
+					pBld->HasCloakingData = -1;
+					pBld->NeedsRedraw = true;
+					pBld->CloakRadius = 1;
+					pBld->UpdateCloak();
+				}
+			}
+
+			// get the cells and coordinates
+			auto const coordsUnitSource = pTechno->GetCoords();
+			auto const cellUnitTarget = pTechno->GetCell()->MapCoords - pSource->ChronoMapCoords + Coords;
+
+			if (pSourceSWExt->Chronosphere_KillCargo)
+				KillCargo(pTechno, false);
+
+			if (auto const pFoot = abstract_cast<FootClass*>(pTechno))
+			{
+#pragma region ChangeLoco
+				// move the unit to the new position
+				auto const pCellUnitTarget = MapClass::Instance->GetCellAt(cellUnitTarget);
+				auto const offset = Coords - pSource->ChronoMapCoords;
+				auto const coordsUnitTarget = pCellUnitTarget->FixHeight(
+					coordsUnitSource + CoordStruct { offset.X * 256, offset.Y * 256, 0 });
+
+				// clean up the unit's current cell
+				pFoot->Locomotor->Mark_All_Occupation_Bits(0);
+				pFoot->Locomotor->Force_Track(-1, coordsUnitSource);
+				pFoot->MarkAllOccupationBits(coordsUnitSource);
+				pFoot->FrozenStill = true;
+
+				// piggyback the original locomotor onto a new teleport locomotor and
+				// use that for the next move order.
+				LocomotionClass::ChangeLocomotorTo(pFoot, CLSIDs::Teleport);
+
+				// order unit to move to target location
+				pFoot->IsImmobilized = true;
+				pFoot->ChronoDestCoords = coordsUnitTarget;
+				pFoot->SendToEachLink(RadioCommand::NotifyUnlink);
+				pFoot->ChronoWarpedByHouse = pThis->Owner;
+				pFoot->SetDestination(pCellUnitTarget, true);
+			}
+			else if (auto const pBld = specific_cast<BuildingClass*>(pTechno))
+			{
+				// begin the building chronoshift
+				pBld->RemoveFromTargetingAndTeam();
+				for (auto const pBullet : *BulletClass::Array)
+				{
+					if (pBullet->Target == pBld)
+					{
+						pBullet->LoseTarget();
+					}
+				}
+
+				// the buidling counts as warped until it reappears
+				pBld->BeingWarpedOut = true;
+				pBld->Owner->RecheckTechTree = true;
+				pBld->Owner->RecheckPower = true;
+				pBld->DisableTemporal();
+				pBld->UpdatePlacement(PlacementType::Redraw);
+
+				BuildingExtContainer::Instance.Find(pBld)->AboutToChronoshift = true;
+
+				// register for chronoshift
+				RegisteredBuildings.emplace_back(pBld, cellUnitTarget, pBld->Location, IsVehicle);
+			}
 #pragma endregion
-		return true;
-	};
+			return true;
+		};
 
 	// collect every techno in this range only once. apply the Chronosphere.
 
@@ -326,7 +333,8 @@ bool SW_ChronoWarp::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBui
 	// get the previous super weapon
 	SuperClass* pSource = pBuilding->Owner->Supers.GetItemOrDefault(HouseExtContainer::Instance.Find(pBuilding->Owner)->SWLastIndex);
 
-	if(!pSource) {
+	if (!pSource)
+	{
 		if (!this->IsLaunchsiteAlive(pBuilding))
 			return false;
 
@@ -336,7 +344,7 @@ bool SW_ChronoWarp::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBui
 		return this->IsSWTypeAttachedToThis(pData, pBuilding);
 	}
 
-	return SWTypeExtContainer::Instance.Find(pSource->Type)->GetNewSWType()->IsLaunchSite(pData , pBuilding);
+	return SWTypeExtContainer::Instance.Find(pSource->Type)->GetNewSWType()->IsLaunchSite(pData, pBuilding);
 }
 
 void ChronoWarpStateMachine::Update()
@@ -440,9 +448,12 @@ void ChronoWarpStateMachine::Update()
 
 void ChronoWarpStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
 {
-	if (remove) {
-		for (int i = 0; i < (int)this->Buildings.size(); ++i) {
-			if (this->Buildings[i].building == ptr) {
+	if (remove)
+	{
+		for (int i = 0; i < (int)this->Buildings.size(); ++i)
+		{
+			if (this->Buildings[i].building == ptr)
+			{
 				this->Buildings.erase(this->Buildings.begin() + i);
 				break;
 			}

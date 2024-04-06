@@ -44,7 +44,8 @@ bool CustomPalette::Read(
 	CCINIClass* pINI, const char* pSection, const char* pKey,
 	const char* pDefault)
 {
-	if (pINI->ReadString(pSection, pKey, pDefault, Phobos::readBuffer) > 0) {
+	if (pINI->ReadString(pSection, pKey, pDefault, Phobos::readBuffer) > 0)
+	{
 		//dont init anything if it is empty
 		if (GeneralUtils::IsValidString(Phobos::readBuffer))
 		{
@@ -58,7 +59,7 @@ bool CustomPalette::Read(
 
 bool __fastcall CustomPalette::Read_Static(CustomPalette* pThis, DWORD, CCINIClass* pINI, const char* pSection, const char* pKey, const char* pDefault)
 {
-	return pThis->Read(pINI , pSection,pKey,pDefault);
+	return pThis->Read(pINI, pSection, pKey, pDefault);
 }
 
 bool CustomPalette::Load(PhobosStreamReader& Stm, bool RegisterForChange)
@@ -86,7 +87,8 @@ bool CustomPalette::Save(PhobosStreamWriter& Stm) const
 {
 	Stm.Save(this->Mode);
 	Stm.Save(this->Palette != nullptr);
-	if (this->Palette) {
+	if (this->Palette)
+	{
 		Stm.Save(*this->Palette);
 	}
 	return true;
@@ -117,10 +119,12 @@ void CustomPalette::CreateConvert()
 		Debug::Log("Missing Palette Data ! \n");
 
 	ConvertClass* buffer = nullptr;
-	if (this->Mode == PaletteMode::Temperate) {
+	if (this->Mode == PaletteMode::Temperate)
+	{
 		buffer = GameCreate<ConvertClass>(this->Palette.get(), &FileSystem::TEMPERAT_PAL(), DSurface::Primary(), 53, false);
 	}
-	else {
+	else
+	{
 		buffer = GameCreate<ConvertClass>(this->Palette.get(), this->Palette.get(), DSurface::Alternate(), 1, false);
 	}
 

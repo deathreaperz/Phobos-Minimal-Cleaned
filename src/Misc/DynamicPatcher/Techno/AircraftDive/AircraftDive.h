@@ -18,7 +18,8 @@ public:
 		, Delay { 0 }
 		, CanDive { false }
 
-	{ }
+	{
+	}
 
 	AircraftDive(int nSpeed, int nDataDelay) :
 		Speed { nSpeed }
@@ -27,7 +28,8 @@ public:
 		, Delay { 0 }
 		, CanDive { false }
 
-	{ }
+	{
+	}
 
 	~AircraftDive() = default;
 
@@ -68,6 +70,5 @@ private:
 			.Process(Delay)
 			.Process(CanDive)
 			.Success() && Stm.RegisterChange(this);
-
 	}
 };

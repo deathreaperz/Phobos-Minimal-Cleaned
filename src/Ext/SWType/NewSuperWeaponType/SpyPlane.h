@@ -13,5 +13,4 @@ public:
 	virtual void Initialize(SWTypeExtData* pData) override;
 	virtual void LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI) override;
 	virtual bool IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const override;
-
 };

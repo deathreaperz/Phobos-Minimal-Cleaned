@@ -90,8 +90,8 @@ struct ShakeScreenHandle
 	}
 };
 
-struct AresGlobalData {
-
+struct AresGlobalData
+{
 	static DWORD InternalVersion;
 	static char ModName[0x40];
 	static char ModVersion[0x40];
@@ -143,7 +143,8 @@ struct AresGlobalData {
 	static void ReadAresRA2MD();
 };
 
-struct StaticVars {
+struct StaticVars
+{
 	static PhobosMap<ObjectClass*, AlphaShapeClass*> ObjectLinkedAlphas;
 	static std::vector<unsigned char> ShpCompression1Buffer;
 	static std::map<const TActionClass*, int> TriggerCounts;
@@ -156,7 +157,6 @@ struct StaticVars {
 	static void LoadGlobalsConfig();
 
 	static void Clear();
-
 };
 
 struct TechnoExt_ExtData
@@ -184,7 +184,7 @@ struct TechnoExt_ExtData
 	static bool IsBaseNormal(BuildingClass* pBuilding);
 
 	static int GetVictimBountyValue(TechnoClass* pVictim, TechnoClass* pKiller);
-	static bool KillerAllowedToEarnBounty(TechnoClass* pKiller , TechnoClass* pVictim);
+	static bool KillerAllowedToEarnBounty(TechnoClass* pKiller, TechnoClass* pVictim);
 	static void GiveBounty(TechnoClass* pVictim, TechnoClass* pKiller);
 
 	static AresHijackActionResult GetActionHijack(InfantryClass* pThis, TechnoClass* const pTarget);
@@ -221,7 +221,7 @@ struct TechnoExt_ExtData
 	static int GetWarpPerStep(TemporalClass* pThis, int nStep);
 	static bool Warpable(TechnoClass* pTarget);
 
-	static void DepositTiberium(TechnoClass* pThis , HouseClass* pHouse, float const amount, float const bonus, int const idxType);
+	static void DepositTiberium(TechnoClass* pThis, HouseClass* pHouse, float const amount, float const bonus, int const idxType);
 	static void RefineTiberium(TechnoClass* pThis, HouseClass* pHouse, float const amount, int const idxType);
 
 	static bool FiringAllowed(TechnoClass* pThis, TechnoClass* pTarget, WeaponTypeClass* pWeapon);
@@ -264,17 +264,17 @@ struct TechnoExt_ExtData
 		OwnerHouseKind owner,
 		int strength,
 		AnimTypeClass* pAnimType
-		);
+	);
 
 	static void Destroy(TechnoClass* pTechno, TechnoClass* pKiller, HouseClass* pKillerHouse, WarheadTypeClass* pWarhead);
 	static bool IsDriverKillable(TechnoClass* pThis, double KillBelowPercent);
 	static void ApplyKillDriver(TechnoClass* pTarget, TechnoClass* pKiller, HouseClass* pToOwner, bool ResetVet, Mission passiveMission);
-	static bool ConvertToType(TechnoClass* pThis, TechnoTypeClass* pToType , bool AdjustHealth = true);
+	static bool ConvertToType(TechnoClass* pThis, TechnoTypeClass* pToType, bool AdjustHealth = true);
 
 	static void RecalculateStat(TechnoClass* pThis);
 
 	static int GetSelfHealAmount(TechnoClass* pThis);
-	static void SpawnVisceroid(CoordStruct& crd, UnitTypeClass* pType, int chance, bool ignoreTibDeathToVisc , HouseClass* Owner);
+	static void SpawnVisceroid(CoordStruct& crd, UnitTypeClass* pType, int chance, bool ignoreTibDeathToVisc, HouseClass* Owner);
 
 	static void TransferOriginalOwner(TechnoClass* pFrom, TechnoClass* pTo);
 	static void TransferIvanBomb(TechnoClass* From, TechnoClass* To);
@@ -293,7 +293,6 @@ struct TechnoTypeExt_ExtData
 	static int* GetTurretWeaponIndex(TechnoTypeClass* pType, size_t idx);
 	static WeaponStruct* GetWeapon(TechnoTypeClass* pType, int const idx, bool elite);
 	static void ReadWeaponStructDatas(TechnoTypeClass* pType, CCINIClass* pRules);
-
 };
 
 struct TechnoExperienceData
@@ -341,7 +340,7 @@ public:
 	static void UpdateSparkleAnim(TechnoClass* pFrom, TechnoClass* pTo);
 	static void UpdateSparkleAnim(TechnoClass* pWho, AnimTypeClass* pAnim = nullptr);
 	static bool thresholdExceeded(TechnoClass* Victim);
-	static bool isEligibleEMPTarget(TechnoClass* const pTarget, HouseClass* const pSourceHouse,WarheadTypeClass* pWarhead);
+	static bool isEligibleEMPTarget(TechnoClass* const pTarget, HouseClass* const pSourceHouse, WarheadTypeClass* pWarhead);
 	static void deliverEMPDamage(TechnoClass* const pTechno, TechnoClass* const pFirer, WarheadTypeClass* pWarhead);
 	static bool EnableEMPEffect(TechnoClass* const pVictim, ObjectClass* const pSource);
 	static void DisableEMPEffect(TechnoClass* const pVictim);
@@ -358,7 +357,6 @@ public:
 	virtual void Blit_Copy_Tinted(void* dst, void* src, int len, int zval, WORD* zbuf, WORD* abuf, int alvl, int warp, WORD tint) = 0;
 	virtual void Blit_Move(void* dst, void* src, int len, int zval, WORD* zbuf, WORD* abuf, int alvl, int warp) = 0;
 	virtual void Blit_Move_Tinted(void* dst, void* src, int len, int zval, WORD* zbuf, WORD* abuf, int alvl, int warp, WORD tint) = 0;
-
 };
 
 template <typename T>
@@ -428,7 +426,6 @@ struct OwnFunc
 struct AresScriptExt
 {
 	static bool Handle(TeamClass* pTeam, ScriptActionNode* pTeamMission, bool bThirdArd);
-
 };
 
 struct AresWPWHExt
@@ -441,7 +438,7 @@ struct AresWPWHExt
 	);
 
 	static bool applyOccupantDamage(BulletClass* pThis);
-	static void applyKillDriver(WarheadTypeClass* pWH , TechnoClass* pKiller, TechnoClass* pVictim);
+	static void applyKillDriver(WarheadTypeClass* pWH, TechnoClass* pKiller, TechnoClass* pVictim);
 };
 
 struct AresTActionExt
@@ -532,12 +529,13 @@ public:
 	};
 
 	static std::array<MappedActions, (size_t)Action::count + 2> CursorIdx;
-	static DynamicVectorClass<BuildType,DllAllocator<BuildType>> TabCameos[4u];
+	static DynamicVectorClass<BuildType, DllAllocator<BuildType>> TabCameos[4u];
 
 	static bool SaveGlobals(PhobosStreamWriter& Stm)
 	{
 		Stm.Process(CursorIdx);
-		for (const auto& tab : TabCameos) {
+		for (const auto& tab : TabCameos)
+		{
 			Savegame::WritePhobosStream(Stm, tab);
 		}
 
@@ -546,9 +544,10 @@ public:
 
 	static bool LoadGlobals(PhobosStreamReader& Stm)
 	{
-		Stm.Process(CursorIdx) ;
+		Stm.Process(CursorIdx);
 
-		for (auto& tab : TabCameos) {
+		for (auto& tab : TabCameos)
+		{
 			Savegame::ReadPhobosStream(Stm, tab);
 		}
 
@@ -608,18 +607,17 @@ struct MouseCursorFuncs
 	static void SetMouseCursorAction(size_t CursorIdx, Action nAction, bool bShrouded)
 	{
 #ifdef Dum
-	AresData::SetMouseCursorAction(CursorIdx, nAction, bShrouded);
+		AresData::SetMouseCursorAction(CursorIdx, nAction, bShrouded);
 #else
-	MouseClassExt::InsertMappedAction((MouseCursorType)CursorIdx, nAction, bShrouded);
+		MouseClassExt::InsertMappedAction((MouseCursorType)CursorIdx, nAction, bShrouded);
 #endif
 	}
 	static void SetSuperWeaponCursorAction(size_t CursorIdx, Action nAction, bool bShrouded)
 	{
 #ifdef Dum
-	AresData::SetSWMouseCursorAction(CursorIdx, bShrouded , -1);
+		AresData::SetSWMouseCursorAction(CursorIdx, bShrouded, -1);
 #else
-	MouseClassExt::InsertSWMappedAction((MouseCursorType)CursorIdx, nAction, bShrouded);
+		MouseClassExt::InsertSWMappedAction((MouseCursorType)CursorIdx, nAction, bShrouded);
 #endif
 	}
-
 };

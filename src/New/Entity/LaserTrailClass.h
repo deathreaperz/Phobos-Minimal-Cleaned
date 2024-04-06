@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 #include <GeneralStructures.h>
 #include <LaserDrawClass.h>
 #include <HouseClass.h>
@@ -18,7 +16,7 @@ public:
 	CoordStruct FLH;
 	bool IsOnTurret;
 	ColorStruct CurrentColor;
-	OptionalStruct<CoordStruct,true> LastLocation;
+	OptionalStruct<CoordStruct, true> LastLocation;
 	bool CanDraw;
 	int InitialDelay;
 	CDTimerClass InitialDelayTimer;
@@ -27,26 +25,28 @@ public:
 		CoordStruct flh = { 0, 0, 0 }, bool isOnTurret = false) :
 		Type { pTrailType }
 		, Visible { true }
-		, FLH {flh}
+		, FLH { flh }
 		, IsOnTurret { isOnTurret }
 		, CurrentColor { (pTrailType->IsHouseColor.Get() && (nHouseColor != ColorStruct::Empty)) ? nHouseColor : pTrailType->Color }
 		, LastLocation { }
 		, CanDraw { false }
 		, InitialDelay { pTrailType->InitialDelay.Get() }
 		, InitialDelayTimer { }
-	{ }
+	{
+	}
 
 	LaserTrailClass() :
-		Type {nullptr}
-		, Visible {false}
+		Type { nullptr }
+		, Visible { false }
 		, FLH { }
-		, IsOnTurret {false}
-		, CurrentColor {0, 0, 0}
+		, IsOnTurret { false }
+		, CurrentColor { 0, 0, 0 }
 		, LastLocation { }
-		, CanDraw {true}
-		, InitialDelay {0}
+		, CanDraw { true }
+		, InitialDelay { 0 }
 		, InitialDelayTimer { }
-	{ }
+	{
+	}
 
 	virtual ~LaserTrailClass() = default;
 
@@ -88,7 +88,6 @@ private:
 
 		return CanDraw;
 	}
-
 };
 
 template <>

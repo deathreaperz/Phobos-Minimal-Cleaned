@@ -30,12 +30,14 @@ std::array<std::unique_ptr<NewSWType>, (size_t)AresNewSuperType::count> NewSWTyp
 
 bool NewSWType::CanFireAt(const TargetingData* pTargeting, CellStruct const& cell, bool manual) const
 {
-	if (!pTargeting->TypeExt->CanFireAt(pTargeting->Owner, cell, manual)) {
+	if (!pTargeting->TypeExt->CanFireAt(pTargeting->Owner, cell, manual))
+	{
 		return false;
 	}
 
 	if (pTargeting->NeedsLaunchSite && pTargeting->LaunchSites.none_of
-		([cell](TargetingData::LaunchSite const& site) {
+	([cell](TargetingData::LaunchSite const& site)
+		{
 			auto const distance = cell.DistanceFrom(site.Center);
 
 			// negative range values just pass the test
@@ -47,7 +49,8 @@ bool NewSWType::CanFireAt(const TargetingData* pTargeting, CellStruct const& cel
 	}
 
 	if (pTargeting->NeedsDesignator && pTargeting->Designators.none_of
-		([cell](TargetingData::RangedItem const& site) {
+	([cell](TargetingData::RangedItem const& site)
+		{
 			auto const distance = cell.DistanceFromSquared(site.Center);
 			return distance <= site.RangeSqr;
 		}))
@@ -57,7 +60,8 @@ bool NewSWType::CanFireAt(const TargetingData* pTargeting, CellStruct const& cel
 
 	//Enemy Designator
 	if (pTargeting->NeedsAttractors && pTargeting->Attractors.none_of
-		([cell](TargetingData::RangedItem const& site) {
+	([cell](TargetingData::RangedItem const& site)
+		{
 			auto const distance = cell.DistanceFromSquared(site.Center);
 			return distance <= site.RangeSqr;
 		}))
@@ -66,7 +70,8 @@ bool NewSWType::CanFireAt(const TargetingData* pTargeting, CellStruct const& cel
 	}
 
 	if (pTargeting->NeedsInhibitors && pTargeting->Inhibitors.any_of
-		([cell](TargetingData::RangedItem const& site) {
+	([cell](TargetingData::RangedItem const& site)
+		{
 			auto const distance = cell.DistanceFromSquared(site.Center);
 			return distance <= site.RangeSqr;
 		}))
@@ -76,7 +81,8 @@ bool NewSWType::CanFireAt(const TargetingData* pTargeting, CellStruct const& cel
 
 	//Enemy Inhibitors
 	if (pTargeting->NeedsSupressors && pTargeting->Suppressors.any_of
-		([cell](TargetingData::RangedItem const& site) {
+	([cell](TargetingData::RangedItem const& site)
+		{
 			auto const distance = cell.DistanceFromSquared(site.Center);
 			return distance <= site.RangeSqr;
 		}))
@@ -112,8 +118,9 @@ bool NewSWType::HasDesignator(const SWTypeExtData* pData, HouseClass* pOwner, co
 	}
 
 	// a single designator in range suffices
-	return TechnoClass::Array->any_of([=, &Coords](TechnoClass* pTechno) {
-		return IsDesignatorEligible(pData, pOwner, Coords, pTechno);
+	return TechnoClass::Array->any_of([=, &Coords](TechnoClass* pTechno)
+ {
+	 return IsDesignatorEligible(pData, pOwner, Coords, pTechno);
 	});
 }
 
@@ -126,7 +133,8 @@ bool NewSWType::IsDesignatorEligible(const SWTypeExtData* pData, HouseClass* pOw
 
 		// get the designator's center
 		auto center = pTechno->GetCoords();
-		if (auto pBuilding = specific_cast<BuildingClass*>(pTechno)) {
+		if (auto pBuilding = specific_cast<BuildingClass*>(pTechno))
+		{
 			center = BuildingExtData::GetCenterCoords(pBuilding);
 		}
 
@@ -142,19 +150,21 @@ bool NewSWType::IsInhibitor(const SWTypeExtData* pData, HouseClass* pOwner, Tech
 {
 	if (pTechno->IsAlive && pTechno->Health && !pTechno->InLimbo && !pTechno->Deactivated)
 	{
-		if (pOwner && pOwner->IsAlliedWith(pTechno)) {
+		if (pOwner && pOwner->IsAlliedWith(pTechno))
+		{
 			return false;
 		}
 
-		if (auto pBld = specific_cast<BuildingClass*>(pTechno)) {
-			if (!pBld->IsPowerOnline()) {
+		if (auto pBld = specific_cast<BuildingClass*>(pTechno))
+		{
+			if (!pBld->IsPowerOnline())
+			{
 				return false;
 			}
 		}
 
 		return pData->SW_AnyInhibitor
-				|| pData->SW_Inhibitors.Contains(pTechno->GetTechnoType());
-
+			|| pData->SW_Inhibitors.Contains(pTechno->GetTechnoType());
 	}
 
 	return false;
@@ -163,26 +173,29 @@ bool NewSWType::IsInhibitor(const SWTypeExtData* pData, HouseClass* pOwner, Tech
 bool NewSWType::HasInhibitor(const SWTypeExtData* pData, HouseClass* pOwner, const CellStruct& Coords) const
 {
 	// does not allow inhibitors
-	if (pData->SW_Inhibitors.empty() && !pData->SW_AnyInhibitor) {
+	if (pData->SW_Inhibitors.empty() && !pData->SW_AnyInhibitor)
+	{
 		return false;
 	}
 
 	// a single inhibitor in range suffices
-	return TechnoClass::Array->any_of([=, &Coords](TechnoClass* pTechno) {
-		 return IsInhibitorEligible(pData, pOwner, Coords, pTechno);
+	return TechnoClass::Array->any_of([=, &Coords](TechnoClass* pTechno)
+ {
+	 return IsInhibitorEligible(pData, pOwner, Coords, pTechno);
 	});
 }
 
 bool NewSWType::IsInhibitorEligible(const SWTypeExtData* pData, HouseClass* pOwner, const CellStruct& Coords, TechnoClass* pTechno) const
 {
-	if (IsInhibitor(pData, pOwner, pTechno)) {
-
+	if (IsInhibitor(pData, pOwner, pTechno))
+	{
 		const auto pType = pTechno->GetTechnoType();
 		const auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
 
 		// get the inhibitor's center
 		auto center = pTechno->GetCoords();
-		if (auto pBuilding = specific_cast<BuildingClass*>(pTechno)) {
+		if (auto pBuilding = specific_cast<BuildingClass*>(pTechno))
+		{
 			center = BuildingExtData::GetCenterCoords(pBuilding);
 		}
 
@@ -214,8 +227,9 @@ bool NewSWType::HasAttractor(const SWTypeExtData* pData, HouseClass* pOwner, con
 	}
 
 	// a single Attractor in range suffices
-	return TechnoClass::Array->any_of([=, &Coords](TechnoClass* pTechno) {
-		return IsAttractorEligible(pData, pOwner, Coords, pTechno);
+	return TechnoClass::Array->any_of([=, &Coords](TechnoClass* pTechno)
+ {
+	 return IsAttractorEligible(pData, pOwner, Coords, pTechno);
 	});
 }
 
@@ -245,17 +259,19 @@ bool NewSWType::IsSuppressor(const SWTypeExtData* pData, HouseClass* pOwner, Tec
 {
 	if (pTechno->IsAlive && pTechno->Health && !pTechno->InLimbo && !pTechno->Deactivated)
 	{
-		if (pOwner && pOwner->IsAlliedWith(pTechno)) {
+		if (pOwner && pOwner->IsAlliedWith(pTechno))
+		{
 			return false;
 		}
 
-		if (auto pBld = specific_cast<BuildingClass*>(pTechno)) {
+		if (auto pBld = specific_cast<BuildingClass*>(pTechno))
+		{
 			if (!pBld->IsPowerOnline())
 			{ return false; }
 		}
 
 		return pData->SW_AnySuppressor
-				|| pData->SW_Suppressors.Contains(pTechno->GetTechnoType());
+			|| pData->SW_Suppressors.Contains(pTechno->GetTechnoType());
 	}
 
 	return false;
@@ -264,7 +280,8 @@ bool NewSWType::IsSuppressor(const SWTypeExtData* pData, HouseClass* pOwner, Tec
 bool NewSWType::HasSuppressor(const SWTypeExtData* pData, HouseClass* pOwner, const CellStruct& Coords) const
 {
 	// does not allow Suppressor
-	if (pData->SW_Suppressors.empty() && !pData->SW_AnySuppressor) {
+	if (pData->SW_Suppressors.empty() && !pData->SW_AnySuppressor)
+	{
 		return false;
 	}
 
@@ -369,14 +386,15 @@ std::unique_ptr<const TargetingData> NewSWType::GetTargetingData(SWTypeExtData* 
 	{
 		data->NeedsLaunchSite = true;
 
-		pOwner->Buildings.for_each([&](BuildingClass* pBld) {
-			if (this->IsLaunchSite(pData, pBld)) {
+		pOwner->Buildings.for_each([&](BuildingClass* pBld)
+ {
+	 if (this->IsLaunchSite(pData, pBld))
+	 {
+		 auto const range = this->GetLaunchSiteRange(pData, pBld);
+		 auto const center = CellClass::Coord2Cell(BuildingExtData::GetCenterCoords(pBld));
 
-				auto const range = this->GetLaunchSiteRange(pData, pBld);
-				auto const center = CellClass::Coord2Cell(BuildingExtData::GetCenterCoords(pBld));
-
-				data->LaunchSites.emplace_back(pBld, center, range.first, range.second);
-			}
+		 data->LaunchSites.emplace_back(pBld, center, range.first, range.second);
+	 }
 		});
 	}
 
@@ -384,7 +402,8 @@ std::unique_ptr<const TargetingData> NewSWType::GetTargetingData(SWTypeExtData* 
 	{
 		data->NeedsDesignator = true;
 
-		for (auto const& pTechno : *TechnoClass::Array) {
+		for (auto const& pTechno : *TechnoClass::Array)
+		{
 			if (this->IsDesignator(pData, pOwner, pTechno))
 			{
 				// get the designator's center
@@ -552,7 +571,7 @@ void NewSWType::Init()
 	NewSWTypeInited = true;
 #define RegSW(name ,type) Register(std::make_unique<name>(), type);
 
-		RegSW(SW_SonarPulse, AresNewSuperType::SonarPulse)
+	RegSW(SW_SonarPulse, AresNewSuperType::SonarPulse)
 		RegSW(SW_UnitDelivery, AresNewSuperType::UnitDelivery)
 		RegSW(SW_GenericWarhead, AresNewSuperType::GenericWarhead)
 		RegSW(SW_Firewall, AresNewSuperType::Firestorm)
@@ -573,7 +592,7 @@ void NewSWType::Init()
 		RegSW(SW_EMPField, AresNewSuperType::EMPField)
 		RegSW(SW_IonCannon, AresNewSuperType::IonCannon)
 		RegSW(SW_MeteorShower, AresNewSuperType::MeteorShower)
-		RegSW(SW_LaserStrike , AresNewSuperType::LaserStrike)
+		RegSW(SW_LaserStrike, AresNewSuperType::LaserStrike)
 #undef RegSW
 }
 
@@ -610,8 +629,9 @@ NewSWType* NewSWType::GetNthItem(SuperWeaponType i)
 SuperWeaponType NewSWType::GetHandledType(SuperWeaponType nType)
 {
 	const auto It = std::find_if(Array.begin(), Array.end(),
-		[&](const auto& Item) {
-			return Item && Item->HandleThisType(nType);
+		[&](const auto& Item)
+ {
+	 return Item && Item->HandleThisType(nType);
 		}
 	);
 
@@ -636,27 +656,30 @@ NewSWType* NewSWType::GetNewSWType(const SuperClass* pSuper)
 
 SuperWeaponType NewSWType::FindFromTypeID(const char* pType)
 {
-	if(!*pType || !strlen(pType))
+	if (!*pType || !strlen(pType))
 		return SuperWeaponType::Invalid;
 
 	const auto It = std::find_if(Array.begin(), Array.end(),
-		[pType](const std::unique_ptr<NewSWType>& item) {
+		[pType](const std::unique_ptr<NewSWType>& item)
+ {
+	 if (!item)
+		 return false;
 
-			if (!item)
-				return false;
+	 for (const auto& Id : item->GetTypeString())
+	 {
+		 //ares usin strcmp , so i just follow it here
+		 if (IS_SAME_STR_N(Id, pType))
+		 {
+			 return true;
+		 }
+	 }
 
-			for (const auto& Id : item->GetTypeString()) {
-				//ares usin strcmp , so i just follow it here
-				if (IS_SAME_STR_N(Id, pType)) {
-					return true;
-				}
-			}
-
-			return false;
+	 return false;
 		}
 	);
 
-	if (It != Array.end()) {
+	if (It != Array.end())
+	{
 		return static_cast<SuperWeaponType>(
 			(size_t)SuperWeaponType::count + (size_t)(*It)->TypeIndex);
 	}
@@ -671,7 +694,8 @@ bool NewSWType::IsLaunchSiteEligible(SWTypeExtData* pSWType, const CellStruct& C
 		return false;
 	}
 
-	if (ignoreRange) {
+	if (ignoreRange)
+	{
 		return true;
 	}
 
@@ -696,7 +720,7 @@ bool NewSWType::HasLaunchSite(SWTypeExtData* pSWType, HouseClass* pOwner, const 
 	}
 
 	return pOwner->Buildings.any_of
-		([=, &Coords](BuildingClass* pBld)
-		{ return this->IsLaunchSiteEligible(pSWType, Coords, pBld, false); }
+	([=, &Coords](BuildingClass* pBld)
+	{ return this->IsLaunchSiteEligible(pSWType, Coords, pBld, false); }
 	);
 }

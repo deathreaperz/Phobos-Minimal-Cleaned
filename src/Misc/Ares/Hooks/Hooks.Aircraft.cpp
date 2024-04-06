@@ -18,7 +18,7 @@
 #include "Header.h"
 
 //AircraftClass_Update_DontloseTargetInAir
-DEFINE_JUMP(LJMP,0x414D36 ,0x414D4D);
+DEFINE_JUMP(LJMP, 0x414D36, 0x414D4D);
 
 DEFINE_HOOK(0x415085, AircraftClass_Update_DamageSmoke, 7)
 {
@@ -27,17 +27,20 @@ DEFINE_HOOK(0x415085, AircraftClass_Update_DamageSmoke, 7)
 	const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
 
 	AnimTypeClass* pType = pExt->SmokeAnim.Get(RulesExtData::Instance()->DefaultAircraftDamagedSmoke);
-	if(!pType)
+	if (!pType)
 		return 0x41512C;
 
 	const int chance = (pThis->Health > 0) ? pExt->SmokeChanceRed.Get(10) : pExt->SmokeChanceDead.Get(80);
 
-	if(chance <= 0 )
+	if (chance <= 0)
 		return 0x41512C;
 
-	if (pThis->GetHealthPercentage() < RulesClass::Instance->ConditionRed) {
-		if (pThis->GetHeight() > 0) {
-			if (ScenarioClass::Instance->Random.RandomFromMax(99) < chance) {
+	if (pThis->GetHealthPercentage() < RulesClass::Instance->ConditionRed)
+	{
+		if (pThis->GetHeight() > 0)
+		{
+			if (ScenarioClass::Instance->Random.RandomFromMax(99) < chance)
+			{
 				GameCreate<AnimClass>(pType, pThis->Location)->Owner = pThis->GetOwningHouse();
 			}
 		}
@@ -140,7 +143,8 @@ DEFINE_HOOK(0x413FA3, AircraftClass_Init_Cloakable, 0x5)
 {
 	GET(AircraftClass*, Item, ESI);
 
-	if (Item->Type->Cloakable) {
+	if (Item->Type->Cloakable)
+	{
 		Item->Cloakable = true;
 	}
 
@@ -275,7 +279,8 @@ DEFINE_HOOK(0x6B783B, SpawnManagerClass_Update_SpawnHigh, 0x5)
 /* #1354 - Aircraft and empty SovParaDropInf list */
 DEFINE_HOOK(0x41D887, AirstrikeClass_Fire, 0x6)
 {
-	if (!RulesClass::Instance->SovParaDropInf.Count) {
+	if (!RulesClass::Instance->SovParaDropInf.Count)
+	{
 		R->ECX(-1);
 		return 0x41D895;
 	}

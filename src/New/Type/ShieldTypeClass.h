@@ -62,7 +62,7 @@ public:
 public:
 
 	ShieldTypeClass::ShieldTypeClass(const char* const pTitle);
-	virtual ~ShieldTypeClass() override  = default;
+	virtual ~ShieldTypeClass() override = default;
 	//{
 	//	if(Pips_Background_SHP.Get(nullptr)) {
 	//		GameDelete(Pips_Background_SHP.Get());
@@ -74,7 +74,8 @@ public:
 	virtual void LoadFromStream(PhobosStreamReader& Stm);
 	virtual void SaveToStream(PhobosStreamWriter& Stm);
 
-	static void AddDefaults() {
+	static void AddDefaults()
+	{
 		FindOrAllocate(DEFAULT_STR2);
 	}
 

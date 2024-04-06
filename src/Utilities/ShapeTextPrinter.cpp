@@ -6,21 +6,24 @@ constexpr inline size_t SignSequenceLength { std::char_traits<char>::length(Sign
 size_t ShapeTextPrinter::GetSignIndex(const char sign)
 {
 	char* end = SignSequence + SignSequenceLength;
-	char* iter = std::find(SignSequence, end , sign);
+	char* iter = std::find(SignSequence, end, sign);
 	return iter != end ? std::distance(SignSequence, iter) : -1;
 }
 
-std::vector<int> ShapeTextPrinter::BuildFrames(const std::string& text, const int baseNumberFrame , const int baseSignFrame)
+std::vector<int> ShapeTextPrinter::BuildFrames(const std::string& text, const int baseNumberFrame, const int baseSignFrame)
 {
 	std::vector<int> vFrames;
 
-	for (const auto& item : text) {
-
+	for (const auto& item : text)
+	{
 		int frame = 0;
 
-		if (isdigit(item)) {
+		if (isdigit(item))
+		{
 			frame = baseNumberFrame + item - '0';
-		} else {
+		}
+		else
+		{
 			const size_t signIndex = GetSignIndex(item);
 
 			if (signIndex < SignSequenceLength)

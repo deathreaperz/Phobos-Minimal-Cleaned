@@ -390,7 +390,7 @@ std::array<std::pair<const char* const, ChronoSparkleDisplayPosition>, 5u> EnumF
 }
 };
 
-std::array<std::pair<const char* ,AffectPlayerType>, 5u> EnumFunctions::AffectPlayerType_ToStrings
+std::array<std::pair<const char*, AffectPlayerType>, 5u> EnumFunctions::AffectPlayerType_ToStrings
 {
 {	{ "none" ,AffectPlayerType::None },
 	{ "computer" ,AffectPlayerType::Computer },
@@ -459,9 +459,9 @@ std::array<const char*, (size_t)DisplayInfoType::count> EnumFunctions::DisplayIn
 };
 
 std::array<const char*, (size_t)NewCrateType::count> EnumFunctions::NewCrateType_ToStrings
-{{
+{ {
 	{ "Money" }, { "Super" }, { "Weapon" }, { "Units" }
- }};
+ } };
 
 std::array<const char*, 6u> EnumFunctions::DamageState_to_strings
 {
@@ -482,19 +482,19 @@ std::array<const char*, 8u> EnumFunctions::FacingType_to_strings
 }
 };
 
-bool EnumFunctions::CanTargetHouse(AffectedHouse const &flags, HouseClass* ownerHouse, HouseClass* targetHouse)
+bool EnumFunctions::CanTargetHouse(AffectedHouse const& flags, HouseClass* ownerHouse, HouseClass* targetHouse)
 {
 	if (flags == AffectedHouse::All)
 		return true;
 
-	if (ownerHouse && targetHouse) {
-
+	if (ownerHouse && targetHouse)
+	{
 		if ((flags & AffectedHouse::Owner) && ownerHouse == targetHouse)
 			return true;
 
 		const auto IsAlly = ownerHouse->IsAlliedWith(targetHouse);
 		return (flags & AffectedHouse::Allies) && ownerHouse != targetHouse && IsAlly ||
-			   (flags & AffectedHouse::Enemies) && ownerHouse != targetHouse && !IsAlly;
+			(flags & AffectedHouse::Enemies) && ownerHouse != targetHouse && !IsAlly;
 	}
 
 	return (flags & AffectedHouse::Enemies) != AffectedHouse::None;
@@ -563,13 +563,13 @@ bool EnumFunctions::IsTechnoEligibleB(TechnoClass* const pTechno, AffectedTarget
 				return (allowed & AffectedTarget::Infantry) != AffectedTarget::None;
 			case UnitClass::AbsID:
 			{
-				if(!pTechno->GetTechnoType()->ConsideredAircraft)
+				if (!pTechno->GetTechnoType()->ConsideredAircraft)
 					return (allowed & AffectedTarget::Unit) != AffectedTarget::None;
 
 				return (allowed & AffectedTarget::Aircraft) != AffectedTarget::None;
 			}
 			case AircraftClass::AbsID:
-					return (allowed & AffectedTarget::Aircraft) != AffectedTarget::None;
+				return (allowed & AffectedTarget::Aircraft) != AffectedTarget::None;
 			case BuildingClass::AbsID:
 			{
 				return ((allowed & AffectedTarget::Building) != AffectedTarget::None);
@@ -583,13 +583,13 @@ bool EnumFunctions::IsTechnoEligibleB(TechnoClass* const pTechno, AffectedTarget
 	return false;
 }
 
-bool EnumFunctions::AreCellAndObjectsEligible(CellClass* const pCell, AffectedTarget  const& allowed, AffectedHouse const&  allowedHouses, HouseClass* owner, bool explicitEmptyCells, bool considerAircraftSeparately, bool allowBridges)
+bool EnumFunctions::AreCellAndObjectsEligible(CellClass* const pCell, AffectedTarget  const& allowed, AffectedHouse const& allowedHouses, HouseClass* owner, bool explicitEmptyCells, bool considerAircraftSeparately, bool allowBridges)
 {
 	if (!pCell)
 		return false;
 
 	auto object = pCell->FirstObject;
-	bool eligible = EnumFunctions::IsCellEligible(pCell, allowed, explicitEmptyCells , allowBridges);
+	bool eligible = EnumFunctions::IsCellEligible(pCell, allowed, explicitEmptyCells, allowBridges);
 
 	while (true)
 	{

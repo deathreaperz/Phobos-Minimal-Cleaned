@@ -18,7 +18,6 @@ struct LaserTrailDataEntry
 		return const_cast<LaserTrailDataEntry*>(this)->Serialize(stm);
 	}
 
-
 	// For some Fcking unknown reason `emplace_back` doesnt knowh the default contructor for this
 	LaserTrailDataEntry(int nIdx, const CoordStruct& nFlh, bool OnTur) :
 		idxType { nIdx }

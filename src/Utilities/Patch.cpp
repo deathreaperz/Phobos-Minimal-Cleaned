@@ -32,7 +32,7 @@ int Patch::GetSection(HANDLE hInstance, const char* sectionName, void** pVirtual
 void Patch::ApplyStatic()
 {
 	void* buffer;
-	const int len = GetSection(Phobos::hInstance , PATCH_SECTION_NAME, &buffer);
+	const int len = GetSection(Phobos::hInstance, PATCH_SECTION_NAME, &buffer);
 
 	for (int offset = 0; offset < len; offset += sizeof(Patch))
 	{
@@ -59,7 +59,7 @@ void Patch::Apply_RAW(uintptr_t offset, std::initializer_list<BYTE> data)
 	Patch::Apply_RAW(offset, data.size(), const_cast<byte*>(data.begin()));
 }
 
-void Patch::Apply_RAW(uintptr_t offset, size_t sz , BYTE* data)
+void Patch::Apply_RAW(uintptr_t offset, size_t sz, BYTE* data)
 {
 	PatchWrapper dummy { offset, sz, data };
 }
@@ -341,10 +341,14 @@ void Patch::PrintAllModuleAndBaseAddr()
 
 uintptr_t Patch::GetEATAddress(const char* moduleName, const char* funcName)
 {
-	for (auto const& modules : ModuleDatas) {
-		if (strcmp(moduleName, modules.ModuleName.c_str()) == 0 && !modules.Exports.empty()) {
-			for (auto const& exportData : modules.Exports) {
-				if (strcmp(exportData.name, funcName) == 0) {
+	for (auto const& modules : ModuleDatas)
+	{
+		if (strcmp(moduleName, modules.ModuleName.c_str()) == 0 && !modules.Exports.empty())
+		{
+			for (auto const& exportData : modules.Exports)
+			{
+				if (strcmp(exportData.name, funcName) == 0)
+				{
 					return (uintptr_t)exportData.address;
 				}
 			}
@@ -356,10 +360,14 @@ uintptr_t Patch::GetEATAddress(const char* moduleName, const char* funcName)
 
 uintptr_t Patch::GetIATAddress(const char* moduleName, const char* funcName)
 {
-	for (auto const& modules : ModuleDatas) {
-		if (strcmp(moduleName, modules.ModuleName.c_str()) == 0 && !modules.Impors.empty()) {
-			for (auto const& importData : modules.Impors) {
-				if (strcmp(importData.name, funcName) == 0) {
+	for (auto const& modules : ModuleDatas)
+	{
+		if (strcmp(moduleName, modules.ModuleName.c_str()) == 0 && !modules.Impors.empty())
+		{
+			for (auto const& importData : modules.Impors)
+			{
+				if (strcmp(importData.name, funcName) == 0)
+				{
 					return (uintptr_t)importData.address;
 				}
 			}

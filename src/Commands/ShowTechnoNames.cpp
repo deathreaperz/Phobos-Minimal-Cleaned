@@ -36,14 +36,14 @@ void ShowTechnoNameCommandClass::Execute(WWKey eInput) const
 	Phobos::Config::ShowTechnoNamesIsActive = !Phobos::Config::ShowTechnoNamesIsActive;
 }
 
-bool ShowTechnoNameCommandClass::IsActivated() {
+bool ShowTechnoNameCommandClass::IsActivated()
+{
 	return Phobos::Config::ShowTechnoNamesIsActive;
 }
 
 void ShowTechnoNameCommandClass::AI()
 {
-
-	if(IsActivated())
+	if (IsActivated())
 	{
 		auto const pCiv = HouseExtData::FindCivilianSide();
 

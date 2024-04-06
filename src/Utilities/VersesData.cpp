@@ -6,7 +6,8 @@ bool VersesData::Parse(const char* str)
 {
 	auto const& [bValid, nVerses] = Conversions::Str2ArmorCheck(str, &this->Flags);
 
-	if (bValid) {
+	if (bValid)
+	{
 		this->Verses = nVerses;
 		return true;
 	}

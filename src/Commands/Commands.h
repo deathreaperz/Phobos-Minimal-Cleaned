@@ -8,11 +8,14 @@
 class PhobosCommandClass : public CommandClass
 {
 protected:
-	bool CheckDebugDeactivated() const {
+	bool CheckDebugDeactivated() const
+	{
 		auto const bAllow = Phobos::Config::DevelopmentCommands || Phobos::Otamaa::IsAdmin;
 
-		if (!bAllow) {
-			if (const wchar_t* text = StringTable::LoadString("TXT_COMMAND_DISABLED")) {
+		if (!bAllow)
+		{
+			if (const wchar_t* text = StringTable::LoadString("TXT_COMMAND_DISABLED"))
+			{
 				wchar_t msg[0x100] = L"\0";
 				wsprintfW(msg, text, this->GetUIName());
 				MessageListClass::Instance->PrintMessage(msg);
@@ -21,7 +24,6 @@ protected:
 		}
 		return false;
 	}
-
 };
 
 #define CATEGORY_TEAM StringTable::LoadString(GameStrings::TXT_TEAM())

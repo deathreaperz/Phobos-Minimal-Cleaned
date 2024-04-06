@@ -11,12 +11,12 @@ struct MultipleFactoryCaps
 	Valueable<int> AbsAircraft { -1 };
 	Valueable<int> AbsBuilding { -1 };
 
-//
+	//
 	void Read(INI_EX& exINI, const char* pSection);
 	bool Load(PhobosStreamReader& stm, bool registerForChange);
 	bool Save(PhobosStreamWriter& stm) const;
 
-	int Get(AbstractType abs , bool naval) const;
+	int Get(AbstractType abs, bool naval) const;
 
 private:
 

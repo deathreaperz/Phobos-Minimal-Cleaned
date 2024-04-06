@@ -11,10 +11,11 @@ TiberiumClass* CellExtData::GetTiberium(CellClass* pCell)
 
 int CellExtData::GetOverlayIndex(CellClass* pCell, TiberiumClass* pTiberium)
 {
-	if (pTiberium) {
+	if (pTiberium)
+	{
 		return (pCell->SlopeIndex > 0) ?
-		(pCell->SlopeIndex + pTiberium->Image->ArrayIndex + pTiberium->NumImages - 1) : (pTiberium->Image->ArrayIndex + pCell->MapCoords.X * pCell->MapCoords.Y % pTiberium->NumImages)
-		;
+			(pCell->SlopeIndex + pTiberium->Image->ArrayIndex + pTiberium->NumImages - 1) : (pTiberium->Image->ArrayIndex + pCell->MapCoords.X * pCell->MapCoords.Y % pTiberium->NumImages)
+			;
 	}
 
 	return 0;
@@ -22,21 +23,23 @@ int CellExtData::GetOverlayIndex(CellClass* pCell, TiberiumClass* pTiberium)
 
 int CellExtData::GetOverlayIndex(CellClass* pCell)
 {
-	if (pCell->OverlayTypeIndex != -1) {
-		if (const auto pTiberium = TiberiumClass::Array->GetItemOrDefault(TiberiumClass::FindIndex(pCell->OverlayTypeIndex))) {
+	if (pCell->OverlayTypeIndex != -1)
+	{
+		if (const auto pTiberium = TiberiumClass::Array->GetItemOrDefault(TiberiumClass::FindIndex(pCell->OverlayTypeIndex)))
+		{
 			return (pCell->SlopeIndex > 0) ?
-			(pCell->SlopeIndex + pTiberium->Image->ArrayIndex + pTiberium->NumImages - 1) : (pTiberium->Image->ArrayIndex + pCell->MapCoords.X * pCell->MapCoords.Y % pTiberium->NumImages);
+				(pCell->SlopeIndex + pTiberium->Image->ArrayIndex + pTiberium->NumImages - 1) : (pTiberium->Image->ArrayIndex + pCell->MapCoords.X * pCell->MapCoords.Y % pTiberium->NumImages);
 		}
 	}
 
-	return 0 ;
+	return 0;
 }
 
 // ============================ =
 // load / save
 template <typename T>
-void CellExtData::Serialize(T& Stm) {
-
+void CellExtData::Serialize(T& Stm)
+{
 	Stm
 		.Process(this->Initialized)
 		.Process(this->NewPowerups)

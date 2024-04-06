@@ -43,17 +43,18 @@ struct ImageStatusses
 
 	static ImageStatusses ReadVoxel(const char* const nKey, bool a4);
 
-	void swap(VoxelStruct& from) {
-
-		if (from.VXL != this->Images.VXL) {
+	void swap(VoxelStruct& from)
+	{
+		if (from.VXL != this->Images.VXL)
+		{
 			std::swap(from.VXL, this->Images.VXL);
 		}
 
-		if (from.HVA != this->Images.HVA) {
+		if (from.HVA != this->Images.HVA)
+		{
 			std::swap(from.HVA, this->Images.HVA);
 		}
 	}
-
 };
 
 struct BurstFLHBundle
@@ -195,7 +196,7 @@ public:
 	ValueableVector<int> OreGathering_FramesPerDir {};
 
 	Valueable<bool> DestroyAnim_Random { true };
-	PhobosMap<WarheadTypeClass* , std::vector<AnimTypeClass*>> DestroyAnimSpecific {};
+	PhobosMap<WarheadTypeClass*, std::vector<AnimTypeClass*>> DestroyAnimSpecific {};
 	Valueable<bool> NotHuman_RandomDeathSequence { false };
 
 	Nullable<InfantryTypeClass*> DefaultDisguise {};
@@ -305,7 +306,6 @@ public:
 	Valueable<bool> FacingRotation_DisalbeOnEMP { false };
 	Valueable<bool> FacingRotation_DisalbeOnDeactivated { false };
 	Valueable<bool> FacingRotation_DisableOnDriverKilled { true };
-
 
 	Valueable<bool> DontShake { true };
 	NullableIdx<VocClass>DiskLaserChargeUp { };
@@ -959,7 +959,8 @@ public:
 
 	virtual bool Load(TechnoTypeClass* key, IStream* pStm) override;
 
-	void Clear() {
+	void Clear()
+	{
 		this->Map.clear();
 	}
 

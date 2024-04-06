@@ -1,6 +1,7 @@
 #include "Body.h"
 
-void VoxelAnimTypeExtData::Initialize(){
+void VoxelAnimTypeExtData::Initialize()
+{
 	LaserTrail_Types.reserve(1);
 	SplashList.reserve(RulesClass::Instance->SplashList.Count);
 }
@@ -23,7 +24,7 @@ void VoxelAnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->ExplodeOnWater.Read(exINI, pID, "ExplodeOnWater");
 	this->Damage_DealtByOwner.Read(exINI, pID, "Damage.DealtByOwner");
 	this->ExpireDamage_ConsiderInvokerVet.Read(exINI, pID, "ExpireDamage.ConsiderInvokerVeterancy");
-	this->Weapon.Read(exINI, pID, "Weapon" , true);
+	this->Weapon.Read(exINI, pID, "Weapon", true);
 
 	this->Trails.Read(exINI, pID, false);
 #pragma endregion
@@ -46,7 +47,7 @@ void VoxelAnimTypeExtData::Serialize(T& Stm)
 		.Process(Weapon)
 		.Process(ExpireDamage_ConsiderInvokerVet)
 		;
-		this->Trails.Serialize(Stm);
+	this->Trails.Serialize(Stm);
 }
 
 // =============================
@@ -81,7 +82,7 @@ DEFINE_HOOK(0x74B8D0, VoxelAnimTypeClass_SaveLoad_Prefix, 0x8)
 }
 
 // Before :  DEFINE_HOOK(0x74B8C2, VoxelAnimTypeClass_Load_Suffix, 0x7)
-DEFINE_HOOK(0x74B8C0 , VoxelAnimTypeClass_Load_Suffix, 0x6)
+DEFINE_HOOK(0x74B8C0, VoxelAnimTypeClass_Load_Suffix, 0x6)
 {
 	VoxelAnimTypeExtContainer::Instance.LoadStatic();
 	return 0;
@@ -104,7 +105,7 @@ DEFINE_HOOK(0x74B4F0, VoxelAnimTypeClass_LoadFromINI, 0x5)
 	GET(VoxelAnimTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, 0x4);
 
-	VoxelAnimTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x74B612);
+	VoxelAnimTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x74B612);
 
 	return 0;
 }

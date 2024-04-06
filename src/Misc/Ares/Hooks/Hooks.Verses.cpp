@@ -33,7 +33,7 @@ DEFINE_HOOK(0x75DDCC, WarheadTypeClass_GetVerses_Skipvanilla, 0x7)
 	return 0x75DE98;
 }
 
-void Debug(ObjectClass* pTarget, int nArmor, VersesData* pData, WarheadTypeClass* pWH, const char* pAdd , size_t arrSize )
+void Debug(ObjectClass* pTarget, int nArmor, VersesData* pData, WarheadTypeClass* pWH, const char* pAdd, size_t arrSize)
 {
 	auto const pArmor = ArmorTypeClass::FindFromIndex(nArmor);
 
@@ -87,9 +87,12 @@ DEFINE_HOOK(0x489180, MapClass_GetTotalDamage, 0x6)
 		//	fDamage,
 		//	R->Stack<DWORD>(0x0));
 
-		if (Atmax != fDamage && cellSpreadRadius) {
+		if (Atmax != fDamage && cellSpreadRadius)
+		{
 			res = int((double)(fDamage - Atmax) * (double)(cellSpreadRadius - distance) / dCellSpreadRadius + Atmax);
-		} else {
+		}
+		else
+		{
 			res = damage;
 		}
 
@@ -150,8 +153,9 @@ DEFINE_HOOK(0x6FCB6A, TechnoClass_CanFire_Verses, 0x7)
 	{
 		if (pWH->BombDisarm &&
 			(!pTarget->AttachedBomb ||
-			!BombExtContainer::Instance.Find(pTarget->AttachedBomb)->Weapon->Ivan_Detachable)
-		) {
+				!BombExtContainer::Instance.Find(pTarget->AttachedBomb)->Weapon->Ivan_Detachable)
+		)
+		{
 			return FireIllegal;
 		}
 
@@ -241,7 +245,7 @@ DEFINE_HOOK(0x708AF7, TechnoClass_ShouldRetaliate_Verses, 0x7)
 {
 	enum { Retaliate = 0x708B0B, DoNotRetaliate = 0x708B17 };
 
-	GET(TechnoClass* , pSource , EBP);
+	GET(TechnoClass*, pSource, EBP);
 	GET(WarheadTypeClass*, pWH, ECX);
 	//GET(int, nArmor, EAX);
 
@@ -249,13 +253,11 @@ DEFINE_HOOK(0x708AF7, TechnoClass_ShouldRetaliate_Verses, 0x7)
 	//if ((size_t)nArmor > ArmorTypeClass::Array.size())
 	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
 
-	if(pData->Nonprovocative)
+	if (pData->Nonprovocative)
 		return DoNotRetaliate;
 
 	const auto armor = (int)TechnoExtData::GetArmor(pSource);
 	const auto vsData = &pData->Verses[armor];
-
-
 
 	return vsData->Flags.Retaliate //|| !(vsData->Verses <= 0.0099999998)
 		? Retaliate
@@ -267,8 +269,8 @@ DEFINE_HOOK(0x4753F0, ArmorType_FindIndex, 0xA)
 {
 	GET(CCINIClass*, pINI, ECX);
 
-	if(ArmorTypeClass::Array.empty())
-	 ArmorTypeClass::AddDefaults();
+	if (ArmorTypeClass::Array.empty())
+		ArmorTypeClass::AddDefaults();
 
 	GET_STACK(const char*, Section, 0x4);
 	GET_STACK(const char*, Key, 0x8);
@@ -277,13 +279,14 @@ DEFINE_HOOK(0x4753F0, ArmorType_FindIndex, 0xA)
 	int nResult = fallback;
 	char buf[0x64];
 
-	if (pINI->ReadString(Section, Key, Phobos::readDefval, buf) > 0) {
-
+	if (pINI->ReadString(Section, Key, Phobos::readDefval, buf) > 0)
+	{
 		nResult = ArmorTypeClass::FindIndexById(buf);
 
-		if (nResult < 0) {
+		if (nResult < 0)
+		{
 			nResult = 0;
-			Debug::INIParseFailed(Section, Key, buf , "Expect Valid ArmorType !");
+			Debug::INIParseFailed(Section, Key, buf, "Expect Valid ArmorType !");
 		}
 	}
 

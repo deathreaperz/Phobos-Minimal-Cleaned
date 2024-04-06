@@ -13,7 +13,6 @@
 #include <Misc/DynamicPatcher/Others/DamageText.h>
 #include <Misc/DynamicPatcher/Weapon/AttachFireData.h>
 
-
 class WeaponTypeExtData final
 {
 public:
@@ -28,7 +27,7 @@ public:
 	Nullable<RadTypeClass*> RadType {};
 	Valueable<bool> Rad_NoOwner { true };
 
-	Valueable<int> Strafing_Shots {  5  };
+	Valueable<int> Strafing_Shots { 5 };
 	Valueable<bool> Strafing_SimulateBurst { false };
 	Valueable<AffectedTarget> CanTarget { AffectedTarget::All };
 	Valueable<AffectedHouse> CanTargetHouses { AffectedHouse::All };

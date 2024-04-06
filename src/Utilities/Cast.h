@@ -32,20 +32,23 @@ struct type_cast_impl
 					? static_cast<T>(pAbstract) : nullptr;
 			}
 			else
-			if constexpr (Base::AbsTypeBase == AbstractBaseType::ObjectType)
-			{
-				return IsObjectType(pAbstract->WhatAmI()) ? static_cast<T>(pAbstract) : nullptr;
-			} else {
-				return VTable::Get(pAbstract) == Base::vtable ? static_cast<T>(pAbstract) : nullptr;
-			}
-
-		} else {
+				if constexpr (Base::AbsTypeBase == AbstractBaseType::ObjectType)
+				{
+					return IsObjectType(pAbstract->WhatAmI()) ? static_cast<T>(pAbstract) : nullptr;
+				}
+				else
+				{
+					return VTable::Get(pAbstract) == Base::vtable ? static_cast<T>(pAbstract) : nullptr;
+				}
+		}
+		else
+		{
 			return VTable::Get(pAbstract) == Base::vtable ? static_cast<T>(pAbstract) : nullptr;
 		}
 	}
 };
 
-template <typename T ,bool Check = true>
+template <typename T, bool Check = true>
 inline T type_cast(ObjectTypeClass* pAbstract)
 {
 	using Base = std::remove_pointer_t<T>;

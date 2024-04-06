@@ -2,7 +2,8 @@
 
 #include <Point2D.h>
 
-struct BrackedPositionData {
+struct BrackedPositionData
+{
 	Point2D Position;
 	int Height;
 	int LengthW;

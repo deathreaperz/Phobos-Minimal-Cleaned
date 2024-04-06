@@ -45,7 +45,6 @@ void ParticleSystemExtData::UpdateLocations()
 			const auto nZOffsWithBridge = nZOffs + Unsorted::BridgeHeight;
 			if (nCoord.Z >= nZOffsWithBridge)
 			{
-
 				if (nCoordBeforeZ.Z < nZOffsWithBridge)
 					Data.Empty = true;
 
@@ -68,7 +67,6 @@ void ParticleSystemExtData::UpdateLocations()
 				{
 					Data.Empty = true;
 				}
-
 			}
 			else
 				if (!pBuilding->Type->LaserFence || pBuilding->LaserFenceFrame < 8u)
@@ -91,7 +89,6 @@ void ParticleSystemExtData::UpdateState()
  {
 	 return data.DeleteOnStateLimit;
 	});
-
 }
 
 void ParticleSystemExtData::UpdateColor()
@@ -346,7 +343,7 @@ void ParticleSystemExtData::UpdateRailgun()
 
 			Data->velB = nMovementDummy; // storing MovementPerturbationCoeff vector
 
-			// this one use for coordinate storage that already lerp with the cur pos and target pos 
+			// this one use for coordinate storage that already lerp with the cur pos and target pos
 			Data->vel.X = nDummy_d.X;
 			Data->vel.Y = nDummy_d.Y;
 			Data->vel.Z = nDummy_d.Z;
@@ -381,7 +378,6 @@ void ParticleSystemExtData::UpdateRailgun()
 				10, false, true, 0.5f, 0.1f);
 		}
 	}
-
 }
 #endif
 
@@ -400,24 +396,28 @@ void  ParticleSystemExtData::UpdateRailgun()
 		int Difference_Z = DifferenceCoords.Z;
 		int Difference_X = DifferenceCoords.X;
 
-		if (Difference_Z >= differeceCoordsLXYZLength) {
+		if (Difference_Z >= differeceCoordsLXYZLength)
+		{
 			Difference_Z = differeceCoordsLXYZLength;
 		}
 
-		if (Difference_Z <= -differeceCoordsLXYZLength) {
+		if (Difference_Z <= -differeceCoordsLXYZLength)
+		{
 			Difference_Z = -differeceCoordsLXYZLength;
 		}
 
-		if (Difference_X >= differeceCoordsLXYLength) {
+		if (Difference_X >= differeceCoordsLXYLength)
+		{
 			Difference_X = differeceCoordsLXYLength;
 		}
 
-		if (Difference_X <= -differeceCoordsLXYLength) {
+		if (Difference_X <= -differeceCoordsLXYLength)
+		{
 			Difference_X = -differeceCoordsLXYLength;
 		}
 
 		const auto ParticlePerCoords = differeceCoordsLXYZLength * pThis->Type->ParticlesPerCoord;
-		Matrix3D mtx =Matrix3D::GetIdentity();
+		Matrix3D mtx = Matrix3D::GetIdentity();
 		const auto acos = Math::acos((double)Difference_X / (double)differeceCoordsLXYLength);
 		mtx.PreRotateZ(acos < 0 ? -acos : acos);
 		const auto theta = Math::asin((double)Difference_Z / (double)differeceCoordsLXYLength);
@@ -429,7 +429,8 @@ void  ParticleSystemExtData::UpdateRailgun()
 
 		double var = 0.0;
 
-		for (int i = 0; i < (int)ParticlePerCoords; ++i) {
+		for (int i = 0; i < (int)ParticlePerCoords; ++i)
+		{
 			const float curVal = float((double)i / (float)ParticlePerCoords);
 			const double radians = curVal * differeceCoordsLXYZLength * pThis->Type->SpiralDeltaPerCoord;
 
@@ -450,14 +451,15 @@ void  ParticleSystemExtData::UpdateRailgun()
 				+ (first_.Z * pThis->Type->SpiralRadius))
 			};
 
-			auto CoordSturct_Lerp = [](const CoordStruct* CurrentCoord, const CoordStruct* TargetCoord, float factor) {
-				auto t_neg = 1.0 - factor;
-				return CoordStruct {
-					(int)((double)TargetCoord->X * factor + (double)CurrentCoord->X * t_neg)
-					,(int)((double)TargetCoord->Y * factor + (double)CurrentCoord->Y * t_neg)
-					,(int)((double)TargetCoord->Z * factor + (double)CurrentCoord->Z * t_neg)
+			auto CoordSturct_Lerp = [](const CoordStruct* CurrentCoord, const CoordStruct* TargetCoord, float factor)
+				{
+					auto t_neg = 1.0 - factor;
+					return CoordStruct {
+						(int)((double)TargetCoord->X * factor + (double)CurrentCoord->X * t_neg)
+						,(int)((double)TargetCoord->Y * factor + (double)CurrentCoord->Y * t_neg)
+						,(int)((double)TargetCoord->Z * factor + (double)CurrentCoord->Z * t_neg)
+					};
 				};
-			};
 
 			//lerp result stored as Vel
 			CoordStruct lerp = CoordSturct_Lerp(&pThis->Location, &pThis->TargetCoords, curVal);
@@ -474,8 +476,8 @@ void  ParticleSystemExtData::UpdateRailgun()
 
 			const auto sparkVelLength = std::sqrt(double((mtx_mult.X * mtx_mult.X) + (mtx_mult.Y * mtx_mult.Y) + (mtx_mult.Z * mtx_mult.Z)));
 
-			if (sparkVelLength != 0.0) {
-
+			if (sparkVelLength != 0.0)
+			{
 				const auto float_sparkVelLength = (float)sparkVelLength;
 				mtx_mult.X = mtx_mult.X / float_sparkVelLength;
 				mtx_mult.Y = mtx_mult.Y / float_sparkVelLength;
@@ -489,11 +491,13 @@ void  ParticleSystemExtData::UpdateRailgun()
 			Data->vel.Z = (float)lerp.Z;
 
 			auto rand = (ScenarioClass::Instance->Random.RandomDouble() + var - 0.5) * pThis->Type->VelocityPerturbationCoefficient;
-			if (pThis->Type->VelocityPerturbationCoefficient <= rand) {
+			if (pThis->Type->VelocityPerturbationCoefficient <= rand)
+			{
 				rand = pThis->Type->VelocityPerturbationCoefficient;
 			}
 
-			if (rand <= -pThis->Type->MovementPerturbationCoefficient) {
+			if (rand <= -pThis->Type->MovementPerturbationCoefficient)
+			{
 				rand = -pThis->Type->MovementPerturbationCoefficient;
 			}
 
@@ -517,8 +521,8 @@ void  ParticleSystemExtData::UpdateRailgun()
 		pThis->TimeToDie = true;
 	}
 
-	// this one updating the pisitional value on each particle 
-	// this was executed by `ParticleClass_AI` on vanilla 
+	// this one updating the pisitional value on each particle
+	// this was executed by `ParticleClass_AI` on vanilla
 	for (auto& movement : this->OtherParticleData)
 	{
 		const auto state = movement.A;
@@ -535,7 +539,7 @@ void  ParticleSystemExtData::UpdateRailgun()
 			movement.Empty = true;
 	}
 
-	// the game use reverse of this 
+	// the game use reverse of this
 	// update both pisition and the color then finally do the state updates
 	this->UpdateState();
 	this->UpdateColor();
@@ -720,8 +724,8 @@ void ParticleSystemExtData::UpdateSmoke()
 }
 
 #ifdef zaawdawd
-void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis){
-	
+void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis)
+{
 	if (!pThis->TimeToDie && !pThis->Particles.Count)
 	{
 		CoordStruct targetCoords = pThis->TargetCoords;
@@ -733,19 +737,23 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis){
 		int Difference_Z = DifferenceCoords.Z;
 		int Difference_X = DifferenceCoords.X;
 
-		if (Difference_Z >= differeceCoordsLXYZLength) {
+		if (Difference_Z >= differeceCoordsLXYZLength)
+		{
 			Difference_Z = differeceCoordsLXYZLength;
 		}
 
-		if (Difference_Z <= -differeceCoordsLXYZLength) {
+		if (Difference_Z <= -differeceCoordsLXYZLength)
+		{
 			Difference_Z = -differeceCoordsLXYZLength;
 		}
 
-		if (Difference_X >= differeceCoordsLXYLength) {
+		if (Difference_X >= differeceCoordsLXYLength)
+		{
 			Difference_X = differeceCoordsLXYLength;
 		}
 
-		if (Difference_X <= -differeceCoordsLXYLength) {
+		if (Difference_X <= -differeceCoordsLXYLength)
+		{
 			Difference_X = -differeceCoordsLXYLength;
 		}
 
@@ -758,7 +766,8 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis){
 		mtx.PreRotateX(theta);
 
 		double var = 0.0;
-		for (int i = 0; i < (int)ParticlePerCoords; ++i) {
+		for (int i = 0; i < (int)ParticlePerCoords; ++i)
+		{
 			float curVal = float((double)i / (float)ParticlePerCoords);
 
 			Vector3D<float> first_ {
@@ -778,15 +787,15 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis){
 				+ (first_.Z * pThis->Type->SpiralRadius))
 			};
 
-			auto CoordSturct_Lerp = [](const CoordStruct* CurrentCoord , const CoordStruct* TargetCoord ,float factor)
-			{
+			auto CoordSturct_Lerp = [](const CoordStruct* CurrentCoord, const CoordStruct* TargetCoord, float factor)
+				{
 					auto t_neg = 1.0 - factor;
 					return CoordStruct {
 						(int)((double)TargetCoord->X * factor + (double)CurrentCoord->X * t_neg)
 						,(int)((double)TargetCoord->Y * factor + (double)CurrentCoord->Y * t_neg)
 						,(int)((double)TargetCoord->Z * factor + (double)CurrentCoord->Z * t_neg)
 					};
-			};
+				};
 
 			//lerp result stored as Vel
 			CoordStruct lerp = CoordSturct_Lerp(&pThis->Location, &pThis->TargetCoords, curVal);
@@ -804,9 +813,10 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis){
 			partilce->Spark10C += MovementPerturbation;
 
 			const auto sparkVelLength = std::sqrt(double((partilce->Spark10C.X * partilce->Spark10C.X) + (partilce->Spark10C.Y * partilce->Spark10C.Y) + (partilce->Spark10C.Z * partilce->Spark10C.Z)));
-			
+
 			Vector3D<float> last = partilce->Spark10C;
-			if (sparkVelLength != 0.0) {
+			if (sparkVelLength != 0.0)
+			{
 				last.X = vel->X / sparkVelLength;
 				last.Y = vel->Y / sparkVelLength;
 				last.Z = vel->Z / sparkVelLength;
@@ -814,11 +824,13 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis){
 			partilce->Spark10C = last; //stored as VelB
 
 			auto rand = (ScenarioClass::Instance->Random.RandomDouble() + var - 0.5) * pThis->Type->VelocityPerturbationCoefficient;
-			if (pThis->Type->VelocityPerturbationCoefficient <= rand) {
+			if (pThis->Type->VelocityPerturbationCoefficient <= rand)
+			{
 				rand = pThis->Type->VelocityPerturbationCoefficient;
 			}
 
-			if (rand <= -pThis->Type->MovementPerturbationCoefficient) {
+			if (rand <= -pThis->Type->MovementPerturbationCoefficient)
+			{
 				rand = -pThis->Type->MovementPerturbationCoefficient;
 			}
 
@@ -842,11 +854,13 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis){
 		pThis->TimeToDie = true;
 	}
 
-	for (int i = 0; i < pThis->Particles.Count; ++i) {
+	for (int i = 0; i < pThis->Particles.Count; ++i)
+	{
 		pThis->Particles[i]->BehaviourUpdate();
 	}
 
-	for (int a = pThis->Particles.Count - 1; a >= 0; --a) {
+	for (int a = pThis->Particles.Count - 1; a >= 0; --a)
+	{
 		if (pThis->Particles[a]->hasremaining)
 			pThis->Particles[a]->UnInit();
 	}
@@ -921,11 +935,11 @@ void ParticleSystemExtData::UpdateInAir_Main(bool allowDraw)
 
 					if ((uint16_t)(LOWORD(ZBuffer::Instance->Area.Y) + LOWORD(ZBuffer::Instance->MaxValue) - LOWORD(outClient.Y)) - Zadjust - 50 < ZBuff)
 					{
-
 						int idx = 0;
 						ColorStruct* selected = &movement.Colors;
 
-						if (movement.C) {
+						if (movement.C)
+						{
 							idx = movement.C;
 							selected = &color[movement.C];
 						}
@@ -949,7 +963,6 @@ void ParticleSystemExtData::UpdateInAir_Main(bool allowDraw)
 					}
 				}
 			}
-
 		}
 	}
 
@@ -1030,7 +1043,6 @@ void ParticleSystemExtData::InitializeConstant()
 
 		if (!this->HeldType->UseLineTrail && !this->HeldType->AlphaImage)
 		{
-
 			auto bIsZero = (int)this->HeldType->BehavesLike;
 			auto nBehave = (int)pType->BehavesLike;
 
@@ -1039,7 +1051,6 @@ void ParticleSystemExtData::InitializeConstant()
 
 			if (nBehave == bIsZero)
 			{
-
 				if (nBehave == 0)
 				{
 					this->What = Behave::Smoke;

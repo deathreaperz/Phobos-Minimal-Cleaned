@@ -23,7 +23,6 @@ WORD GetFacingVal(CoordStruct a2, CoordStruct a3)
 
 void JumpTo4(LevitateLocomotionClass* pThis, float a2)
 {
-
 	const auto v6 = (float)((__int16)(a2 - 0x3FFF) * -0.00009587672516830327);
 	const auto v5 = std::sinf(v6);
 	const auto v3 = std::cosf(v6);
@@ -294,7 +293,6 @@ void LevitateLocomotionClass::DoPhase3()
 			this->DirtoSomething(ScenarioClass::Instance->Random.RandomDouble()
 				* 6.283185307179586);
 		}
-
 	}
 	else
 	{
@@ -330,7 +328,6 @@ void LevitateLocomotionClass::DoPhase4()
 				}
 				else
 				{
-
 					auto nTargetCoord = pTargetT->GetCoords();
 
 					if (LevitateLocomotionClass::IsMoreThanProximityDistance(nTargetCoord))
@@ -451,7 +448,6 @@ void LevitateLocomotionClass::DoPhase6()
 			}
 			else
 			{
-
 				auto nTargetCoord = pTargetT->GetCoords();
 
 				if (LevitateLocomotionClass::IsMoreThanProximityDistance(nTargetCoord))
@@ -881,7 +877,6 @@ bool __stdcall LevitateLocomotionClass::Process()
 
 		LinkedTo->UpdatePlacement(PlacementType::Put);
 	}
-
 
 	return this->Is_Moving(); //?
 }

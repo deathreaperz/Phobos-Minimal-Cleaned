@@ -26,8 +26,8 @@ bool SW_HunterSeeker::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 	}
 
 	//testing
-	// TODO : Re-enable this 
-	// somwhat HS Causing desync on ROTE ? 
+	// TODO : Re-enable this
+	// somwhat HS Causing desync on ROTE ?
 	// need to investigate further
 	//if (IS_SAME_STR_(pType->ID, "SOVSCRAP"))
 	//	return true;
@@ -44,35 +44,39 @@ bool SW_HunterSeeker::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 	Helpers::Alex::for_each_if_n(pOwner->Buildings.begin(), pOwner->Buildings.end(),
 		Count,
 		[=](BuildingClass* pBld) { return this->IsLaunchSite_HS(pExt, pBld); },
-		[=, &Success](BuildingClass* pBld) { auto cell = this->GetLaunchCell(pExt, pBld, pType);
+		[=, &Success](BuildingClass* pBld)
+ {
+	 auto cell = this->GetLaunchCell(pExt, pBld, pType);
 
-			if (cell == CellStruct::Empty) {
-				return;
-			}
+	 if (cell == CellStruct::Empty)
+	 {
+		 return;
+	 }
 
-			// create a hunter seeker
-			if (auto pHunter = (UnitClass*)pType->CreateObject(pOwner))
-			{
-				TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
+	 // create a hunter seeker
+	 if (auto pHunter = (UnitClass*)pType->CreateObject(pOwner))
+	 {
+		 TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
 
-				// put it on the map and let it go
+		 // put it on the map and let it go
 
-				if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
-				{
-					pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
-					pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
-					pHunter->NextMission();
-					++Success;
-				}
-				else
-				{
-					GameDelete<true, false>(pHunter);
-				}
-			}
+		 if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
+		 {
+			 pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
+			 pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
+			 pHunter->NextMission();
+			 ++Success;
+		 }
+		 else
+		 {
+			 GameDelete<true, false>(pHunter);
+		 }
+	 }
 		});
 
 	// no launch building found
-	if (!Success) {
+	if (!Success)
+	{
 		Debug::Log("HunterSeeker super weapon \"%s\" could not be launched. House \"%ls\" "
 			"does not own any HSBuilding or No Buildings attached with this HSType Superweapon.\n", pThis->Type->ID, pOwner->UIName);
 	}
@@ -136,7 +140,7 @@ bool SW_HunterSeeker::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pB
 	if (!this->IsLaunchsiteAlive(pBuilding))
 		return false;
 
-	return this->IsLaunchSite_HS(pData , pBuilding);
+	return this->IsLaunchSite_HS(pData, pBuilding);
 }
 
 CellStruct SW_HunterSeeker::GetLaunchCell(SWTypeExtData* pSWType, BuildingClass* pBuilding, UnitTypeClass* pHunter) const
@@ -153,9 +157,9 @@ CellStruct SW_HunterSeeker::GetLaunchCell(SWTypeExtData* pSWType, BuildingClass*
 		cell = MapClass::Instance->PickCellOnEdge(
 			edge, CellStruct::Empty, CellStruct::Empty, SpeedType::Foot, true,
 			MovementZone::Normal);
-
-	} else {
-
+	}
+	else
+	{
 		auto position = CellClass::Coord2Cell(pBuilding->GetCoords());
 
 		cell = MapClass::Instance->NearByLocation(position, SpeedType::Foot,

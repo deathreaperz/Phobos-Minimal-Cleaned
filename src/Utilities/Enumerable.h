@@ -40,8 +40,10 @@ public:
 	{
 		for (auto pos = Array.begin();
 			pos != Array.end();
-			++pos) {
-			if (IS_SAME_STR_((*pos)->Name.data(), Title)) {
+			++pos)
+		{
+			if (IS_SAME_STR_((*pos)->Name.data(), Title))
+			{
 				return std::distance(Array.begin(), pos);
 			}
 		}
@@ -61,8 +63,10 @@ public:
 
 	static inline constexpr int FindIndexFromType(T* pType)
 	{
-		if (pType) {
-			for (size_t i = 0; i < Array.size(); ++i) {
+		if (pType)
+		{
+			for (size_t i = 0; i < Array.size(); ++i)
+			{
 				if (Array[i].get() == pType)
 					return i;
 			}
@@ -186,7 +190,6 @@ public:
 			if (pINI->ReadString(section, pINI->GetKeyName(section, i),
 				Phobos::readDefval, Phobos::readBuffer) > 0)
 			{
-
 				if (auto const pFind = FindOrAllocate(Phobos::readBuffer))
 				{
 					pFind->LoadFromINI(pINI);
@@ -248,11 +251,10 @@ public:
 	virtual void LoadFromStream(PhobosStreamReader& Stm) = 0;
 	virtual void SaveToStream(PhobosStreamWriter& Stm) = 0;
 
-
 public:
 	FixedString<32> Name;
 
 private:
-	Enumerable<T>&operator=(Enumerable<T> const& value) = default;
-	Enumerable<T>&operator=(Enumerable<T>&& value) = default;
+	Enumerable<T>& operator=(Enumerable<T> const& value) = default;
+	Enumerable<T>& operator=(Enumerable<T>&& value) = default;
 };

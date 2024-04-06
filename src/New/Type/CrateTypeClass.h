@@ -21,7 +21,7 @@ public:
 	Valueable<bool> Naval { false };
 	NullableIdx<VocClass> Sound { };
 
-    CrateTypeClass(const char* const pTitle): Enumerable<CrateTypeClass>(pTitle)
+	CrateTypeClass(const char* const pTitle) : Enumerable<CrateTypeClass>(pTitle)
 		, Weight { }
 		, Anim { nullptr }
 		, Argument { 0.0 }
@@ -34,9 +34,9 @@ public:
 	static void ReadFromINIList(CCINIClass* pINI);
 
 	virtual ~CrateTypeClass() override = default;
-	virtual void LoadFromINI(CCINIClass *pINI) override;
-	virtual void LoadFromStream(PhobosStreamReader &Stm) override;
-	virtual void SaveToStream(PhobosStreamWriter &Stm) override;
+	virtual void LoadFromINI(CCINIClass* pINI) override;
+	virtual void LoadFromStream(PhobosStreamReader& Stm) override;
+	virtual void SaveToStream(PhobosStreamWriter& Stm) override;
 
 private:
 	template <typename T>

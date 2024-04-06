@@ -31,7 +31,7 @@ namespace BoltTemp
 	const WeaponTypeExtData* pType = nullptr;
 }
 
-inline unsigned inline_02(ConvertClass* pConvert , int idx)
+inline unsigned inline_02(ConvertClass* pConvert, int idx)
 {
 	switch (pConvert->BytesPerPixel)
 	{
@@ -94,7 +94,8 @@ DEFINE_HOOK(0x4C24E4, Ebolt_DrawFist_Disable, 0x8)
 {
 	//GET_STACK(EBolt* const, pBolt, 0x40);
 
-	if (BoltTemp::pType && BoltTemp::pType->Bolt_Disable1){
+	if (BoltTemp::pType && BoltTemp::pType->Bolt_Disable1)
+	{
 		return 0x4C2515;
 	}
 
@@ -108,17 +109,19 @@ DEFINE_HOOK(0x4C20BC, EBolt_DrawArcs, 0x5)
 	//GET_STACK(EBolt*, pBolt, 0x40);
 	GET_STACK(int, plotIndex, STACK_OFFSET(0x408, -0x3E0))
 
-	if(BoltTemp::pType){
-		return plotIndex < BoltTemp::pType->Bolt_Arcs
-		? DoLoop : Break;
-	}
+		if (BoltTemp::pType)
+		{
+			return plotIndex < BoltTemp::pType->Bolt_Arcs
+				? DoLoop : Break;
+		}
 
 	return 0x0;
 }
 
 DEFINE_HOOK(0x4C25FD, Ebolt_DrawSecond_Disable, 0xA)
 {
-	if (BoltTemp::pType && BoltTemp::pType->Bolt_Disable2) {
+	if (BoltTemp::pType && BoltTemp::pType->Bolt_Disable2)
+	{
 		return 0x4C262A;
 	}
 
@@ -127,7 +130,8 @@ DEFINE_HOOK(0x4C25FD, Ebolt_DrawSecond_Disable, 0xA)
 
 DEFINE_HOOK(0x4C26EE, Ebolt_DrawThird_Disable, 0x6)
 {
-	if (BoltTemp::pType && BoltTemp::pType->Bolt_Disable3) {
+	if (BoltTemp::pType && BoltTemp::pType->Bolt_Disable3)
+	{
 		return 0x4C2710;
 	}
 

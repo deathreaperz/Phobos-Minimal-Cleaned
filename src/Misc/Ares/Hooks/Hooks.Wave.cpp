@@ -79,9 +79,11 @@ DEFINE_HOOK(0x760F50, WaveClass_Update, 0x6)
 
 	const auto pData = WaveExtContainer::Instance.Find(pThis);
 
-	if (pData->Weapon && pData->Weapon->AmbientDamage) {
+	if (pData->Weapon && pData->Weapon->AmbientDamage)
+	{
 		CoordStruct coords;
-		for (auto const& pCell : pThis->Cells) {
+		for (auto const& pCell : pThis->Cells)
+		{
 			pCell->Get3DCoords3(&coords);
 			pThis->DamageArea(coords);
 		}
@@ -102,7 +104,9 @@ DEFINE_HOOK(0x760F50, WaveClass_Update, 0x6)
 		{
 			//GameDelete<true,false>(pThis);
 			pThis->UnInit();
-		} else {
+		}
+		else
+		{
 			pThis->ObjectClass::Update();
 		}
 	}
@@ -186,10 +190,10 @@ DEFINE_HOOK(0x75F38F, WaveClass_DamageCell_SelectWeapon, 0x6)
 	return 0x75F39D;
 }
 
- /*
- *	YES , this fuckery is removing WaveClass::WaveAI function call for later , replace it with boolean ,
-	so it can be done after all data set is completed !
- */
+/*
+*	YES , this fuckery is removing WaveClass::WaveAI function call for later , replace it with boolean ,
+   so it can be done after all data set is completed !
+*/
 DEFINE_HOOK(0x75EBC5, WaveClass_CTOR_AllowWaveUpdate, 0x7)
 {
 	GET(WaveClass*, Wave, ESI);
@@ -202,7 +206,7 @@ DEFINE_HOOK(0x75EBC5, WaveClass_CTOR_AllowWaveUpdate, 0x7)
 	that mean some Ext variable not yer executed , and when i try to use the data it wont work
 	need to move those to separate function after data set done ,..
 */
-DEFINE_HOOK(0x762B62, WaveClass_WaveAI , 0x6)
+DEFINE_HOOK(0x762B62, WaveClass_WaveAI, 0x6)
 {
 	GET(WaveClass*, Wave, ESI);
 
@@ -211,7 +215,8 @@ DEFINE_HOOK(0x762B62, WaveClass_WaveAI , 0x6)
 
 	const bool eligible = Target && Firer && Wave->WaveIntensity != 19 && Firer->Target == Target;
 
-	if (!eligible) {
+	if (!eligible)
+	{
 		return 0x762C40;
 	}
 
@@ -236,7 +241,6 @@ DEFINE_HOOK(0x762B62, WaveClass_WaveAI , 0x6)
 				return 0x762C40;
 			}
 		}
-
 	}
 	else
 	{
@@ -253,10 +257,10 @@ DEFINE_HOOK(0x762B62, WaveClass_WaveAI , 0x6)
 		return 0x762D57;
 
 	CoordStruct FLH;
-	if(pData->WeaponIdx != -1)
-		Firer->GetFLH(&FLH , pData->WeaponIdx, CoordStruct::Empty);
+	if (pData->WeaponIdx != -1)
+		Firer->GetFLH(&FLH, pData->WeaponIdx, CoordStruct::Empty);
 	else
-		 FLH = pData->SourceCoord;
+		FLH = pData->SourceCoord;
 
 	const CoordStruct xyzTgt = Target->GetCenterCoords(); // not GetCoords() !
 
@@ -323,11 +327,13 @@ DEFINE_HOOK(0x75F415, WaveClass_DamageCell_FixNoHouseOwner, 0x6)
 	GET_STACK(int, nDamage, STACK_OFFS(0x18, 0x4));
 	GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFS(0x18, 0x8));
 
-	if (const auto pTechnoVictim = generic_cast<TechnoClass*>(pVictim)){
+	if (const auto pTechnoVictim = generic_cast<TechnoClass*>(pVictim))
+	{
 		if (pTechnoVictim->IsSinking || pTechnoVictim->IsCrashing)
 			return 0x75F432;
 
-		if (const auto pUnit = specific_cast<UnitClass*>(pVictim)) {
+		if (const auto pUnit = specific_cast<UnitClass*>(pVictim))
+		{
 			if (pUnit->DeathFrameCounter > 0)
 				return 0x75F432;
 		}

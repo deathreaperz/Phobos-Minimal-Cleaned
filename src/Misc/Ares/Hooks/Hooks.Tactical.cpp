@@ -32,27 +32,30 @@ DEFINE_HOOK(0x420F75, AlphaLightClass_UpdateScreen_ShouldDraw, 5)
 
 	bool shouldDraw = !pAlpha->IsObjectGone;
 
-	if(shouldDraw && pAlpha->AttachedTo) {
+	if (shouldDraw && pAlpha->AttachedTo)
+	{
 		const auto table = VTable::Get(pAlpha->AttachedTo);
-		if (table == InfantryClass::vtable || table == UnitClass::vtable || table == AircraftClass::vtable || table == BuildingClass::vtable) {
+		if (table == InfantryClass::vtable || table == UnitClass::vtable || table == AircraftClass::vtable || table == BuildingClass::vtable)
+		{
 			shouldDraw =
 				((TechnoClass*)pAlpha->AttachedTo)->VisualCharacter(VARIANT_TRUE, ((TechnoClass*)pAlpha->AttachedTo)->Owner) == VisualType::Normal
-			&& !((TechnoClass*)pAlpha->AttachedTo)->Disguised;
+				&& !((TechnoClass*)pAlpha->AttachedTo)->Disguised;
 		}
 	}
 
 	return shouldDraw ? 0x420F80 : 0x42132A;
-
 }
 
 DEFINE_HOOK(0x4210AC, AlphaLightClass_UpdateScreen_Header, 5)
 {
 	GET(AlphaShapeClass*, pAlpha, EDX);
-	GET(SHPStruct *, pImage, ECX);
+	GET(SHPStruct*, pImage, ECX);
 
-	if(const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo)) {
+	if (const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo))
+	{
 		unsigned int idx = 0;
-		if (pImage->Frames > 0) {
+		if (pImage->Frames > 0)
+		{
 			const int countFrames = Conversions::Int2Highest(pImage->Frames);
 			const DirStruct PrimaryFacing = pTechno->PrimaryFacing.Current();
 			idx = (PrimaryFacing.Raw >> (16 - countFrames));
@@ -71,9 +74,11 @@ DEFINE_HOOK(0x4211AC, AlphaLightClass_UpdateScreen_Body, 8)
 
 	const auto pAlpha = AlphaShapeClass::Array->Items[AlphaLightIndex];
 
-	if(const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo)) {
+	if (const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo))
+	{
 		unsigned int idx = 0;
-		if (pImage->Frames > 0) {
+		if (pImage->Frames > 0)
+		{
 			const int countFrames = Conversions::Int2Highest(pImage->Frames);
 			const DirStruct PrimaryFacing = pTechno->PrimaryFacing.Current();
 			idx = (PrimaryFacing.Raw >> (16 - countFrames));
@@ -94,8 +99,10 @@ DEFINE_HOOK(0x42146E, TacticalClass_UpdateAlphasInRectangle_Header, 5)
 	const auto pAlpha = AlphaShapeClass::Array->Items[AlphaLightIndex];
 	unsigned int idx = 0;
 
-	if (const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo))  {
-		if (pImage->Frames > 0) {
+	if (const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo))
+	{
+		if (pImage->Frames > 0)
+		{
 			const int countFrames = Conversions::Int2Highest(pImage->Frames);
 			const DirStruct PrimaryFacing = pTechno->PrimaryFacing.Current();
 			idx = (PrimaryFacing.Raw >> (16 - countFrames));
@@ -112,8 +119,10 @@ DEFINE_HOOK(0x42152C, TacticalClass_UpdateAlphasInRectangle_Body, 8)
 	GET(SHPStruct*, pImage, ECX);
 
 	const auto pAlpha = AlphaShapeClass::Array->Items[AlphaLightIndex];
-	if (const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo)) {
-		if (pImage->Frames > 0) {
+	if (const auto pTechno = abstract_cast<TechnoClass*>(pAlpha->AttachedTo))
+	{
+		if (pImage->Frames > 0)
+		{
 			const int countFrames = Conversions::Int2Highest(pImage->Frames);
 			const DirStruct PrimaryFacing = pTechno->PrimaryFacing.Current();
 			R->ESP((PrimaryFacing.Raw >> (16 - countFrames)));
@@ -130,14 +139,16 @@ DEFINE_HOOK(0x421371, TacticalClass_UpdateAlphasInRectangle_ShouldDraw, 5)
 
 	bool shouldDraw = !pAlpha->IsObjectGone;
 
-	if (shouldDraw && pAlpha->AttachedTo) {
+	if (shouldDraw && pAlpha->AttachedTo)
+	{
 		const auto table = VTable::Get(pAlpha->AttachedTo);
-		if (table == InfantryClass::vtable || table == UnitClass::vtable || table == AircraftClass::vtable || table == BuildingClass::vtable ) {
+		if (table == InfantryClass::vtable || table == UnitClass::vtable || table == AircraftClass::vtable || table == BuildingClass::vtable)
+		{
 			shouldDraw = ((TechnoClass*)pAlpha->AttachedTo)->IsAlive && ((TechnoClass*)pAlpha->AttachedTo)->VisualCharacter(VARIANT_TRUE, ((TechnoClass*)pAlpha->AttachedTo)->Owner) == VisualType::Normal &&
 				!((TechnoClass*)pAlpha->AttachedTo)->Disguised;
 		}
 		//else if (table == AnimClass::vtable || table == ParticleClass::vtable || table == VoxelAnimClass::vtable) {
-		//	Debug::Log("Alpha[%x - %d] Attached to [%s - %s] with state [%s]\n", pAlpha, AlphaLightIndex, 
+		//	Debug::Log("Alpha[%x - %d] Attached to [%s - %s] with state [%s]\n", pAlpha, AlphaLightIndex,
 		//		pAlpha->AttachedTo->GetType()->ID,
 		//		pAlpha->AttachedTo->GetThisClassName()
 		//	, !pAlpha->AttachedTo->IsAlive ? "Dead" : "Alive"

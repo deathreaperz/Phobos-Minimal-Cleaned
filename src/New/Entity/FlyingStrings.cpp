@@ -21,7 +21,8 @@ bool FlyingStrings::DrawAllowed(CoordStruct const& nCoords, Point2D& outPoint)
 	if (!nCoords.IsValid())
 		return false;
 
-	if (auto const pCell = MapClass::Instance->TryGetCellAt(nCoords)) {
+	if (auto const pCell = MapClass::Instance->TryGetCellAt(nCoords))
+	{
 		return (!pCell->IsFogged() && !pCell->IsShrouded()) && TacticalClass::Instance->CoordsToClient(nCoords, &outPoint);
 	}
 
@@ -30,7 +31,7 @@ bool FlyingStrings::DrawAllowed(CoordStruct const& nCoords, Point2D& outPoint)
 
 void FlyingStrings::Add(const wchar_t* text, CoordStruct const& coords, ColorStruct const& color, Point2D const& pixelOffset)
 {
-	Item item { coords, pixelOffset, Unsorted::CurrentFrame, Drawing::ColorStructToWordRGB(color), TextPrintType::Center | TextPrintType::NoShadow, L""};
+	Item item { coords, pixelOffset, Unsorted::CurrentFrame, Drawing::ColorStructToWordRGB(color), TextPrintType::Center | TextPrintType::NoShadow, L"" };
 	PhobosCRT::wstrCopy(item.Text, text, 0x20);
 	Data.push_back(item);
 }
@@ -114,7 +115,8 @@ void FlyingStrings::AddString(const std::wstring& text, bool Display, TechnoClas
 
 		ColorStruct color = nOverrideColor;
 
-		if (color == ColorStruct::Empty) {
+		if (color == ColorStruct::Empty)
+		{
 			color = Drawing::DefaultColors[(int)DefaultColorList::Red];
 		}
 
@@ -148,13 +150,12 @@ void FlyingStrings::AddNumberString(int amount, HouseClass* owner, AffectedHouse
 	}
 }
 
-
 void FlyingStrings::DisplayDamageNumberString(int damage, DamageDisplayType type, CoordStruct coords, int& offset)
 {
 	if (damage == 0)
 		return;
 
-	ColorStruct color  = Drawing::DefaultColors[(int)DefaultColorList::White];
+	ColorStruct color = Drawing::DefaultColors[(int)DefaultColorList::White];
 
 	switch (type)
 	{
@@ -171,7 +172,7 @@ void FlyingStrings::DisplayDamageNumberString(int damage, DamageDisplayType type
 		break;
 	}
 
-	if(damage < 0)
+	if (damage < 0)
 		damage = -damage;
 
 	int maxOffset = Unsorted::CellWidthInPixels / 2;
@@ -190,36 +191,39 @@ void FlyingStrings::DisplayDamageNumberString(int damage, DamageDisplayType type
 
 void FlyingStrings::UpdateAll()
 {
-	auto iter = std::remove_if(Data.begin(), Data.end(), [](FlyingStrings::Item& item) {
-		if (item.Text[0]) {
-			Point2D pos {};
-			Point2D tmp {};
+	auto iter = std::remove_if(Data.begin(), Data.end(), [](FlyingStrings::Item& item)
+ {
+	 if (item.Text[0])
+	 {
+		 Point2D pos {};
+		 Point2D tmp {};
 
-			if (FlyingStrings::DrawAllowed(item.Location, pos))
-			{
-				pos += item.PixelOffset;
-				auto bound = DSurface::Temp->Get_Rect_WithoutBottomBar();
+		 if (FlyingStrings::DrawAllowed(item.Location, pos))
+		 {
+			 pos += item.PixelOffset;
+			 auto bound = DSurface::Temp->Get_Rect_WithoutBottomBar();
 
-				if (!(pos.X < 0 || pos.Y < 0 || pos.X > bound.Width || pos.Y > bound.Height))
-				{
-					if (Unsorted::CurrentFrame > item.CreationFrame + Duration - 70)
-					{
-						pos.Y -= (Unsorted::CurrentFrame - item.CreationFrame);
-						Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
-					}
-					else
-					{
-						Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
-					}
-				}
-			}
-		}
+			 if (!(pos.X < 0 || pos.Y < 0 || pos.X > bound.Width || pos.Y > bound.Height))
+			 {
+				 if (Unsorted::CurrentFrame > item.CreationFrame + Duration - 70)
+				 {
+					 pos.Y -= (Unsorted::CurrentFrame - item.CreationFrame);
+					 Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
+				 }
+				 else
+				 {
+					 Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
+				 }
+			 }
+		 }
+	 }
 
-		if (Unsorted::CurrentFrame > item.CreationFrame + Duration || Unsorted::CurrentFrame < item.CreationFrame) {
-			return true;
-		}
+	 if (Unsorted::CurrentFrame > item.CreationFrame + Duration || Unsorted::CurrentFrame < item.CreationFrame)
+	 {
+		 return true;
+	 }
 
-		return false;
+	 return false;
 	});
 
 	Data.erase(iter, Data.end());

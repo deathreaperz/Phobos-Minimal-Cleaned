@@ -74,7 +74,8 @@ void BuildingExtData::UpdateSecretLab(BuildingClass* pThis)
 {
 	auto pOwner = pThis->Owner;
 
-	if (!pOwner || pOwner->Type->MultiplayPassive) {
+	if (!pOwner || pOwner->Type->MultiplayPassive)
+	{
 		return;
 	}
 
@@ -91,14 +92,15 @@ void BuildingExtData::UpdateSecretLab(BuildingClass* pThis)
 	auto pData = BuildingTypeExtContainer::Instance.Find(pType);
 
 	// go on if not placed or always recalculate on capture
-	if (pExt->SecretLab_Placed && !pData->Secret_RecalcOnCapture) {
+	if (pExt->SecretLab_Placed && !pData->Secret_RecalcOnCapture)
+	{
 		return;
 	}
 
 	std::vector<TechnoTypeClass*> Options;
 	const DWORD OwnerBits = 1u << pOwner->Type->ArrayIndex;
 	;
-	auto AddToOptions = [OwnerBits , pOwner, &Options](const Iterator<TechnoTypeClass*>& items)
+	auto AddToOptions = [OwnerBits, pOwner, &Options](const Iterator<TechnoTypeClass*>& items)
 		{
 			for (const auto& Option : items)
 			{
@@ -149,7 +151,8 @@ void BuildingExtData::UpdateSecretLab(BuildingClass* pThis)
 bool BuildingExtData::ReverseEngineer(BuildingClass* pBuilding, TechnoClass* Victim)
 {
 	const auto pReverseData = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
-	if (!pReverseData->ReverseEngineersVictims || !pBuilding->Owner) {
+	if (!pReverseData->ReverseEngineersVictims || !pBuilding->Owner)
+	{
 		return false;
 	}
 
@@ -170,8 +173,8 @@ bool BuildingExtData::ReverseEngineer(BuildingClass* pBuilding, TechnoClass* Vic
 
 		pBldOwnerExt->Reversed.push_back(VictimAs);
 
-		if (!WasBuildable) {
-
+		if (!WasBuildable)
+		{
 			if (HouseExtData::RequirementsMet(pBldOwner, VictimType) != RequirementStatus::Forbidden)
 			{
 				pBldOwner->RecheckTechTree = true;
@@ -229,7 +232,7 @@ void BuildingExtData::DisplayIncomeString()
 	if (this->Type->DisplayIncome.Get(RulesExtData::Instance()->DisplayIncome) &&
 		this->AccumulatedIncome && Unsorted::CurrentFrame % 15 == 0)
 	{
-		if(!RulesExtData::Instance()->DisplayIncome_AllowAI && !this->AttachedToObject->Owner->IsControlledByHuman())
+		if (!RulesExtData::Instance()->DisplayIncome_AllowAI && !this->AttachedToObject->Owner->IsControlledByHuman())
 		{
 			this->AccumulatedIncome = 0;
 			return;
@@ -301,13 +304,15 @@ void BuildingExtData::UpdateAutoSellTimer()
 
 			const double nValue = pRulesExt->AI_AutoSellHealthRatio->at(pThis->Owner->GetCorrectAIDifficultyIndex());
 
-			if (nValue > 0.0 && pThis->GetHealthPercentage() <= nValue){
+			if (nValue > 0.0 && pThis->GetHealthPercentage() <= nValue)
+			{
 				pThis->Sell(-1);
 				return;
 			}
 		}
 
-		if (AutoSellTimer.Completed()) {
+		if (AutoSellTimer.Completed())
+		{
 			pThis->Sell(-1);
 		}
 	}
@@ -318,54 +323,54 @@ bool BuildingExtData::RubbleYell(bool beingRepaired) const
 	auto CreateBuilding = [](BuildingClass* pBuilding, bool remove,
 		BuildingTypeClass* pNewType, OwnerHouseKind owner, int strength,
 		AnimTypeClass* pAnimType, const char* pTagName) -> bool
-	{
-		if (!pNewType && !remove)
 		{
-			Debug::Log("Warning! Advanced Rubble was supposed to be reconstructed but"
-				" Ares could not obtain its new BuildingType. Check if [%s]Rubble.%s is"
-				" set (correctly).\n", pBuilding->Type->ID, pTagName);
+			if (!pNewType && !remove)
+			{
+				Debug::Log("Warning! Advanced Rubble was supposed to be reconstructed but"
+					" Ares could not obtain its new BuildingType. Check if [%s]Rubble.%s is"
+					" set (correctly).\n", pBuilding->Type->ID, pTagName);
+				return true;
+			}
+
+			pBuilding->Limbo(); // only takes it off the map
+			pBuilding->DestroyNthAnim(BuildingAnimSlot::All);
+			auto pOwner = HouseExtData::GetHouseKind(owner, true, pBuilding->Owner);
+
+			if (!remove)
+			{
+				auto pNew = static_cast<BuildingClass*>(pNewType->CreateObject(pOwner));
+
+				if (strength <= -1 && strength >= -100)
+				{
+					// percentage of original health
+					const auto nDecided = ((-strength * pNew->Type->Strength) / 100);
+					pNew->Health = MaxImpl(nDecided, 1);
+				}
+				else if (strength > 0)
+				{
+					pNew->Health = MinImpl(strength, pNew->Type->Strength);
+				} /* else Health = Strength*/
+
+				// The building is created?
+				if (!pNew->Unlimbo(pBuilding->Location, pBuilding->PrimaryFacing.Current().GetDir()))
+				{
+					Debug::Log("Advanced Rubble: Failed to place normal state on map!\n");
+					GameDelete<true, false>(pNew);
+					return false;
+				}
+			}
+
+			if (pAnimType)
+			{
+				AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pBuilding->GetCoords()),
+					pOwner,
+					nullptr,
+					false
+				);
+			}
+
 			return true;
-		}
-
-		pBuilding->Limbo(); // only takes it off the map
-		pBuilding->DestroyNthAnim(BuildingAnimSlot::All);
-		auto pOwner = HouseExtData::GetHouseKind(owner, true, pBuilding->Owner);
-
-		if (!remove)
-		{
-			auto pNew = static_cast<BuildingClass*>(pNewType->CreateObject(pOwner));
-
-			if (strength <= -1 && strength >= -100)
-			{
-				// percentage of original health
-				const auto nDecided = ((-strength * pNew->Type->Strength) / 100);
-				pNew->Health = MaxImpl(nDecided, 1);
-			}
-			else if (strength > 0)
-			{
-				pNew->Health = MinImpl(strength, pNew->Type->Strength);
-			} /* else Health = Strength*/
-
-			// The building is created?
-			if (!pNew->Unlimbo(pBuilding->Location, pBuilding->PrimaryFacing.Current().GetDir()))
-			{
-				Debug::Log("Advanced Rubble: Failed to place normal state on map!\n");
-				GameDelete<true, false>(pNew);
-				return false;
-			}
-		}
-
-		if (pAnimType)
-		{
-			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pBuilding->GetCoords()),
-				pOwner,
-				nullptr,
-				false
-			);
-		}
-
-		return true;
-	};
+		};
 
 	auto currentBuilding = AttachedToObject;
 	auto pTypeData = BuildingTypeExtContainer::Instance.Find(currentBuilding->Type);
@@ -400,17 +405,24 @@ bool BuildingExtData::HasSuperWeapon(const int index, const bool withUpgrades) c
 {
 	const auto pThis = this->AttachedToObject;
 
-	for (auto i = 0; i < this->Type->GetSuperWeaponCount(); ++i) {
-		if (this->Type->GetSuperWeaponIndex(i, pThis->Owner) == index) {
+	for (auto i = 0; i < this->Type->GetSuperWeaponCount(); ++i)
+	{
+		if (this->Type->GetSuperWeaponIndex(i, pThis->Owner) == index)
+		{
 			return true;
 		}
 	}
 
-	if (withUpgrades) {
-		for (auto const& pUpgrade : pThis->Upgrades) {
-			if(const auto pUpgradeExt = BuildingTypeExtContainer::Instance.TryFind(pUpgrade)){
-				for (auto i = 0; i < pUpgradeExt->GetSuperWeaponCount(); ++i) {
-					if (pUpgradeExt->GetSuperWeaponIndex(i, pThis->Owner) == index) {
+	if (withUpgrades)
+	{
+		for (auto const& pUpgrade : pThis->Upgrades)
+		{
+			if (const auto pUpgradeExt = BuildingTypeExtContainer::Instance.TryFind(pUpgrade))
+			{
+				for (auto i = 0; i < pUpgradeExt->GetSuperWeaponCount(); ++i)
+				{
+					if (pUpgradeExt->GetSuperWeaponIndex(i, pThis->Owner) == index)
+					{
 						return true;
 					}
 				}
@@ -431,7 +443,7 @@ CoordStruct BuildingExtData::GetCenterCoords(BuildingClass* pBuilding, bool incl
 
 void BuildingExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	AnnounceInvalidPointer(CurrentAirFactory, ptr , bRemoved);
+	AnnounceInvalidPointer(CurrentAirFactory, ptr, bRemoved);
 	AnnounceInvalidPointer<TechnoClass*>(RegisteredJammers, ptr, bRemoved);
 
 	this->PrismForwarding.InvalidatePointer(ptr, bRemoved);
@@ -502,16 +514,16 @@ void BuildingExtData::UpdatePrimaryFactoryAI(BuildingClass* pThis)
 	for (auto& pBuilding : pOwner->Buildings)
 	{
 		if
-		(
-			pBuilding->Type->Factory == AbstractType::AircraftType
-			&& pBuilding->IsAlive
-			&& pBuilding->Health > 0
-			&& !pBuilding->InLimbo
-			&& !pBuilding->TemporalTargetingMe
-			&& !BuildingExtContainer::Instance.Find(pBuilding)->AboutToChronoshift
-			&& pBuilding->GetCurrentMission() != Mission::Selling
-			&& pBuilding->QueuedMission != Mission::Selling
-		)
+			(
+				pBuilding->Type->Factory == AbstractType::AircraftType
+				&& pBuilding->IsAlive
+				&& pBuilding->Health > 0
+				&& !pBuilding->InLimbo
+				&& !pBuilding->TemporalTargetingMe
+				&& !BuildingExtContainer::Instance.Find(pBuilding)->AboutToChronoshift
+				&& pBuilding->GetCurrentMission() != Mission::Selling
+				&& pBuilding->QueuedMission != Mission::Selling
+			)
 		{
 			if (!currFactory && pBuilding->Factory)
 				currFactory = pBuilding->Factory;
@@ -608,7 +620,7 @@ bool BuildingExtData::CanGrindTechno(BuildingClass* pBuilding, TechnoClass* pTec
 		return false;
 	}
 
-	if(pBuilding->Owner->IsAlliedWith(pTechno))
+	if (pBuilding->Owner->IsAlliedWith(pTechno))
 	{
 		const auto pExt = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
 
@@ -671,7 +683,8 @@ void BuildingExtData::LimboDeliver(BuildingTypeClass* pType, HouseClass* pOwner,
 		auto const pOwnerExt = HouseExtContainer::Instance.Find(pOwner);
 
 		// BuildLimit check goes before creation
-		if (HouseExtData::CheckBuildLimit(pOwner, pType , true) != BuildLimitStatus::NotReached) {
+		if (HouseExtData::CheckBuildLimit(pOwner, pType, true) != BuildLimitStatus::NotReached)
+		{
 			Debug::Log("Fail to Create Limbo Object[%s] because of BuildLimit ! \n", pType->get_ID());
 			return;
 		}
@@ -911,7 +924,6 @@ DEFINE_HOOK(0x43BCBD, BuildingClass_CTOR, 0x6)
 
 	BuildingExtContainer::Instance.Allocate(pItem);
 
-
 	return 0;
 }
 
@@ -958,9 +970,9 @@ DEFINE_HOOK(0x4541B2, BuildingClass_Save_Suffix, 0x6)
 // 	return pThis->LightSource == target ? 0x44E948 : 0x44E94E;
 // }
 
-void __fastcall BuildingClass_Detach_Wrapper(BuildingClass* pThis , DWORD , AbstractClass* target , bool all)
+void __fastcall BuildingClass_Detach_Wrapper(BuildingClass* pThis, DWORD, AbstractClass* target, bool all)
 {
 	BuildingExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
-	pThis->BuildingClass::PointerExpired(target , all);
+	pThis->BuildingClass::PointerExpired(target, all);
 }
 DEFINE_JUMP(VTABLE, 0x7E3EE4, GET_OFFSET(BuildingClass_Detach_Wrapper))

@@ -108,7 +108,8 @@ struct Handle
 		return this->Value;
 	}
 
-	constexpr T operator->() const noexcept {
+	constexpr T operator->() const noexcept
+	{
 		return get();
 	}
 
@@ -160,7 +161,8 @@ public:
 
 	TheaterSpecificSHP(SHPStruct* pSHP)
 		: value { pSHP }
-	{ }
+	{
+	}
 
 	//TheaterSpecificSHP& operator = (SHPStruct* pSHP)
 	//{
@@ -189,8 +191,9 @@ public:
 		return Savegame::WritePhobosStream(Stm, this->value);
 	}
 
-	~TheaterSpecificSHP() {
-		GameDelete<true, true>(std::exchange(value , nullptr));
+	~TheaterSpecificSHP()
+	{
+		GameDelete<true, true>(std::exchange(value, nullptr));
 	}
 
 private:
@@ -201,26 +204,30 @@ protected:
 	TheaterSpecificSHP& operator=(const TheaterSpecificSHP& other) = delete;
 };
 
-class CustomPalette {
+class CustomPalette
+{
 public:
-	enum class PaletteMode : unsigned int {
+	enum class PaletteMode : unsigned int
+	{
 		Default = 0,
 		Temperate = 1
 	};
 
-	PaletteMode Mode{ PaletteMode::Default };
-	Handle<ConvertClass* , UninitConvert> Convert { nullptr };
+	PaletteMode Mode { PaletteMode::Default };
+	Handle<ConvertClass*, UninitConvert> Convert { nullptr };
 	UniqueGamePtr<BytePalette> Palette { nullptr };
 
 	CustomPalette() = default;
-	explicit CustomPalette(PaletteMode mode) noexcept : Mode(mode) {};
+	explicit CustomPalette(PaletteMode mode) noexcept : Mode(mode) { };
 	~CustomPalette() = default;
 
-	ConvertClass* GetConvert() const {
+	ConvertClass* GetConvert() const
+	{
 		return this->Convert.get();
 	}
 
-	ConvertClass* GetOrDefaultConvert(ConvertClass* const& pDefault) const {
+	ConvertClass* GetOrDefaultConvert(ConvertClass* const& pDefault) const
+	{
 		return this->Convert.get() ? this->Convert.get() : pDefault;
 	}
 
@@ -247,59 +254,73 @@ protected:
 };
 
 // vector of char* with builtin storage
-class VectorNames {
+class VectorNames
+{
 protected:
 	DynamicVectorClass<const char*> Strings {};
-	char* Buffer{ nullptr };
+	char* Buffer { nullptr };
 
 public:
 	VectorNames() = default;
 
-	VectorNames(const char* pBuffer) {
+	VectorNames(const char* pBuffer)
+	{
 		this->Tokenize(pBuffer);
 	}
 
-	~VectorNames() {
+	~VectorNames()
+	{
 		this->Clear();
 	}
 
-	const char* operator[] (int index) const {
+	const char* operator[] (int index) const
+	{
 		return this->Strings.GetItemOrDefault(index);
 	}
 
-	const DynamicVectorClass<const char*>& Entries() const {
+	const DynamicVectorClass<const char*>& Entries() const
+	{
 		return this->Strings;
 	}
 
-	const char** ToString() const {
+	const char** ToString() const
+	{
 		return this->Strings.Items;
 	}
 
-	int Count() const {
+	int Count() const
+	{
 		return this->Strings.Count;
 	}
 
-	void Clear() {
-		if (this->Buffer) {
+	void Clear()
+	{
+		if (this->Buffer)
+		{
 			this->Strings.Clear();
 			YRMemory::Deallocate(this->Buffer);
 			this->Buffer = nullptr;
 		}
 	}
 
-	void Tokenize() {
-		if (this->Buffer) {
+	void Tokenize()
+	{
+		if (this->Buffer)
+		{
 			this->Strings.Reset();
 
 			char* context = nullptr;
-			for (auto cur = CRT::strtok(this->Buffer, ",", &context); cur && *cur; cur = CRT::strtok(nullptr, ",", &context)) {
+			for (auto cur = CRT::strtok(this->Buffer, ",", &context); cur && *cur; cur = CRT::strtok(nullptr, ",", &context))
+			{
 				this->Strings.AddItem(cur);
 			}
 		}
 	}
 
-	void Tokenize(const char* pBuffer) {
-		if (pBuffer) {
+	void Tokenize(const char* pBuffer)
+	{
+		if (pBuffer)
+		{
 			this->Clear();
 			this->Buffer = CRT::strdup(pBuffer);
 			this->Tokenize();
@@ -311,14 +332,17 @@ protected:
 };
 
 // a poor man's map with contiguous storage
-template <typename TKey, typename TValue , class customMem = std::allocator<std::pair<TKey , TValue>>>
-class PhobosMap {
+template <typename TKey, typename TValue, class customMem = std::allocator<std::pair<TKey, TValue>>>
+class PhobosMap
+{
 	using pair_t = std::pair<TKey, TValue>;
-	using container_t = std::vector<pair_t , customMem>;
+	using container_t = std::vector<pair_t, customMem>;
 public:
 
-	TValue& operator[] (const TKey& key) {
-		if (auto pValue = this->tryfind(key)) {
+	TValue& operator[] (const TKey& key)
+	{
+		if (auto pValue = this->tryfind(key))
+		{
 			return *pValue;
 		}
 		return this->insert_unchecked(key, TValue());
@@ -329,9 +353,11 @@ public:
 	//	return const_cast<TValue*>(pValue);
 	//}
 
-	TValue* tryfind(const TKey& key) {
+	TValue* tryfind(const TKey& key)
+	{
 		auto it = this->get_key_iterator(key);
-		if (it != this->values.end()) {
+		if (it != this->values.end())
+		{
 			return &it->second;
 		}
 
@@ -339,10 +365,12 @@ public:
 	}
 
 	// nonmodifiable
-	const TValue* tryfind(const TKey& key) const {
+	const TValue* tryfind(const TKey& key) const
+	{
 		auto it = this->get_key_iterator(key);
 
-		if (it != this->values.end()) {
+		if (it != this->values.end())
+		{
 			return &it->second;
 		}
 
@@ -350,79 +378,98 @@ public:
 	}
 
 	// nonmodifiable
-	TValue get_or_default(const TKey& key) const {
-		if (auto pValue = this->tryfind(key)) {
+	TValue get_or_default(const TKey& key) const
+	{
+		if (auto pValue = this->tryfind(key))
+		{
 			return *pValue;
 		}
 		return TValue();
 	}
 
 	// nonmodifiable
-	TValue get_or_default(const TKey& key, TValue def) const {
-		if (auto pValue = this->tryfind(key)) {
+	TValue get_or_default(const TKey& key, TValue def) const
+	{
+		if (auto pValue = this->tryfind(key))
+		{
 			return *pValue;
 		}
 		return def;
 	}
 
-	void erase(container_t::iterator iter) {
+	void erase(container_t::iterator iter)
+	{
 		this->values.erase(iter, this->values.end());
 	}
 
-	bool erase(const TKey& key) {
+	bool erase(const TKey& key)
+	{
 		auto it = this->get_key_iterator(key);
-		if (it != this->values.end()) {
+		if (it != this->values.end())
+		{
 			this->values.erase(it);
 			return true;
 		}
 		return false;
 	}
 
-	bool contains(const TKey& key) const {
+	bool contains(const TKey& key) const
+	{
 		return this->get_key_iterator(key) != values.end();
 	}
 
-	bool insert(const TKey& key, TValue value) {
-		if (!this->tryfind(key)) {
+	bool insert(const TKey& key, TValue value)
+	{
+		if (!this->tryfind(key))
+		{
 			this->insert_unchecked(key, std::move(value));
 			return true;
 		}
 		return false;
 	}
 
-	void empalace_unchecked(const TKey& key, TValue value) {
+	void empalace_unchecked(const TKey& key, TValue value)
+	{
 		this->insert_unchecked(key, std::move(value));
 	}
 
-	size_t size() const {
+	size_t size() const
+	{
 		return values.size();
 	}
 
-	bool empty() const {
+	bool empty() const
+	{
 		return values.empty();
 	}
 
-	void clear() {
+	void clear()
+	{
 		values.clear();
 	}
 
-	void reserve(size_t newsize) {
+	void reserve(size_t newsize)
+	{
 		values.reserve(newsize);
 	}
 
-	void resize(size_t newsize) {
+	void resize(size_t newsize)
+	{
 		values.resize(newsize);
 	}
 
-	bool load(PhobosStreamReader& Stm, bool RegisterForChange) {
+	bool load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
 		this->clear();
 
 		size_t size = 0;
 		auto ret = Stm.Load(size);
 
-		if (ret && size) {
+		if (ret && size)
+		{
 			this->values.resize(size);
-			for (size_t i = 0; i < size; ++i) {
+			for (size_t i = 0; i < size; ++i)
+			{
 				if (!Savegame::ReadPhobosStream(Stm, this->values[i].first, RegisterForChange)
 					|| !Savegame::ReadPhobosStream(Stm, this->values[i].second, RegisterForChange))
 				{
@@ -434,10 +481,12 @@ public:
 		return ret;
 	}
 
-	bool save(PhobosStreamWriter& Stm) const {
+	bool save(PhobosStreamWriter& Stm) const
+	{
 		Stm.Save(this->values.size());
 
-		for (const auto& [first,second] : this->values) {
+		for (const auto& [first, second] : this->values)
+		{
 			Savegame::WritePhobosStream(Stm, first);
 			Savegame::WritePhobosStream(Stm, second);
 		}
@@ -468,36 +517,49 @@ public:
 		return values.end();
 	}
 
-	auto back() const {
+	auto back() const
+	{
 		return values.back();
 	}
 
-	auto back() {
+	auto back()
+	{
 		return values.back();
 	}
 
-	auto get_key_iterator(const TKey& key) {
-		if constexpr (direct_comparable<TKey>){
-			return std::find_if(this->values.begin(), this->values.end(), [&](const container_t::value_type& item) {
-				return item.first == key;
+	auto get_key_iterator(const TKey& key)
+	{
+		if constexpr (direct_comparable<TKey>)
+		{
+			return std::find_if(this->values.begin(), this->values.end(), [&](const container_t::value_type& item)
+ {
+	 return item.first == key;
 			});
-		} else {
+		}
+		else
+		{
 			return std::find(this->values.begin(), this->values.end(), key);
 		}
 	}
 
 	// nonmodifiable
-	auto get_key_iterator(const TKey& key) const {
-		if constexpr (direct_comparable<TKey>) {
-			return std::find_if(this->values.begin(), this->values.end(), [&](const container_t::value_type& item) {
-				return item.first == key;
+	auto get_key_iterator(const TKey& key) const
+	{
+		if constexpr (direct_comparable<TKey>)
+		{
+			return std::find_if(this->values.begin(), this->values.end(), [&](const container_t::value_type& item)
+ {
+	 return item.first == key;
 			});
-		} else {
+		}
+		else
+		{
 			return std::find(this->values.begin(), this->values.end(), key);
 		}
 	}
 
-	TValue& insert_unchecked(const TKey& key, TValue value) {
+	TValue& insert_unchecked(const TKey& key, TValue value)
+	{
 		this->values.emplace_back(key, std::move(value));
 		return this->values.back().second;
 	}
@@ -508,13 +570,15 @@ private:
 };
 
 // pcx filename storage with optional automatic loading
-class PhobosPCXFile {
+class PhobosPCXFile
+{
 	static constexpr const size_t Capacity = 0x20;
 public:
-	explicit PhobosPCXFile() : Surface(nullptr) , filename() {}
+	explicit PhobosPCXFile() : Surface(nullptr), filename() { }
 
-	PhobosPCXFile(const char* pFilename) : PhobosPCXFile() {
-			*this = pFilename;
+	PhobosPCXFile(const char* pFilename) : PhobosPCXFile()
+	{
+		*this = pFilename;
 	}
 
 	~PhobosPCXFile() = default;
@@ -522,10 +586,11 @@ public:
 	PhobosPCXFile(const PhobosPCXFile& other) = default;
 	PhobosPCXFile& operator=(const PhobosPCXFile& other) = default;
 
-	PhobosPCXFile& operator=(const char* pFilename) {
-
+	PhobosPCXFile& operator=(const char* pFilename)
+	{
 		// fucker
-		if (!pFilename || !*pFilename || !strlen(pFilename)) {
+		if (!pFilename || !*pFilename || !strlen(pFilename))
+		{
 			this->Clear();
 			return *this;
 		}
@@ -543,10 +608,11 @@ public:
 		return *this;
 	}
 
-	PhobosPCXFile& operator=(std::string& pFilename) {
-
+	PhobosPCXFile& operator=(std::string& pFilename)
+	{
 		// fucker
-		if (pFilename.empty() || !*pFilename.data()) {
+		if (pFilename.empty() || !*pFilename.data())
+		{
 			this->Clear();
 			return *this;
 		}
@@ -556,7 +622,7 @@ public:
 		_strlwr_s(data);
 
 		BSurface* pSource = PCX::Instance->GetSurface(this->filename);
-		if (!pSource &&  PCX::Instance->ForceLoadFile(this->filename, 2, 0))
+		if (!pSource && PCX::Instance->ForceLoadFile(this->filename, 2, 0))
 			pSource = PCX::Instance->GetSurface(this->filename);
 
 		this->Surface = pSource;
@@ -564,22 +630,26 @@ public:
 		return *this;
 	}
 
-	const FixedString<Capacity>::data_type& GetFilename() const {
+	const FixedString<Capacity>::data_type& GetFilename() const
+	{
 		return this->filename.data();
 	}
 
-	BSurface* GetSurface() const {
+	BSurface* GetSurface() const
+	{
 		return this->Surface;
 	}
 
-	bool Exists() const {
+	bool Exists() const
+	{
 		return this->Surface;
 	}
 
-	bool Read(INIClass* pINI, const char* pSection, const char* pKey, const char* pDefault = "") {
+	bool Read(INIClass* pINI, const char* pSection, const char* pKey, const char* pDefault = "")
+	{
 		char buffer[Capacity];
-		if (pINI->ReadString(pSection, pKey, pDefault, buffer) > 0) {
-
+		if (pINI->ReadString(pSection, pKey, pDefault, buffer) > 0)
+		{
 			std::string cachedWithExt = _strlwr(buffer);
 
 			if (cachedWithExt.find(".pcx") == std::string::npos)
@@ -587,7 +657,8 @@ public:
 
 			*this = cachedWithExt;
 
-			if (this->filename && !this->Surface) {
+			if (this->filename && !this->Surface)
+			{
 				Debug::INIParseFailed(pSection, pKey, this->filename, "PCX file not found.");
 			}
 		}
@@ -595,8 +666,8 @@ public:
 		return buffer[0] != 0;
 	}
 
-	bool Load(PhobosStreamReader& Stm, bool RegisterForChange) {
-
+	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
 		this->Clear();
 		void* oldPtr;
 		const auto ret = Stm.Load(oldPtr) && Stm.Load(this->filename);
@@ -604,15 +675,17 @@ public:
 		if (!ret)
 			return false;
 
-		if (oldPtr) {
+		if (oldPtr)
+		{
 			BSurface* pSource = PCX::Instance->GetSurface(this->filename);
-			if( !pSource && PCX::Instance->LoadFile(this->filename))
+			if (!pSource && PCX::Instance->LoadFile(this->filename))
 				pSource = PCX::Instance->GetSurface(this->filename, nullptr);
 
 			this->Surface = pSource;
 
-			if (this->filename && !this->Surface) {
-				Debug::Log("PCX file[%s] not found.\n",this->filename.data());
+			if (this->filename && !this->Surface)
+			{
+				Debug::Log("PCX file[%s] not found.\n", this->filename.data());
 			}
 
 			SwizzleManagerClass::Instance().Here_I_Am((long)oldPtr, this->Surface);
@@ -621,7 +694,8 @@ public:
 		return true;
 	}
 
-	bool Save(PhobosStreamWriter& Stm) const {
+	bool Save(PhobosStreamWriter& Stm) const
+	{
 		Stm.Save(this->Surface);
 		Stm.Save(this->filename);
 		return true;
@@ -629,7 +703,8 @@ public:
 
 private:
 
-	void Clear() {
+	void Clear()
+	{
 		this->Surface = nullptr;
 		this->filename = nullptr;
 	}
@@ -637,16 +712,17 @@ private:
 	//mutable UniqueGamePtrB<BSurface> Surface;
 	BSurface* Surface;
 	FixedString<Capacity> filename;
-
 };
 
 // provides storage for a csf label with automatic lookup.
-class CSFText {
+class CSFText
+{
 public:
-	CSFText() noexcept {}
-	explicit CSFText(nullptr_t) noexcept {}
+	CSFText() noexcept { }
+	explicit CSFText(nullptr_t) noexcept { }
 
-	explicit CSFText(const char* label) noexcept {
+	explicit CSFText(const char* label) noexcept
+	{
 		*this = label;
 	}
 
@@ -655,13 +731,16 @@ public:
 	CSFText& operator = (CSFText const& rhs) = default;
 	CSFText(const CSFText& other) = default;
 
-	const CSFText& operator = (const char* label) {
-		if (this->Label != label) {
+	const CSFText& operator = (const char* label)
+	{
+		if (this->Label != label)
+		{
 			this->Label.assign(label);
 
 			this->Text = nullptr;
 
-			if (this->Label) {
+			if (this->Label)
+			{
 				this->Text = StringTable::LoadString(this->Label);
 			}
 		}
@@ -670,9 +749,10 @@ public:
 	}
 
 	template<bool check = true>
-	void __forceinline PrintAsMessage(int colorScheme) const {
-
-		if constexpr (check) {
+	void __forceinline PrintAsMessage(int colorScheme) const
+	{
+		if constexpr (check)
+		{
 			if (this->empty())
 				return;
 		}
@@ -680,18 +760,23 @@ public:
 		MessageListClass::Instance->PrintMessage(this->Text, RulesClass::Instance->MessageDelay, colorScheme);
 	}
 
-	operator const wchar_t* () const {
+	operator const wchar_t* () const
+	{
 		return this->Text;
 	}
 
-	bool empty() const {
+	bool empty() const
+	{
 		return !this->Text || !*this->Text;
 	}
 
-	bool load(PhobosStreamReader& Stm, bool RegisterForChange) {
+	bool load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
 		this->Text = nullptr;
-		if (Stm.Load(this->Label.data())) {
-			if (this->Label) {
+		if (Stm.Load(this->Label.data()))
+		{
+			if (this->Label)
+			{
 				this->Text = StringTable::LoadString(this->Label);
 			}
 			return true;
@@ -699,7 +784,8 @@ public:
 		return false;
 	}
 
-	bool save(PhobosStreamWriter& Stm) const {
+	bool save(PhobosStreamWriter& Stm) const
+	{
 		Stm.Save(this->Label.data());
 		return true;
 	}
@@ -707,17 +793,18 @@ public:
 public:
 
 	FixedString<0x20> Label;
-	const wchar_t* Text{ nullptr };
-
+	const wchar_t* Text { nullptr };
 };
 
 // a wrapper for an optional value
 template <typename T, bool Persistable = false>
-struct OptionalStruct {
+struct OptionalStruct
+{
 	OptionalStruct() = default;
-	explicit OptionalStruct(T value) noexcept : Value(std::move(value)), HasValue(true) {}
+	explicit OptionalStruct(T value) noexcept : Value(std::move(value)), HasValue(true) { }
 
-	OptionalStruct& operator= (T value) {
+	OptionalStruct& operator= (T value)
+	{
 		this->Value = std::move(value);
 		this->HasValue = true;
 		return *this;
@@ -728,75 +815,92 @@ struct OptionalStruct {
 	OptionalStruct(const OptionalStruct& other) = default;
 	OptionalStruct& operator=(const OptionalStruct& other) = default;
 
-	operator T& () noexcept {
+	operator T& () noexcept
+	{
 		return this->Value;
 	}
 
-	operator const T& () const noexcept {
+	operator const T& () const noexcept
+	{
 		return this->Value;
 	}
 
-	void clear() {
+	void clear()
+	{
 		this->Value = T();
 		this->HasValue = false;
 	}
 
-	bool empty() const noexcept {
+	bool empty() const noexcept
+	{
 		return !this->HasValue;
 	}
 
-	explicit operator bool() const noexcept {
+	explicit operator bool() const noexcept
+	{
 		return this->HasValue;
 	}
 
-	bool has_value() const noexcept {
+	bool has_value() const noexcept
+	{
 		return this->HasValue;
 	}
 
-	bool isset() const noexcept {
+	bool isset() const noexcept
+	{
 		return this->HasValue;
 	}
 
-	const T& get() const noexcept {
+	const T& get() const noexcept
+	{
 		return this->Value;
 	}
 
-	bool load(PhobosStreamReader& Stm, bool RegisterForChange) {
+	bool load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
 		this->clear();
 
 		return load(Stm, RegisterForChange, std::bool_constant<Persistable>());
 	}
 
-	bool save(PhobosStreamWriter& Stm) const {
+	bool save(PhobosStreamWriter& Stm) const
+	{
 		return save(Stm, std::bool_constant<Persistable>());
 	}
 
 private:
-	bool load(PhobosStreamReader& Stm, bool RegisterForChange, std::true_type) {
-		if (Stm.Load(this->HasValue)) {
-			if (!this->HasValue || Savegame::ReadPhobosStream(Stm, this->Value, RegisterForChange)) {
+	bool load(PhobosStreamReader& Stm, bool RegisterForChange, std::true_type)
+	{
+		if (Stm.Load(this->HasValue))
+		{
+			if (!this->HasValue || Savegame::ReadPhobosStream(Stm, this->Value, RegisterForChange))
+			{
 				return true;
 			}
 		}
 		return false;
 	}
 
-	bool load(PhobosStreamReader& Stm, bool RegisterForChangestd, std::false_type) {
+	bool load(PhobosStreamReader& Stm, bool RegisterForChangestd, std::false_type)
+	{
 		return true;
 	}
 
-	bool save(PhobosStreamWriter& Stm, std::true_type) const {
+	bool save(PhobosStreamWriter& Stm, std::true_type) const
+	{
 		Stm.Save(this->HasValue);
-		if (this->HasValue) {
+		if (this->HasValue)
+		{
 			Savegame::WritePhobosStream(Stm, this->Value);
 		}
 		return true;
 	}
 
-	bool save(PhobosStreamWriter& Stm, std::false_type) const {
+	bool save(PhobosStreamWriter& Stm, std::false_type) const
+	{
 		return true;
 	}
 
-	T Value{};
-	bool HasValue{ false };
+	T Value {};
+	bool HasValue { false };
 };

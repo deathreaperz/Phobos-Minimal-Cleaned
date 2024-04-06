@@ -15,7 +15,7 @@ struct TechnoTypeConvertData
 	TechnoTypeClass* To { nullptr };
 	AffectedHouse Eligible { AffectedHouse::All };
 
-	static void ApplyConvert(const std::vector<TechnoTypeConvertData>& nPairs , HouseClass* pHouse, TechnoClass* pTarget , AnimTypeClass* SucceededAnim);
+	static void ApplyConvert(const std::vector<TechnoTypeConvertData>& nPairs, HouseClass* pHouse, TechnoClass* pTarget, AnimTypeClass* SucceededAnim);
 	static void Parse(bool useDevelopversion, std::vector<TechnoTypeConvertData>& list, INI_EX& exINI, const char* pSection, const char* pKey);
 
 	bool Load(PhobosStreamReader& stm, bool registerForChange)

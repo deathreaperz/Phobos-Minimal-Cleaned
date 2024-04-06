@@ -30,7 +30,6 @@ public:
 		void Serialize(T& Stm);
 	};
 
-
 	class ExtContainer final : public Container<ParasiteExt::ExtData>
 	{
 	public:

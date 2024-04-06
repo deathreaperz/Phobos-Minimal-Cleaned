@@ -13,10 +13,10 @@ void SpawnSupportFunctional::Construct(TechnoClass* pThis)
 	auto const& pSupportWeapon = pThis->Veterancy.IsElite() ?
 		pTypeExt->MySpawnSupportDatas.EliteSupportWeapon : pTypeExt->MySpawnSupportDatas.SupportWeapon;
 
-
 	if (pTypeExt->MySpawnSupportDatas.Enable && pSupportWeapon.Get())
 	{
-		if (!pThis->SpawnManager) {
+		if (!pThis->SpawnManager)
+		{
 			pThis->SpawnManager = GameCreate<SpawnManagerClass>(pThis, pType->Spawns, pType->SpawnsNumber, pType->SpawnRegenRate, pType->SpawnReloadRate);
 		}
 	}
@@ -74,7 +74,6 @@ void SpawnSupportFunctional::FireSupportWeaponToSpawn(TechnoClass* pThis, Abstra
 
 		if (useROF)
 			pExt->MySpawnSuport.supportFireROF.Start(pSupportWeapon->ROF);
-
 	}
 }
 
@@ -115,10 +114,9 @@ void SpawnSupportFunctional::AI(TechnoClass* pThis)
 	//		pExt->MySpawnSuport.spawnFireFlag = false;
 	//	}
 	//}
-
 }
 
 void SpawnSupportFunctional::OnFire(TechnoClass* pThis, AbstractClass* pTarget)
 {
-	SpawnSupportFunctional::FireSupportWeaponToSpawn(pThis, pTarget,true);
+	SpawnSupportFunctional::FireSupportWeaponToSpawn(pThis, pTarget, true);
 }

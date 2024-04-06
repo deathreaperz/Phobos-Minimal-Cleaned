@@ -50,8 +50,10 @@ void DumpTypeDataArrayToFile::Dump()
 {
 	CCFileClass file = CCFileClass("DumpRulesTypes.ini");
 
-	if (!file.Exists()) {
-		if (!file.CreateFileA()) {
+	if (!file.Exists())
+	{
+		if (!file.CreateFileA())
+		{
 			return;
 		}
 	}

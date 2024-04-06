@@ -30,7 +30,8 @@ const wchar_t* MemoryDumperCommandClass::GetUIDescription() const
 
 void MemoryDumperCommandClass::Execute(WWKey dwUnk) const
 {
-	if (this->CheckDebugDeactivated()) {
+	if (this->CheckDebugDeactivated())
+	{
 		return;
 	}
 

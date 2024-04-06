@@ -36,7 +36,7 @@
 //#pragma comment(lib, "version.lib")
 //#pragma comment(lib, "comctl32.lib")
 
-#ifdef EXPERIMENTAL_IMGUI
+#ifndef EXPERIMENTAL_IMGUI
 DEFINE_HOOK(0x5D4E66, Windows_Message_Handler_Add, 0x7)
 {
 	PhobosWindowClass::Callback();
@@ -234,19 +234,23 @@ void NOINLINE Phobos::CmdLineParse(char** ppArgs, int nNumArgs)
 		else if (!strncasecmp(pArg, "-AFFINITY:", 0xAu))
 		{
 			int result = 1;
-			if (Parser<int>::Parse(pArg + 0xAu, &result) && result < 0) {
+			if (Parser<int>::Parse(pArg + 0xAu, &result) && result < 0)
+			{
 				result = 0;
 			}
 
 			processAffinityMask = result;
-		} else {
+		}
+		else
+		{
 			const std::string cur = pArg;
-			if (cur.starts_with("-ExceptionHandler=")) {
-
+			if (cur.starts_with("-ExceptionHandler="))
+			{
 				const size_t delim = cur.find("=");
 				const std::string value = cur.substr(delim + 1, cur.size() - delim - 1);
 
-				if (!value.empty()) {
+				if (!value.empty())
+				{
 					Parser<bool>::Parse(value.data(), &dontSetExceptionHandler);
 				}
 			}
@@ -255,9 +259,10 @@ void NOINLINE Phobos::CmdLineParse(char** ppArgs, int nNumArgs)
 		SpawnerMain::CmdLineParse(pArg);
 	}
 
-	if (Debug::LogEnabled) {
+	if (Debug::LogEnabled)
+	{
 		Debug::LogFileOpen();
-		Debug::Log("Initialized Phobos %s .\n" , PRODUCT_VERSION);
+		Debug::Log("Initialized Phobos %s .\n", PRODUCT_VERSION);
 		Debug::Log("args %s\n", args.c_str());
 
 		if (consoleEnabled)
@@ -329,12 +334,12 @@ void Phobos::Config::Read()
 		Patch::Apply_RAW(0x55D77A, sizeof(defaultspeed), &defaultspeed);
 
 		// when speed control is off. Doesn't need a hook.
-		Patch::Apply_RAW(0x55D78D , sizeof(defaultspeed), &defaultspeed);
+		Patch::Apply_RAW(0x55D78D, sizeof(defaultspeed), &defaultspeed);
 	}
 
 	CCFileClass UIMD_ini { UIMD_FILENAME };
 
-	if(UIMD_ini.Exists() && UIMD_ini.Open(FileAccessMode::Read))
+	if (UIMD_ini.Exists() && UIMD_ini.Open(FileAccessMode::Read))
 	{
 		CCINIClass INI_UIMD { };
 		INI_UIMD.ReadCCFile(&UIMD_ini);
@@ -415,7 +420,6 @@ void Phobos::Config::Read()
 
 			Phobos::UI::CenterPauseMenuBackground =
 				INI_UIMD.ReadBool(SIDEBAR_SECTION_T, "CenterPauseMenuBackground", Phobos::UI::CenterPauseMenuBackground);
-
 		}
 	}
 	else
@@ -430,7 +434,6 @@ void Phobos::Config::Read()
 		INI_RulesMD.ReadCCFile(&RULESMD_ini);
 
 		Debug::Log("Loading early %s file\n", GameStrings::RULESMD_INI());
-
 
 		if (!Phobos::Otamaa::IsAdmin)
 			Phobos::Config::DevelopmentCommands = INI_RulesMD.ReadBool(GLOBALCONTROLS_SECTION, "DebugKeysEnabled", Phobos::Config::DevelopmentCommands);
@@ -462,7 +465,8 @@ void Phobos::Config::Read()
 			}
 		}
 
-		if (INI_RulesMD.ReadBool(GENERAL_SECTION, "FixTransparencyBlitters", false)) {
+		if (INI_RulesMD.ReadBool(GENERAL_SECTION, "FixTransparencyBlitters", false))
+		{
 			BlittersFix::Apply();
 		}
 
@@ -481,7 +485,7 @@ void Phobos::ThrowUsageWarning(CCINIClass* pINI)
 	//just add your mod name or remove these code if you dont like it
 	if (!Phobos::Otamaa::IsAdmin)
 	{
-		if(pINI->ReadString(GENERAL_SECTION, GameStrings::Name, "", Phobos::readBuffer) <= 0)
+		if (pINI->ReadString(GENERAL_SECTION, GameStrings::Name, "", Phobos::readBuffer) <= 0)
 			return;
 
 		const std::string ModNameTemp = Phobos::readBuffer;
@@ -564,7 +568,6 @@ void Phobos::InitAdminDebugMode()
 		L"Press OK to continue YR execution.",
 		L"Debugger Notice", MB_OK);
 	}
-
 }
 
 void Phobos::InitConsole()
@@ -603,11 +606,14 @@ void Phobos::ExeRun()
 	Phobos::ExecuteLua();
 	Phobos::InitAdminDebugMode();
 
-	for (auto&dlls : Patch::ModuleDatas) {
-		if (IS_SAME_STR_(dlls.ModuleName.c_str(), "cncnet5.dll")) {
+	for (auto& dlls : Patch::ModuleDatas)
+	{
+		if (IS_SAME_STR_(dlls.ModuleName.c_str(), "cncnet5.dll"))
+		{
 			HasCNCnet = true;
 		}
-		else if (IS_SAME_STR_(dlls.ModuleName.c_str(), ARES_DLL_S)) {
+		else if (IS_SAME_STR_(dlls.ModuleName.c_str(), ARES_DLL_S))
+		{
 			Debug::FatalErrorAndExit("dont need Ares.dll to run! \n");
 		}
 	}
@@ -635,10 +641,10 @@ bool Phobos::DetachFromDebugger()
 {
 	DWORD ret = false;
 
-	for (auto& module : Patch::ModuleDatas) {
-
-		if (IS_SAME_STR_(module.ModuleName.c_str(), "ntdll.dll") && module.Handle != NULL) {
-
+	for (auto& module : Patch::ModuleDatas)
+	{
+		if (IS_SAME_STR_(module.ModuleName.c_str(), "ntdll.dll") && module.Handle != NULL)
+		{
 			auto const NtRemoveProcessDebug =
 				(NTSTATUS(__stdcall*)(HANDLE, HANDLE))GetProcAddress(module.Handle, "NtRemoveProcessDebug");
 			auto const NtSetInformationDebugObject =
@@ -828,7 +834,7 @@ DEFINE_HOOK(0x7cd8ef, Game_ExeTerminate, 9)
 #endif
 {
 	Phobos::ExeTerminate();
-#ifdef EXPERIMENTAL_IMGUI
+#ifndef EXPERIMENTAL_IMGUI
 	PhobosWindowClass::Destroy();
 #endif
 	CRT::exit_noreturn(0);
@@ -869,7 +875,7 @@ DEFINE_HOOK(0x52F639, _YR_CmdLineParse, 0x5)
 	Phobos::CmdLineParse(ppArgs, nNumArgs);
 	Debug::LogDeferredFinalize();
 	Phobos::InitConsole();
-#ifdef EXPERIMENTAL_IMGUI
+#ifndef EXPERIMENTAL_IMGUI
 	PhobosWindowClass::Create();
 #endif
 	return 0;

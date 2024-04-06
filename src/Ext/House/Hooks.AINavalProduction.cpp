@@ -48,9 +48,12 @@ DEFINE_HOOK(0x444113, BuildingClass_ExitObject_NavalProductionFix1, 0x6)
 	GET(BuildingClass* const, pThis, ESI);
 	GET(UnitClass* const, pObject, EDI);
 
-	if (pObject->Type->Naval) {
+	if (pObject->Type->Naval)
+	{
 		HouseExtContainer::Instance.Find(pThis->Owner)->ProducingNavalUnitTypeIndex = -1;
-	} else {
+	}
+	else
+	{
 		pThis->Owner->ProducingUnitTypeIndex = -1;
 	}
 
@@ -127,7 +130,6 @@ DEFINE_HOOK(0x450319, BuildingClass_AI_Factory_NavalProductionFix, 0x6)
 		break;
 	}
 
-
 	R->EAX(pTechnoType);
 	return SkipGameCode;
 }
@@ -139,9 +141,12 @@ DEFINE_HOOK(0x4CA0B1, FactoryClass_Abandon_NavalProductionFix, 0x6)
 	GET(FactoryClass* const, pThis, ESI);
 	GET(UnitClass*, pObject, ECX);
 
-	if (pObject->Type->Naval) {
+	if (pObject->Type->Naval)
+	{
 		HouseExtContainer::Instance.Find(pThis->Owner)->ProducingNavalUnitTypeIndex = -1;
-	} else {
+	}
+	else
+	{
 		pThis->Owner->ProducingUnitTypeIndex = -1;
 	}
 
@@ -175,7 +180,7 @@ DEFINE_HOOK(0x4F91A4, HouseClass_AI_BuildingProductionCheck, 0x6)
 		&& !AircraftTypeClass::Array->Items[pThis->ProducingAircraftTypeIndex]->FindFactory(true, true, true, pThis))
 		cantBuild = true;
 
-	return cantBuild ?  CheckBuildingProduction : SkipGameCode;
+	return cantBuild ? CheckBuildingProduction : SkipGameCode;
 }
 
 DEFINE_HOOK(0x4FE0A3, HouseClass_AI_RaiseMoney_NavalProductionFix, 0x6)

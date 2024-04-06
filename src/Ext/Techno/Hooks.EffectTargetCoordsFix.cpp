@@ -28,14 +28,14 @@ DEFINE_HOOK(0x70BCDC, TechnoClass_GetTargetCoords_BuildingFix, 0x6)
 	GET(const AbstractClass* const, pTarget, ECX);
 	LEA_STACK(CoordStruct*, nCoord, 0x40 - 0x18);
 
-	if (const auto pBuilding = specific_cast<const BuildingClass*>(pTarget)) {
+	if (const auto pBuilding = specific_cast<const BuildingClass*>(pTarget))
+	{
 		//auto const& nTargetCoord = pBuilding->Type->TargetCoordOffset;
 		//Debug::Log("__FUNCTION__ Building  Target [%s] with TargetCoord %d , %d , %d \n", pBuilding->get_ID(), nTargetCoord.X , nTargetCoord.Y , nTargetCoord.Z);
 		pBuilding->GetTargetCoords(nCoord);
 
 		R->EAX(nCoord);
 		return 0x70BCE6u;
-
 	}// else {
 	//	pTarget->GetCenterCoords(nCoord);
 	//}
@@ -60,7 +60,8 @@ DEFINE_HOOK(0x70C6AF, TechnoClass_Railgun_TargetCoords, 0x6)
 	{
 		auto const pCell = static_cast<CellClass*>(pTarget);
 		pCell->GetCoords(pBuffer);
-		if (pCell->ContainsBridge()) {
+		if (pCell->ContainsBridge())
+		{
 			pBuffer->Z += Unsorted::BridgeHeight;
 		}
 
@@ -78,21 +79,23 @@ DEFINE_HOOK(0x70C6AF, TechnoClass_Railgun_TargetCoords, 0x6)
 // Do not adjust map coordinates for railgun particles that are below cell coordinates.
 DEFINE_HOOK(0x62B897, ParticleClass_CTOR_RailgunCoordAdjust, 0x5)
 {
-	enum { SkipCoordAdjust = 0x62B8CB  ,Continue = 0x0};
+	enum { SkipCoordAdjust = 0x62B8CB, Continue = 0x0 };
 
 	GET(ParticleClass*, pThis, ESI);
 	const auto pParticleSys = pThis->ParticleSystem;
 	const auto pParticleTypeExt = ParticleTypeExtContainer::Instance.Find(pThis->Type);
 
-	if(pParticleSys
+	if (pParticleSys
 	&& (pParticleSys->Type->BehavesLike == ParticleSystemTypeBehavesLike::Railgun
 		|| pParticleSys->Type->BehavesLike == ParticleSystemTypeBehavesLike::Fire)
-	){
+	)
+	{
 		GET(CoordStruct*, pCoordBase, EDI);
-		LEA_STACK(CoordStruct* , pCoord, 0x10);
+		LEA_STACK(CoordStruct*, pCoord, 0x10);
 
 		//restore overriden instruction
-		if(!pParticleTypeExt->ReadjustZ) {
+		if (!pParticleTypeExt->ReadjustZ)
+		{
 			pCoord->X = pCoordBase->X;
 			pCoord->Y = pCoordBase->Y;
 			pCoord->Z = pCoordBase->Z;
@@ -282,7 +285,8 @@ DEFINE_HOOK(0x6FF43F, TechnoClass_FireAt_Additional, 0x6)
 
 			//pThis techno was die after after getting affect of FeedbackWeapon
 			//if the function not bail out , it will crash the game because the vtable is already invalid
-			if(!pThis->IsAlive) {
+			if (!pThis->IsAlive)
+			{
 				return 0x6FF92F;
 			}
 		}
@@ -346,7 +350,7 @@ DEFINE_HOOK(0x6FF656, TechnoClass_FireAt_Additionals, 0xA)
 
 #ifdef PERFORMANCE_HEAVY
 	// Restore original target values and unset obstacle cell.
-	*pTargetCoords = std::exchange(FireAtTemp::originalTargetCoords, CoordStruct::Empty);
+	* pTargetCoords = std::exchange(FireAtTemp::originalTargetCoords, CoordStruct::Empty);
 	std::exchange(FireAtTemp::pOriginalTarget, nullptr);
 	std::exchange(FireAtTemp::pObstacleCell, nullptr);
 	R->EDI(pTarget);

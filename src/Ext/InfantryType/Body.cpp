@@ -79,7 +79,7 @@ void InfantryTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	INI_EX iniEX_art(CCINIClass::INI_Art());
 	const auto pSection_art = this->AttachedToObject->ImageFile;
 
-	this->Is_Deso.Read(exINI, pID,  "IsDesolator");
+	this->Is_Deso.Read(exINI, pID, "IsDesolator");
 	this->Is_Cow.Read(exINI, pID, "IsCow");
 	this->C4Delay.Read(exINI, pID, "C4Delay");
 	this->C4ROF.Read(exINI, pID, "C4ROF");
@@ -127,7 +127,6 @@ void InfantryTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	//temp = { pWeaponReader , nSecData->FLH , nSecData->BarrelLength, nSecData->BarrelThickness,  nSecData->TurretLocked };
 	//std::memcpy(this->CrawlingWeaponDatas  + 2, &temp, sizeof(WeaponStruct));
 
-
 	//pWeaponReader.Read(exINI, pID, "Secondary.EliteCrawlWeapon", true);
 	//temp = { pWeaponReader , nSecEliteData->FLH , nSecEliteData->BarrelLength, nSecEliteData->BarrelThickness,  nSecEliteData->TurretLocked };
 	//std::memcpy(this->CrawlingWeaponDatas + 3, &temp, sizeof(WeaponStruct));
@@ -167,7 +166,7 @@ InfantryTypeExtContainer InfantryTypeExtContainer::Instance;
 DEFINE_HOOK(0x523970, InfantryTypeClass_CTOR, 0x5)
 {
 	GET(InfantryTypeClass*, pItem, ESI);
-	if(auto pExt = InfantryTypeExtContainer::Instance.Allocate(pItem))
+	if (auto pExt = InfantryTypeExtContainer::Instance.Allocate(pItem))
 		pExt->Type = TechnoTypeExtContainer::Instance.Find(pItem);
 	return 0;
 }
@@ -201,11 +200,11 @@ DEFINE_HOOK(0x524C52, InfantryTypeClass_Save_Suffix, 0x7)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x52474E , InfantryTypeClass_LoadFromINI , 0x5)
+DEFINE_HOOK_AGAIN(0x52474E, InfantryTypeClass_LoadFromINI, 0x5)
 DEFINE_HOOK(0x52473F, InfantryTypeClass_LoadFromINI, 0x5)
 {
 	GET(InfantryTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, 0xD0);
-	InfantryTypeExtContainer::Instance.LoadFromINI(pItem, pINI , R->Origin() == 0x52474E);
+	InfantryTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x52474E);
 	return 0;
 }

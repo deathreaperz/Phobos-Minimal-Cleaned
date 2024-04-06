@@ -64,7 +64,6 @@ public:
 	*/
 	bool WriteBlockToStream(IStream* pStm) const;
 
-
 	// primitive save/load - should not be specialized
 
 	/**
@@ -78,7 +77,6 @@ public:
 	* moves the internal position forward
 	*/
 	void Write(const data_t* Value, size_t Size);
-
 
 	/**
 	* attempts to read the data from internal storage into {Value}
@@ -109,7 +107,8 @@ public:
 	explicit PhobosStreamWorkerBase(PhobosByteStream& Stream) :
 		stream(&Stream),
 		success(true)
-	{ }
+	{
+	}
 
 	PhobosStreamWorkerBase(const PhobosStreamWorkerBase&) = delete;
 
@@ -285,7 +284,7 @@ private:
 	void EmitSwizzleWarning(long id, void* pointer, std::true_type) const;
 	void EmitSwizzleWarning(long id, void* pointer, std::false_type) const { }
 
-public :
+public:
 	template<typename T>
 	PhobosStreamReader& operator>>(T& dt)
 	{
@@ -410,7 +409,8 @@ public:
 		return *this;
 	}
 
-	operator bool() const {
+	operator bool() const
+	{
 		return this->success;
 	}
 };

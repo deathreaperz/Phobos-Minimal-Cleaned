@@ -71,7 +71,7 @@ void ShowAnimNameCommandClass::AI()
 			//}
 
 			std::wstring pText(sizeof(pTech->Type->ID) + 0x1, L'#');
-			mbstowcs(&pText[0], pTech->Type->ID, 0x18 );
+			mbstowcs(&pText[0], pTech->Type->ID, 0x18);
 			Point2D pixelOffset = Point2D::Empty;
 			int width = 0, height = 0;
 			BitFont::Instance->GetTextDimension(pText.c_str(), &width, &height, 120);

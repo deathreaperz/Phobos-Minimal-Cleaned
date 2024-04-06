@@ -38,7 +38,8 @@ DEFINE_STRONG_HOOK(0x6D7A46, TacticalClass_DrawPixelFX_Tiberium, 0x7)
 
 	bool bDraw = false;
 
-	if (const auto pTiberium = CellExtData::GetTiberium(pCell)) {
+	if (const auto pTiberium = CellExtData::GetTiberium(pCell))
+	{
 		if (TiberiumExtContainer::Instance.Find(pTiberium)->EnablePixelFXAnim)
 			bDraw = pTiberium->Value;
 	}
@@ -58,13 +59,15 @@ DEFINE_HOOK(0x47F860, CellClass_DrawOverlay_Tiberium, 0x8) // B
 
 	const auto pTibExt = TiberiumExtContainer::Instance.Find(pTiberium);
 
-	if (!pTibExt) {
+	if (!pTibExt)
+	{
 		Debug::Log("CellClass_DrawOverlay_Tiberium TiberiumExt for [%s] is missing ! \n", pTiberium->ID);
 		R->EBX(pTiberium);
 		return 0x47F882;
 	}
 
-	if (!pTibExt->EnableLighningFix.Get()) {
+	if (!pTibExt->EnableLighningFix.Get())
+	{
 		R->EBX(pTiberium);
 		return 0x47F882;
 	}
@@ -83,7 +86,8 @@ DEFINE_HOOK(0x47F860, CellClass_DrawOverlay_Tiberium, 0x8) // B
 	const int nOreTint = std::clamp(nTint, 0, 1000);
 	auto nShadowFrame = (nIndex + pShape->Frames / 2);
 	ConvertClass* pDecided = FileSystem::x_PAL();
-	if (const auto pCustom = pTibExt->Palette) {
+	if (const auto pCustom = pTibExt->Palette)
+	{
 		pDecided = pCustom->GetConvert<PaletteManager::Mode::Temperate>();
 	}
 
@@ -112,11 +116,12 @@ DEFINE_HOOK(0x47F661, CellClass_DrawOverlay_Rubble_Shadow, 0x8)
 	auto const pBTypeExt = BuildingTypeExtContainer::Instance.Find(pCell->Rubble);
 
 	ConvertClass* pDecided = pCell->LightConvert;
-	if (const auto pCustom = pBTypeExt->RubblePalette) {
+	if (const auto pCustom = pBTypeExt->RubblePalette)
+	{
 		pDecided = pCustom->GetConvert<PaletteManager::Mode::Temperate>();
 	}
 
-	auto const zAdjust = - 2 - nOffset;
+	auto const zAdjust = -2 - nOffset;
 
 	DSurface::Temp()->DrawSHP(pDecided, pImage, nFrame, pPoint, pRect, BlitterFlags(0x4601),
 	0, zAdjust, ZGradient::Ground, 1000, 0, nullptr, 0, 0, 0);
@@ -130,13 +135,13 @@ DEFINE_HOOK(0x47FADB, CellClass_DrawOverlay_Rubble, 0x5)
 	GET(CellClass*, pCell, ESI);
 
 	auto const pRubble = pCell->Rubble;
-	if(!pRubble)
+	if (!pRubble)
 		return 0x47FB86;
 
 	LEA_STACK(SHPStruct**, pImage, STACK_OFFS(0x24, 0x14));
 	LEA_STACK(int*, pFrame, STACK_OFFSET(0x24, 0x8));
 
-	if (!pRubble->CanLeaveRubble(pImage,pFrame))
+	if (!pRubble->CanLeaveRubble(pImage, pFrame))
 		return 0x47FB86;
 
 	LEA_STACK(Point2D*, pPoint, STACK_OFFS(0x24, 0x10));
@@ -149,7 +154,8 @@ DEFINE_HOOK(0x47FADB, CellClass_DrawOverlay_Rubble, 0x5)
 
 	auto const pBTypeExt = BuildingTypeExtContainer::Instance.Find(pRubble);
 	ConvertClass* pDecided = pCell->LightConvert;
-	if (const auto pCustom = pBTypeExt->RubblePalette) {
+	if (const auto pCustom = pBTypeExt->RubblePalette)
+	{
 		pDecided = pCustom->GetConvert<PaletteManager::Mode::Temperate>();
 	}
 

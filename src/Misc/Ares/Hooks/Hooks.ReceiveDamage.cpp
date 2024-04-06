@@ -147,7 +147,8 @@ DEFINE_HOOK(0x7021F5, TechnoClass_ReceiveDamage_OverrideDieSound, 0x6)
 
 	auto const& nSound = WarheadTypeExtContainer::Instance.Find(pWh)->DieSound_Override;
 
-	if (nSound.isset()) {
+	if (nSound.isset())
+	{
 		VocClass::PlayIndexAtPos(nSound, pThis->Location);
 		return 0x702200;
 	}
@@ -162,7 +163,8 @@ DEFINE_HOOK(0x702185, TechnoClass_ReceiveDamage_OverrideVoiceDie, 0x6)
 
 	auto const& nSound = WarheadTypeExtContainer::Instance.Find(pWh)->VoiceSound_Override;
 
-	if (nSound.isset()) {
+	if (nSound.isset())
+	{
 		VocClass::PlayIndexAtPos(nSound, pThis->Location);
 		return 0x702200;
 	}
@@ -186,14 +188,14 @@ DEFINE_HOOK(0x702CFE, TechnoClass_ReceiveDamage_PreventScatter_Deep, 6)
 }
 
 //these hook were really early checks
- DEFINE_HOOK_AGAIN(0x702BFE, TechnoClass_ReceiveDamage_PreventScatter, 0x8)
- DEFINE_HOOK(0x702B47, TechnoClass_ReceiveDamage_PreventScatter, 0x8)
- {
-  //GET(FootClass*, pThis, ESI);
-  GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFS(0xC4, -0xC));
+DEFINE_HOOK_AGAIN(0x702BFE, TechnoClass_ReceiveDamage_PreventScatter, 0x8)
+DEFINE_HOOK(0x702B47, TechnoClass_ReceiveDamage_PreventScatter, 0x8)
+{
+	//GET(FootClass*, pThis, ESI);
+	GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFS(0xC4, -0xC));
 
-  return WarheadTypeExtContainer::Instance.Find(pWarhead)->PreventScatter ? 0x702D11 : 0x0;
- }
+	return WarheadTypeExtContainer::Instance.Find(pWarhead)->PreventScatter ? 0x702D11 : 0x0;
+}
 
 // #1283653: fix for jammed buildings and attackers in open topped transports
 DEFINE_HOOK(0x702A38, TechnoClass_ReceiveDamage_OpenTopped, 0x7)
@@ -225,7 +227,6 @@ DEFINE_HOOK(0x702669, TechnoClass_ReceiveDamage_SuppressDeathWeapon, 0x9)
 
 DEFINE_HOOK(0x517FC1, InfantryClass_ReceiveDamage_DeployedDamage, 0x6)
 {
-
 	GET(InfantryClass*, I, ESI);
 	const bool IgnoreDefenses = R->BL() != 0;
 
@@ -302,7 +303,7 @@ DEFINE_HOOK(0x702819, TechnoClass_ReceiveDamage_Aftermath, 0xA)
 			const auto pWHExt = WarheadTypeExtContainer::Instance.TryFind(pWarhead);
 			const auto fromTechno = pTypeExt->SelfHealing_CombatDelay.GetFromSpecificRank(rank);
 
-			const int amount = pWHExt  ? pWHExt->SelfHealing_CombatDelay.GetFromSpecificRank(rank)
+			const int amount = pWHExt ? pWHExt->SelfHealing_CombatDelay.GetFromSpecificRank(rank)
 				->Get(fromTechno) : fromTechno;
 
 			//the timer will always restart
@@ -312,7 +313,6 @@ DEFINE_HOOK(0x702819, TechnoClass_ReceiveDamage_Aftermath, 0xA)
 				pExt->SelfHealing_CombatDelay.Start(amount);
 			}
 		}
-
 	}
 	else { bAffected = true; }
 
@@ -480,8 +480,8 @@ DEFINE_HOOK(0x41660C, AircraftClass_ReceiveDamage_destroyed, 0x5)
 			[ScenarioClass::Instance->Random.RandomFromMax(pThis->Type->Explosion.Count - 1)])
 		{
 			auto nCoord = pThis->GetTargetCoords();
-				// if (pInvoker && !Is_House(pInvoker))
-				// 	pInvoker = nullptr;
+			// if (pInvoker && !Is_House(pInvoker))
+			// 	pInvoker = nullptr;
 
 			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pExp, nCoord),
 				args.Attacker ? args.Attacker->Owner : (args.SourceHouse ? args.SourceHouse : nullptr),
@@ -735,27 +735,29 @@ DEFINE_HOOK(0x5F57B5, ObjectClass_ReceiveDamage_Trigger, 0x6)
 {
 	GET(ObjectClass*, pObject, ESI);
 	GET(ObjectClass*, pAttacker, EDI);
-	GET(DamageState , state , EBP);
+	GET(DamageState, state, EBP);
 	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFSET(0x24, 0xC));
 
-	if(state != DamageState::NowDead && !WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative)
+	if (state != DamageState::NowDead && !WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative)
 	{
-		if(pObject->IsAlive)
+		if (pObject->IsAlive)
 		{
-			if(auto pFirstTag = pObject->AttachedTag) {
+			if (auto pFirstTag = pObject->AttachedTag)
+			{
 				pFirstTag->RaiseEvent(
 					TriggerEvent::AttackedByAnybody,
 					pObject,
 					CellStruct::Empty,
 					false,
 					pAttacker
-					);
+				);
 			}
 		}
 
-		if(pObject->IsAlive)
+		if (pObject->IsAlive)
 		{
-			if(auto pSecondTag = pObject->AttachedTag) {
+			if (auto pSecondTag = pObject->AttachedTag)
+			{
 				pSecondTag->RaiseEvent(
 					TriggerEvent::AttackedByHouse,
 					pObject,
@@ -767,8 +769,10 @@ DEFINE_HOOK(0x5F57B5, ObjectClass_ReceiveDamage_Trigger, 0x6)
 		}
 	}
 
-	if(pObject->IsAlive) {
-		if(auto pFirstTag = pObject->AttachedTag) {
+	if (pObject->IsAlive)
+	{
+		if (auto pFirstTag = pObject->AttachedTag)
+		{
 			pFirstTag->RaiseEvent(
 			(TriggerEvent)AresTriggerEvents::AttackedOrDestroyedByHouse,
 			pObject,
@@ -779,8 +783,10 @@ DEFINE_HOOK(0x5F57B5, ObjectClass_ReceiveDamage_Trigger, 0x6)
 		}
 	}
 
-	if(pObject->IsAlive) {
-		if(auto pSecondTag = pObject->AttachedTag) {
+	if (pObject->IsAlive)
+	{
+		if (auto pSecondTag = pObject->AttachedTag)
+		{
 			pSecondTag->RaiseEvent(
 				(TriggerEvent)AresTriggerEvents::AttackedOrDestroyedByAnybody,
 				pObject,
@@ -788,7 +794,6 @@ DEFINE_HOOK(0x5F57B5, ObjectClass_ReceiveDamage_Trigger, 0x6)
 				false,
 				pAttacker
 			);
-
 		}
 	}
 
@@ -869,7 +874,8 @@ DEFINE_HOOK(0x7027E6, TechnoClass_ReceiveDamage_Nonprovocative, 0x8)
 
 	auto const pTypeExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
 
-	if (!pTypeExt->Nonprovocative) {
+	if (!pTypeExt->Nonprovocative)
+	{
 		pThis->BaseIsAttacked(pSource);
 	}
 

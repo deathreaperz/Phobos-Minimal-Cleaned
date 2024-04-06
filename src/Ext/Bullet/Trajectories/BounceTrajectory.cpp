@@ -32,18 +32,17 @@ namespace Utils
 	}
 }
 
-
 bool BounceTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
-	return PhobosTrajectoryType::Load(Stm, RegisterForChange) && 
-	Stm.Process(this->BounceAmount, false)
-	   .Process(this->BounceWeapon, true);
+	return PhobosTrajectoryType::Load(Stm, RegisterForChange) &&
+		Stm.Process(this->BounceAmount, false)
+		.Process(this->BounceWeapon, true);
 }
 
 bool BounceTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectoryType::Save(Stm) &&
-	Stm.Process(this->BounceAmount, false)
+		Stm.Process(this->BounceAmount, false)
 		.Process(this->BounceWeapon, true);
 }
 
@@ -65,7 +64,7 @@ bool BounceTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 bool BounceTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectory::Load(Stm, RegisterForChange) &&
-	Stm
+		Stm
 		.Process(this->IsBouncing, false)
 		.Process(this->BounceLeft, false)
 		;
@@ -74,7 +73,7 @@ bool BounceTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 bool BounceTrajectory::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectory::Save(Stm) &&
-	Stm
+		Stm
 		.Process(this->IsBouncing, false)
 		.Process(this->BounceLeft, false)
 		;
@@ -265,7 +264,6 @@ DEFINE_HOOK(0x467BDB, BulletClass_AI_BounceOnSomething, 0x6)
 
 			R->EBX(pTraj->IsBouncing && pTraj->BounceLeft <= 0);
 			return 0;
-
 		}
 	}
 

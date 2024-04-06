@@ -114,5 +114,5 @@ class BuildingExtContainer final : public Container<BuildingExtData>
 public:
 	static BuildingExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(BuildingExtContainer , BuildingExtData, "BuildingClass");
+	CONSTEXPR_NOCOPY_CLASSB(BuildingExtContainer, BuildingExtData, "BuildingClass");
 };

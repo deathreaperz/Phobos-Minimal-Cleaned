@@ -41,7 +41,7 @@ constexpr const char* GLOBALCONTROLS_SECTION = "GlobalControls";
 constexpr const char* SIDEBAR_SECTION_T = "Sidebar";
 constexpr auto UISETTINGS_SECTION = "UISettings";
 
-constexpr const wchar_t* ARES_DLL =  L"Ares.dll";
+constexpr const wchar_t* ARES_DLL = L"Ares.dll";
 constexpr const char* ARES_DLL_S = "Ares.dll";
 constexpr const wchar_t* PHOBOS_DLL = L"Phobos.dll";
 constexpr const char* PHOBOS_DLL_S = "Phobos.dll";

@@ -17,7 +17,7 @@ void PaintballType::Read(INI_EX& parser, const char* pSection)
 	detail::read(BrightMultiplier, parser, pSection, "PaintBall.BrightMult", false);
 	BrightMultiplier = std::clamp(BrightMultiplier, 0.0f, 2.0f);
 
-	detail::read(Accumulate, parser, pSection, "PaintBall.Accumulate" , false);
+	detail::read(Accumulate, parser, pSection, "PaintBall.Accumulate", false);
 	detail::read(IgnoreFog, parser, pSection, "PaintBall.IgnoreFog", false);
 	detail::read(IgnoreShroud, parser, pSection, "PaintBall.IgnoreShroud", false);
 	detail::read(Override, parser, pSection, "PaintBall.OverrideSameAffect", false);
@@ -25,7 +25,6 @@ void PaintballType::Read(INI_EX& parser, const char* pSection)
 
 void PaintBall::Enable(int duration, WarheadTypeClass* pAffector, const PaintballType& data)
 {
-
 	if (!Token)
 	{
 		if (duration <= -1)
@@ -58,7 +57,6 @@ void PaintBall::Enable(int duration, WarheadTypeClass* pAffector, const Paintbal
 				timer.Stop();
 				Token = nullptr;
 				Data.clear();
-
 			}
 			else
 			{
@@ -173,15 +171,13 @@ void PaintBall::Update(TechnoClass* pThis)
 	{
 		if (pThis->WhatAmI() == BuildingClass::AbsID)
 		{
-				BuildingExtContainer::Instance.Find(static_cast<BuildingClass*>(pThis))->LighningNeedUpdate = true;
+			BuildingExtContainer::Instance.Find(static_cast<BuildingClass*>(pThis))->LighningNeedUpdate = true;
 		}
-
 	}
 	else
 	{
 		this->Disable(true);
 	}
-
 }
 
 void PaintBall::DrawVXL_Paintball(TechnoClass* pTech, REGISTERS* R, bool isBuilding)

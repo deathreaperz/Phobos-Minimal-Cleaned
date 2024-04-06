@@ -11,13 +11,17 @@ std::vector<std::unique_ptr<SWStateMachine>> SWStateMachine::Array;
 
 void SWStateMachine::UpdateAll()
 {
-	for (size_t i = 0; i < SWStateMachine::Array.size(); ++i) {
-		if (auto& pMachine = SWStateMachine::Array[i]) {
+	for (size_t i = 0; i < SWStateMachine::Array.size(); ++i)
+	{
+		if (auto& pMachine = SWStateMachine::Array[i])
+		{
 			pMachine->Update();
 
 			if (pMachine->Finished())
 				SWStateMachine::Array.erase(SWStateMachine::Array.begin() + i);
-		} else {
+		}
+		else
+		{
 			SWStateMachine::Array.erase(SWStateMachine::Array.begin() + i);
 		}
 	}
@@ -25,8 +29,10 @@ void SWStateMachine::UpdateAll()
 
 void SWStateMachine::PointerGotInvalid(AbstractClass* ptr, bool remove)
 {
-	for (auto& Machine : SWStateMachine::Array) {
-		if(Machine) {
+	for (auto& Machine : SWStateMachine::Array)
+	{
+		if (Machine)
+		{
 			Machine->InvalidatePointer(ptr, remove);
 		}
 	}

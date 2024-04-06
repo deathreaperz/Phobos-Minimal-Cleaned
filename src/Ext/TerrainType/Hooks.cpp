@@ -13,7 +13,8 @@
 #include <Ext/Anim/Body.h>
 #include <Ext/Cell/Body.h>
 
-namespace TerrainTypeTemp {
+namespace TerrainTypeTemp
+{
 	TerrainTypeExtData* pCurrentExt = nullptr;
 }
 
@@ -23,15 +24,21 @@ DEFINE_HOOK(0x71C84D, TerrainClass_AI_Animated, 0x6)
 
 	GET(TerrainClass* const, pThis, ESI);
 
-	if (pThis->Type) {
-		if (pThis->Type->IsAnimated) {
-			if(auto const pImage = pThis->Type->GetImage()) {
-				if (pThis->Animation.Value == pImage->Frames / 2) {
+	if (pThis->Type)
+	{
+		if (pThis->Type->IsAnimated)
+		{
+			if (auto const pImage = pThis->Type->GetImage())
+			{
+				if (pThis->Animation.Value == pImage->Frames / 2)
+				{
 					pThis->Animation.Value = 0;
 					pThis->Animation.Start(0);
 
-					if (pThis->Type->SpawnsTiberium && MapClass::Instance->IsValid(pThis->Location)) {
-						if (auto const pCell = MapClass::Instance->GetCellAt(pThis->Location)) {
+					if (pThis->Type->SpawnsTiberium && MapClass::Instance->IsValid(pThis->Location))
+					{
+						if (auto const pCell = MapClass::Instance->GetCellAt(pThis->Location))
+						{
 							int cellCount = 1;
 							auto const pTypeExt = TerrainTypeExtContainer::Instance.Find(pThis->Type);
 
@@ -44,8 +51,6 @@ DEFINE_HOOK(0x71C84D, TerrainClass_AI_Animated, 0x6)
 
 							for (int i = 0; i < cellCount; i++)
 								pCell->SpreadTiberium(true);
-
-
 						}
 					}
 				}
@@ -63,7 +68,8 @@ DEFINE_HOOK(0x483811, CellClass_SpreadTiberium_TiberiumType, 0x8)
 {
 	//GET(CellClass*, pThis, EDI);
 
-	if (const auto pTerrainTypeExt = TerrainTypeTemp::pCurrentExt) {
+	if (const auto pTerrainTypeExt = TerrainTypeTemp::pCurrentExt)
+	{
 		LEA_STACK(int*, pTibType, STACK_OFFS(0x1C, -0x4));
 		*pTibType = pTerrainTypeExt->SpawnsTiberium_Type;
 		return 0x483819;
@@ -76,23 +82,26 @@ DEFINE_HOOK(0x48381D, CellClass_SpreadTiberium_CellSpread, 0x6)
 {
 	enum { SpreadReturn = 0x4838CA, NoSpreadReturn = 0x4838B0 };
 
-	if (const auto pTerrainTypeExt = TerrainTypeTemp::pCurrentExt) {
+	if (const auto pTerrainTypeExt = TerrainTypeTemp::pCurrentExt)
+	{
 		GET(CellClass*, pThis, EDI);
 		GET(int, tibIndex, EAX);
 
 		TiberiumClass* pTib = TiberiumClass::Array->Items[tibIndex];
 
 		std::vector<CellStruct> adjacentCells {};
-		GeneralUtils::AdjacentCellsInRange(adjacentCells ,pTerrainTypeExt->SpawnsTiberium_Range);
+		GeneralUtils::AdjacentCellsInRange(adjacentCells, pTerrainTypeExt->SpawnsTiberium_Range);
 		size_t size = adjacentCells.size();
 		const int rand = ScenarioClass::Instance->Random.RandomFromMax(size - 1);
 
-		for (int i = 0; i < (int)size; i++) {
+		for (int i = 0; i < (int)size; i++)
+		{
 			unsigned int cellIndex = (i + rand) % size;
 			CellStruct tgtPos = pThis->MapCoords + adjacentCells[cellIndex];
 			CellClass* tgtCell = MapClass::Instance->GetCellAt(tgtPos);
 
-			if (tgtCell && tgtCell->CanTiberiumGerminate(pTib)) {
+			if (tgtCell && tgtCell->CanTiberiumGerminate(pTib))
+			{
 				R->EAX<bool>(tgtCell->IncreaseTiberium(tibIndex,
 					pTerrainTypeExt->GetTiberiumGrowthStage()));
 
@@ -114,7 +123,8 @@ DEFINE_HOOK(0x47C065, CellClass_CellColor_TerrainRadarColor, 0x6)
 	GET_STACK(ColorStruct*, arg0, STACK_OFFS(0x14, -0x4));
 	GET_STACK(ColorStruct*, arg4, STACK_OFFS(0x14, -0x8));
 
-	if (const auto pTerrain = pThis->GetTerrain(false)) {
+	if (const auto pTerrain = pThis->GetTerrain(false))
+	{
 		if (pTerrain->Type->RadarInvisible)
 		{
 			R->ESI(pThis);

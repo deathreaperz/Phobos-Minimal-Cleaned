@@ -25,7 +25,7 @@ public:
 		, SegmentLength { 128 }
 		, IgnoreVertical { false }
 		, IsIntense { false }
-		, InitialDelay {0}
+		, InitialDelay { 0 }
 		, CloakVisible { false }
 		, DroppodOnly { false }
 	{ }

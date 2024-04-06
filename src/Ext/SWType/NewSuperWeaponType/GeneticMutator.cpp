@@ -29,44 +29,46 @@ bool SW_GeneticMutator::Activate(SuperClass* pThis, const CellStruct& Coords, bo
 		{
 			// ranged approach
 			auto Mutate = [=](InfantryClass* pInf) -> bool
-			{
-				if(!pInf->IsAlive || pInf->IsCrashing || pInf->IsSinking || pInf->InLimbo)
-					return true;
-
-				// is this thing affected at all?
-				if (!pData->IsHouseAffected(pThis->Owner, pInf->Owner))
 				{
+					if (!pInf->IsAlive || pInf->IsCrashing || pInf->IsSinking || pInf->InLimbo)
+						return true;
+
+					// is this thing affected at all?
+					if (!pData->IsHouseAffected(pThis->Owner, pInf->Owner))
+					{
+						return true;
+					}
+
+					if (!pData->IsTechnoAffected(pInf))
+					{
+						// even if it makes little sense, we do this.
+						// infantry handling is hardcoded and thus
+						// this checks water and land cells.
+						return true;
+					}
+
+					InfantryTypeClass* pType = pInf->Type;
+
+					// quick ways out
+					if (pType->Cyborg && pData->Mutate_IgnoreCyborg)
+					{
+						return true;
+					}
+
+					if (pType->NotHuman && pData->Mutate_IgnoreNotHuman)
+					{
+						return true;
+					}
+
+					// destroy or mutate
+					int damage = pType->Strength;
+					bool kill = (pType->Natural && pData->Mutate_KillNatural);
+					auto pWH = kill ? RulesClass::Instance->C4Warhead : GetWarhead(pData);
+
+					pInf->ReceiveDamage(&damage, 0, pWH, pFirer, true, false, pThis->Owner);
+
 					return true;
-				}
-
-				if (!pData->IsTechnoAffected(pInf))
-				{
-					// even if it makes little sense, we do this.
-					// infantry handling is hardcoded and thus
-					// this checks water and land cells.
-					return true;
-				}
-
-				InfantryTypeClass* pType = pInf->Type;
-
-				// quick ways out
-				if (pType->Cyborg && pData->Mutate_IgnoreCyborg) {
-					return true;
-				}
-
-				if (pType->NotHuman && pData->Mutate_IgnoreNotHuman) {
-					return true;
-				}
-
-				// destroy or mutate
-				int damage = pType->Strength;
-				bool kill = (pType->Natural && pData->Mutate_KillNatural);
-				auto pWH = kill ? RulesClass::Instance->C4Warhead : GetWarhead(pData);
-
-				pInf->ReceiveDamage(&damage, 0, pWH, pFirer, true, false, pThis->Owner);
-
-				return true;
-			};
+				};
 
 			// find everything in range and mutate it
 			auto range = GetRange(pData);
@@ -101,7 +103,6 @@ void SW_GeneticMutator::Initialize(SWTypeExtData* pData)
 void SW_GeneticMutator::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const char* section = pData->get_ID();
-
 
 	INI_EX exINI(pINI);
 	pData->Mutate_Explosion.Read(exINI, section, "Mutate.Explosion");
@@ -147,10 +148,12 @@ int SW_GeneticMutator::GetDamage(const SWTypeExtData* pData) const
 
 SWRange SW_GeneticMutator::GetRange(const SWTypeExtData* pData) const
 {
-	if (!pData->SW_Range->empty()) {
+	if (!pData->SW_Range->empty())
+	{
 		return pData->SW_Range;
 	}
-	else if (RulesClass::Instance->MutateExplosion) {
+	else if (RulesClass::Instance->MutateExplosion)
+	{
 		return { 5, -1 };
 	}
 

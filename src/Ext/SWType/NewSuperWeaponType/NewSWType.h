@@ -16,7 +16,7 @@ struct TargetingData
 {
 	TargetingData(SWTypeExtData* pTypeExt, HouseClass* pOwner) noexcept : TypeExt { pTypeExt }
 		, Owner { pOwner }
-		, NeedsLaunchSite { false}
+		, NeedsLaunchSite { false }
 		, NeedsDesignator { false }
 		, NeedsAttractors { false }
 		, NeedsSupressors { false }
@@ -26,7 +26,8 @@ struct TargetingData
 		, Inhibitors {}
 		, Attractors {}
 		, Suppressors {}
-	{ }
+	{
+	}
 
 	~TargetingData() noexcept = default;
 
@@ -120,7 +121,7 @@ public:
 	virtual int GetDamage(const SWTypeExtData* pData) const;
 
 	bool IsLaunchsiteAlive(BuildingClass* pBuilding) const;
-	bool IsSWTypeAttachedToThis(const SWTypeExtData* pData ,BuildingClass* pBuilding) const;
+	bool IsSWTypeAttachedToThis(const SWTypeExtData* pData, BuildingClass* pBuilding) const;
 public:
 
 	bool HasDesignator(const SWTypeExtData* pData, HouseClass* pOwner, const CellStruct& Coords) const;
@@ -154,6 +155,4 @@ public:
 	static NewSWType* GetNewSWType(const SWTypeExtData* pData);
 	static NewSWType* GetNewSWType(const SuperClass* pSuper);
 	static SuperWeaponType FindFromTypeID(const char* pType);
-
-
 };

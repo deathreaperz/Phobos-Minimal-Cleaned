@@ -26,7 +26,7 @@ public:
 
 	static void InsertRollingText(const wchar_t* text, CoordStruct location, Point2D offset, int rollSpeed, int duration, PrintTextData data)
 	{
-		rollingTextQueue.emplace(text,location,offset,rollSpeed,duration,data);
+		rollingTextQueue.emplace(text, location, offset, rollSpeed, duration, data);
 	}
 
 	static void PrintAllText()
@@ -58,7 +58,7 @@ public:
 			int x = imageSize.X % 2 == 0 ? imageSize.X : imageSize.X + 1;
 			int y = isBuilding ? x / 2 : 0;
 
-			for(auto const& c: text)
+			for (auto const& c : text)
 			{
 				int frameIndex = zeroFrameIndex;
 				int frameOffset = 0;
@@ -117,7 +117,7 @@ public:
 				auto pSHP = FileSystem::PIPS_SHP();
 				if (data.CustomSHP)
 				{
-					if(auto pCustomSHP = FileSystem::LoadSHPFile(data.SHPFileName))
+					if (auto pCustomSHP = FileSystem::LoadSHPFile(data.SHPFileName))
 						pSHP = pCustomSHP;
 				}
 

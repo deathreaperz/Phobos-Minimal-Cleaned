@@ -32,7 +32,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	}
 
 	int Bolt_Count;
-	if (detail::read(Bolt_Count , exINI, pSection, "Bolt.Count") && Bolt_Count > 0)
+	if (detail::read(Bolt_Count, exINI, pSection, "Bolt.Count") && Bolt_Count > 0)
 	{
 		BoltData data { Bolt_Count };
 
@@ -61,7 +61,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	if (!Phobos::Otamaa::DisableCustomRadSite)
 	{
-		this->RadType.Read(exINI, pSection, "RadType" , true);
+		this->RadType.Read(exINI, pSection, "RadType", true);
 		this->Rad_NoOwner.Read(exINI, pSection, "Rad.NoOwner");
 	}
 
@@ -122,7 +122,8 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->RockerPitch.Read(exINI, pSection, "RockerPitch");
 
-	if (this->RockerPitch > 0.0f) {
+	if (this->RockerPitch > 0.0f)
+	{
 		constexpr auto halfpi = (Math::PI / 2);
 		this->RockerPitch = 1.0f * halfpi;
 	}
@@ -203,8 +204,10 @@ ColorStruct WeaponTypeExtData::GetBeamColor() const
 	const auto pThis = this->AttachedToObject;
 	const auto& result = this->Beam_Color;
 
-	if (pThis->IsRadBeam || pThis->IsRadEruption) {
-		if (pThis->Warhead && pThis->Warhead->Temporal) {
+	if (pThis->IsRadBeam || pThis->IsRadEruption)
+	{
+		if (pThis->Warhead && pThis->Warhead->Temporal)
+		{
 			return result.Get(RulesClass::Instance->ChronoBeamColor);
 		}
 	}
@@ -345,7 +348,7 @@ int WeaponTypeExtData::GetBurstDelay(WeaponTypeClass* pThis, int burstIndex)
 
 void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarget, TechnoClass* pOwner, bool AddDamage, HouseClass* HouseInveoker)
 {
-	WeaponTypeExtData::DetonateAt(pThis, pTarget, pOwner, pThis->Damage , AddDamage , HouseInveoker);
+	WeaponTypeExtData::DetonateAt(pThis, pTarget, pOwner, pThis->Damage, AddDamage, HouseInveoker);
 }
 
 void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarget, TechnoClass* pOwner, int damage, bool AddDamage, HouseClass* HouseInveoker)
@@ -366,13 +369,13 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarge
 		damage, pThis->Warhead, pThis->Speed, pExt->GetProjectileRange(), pThis->Bright || pThis->Warhead->Bright, AddDamage))
 	{
 		pBullet->SetWeaponType(pThis);
-		BulletExtData::DetonateAt(pBullet, pTarget, pOwner, CoordStruct::Empty , HouseInveoker);
+		BulletExtData::DetonateAt(pBullet, pTarget, pOwner, CoordStruct::Empty, HouseInveoker);
 	}
 }
 
 void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& coords, TechnoClass* pOwner, bool AddDamage, HouseClass* HouseInveoker)
 {
-	WeaponTypeExtData::DetonateAt(pThis, coords, pOwner, pThis->Damage , AddDamage , HouseInveoker);
+	WeaponTypeExtData::DetonateAt(pThis, coords, pOwner, pThis->Damage, AddDamage, HouseInveoker);
 }
 
 void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& coords, TechnoClass* pOwner, int damage, bool AddDamage, HouseClass* HouseInveoker)
@@ -383,7 +386,7 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& co
 		return;
 	}
 
-	WeaponTypeExtData::DetonateAt(pThis, MapClass::Instance->GetCellAt(coords), pOwner, damage, AddDamage , HouseInveoker);
+	WeaponTypeExtData::DetonateAt(pThis, MapClass::Instance->GetCellAt(coords), pOwner, damage, AddDamage, HouseInveoker);
 }
 
 void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& coords, AbstractClass* pTarget, TechnoClass* pOwner, int damage, bool AddDamage, HouseClass* HouseInveoker)
@@ -404,7 +407,7 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& co
 		damage, pThis->Warhead, pThis->Speed, pExt->GetProjectileRange(), pThis->Bright || pThis->Warhead->Bright, AddDamage))
 	{
 		pBullet->SetWeaponType(pThis);
-		BulletExtData::DetonateAt(pBullet, pTarget, pOwner, coords , HouseInveoker);
+		BulletExtData::DetonateAt(pBullet, pTarget, pOwner, coords, HouseInveoker);
 	}
 }
 

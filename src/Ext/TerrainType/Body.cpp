@@ -51,7 +51,7 @@ void TerrainTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->LightGreenTint.Read(exINI, pSection, GameStrings::LightGreenTint());
 	this->LightBlueTint.Read(exINI, pSection, GameStrings::LightBlueTint());
 
-	this->AttachedAnim.Read(exINI, pSection, "AttachedAnims",true);
+	this->AttachedAnim.Read(exINI, pSection, "AttachedAnims", true);
 	this->Warhead.Read(exINI, pSection, "SpawnsTiberium.ExplodeWarhead");
 	this->Damage.Read(exINI, pSection, "SpawnsTiberium.ExplodeDamage");
 	this->AreaDamage.Read(exINI, pSection, "SpawnsTiberium.ExplodeDealAreaDamage");
@@ -60,7 +60,6 @@ void TerrainTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 #pragma endregion
 
 	this->Bounty.Read(exINI, pSection, "Bounty");
-
 }
 
 // =============================
@@ -97,7 +96,6 @@ void TerrainTypeExtData::Serialize(T& Stm)
 		.Process(this->Bounty)
 
 		;
-
 }
 
 void TerrainTypeExtData::Remove(TerrainClass* pTerrain)
@@ -166,7 +164,7 @@ DEFINE_HOOK(0x71E0B4, TerrainTypeClass_LoadFromINI_ReturnFalse, 0xA)
 	GET(TerrainTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, STACK_OFFS(0x20C, -0x4));
 
-	TerrainTypeExtContainer::Instance.LoadFromINI(pItem, pINI , true);
+	TerrainTypeExtContainer::Instance.LoadFromINI(pItem, pINI, true);
 
 	return 0;
 }
@@ -176,7 +174,7 @@ DEFINE_HOOK(0x71E0A6, TerrainTypeClass_LoadFromINI, 0x5)
 	GET(TerrainTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, STACK_OFFS(0x210, -0x4));
 
-	TerrainTypeExtContainer::Instance.LoadFromINI(pItem, pINI , false);
+	TerrainTypeExtContainer::Instance.LoadFromINI(pItem, pINI, false);
 
 	return 0;
 }

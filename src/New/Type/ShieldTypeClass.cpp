@@ -55,7 +55,7 @@ AnimTypeClass* ShieldTypeClass::GetIdleAnimType(bool isDamaged, double healthRat
 	const double condYellow = this->GetConditionYellow();
 	const double condRed = this->GetConditionRed();
 
-	auto damagedAnim = this->IdleAnimDamaged.Get(healthRatio, condYellow , condRed);
+	auto damagedAnim = this->IdleAnimDamaged.Get(healthRatio, condYellow, condRed);
 
 	if (isDamaged && damagedAnim)
 		return damagedAnim;
@@ -105,7 +105,7 @@ void ShieldTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->IdleAnim_OfflineAction.Read(exINI, pSection, "IdleAnim.OfflineAction");
 	this->IdleAnim_TemporalAction.Read(exINI, pSection, "IdleAnim.TemporalAction");
 
-	this->IdleAnim.Read(exINI, pSection, "IdleAnim.%s" , nullptr, true);
+	this->IdleAnim.Read(exINI, pSection, "IdleAnim.%s", nullptr, true);
 	this->IdleAnimDamaged.Read(exINI, pSection, "IdleAnimDamaged.%s", nullptr, true);
 
 	this->BreakAnim.Read(exINI, pSection, "BreakAnim", true);
@@ -127,7 +127,7 @@ void ShieldTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->ThreadPosed.Read(exINI, pSection, "ThreadPosed");
 	this->ImmuneToCrit.Read(exINI, pSection, "ImmuneToCrit");
 
-	this->BreakWeapon_TargetSelf.Read(exINI , pSection , "BreakWeapon.TargetSelf");
+	this->BreakWeapon_TargetSelf.Read(exINI, pSection, "BreakWeapon.TargetSelf");
 
 	this->PassthruNegativeDamage.Read(exINI, pSection, "PassthruNegativeDamage");
 	this->CanBeHealed.Read(exINI, pSection, "Repairable");

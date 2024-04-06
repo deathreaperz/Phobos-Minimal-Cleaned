@@ -61,13 +61,15 @@ enum class AresNewSuperType : int
 	count
 };
 
-enum class DamageDisplayType {
+enum class DamageDisplayType
+{
 	Regular = 0,
 	Shield = 1,
 	Intercept = 2
 };
 
-enum class NewCrateType : int {
+enum class NewCrateType : int
+{
 	Money, Super, Weapon, Units
 
 	, count
@@ -116,7 +118,7 @@ enum class AresScripts : int
 
 enum class BountyValueOption : int
 {
-	Value , ValuePercentOfConst , ValuePercentOfSoylent , Cost , Soylent ,count
+	Value, ValuePercentOfConst, ValuePercentOfSoylent, Cost, Soylent, count
 };
 
 enum class ShowTimerType : int
@@ -182,32 +184,32 @@ enum class AresNewTriggerAction : int
 enum class AresTriggerEvents : int
 {
 	UnderEMP = 62,
-	UnderEMP_ByHouse = 63 ,
-	RemoveEMP = 64 ,
-	RemoveEMP_ByHouse = 65 ,
+	UnderEMP_ByHouse = 63,
+	RemoveEMP = 64,
+	RemoveEMP_ByHouse = 65,
 	EnemyInSpotlightNow = 66,
-	DriverKiller = 67 ,
-	DriverKilled_ByHouse = 68 ,
-	VehicleTaken = 69 ,
-	VehicleTaken_ByHouse = 70 ,
-	Abducted = 71 ,
-	Abducted_ByHouse = 72 ,
+	DriverKiller = 67,
+	DriverKilled_ByHouse = 68,
+	VehicleTaken = 69,
+	VehicleTaken_ByHouse = 70,
+	Abducted = 71,
+	Abducted_ByHouse = 72,
 	AbductSomething = 73,
 	AbductSomething_OfHouse = 74,
-	SuperActivated = 75 ,
-	SuperDeactivated = 76 ,
-	SuperNearWaypoint = 77 ,
-	ReverseEngineered = 78 ,
-	ReverseEngineerAnything = 79 ,
-	ReverseEngineerType = 80 ,
-	HouseOwnTechnoType = 81 ,
-	HouseDoesntOwnTechnoType = 82 ,
-	AttackedOrDestroyedByAnybody = 83 ,
-	AttackedOrDestroyedByHouse = 84 ,
-	DestroyedByHouse = 85 ,
-	TechnoTypeDoesntExistMoreThan = 86 ,
+	SuperActivated = 75,
+	SuperDeactivated = 76,
+	SuperNearWaypoint = 77,
+	ReverseEngineered = 78,
+	ReverseEngineerAnything = 79,
+	ReverseEngineerType = 80,
+	HouseOwnTechnoType = 81,
+	HouseDoesntOwnTechnoType = 82,
+	AttackedOrDestroyedByAnybody = 83,
+	AttackedOrDestroyedByHouse = 84,
+	DestroyedByHouse = 85,
+	TechnoTypeDoesntExistMoreThan = 86,
 	AllKeepAlivesDestroyed = 87,
-	AllKeppAlivesBuildingDestroyed = 88 ,
+	AllKeppAlivesBuildingDestroyed = 88,
 
 	count
 };
@@ -239,7 +241,7 @@ enum class AreaFireReturnFlag : char
 {
 	Continue = 0,
 	ContinueAndReturn,
-	DoNotFire ,
+	DoNotFire,
 	SkipSetTarget,
 };
 
@@ -261,7 +263,7 @@ enum class PhobosAbilityType : int
 	BerzerkImmune = 11,
 	AbductorImmune = 12,
 	Assaulter = 13,
-	ParasiteImmune = 14 ,
+	ParasiteImmune = 14,
 	BountyHunter = 15,
 	WebbyImmune = 16,
 	Untrackable = 17,
@@ -316,7 +318,8 @@ enum class TransactValueType : int
 	// Other....
 };
 
-enum class AttachedAnimFlag : int {
+enum class AttachedAnimFlag : int
+{
 	None = 0x0,
 	Hides = 0x1,
 	Temporal = 0x2,
@@ -364,13 +367,14 @@ enum class SuperWeaponAITargetingMode
 	LowPower = 17,
 	LowPowerAttack = 18,
 	DropPod = 19,
-	LightningRandom = 20 ,
-	LauchSite = 21 ,
-	FindAuxTechno = 22 ,
+	LightningRandom = 20,
+	LauchSite = 21,
+	FindAuxTechno = 22,
 	count
 };
 
-enum class AffectedTarget : unsigned char {
+enum class AffectedTarget : unsigned char
+{
 	None = 0x0,
 	Land = 0x1,
 	Water = 0x2,
@@ -388,7 +392,8 @@ enum class AffectedTarget : unsigned char {
 
 MAKE_ENUM_FLAGS(AffectedTarget);
 
-enum class AffectedHouse : unsigned char {
+enum class AffectedHouse : unsigned char
+{
 	None = 0x0,
 	Owner = 0x1,
 	Allies = 0x2,
@@ -404,11 +409,12 @@ MAKE_ENUM_FLAGS(AffectedHouse);
 
 enum class AffectPlayerType : unsigned char
 {
-	None = 0x0 , Computer , Player  , Observer
+	None = 0x0, Computer, Player, Observer
 };
 MAKE_ENUM_FLAGS(AffectPlayerType);
 
-enum class OwnerHouseKind : int {
+enum class OwnerHouseKind : int
+{
 	Default = 0,
 	Invoker = 1,
 	Killer = 2,
@@ -420,7 +426,8 @@ enum class OwnerHouseKind : int {
 };
 
 // this flag is used to disable certain features that already handled when superweapon Lauched at SWTypeExt !
-enum class SuperWeaponFlags : unsigned short {
+enum class SuperWeaponFlags : unsigned short
+{
 	None = 0x0,
 	NoAnim = 0x1,
 	NoSound = 0x2,
@@ -443,7 +450,8 @@ enum class AreaFireTarget
 	Random = 2
 };
 
-enum class PhobosAction {
+enum class PhobosAction
+{
 	None = 0,
 	Hijack = 1,
 	Drive = 2
@@ -480,7 +488,7 @@ enum class VerticalPosition : BYTE
 
 enum class FeedBackType : BYTE
 {
-	WeaponFire = 0 ,
+	WeaponFire = 0,
 	HealthLevel = 1,
 	ReceiveDamage = 2
 };
@@ -503,7 +511,6 @@ enum class BuildingSelectBracketPosition :BYTE
 	RightTop = 5,
 
 	count
-
 };
 
 enum class DisplayInfoType : BYTE
@@ -538,7 +545,7 @@ enum class SlaveReturnTo : int
 
 enum class KillMethod : int
 {
-	None = -1 ,
+	None = -1,
 	Explode = 0,     //default death option
 	Vanish = 1,
 	Sell = 2,     // buildings only
@@ -560,7 +567,7 @@ enum class AircraftFireMode : int
 	FireAt = 0,
 	Strafe2 = 1,
 	Strafe3 = 2,
-	Strafe4	= 3,
+	Strafe4 = 3,
 	Strafe5 = 4
 };
 

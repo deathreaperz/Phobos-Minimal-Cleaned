@@ -13,11 +13,13 @@ struct BuildSpeedBonus
 
 	void Read(INI_EX& parser, const char* pSection);
 
-	bool Load(PhobosStreamReader& stm, bool registerForChange) {
+	bool Load(PhobosStreamReader& stm, bool registerForChange)
+	{
 		return Serialize(stm);
 	}
 
-	bool Save(PhobosStreamWriter& stm) const {
+	bool Save(PhobosStreamWriter& stm) const
+	{
 		return const_cast<BuildSpeedBonus*>(this)->Serialize(stm);
 	}
 

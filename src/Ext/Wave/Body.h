@@ -178,7 +178,6 @@ struct SonicBeamDrawingData
 		}
 		else if (SonicBeamColor)
 		{
-
 			int color_r = SonicBeamColor.R;
 			int color_g = SonicBeamColor.G;
 			int color_b = SonicBeamColor.B;
@@ -194,7 +193,6 @@ struct SonicBeamDrawingData
 			result.R = (BYTE)std::clamp(color_r + ((alpha * nPixel.R) / 256), 0, 255);
 			result.G = (BYTE)std::clamp(color_g + ((alpha * nPixel.G) / 256), 0, 255);
 			result.B = (BYTE)std::clamp(color_b + ((alpha * nPixel.B) / 256), 0, 255);
-
 
 			/**
 			 *  Original sonic beam color code.
@@ -292,4 +290,3 @@ public:
 
 	CONSTEXPR_NOCOPY_CLASSB(WaveExtContainer, WaveExtData, "WaveClass");
 };
-

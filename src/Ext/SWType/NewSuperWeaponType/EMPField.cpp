@@ -15,13 +15,13 @@ bool SW_EMPField::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsP
 	if (pData->EMPField_Duration <= 0)
 		return false;
 
-	auto pFirer = this->GetFirer(pThis,Coords , false);
+	auto pFirer = this->GetFirer(pThis, Coords, false);
 
 	// TODO : creating version that not require WH to be function !
-	// 
+	//
 	//AresEMPulse::CreateEMPulse()
 	//does not work ?
-	return GameCreate<EMPulseClass>(Coords, this->GetRange(pData).width() , pData->EMPField_Duration.Get(), pFirer);
+	return GameCreate<EMPulseClass>(Coords, this->GetRange(pData).width(), pData->EMPField_Duration.Get(), pFirer);
 }
 
 void SW_EMPField::Initialize(SWTypeExtData* pData)

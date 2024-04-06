@@ -14,7 +14,6 @@ DEFINE_HOOK(0x685EB1, PhobosSaveVariables, 0x5)//Lose
 	}
 
 	return 0;
-
 }
 
 DEFINE_HOOK(0x689910, ScenarioClass_SetLocalToByID, 0x5)
