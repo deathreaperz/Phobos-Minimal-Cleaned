@@ -35,21 +35,16 @@ bool SW_NuclearMissile::Activate(SuperClass* const pThis, const CellStruct& Coor
 		auto const pCell = MapClass::Instance->GetCellAt(Coords);
 		auto const target = pCell->GetCoordsWithBridge();
 
-		// the nuke has two ways to fire. first the granted way used by nukes
-		// collected from crates. second, the normal way firing from a silo.
 		BuildingClass* pSilo = nullptr;
 
 		if ((!pThis->Granted || !pThis->OneTime) && pData->Nuke_SiloLaunch)
 		{
-			// find a building owned by the player that can fire this SWType
 			pSilo = specific_cast<BuildingClass*>(this->GetFirer(pThis, Coords, false));
 		}
 
-		// via silo
 		bool fired = false;
 		if (pSilo)
 		{
-			// setup the missile and start the fire mission
 			pSilo->FiringSWType = pType->ArrayIndex;
 			TechnoExtContainer::Instance.Find(pSilo)->LinkedSW = pThis;
 			TechnoExtContainer::Instance.Find(pSilo)->SuperTarget = Coords;
@@ -62,7 +57,6 @@ bool SW_NuclearMissile::Activate(SuperClass* const pThis, const CellStruct& Coor
 
 		if (!fired)
 		{
-			// if we reached this, there is no silo launch. still launch a missile.
 			if (auto const pWeapon = pData->Nuke_Payload)
 			{
 				fired = SW_NuclearMissile::DropNukeAt(pType, target, this->GetAlternateLauchSite(pData, pThis), pThis->Owner, pWeapon);
@@ -71,7 +65,6 @@ bool SW_NuclearMissile::Activate(SuperClass* const pThis, const CellStruct& Coor
 
 		if (fired)
 		{
-			// allies can see the target location before the enemy does
 			if (pData->SW_RadarEvent)
 			{
 				if (pThis->Owner->IsAlliedWith(HouseClass::CurrentPlayer))
@@ -92,9 +85,9 @@ bool SW_NuclearMissile::Activate(SuperClass* const pThis, const CellStruct& Coor
 void SW_NuclearMissile::Initialize(SWTypeExtData* pData)
 {
 	pData->AttachedToObject->Action = Action::Nuke;
-	// default values for the original Nuke
-	pData->Nuke_Payload = WeaponTypeClass::FindOrAllocate(GameStrings::NukePayload); //use for nuke pointing down
-	//SW->WeaponType = used for nuke pointing up !
+
+	pData->Nuke_Payload = WeaponTypeClass::FindOrAllocate(GameStrings::NukePayload);
+
 	pData->Nuke_PsiWarning = AnimTypeClass::Find(GameStrings::PSIWARN);
 
 	pData->EVA_Detected = VoxClass::FindIndexById(GameStrings::EVA_NuclearSiloDetected());
@@ -102,7 +95,7 @@ void SW_NuclearMissile::Initialize(SWTypeExtData* pData)
 	pData->EVA_Activated = VoxClass::FindIndexById(GameStrings::EVA_NuclearMissileLaunched());
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::Nuke;
-	pData->CursorType = (int)MouseCursorType::Nuke;
+	pData->CursorType = static_cast<int>(MouseCursorType::Nuke);
 
 	pData->CrateGoodies = true;
 }
@@ -141,7 +134,7 @@ WarheadTypeClass* SW_NuclearMissile::GetWarhead(const SWTypeExtData* pData) cons
 		return pPayload->Warhead;
 	}
 
-	return nullptr; // :p
+	return nullptr;
 }
 
 int SW_NuclearMissile::GetDamage(const SWTypeExtData* pData) const
@@ -178,27 +171,23 @@ bool SW_NuclearMissile::DropNukeAt(SuperWeaponTypeClass* pSuper, CoordStruct con
 
 	pBullet->Construct(pPayload->Projectile, pCell, Owner, 0, nullptr, pPayload->Speed, false);
 	pBullet->SetWeaponType(pPayload);
+
 	int Damage = pPayload->Damage;
 	WarheadTypeClass* pWarhead = pPayload->Warhead;
 
 	if (pSuper)
 	{
 		auto const pData = SWTypeExtContainer::Instance.Find(pSuper);
-		BulletClass::CreateDamagingBulletAnim(OwnerHouse,
-			pCell,
-			pBullet,
-			pData->Nuke_PsiWarning
-		);
+		BulletClass::CreateDamagingBulletAnim(OwnerHouse, pCell, pBullet, pData->Nuke_PsiWarning);
 
 		auto pNewType = NewSWType::GetNewSWType(pData);
 		Damage = pNewType->GetDamage(pData);
 		pWarhead = pNewType->GetWarhead(pData);
 
-		// remember the fired SW type
 		BulletExtContainer::Instance.Find(pBullet)->NukeSW = pSuper;
 	}
 
-	pBullet->Health = Damage; //Yes , this is
+	pBullet->Health = Damage;
 	pBullet->WH = pWarhead;
 	pBullet->Bright = pPayload->Bright || pWarhead->Bright;
 	pBullet->Range = WeaponTypeExtContainer::Instance.Find(pPayload)->GetProjectileRange();
@@ -206,30 +195,8 @@ bool SW_NuclearMissile::DropNukeAt(SuperWeaponTypeClass* pSuper, CoordStruct con
 	if (!Owner)
 		BulletExtContainer::Instance.Find(pBullet)->Owner = OwnerHouse;
 
-#ifndef vanilla
-	// aim the bullet downward and put
-	// it over the target area.
-	const bool bNotVert = !pPayload->Projectile->Vertical;
-	VelocityClass vel { 0.0, bNotVert ? 100.0 : 0.0,  bNotVert ? 0.0 : -100.0 };
-	CoordStruct high = to;
-
-	if (!bNotVert)
-		high.Z += pPayload->Projectile->DetonationAltitude;
-
-	return pBullet->MoveTo(high, vel);
-
-#else
-
-	CoordStruct nOffs { 0 , 0, pPayload->Projectile->DetonationAltitude };
+	CoordStruct nOffs { 0, 0, pPayload->Projectile->DetonationAltitude };
 	CoordStruct dest = to + nOffs;
 
-	auto nCos = Math::cos(1.570748388432313); // Accuracy is different from the game
-	auto nSin = Math::sin(1.570748388432313); // Accuracy is different from the game
-
-	double nX = nCos * nCos * -1.0;
-	double nY = nCos * nSin * -1.0;
-	double nZ = nSin * -1.0;
-
-	return pBullet->MoveTo(dest, { nX , nY , nZ });
-#endif
+	return pBullet->MoveTo(dest, { 0, 0, -1.0 }); // aim the bullet downward and put it over the target area
 }

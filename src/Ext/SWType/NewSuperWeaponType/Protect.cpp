@@ -10,29 +10,26 @@ std::vector<const char*> SW_Protect::GetTypeString() const
 
 bool SW_Protect::HandleThisType(SuperWeaponType type) const
 {
-	return (type == SuperWeaponType::IronCurtain) ||
-		(type == SuperWeaponType::ForceShield);
+	return (type == SuperWeaponType::IronCurtain || type == SuperWeaponType::ForceShield);
 }
 
 bool SW_Protect::CanFireAt(const TargetingData* pTargeting, const CellStruct& cell, bool manual) const
 {
-	auto ret = NewSWType::CanFireAt(pTargeting, cell, manual);
-
-	// if this is a force shield requiring buildings and a building is selected, check the modifier
-	if (ret && manual && pTargeting->TypeExt->Protect_IsForceShield && pTargeting->TypeExt->SW_RequiresTarget & SuperWeaponTarget::Building)
+	if (!manual || !pTargeting->TypeExt->Protect_IsForceShield || !(pTargeting->TypeExt->SW_RequiresTarget & SuperWeaponTarget::Building))
 	{
-		auto pCell = MapClass::Instance->GetCellAt(cell);
-		if (auto pBld = pCell->GetBuilding())
+		return NewSWType::CanFireAt(pTargeting, cell, manual);
+	}
+	auto pCell = MapClass::Instance->GetCellAt(cell);
+	if (auto pBld = pCell->GetBuilding())
+	{
+		auto pExt = TechnoTypeExtContainer::Instance.Find(pBld->GetTechnoType());
+		if (pExt->ForceShield_Modifier <= 0.0)
 		{
-			auto pExt = TechnoTypeExtContainer::Instance.Find(pBld->GetTechnoType());
-			if (pExt->ForceShield_Modifier <= 0.0)
-			{
-				ret = false;
-			}
+			return false;
 		}
 	}
 
-	return ret;
+	return true;
 }
 
 bool SW_Protect::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
@@ -46,9 +43,7 @@ bool SW_Protect::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 		CoordStruct Crd = pTarget->GetCoords();
 
 		bool isForceShield = pData->Protect_IsForceShield;
-
-		int duration = pData->Protect_Duration.Get(isForceShield
-			? RulesClass::Instance->ForceShieldDuration : RulesClass::Instance->IronCurtainDuration);
+		int duration = pData->Protect_Duration.Get(isForceShield ? RulesClass::Instance->ForceShieldDuration : RulesClass::Instance->IronCurtainDuration);
 
 		// play start sound
 		if (pSW->StartSound > -1)
@@ -77,8 +72,8 @@ bool SW_Protect::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 
 		bool force = pData->Protect_IsForceShield;
 		auto range = GetRange(pData);
+		auto protectFunc = [&](TechnoClass* pTechno) -> bool
 
-		auto IronCurtain = [=](TechnoClass* pTechno) -> bool
 			{
 				// we shouldn't do anything
 				if (pTechno->IsImmobilized || pTechno->IsBeingWarpedOut())
@@ -106,7 +101,7 @@ bool SW_Protect::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 		// protect everything in range
 		Helpers::Alex::DistinctCollector<TechnoClass*> items;
 		Helpers::Alex::for_each_in_rect_or_range<TechnoClass>(Coords, range.WidthOrRange, range.Height, items);
-		items.apply_function_for_each(IronCurtain);
+		items.apply_function_for_each(protectFunc);
 	}
 
 	return true;

@@ -21,8 +21,6 @@ bool SW_PsychicDominator::Activate(SuperClass* pThis, const CellStruct& Coords, 
 {
 	if (pThis->IsCharged)
 	{
-		// we do not use PsyDom::Start() here. instead, we set a global state and
-		// let the state machine take care of everything.
 		SW_PsychicDominator::CurrentPsyDom = pThis;
 		this->newStateMachine(Coords, pThis);
 	}
@@ -32,7 +30,6 @@ bool SW_PsychicDominator::Activate(SuperClass* pThis, const CellStruct& Coords, 
 
 bool SW_PsychicDominator::AbortFire(SuperClass* pSW, bool IsPlayer)
 {
-	// be one with Yuri! and only one.
 	if (PsyDom::IsActive())
 	{
 		if (IsPlayer)
@@ -48,7 +45,6 @@ bool SW_PsychicDominator::AbortFire(SuperClass* pSW, bool IsPlayer)
 void SW_PsychicDominator::Initialize(SWTypeExtData* pData)
 {
 	pData->AttachedToObject->Action = Action::PsychicDominator;
-	// Defaults to PsychicDominator values
 	pData->Dominator_FirstAnimHeight = 750;
 	pData->Dominator_SecondAnimHeight = 0;
 	pData->Dominator_Ripple = true;
@@ -116,7 +112,6 @@ SWRange SW_PsychicDominator::GetRange(const SWTypeExtData* pData) const
 
 void PsychicDominatorStateMachine::Update()
 {
-	// waiting. lurking in the shadows.
 	if (this->Deferment > 0)
 	{
 		if (--this->Deferment)
@@ -131,7 +126,6 @@ void PsychicDominatorStateMachine::Update()
 	{
 	case PsychicDominatorStatus::FirstAnim:
 	{
-		// here are the contents of PsyDom::Start().
 		CellClass* pTarget = MapClass::Instance->GetCellAt(this->Coords);
 		CoordStruct coords = pTarget->GetCoords();
 		coords.Z += pData->Dominator_FirstAnimHeight;
@@ -156,7 +150,6 @@ void PsychicDominatorStateMachine::Update()
 
 		PsyDom::Status = PsychicDominatorStatus::Fire;
 
-		// most likely LightUpdateTimer
 		ScenarioClass::Instance->AmbientTimer.Start(1);
 		ScenarioClass::UpdateLighting();
 
@@ -164,8 +157,6 @@ void PsychicDominatorStateMachine::Update()
 	}
 	case PsychicDominatorStatus::Fire:
 	{
-		// wait for some percentage of the first anim to be
-		// played until we strike.
 		AnimClass* pAnim = PsyDom::Anim;
 		if (pAnim)
 		{
@@ -185,8 +176,6 @@ void PsychicDominatorStateMachine::Update()
 	}
 	case PsychicDominatorStatus::SecondAnim:
 	{
-		// wait for the second animation to finish. (there may be up to
-		// 10 frames still to be played.)
 		AnimClass* pAnim = PsyDom::Anim;
 		if (pAnim)
 		{
@@ -204,7 +193,6 @@ void PsychicDominatorStateMachine::Update()
 	}
 	case PsychicDominatorStatus::Reset:
 	{
-		// wait for the last frame... WTF?
 		AnimClass* pAnim = PsyDom::Anim;
 		if (pAnim)
 		{
@@ -227,13 +215,11 @@ void PsychicDominatorStateMachine::Update()
 	}
 	case PsychicDominatorStatus::Over:
 	{
-		// wait for the light to go away.
 		if (ScenarioClass::Instance->AmbientCurrent != ScenarioClass::Instance->AmbientTarget)
 		{
 			return;
 		}
 
-		// clean up
 		SW_PsychicDominator::CurrentPsyDom = nullptr;
 		PsyDom::Status = PsychicDominatorStatus::Inactive;
 		ScenarioClass::UpdateLighting();

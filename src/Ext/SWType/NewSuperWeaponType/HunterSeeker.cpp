@@ -14,71 +14,53 @@ bool SW_HunterSeeker::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 	HouseClass* pOwner = pThis->Owner;
 	auto pExt = SWTypeExtContainer::Instance.Find(pThis->Type);
 
-	// get the appropriate hunter seeker type
 	UnitTypeClass* pType = pExt->HunterSeeker_Type.Get(HouseExtData::GetHunterSeeker(pOwner));
 
-	// no type found
 	if (!pType)
 	{
 		Debug::Log("HunterSeeker super weapon \"%s\" could not be launched. "
-			"No HunterSeeker unit type set for house \"%ls\".\n", pThis->Type->ID, pOwner->UIName);
+				   "No HunterSeeker unit type set for house \"%ls\".\n", pThis->Type->ID, pOwner->UIName);
 		return false;
 	}
 
-	//testing
-	// TODO : Re-enable this
-	// somwhat HS Causing desync on ROTE ?
-	// need to investigate further
-	//if (IS_SAME_STR_(pType->ID, "SOVSCRAP"))
-	//	return true;
+	const size_t Count = (pExt->SW_MaxCount >= 0) ? static_cast<size_t>(pExt->SW_MaxCount) : std::numeric_limits<size_t>::max();
 
-	// the maximum number of buildings to fire. negative means all.
-	const auto Count = (pExt->SW_MaxCount >= 0)
-		? static_cast<size_t>(pExt->SW_MaxCount)
-		: std::numeric_limits<size_t>::max();
-
-	// only call on up to Count buildings that suffice IsEligible
-	// create hunterseeker regardless building alive state
-	// only check if cell is actually eligible
 	size_t Success = 0;
-	Helpers::Alex::for_each_if_n(pOwner->Buildings.begin(), pOwner->Buildings.end(),
-		Count,
-		[=](BuildingClass* pBld) { return this->IsLaunchSite_HS(pExt, pBld); },
-		[=, &Success](BuildingClass* pBld)
- {
-	 auto cell = this->GetLaunchCell(pExt, pBld, pType);
+	for (auto& pBld : pOwner->Buildings)
+	{
+		if (Success >= Count)
+			break;
 
-	 if (cell == CellStruct::Empty)
-	 {
-		 return;
-	 }
+		if (!IsLaunchSite_HS(pExt, pBld))
+			continue;
 
-	 // create a hunter seeker
-	 if (auto pHunter = (UnitClass*)pType->CreateObject(pOwner))
-	 {
-		 TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
+		CellStruct cell = GetLaunchCell(pExt, pBld, pType);
 
-		 // put it on the map and let it go
+		if (cell == CellStruct::Empty)
+			continue;
 
-		 if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
-		 {
-			 pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
-			 pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
-			 pHunter->NextMission();
-			 ++Success;
-		 }
-		 else
-		 {
-			 GameDelete<true, false>(pHunter);
-		 }
-	 }
-		});
+		if (auto pHunter = static_cast<UnitClass*>(pType->CreateObject(pOwner)))
+		{
+			TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
 
-	// no launch building found
+			if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
+			{
+				pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
+				pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
+				pHunter->NextMission();
+				++Success;
+			}
+			else
+			{
+				GameDelete<true, false>(pHunter);
+			}
+		}
+	}
+
 	if (!Success)
 	{
 		Debug::Log("HunterSeeker super weapon \"%s\" could not be launched. House \"%ls\" "
-			"does not own any HSBuilding or No Buildings attached with this HSType Superweapon.\n", pThis->Type->ID, pOwner->UIName);
+				   "does not own any HSBuilding or No Buildings attached with this HSType Superweapon.\n", pThis->Type->ID, pOwner->UIName);
 	}
 
 	return Success != 0;
@@ -120,17 +102,22 @@ void SW_HunterSeeker::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 bool SW_HunterSeeker::IsLaunchSite_HS(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	// don't further question the types in this list
-		// get the appropriate launch buildings list
-	const auto HSBuilding = !pData->HunterSeeker_Buildings.empty()
-		? make_iterator(pData->HunterSeeker_Buildings) : make_iterator(RulesExtData::Instance()->HunterSeekerBuildings);
+	if (!pData->HunterSeeker_Buildings.empty())
+	{
+		for (BuildingTypeClass* bldType : pData->HunterSeeker_Buildings)
+		{
+			if (bldType == pBuilding->Type)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 
-	if (HSBuilding.contains(pBuilding->Type))
-		return true;
-
-	// added new tag so it wont break the default behaviour
 	if (pData->HunterSeeker_AllowAttachedBuildingAsFallback)
-		return this->IsSWTypeAttachedToThis(pData, pBuilding);
+	{
+		return IsSWTypeAttachedToThis(pData, pBuilding);
+	}
 
 	return false;
 }
@@ -145,25 +132,17 @@ bool SW_HunterSeeker::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pB
 
 CellStruct SW_HunterSeeker::GetLaunchCell(SWTypeExtData* pSWType, BuildingClass* pBuilding, UnitTypeClass* pHunter) const
 {
-	const auto pBldExt = BuildingExtContainer::Instance.Find(pBuilding);
 	CellStruct cell;
 
-	if (pBldExt->LimboID != -1)
+	if (BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
 	{
-		//Get edge (direction for hunterseeker to come from)
 		const auto edge = pBuilding->Owner->GetHouseEdge();
-
-		// seems to retrieve a random cell struct at a given edge
-		cell = MapClass::Instance->PickCellOnEdge(
-			edge, CellStruct::Empty, CellStruct::Empty, SpeedType::Foot, true,
-			MovementZone::Normal);
+		cell = MapClass::Instance->PickCellOnEdge(edge, CellStruct::Empty, CellStruct::Empty, SpeedType::Foot, true, MovementZone::Normal);
 	}
 	else
 	{
 		auto position = CellClass::Coord2Cell(pBuilding->GetCoords());
-
-		cell = MapClass::Instance->NearByLocation(position, SpeedType::Foot,
-			-1, MovementZone::Normal, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
+		cell = MapClass::Instance->NearByLocation(position, SpeedType::Foot, -1, MovementZone::Normal, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
 	}
 
 	return MapClass::Instance->IsWithinUsableArea(cell, true) ? cell : CellStruct::Empty;

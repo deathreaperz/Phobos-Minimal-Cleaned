@@ -16,41 +16,27 @@ bool SW_ParaDrop::HandleThisType(SuperWeaponType type) const
 
 bool SW_ParaDrop::Activate(SuperClass* const pThis, const CellStruct& Coords, bool const IsPlayer)
 {
-	if (pThis->IsCharged)
+	if (!pThis || !pThis->IsCharged)
 	{
-		auto pTarget = MapClass::Instance->TryGetCellAt(Coords);
-		// all set. send in the planes.
-		return this->SendParadrop(pThis, pTarget);
+		return false;
 	}
 
-	return false;
+	auto pTarget = MapClass::Instance->TryGetCellAt(Coords);
+	if (!pTarget)
+	{
+		return false;
+	}
+
+	return this->SendParadrop(pThis, pTarget);
 }
 
 void SW_ParaDrop::Initialize(SWTypeExtData* pData)
 {
-	pData->AttachedToObject->Action = Action::ParaDrop;
-	// default for american paradrop
-	if (pData->AttachedToObject->Type == SuperWeaponType::AmerParaDrop)
-	{
-		pData->AttachedToObject->Action = Action::AmerParaDrop;
-		// the American paradrop will be the same for every country,
-		// thus we use the SW's default here.
-		auto& nData = pData->ParaDropDatas[pData->AttachedToObject];
-		auto& pPlane = nData.emplace_back();
-
-		auto const& Inf = RulesClass::Instance->AmerParaDropInf;
-		pPlane.Types.insert(pPlane.Types.end(), Inf.begin(), Inf.end());
-
-		auto const& Num = RulesClass::Instance->AmerParaDropNum;
-		pPlane.Num.insert(pPlane.Num.end(), Num.begin(), Num.end());
-	}
-
+	pData->AttachedToObject->Action = (pData->AttachedToObject->Type == SuperWeaponType::AmerParaDrop) ? Action::AmerParaDrop : Action::ParaDrop;
 	pData->SW_RadarEvent = false;
-
 	pData->EVA_Ready = VoxClass::FindIndexById(GameStrings::EVA_ReinforcementsReady);
-
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::ParaDrop;
-	pData->CursorType = int(MouseCursorType::ParaDrop);
+	pData->CursorType = static_cast<int>(MouseCursorType::ParaDrop);
 }
 
 void SW_ParaDrop::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
@@ -277,8 +263,7 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 
 //A new SendPDPlane function
 //Allows vehicles, sends one single plane for all types
-void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTypeClass* pPlaneType,
-	Iterator<TechnoTypeClass*> const Types, Iterator<int> const Nums)
+void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTypeClass* pPlaneType, Iterator<TechnoTypeClass*> const Types, Iterator<int> const Nums)
 {
 	if (Nums.size() != Types.size() || !Nums.size()
 		|| !pOwner || !pPlaneType || !pTarget)
@@ -372,11 +357,5 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 
 bool SW_ParaDrop::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	if (!this->IsLaunchsiteAlive(pBuilding))
-		return false;
-
-	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
-		return true;
-
-	return this->IsSWTypeAttachedToThis(pData, pBuilding);
+	return this->IsLaunchsiteAlive(pBuilding) && (pData->SW_Lauchsites.empty() || pData->SW_Lauchsites.Contains(pBuilding->Type) || this->IsSWTypeAttachedToThis(pData, pBuilding));
 }

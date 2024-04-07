@@ -4,7 +4,7 @@
 
 std::vector<const char*> SW_Battery::GetTypeString() const
 {
-	return { "Battery" , "Generator" };
+	return { "Battery", "Generator" };
 }
 
 bool SW_Battery::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
@@ -14,11 +14,9 @@ bool SW_Battery::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 
 	auto pHouseExt = HouseExtContainer::Instance.Find(pThis->Owner);
 
-	//this check prevent same SW activated multiple times
 	if (!pHouseExt->Batteries.contains(pThis))
 	{
 		pHouseExt->Batteries.push_back(pThis);
-
 		pThis->Owner->RecheckPower = true;
 	}
 	return true;
@@ -48,8 +46,7 @@ void SW_Battery::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	pData->Battery_Overpower.Read(exINI, pSection, "Battery.Overpower");
 	pData->Battery_KeepOnline.Read(exINI, pSection, "Battery.KeepOnline");
 
-	if (!pData->SW_Power.isset())
-		pData->SW_Power.Read(exINI, pSection, "Battery.Power");
+	pData->SW_Power.Read(exINI, pSection, "Battery.Power", !pData->SW_Power.isset());
 
 	pData->AttachedToObject->Action = Action::None;
 	pData->AttachedToObject->UseChargeDrain = true;
@@ -61,8 +58,6 @@ bool SW_Battery::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuildi
 	if (!this->IsLaunchsiteAlive(pBuilding))
 		return false;
 
-	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
-		return true;
-
-	return this->IsSWTypeAttachedToThis(pData, pBuilding);
+	return !pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type) ||
+		this->IsSWTypeAttachedToThis(pData, pBuilding);
 }

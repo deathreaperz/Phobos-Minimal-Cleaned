@@ -1,4 +1,6 @@
 #include "Body.h"
+#include <map>
+#include <tuple>
 
 #include <Ext/House/Body.h>
 #ifndef aaa
@@ -11,13 +13,10 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 	switch (AbsType)
 	{
 	case AbstractType::BuildingType:
-	{
 		currFactory = &pData->Factory_BuildingType;
 		block = pRules->ForbidParallelAIQueues_Building.Get(!pRules->AllowParallelAIQueues);
 		break;
-	}
 	case AbstractType::UnitType:
-	{
 		if (!naval)
 		{
 			block = pRules->ForbidParallelAIQueues_Vehicle.Get(!pRules->AllowParallelAIQueues);
@@ -28,26 +27,20 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 			block = pRules->ForbidParallelAIQueues_Navy.Get(!pRules->AllowParallelAIQueues);
 			currFactory = &pData->Factory_NavyType;
 		}
-
 		break;
-	}
 	case AbstractType::InfantryType:
-	{
 		block = pRules->ForbidParallelAIQueues_Infantry.Get(!pRules->AllowParallelAIQueues);
 		currFactory = &pData->Factory_InfantryType;
 		break;
-	}
 	case AbstractType::AircraftType:
-	{
 		currFactory = &pData->Factory_AircraftType;
 		block = pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues);
 		break;
-	}
 	default:
 		break;
 	}
 
-	return { currFactory  , block ,AbsType };
+	return { currFactory, block, AbsType };
 }
 
 //#include <ostream>
@@ -284,28 +277,47 @@ void HouseExtData::UpdateVehicleProduction()
 //	return 0x0;
 //}
 
-DEFINE_HOOK(0x4401BB, BuildingClass_AI_PickWithFreeDocks, 0x6) //was C
-{
-	GET(BuildingClass*, pBuilding, ESI);
+//DEFINE_HOOK(0x4401BB, BuildingClass_AI_PickWithFreeDocks, 0x6) //was C
+//{
+//	GET(BuildingClass*, pBuilding, ESI);
+//
+//	auto pRules = RulesExtData::Instance();
+//
+//	if (!pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues))
+//		return 0;
+//
+//	if (!pBuilding->Owner || pBuilding->Owner->IsNeutral() || pBuilding->Owner->IsControlledByHuman())
+//		return 0;
+//
+//	if (pBuilding->Type->Factory == AbstractType::AircraftType)
+//	{
+//		if (pBuilding->Factory
+//			&& !BuildingExtData::HasFreeDocks(pBuilding))
+//		{
+//			BuildingExtData::UpdatePrimaryFactoryAI(pBuilding);
+//		}
+//	}
+//
+//	return 0;
+//}
 
+void BuildingClass_AI_PickWithFreeDocks(BuildingClass* pBuilding)
+{
 	auto pRules = RulesExtData::Instance();
 
 	if (!pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues))
-		return 0;
+		return;
 
 	if (!pBuilding->Owner || pBuilding->Owner->IsNeutral() || pBuilding->Owner->IsControlledByHuman())
-		return 0;
+		return;
 
 	if (pBuilding->Type->Factory == AbstractType::AircraftType)
 	{
-		if (pBuilding->Factory
-			&& !BuildingExtData::HasFreeDocks(pBuilding))
+		if (pBuilding->Factory && !BuildingExtData::HasFreeDocks(pBuilding))
 		{
 			BuildingExtData::UpdatePrimaryFactoryAI(pBuilding);
 		}
 	}
-
-	return 0;
 }
 
 //DEFINE_HOOK(0x04500FA, BuildingClass_AI_Factory_SkipNoneForComputer, 0x6)

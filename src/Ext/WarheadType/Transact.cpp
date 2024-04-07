@@ -6,19 +6,18 @@
 
 #include <algorithm>
 
-// Add or substract experience for real
+// Add or subtract experience for real
 int AddExpCustom(VeterancyStruct* vstruct, int targetCost, int exp)
 {
-	double toBeAdded = (double)exp / (targetCost * RulesClass::Instance->VeteranRatio);
-	// Used in experience transfer to get the actual amount substracted
-	int transffered = (int)(MinImpl(vstruct->Veterancy, (float)abs(toBeAdded))
-		* (targetCost * RulesClass::Instance->VeteranRatio));
+	double toBeAdded = static_cast<double>(exp) / (targetCost * RulesClass::Instance->VeteranRatio);
+	// Used in experience transfer to get the actual amount subtracted
+	int transferred = static_cast<int>(std::min(vstruct->Veterancy, abs(static_cast<float>(toBeAdded))) * (targetCost * RulesClass::Instance->VeteranRatio));
 
-	// Don't do anything when current exp at 0
-	if (exp < 0 && transffered <= 0)
+	// Don't do anything when current exp is at 0
+	if (exp < 0 && transferred <= 0)
 	{
 		vstruct->Reset();
-		transffered = 0;
+		transferred = 0;
 	}
 	else
 	{
@@ -30,7 +29,8 @@ int AddExpCustom(VeterancyStruct* vstruct, int targetCost, int exp)
 	{
 		vstruct->SetElite();
 	}
-	return transffered;
+
+	return transferred;
 }
 
 int WarheadTypeExtData::TransactOneValue(TechnoClass* pTechno, TechnoTypeClass* pTechnoType, int transactValue, TransactValueType valueType)
@@ -41,8 +41,7 @@ int WarheadTypeExtData::TransactOneValue(TechnoClass* pTechno, TechnoTypeClass* 
 		{
 		case TransactValueType::Experience:
 		{
-			return AddExpCustom(&pTechno->Veterancy,
-				pTechnoType ? pTechnoType->GetActualCost(pTechno->Owner) : 0, transactValue);
+			return AddExpCustom(&pTechno->Veterancy, pTechnoType ? pTechnoType->GetActualCost(pTechno->Owner) : 0, transactValue);
 		}
 		}
 	}
@@ -58,12 +57,12 @@ int WarheadTypeExtData::TransactGetValue(TechnoClass* pTarget, TechnoClass* pOwn
 	flatValue = flat;
 
 	// Percent
-	if (!CLOSE_ENOUGH(percent, 0.0))
+	if (percent != 0.0)
 	{
 		if (calcFromTarget)
-			percentValue = pTarget ? (int)(pTarget->GetTechnoType()->GetActualCost(pTarget->Owner) * percent) : 0;
+			percentValue = pTarget ? static_cast<int>(pTarget->GetTechnoType()->GetActualCost(pTarget->Owner) * percent) : 0;
 		else if (!calcFromTarget)
-			percentValue = pOwner ? (int)(pOwner->GetTechnoType()->GetActualCost(pOwner->Owner) * percent) : 0;
+			percentValue = pOwner ? static_cast<int>(pOwner->GetTechnoType()->GetActualCost(pOwner->Owner) * percent) : 0;
 	}
 
 	return abs(percentValue) > abs(flatValue) ? percentValue : flatValue;
@@ -99,7 +98,7 @@ TransactData WarheadTypeExtData::TransactGetSourceAndTarget(TechnoClass* pTarget
 		};
 
 	// SOURCE
-	//		Experience
+	// Experience
 	int sourceExp = IsTargetAffected(pOwner, pTarget, !this->Transact_Experience_Target_Percent_CalcFromSource, !this->Transact_Experience_Source_Percent_CalcFromTarget) ?
 		TransactGetValue(pTarget, pOwner,
 		this->Transact_Experience_Source_Flat,
@@ -108,7 +107,7 @@ TransactData WarheadTypeExtData::TransactGetSourceAndTarget(TechnoClass* pTarget
 
 	sourceValues.push_back(sourceExp / targets);
 	// TARGET
-	//		Experience
+	// Experience
 	int targetExp = IsTargetAffected(pTarget, pOwner, !this->Transact_Experience_Source_Percent_CalcFromTarget, !this->Transact_Experience_Target_Percent_CalcFromSource, true) ?
 		TransactGetValue(pOwner, pTarget,
 		this->Transact_Experience_Target_Flat, this->Transact_Experience_Target_Percent,
@@ -169,7 +168,7 @@ void WarheadTypeExtData::TransactOnOneUnit(TechnoClass* pTarget, TechnoClass* pO
 
 void WarheadTypeExtData::TransactOnAllUnits(std::vector<TechnoClass*>& nVec, HouseClass* pHouse, TechnoClass* pOwner)
 {
-	//since we are on last chain of the event , we can do these thing
+	// Since we are on the last chain of the event, we can do these things
 	const auto NotEligible = [this, pHouse, pOwner](TechnoClass* const pTech)
 		{
 			if (!CanDealDamage(pTech))

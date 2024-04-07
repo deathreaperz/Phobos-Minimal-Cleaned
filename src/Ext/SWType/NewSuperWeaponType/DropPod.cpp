@@ -1,5 +1,4 @@
 #include "DropPod.h"
-
 #include <Ext/Techno/Body.h>
 #include <Ext/Rules/Body.h>
 
@@ -32,7 +31,7 @@ void SW_DropPod::Initialize(SWTypeExtData* pData)
 	pData->EVA_Activated = VoxClass::FindIndexById("EVA_DropPodActivated");
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::DropPod;
-	pData->CursorType = (int)MouseCursorType::ParaDrop;
+	pData->CursorType = static_cast<int>(MouseCursorType::ParaDrop);
 
 	pData->DroppodProp.Initialize();
 }
@@ -81,12 +80,8 @@ void DroppodStateMachine::SendDroppods(SuperClass* pSuper, SWTypeExtData* pData,
 		VocClass::PlayGlobal(sound, Panning::Center, 1.0);
 	}
 
-	// collect the options
-	const auto& Types = !pData->DropPod_Types.empty()
-		? pData->DropPod_Types
-		: RulesExtData::Instance()->DropPodTypes;
+	const auto& Types = !pData->DropPod_Types.empty() ? pData->DropPod_Types : RulesExtData::Instance()->DropPodTypes;
 
-	// quick way out
 	if (Types.empty())
 	{
 		return;
@@ -101,17 +96,15 @@ void DroppodStateMachine::SendDroppods(SuperClass* pSuper, SWTypeExtData* pData,
 void DroppodStateMachine::PlaceUnits(SuperClass* pSuper, double veterancy, Iterator<TechnoTypeClass*> const Types, int cMin, int cMax, const CellStruct& Coords, bool retries)
 {
 	const auto pData = SWTypeExtContainer::Instance.Find(pSuper->Type);
-	// three times more tries than units to place.
 	const int count = ScenarioClass::Instance->Random.RandomRanged(cMin, cMax);
 	CellStruct cell = Coords;
-	std::vector<std::pair<bool, int>> Succeededs(count, { false , pData->Droppod_RetryCount });
+	std::vector<std::pair<bool, int>> Succeededs(count, { false, pData->Droppod_RetryCount });
 	const bool needRandom = Types.size() > 1;
 
 	for (auto& [status, retrycount] : Succeededs)
 	{
 		if (!status && retrycount)
 		{
-			// get a random type from the list and create an instance
 			TechnoTypeClass* pType = Types[needRandom ? ScenarioClass::Instance->Random.RandomFromMax(Types.size() - 1) : 0];
 
 			if (!pType || pType->Strength <= 0 || pType->WhatAmI() == BuildingTypeClass::AbsID)
@@ -123,19 +116,14 @@ void DroppodStateMachine::PlaceUnits(SuperClass* pSuper, double veterancy, Itera
 			if (!pFoot)
 				continue;
 
-			// update veterancy only if higher
 			if (veterancy > pFoot->Veterancy.Veterancy)
 			{
 				pFoot->Veterancy.Add(veterancy);
 			}
 
-			// select a free cell the unit can enter
-			CellStruct tmpCell = MapClass::Instance->NearByLocation(cell, pType->SpeedType, -1,
-				pType->MovementZone, false, 1, 1, false, false, false, false, CellStruct::Empty, false, false);
-
+			CellStruct tmpCell = MapClass::Instance->NearByLocation(cell, pType->SpeedType, -1, pType->MovementZone, false, 1, 1, false, false, false, false, CellStruct::Empty, false, false);
 			CoordStruct crd = CellClass::Cell2Coord(tmpCell);
 
-			// let the locomotor take care of the rest
 			TechnoExtContainer::Instance.Find(pFoot)->LinkedSW = pSuper;
 			if (TechnoExtData::CreateWithDroppod(pFoot, crd))
 			{
@@ -146,13 +134,11 @@ void DroppodStateMachine::PlaceUnits(SuperClass* pSuper, double veterancy, Itera
 				--retrycount;
 			}
 
-			// randomize the target coodinates
 			CellClass* pCell = MapClass::Instance->GetCellAt(tmpCell);
 			int rnd = ScenarioClass::Instance->Random.RandomFromMax(7);
 
 			for (int j = 0; j < 8; ++j)
 			{
-				// get the direction in an overly verbose way
 				FacingType dir = FacingType(((j + rnd) % 8) & 7);
 
 				CellClass* pNeighbour = pCell->GetNeighbourCell(dir);
@@ -163,7 +149,6 @@ void DroppodStateMachine::PlaceUnits(SuperClass* pSuper, double veterancy, Itera
 				}
 			}
 
-			// failed to place
 			if (pFoot->InLimbo)
 			{
 				pFoot->UnInit();

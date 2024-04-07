@@ -4451,351 +4451,507 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 		{
 			// if this is a vessel or vehicle that is organic: no effect.
 			TypeImmune = !pTechno->GetTechnoType()->Organic;
-			{
-				return true;
-			}
-
-			pTypeExt->AffectedByEMP = !TypeImmune;
 		}
-		return pTypeExt->AffectedByEMP.get();
+
+		pTypeExt->AffectedByEMP = !TypeImmune;
 	}
 
-	bool AresEMPulse::isCurrentlyEMPImmune(WarheadTypeClass * pWarhead, TechnoClass * Target, HouseClass * SourceHouse)
+	return pTypeExt->AffectedByEMP.get();
+}
+
+bool AresEMPulse::isCurrentlyEMPImmune(WarheadTypeClass* pWarhead, TechnoClass* Target, HouseClass* SourceHouse)
+{
+	if (auto pBldLinked = specific_cast<BuildingClass*>(Target->BunkerLinkedItem))
 	{
-		if (auto pBldLinked = specific_cast<BuildingClass*>(Target->BunkerLinkedItem))
-		{
-			if (!pWarhead->PenetratesBunker)
-				return true;
-		}
-
-		// objects currently doing some time travel are exempt
-		if (Target->IsBeingWarpedOut())
-		{
+		if (!pWarhead->PenetratesBunker)
 			return true;
-		}
+	}
 
-		// iron curtained objects can not be affected by EMPs
-		if (Target->IsIronCurtained())
-		{
-			return true;
-		}
+	// objects currently doing some time travel are exempt
+	if (Target->IsBeingWarpedOut())
+	{
+		return true;
+	}
 
-		if (Target->WhatAmI() == AbstractType::Unit)
+	// iron curtained objects can not be affected by EMPs
+	if (Target->IsIronCurtained())
+	{
+		return true;
+	}
+
+	if (Target->WhatAmI() == AbstractType::Unit)
+	{
+		if (BuildingClass* pBld = MapClass::Instance->GetCellAt(Target->Location)->GetBuilding())
 		{
-			if (BuildingClass* pBld = MapClass::Instance->GetCellAt(Target->Location)->GetBuilding())
+			if (pBld->Type->WeaponsFactory)
 			{
-				if (pBld->Type->WeaponsFactory)
+				if (pBld->IsUnderEMP() || pBld == Target->GetNthLink(0))
 				{
-					if (pBld->IsUnderEMP() || pBld == Target->GetNthLink(0))
-					{
-						return true;
-					}
-
-					// units requiring an operator can't deactivate on the bib
-					// because nobody could enter it afterwards.
-					if (!TechnoExt_ExtData::IsOperatedB(Target))
-					{
-						return true;
-					}
+					return true;
 				}
-			}
-		}
 
-		// the current status does allow this target to
-		// be affected by EMPs. It may be immune, though.
-		return isEMPImmune(Target, SourceHouse);
-	}
-
-	bool AresEMPulse::isEMPImmune(TechnoClass * Target, HouseClass * SourceHouse)
-	{
-		if (TechnoExtData::IsEMPImmune(Target))
-			return true;
-
-		auto pType = Target->GetTechnoType();
-
-		if (!AresEMPulse::IsTypeEMPProne(Target))
-			return true;
-
-		// if houses differ, TypeImmune does not count.
-		if (Target->Owner == SourceHouse)
-		{
-			// ignore if type immune. don't even try.
-			if (AresEMPulse::isEMPTypeImmune(Target))
-			{
-				// This unit can fire emps and type immunity
-				// grants it to never be affected.
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	bool AresEMPulse::isEMPTypeImmune(TechnoClass * Target)
-	{
-		auto pType = Target->GetTechnoType();
-		if (!pType->TypeImmune)
-		{
-			return false;
-		}
-
-		const int WeaponCount = pType->TurretCount <= 0 ? 2 : pType->WeaponCount;
-
-		for (auto i = 0; i < WeaponCount; ++i)
-		{
-			if (auto pWeaponType = Target->GetWeapon(i)->WeaponType)
-			{
-				auto pWarheadExt = WarheadTypeExtContainer::Instance.Find(pWeaponType->Warhead);
-				if (pWarheadExt->EMP_Duration != 0)
+				// units requiring an operator can't deactivate on the bib
+				// because nobody could enter it afterwards.
+				if (!TechnoExt_ExtData::IsOperatedB(Target))
 				{
-					// this unit can fire emps and type immunity
-					// grants it to never be affected.
 					return true;
 				}
 			}
 		}
+	}
 
+	// the current status does allow this target to
+	// be affected by EMPs. It may be immune, though.
+	return isEMPImmune(Target, SourceHouse);
+}
+
+bool AresEMPulse::isEMPImmune(TechnoClass* Target, HouseClass* SourceHouse)
+{
+	if (TechnoExtData::IsEMPImmune(Target))
+		return true;
+
+	auto pType = Target->GetTechnoType();
+
+	if (!AresEMPulse::IsTypeEMPProne(Target))
+		return true;
+
+	// if houses differ, TypeImmune does not count.
+	if (Target->Owner == SourceHouse)
+	{
+		// ignore if type immune. don't even try.
+		if (AresEMPulse::isEMPTypeImmune(Target))
+		{
+			// This unit can fire emps and type immunity
+			// grants it to never be affected.
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool AresEMPulse::isEMPTypeImmune(TechnoClass* Target)
+{
+	auto pType = Target->GetTechnoType();
+	if (!pType->TypeImmune)
+	{
 		return false;
 	}
 
-	bool AresEMPulse::IsDeactivationAdvisable(TechnoClass * Target)
+	const int WeaponCount = pType->TurretCount <= 0 ? 2 : pType->WeaponCount;
+
+	for (auto i = 0; i < WeaponCount; ++i)
 	{
-		switch (Target->CurrentMission)
+		if (auto pWeaponType = Target->GetWeapon(i)->WeaponType)
 		{
-		case Mission::Selling:
-		case Mission::Construction:
-			return false;
-		}
-		return true;
-	}
-
-	bool AresEMPulse::IsDeactivationAdvisableB(TechnoClass * Target)
-	{
-		switch (Target->CurrentMission)
-		{
-		case Mission::Selling:
-		case Mission::Construction:
-			return false;
-		}
-
-		switch (Target->QueuedMission)
-		{
-		case Mission::Selling:
-		case Mission::Construction:
-			return false;
-		}
-
-		return true;
-	}
-
-	void AresEMPulse::UpdateSparkleAnim(TechnoClass * pFrom, TechnoClass * pTo)
-	{
-		AnimTypeClass* pSparkle = nullptr;
-
-		if (auto& pCurSparkle = TechnoExtContainer::Instance.Find(pFrom)->EMPSparkleAnim)
-		{
-			const auto pSpecific = AresEMPulse::GetSparkleAnimType(pFrom);
-
-			if (pSpecific != pCurSparkle->Type)
-				pSparkle = pSpecific;
-		}
-
-		AresEMPulse::UpdateSparkleAnim(pTo, pSparkle);
-	}
-
-	void AresEMPulse::UpdateSparkleAnim(TechnoClass * pWho, AnimTypeClass * pAnim)
-	{
-		if (TechnoTypeExtContainer::Instance.Find(pWho->GetTechnoType())->IsDummy)
-			return;
-
-		auto& Anim = TechnoExtContainer::Instance.Find(pWho)->EMPSparkleAnim;
-
-		if (pWho->IsUnderEMP())
-		{
-			if (!Anim)
+			if (WarheadTypeExtContainer::Instance.Find(pWeaponType->Warhead)->EMP_Duration != 0)
 			{
-				auto const pAnimType = pAnim ? pAnim
-					: AresEMPulse::GetSparkleAnimType(pWho);
-
-				if (pAnimType)
-				{
-					Anim.reset(GameCreate<AnimClass>(pAnimType, pWho->Location));
-					Anim->SetOwnerObject(pWho);
-
-					if (pWho->WhatAmI() == BuildingClass::AbsID)
-					{
-						Anim->ZAdjust = -1024;
-					}
-				}
-			}
-		}
-		else if (Anim)
-		{
-			// finish this loop, then disappear
-			Anim->RemainingIterations = 0;
-			Anim.release();
-		}
-	}
-
-	bool AresEMPulse::thresholdExceeded(TechnoClass * Victim)
-	{
-		auto const pData = TechnoTypeExtContainer::Instance.Find(Victim->GetTechnoType());
-		if (pData->EMP_Threshold != 0 && Victim->EMPLockRemaining > (std::abs(pData->EMP_Threshold)))
-		{
-			if (pData->EMP_Threshold > 0)
-			{
+				// this unit can fire emps and type immunity
+				// grants it to never be affected.
 				return true;
 			}
-			else
-			{
-				FootClass* pFoot = nullptr;
-				bool InAir = Victim->IsInAir();
-
-				if (Victim->AbstractFlags & AbstractFlags::Foot)
-				{
-					pFoot = (FootClass*)Victim;
-				}
-
-				return InAir && !Victim->Parachute && !Victim->IsCrashing
-					&& (!pFoot || !pFoot->IsLetGoByLocomotor || !pFoot->IsAttackedByLocomotor);
-			}
 		}
+	}
 
+	return false;
+}
+
+bool AresEMPulse::IsDeactivationAdvisable(TechnoClass* Target)
+{
+	switch (Target->CurrentMission)
+	{
+	case Mission::Selling:
+	case Mission::Construction:
+		return false;
+	}
+	return true;
+}
+
+bool AresEMPulse::IsDeactivationAdvisableB(TechnoClass* Target)
+{
+	switch (Target->CurrentMission)
+	{
+	case Mission::Selling:
+	case Mission::Construction:
 		return false;
 	}
 
-	bool NOINLINE AresEMPulse::isEligibleEMPTarget(TechnoClass* const pTarget, HouseClass* const pSourceHouse, WarheadTypeClass * pWarhead)
+	switch (Target->QueuedMission)
 	{
-		if (!WarheadTypeExtContainer::Instance.Find(pWarhead)->CanTargetHouse(pSourceHouse, pTarget))
-			return false;
-
-		return !AresEMPulse::isCurrentlyEMPImmune(pWarhead, pTarget, pSourceHouse);
+	case Mission::Selling:
+	case Mission::Construction:
+		return false;
 	}
 
-	void NOINLINE AresEMPulse::deliverEMPDamage(TechnoClass* const pTechno, TechnoClass* const pFirer, WarheadTypeClass * pWarhead)
-	{
-		auto const pHouse = pFirer ? pFirer->Owner : nullptr;
-		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
+	return true;
+}
 
-		if (AresEMPulse::isEligibleEMPTarget(pTechno, pHouse, pWarhead))
+void AresEMPulse::UpdateSparkleAnim(TechnoClass* pFrom, TechnoClass* pTo)
+{
+	AnimTypeClass* pSparkle = nullptr;
+
+	if (auto& pCurSparkle = TechnoExtContainer::Instance.Find(pFrom)->EMPSparkleAnim)
+	{
+		const auto pSpecific = AresEMPulse::GetSparkleAnimType(pFrom);
+
+		if (pSpecific != pCurSparkle->Type)
+			pSparkle = pSpecific;
+	}
+
+	AresEMPulse::UpdateSparkleAnim(pTo, pSparkle);
+}
+
+void AresEMPulse::UpdateSparkleAnim(TechnoClass* pWho, AnimTypeClass* pAnim)
+{
+	if (TechnoTypeExtContainer::Instance.Find(pWho->GetTechnoType())->IsDummy)
+		return;
+
+	auto& Anim = TechnoExtContainer::Instance.Find(pWho)->EMPSparkleAnim;
+
+	if (pWho->IsUnderEMP())
+	{
+		if (!Anim)
 		{
-			auto const pType = pTechno->GetTechnoType();
-			auto const& Verses = pWHExt->GetVerses(TechnoExtData::GetArmor(pTechno)).Verses;
-			if (std::abs(Verses) < 0.001)
+			auto const pAnimType = pAnim ? pAnim
+				: AresEMPulse::GetSparkleAnimType(pWho);
+
+			if (pAnimType)
 			{
-				return;
+				Anim.reset(GameCreate<AnimClass>(pAnimType, pWho->Location));
+				Anim->SetOwnerObject(pWho);
+
+				if (pWho->WhatAmI() == BuildingClass::AbsID)
+				{
+					Anim->ZAdjust = -1024;
+				}
+			}
+		}
+	}
+	else if (Anim)
+	{
+		// finish this loop, then disappear
+		Anim->RemainingIterations = 0;
+		Anim.release();
+	}
+}
+
+bool AresEMPulse::thresholdExceeded(TechnoClass* Victim)
+{
+	auto const pData = TechnoTypeExtContainer::Instance.Find(Victim->GetTechnoType());
+	if (pData->EMP_Threshold != 0 && Victim->EMPLockRemaining > (std::abs(pData->EMP_Threshold)))
+	{
+		if (pData->EMP_Threshold > 0)
+		{
+			return true;
+		}
+		else
+		{
+			FootClass* pFoot = nullptr;
+			bool InAir = Victim->IsInAir();
+
+			if (Victim->AbstractFlags & AbstractFlags::Foot)
+			{
+				pFoot = (FootClass*)Victim;
 			}
 
-			auto const pExt = TechnoTypeExtContainer::Instance.Find(pType);
-			// get the target-specific multiplier
-			auto modifier = pWHExt->EMP_Duration > 0 ? pExt->EMP_Modifier : 1.0;
+			return InAir && !Victim->Parachute && !Victim->IsCrashing
+				&& (!pFoot || !pFoot->IsLetGoByLocomotor || !pFoot->IsAttackedByLocomotor);
+		}
+	}
 
-			// respect verses
+	return false;
+}
 
-			auto duration = static_cast<int>(pWHExt->EMP_Duration * modifier);
+bool NOINLINE AresEMPulse::isEligibleEMPTarget(TechnoClass* const pTarget, HouseClass* const pSourceHouse, WarheadTypeClass* pWarhead)
+{
+	if (!WarheadTypeExtContainer::Instance.Find(pWarhead)->CanTargetHouse(pSourceHouse, pTarget))
+		return false;
 
-			// get the new capped value
-			auto const oldValue = static_cast<int>(pTechno->EMPLockRemaining);
-			auto const newValue = Helpers::Alex::getCappedDuration(
-				oldValue, duration, pWHExt->EMP_Cap);
+	return !AresEMPulse::isCurrentlyEMPImmune(pWarhead, pTarget, pSourceHouse);
+}
 
-			// can not be less than zero
-			pTechno->EMPLockRemaining = (MaxImpl(newValue, 0));
+void NOINLINE AresEMPulse::deliverEMPDamage(TechnoClass* const pTechno, TechnoClass* const pFirer, WarheadTypeClass* pWarhead)
+{
+	auto const pHouse = pFirer ? pFirer->Owner : nullptr;
+	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
 
-			auto diedFromPulse = false;
-			auto const underEMPBefore = (oldValue > 0);
-			auto const underEMPAfter = (pTechno->EMPLockRemaining > 0);
-			auto const newlyUnderEMP = !underEMPBefore && underEMPAfter;
+	if (AresEMPulse::isEligibleEMPTarget(pTechno, pHouse, pWarhead))
+	{
+		auto const pType = pTechno->GetTechnoType();
+		auto const& Verses = pWHExt->GetVerses(TechnoExtData::GetArmor(pTechno)).Verses;
+		if (std::abs(Verses) < 0.001)
+		{
+			return;
+		}
 
-			if (underEMPBefore && !underEMPAfter)
+		auto const pExt = TechnoTypeExtContainer::Instance.Find(pType);
+		// get the target-specific multiplier
+		auto modifier = pWHExt->EMP_Duration > 0 ? pExt->EMP_Modifier : 1.0;
+
+		// respect verses
+
+		auto duration = static_cast<int>(pWHExt->EMP_Duration * modifier);
+
+		// get the new capped value
+		auto const oldValue = static_cast<int>(pTechno->EMPLockRemaining);
+		auto const newValue = Helpers::Alex::getCappedDuration(
+			oldValue, duration, pWHExt->EMP_Cap);
+
+		// can not be less than zero
+		pTechno->EMPLockRemaining = (MaxImpl(newValue, 0));
+
+		auto diedFromPulse = false;
+		auto const underEMPBefore = (oldValue > 0);
+		auto const underEMPAfter = (pTechno->EMPLockRemaining > 0);
+		auto const newlyUnderEMP = !underEMPBefore && underEMPAfter;
+
+		if (underEMPBefore && !underEMPAfter)
+		{
+			// newly de-paralyzed
+			AresEMPulse::DisableEMPEffect(pTechno);
+
+			if (auto v19 = pTechno->AttachedTag)
 			{
-				// newly de-paralyzed
-				AresEMPulse::DisableEMPEffect(pTechno);
+				v19->RaiseEvent(TriggerEvent(AresTriggerEvents::RemoveEMP_ByHouse), pTechno, CellStruct::Empty, 0, pFirer);
+			}
 
+			if (pTechno->IsAlive)
+			{
+				if (auto  v20 = pTechno->AttachedTag)
+				{
+					v20->RaiseEvent(TriggerEvent(AresTriggerEvents::RemoveEMP), pTechno, CellStruct::Empty, 0, 0);
+				}
+			}
+		}
+		else if (newlyUnderEMP)
+		{
+			// newly paralyzed unit
+			diedFromPulse = AresEMPulse::EnableEMPEffect(pTechno, pFirer);
+
+			if (!diedFromPulse && pWHExt->Malicious)
+			{
+				// warn the player
+				AresEMPulse::announceAttack(pTechno);
+			}
+
+			if (pTechno->IsAlive)
+			{
 				if (auto v19 = pTechno->AttachedTag)
 				{
-					v19->RaiseEvent(TriggerEvent(AresTriggerEvents::RemoveEMP_ByHouse), pTechno, CellStruct::Empty, 0, pFirer);
+					v19->RaiseEvent(TriggerEvent(AresTriggerEvents::UnderEMP_ByHouse), pTechno, CellStruct::Empty, 0, pFirer);
 				}
 
 				if (pTechno->IsAlive)
 				{
 					if (auto  v20 = pTechno->AttachedTag)
 					{
-						v20->RaiseEvent(TriggerEvent(AresTriggerEvents::RemoveEMP), pTechno, CellStruct::Empty, 0, 0);
+						v20->RaiseEvent(TriggerEvent(AresTriggerEvents::UnderEMP), pTechno, CellStruct::Empty, 0, nullptr);
 					}
 				}
 			}
-			else if (newlyUnderEMP)
-			{
-				// newly paralyzed unit
-				diedFromPulse = AresEMPulse::EnableEMPEffect(pTechno, pFirer);
+		}
+		else if (oldValue == newValue)
+		{
+			// no relevant change
+			return;
+		}
 
-				if (!diedFromPulse && pWHExt->Malicious)
-				{
-					// warn the player
-					AresEMPulse::announceAttack(pTechno);
-				}
+		// is techno destroyed by EMP?
+		if (diedFromPulse || (underEMPAfter && AresEMPulse::thresholdExceeded(pTechno)))
+		{
+			AresEMPulse::Destroy(pTechno, pFirer, nullptr, nullptr);
+		}
+		else if (newlyUnderEMP || pWHExt->EMP_Sparkles)
+		{
+			// set the sparkle animation
+			AresEMPulse::UpdateSparkleAnim(pTechno, pWHExt->EMP_Sparkles);
+		}
+	}
+}
 
-				if (pTechno->IsAlive)
-				{
-					if (auto v19 = pTechno->AttachedTag)
-					{
-						v19->RaiseEvent(TriggerEvent(AresTriggerEvents::UnderEMP_ByHouse), pTechno, CellStruct::Empty, 0, pFirer);
-					}
+bool AresEMPulse::EnableEMPEffect(TechnoClass* const pVictim, ObjectClass* const pSource)
+{
+	auto const abs = pVictim->WhatAmI();
 
-					if (pTechno->IsAlive)
-					{
-						if (auto  v20 = pTechno->AttachedTag)
-						{
-							v20->RaiseEvent(TriggerEvent(AresTriggerEvents::UnderEMP), pTechno, CellStruct::Empty, 0, nullptr);
-						}
-					}
-				}
-			}
-			else if (oldValue == newValue)
-			{
-				// no relevant change
-				return;
-			}
+	if (abs == AbstractType::Building)
+	{
+		auto const pBuilding = static_cast<BuildingClass*>(pVictim);
+		auto const pOwner = pBuilding->Owner;
 
-			// is techno destroyed by EMP?
-			if (diedFromPulse || (underEMPAfter && AresEMPulse::thresholdExceeded(pTechno)))
-			{
-				AresEMPulse::Destroy(pTechno, pFirer, nullptr, nullptr);
-			}
-			else if (newlyUnderEMP || pWHExt->EMP_Sparkles)
-			{
-				// set the sparkle animation
-				AresEMPulse::UpdateSparkleAnim(pTechno, pWHExt->EMP_Sparkles);
-			}
+		pOwner->RecheckTechTree = true;
+		pOwner->RecheckPower = true;
+
+		pBuilding->DisableStuff();
+		AresEMPulse::updateRadarBlackout(pBuilding);
+	}
+	else if (abs == AbstractType::Aircraft)
+	{
+		// crash flying aircraft
+		auto const pAircraft = static_cast<AircraftClass*>(pVictim);
+		if (pAircraft->GetHeight() > 0 && !pAircraft->IsLetGoByLocomotor && !pAircraft->IsAttackedByLocomotor)
+		{
+			return true;
 		}
 	}
 
-	bool AresEMPulse::EnableEMPEffect(TechnoClass* const pVictim, ObjectClass* const pSource)
+	// cache the last mission this thing did
+	TechnoExtContainer::Instance.Find(pVictim)->EMPLastMission = pVictim->CurrentMission;
+
+	// detach temporal
+	if (pVictim->IsWarpingSomethingOut())
 	{
-		auto const abs = pVictim->WhatAmI();
+		pVictim->TemporalImUsing->LetGo();
+	}
+
+	// remove the unit from its team
+	if (auto const pFoot = abstract_cast<FootClass*>(pVictim))
+	{
+		if (pFoot->LocomotorTarget)
+			pFoot->LocomotorImblued(true);
+
+		if (pFoot->BelongsToATeam())
+		{
+			pFoot->Team->LiberateMember(pFoot);
+		}
+	}
+
+	// deactivate and sparkle
+	if (!pVictim->Deactivated && AresEMPulse::IsDeactivationAdvisable(pVictim))
+	{
+		auto const selected = pVictim->IsSelected;
+		auto const pFocus = pVictim->Focus;
+
+		pVictim->Deactivate();
+
+		if (selected)
+		{
+			auto const feedback = Unsorted::MoveFeedback();
+			Unsorted::MoveFeedback() = false;
+			pVictim->Select();
+			Unsorted::MoveFeedback() = feedback;
+		}
 
 		if (abs == AbstractType::Building)
 		{
-			auto const pBuilding = static_cast<BuildingClass*>(pVictim);
-			auto const pOwner = pBuilding->Owner;
-
-			pOwner->RecheckTechTree = true;
-			pOwner->RecheckPower = true;
-
-			pBuilding->DisableStuff();
-			AresEMPulse::updateRadarBlackout(pBuilding);
+			pVictim->Focus = pFocus;
 		}
-		else if (abs == AbstractType::Aircraft)
+	}
+
+	// release all captured units.
+	if (pVictim->CaptureManager)
+	{
+		pVictim->CaptureManager->FreeAll();
+	}
+
+	// update managers.
+	AresEMPulse::updateSpawnManager(pVictim, pSource);
+
+	if (auto const pSlaveManager = pVictim->SlaveManager)
+	{
+		pSlaveManager->SuspendWork();
+	}
+
+	// the unit still lives.
+	return false;
+}
+
+void AresEMPulse::DisableEMPEffect(TechnoClass* const pVictim)
+{
+	auto const abs = pVictim->WhatAmI();
+
+	auto hasPower = true;
+
+	if (abs == AbstractType::Building)
+	{
+		auto const pBuilding = static_cast<BuildingClass*>(pVictim);
+		hasPower = pBuilding->IsPowerOnline();
+
+		auto const pOwner = pBuilding->Owner;
+		pOwner->RecheckTechTree = true;
+		pOwner->RecheckPower = true;
+
+		auto const pType = pBuilding->Type;
+		if (hasPower || pType->LaserFencePost)
 		{
-			// crash flying aircraft
-			auto const pAircraft = static_cast<AircraftClass*>(pVictim);
-			if (pAircraft->GetHeight() > 0 && !pAircraft->IsLetGoByLocomotor && !pAircraft->IsAttackedByLocomotor)
+			pBuilding->EnableStuff();
+		}
+		AresEMPulse::updateRadarBlackout(pBuilding);
+	}
+
+	if (hasPower && pVictim->Deactivated)
+	{
+		auto const pFocus = pVictim->Focus;
+		pVictim->Reactivate();
+		if (abs == AbstractType::Building)
+		{
+			pVictim->Focus = pFocus;
+		}
+	}
+
+	// allow to spawn units again.
+	AresEMPulse::updateSpawnManager(pVictim);
+
+	if (auto const pSlaveManager = pVictim->SlaveManager)
+	{
+		pSlaveManager->ResumeWork();
+	}
+
+	// update the animation
+	AresEMPulse::UpdateSparkleAnim(pVictim);
+
+	// get harvesters back to work and ai units to hunt
+	if (auto const pFoot = abstract_cast<FootClass*>(pVictim))
+	{
+		auto hasMission = false;
+		if (abs == AbstractType::Unit)
+		{
+			auto const pUnit = static_cast<UnitClass*>(pVictim);
+			if (pUnit->Type->Harvester || pUnit->Type->ResourceGatherer)
 			{
-				return true;
+				// prevent unloading harvesters from being irritated.
+				auto const mission = TechnoExtContainer::Instance.Find(pVictim)->EMPLastMission != Mission::Guard
+					? TechnoExtContainer::Instance.Find(pVictim)->EMPLastMission : Mission::Enter;
+
+				pUnit->QueueMission(mission, true);
+				hasMission = true;
 			}
 		}
 
+		if (!hasMission && !pFoot->Owner->IsControlledByHuman())
+		{
+			pFoot->QueueMission(RulesExtData::Instance()->EMPAIRecoverMission.Get(Mission::Hunt), false);
+		}
+	}
+}
+
+bool AresEMPulse::EnableEMPEffect2(TechnoClass* const pVictim)
+{
+	auto const abs = pVictim->WhatAmI();
+
+	if (abs == AbstractType::Building)
+	{
+		auto const pBuilding = static_cast<BuildingClass*>(pVictim);
+		auto const pOwner = pBuilding->Owner;
+
+		pOwner->RecheckTechTree = true;
+		pOwner->RecheckPower = true;
+
+		pBuilding->DisableStuff();
+		AresEMPulse::updateRadarBlackout(pBuilding);
+	}
+	else if (abs == AbstractType::Aircraft)
+	{
+		// crash flying aircraft
+		auto const pAircraft = static_cast<AircraftClass*>(pVictim);
+		if (pAircraft->GetHeight() > 0 && !pAircraft->IsLetGoByLocomotor && !pAircraft->IsAttackedByLocomotor)
+		{
+			return true;
+		}
+	}
+
+	// deactivate and sparkle
+	if (!pVictim->Deactivated && AresEMPulse::IsDeactivationAdvisable(pVictim))
+	{
 		// cache the last mission this thing did
 		TechnoExtContainer::Instance.Find(pVictim)->EMPLastMission = pVictim->CurrentMission;
 
@@ -4817,26 +4973,26 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 			}
 		}
 
-		// deactivate and sparkle
-		if (!pVictim->Deactivated && AresEMPulse::IsDeactivationAdvisable(pVictim))
+		auto const selected = pVictim->IsSelected;
+		auto const pFocus = pVictim->Focus;
+
+		pVictim->Deactivate();
+
+		if (selected)
 		{
-			auto const selected = pVictim->IsSelected;
-			auto const pFocus = pVictim->Focus;
+			auto const feedback = Unsorted::MoveFeedback();
+			Unsorted::MoveFeedback() = false;
+			pVictim->Select();
+			Unsorted::MoveFeedback() = feedback;
+		}
 
-			pVictim->Deactivate();
-
-			if (selected)
-			{
-				auto const feedback = Unsorted::MoveFeedback();
-				Unsorted::MoveFeedback() = false;
-				pVictim->Select();
-				Unsorted::MoveFeedback() = feedback;
-			}
-
-			if (abs == AbstractType::Building)
-			{
-				pVictim->Focus = pFocus;
-			}
+		if (abs == AbstractType::Building)
+		{
+			pVictim->Focus = pFocus;
+		}
+		else
+		{
+			pVictim->QueueMission(Mission::Sleep, true);
 		}
 
 		// release all captured units.
@@ -4846,48 +5002,47 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 		}
 
 		// update managers.
-		AresEMPulse::updateSpawnManager(pVictim, pSource);
+		AresEMPulse::updateSpawnManager(pVictim, nullptr);
 
 		if (auto const pSlaveManager = pVictim->SlaveManager)
 		{
 			pSlaveManager->SuspendWork();
 		}
-
-		// the unit still lives.
-		return false;
 	}
 
-	void AresEMPulse::DisableEMPEffect(TechnoClass* const pVictim)
+	// the unit still lives.
+	return false;
+}
+
+void AresEMPulse::DisableEMPEffect2(TechnoClass* const pVictim)
+{
+	auto const abs = pVictim->WhatAmI();
+
+	auto hasPower = TechnoExt_ExtData::IsPowered(pVictim) && TechnoExt_ExtData::IsOperated(pVictim);
+
+	if (abs == AbstractType::Building)
 	{
-		auto const abs = pVictim->WhatAmI();
+		auto const pBuilding = static_cast<BuildingClass*>(pVictim);
+		hasPower = hasPower && pBuilding->IsPowerOnline();
 
-		auto hasPower = true;
+		auto const pOwner = pBuilding->Owner;
+		pOwner->RecheckTechTree = true;
+		pOwner->RecheckPower = true;
 
+		if (hasPower)
+		{
+			pBuilding->EnableStuff();
+		}
+		AresEMPulse::updateRadarBlackout(pBuilding);
+	}
+
+	if (hasPower && pVictim->Deactivated)
+	{
+		auto const pFocus = pVictim->Focus;
+		pVictim->Reactivate();
 		if (abs == AbstractType::Building)
 		{
-			auto const pBuilding = static_cast<BuildingClass*>(pVictim);
-			hasPower = pBuilding->IsPowerOnline();
-
-			auto const pOwner = pBuilding->Owner;
-			pOwner->RecheckTechTree = true;
-			pOwner->RecheckPower = true;
-
-			auto const pType = pBuilding->Type;
-			if (hasPower || pType->LaserFencePost)
-			{
-				pBuilding->EnableStuff();
-			}
-			AresEMPulse::updateRadarBlackout(pBuilding);
-		}
-
-		if (hasPower && pVictim->Deactivated)
-		{
-			auto const pFocus = pVictim->Focus;
-			pVictim->Reactivate();
-			if (abs == AbstractType::Building)
-			{
-				pVictim->Focus = pFocus;
-			}
+			pVictim->Focus = pFocus;
 		}
 
 		// allow to spawn units again.
@@ -4897,9 +5052,6 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 		{
 			pSlaveManager->ResumeWork();
 		}
-
-		// update the animation
-		AresEMPulse::UpdateSparkleAnim(pVictim);
 
 		// get harvesters back to work and ai units to hunt
 		if (auto const pFoot = abstract_cast<FootClass*>(pVictim))
@@ -4925,400 +5077,331 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 			}
 		}
 	}
-
-	bool AresEMPulse::EnableEMPEffect2(TechnoClass* const pVictim)
-	{
-		auto const abs = pVictim->WhatAmI();
-
-		if (abs == AbstractType::Building)
-		{
-			auto const pBuilding = static_cast<BuildingClass*>(pVictim);
-			auto const pOwner = pBuilding->Owner;
-
-			pOwner->RecheckTechTree = true;
-			pOwner->RecheckPower = true;
-
-			pBuilding->DisableStuff();
-			AresEMPulse::updateRadarBlackout(pBuilding);
-		}
-		else if (abs == AbstractType::Aircraft)
-		{
-			// crash flying aircraft
-			auto const pAircraft = static_cast<AircraftClass*>(pVictim);
-			if (pAircraft->GetHeight() > 0 && !pAircraft->IsLetGoByLocomotor && !pAircraft->IsAttackedByLocomotor)
-			{
-				return true;
-			}
-		}
-
-		// deactivate and sparkle
-		if (!pVictim->Deactivated && AresEMPulse::IsDeactivationAdvisable(pVictim))
-		{
-			// cache the last mission this thing did
-			TechnoExtContainer::Instance.Find(pVictim)->EMPLastMission = pVictim->CurrentMission;
-
-			// detach temporal
-			if (pVictim->IsWarpingSomethingOut())
-			{
-				pVictim->TemporalImUsing->LetGo();
-			}
-
-			// remove the unit from its team
-			if (auto const pFoot = abstract_cast<FootClass*>(pVictim))
-			{
-				if (pFoot->LocomotorTarget)
-					pFoot->LocomotorImblued(true);
-
-				if (pFoot->BelongsToATeam())
-				{
-					pFoot->Team->LiberateMember(pFoot);
-				}
-			}
-
-			auto const selected = pVictim->IsSelected;
-			auto const pFocus = pVictim->Focus;
-
-			pVictim->Deactivate();
-
-			if (selected)
-			{
-				auto const feedback = Unsorted::MoveFeedback();
-				Unsorted::MoveFeedback() = false;
-				pVictim->Select();
-				Unsorted::MoveFeedback() = feedback;
-			}
-
-			if (abs == AbstractType::Building)
-			{
-				pVictim->Focus = pFocus;
-			}
-			else
-			{
-				pVictim->QueueMission(Mission::Sleep, true);
-			}
-
-			// release all captured units.
-			if (pVictim->CaptureManager)
-			{
-				pVictim->CaptureManager->FreeAll();
-			}
-
-			// update managers.
-			AresEMPulse::updateSpawnManager(pVictim, nullptr);
-
-			if (auto const pSlaveManager = pVictim->SlaveManager)
-			{
-				pSlaveManager->SuspendWork();
-			}
-		}
-
-		// the unit still lives.
-		return false;
-	}
-
-	void AresEMPulse::DisableEMPEffect2(TechnoClass* const pVictim)
-	{
-		auto const abs = pVictim->WhatAmI();
-
-		auto hasPower = TechnoExt_ExtData::IsPowered(pVictim) && TechnoExt_ExtData::IsOperated(pVictim);
-
-		if (abs == AbstractType::Building)
-		{
-			auto const pBuilding = static_cast<BuildingClass*>(pVictim);
-			hasPower = hasPower && pBuilding->IsPowerOnline();
-
-			auto const pOwner = pBuilding->Owner;
-			pOwner->RecheckTechTree = true;
-			pOwner->RecheckPower = true;
-
-			if (hasPower)
-			{
-				pBuilding->EnableStuff();
-			}
-			AresEMPulse::updateRadarBlackout(pBuilding);
-		}
-
-		if (hasPower && pVictim->Deactivated)
-		{
-			auto const pFocus = pVictim->Focus;
-			pVictim->Reactivate();
-			if (abs == AbstractType::Building)
-			{
-				pVictim->Focus = pFocus;
-			}
-
-			// allow to spawn units again.
-			AresEMPulse::updateSpawnManager(pVictim);
-
-			if (auto const pSlaveManager = pVictim->SlaveManager)
-			{
-				pSlaveManager->ResumeWork();
-			}
-
-			// get harvesters back to work and ai units to hunt
-			if (auto const pFoot = abstract_cast<FootClass*>(pVictim))
-			{
-				auto hasMission = false;
-				if (abs == AbstractType::Unit)
-				{
-					auto const pUnit = static_cast<UnitClass*>(pVictim);
-					if (pUnit->Type->Harvester || pUnit->Type->ResourceGatherer)
-					{
-						// prevent unloading harvesters from being irritated.
-						auto const mission = TechnoExtContainer::Instance.Find(pVictim)->EMPLastMission != Mission::Guard
-							? TechnoExtContainer::Instance.Find(pVictim)->EMPLastMission : Mission::Enter;
-
-						pUnit->QueueMission(mission, true);
-						hasMission = true;
-					}
-				}
-
-				if (!hasMission && !pFoot->Owner->IsControlledByHuman())
-				{
-					pFoot->QueueMission(RulesExtData::Instance()->EMPAIRecoverMission.Get(Mission::Hunt), false);
-				}
-			}
-		}
-	}
+}
 
 #pragma endregion
 
 #pragma region AresPoweredUnit
 
-	bool AresPoweredUnit::IsPoweredBy(HouseClass* const pOwner) const
+bool AresPoweredUnit::IsPoweredBy(HouseClass* const pOwner) const
+{
+	auto const pType = this->Techno->GetTechnoType();
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+	auto const& PoweredBy = pTypeExt->PoweredBy;
+
+	for (auto const& pBuilding : pOwner->Buildings)
 	{
-		auto const pType = this->Techno->GetTechnoType();
-		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+		auto const inArray = PoweredBy.Contains(pBuilding->Type);
 
-		auto const& PoweredBy = pTypeExt->PoweredBy;
-
-		for (auto const& pBuilding : pOwner->Buildings)
+		if (inArray && !pBuilding->BeingWarpedOut && !pBuilding->IsUnderEMP())
 		{
-			auto const inArray = PoweredBy.Contains(pBuilding->Type);
-
-			if (inArray && !pBuilding->BeingWarpedOut && !pBuilding->IsUnderEMP())
+			if (TechnoExt_ExtData::IsOperated(pBuilding) && pBuilding->IsPowerOnline())
 			{
-				if (TechnoExt_ExtData::IsOperated(pBuilding) && pBuilding->IsPowerOnline())
-				{
-					return true;
-				}
+				return true;
 			}
-		}
-
-		return false;
-	}
-
-	void AresPoweredUnit::PowerUp()
-	{
-		auto const pTechno = this->Techno;
-		if (!pTechno->IsUnderEMP() && TechnoExt_ExtData::IsOperated(pTechno))
-		{
-			AresEMPulse::DisableEMPEffect2(pTechno);
 		}
 	}
 
-	bool AresPoweredUnit::PowerDown()
+	return false;
+}
+
+void AresPoweredUnit::PowerUp()
+{
+	auto const pTechno = this->Techno;
+	if (!pTechno->IsUnderEMP() && TechnoExt_ExtData::IsOperated(pTechno))
 	{
-		auto const pTechno = this->Techno;
+		AresEMPulse::DisableEMPEffect2(pTechno);
+	}
+}
 
-		if (AresEMPulse::IsDeactivationAdvisableB(pTechno))
+bool AresPoweredUnit::PowerDown()
+{
+	auto const pTechno = this->Techno;
+
+	if (AresEMPulse::IsDeactivationAdvisableB(pTechno))
+	{
+		// destroy if EMP.Threshold would crash this unit when in air
+		if (AresEMPulse::EnableEMPEffect2(pTechno)
+			|| (TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType())->EMP_Threshold
+				&& pTechno->IsInAir()))
 		{
-			// destroy if EMP.Threshold would crash this unit when in air
-			if (AresEMPulse::EnableEMPEffect2(pTechno)
-				|| (TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType())->EMP_Threshold
-					&& pTechno->IsInAir()))
-			{
-				return false;
-			}
+			return false;
 		}
+	}
 
+	return true;
+}
+
+bool AresPoweredUnit::Update()
+{
+	if ((Unsorted::CurrentFrame - this->LastScan) < ScanInterval)
+	{
 		return true;
 	}
 
-	bool AresPoweredUnit::Update()
+	auto const pTechno = this->Techno;
+
+	if (!pTechno->IsAlive || !pTechno->Health || pTechno->InLimbo)
 	{
-		if ((Unsorted::CurrentFrame - this->LastScan) < ScanInterval)
-		{
-			return true;
-		}
-
-		auto const pTechno = this->Techno;
-
-		if (!pTechno->IsAlive || !pTechno->Health || pTechno->InLimbo)
-		{
-			return true;
-		}
-
-		const auto curMission = pTechno->CurrentMission;
-		this->LastScan = Unsorted::CurrentFrame;
-
-		if (curMission == Mission::Selling || curMission == Mission::Construction)
-			return true;
-
-		const auto queueMission = pTechno->QueuedMission;
-
-		if (queueMission == Mission::Selling || queueMission == Mission::Construction)
-			return true;
-
-		auto const pOwner = pTechno->Owner;
-		auto const hasPower = this->IsPoweredBy(pOwner);
-
-		this->Powered = hasPower;
-
-		if (hasPower && pTechno->Deactivated)
-		{
-			this->PowerUp();
-		}
-		else if (!hasPower && !pTechno->Deactivated)
-		{
-			// don't shutdown units inside buildings (warfac, barracks, shipyard) because that locks up the factory and the robot tank did it
-			auto const whatAmI = pTechno->WhatAmI();
-			if ((whatAmI != InfantryClass::AbsID && whatAmI != UnitClass::AbsID) || (!pTechno->GetCell()->GetBuilding()))
-			{
-				return this->PowerDown();
-			}
-		}
-
 		return true;
 	}
+
+	const auto curMission = pTechno->CurrentMission;
+	this->LastScan = Unsorted::CurrentFrame;
+
+	if (curMission == Mission::Selling || curMission == Mission::Construction)
+		return true;
+
+	const auto queueMission = pTechno->QueuedMission;
+
+	if (queueMission == Mission::Selling || queueMission == Mission::Construction)
+		return true;
+
+	auto const pOwner = pTechno->Owner;
+	auto const hasPower = this->IsPoweredBy(pOwner);
+
+	this->Powered = hasPower;
+
+	if (hasPower && pTechno->Deactivated)
+	{
+		this->PowerUp();
+	}
+	else if (!hasPower && !pTechno->Deactivated)
+	{
+		// don't shutdown units inside buildings (warfac, barracks, shipyard) because that locks up the factory and the robot tank did it
+		auto const whatAmI = pTechno->WhatAmI();
+		if ((whatAmI != InfantryClass::AbsID && whatAmI != UnitClass::AbsID) || (!pTechno->GetCell()->GetBuilding()))
+		{
+			return this->PowerDown();
+		}
+	}
+
+	return true;
+}
 
 #pragma endregion
 
 #pragma region AresJammer
-	//! \param TargetBuilding The building whose eligibility to check.
-	bool AresJammer::IsEligible(BuildingClass * TargetBuilding)
-	{
-		/* Current requirements for being eligible:
-			- not an ally (includes ourselves)
-			- either a radar or a spysat
-		*/
+//! \param TargetBuilding The building whose eligibility to check.
+bool AresJammer::IsEligible(BuildingClass* TargetBuilding)
+{
+	/* Current requirements for being eligible:
+		- not an ally (includes ourselves)
+		- either a radar or a spysat
+	*/
 
-		if (!this->AttachedToObject->Owner->IsAlliedWith(TargetBuilding->Owner))
+	if (!this->AttachedToObject->Owner->IsAlliedWith(TargetBuilding->Owner))
+	{
+		if (TargetBuilding->Type->Radar)
+			return true;
+
+		for (auto pType : TargetBuilding->GetTypes())
 		{
-			if (TargetBuilding->Type->Radar)
+			if (pType && pType->SpySat)
+			{
 				return true;
-
-			for (auto pType : TargetBuilding->GetTypes())
-			{
-				if (pType && pType->SpySat)
-				{
-					return true;
-				}
 			}
 		}
-
-		return false;
 	}
 
-	void AresJammer::Update()
+	return false;
+}
+
+void AresJammer::Update()
+{
+	// we don't want to scan & crunch numbers every frame - this limits it to ScanInterval frames
+	if ((Unsorted::CurrentFrame - this->LastScan) < this->ScanInterval)
 	{
-		// we don't want to scan & crunch numbers every frame - this limits it to ScanInterval frames
-		if ((Unsorted::CurrentFrame - this->LastScan) < this->ScanInterval)
+		return;
+	}
+
+	// save the current frame for future reference
+	this->LastScan = Unsorted::CurrentFrame;
+
+	// walk through all buildings
+	for (auto const curBuilding : *BuildingClass::Array)
+	{
+		if (!AresJammer::IsEligible(curBuilding))
+			continue;
+
+		// for each jammable building ...
+		// ...check if it's in range, and jam or unjam based on that
+		if (this->InRangeOf(curBuilding))
 		{
-			return;
+			this->Jam(curBuilding);
 		}
-
-		// save the current frame for future reference
-		this->LastScan = Unsorted::CurrentFrame;
-
-		// walk through all buildings
-		for (auto const curBuilding : *BuildingClass::Array)
+		else
 		{
-			if (!AresJammer::IsEligible(curBuilding))
-				continue;
-
-			// for each jammable building ...
-			// ...check if it's in range, and jam or unjam based on that
-			if (this->InRangeOf(curBuilding))
-			{
-				this->Jam(curBuilding);
-			}
-			else
-			{
-				this->Unjam(curBuilding);
-			}
+			this->Unjam(curBuilding);
 		}
 	}
+}
 
-	//! \param TargetBuilding The building to check the distance to.
-	bool AresJammer::InRangeOf(BuildingClass * TargetBuilding)
+//! \param TargetBuilding The building to check the distance to.
+bool AresJammer::InRangeOf(BuildingClass* TargetBuilding)
+{
+	auto const pExt = TechnoTypeExtContainer::Instance.Find(this->AttachedToObject->GetTechnoType());
+	auto const& JammerLocation = this->AttachedToObject->Location;
+	auto const JamRadiusInLeptons = 256.0 * pExt->RadarJamRadius;
+
+	return TargetBuilding->Location.DistanceFrom(JammerLocation) <= JamRadiusInLeptons;
+}
+
+//! \param TargetBuilding The building to jam.
+void AresJammer::Jam(BuildingClass* TargetBuilding)
+{
+	//keep item unique
+	auto& jammMap = BuildingExtContainer::Instance.Find(TargetBuilding)->RegisteredJammers;
+
+	jammMap.push_back_unique(this->AttachedToObject);
+
+	if (jammMap.size() == 1)
 	{
-		auto const pExt = TechnoTypeExtContainer::Instance.Find(this->AttachedToObject->GetTechnoType());
-		auto const& JammerLocation = this->AttachedToObject->Location;
-		auto const JamRadiusInLeptons = 256.0 * pExt->RadarJamRadius;
-
-		return TargetBuilding->Location.DistanceFrom(JammerLocation) <= JamRadiusInLeptons;
+		TargetBuilding->Owner->RecheckRadar = true;
 	}
 
-	//! \param TargetBuilding The building to jam.
-	void AresJammer::Jam(BuildingClass * TargetBuilding)
+	this->Registered = true;
+}
+
+//! \param TargetBuilding The building to unjam.
+void AresJammer::Unjam(BuildingClass* TargetBuilding) const
+{
+	//keep item unique
+	auto& jammMap = BuildingExtContainer::Instance.Find(TargetBuilding)->RegisteredJammers;
+
+	if (jammMap.remove(this->AttachedToObject))
 	{
-		//keep item unique
-		auto& jammMap = BuildingExtContainer::Instance.Find(TargetBuilding)->RegisteredJammers;
-
-		jammMap.push_back_unique(this->AttachedToObject);
-
-		if (jammMap.size() == 1)
+		if (jammMap.empty())
 		{
 			TargetBuilding->Owner->RecheckRadar = true;
 		}
-
-		this->Registered = true;
 	}
+}
 
-	//! \param TargetBuilding The building to unjam.
-	void AresJammer::Unjam(BuildingClass * TargetBuilding) const
+void AresJammer::UnjamAll()
+{
+	if (this->Registered)
 	{
-		//keep item unique
-		auto& jammMap = BuildingExtContainer::Instance.Find(TargetBuilding)->RegisteredJammers;
-
-		if (jammMap.remove(this->AttachedToObject))
+		this->Registered = false;
+		for (auto const item : *BuildingClass::Array)
 		{
-			if (jammMap.empty())
-			{
-				TargetBuilding->Owner->RecheckRadar = true;
-			}
+			this->Unjam(item);
 		}
 	}
-
-	void AresJammer::UnjamAll()
-	{
-		if (this->Registered)
-		{
-			this->Registered = false;
-			for (auto const item : *BuildingClass::Array)
-			{
-				this->Unjam(item);
-			}
-		}
-	}
+}
 
 #pragma endregion
 
 #pragma region AresScriptExt
 
-	static std::array<const char*, 4> Move_to_own_building_SearchType { {
-		"least threat" , "highest threat" , "least nearest" , "least farthest"
-	} };
+static std::array<const char*, 4> Move_to_own_building_SearchType { {
+	"least threat" , "highest threat" , "least nearest" , "least farthest"
+} };
 
-	bool AresScriptExt::Handle(TeamClass * pTeam, ScriptActionNode * pTeamMission, bool bThirdArd)
+bool AresScriptExt::Handle(TeamClass* pTeam, ScriptActionNode* pTeamMission, bool bThirdArd)
+{
+	//if(pTeamMission->Action == TeamMissionType::Move_to_own_building) {
+	//	uint16 hi = (pTeamMission->Argument >> 0x10) & 0xFFFF;
+	//	uint16 lo = pTeamMission->Argument & 0xFFFF;
+	//	const char* FindType = "Dunno";
+	//	if(hi < Move_to_own_building_SearchType.size())
+	//		FindType = Move_to_own_building_SearchType[hi];
+	//
+	//	Debug::Log("Team[%x - %s] Executing MoveToOwnBuilding (%d)[hi %d(%s) , Lo %d(BldTypeMax %d)] \n" ,
+	//		pTeam , pTeam->get_ID() ,pTeamMission->Argument, hi , FindType , lo , BuildingTypeClass::Array->Count );
+	//
+	//}else
+	//	Debug::Log("Team[%x - %s] Executing [(Action)%d - (Argument)%d] \n" , pTeam , pTeam->get_ID() , pTeamMission->Action , pTeamMission->Argument);
+
+	switch (pTeamMission->Action)
 	{
-		//if(pTeamMission->Action == TeamMissionType::Move_to_own_building) {
-		//	uint16 hi = (pTeamMission->Argument >> 0x10) & 0xFFFF;
-		//	uint16 lo = pTeamMission->Argument & 0xFFFF;
-		//	const char* FindType = "Dunno";
-		//	if(hi < Move_to_own_building_SearchType.size())
-		//		FindType = Move_to_own_building_SearchType[hi];
-		//
-		//	Debug::Log("Team[%x - %s] Executing MoveToOwnBuilding (%d)[hi %d(%s) , Lo %d(BldTypeMax %d)] \n" ,
-		//		pTeam , pTeam->get_ID() ,pTeamMission->Argument, hi , FindType , lo , BuildingTypeClass::Array->Count );
-		//
-		//}else
-		//	Debug::Log("Team[%x - %s] Executing [(Action)%d - (Argument)%d] \n" , pTeam , pTeam->get_ID() , pTeamMission->Action , pTeamMission->Argument);
-
-		switch (pTeamMission->Action)
+	case TeamMissionType::Garrison_building:
+	{
+		FootClass* pCur = nullptr;
+		if (auto pFirst = pTeam->FirstUnit)
 		{
-		case TeamMissionType::Garrison_building:
+			auto pNext = pFirst->NextTeamMember;
+			do
+			{
+				TechnoExtContainer::Instance.Find(pFirst)->TakeVehicleMode = false;
+
+				if (pFirst->GarrisonStructure())
+					pTeam->RemoveMember(pFirst, -1, 1);
+
+				pCur = pNext;
+
+				if (pNext)
+					pNext = pNext->NextTeamMember;
+
+				pFirst = pCur;
+			}
+			while (pCur);
+		}
+
+		pTeam->StepCompleted = true;
+		return true;
+	}
+
+	case TeamMissionType::Move_to_own_building:
+	case TeamMissionType::Attack_enemy_building:
+	case TeamMissionType::Chrono_prep_for_abwp:
+	{
+		const uint16 lo = pTeamMission->Argument & 0xFFFF;
+
+		if (lo > BuildingTypeClass::Array->Count)
+		{
+			Debug::FatalError("Team[%x - %s] Executing %d but the BuildingType Index is too big(%d of %d) !\n",
+				pTeam, pTeam->get_ID(), pTeamMission->Action, lo, BuildingTypeClass::Array->Count);
+		}
+	}break;
+	default:
+		break;
+	}
+
+	if (pTeamMission->Action >= TeamMissionType::count)
+	{
+		switch ((AresScripts)pTeamMission->Action)
+		{
+		case AresScripts::AuxilarryPower:
+		{
+			HouseExtContainer::Instance.Find(pTeam->Owner)->AuxPower += pTeamMission->Argument;
+			pTeam->Owner->RecheckPower = true;
+			pTeam->StepCompleted = true;
+			return true;
+		}
+		case AresScripts::KillDrivers:
+		{
+			const auto pToHouse = HouseExtData::FindSpecial();
+			FootClass* pCur = nullptr;
+			if (auto pFirst = pTeam->FirstUnit)
+			{
+				auto pNext = pFirst->NextTeamMember;
+				do
+				{
+					if (pFirst->Health > 0 && pFirst->IsAlive && pFirst->IsOnMap && !pFirst->InLimbo)
+					{
+						if (!TechnoExtContainer::Instance.Find(pFirst)->Is_DriverKilled
+							&& TechnoExt_ExtData::IsDriverKillable(pFirst, 1.0))
+						{
+							TechnoExt_ExtData::ApplyKillDriver(pFirst, nullptr, pToHouse, false, Mission::Harmless);
+						}
+					}
+
+					pCur = pNext;
+
+					if (pNext)
+						pNext = pNext->NextTeamMember;
+
+					pFirst = pCur;
+				}
+				while (pCur);
+			}
+
+			pTeam->StepCompleted = true;
+			return true;
+		}
+		case AresScripts::TakeVehicles:
 		{
 			FootClass* pCur = nullptr;
 			if (auto pFirst = pTeam->FirstUnit)
@@ -5326,7 +5409,7 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 				auto pNext = pFirst->NextTeamMember;
 				do
 				{
-					TechnoExtContainer::Instance.Find(pFirst)->TakeVehicleMode = false;
+					TechnoExtContainer::Instance.Find(pFirst)->TakeVehicleMode = true;
 
 					if (pFirst->GarrisonStructure())
 						pTeam->RemoveMember(pFirst, -1, 1);
@@ -5344,658 +5427,619 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 			pTeam->StepCompleted = true;
 			return true;
 		}
-
-		case TeamMissionType::Move_to_own_building:
-		case TeamMissionType::Attack_enemy_building:
-		case TeamMissionType::Chrono_prep_for_abwp:
+		case AresScripts::ConvertType:
 		{
-			const uint16 lo = pTeamMission->Argument & 0xFFFF;
-
-			if (lo > BuildingTypeClass::Array->Count)
+			FootClass* pCur = nullptr;
+			if (auto pFirst = pTeam->FirstUnit)
 			{
-				Debug::FatalError("Team[%x - %s] Executing %d but the BuildingType Index is too big(%d of %d) !\n",
-					pTeam, pTeam->get_ID(), pTeamMission->Action, lo, BuildingTypeClass::Array->Count);
+				auto pNext = pFirst->NextTeamMember;
+				do
+				{
+					const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pFirst->GetTechnoType());
+					if (pTypeExt->Convert_Script)
+					{
+						const auto& pConvertReq = pTypeExt->Convert_Scipt_Prereq;
+						if (pConvertReq.empty() || Prereqs::HouseOwnsAll(pTeam->Owner, (int*)pConvertReq.data(), (int)pConvertReq.size()))
+						{
+							TechnoExt_ExtData::ConvertToType(pFirst, pTypeExt->Convert_Script);
+						}
+					}
+
+					pCur = pNext;
+
+					if (pNext)
+						pNext = pNext->NextTeamMember;
+
+					pFirst = pCur;
+				}
+				while (pCur);
 			}
-		}break;
+
+			pTeam->StepCompleted = true;
+			return true;
+		}
+		case AresScripts::SonarReveal:
+		{
+			const auto nDur = pTeamMission->Argument;
+			for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+			{
+				auto& nSonarTime = TechnoExtContainer::Instance.Find(pUnit)->CloakSkipTimer;
+				if (nDur > nSonarTime.GetTimeLeft())
+				{
+					nSonarTime.Start(nDur);
+				}
+				else if (nDur <= 0)
+				{
+					if (nDur == 0)
+					{
+						nSonarTime.Stop();
+					}
+				}
+			}
+
+			pTeam->StepCompleted = true;
+			return true;
+		}
+		case AresScripts::DisableWeapons:
+		{
+			const auto nDur = pTeamMission->Argument;
+			for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+			{
+				auto& nTimer = TechnoExtContainer::Instance.Find(pUnit)->DisableWeaponTimer;
+				if (nDur > nTimer.GetTimeLeft())
+				{
+					nTimer.Start(nDur);
+				}
+				else if (nDur <= 0 && nDur == 0)
+				{
+					nTimer.Stop();
+				}
+			}
+
+			pTeam->StepCompleted = true;
+			return true;
+		}
 		default:
 			break;
 		}
-
-		if (pTeamMission->Action >= TeamMissionType::count)
-		{
-			switch ((AresScripts)pTeamMission->Action)
-			{
-			case AresScripts::AuxilarryPower:
-			{
-				HouseExtContainer::Instance.Find(pTeam->Owner)->AuxPower += pTeamMission->Argument;
-				pTeam->Owner->RecheckPower = true;
-				pTeam->StepCompleted = true;
-				return true;
-			}
-			case AresScripts::KillDrivers:
-			{
-				const auto pToHouse = HouseExtData::FindSpecial();
-				FootClass* pCur = nullptr;
-				if (auto pFirst = pTeam->FirstUnit)
-				{
-					auto pNext = pFirst->NextTeamMember;
-					do
-					{
-						if (pFirst->Health > 0 && pFirst->IsAlive && pFirst->IsOnMap && !pFirst->InLimbo)
-						{
-							if (!TechnoExtContainer::Instance.Find(pFirst)->Is_DriverKilled
-								&& TechnoExt_ExtData::IsDriverKillable(pFirst, 1.0))
-							{
-								TechnoExt_ExtData::ApplyKillDriver(pFirst, nullptr, pToHouse, false, Mission::Harmless);
-							}
-						}
-
-						pCur = pNext;
-
-						if (pNext)
-							pNext = pNext->NextTeamMember;
-
-						pFirst = pCur;
-					}
-					while (pCur);
-				}
-
-				pTeam->StepCompleted = true;
-				return true;
-			}
-			case AresScripts::TakeVehicles:
-			{
-				FootClass* pCur = nullptr;
-				if (auto pFirst = pTeam->FirstUnit)
-				{
-					auto pNext = pFirst->NextTeamMember;
-					do
-					{
-						TechnoExtContainer::Instance.Find(pFirst)->TakeVehicleMode = true;
-
-						if (pFirst->GarrisonStructure())
-							pTeam->RemoveMember(pFirst, -1, 1);
-
-						pCur = pNext;
-
-						if (pNext)
-							pNext = pNext->NextTeamMember;
-
-						pFirst = pCur;
-					}
-					while (pCur);
-				}
-
-				pTeam->StepCompleted = true;
-				return true;
-			}
-			case AresScripts::ConvertType:
-			{
-				FootClass* pCur = nullptr;
-				if (auto pFirst = pTeam->FirstUnit)
-				{
-					auto pNext = pFirst->NextTeamMember;
-					do
-					{
-						const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pFirst->GetTechnoType());
-						if (pTypeExt->Convert_Script)
-						{
-							const auto& pConvertReq = pTypeExt->Convert_Scipt_Prereq;
-							if (pConvertReq.empty() || Prereqs::HouseOwnsAll(pTeam->Owner, (int*)pConvertReq.data(), (int)pConvertReq.size()))
-							{
-								TechnoExt_ExtData::ConvertToType(pFirst, pTypeExt->Convert_Script);
-							}
-						}
-
-						pCur = pNext;
-
-						if (pNext)
-							pNext = pNext->NextTeamMember;
-
-						pFirst = pCur;
-					}
-					while (pCur);
-				}
-
-				pTeam->StepCompleted = true;
-				return true;
-			}
-			case AresScripts::SonarReveal:
-			{
-				const auto nDur = pTeamMission->Argument;
-				for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
-				{
-					auto& nSonarTime = TechnoExtContainer::Instance.Find(pUnit)->CloakSkipTimer;
-					if (nDur > nSonarTime.GetTimeLeft())
-					{
-						nSonarTime.Start(nDur);
-					}
-					else if (nDur <= 0)
-					{
-						if (nDur == 0)
-						{
-							nSonarTime.Stop();
-						}
-					}
-				}
-
-				pTeam->StepCompleted = true;
-				return true;
-			}
-			case AresScripts::DisableWeapons:
-			{
-				const auto nDur = pTeamMission->Argument;
-				for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
-				{
-					auto& nTimer = TechnoExtContainer::Instance.Find(pUnit)->DisableWeaponTimer;
-					if (nDur > nTimer.GetTimeLeft())
-					{
-						nTimer.Start(nDur);
-					}
-					else if (nDur <= 0 && nDur == 0)
-					{
-						nTimer.Stop();
-					}
-				}
-
-				pTeam->StepCompleted = true;
-				return true;
-			}
-			default:
-				break;
-			}
-		}
-
-		return false;
 	}
+
+	return false;
+}
 
 #pragma endregion
 
 #pragma region AresWPWHExt
 
-	bool AresWPWHExt::conductAbduction(WeaponTypeClass * pWeapon, TechnoClass * pOwner, AbstractClass * pTarget, CoordStruct nTargetCoords)
+bool AresWPWHExt::conductAbduction(WeaponTypeClass* pWeapon, TechnoClass* pOwner, AbstractClass* pTarget, CoordStruct nTargetCoords)
+{
+	const auto pData = WeaponTypeExtContainer::Instance.Find(pWeapon);
+
+	// ensuring a few base parameters
+	if (!pData->Abductor || !pOwner || !pTarget)
 	{
-		const auto pData = WeaponTypeExtContainer::Instance.Find(pWeapon);
-
-		// ensuring a few base parameters
-		if (!pData->Abductor || !pOwner || !pTarget)
-		{
-			return false;
-		}
-
-		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pData->AttachedToObject->Warhead);
-		const auto Target = abstract_cast<FootClass*>(pTarget);
-
-		if (!Target)
-		{
-			// the target was not a valid passenger type
-			return false;
-		}
-
-		if (nTargetCoords == CoordStruct::Empty)
-			nTargetCoords = pTarget->GetCoords();
-
-		const auto Attacker = pOwner;
-		const auto TargetType = Target->GetTechnoType();
-		const auto AttackerType = Attacker->GetTechnoType();
-
-		if (!pWHExt->CanAffectHouse(Attacker->Owner, Target->GetOwningHouse()))
-		{
-			return false;
-		}
-
-		if (!TechnoExtData::IsAbductable(Attacker, pData->AttachedToObject, Target))
-		{
-			return false;
-		}
-
-		//if it's owner meant to be changed, do it here
-		HouseClass* pDesiredOwner = Attacker->Owner ? Attacker->Owner : HouseExtData::FindSpecial();
-
-		//if it's owner meant to be changed, do it here
-		if ((pData->Abductor_ChangeOwner && !TechnoExtData::IsPsionicsImmune(Target)))
-			Target->SetOwningHouse(pDesiredOwner);
-
-		// if we ended up here, the target is of the right type, and the attacker can take it
-		// so we abduct the target...
-
-		Target->StopMoving();
-		Target->SetDestination(nullptr, true); // Target->UpdatePosition(int) ?
-		Target->SetTarget(nullptr);
-		Target->CurrentTargets.Clear(); // Target->ShouldLoseTargetNow ?
-		Target->SetFocus(nullptr);
-		Target->QueueMission(Mission::Sleep, true);
-		Target->unknown_C4 = 0; // don't ask
-		Target->unknown_5A0 = 0;
-		Target->CurrentGattlingStage = 0;
-		Target->SetCurrentWeaponStage(0);
-
-		// the team should not wait for me
-		if (Target->BelongsToATeam())
-		{
-			Target->Team->LiberateMember(Target);
-		}
-
-		// if this unit is being mind controlled, break the link
-		if (const auto MindController = Target->MindControlledBy)
-		{
-			if (const auto MC = MindController->CaptureManager)
-			{
-				MC->FreeUnit(Target);
-			}
-		}
-
-		// if this unit is a mind controller, break the link
-		if (Target->CaptureManager)
-		{
-			Target->CaptureManager->FreeAll();
-		}
-
-		// if this unit is currently in a state of temporal flux, get it back to our time-frame
-		if (Target->TemporalTargetingMe)
-		{
-			Target->TemporalTargetingMe->Detach();
-		}
-
-		//if the target is spawned, detach it from it's spawner
-		Target->DetachSpecificSpawnee(pDesiredOwner);
-
-		// if the unit is a spawner, kill the spawns
-		if (Target->SpawnManager)
-		{
-			Target->SpawnManager->KillNodes();
-			Target->SpawnManager->ResetTarget();
-		}
-
-		//if the unit is a slave, it should be freed
-		Target->FreeSpecificSlave(pDesiredOwner);
-
-		// If the unit is a SlaveManager, free the slaves
-		if (auto pSlaveManager = Target->SlaveManager)
-		{
-			pSlaveManager->Killed(Attacker);
-			pSlaveManager->ZeroOutSlaves();
-			Target->SlaveManager->Owner = Target;
-		}
-
-		// if we have an abducting animation, play it
-		if (auto pAnimType = pData->Abductor_AnimType)
-		{
-			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, nTargetCoords),
-				Attacker->Owner,
-				Target->Owner,
-				Attacker,
-				false
-			);
-		}
-
-		Target->Locomotor.GetInterfacePtr()->Force_Track(-1, CoordStruct::Empty);
-		CoordStruct coordsUnitSource = Target->GetCoords();
-		Target->Locomotor.GetInterfacePtr()->Mark_All_Occupation_Bits(0);
-		Target->MarkAllOccupationBits(coordsUnitSource);
-		Target->ClearPlanningTokens(nullptr);
-		Target->Flashing.DurationRemaining = 0;
-
-		if (!Target->Limbo())
-		{
-			Debug::Log("Abduction: Target unit %p (%s) could not be removed.\n", Target, Target->get_ID());
-		}
-
-		Target->OnBridge = false;
-		Target->NextObject = 0;
-		//Target->UpdatePlacement(PlacementType::Remove);
-		// because we are throwing away the locomotor in a split second, piggybacking
-		// has to be stopped. otherwise the object might remain in a weird state.
-		while (LocomotionClass::End_Piggyback(Target->Locomotor)) { };
-
-		// throw away the current locomotor and instantiate
-		// a new one of the default type for this unit.
-		if (auto NewLoco = LocomotionClass::CreateInstance(TargetType->Locomotor))
-		{
-			Target->Locomotor = std::move(NewLoco);
-			Target->Locomotor->Link_To_Object(Target);
-		}
-
-		// handling for Locomotor weapons: since we took this unit from the Magnetron
-		// in an unfriendly way, set these fields here to unblock the unit
-		if (Target->IsAttackedByLocomotor || Target->IsLetGoByLocomotor)
-		{
-			Target->IsAttackedByLocomotor = false;
-			Target->IsLetGoByLocomotor = false;
-		}
-
-		Target->Transporter = Attacker;
-		if (AttackerType->OpenTopped && Target->Owner->IsAlliedWith(Attacker))
-		{
-			Attacker->EnteredOpenTopped(Target);
-		}
-
-		if (Attacker->WhatAmI() == BuildingClass::AbsID)
-		{
-			Target->Absorbed = true;
-		}
-
-		Attacker->AddPassenger(Target);
-		Attacker->Undiscover();
-
-		if (auto v29 = Target->AttachedTag)
-			v29->RaiseEvent(TriggerEvent(AresTriggerEvents::Abducted_ByHouse), Target, CellStruct::Empty, false, Attacker);
-
-		if (Target->IsAlive)
-		{
-			if (auto v30 = Target->AttachedTag)
-				v30->RaiseEvent(TriggerEvent(AresTriggerEvents::Abducted), Target, CellStruct::Empty, false, nullptr);
-		}
-
-		if (auto v31 = Attacker->AttachedTag)
-			v31->RaiseEvent(TriggerEvent(AresTriggerEvents::AbductSomething_OfHouse), Attacker, CellStruct::Empty, false, Target->GetOwningHouse());// pTarget->Owner
-
-		if (Attacker->IsAlive)
-		{
-			if (auto v32 = Attacker->AttachedTag)
-				v32->RaiseEvent(TriggerEvent(AresTriggerEvents::AbductSomething), Attacker, CellStruct::Empty, false, nullptr);
-		}
-
-		return true;
+		return false;
 	}
 
-	bool AresWPWHExt::applyOccupantDamage(BulletClass * pThis)
+	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pData->AttachedToObject->Warhead);
+	const auto Target = abstract_cast<FootClass*>(pTarget);
+
+	if (!Target)
 	{
-		auto const pBuilding = specific_cast<BuildingClass*>(pThis->Target);
-
-		// if that pointer is null, something went wrong
-		if (!pBuilding)
-		{
-			return false;
-		}
-
-		auto const pTypeExt = BulletTypeExtContainer::Instance.Find(pThis->Type);
-		auto const pBldTypeExt = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
-
-		auto const occupants = pBuilding->Occupants.Count;
-		auto const& passThrough = pBldTypeExt->UCPassThrough;
-
-		if (!occupants || !passThrough)
-		{
-			return false;
-		}
-
-		auto& Random = ScenarioClass::Instance->Random;
-		if (pTypeExt->SubjectToTrenches && Random.RandomDouble() >= passThrough)
-		{
-			return false;
-		}
-
-		auto const idxPoorBastard = Random.RandomFromMax(occupants - 1);
-		auto const pPoorBastard = pBuilding->Occupants[idxPoorBastard];
-		auto const& fatalRate = pBldTypeExt->UCFatalRate;
-
-		if (fatalRate > 0.0 && Random.RandomDouble() < fatalRate)
-		{
-			pPoorBastard->Destroyed(pThis->Owner);
-			pPoorBastard->UnInit();
-			pBuilding->Occupants.RemoveAt(idxPoorBastard);
-			pBuilding->UpdateThreatInCell(pBuilding->GetCell());
-		}
-		else
-		{
-			auto const& multiplier = pBldTypeExt->UCDamageMultiplier.Get();
-			auto adjustedDamage = static_cast<int>(std::ceil(pThis->Health * multiplier));
-			pPoorBastard->ReceiveDamage(&adjustedDamage, 0, pThis->WH, pThis->Owner, false, true, pThis->GetOwningHouse());
-		}
-
-		if (pBuilding->FiringOccupantIndex >= pBuilding->GetOccupantCount())
-		{
-			pBuilding->FiringOccupantIndex = 0;
-		}
-
-		// if the last occupant was killed and this building was raided,
-		// it needs to be returned to its owner. (Bug #700)
-		TechnoExt_ExtData::EvalRaidStatus(pBuilding);
-
-		return true;
+		// the target was not a valid passenger type
+		return false;
 	}
 
-	void AresWPWHExt::applyKillDriver(WarheadTypeClass * pWH, TechnoClass * pKiller, TechnoClass * pVictim)
+	if (nTargetCoords == CoordStruct::Empty)
+		nTargetCoords = pTarget->GetCoords();
+
+	const auto Attacker = pOwner;
+	const auto TargetType = Target->GetTechnoType();
+	const auto AttackerType = Attacker->GetTechnoType();
+
+	if (!pWHExt->CanAffectHouse(Attacker->Owner, Target->GetOwningHouse()))
 	{
-		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
+		return false;
+	}
 
-		if (!pKiller || !pWHExt->KillDriver || !pVictim)
-			return;
+	if (!TechnoExtData::IsAbductable(Attacker, pData->AttachedToObject, Target))
+	{
+		return false;
+	}
 
-		if (!pWHExt->CanAffectHouse(pKiller->Owner, pVictim->Owner))
-			return;
+	//if it's owner meant to be changed, do it here
+	HouseClass* pDesiredOwner = Attacker->Owner ? Attacker->Owner : HouseExtData::FindSpecial();
 
-		if (!TechnoExt_ExtData::IsDriverKillable(pVictim, pWHExt->KillDriver_KillBelowPercent))
-			return;
+	//if it's owner meant to be changed, do it here
+	if ((pData->Abductor_ChangeOwner && !TechnoExtData::IsPsionicsImmune(Target)))
+		Target->SetOwningHouse(pDesiredOwner);
 
-		if (ScenarioClass::Instance->Random.RandomDouble() <= pWHExt->KillDriver_Chance)
+	// if we ended up here, the target is of the right type, and the attacker can take it
+	// so we abduct the target...
+
+	Target->StopMoving();
+	Target->SetDestination(nullptr, true); // Target->UpdatePosition(int) ?
+	Target->SetTarget(nullptr);
+	Target->CurrentTargets.Clear(); // Target->ShouldLoseTargetNow ?
+	Target->SetFocus(nullptr);
+	Target->QueueMission(Mission::Sleep, true);
+	Target->unknown_C4 = 0; // don't ask
+	Target->unknown_5A0 = 0;
+	Target->CurrentGattlingStage = 0;
+	Target->SetCurrentWeaponStage(0);
+
+	// the team should not wait for me
+	if (Target->BelongsToATeam())
+	{
+		Target->Team->LiberateMember(Target);
+	}
+
+	// if this unit is being mind controlled, break the link
+	if (const auto MindController = Target->MindControlledBy)
+	{
+		if (const auto MC = MindController->CaptureManager)
 		{
-			HouseClass* Owner = HouseExtData::GetHouseKind(pWHExt->KillDriver_Owner, false, nullptr, pKiller->Owner, pVictim->Owner);
-			if (!Owner)
-				Owner = HouseExtData::FindSpecial();
-
-			TechnoExt_ExtData::ApplyKillDriver(pVictim, pKiller, Owner, pWHExt->KillDriver_ResetVeterancy, Mission::Harmless);
+			MC->FreeUnit(Target);
 		}
 	}
+
+	// if this unit is a mind controller, break the link
+	if (Target->CaptureManager)
+	{
+		Target->CaptureManager->FreeAll();
+	}
+
+	// if this unit is currently in a state of temporal flux, get it back to our time-frame
+	if (Target->TemporalTargetingMe)
+	{
+		Target->TemporalTargetingMe->Detach();
+	}
+
+	//if the target is spawned, detach it from it's spawner
+	Target->DetachSpecificSpawnee(pDesiredOwner);
+
+	// if the unit is a spawner, kill the spawns
+	if (Target->SpawnManager)
+	{
+		Target->SpawnManager->KillNodes();
+		Target->SpawnManager->ResetTarget();
+	}
+
+	//if the unit is a slave, it should be freed
+	Target->FreeSpecificSlave(pDesiredOwner);
+
+	// If the unit is a SlaveManager, free the slaves
+	if (auto pSlaveManager = Target->SlaveManager)
+	{
+		pSlaveManager->Killed(Attacker);
+		pSlaveManager->ZeroOutSlaves();
+		Target->SlaveManager->Owner = Target;
+	}
+
+	// if we have an abducting animation, play it
+	if (auto pAnimType = pData->Abductor_AnimType)
+	{
+		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, nTargetCoords),
+			Attacker->Owner,
+			Target->Owner,
+			Attacker,
+			false
+		);
+	}
+
+	Target->Locomotor.GetInterfacePtr()->Force_Track(-1, CoordStruct::Empty);
+	CoordStruct coordsUnitSource = Target->GetCoords();
+	Target->Locomotor.GetInterfacePtr()->Mark_All_Occupation_Bits(0);
+	Target->MarkAllOccupationBits(coordsUnitSource);
+	Target->ClearPlanningTokens(nullptr);
+	Target->Flashing.DurationRemaining = 0;
+
+	if (!Target->Limbo())
+	{
+		Debug::Log("Abduction: Target unit %p (%s) could not be removed.\n", Target, Target->get_ID());
+	}
+
+	Target->OnBridge = false;
+	Target->NextObject = 0;
+	//Target->UpdatePlacement(PlacementType::Remove);
+	// because we are throwing away the locomotor in a split second, piggybacking
+	// has to be stopped. otherwise the object might remain in a weird state.
+	while (LocomotionClass::End_Piggyback(Target->Locomotor)) { };
+
+	// throw away the current locomotor and instantiate
+	// a new one of the default type for this unit.
+	if (auto NewLoco = LocomotionClass::CreateInstance(TargetType->Locomotor))
+	{
+		Target->Locomotor = std::move(NewLoco);
+		Target->Locomotor->Link_To_Object(Target);
+	}
+
+	// handling for Locomotor weapons: since we took this unit from the Magnetron
+	// in an unfriendly way, set these fields here to unblock the unit
+	if (Target->IsAttackedByLocomotor || Target->IsLetGoByLocomotor)
+	{
+		Target->IsAttackedByLocomotor = false;
+		Target->IsLetGoByLocomotor = false;
+	}
+
+	Target->Transporter = Attacker;
+	if (AttackerType->OpenTopped && Target->Owner->IsAlliedWith(Attacker))
+	{
+		Attacker->EnteredOpenTopped(Target);
+	}
+
+	if (Attacker->WhatAmI() == BuildingClass::AbsID)
+	{
+		Target->Absorbed = true;
+	}
+
+	Attacker->AddPassenger(Target);
+	Attacker->Undiscover();
+
+	if (auto v29 = Target->AttachedTag)
+		v29->RaiseEvent(TriggerEvent(AresTriggerEvents::Abducted_ByHouse), Target, CellStruct::Empty, false, Attacker);
+
+	if (Target->IsAlive)
+	{
+		if (auto v30 = Target->AttachedTag)
+			v30->RaiseEvent(TriggerEvent(AresTriggerEvents::Abducted), Target, CellStruct::Empty, false, nullptr);
+	}
+
+	if (auto v31 = Attacker->AttachedTag)
+		v31->RaiseEvent(TriggerEvent(AresTriggerEvents::AbductSomething_OfHouse), Attacker, CellStruct::Empty, false, Target->GetOwningHouse());// pTarget->Owner
+
+	if (Attacker->IsAlive)
+	{
+		if (auto v32 = Attacker->AttachedTag)
+			v32->RaiseEvent(TriggerEvent(AresTriggerEvents::AbductSomething), Attacker, CellStruct::Empty, false, nullptr);
+	}
+
+	return true;
+}
+
+bool AresWPWHExt::applyOccupantDamage(BulletClass* pThis)
+{
+	auto const pBuilding = specific_cast<BuildingClass*>(pThis->Target);
+
+	// if that pointer is null, something went wrong
+	if (!pBuilding)
+	{
+		return false;
+	}
+
+	auto const pTypeExt = BulletTypeExtContainer::Instance.Find(pThis->Type);
+	auto const pBldTypeExt = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
+
+	auto const occupants = pBuilding->Occupants.Count;
+	auto const& passThrough = pBldTypeExt->UCPassThrough;
+
+	if (!occupants || !passThrough)
+	{
+		return false;
+	}
+
+	auto& Random = ScenarioClass::Instance->Random;
+	if (pTypeExt->SubjectToTrenches && Random.RandomDouble() >= passThrough)
+	{
+		return false;
+	}
+
+	auto const idxPoorBastard = Random.RandomFromMax(occupants - 1);
+	auto const pPoorBastard = pBuilding->Occupants[idxPoorBastard];
+	auto const& fatalRate = pBldTypeExt->UCFatalRate;
+
+	if (fatalRate > 0.0 && Random.RandomDouble() < fatalRate)
+	{
+		pPoorBastard->Destroyed(pThis->Owner);
+		pPoorBastard->UnInit();
+		pBuilding->Occupants.RemoveAt(idxPoorBastard);
+		pBuilding->UpdateThreatInCell(pBuilding->GetCell());
+	}
+	else
+	{
+		auto const& multiplier = pBldTypeExt->UCDamageMultiplier.Get();
+		auto adjustedDamage = static_cast<int>(std::ceil(pThis->Health * multiplier));
+		pPoorBastard->ReceiveDamage(&adjustedDamage, 0, pThis->WH, pThis->Owner, false, true, pThis->GetOwningHouse());
+	}
+
+	if (pBuilding->FiringOccupantIndex >= pBuilding->GetOccupantCount())
+	{
+		pBuilding->FiringOccupantIndex = 0;
+	}
+
+	// if the last occupant was killed and this building was raided,
+	// it needs to be returned to its owner. (Bug #700)
+	TechnoExt_ExtData::EvalRaidStatus(pBuilding);
+
+	return true;
+}
+
+void AresWPWHExt::applyKillDriver(WarheadTypeClass* pWH, TechnoClass* pKiller, TechnoClass* pVictim)
+{
+	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
+
+	if (!pKiller || !pWHExt->KillDriver || !pVictim)
+		return;
+
+	if (!pWHExt->CanAffectHouse(pKiller->Owner, pVictim->Owner))
+		return;
+
+	if (!TechnoExt_ExtData::IsDriverKillable(pVictim, pWHExt->KillDriver_KillBelowPercent))
+		return;
+
+	if (ScenarioClass::Instance->Random.RandomDouble() <= pWHExt->KillDriver_Chance)
+	{
+		HouseClass* Owner = HouseExtData::GetHouseKind(pWHExt->KillDriver_Owner, false, nullptr, pKiller->Owner, pVictim->Owner);
+		if (!Owner)
+			Owner = HouseExtData::FindSpecial();
+
+		TechnoExt_ExtData::ApplyKillDriver(pVictim, pKiller, Owner, pWHExt->KillDriver_ResetVeterancy, Mission::Harmless);
+	}
+}
 #pragma endregion
 
 #pragma region AresTActionExt
 
-	std::pair<TriggerAttachType, bool> AresTActionExt::GetFlag(AresNewTriggerAction nAction)
+std::pair<TriggerAttachType, bool> AresTActionExt::GetFlag(AresNewTriggerAction nAction)
+{
+	switch (nAction)
 	{
-		switch (nAction)
-		{
-		case AresNewTriggerAction::AuxiliaryPower:
-		case AresNewTriggerAction::SetEVAVoice:
-			return { TriggerAttachType::None , true };
-		case AresNewTriggerAction::KillDriversOf:
-		case AresNewTriggerAction::SetGroup:
-			return { TriggerAttachType::Object , true };
-		default:
-			return { TriggerAttachType::None , false };
-		}
+	case AresNewTriggerAction::AuxiliaryPower:
+	case AresNewTriggerAction::SetEVAVoice:
+		return { TriggerAttachType::None , true };
+	case AresNewTriggerAction::KillDriversOf:
+	case AresNewTriggerAction::SetGroup:
+		return { TriggerAttachType::Object , true };
+	default:
+		return { TriggerAttachType::None , false };
+	}
+}
+
+std::pair<LogicNeedType, bool> AresTActionExt::GetMode(AresNewTriggerAction nAction)
+{
+	switch (nAction)
+	{
+	case AresNewTriggerAction::AuxiliaryPower:
+		return { LogicNeedType::NumberNSuper  , true };
+	case AresNewTriggerAction::KillDriversOf:
+		return { LogicNeedType::None , true };
+	case AresNewTriggerAction::SetEVAVoice:
+	case AresNewTriggerAction::SetGroup:
+		return { LogicNeedType::Number, true };
+	default:
+		return { LogicNeedType::None , false };
+	}
+}
+
+bool AresTActionExt::ActivateFirestorm(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	if (pHouse->FirestormActive)
+	{
+		AresHouseExt::SetFirestormState(pHouse, true);
 	}
 
-	std::pair<LogicNeedType, bool> AresTActionExt::GetMode(AresNewTriggerAction nAction)
+	return true;
+}
+
+bool AresTActionExt::DeactivateFirestorm(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	if (pHouse->FirestormActive)
 	{
-		switch (nAction)
-		{
-		case AresNewTriggerAction::AuxiliaryPower:
-			return { LogicNeedType::NumberNSuper  , true };
-		case AresNewTriggerAction::KillDriversOf:
-			return { LogicNeedType::None , true };
-		case AresNewTriggerAction::SetEVAVoice:
-		case AresNewTriggerAction::SetGroup:
-			return { LogicNeedType::Number, true };
-		default:
-			return { LogicNeedType::None , false };
-		}
+		AresHouseExt::SetFirestormState(pHouse, false);
 	}
+	return true;
+}
 
-	bool AresTActionExt::ActivateFirestorm(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
+bool AresTActionExt::AuxiliaryPower(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	const auto pDecidedHouse = pAction->FindHouseByIndex(pTrigger, pAction->Value);
+
+	if (!pDecidedHouse)
+		return false;
+
+	HouseExtContainer::Instance.Find(pDecidedHouse)->AuxPower += pAction->Value2;
+	pDecidedHouse->RecheckPower = true;
+	return true;
+}
+
+bool AresTActionExt::KillDriversOf(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	auto pDecidedHouse = pAction->FindHouseByIndex(pTrigger, pAction->Value);
+	if (!pDecidedHouse)
+		pDecidedHouse = HouseExtData::FindSpecial();
+
+	for (auto pUnit : *FootClass::Array)
 	{
-		if (pHouse->FirestormActive)
+		if (pUnit->Health > 0 && pUnit->IsAlive && pUnit->IsOnMap && !pUnit->InLimbo)
 		{
-			AresHouseExt::SetFirestormState(pHouse, true);
-		}
-
-		return true;
-	}
-
-	bool AresTActionExt::DeactivateFirestorm(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		if (pHouse->FirestormActive)
-		{
-			AresHouseExt::SetFirestormState(pHouse, false);
-		}
-		return true;
-	}
-
-	bool AresTActionExt::AuxiliaryPower(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		const auto pDecidedHouse = pAction->FindHouseByIndex(pTrigger, pAction->Value);
-
-		if (!pDecidedHouse)
-			return false;
-
-		HouseExtContainer::Instance.Find(pDecidedHouse)->AuxPower += pAction->Value2;
-		pDecidedHouse->RecheckPower = true;
-		return true;
-	}
-
-	bool AresTActionExt::KillDriversOf(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		auto pDecidedHouse = pAction->FindHouseByIndex(pTrigger, pAction->Value);
-		if (!pDecidedHouse)
-			pDecidedHouse = HouseExtData::FindSpecial();
-
-		for (auto pUnit : *FootClass::Array)
-		{
-			if (pUnit->Health > 0 && pUnit->IsAlive && pUnit->IsOnMap && !pUnit->InLimbo)
+			if (pUnit->AttachedTag && pUnit->AttachedTag->ContainsTrigger(pTrigger))
 			{
-				if (pUnit->AttachedTag && pUnit->AttachedTag->ContainsTrigger(pTrigger))
+				if (!TechnoExtContainer::Instance.Find(pUnit)->Is_DriverKilled
+					&& TechnoExt_ExtData::IsDriverKillable(pUnit, 1.0))
 				{
-					if (!TechnoExtContainer::Instance.Find(pUnit)->Is_DriverKilled
-						&& TechnoExt_ExtData::IsDriverKillable(pUnit, 1.0))
-					{
-						TechnoExt_ExtData::ApplyKillDriver(pUnit, nullptr, pDecidedHouse, false, Mission::Harmless);
-					}
+					TechnoExt_ExtData::ApplyKillDriver(pUnit, nullptr, pDecidedHouse, false, Mission::Harmless);
 				}
 			}
 		}
+	}
 
+	return true;
+}
+
+bool AresTActionExt::SetEVAVoice(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	if (pAction->Value >= (int)EVAVoices::Types.size())
+	{
+		return false;
+	}
+
+	VoxClass::EVAIndex = MaxImpl(pAction->Value, -1);
+	return true;
+}
+
+bool AresTActionExt::SetGroup(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	if (auto pTech = generic_cast<TechnoClass*>(pObject))
+	{
+		pTech->Group = pAction->Value;
 		return true;
 	}
 
-	bool AresTActionExt::SetEVAVoice(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		if (pAction->Value >= (int)EVAVoices::Types.size())
-		{
-			return false;
-		}
+	return false;
+}
 
-		VoxClass::EVAIndex = MaxImpl(pAction->Value, -1);
+//TODO : re-eval
+bool AresTActionExt::LauchhNuke(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	const auto pFind = WeaponTypeClass::Find(GameStrings::NukePayload);
+	if (!pFind)
+		return false;
+
+	const auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
+	auto nCoord = CellClass::Cell2Coord(nLoc);
+	nCoord.Z = MapClass::Instance->GetCellFloorHeight(nCoord);
+
+	if (MapClass::Instance->GetCellAt(nCoord)->ContainsBridge())
+		nCoord.Z += Unsorted::BridgeHeight;
+
+	SW_NuclearMissile::DropNukeAt(nullptr, nCoord, nullptr, pHouse, pFind);
+
+	//if (auto pBullet = pFind->Projectile->CreateBullet(MapClass::Instance->GetCellAt(nCoord), nullptr, pFind->Damage, pFind->Warhead, 50, false))
+	//{
+	//	pBullet->SetWeaponType(pFind);
+	//	VelocityClass nVel {};
+	//
+	//	double nSin = Math::sin(1.570748388432313);
+	//	double nCos = Math::cos(1.570748388432313);
+	//
+	//	double nX = nCos * nCos * -100.0;
+	//	double nY = nCos * nSin * -100.0;
+	//	double nZ = nSin * -100.0;
+	//
+	//	BulletExtContainer::Instance.Find(pBullet)->Owner = pHouse;
+	//	pBullet->MoveTo({ nCoord.X , nCoord.Y , nCoord.Z + 20000 }, nVel);
+	//	return true;
+	//}
+
+	return false;
+}
+
+//TODO : re-eval
+bool AresTActionExt::LauchhChemMissile(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	const auto pFind = WeaponTypeClass::Find(GameStrings::ChemLauncher);
+	if (!pFind)
+		return false;
+
+	auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
+
+	if (auto pBullet = pFind->Projectile->CreateBullet(MapClass::Instance->GetCellAt(nLoc), nullptr, pFind->Damage, pFind->Warhead, 20, false))
+	{
+		pBullet->SetWeaponType(pFind);
+		double nSin = Math::sin(1.570748388432313);
+		double nCos = Math::cos(-0.00009587672516830327);
+		BulletExtContainer::Instance.Find(pBullet)->Owner = pHouse;
+		auto nCell = MapClass::Instance->Localsize_586AC0(&nLoc, false);
+
+		pBullet->MoveTo(
+			{ nCell.X + 128 , nCell.Y + 128 , 0 },
+			{ nCos * nCos * 100.0  , nCos * nSin * 100.0  , nSin * 100.0 }
+		);
 		return true;
 	}
 
-	bool AresTActionExt::SetGroup(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
+	return false;
+}
+
+bool AresTActionExt::LightstormStrike(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
+
+	// get center of cell coords
+	auto const pCell = MapClass::Instance->GetCellAt(nLoc);
+	auto coords = pCell->GetCoordsWithBridge();
+
+	// create a cloud animation
+	if (coords.IsValid())
 	{
-		if (auto pTech = generic_cast<TechnoClass*>(pObject))
+		// select the anim
+		auto const& itClouds = RulesClass::Instance->WeatherConClouds;
+		auto const pAnimType = itClouds.Items[ScenarioClass::Instance->Random.RandomFromMax(itClouds.Count - 1)];
+
+		if (pAnimType)
 		{
-			pTech->Group = pAction->Value;
-			return true;
-		}
+			coords.Z += GeneralUtils::GetLSAnimHeightFactor(pAnimType, pCell, true);
 
-		return false;
-	}
-
-	//TODO : re-eval
-	bool AresTActionExt::LauchhNuke(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		const auto pFind = WeaponTypeClass::Find(GameStrings::NukePayload);
-		if (!pFind)
-			return false;
-
-		const auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
-		auto nCoord = CellClass::Cell2Coord(nLoc);
-		nCoord.Z = MapClass::Instance->GetCellFloorHeight(nCoord);
-
-		if (MapClass::Instance->GetCellAt(nCoord)->ContainsBridge())
-			nCoord.Z += Unsorted::BridgeHeight;
-
-		SW_NuclearMissile::DropNukeAt(nullptr, nCoord, nullptr, pHouse, pFind);
-
-		//if (auto pBullet = pFind->Projectile->CreateBullet(MapClass::Instance->GetCellAt(nCoord), nullptr, pFind->Damage, pFind->Warhead, 50, false))
-		//{
-		//	pBullet->SetWeaponType(pFind);
-		//	VelocityClass nVel {};
-		//
-		//	double nSin = Math::sin(1.570748388432313);
-		//	double nCos = Math::cos(1.570748388432313);
-		//
-		//	double nX = nCos * nCos * -100.0;
-		//	double nY = nCos * nSin * -100.0;
-		//	double nZ = nSin * -100.0;
-		//
-		//	BulletExtContainer::Instance.Find(pBullet)->Owner = pHouse;
-		//	pBullet->MoveTo({ nCoord.X , nCoord.Y , nCoord.Z + 20000 }, nVel);
-		//	return true;
-		//}
-
-		return false;
-	}
-
-	//TODO : re-eval
-	bool AresTActionExt::LauchhChemMissile(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		const auto pFind = WeaponTypeClass::Find(GameStrings::ChemLauncher);
-		if (!pFind)
-			return false;
-
-		auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
-
-		if (auto pBullet = pFind->Projectile->CreateBullet(MapClass::Instance->GetCellAt(nLoc), nullptr, pFind->Damage, pFind->Warhead, 20, false))
-		{
-			pBullet->SetWeaponType(pFind);
-			double nSin = Math::sin(1.570748388432313);
-			double nCos = Math::cos(-0.00009587672516830327);
-			BulletExtContainer::Instance.Find(pBullet)->Owner = pHouse;
-			auto nCell = MapClass::Instance->Localsize_586AC0(&nLoc, false);
-
-			pBullet->MoveTo(
-				{ nCell.X + 128 , nCell.Y + 128 , 0 },
-				{ nCos * nCos * 100.0  , nCos * nSin * 100.0  , nSin * 100.0 }
-			);
-			return true;
-		}
-
-		return false;
-	}
-
-	bool AresTActionExt::LightstormStrike(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
-
-		// get center of cell coords
-		auto const pCell = MapClass::Instance->GetCellAt(nLoc);
-		auto coords = pCell->GetCoordsWithBridge();
-
-		// create a cloud animation
-		if (coords.IsValid())
-		{
-			// select the anim
-			auto const& itClouds = RulesClass::Instance->WeatherConClouds;
-			auto const pAnimType = itClouds.Items[ScenarioClass::Instance->Random.RandomFromMax(itClouds.Count - 1)];
-
-			if (pAnimType)
+			if (coords.IsValid())
 			{
-				coords.Z += GeneralUtils::GetLSAnimHeightFactor(pAnimType, pCell, true);
-
-				if (coords.IsValid())
-				{
-					// create the cloud and do some book keeping.auto const
-					auto pAnim = GameCreate<AnimClass>(pAnimType, coords);
-					pAnim->SetHouse(pHouse);
-					LightningStorm::CloudsManifesting->AddItem(pAnim);
-					LightningStorm::CloudsPresent->AddItem(pAnim);
-				}
+				// create the cloud and do some book keeping.auto const
+				auto pAnim = GameCreate<AnimClass>(pAnimType, coords);
+				pAnim->SetHouse(pHouse);
+				LightningStorm::CloudsManifesting->AddItem(pAnim);
+				LightningStorm::CloudsPresent->AddItem(pAnim);
 			}
 		}
-
-		return true;
 	}
 
-	bool AresTActionExt::MeteorStrike(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
+	return true;
+}
+
+bool AresTActionExt::MeteorStrike(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	static constexpr reference<int, 0x842AFC, 5u> MeteorAddAmount {};
+
+	const auto pSmall = AnimTypeClass::Find(GameStrings::METSMALL);
+	const auto pBig = AnimTypeClass::Find(GameStrings::METLARGE);
+
+	if (!pSmall && !pBig)
+		return false;
+
+	auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
+	CoordStruct nCoord = CellClass::Cell2Coord(nLoc);
+	nCoord.Z = MapClass::Instance->GetCellFloorHeight(nCoord);
+
+	if (MapClass::Instance->GetCellAt(nCoord)->ContainsBridge())
+		nCoord.Z += Unsorted::BridgeHeight;
+
+	const auto amount = MeteorAddAmount[pAction->Value % MeteorAddAmount.size()] + ScenarioClass::Instance->Random.Random() % 3;
+	if (amount <= 0)
+		return true;
+
+	const int nTotal = 70 * amount;
+
+	for (int i = nTotal; i > 0; --i)
 	{
-		static constexpr reference<int, 0x842AFC, 5u> MeteorAddAmount {};
+		auto nRandX = ScenarioClass::Instance->Random.Random() % nTotal;
+		auto nRandY = ScenarioClass::Instance->Random.Random() % nTotal;
+		CoordStruct nLoc { nRandX + nCoord.X ,nRandY + nCoord.Y ,nCoord.Z };
 
-		const auto pSmall = AnimTypeClass::Find(GameStrings::METSMALL);
-		const auto pBig = AnimTypeClass::Find(GameStrings::METLARGE);
+		AnimTypeClass* pSelected = pBig;
+		int nRandHere = abs(ScenarioClass::Instance->Random.Random()) & 0x80000001;
+		bool v13 = nRandHere == 0;
+		if (nRandHere < 0)
+		{
+			v13 = ((nRandHere - 1) | 0xFFFFFFFE) == -1;
+		}
 
-		if (!pSmall && !pBig)
-			return false;
+		if (v13)
+		{
+			pSelected = pSmall;
+		}
 
+		if (pSelected)
+		{
+			auto pAnim = GameCreate<AnimClass>(pSelected, nLoc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+			pAnim->Owner = pHouse;
+		}
+	}
+
+	return true;
+}
+
+bool AresTActionExt::PlayAnimAt(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	if (const auto pAnimType = AnimTypeClass::Array->GetItemOrDefault(pAction->Value))
+	{
 		auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
 		CoordStruct nCoord = CellClass::Cell2Coord(nLoc);
 		nCoord.Z = MapClass::Instance->GetCellFloorHeight(nCoord);
@@ -6003,803 +6047,687 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 		if (MapClass::Instance->GetCellAt(nCoord)->ContainsBridge())
 			nCoord.Z += Unsorted::BridgeHeight;
 
-		const auto amount = MeteorAddAmount[pAction->Value % MeteorAddAmount.size()] + ScenarioClass::Instance->Random.Random() % 3;
-		if (amount <= 0)
+		auto pAnim = GameCreate<AnimClass>(pAnimType, nCoord, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+		pAnim->IsPlaying = true;
+		pAnim->Owner = pHouse;
+	}
+
+	return true;
+}
+
+bool AresTActionExt::Execute(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location, bool& ret)
+{
+	switch ((AresNewTriggerAction)pAction->ActionKind)
+	{
+	case AresNewTriggerAction::AuxiliaryPower:
+	{
+		ret = AuxiliaryPower(pAction, pHouse, pObject, pTrigger, location);
+		break;
+	}
+	case AresNewTriggerAction::KillDriversOf:
+	{
+		ret = KillDriversOf(pAction, pHouse, pObject, pTrigger, location);
+		break;
+	}
+	case AresNewTriggerAction::SetEVAVoice:
+	{
+		ret = SetEVAVoice(pAction, pHouse, pObject, pTrigger, location);
+		break;
+	}
+	case AresNewTriggerAction::SetGroup:
+	{
+		ret = SetGroup(pAction, pHouse, pObject, pTrigger, location);
+		break;
+	}
+	default:
+	{
+		switch (pAction->ActionKind)
+		{
+		case TriggerAction::PlayAnimAt:
+			ret = PlayAnimAt(pAction, pHouse, pObject, pTrigger, location);
 			return true;
-
-		const int nTotal = 70 * amount;
-
-		for (int i = nTotal; i > 0; --i)
-		{
-			auto nRandX = ScenarioClass::Instance->Random.Random() % nTotal;
-			auto nRandY = ScenarioClass::Instance->Random.Random() % nTotal;
-			CoordStruct nLoc { nRandX + nCoord.X ,nRandY + nCoord.Y ,nCoord.Z };
-
-			AnimTypeClass* pSelected = pBig;
-			int nRandHere = abs(ScenarioClass::Instance->Random.Random()) & 0x80000001;
-			bool v13 = nRandHere == 0;
-			if (nRandHere < 0)
-			{
-				v13 = ((nRandHere - 1) | 0xFFFFFFFE) == -1;
-			}
-
-			if (v13)
-			{
-				pSelected = pSmall;
-			}
-
-			if (pSelected)
-			{
-				auto pAnim = GameCreate<AnimClass>(pSelected, nLoc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-				pAnim->Owner = pHouse;
-			}
-		}
-
-		return true;
-	}
-
-	bool AresTActionExt::PlayAnimAt(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location)
-	{
-		if (const auto pAnimType = AnimTypeClass::Array->GetItemOrDefault(pAction->Value))
-		{
-			auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
-			CoordStruct nCoord = CellClass::Cell2Coord(nLoc);
-			nCoord.Z = MapClass::Instance->GetCellFloorHeight(nCoord);
-
-			if (MapClass::Instance->GetCellAt(nCoord)->ContainsBridge())
-				nCoord.Z += Unsorted::BridgeHeight;
-
-			auto pAnim = GameCreate<AnimClass>(pAnimType, nCoord, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-			pAnim->IsPlaying = true;
-			pAnim->Owner = pHouse;
-		}
-
-		return true;
-	}
-
-	bool AresTActionExt::Execute(TActionClass * pAction, HouseClass * pHouse, ObjectClass * pObject, TriggerClass * pTrigger, CellStruct const& location, bool& ret)
-	{
-		switch ((AresNewTriggerAction)pAction->ActionKind)
-		{
-		case AresNewTriggerAction::AuxiliaryPower:
-		{
-			ret = AuxiliaryPower(pAction, pHouse, pObject, pTrigger, location);
-			break;
-		}
-		case AresNewTriggerAction::KillDriversOf:
-		{
-			ret = KillDriversOf(pAction, pHouse, pObject, pTrigger, location);
-			break;
-		}
-		case AresNewTriggerAction::SetEVAVoice:
-		{
-			ret = SetEVAVoice(pAction, pHouse, pObject, pTrigger, location);
-			break;
-		}
-		case AresNewTriggerAction::SetGroup:
-		{
-			ret = SetGroup(pAction, pHouse, pObject, pTrigger, location);
-			break;
-		}
+		case TriggerAction::MeteorShower:
+			ret = MeteorStrike(pAction, pHouse, pObject, pTrigger, location);
+			return true;
+		case TriggerAction::LightningStrike:
+			ret = LightstormStrike(pAction, pHouse, pObject, pTrigger, location);
+			return true;
+		case TriggerAction::ActivateFirestorm:
+			ret = ActivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
+			return true;
+		case TriggerAction::DeactivateFirestorm:
+			ret = DeactivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
+			return true;
+		case TriggerAction::NukeStrike:
+			ret = LauchhNuke(pAction, pHouse, pObject, pTrigger, location);
+			return true;
+		case TriggerAction::ChemMissileStrike:
+			ret = LauchhChemMissile(pAction, pHouse, pObject, pTrigger, location);
+			return true;
 		default:
-		{
-			switch (pAction->ActionKind)
-			{
-			case TriggerAction::PlayAnimAt:
-				ret = PlayAnimAt(pAction, pHouse, pObject, pTrigger, location);
-				return true;
-			case TriggerAction::MeteorShower:
-				ret = MeteorStrike(pAction, pHouse, pObject, pTrigger, location);
-				return true;
-			case TriggerAction::LightningStrike:
-				ret = LightstormStrike(pAction, pHouse, pObject, pTrigger, location);
-				return true;
-			case TriggerAction::ActivateFirestorm:
-				ret = ActivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
-				return true;
-			case TriggerAction::DeactivateFirestorm:
-				ret = DeactivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
-				return true;
-			case TriggerAction::NukeStrike:
-				ret = LauchhNuke(pAction, pHouse, pObject, pTrigger, location);
-				return true;
-			case TriggerAction::ChemMissileStrike:
-				ret = LauchhChemMissile(pAction, pHouse, pObject, pTrigger, location);
-				return true;
-			default:
-				break;
-			}
-
-			return false;
-		}
+			break;
 		}
 
-		return true;
+		return false;
 	}
+	}
+
+	return true;
+}
 #pragma endregion
 
 #pragma region AresTEventExt
 
-	NOINLINE HouseClass* AresTEventExt::ResolveHouseParam(int const param, HouseClass* const pOwnerHouse)
+NOINLINE HouseClass* AresTEventExt::ResolveHouseParam(int const param, HouseClass* const pOwnerHouse)
+{
+	if (param == -1)
+		return nullptr;
+
+	if (param == 8997)
 	{
-		if (param == -1)
-			return nullptr;
-
-		if (param == 8997)
-		{
-			return pOwnerHouse;
-		}
-
-		if (HouseClass::Index_IsMP(param))
-		{
-			return HouseClass::FindByIndex(param);
-		}
-
-		return HouseClass::FindByCountryIndex(param);
+		return pOwnerHouse;
 	}
 
-	std::pair<Persistable, bool> AresTEventExt::GetPersistableFlag(AresTriggerEvents nAction)
+	if (HouseClass::Index_IsMP(param))
 	{
-		switch (nAction)
+		return HouseClass::FindByIndex(param);
+	}
+
+	return HouseClass::FindByCountryIndex(param);
+}
+
+std::pair<Persistable, bool> AresTEventExt::GetPersistableFlag(AresTriggerEvents nAction)
+{
+	switch (nAction)
+	{
+	case AresTriggerEvents::UnderEMP:
+	case AresTriggerEvents::UnderEMP_ByHouse:
+	case AresTriggerEvents::RemoveEMP:
+	case AresTriggerEvents::RemoveEMP_ByHouse:
+	case AresTriggerEvents::EnemyInSpotlightNow:
+	case AresTriggerEvents::ReverseEngineered:
+	case AresTriggerEvents::HouseOwnTechnoType:
+	case AresTriggerEvents::HouseDoesntOwnTechnoType:
+	case AresTriggerEvents::AttackedOrDestroyedByAnybody:
+	case AresTriggerEvents::AttackedOrDestroyedByHouse:
+	case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
+		return { Persistable::unk_0x100  , true };
+	case AresTriggerEvents::DriverKiller:
+	case AresTriggerEvents::DriverKilled_ByHouse:
+	case AresTriggerEvents::VehicleTaken:
+	case AresTriggerEvents::VehicleTaken_ByHouse:
+	case AresTriggerEvents::Abducted:
+	case AresTriggerEvents::Abducted_ByHouse:
+	case AresTriggerEvents::AbductSomething:
+	case AresTriggerEvents::AbductSomething_OfHouse:
+	case AresTriggerEvents::SuperActivated:
+	case AresTriggerEvents::SuperDeactivated:
+	case AresTriggerEvents::SuperNearWaypoint:
+	case AresTriggerEvents::ReverseEngineerAnything:
+	case AresTriggerEvents::ReverseEngineerType:
+	case AresTriggerEvents::DestroyedByHouse:
+	case AresTriggerEvents::AllKeepAlivesDestroyed:
+	case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
+		return { Persistable::unk_0x101  , true };
+	default:
+		return { Persistable::None  , false };
+	}
+}
+
+std::pair<LogicNeedType, bool > AresTEventExt::GetLogicNeed(AresTriggerEvents nAction)
+{
+	switch (nAction)
+	{
+	case AresTriggerEvents::UnderEMP://
+	case AresTriggerEvents::RemoveEMP: //
+	case AresTriggerEvents::EnemyInSpotlightNow://
+	case AresTriggerEvents::DriverKiller://
+	case AresTriggerEvents::VehicleTaken://
+	case AresTriggerEvents::Abducted://
+	case AresTriggerEvents::AbductSomething://
+	case AresTriggerEvents::SuperActivated://
+	case AresTriggerEvents::SuperDeactivated://
+	case AresTriggerEvents::ReverseEngineerAnything://
+	case AresTriggerEvents::AttackedOrDestroyedByAnybody://
+		return { LogicNeedType::None  , true };
+	case AresTriggerEvents::UnderEMP_ByHouse://
+	case AresTriggerEvents::RemoveEMP_ByHouse://
+	case AresTriggerEvents::DriverKilled_ByHouse:
+	case AresTriggerEvents::VehicleTaken_ByHouse:
+	case AresTriggerEvents::Abducted_ByHouse:
+	case AresTriggerEvents::AbductSomething_OfHouse:
+	case AresTriggerEvents::AttackedOrDestroyedByHouse:
+	case AresTriggerEvents::DestroyedByHouse:
+	case AresTriggerEvents::AllKeepAlivesDestroyed:
+	case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
+		return { LogicNeedType::House  , true };
+	case AresTriggerEvents::SuperNearWaypoint:
+	case AresTriggerEvents::ReverseEngineered:
+	case AresTriggerEvents::ReverseEngineerType:
+	case AresTriggerEvents::HouseOwnTechnoType:
+	case AresTriggerEvents::HouseDoesntOwnTechnoType:
+	case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
+		return { LogicNeedType::NumberNTech  , true };
+	default:
+		return { LogicNeedType::None  , false };
+	}
+}
+
+std::pair<bool, TriggerAttachType> AresTEventExt::GetAttachFlags(AresTriggerEvents nEvent)
+{
+	switch (nEvent)
+	{
+	case AresTriggerEvents::UnderEMP:
+	case AresTriggerEvents::UnderEMP_ByHouse:
+	case AresTriggerEvents::RemoveEMP:
+	case AresTriggerEvents::RemoveEMP_ByHouse:
+	case AresTriggerEvents::EnemyInSpotlightNow:
+	case AresTriggerEvents::DriverKiller:
+	case AresTriggerEvents::DriverKilled_ByHouse:
+	case AresTriggerEvents::VehicleTaken:
+	case AresTriggerEvents::VehicleTaken_ByHouse:
+	case AresTriggerEvents::Abducted:
+	case AresTriggerEvents::Abducted_ByHouse:
+	case AresTriggerEvents::AbductSomething:
+	case AresTriggerEvents::AbductSomething_OfHouse:
+	case AresTriggerEvents::ReverseEngineerAnything:
+	case AresTriggerEvents::ReverseEngineerType:
+	case AresTriggerEvents::AttackedOrDestroyedByAnybody:
+	case AresTriggerEvents::AttackedOrDestroyedByHouse:
+	{
+		return { true , TriggerAttachType::Object };
+	}
+	case AresTriggerEvents::SuperActivated:
+	case AresTriggerEvents::SuperDeactivated:
+	case AresTriggerEvents::SuperNearWaypoint:
+	case AresTriggerEvents::ReverseEngineered:
+	case AresTriggerEvents::HouseOwnTechnoType:
+	case AresTriggerEvents::HouseDoesntOwnTechnoType:
+	case AresTriggerEvents::DestroyedByHouse:
+	case AresTriggerEvents::AllKeepAlivesDestroyed:
+	case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
+	{
+		return { true ,TriggerAttachType::House };
+	}
+	case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
+	{
+		return { true ,TriggerAttachType::Logic };
+	}
+	}
+
+	return { false ,TriggerAttachType::None };
+}
+
+bool AresTEventExt::FindTechnoType(TEventClass* pThis, int args, HouseClass* pWho)
+{
+	const auto pType = TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
+	if (!pType)
+		return false;
+
+	if (args <= 0)
+		return true;
+
+	if (!pType->Insignificant && !pType->DontScore)
+	{
+		HouseClass** const arr = pWho ? &pWho : HouseClass::Array->Items;
+		HouseClass** const nEnd = arr + (pWho ? 1 : HouseClass::Array->Count);
+
+		int i = args;
+
+		for (HouseClass** nPos = arr; nPos != nEnd; ++nPos)
 		{
-		case AresTriggerEvents::UnderEMP:
-		case AresTriggerEvents::UnderEMP_ByHouse:
-		case AresTriggerEvents::RemoveEMP:
-		case AresTriggerEvents::RemoveEMP_ByHouse:
-		case AresTriggerEvents::EnemyInSpotlightNow:
-		case AresTriggerEvents::ReverseEngineered:
-		case AresTriggerEvents::HouseOwnTechnoType:
-		case AresTriggerEvents::HouseDoesntOwnTechnoType:
-		case AresTriggerEvents::AttackedOrDestroyedByAnybody:
-		case AresTriggerEvents::AttackedOrDestroyedByHouse:
-		case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
-			return { Persistable::unk_0x100  , true };
-		case AresTriggerEvents::DriverKiller:
-		case AresTriggerEvents::DriverKilled_ByHouse:
-		case AresTriggerEvents::VehicleTaken:
-		case AresTriggerEvents::VehicleTaken_ByHouse:
-		case AresTriggerEvents::Abducted:
-		case AresTriggerEvents::Abducted_ByHouse:
-		case AresTriggerEvents::AbductSomething:
-		case AresTriggerEvents::AbductSomething_OfHouse:
-		case AresTriggerEvents::SuperActivated:
-		case AresTriggerEvents::SuperDeactivated:
-		case AresTriggerEvents::SuperNearWaypoint:
-		case AresTriggerEvents::ReverseEngineerAnything:
-		case AresTriggerEvents::ReverseEngineerType:
-		case AresTriggerEvents::DestroyedByHouse:
-		case AresTriggerEvents::AllKeepAlivesDestroyed:
-		case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
-			return { Persistable::unk_0x101  , true };
+			i -= (*nPos)->CountOwnedNow(pType);
+
+			if (i <= 0)
+			{
+				return true;
+			}
+		}
+	}
+	else
+	{
+		int i = args;
+		TechnoClass** arrayItems = nullptr;
+		int arrayCount = 0;
+
+		switch (pType->WhatAmI())
+		{
+		case AbstractType::AircraftType:
+		{
+			arrayItems = (TechnoClass**)AircraftClass::Array->Items;
+			arrayCount = AircraftClass::Array->Count;
+			break;
+		}
+		case AbstractType::UnitType:
+		{
+			arrayItems = (TechnoClass**)UnitClass::Array->Items;
+			arrayCount = UnitClass::Array->Count;
+			break;
+		}
+		case AbstractType::InfantryType:
+		{
+			arrayItems = (TechnoClass**)InfantryClass::Array->Items;
+			arrayCount = InfantryClass::Array->Count;
+			break;
+		}
+		case AbstractType::BuildingType:
+		{
+			arrayItems = (TechnoClass**)BuildingClass::Array->Items;
+			arrayCount = BuildingClass::Array->Count;
+			break;
+		}
 		default:
-			return { Persistable::None  , false };
-		}
-	}
-
-	std::pair<LogicNeedType, bool > AresTEventExt::GetLogicNeed(AresTriggerEvents nAction)
-	{
-		switch (nAction)
-		{
-		case AresTriggerEvents::UnderEMP://
-		case AresTriggerEvents::RemoveEMP: //
-		case AresTriggerEvents::EnemyInSpotlightNow://
-		case AresTriggerEvents::DriverKiller://
-		case AresTriggerEvents::VehicleTaken://
-		case AresTriggerEvents::Abducted://
-		case AresTriggerEvents::AbductSomething://
-		case AresTriggerEvents::SuperActivated://
-		case AresTriggerEvents::SuperDeactivated://
-		case AresTriggerEvents::ReverseEngineerAnything://
-		case AresTriggerEvents::AttackedOrDestroyedByAnybody://
-			return { LogicNeedType::None  , true };
-		case AresTriggerEvents::UnderEMP_ByHouse://
-		case AresTriggerEvents::RemoveEMP_ByHouse://
-		case AresTriggerEvents::DriverKilled_ByHouse:
-		case AresTriggerEvents::VehicleTaken_ByHouse:
-		case AresTriggerEvents::Abducted_ByHouse:
-		case AresTriggerEvents::AbductSomething_OfHouse:
-		case AresTriggerEvents::AttackedOrDestroyedByHouse:
-		case AresTriggerEvents::DestroyedByHouse:
-		case AresTriggerEvents::AllKeepAlivesDestroyed:
-		case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
-			return { LogicNeedType::House  , true };
-		case AresTriggerEvents::SuperNearWaypoint:
-		case AresTriggerEvents::ReverseEngineered:
-		case AresTriggerEvents::ReverseEngineerType:
-		case AresTriggerEvents::HouseOwnTechnoType:
-		case AresTriggerEvents::HouseDoesntOwnTechnoType:
-		case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
-			return { LogicNeedType::NumberNTech  , true };
-		default:
-			return { LogicNeedType::None  , false };
-		}
-	}
-
-	std::pair<bool, TriggerAttachType> AresTEventExt::GetAttachFlags(AresTriggerEvents nEvent)
-	{
-		switch (nEvent)
-		{
-		case AresTriggerEvents::UnderEMP:
-		case AresTriggerEvents::UnderEMP_ByHouse:
-		case AresTriggerEvents::RemoveEMP:
-		case AresTriggerEvents::RemoveEMP_ByHouse:
-		case AresTriggerEvents::EnemyInSpotlightNow:
-		case AresTriggerEvents::DriverKiller:
-		case AresTriggerEvents::DriverKilled_ByHouse:
-		case AresTriggerEvents::VehicleTaken:
-		case AresTriggerEvents::VehicleTaken_ByHouse:
-		case AresTriggerEvents::Abducted:
-		case AresTriggerEvents::Abducted_ByHouse:
-		case AresTriggerEvents::AbductSomething:
-		case AresTriggerEvents::AbductSomething_OfHouse:
-		case AresTriggerEvents::ReverseEngineerAnything:
-		case AresTriggerEvents::ReverseEngineerType:
-		case AresTriggerEvents::AttackedOrDestroyedByAnybody:
-		case AresTriggerEvents::AttackedOrDestroyedByHouse:
-		{
-			return { true , TriggerAttachType::Object };
-		}
-		case AresTriggerEvents::SuperActivated:
-		case AresTriggerEvents::SuperDeactivated:
-		case AresTriggerEvents::SuperNearWaypoint:
-		case AresTriggerEvents::ReverseEngineered:
-		case AresTriggerEvents::HouseOwnTechnoType:
-		case AresTriggerEvents::HouseDoesntOwnTechnoType:
-		case AresTriggerEvents::DestroyedByHouse:
-		case AresTriggerEvents::AllKeepAlivesDestroyed:
-		case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
-		{
-			return { true ,TriggerAttachType::House };
-		}
-		case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
-		{
-			return { true ,TriggerAttachType::Logic };
-		}
+			break;
 		}
 
-		return { false ,TriggerAttachType::None };
-	}
-
-	bool AresTEventExt::FindTechnoType(TEventClass * pThis, int args, HouseClass * pWho)
-	{
-		const auto pType = TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
-		if (!pType)
-			return false;
-
-		if (args <= 0)
-			return true;
-
-		if (!pType->Insignificant && !pType->DontScore)
+		if (arrayCount > 0 && arrayItems)
 		{
-			HouseClass** const arr = pWho ? &pWho : HouseClass::Array->Items;
-			HouseClass** const nEnd = arr + (pWho ? 1 : HouseClass::Array->Count);
-
-			int i = args;
-
-			for (HouseClass** nPos = arr; nPos != nEnd; ++nPos)
+			const auto arrayItemsEnd = arrayItems + arrayCount;
+			for (auto walk = arrayItems; walk != arrayItemsEnd; ++walk)
 			{
-				i -= (*nPos)->CountOwnedNow(pType);
+				if (pWho && pWho != (*walk)->Owner)
+					continue;
 
-				if (i <= 0)
+				if ((*walk)->GetTechnoType() == pType)
 				{
-					return true;
-				}
-			}
-		}
-		else
-		{
-			int i = args;
-			TechnoClass** arrayItems = nullptr;
-			int arrayCount = 0;
+					i--;
 
-			switch (pType->WhatAmI())
-			{
-			case AbstractType::AircraftType:
-			{
-				arrayItems = (TechnoClass**)AircraftClass::Array->Items;
-				arrayCount = AircraftClass::Array->Count;
-				break;
-			}
-			case AbstractType::UnitType:
-			{
-				arrayItems = (TechnoClass**)UnitClass::Array->Items;
-				arrayCount = UnitClass::Array->Count;
-				break;
-			}
-			case AbstractType::InfantryType:
-			{
-				arrayItems = (TechnoClass**)InfantryClass::Array->Items;
-				arrayCount = InfantryClass::Array->Count;
-				break;
-			}
-			case AbstractType::BuildingType:
-			{
-				arrayItems = (TechnoClass**)BuildingClass::Array->Items;
-				arrayCount = BuildingClass::Array->Count;
-				break;
-			}
-			default:
-				break;
-			}
-
-			if (arrayCount > 0 && arrayItems)
-			{
-				const auto arrayItemsEnd = arrayItems + arrayCount;
-				for (auto walk = arrayItems; walk != arrayItemsEnd; ++walk)
-				{
-					if (pWho && pWho != (*walk)->Owner)
-						continue;
-
-					if ((*walk)->GetTechnoType() == pType)
+					if (i <= 0)
 					{
-						i--;
-
-						if (i <= 0)
-						{
-							return true;
-						}
+						return true;
 					}
 				}
 			}
 		}
-
-		return false;
 	}
 
-	// the function return is deciding if the case is handled or not
-	// the bool result pointer is for the result of the Event itself
-	bool AresTEventExt::HasOccured(TEventClass * pThis, EventArgs & Args, bool& result)
-	{
-		{
-			switch ((AresTriggerEvents)pThis->EventKind)
-			{
-			case AresTriggerEvents::UnderEMP:
-			case AresTriggerEvents::UnderEMP_ByHouse:
-			case AresTriggerEvents::RemoveEMP:
-			case AresTriggerEvents::RemoveEMP_ByHouse:
-			{
-				const auto pTechno = generic_cast<FootClass*>(Args.Object);
+	return false;
+}
 
-				if (pTechno && pThis->EventKind == Args.EventType)
+// the function return is deciding if the case is handled or not
+// the bool result pointer is for the result of the Event itself
+bool AresTEventExt::HasOccured(TEventClass* pThis, EventArgs& Args, bool& result)
+{
+	{
+		switch ((AresTriggerEvents)pThis->EventKind)
+		{
+		case AresTriggerEvents::UnderEMP:
+		case AresTriggerEvents::UnderEMP_ByHouse:
+		case AresTriggerEvents::RemoveEMP:
+		case AresTriggerEvents::RemoveEMP_ByHouse:
+		{
+			const auto pTechno = generic_cast<FootClass*>(Args.Object);
+
+			if (pTechno && pThis->EventKind == Args.EventType)
+			{
+				switch ((AresTriggerEvents)Args.EventType)
 				{
-					switch ((AresTriggerEvents)Args.EventType)
-					{
-					case AresTriggerEvents::UnderEMP:
+				case AresTriggerEvents::UnderEMP:
+				{
+					result = pTechno->EMPLockRemaining > 0;
+					return true;
+				}
+				case AresTriggerEvents::UnderEMP_ByHouse:
+				{
+					if (Args.Source && ((TechnoClass*)(Args.Source))->Owner->ArrayIndex == pThis->Value)
 					{
 						result = pTechno->EMPLockRemaining > 0;
 						return true;
 					}
-					case AresTriggerEvents::UnderEMP_ByHouse:
-					{
-						if (Args.Source && ((TechnoClass*)(Args.Source))->Owner->ArrayIndex == pThis->Value)
-						{
-							result = pTechno->EMPLockRemaining > 0;
-							return true;
-						}
-						break;
-					}
-					case AresTriggerEvents::RemoveEMP:
+					break;
+				}
+				case AresTriggerEvents::RemoveEMP:
+				{
+					result = pTechno->EMPLockRemaining <= 0;
+					return true;
+				}
+				case AresTriggerEvents::RemoveEMP_ByHouse:
+				{
+					if (Args.Source && ((TechnoClass*)(Args.Source))->Owner->ArrayIndex == pThis->Value)
 					{
 						result = pTechno->EMPLockRemaining <= 0;
 						return true;
 					}
-					case AresTriggerEvents::RemoveEMP_ByHouse:
-					{
-						if (Args.Source && ((TechnoClass*)(Args.Source))->Owner->ArrayIndex == pThis->Value)
-						{
-							result = pTechno->EMPLockRemaining <= 0;
-							return true;
-						}
-						break;
-					}
-					}
+					break;
 				}
-
-				result = false;
-				return true;
+				}
 			}
-			case AresTriggerEvents::EnemyInSpotlightNow:
-			{
-				result = true;
-				return true;
-			}
-			case AresTriggerEvents::DriverKiller:
-			{
-				result = generic_cast<FootClass*>(Args.Object)
-					&& pThis->EventKind == Args.EventType;
 
-				return true;
-			}
-			case AresTriggerEvents::DriverKilled_ByHouse:
-			{
-				result = generic_cast<FootClass*>(Args.Object)
-					&& pThis->EventKind == Args.EventType
-					&& Args.Source
-					&& ((TechnoClass*)Args.Source)->Owner->ArrayIndex == pThis->Value;
+			result = false;
+			return true;
+		}
+		case AresTriggerEvents::EnemyInSpotlightNow:
+		{
+			result = true;
+			return true;
+		}
+		case AresTriggerEvents::DriverKiller:
+		{
+			result = generic_cast<FootClass*>(Args.Object)
+				&& pThis->EventKind == Args.EventType;
 
-				return true;
-			}
-			case AresTriggerEvents::VehicleTaken:
-			{
-				result = generic_cast<FootClass*>(Args.Object)
-					&& pThis->EventKind == Args.EventType;
+			return true;
+		}
+		case AresTriggerEvents::DriverKilled_ByHouse:
+		{
+			result = generic_cast<FootClass*>(Args.Object)
+				&& pThis->EventKind == Args.EventType
+				&& Args.Source
+				&& ((TechnoClass*)Args.Source)->Owner->ArrayIndex == pThis->Value;
 
-				return true;
-			}
-			case AresTriggerEvents::VehicleTaken_ByHouse:
-			{
-				result = generic_cast<FootClass*>(Args.Object)
-					&& pThis->EventKind == Args.EventType
-					&& Args.Source
-					&& ((TechnoClass*)Args.Source)->Owner->ArrayIndex == pThis->Value;
+			return true;
+		}
+		case AresTriggerEvents::VehicleTaken:
+		{
+			result = generic_cast<FootClass*>(Args.Object)
+				&& pThis->EventKind == Args.EventType;
 
-				return true;
-			}
-			case AresTriggerEvents::Abducted:
-			case AresTriggerEvents::AbductSomething:
-			case AresTriggerEvents::Abducted_ByHouse:
-			case AresTriggerEvents::AbductSomething_OfHouse:
-			{
-				const auto pTechno = generic_cast<FootClass*>(Args.Object);
+			return true;
+		}
+		case AresTriggerEvents::VehicleTaken_ByHouse:
+		{
+			result = generic_cast<FootClass*>(Args.Object)
+				&& pThis->EventKind == Args.EventType
+				&& Args.Source
+				&& ((TechnoClass*)Args.Source)->Owner->ArrayIndex == pThis->Value;
 
-				if (pTechno && pThis->EventKind == Args.EventType)
+			return true;
+		}
+		case AresTriggerEvents::Abducted:
+		case AresTriggerEvents::AbductSomething:
+		case AresTriggerEvents::Abducted_ByHouse:
+		case AresTriggerEvents::AbductSomething_OfHouse:
+		{
+			const auto pTechno = generic_cast<FootClass*>(Args.Object);
+
+			if (pTechno && pThis->EventKind == Args.EventType)
+			{
+				switch ((AresTriggerEvents)Args.EventType)
 				{
-					switch ((AresTriggerEvents)Args.EventType)
-					{
-					case AresTriggerEvents::Abducted:
-					case AresTriggerEvents::AbductSomething:
+				case AresTriggerEvents::Abducted:
+				case AresTriggerEvents::AbductSomething:
+				{
+					result = true;
+					return true;
+				}
+				case AresTriggerEvents::Abducted_ByHouse:
+				{
+					if (generic_cast<TechnoClass*>(Args.Source) && ((TechnoClass*)(Args.Source))->Owner->ArrayIndex == pThis->Value)
 					{
 						result = true;
 						return true;
 					}
-					case AresTriggerEvents::Abducted_ByHouse:
-					{
-						if (generic_cast<TechnoClass*>(Args.Source) && ((TechnoClass*)(Args.Source))->Owner->ArrayIndex == pThis->Value)
-						{
-							result = true;
-							return true;
-						}
 
-						break;
-					}
-					case AresTriggerEvents::AbductSomething_OfHouse:
-					{
-						if (specific_cast<HouseClass*>(Args.Source) && ((HouseClass*)(Args.Source))->ArrayIndex == pThis->Value)
-						{
-							result = true;
-							return true;
-						}
-
-						break;
-					}
-					}
+					break;
 				}
-
-				result = false;
-				return true;
-			}
-			case AresTriggerEvents::SuperActivated:
-			case AresTriggerEvents::SuperDeactivated:
-			{
-				result = pThis->EventKind == Args.EventType
-					&& Args.Source
-					&& Args.Source->WhatAmI() == AbstractType::Super
-					&& ((SuperClass*)Args.Source)->Type->ArrayIndex == pThis->Value;
-
-				return true;
-			}
-			case AresTriggerEvents::SuperNearWaypoint:
-			{
-				struct PackedDatas
+				case AresTriggerEvents::AbductSomething_OfHouse:
 				{
-					SuperClass* Super;
-					CellStruct Cell;
-				};
-
-				if ((pThis->EventKind == Args.EventType) && IS_SAME_STR_(((PackedDatas*)Args.Source)->Super->Type->ID, pThis->String))
-				{
-					const auto nCell = ScenarioClass::Instance->GetWaypointCoords(pThis->Value);
-					CellStruct nDesired = { ((PackedDatas*)Args.Source)->Cell.X - nCell.X ,((PackedDatas*)Args.Source)->Cell.Y - nCell.Y };
-					if (nDesired.pow() <= 5.0)
+					if (specific_cast<HouseClass*>(Args.Source) && ((HouseClass*)(Args.Source))->ArrayIndex == pThis->Value)
 					{
 						result = true;
 						return true;
 					}
-				}
 
-				result = false;
-				return true;
+					break;
+				}
+				}
 			}
-			case AresTriggerEvents::ReverseEngineered:
+
+			result = false;
+			return true;
+		}
+		case AresTriggerEvents::SuperActivated:
+		case AresTriggerEvents::SuperDeactivated:
+		{
+			result = pThis->EventKind == Args.EventType
+				&& Args.Source
+				&& Args.Source->WhatAmI() == AbstractType::Super
+				&& ((SuperClass*)Args.Source)->Type->ArrayIndex == pThis->Value;
+
+			return true;
+		}
+		case AresTriggerEvents::SuperNearWaypoint:
+		{
+			struct PackedDatas
 			{
-				if (!Args.Owner)
-					result = false;
-				else
+				SuperClass* Super;
+				CellStruct Cell;
+			};
+
+			if ((pThis->EventKind == Args.EventType) && IS_SAME_STR_(((PackedDatas*)Args.Source)->Super->Type->ID, pThis->String))
+			{
+				const auto nCell = ScenarioClass::Instance->GetWaypointCoords(pThis->Value);
+				CellStruct nDesired = { ((PackedDatas*)Args.Source)->Cell.X - nCell.X ,((PackedDatas*)Args.Source)->Cell.Y - nCell.Y };
+				if (nDesired.pow() <= 5.0)
 				{
-					result = HouseExtContainer::Instance.Find(Args.Owner)->Reversed.any_of
-					([&](TechnoTypeClass* pTech)
-	 {
-			 return pTech == TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
-					});
+					result = true;
+					return true;
 				}
+			}
 
-				return true;
-			}
-			case AresTriggerEvents::ReverseEngineerAnything:
+			result = false;
+			return true;
+		}
+		case AresTriggerEvents::ReverseEngineered:
+		{
+			if (!Args.Owner)
+				result = false;
+			else
 			{
-				result = (pThis->EventKind == Args.EventType);
-				return true;
+				result = HouseExtContainer::Instance.Find(Args.Owner)->Reversed.any_of
+				([&](TechnoTypeClass* pTech)
+ {
+	 return pTech == TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
+				});
 			}
-			case AresTriggerEvents::ReverseEngineerType:
-			{
-				result = ((TechnoClass*)Args.Source)->GetTechnoType() == TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
-				return true;
-			}
-			case AresTriggerEvents::HouseOwnTechnoType:
-			{
-				result = FindTechnoType(pThis, pThis->Value, Args.Owner);
-				return true;
-			}
-			case AresTriggerEvents::HouseDoesntOwnTechnoType:
-			{
-				result = !FindTechnoType(pThis, pThis->Value + 1, Args.Owner);
-				return true;
-			}
-			case AresTriggerEvents::AttackedOrDestroyedByAnybody:
-			{
-				result = (pThis->EventKind == Args.EventType);
-				return true;
-			}
-			case AresTriggerEvents::AttackedOrDestroyedByHouse:
-			{
-				result = (pThis->EventKind == Args.EventType)
-					&& Args.Source
-					&& ((TechnoClass*)Args.Source)->Owner->ArrayIndex == pThis->Value;
 
-				return true;
-			}
-			case AresTriggerEvents::DestroyedByHouse:
-			{
-				result = ((AresTriggerEvents)Args.EventType == AresTriggerEvents::DestroyedByHouse)
-					&& Args.Source
-					&& ((HouseClass*)Args.Source)->ArrayIndex == pThis->Value;
+			return true;
+		}
+		case AresTriggerEvents::ReverseEngineerAnything:
+		{
+			result = (pThis->EventKind == Args.EventType);
+			return true;
+		}
+		case AresTriggerEvents::ReverseEngineerType:
+		{
+			result = ((TechnoClass*)Args.Source)->GetTechnoType() == TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
+			return true;
+		}
+		case AresTriggerEvents::HouseOwnTechnoType:
+		{
+			result = FindTechnoType(pThis, pThis->Value, Args.Owner);
+			return true;
+		}
+		case AresTriggerEvents::HouseDoesntOwnTechnoType:
+		{
+			result = !FindTechnoType(pThis, pThis->Value + 1, Args.Owner);
+			return true;
+		}
+		case AresTriggerEvents::AttackedOrDestroyedByAnybody:
+		{
+			result = (pThis->EventKind == Args.EventType);
+			return true;
+		}
+		case AresTriggerEvents::AttackedOrDestroyedByHouse:
+		{
+			result = (pThis->EventKind == Args.EventType)
+				&& Args.Source
+				&& ((TechnoClass*)Args.Source)->Owner->ArrayIndex == pThis->Value;
 
-				return true;
-			}
-			case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
-			{
-				result = FindTechnoType(pThis, pThis->Value + 1, nullptr);
-				return true;
-			}
-			case AresTriggerEvents::AllKeepAlivesDestroyed:
-			{
-				HouseClass* pHouse = pThis->Value == 0x2325 ?
-					nullptr : HouseClass::Index_IsMP(pThis->Value) ?
-					HouseClass::FindByIndex(pThis->Value) : HouseClass::FindByCountryIndex(pThis->Value);
+			return true;
+		}
+		case AresTriggerEvents::DestroyedByHouse:
+		{
+			result = ((AresTriggerEvents)Args.EventType == AresTriggerEvents::DestroyedByHouse)
+				&& Args.Source
+				&& ((HouseClass*)Args.Source)->ArrayIndex == pThis->Value;
 
-				result = pHouse && HouseExtContainer::Instance.Find(pHouse)->KeepAliveCount <= 0;
+			return true;
+		}
+		case AresTriggerEvents::TechnoTypeDoesntExistMoreThan:
+		{
+			result = FindTechnoType(pThis, pThis->Value + 1, nullptr);
+			return true;
+		}
+		case AresTriggerEvents::AllKeepAlivesDestroyed:
+		{
+			HouseClass* pHouse = pThis->Value == 0x2325 ?
+				nullptr : HouseClass::Index_IsMP(pThis->Value) ?
+				HouseClass::FindByIndex(pThis->Value) : HouseClass::FindByCountryIndex(pThis->Value);
+
+			result = pHouse && HouseExtContainer::Instance.Find(pHouse)->KeepAliveCount <= 0;
+			return true;
+		}
+		case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
+		{
+			HouseClass* pHouse = pThis->Value == 0x2325 ?
+				nullptr : HouseClass::Index_IsMP(pThis->Value) ?
+				HouseClass::FindByIndex(pThis->Value) : HouseClass::FindByCountryIndex(pThis->Value);
+
+			result = pHouse && HouseExtContainer::Instance.Find(pHouse)->KeepAliveBuildingCount <= 0;
+			return true;
+		}
+		default:
+
+			switch (pThis->EventKind)
+			{
+			case TriggerEvent::TechTypeExists:
+			{
+				//TechnoTypeExist
+				result = FindTechnoType(pThis, pThis->Value, nullptr);
 				return true;
 			}
-			case AresTriggerEvents::AllKeppAlivesBuildingDestroyed:
+			case TriggerEvent::TechTypeDoesntExist:
 			{
-				HouseClass* pHouse = pThis->Value == 0x2325 ?
-					nullptr : HouseClass::Index_IsMP(pThis->Value) ?
-					HouseClass::FindByIndex(pThis->Value) : HouseClass::FindByCountryIndex(pThis->Value);
-
-				result = pHouse && HouseExtContainer::Instance.Find(pHouse)->KeepAliveBuildingCount <= 0;
+				//TechnoTypeDoesntExist
+				result = !FindTechnoType(pThis, 1, nullptr);
 				return true;
 			}
 			default:
-
-				switch (pThis->EventKind)
-				{
-				case TriggerEvent::TechTypeExists:
-				{
-					//TechnoTypeExist
-					result = FindTechnoType(pThis, pThis->Value, nullptr);
-					return true;
-				}
-				case TriggerEvent::TechTypeDoesntExist:
-				{
-					//TechnoTypeDoesntExist
-					result = !FindTechnoType(pThis, 1, nullptr);
-					return true;
-				}
-				default:
-					break;
-				}
-
 				break;
 			}
-		}
 
-		return false;
+			break;
+		}
 	}
+
+	return false;
+}
 
 #pragma endregion
 
 #pragma region TunnelFuncs
 
-	bool TunnelFuncs::FindSameTunnel(BuildingClass * pTunnel)
+bool TunnelFuncs::FindSameTunnel(BuildingClass* pTunnel)
+{
+	const auto pOwner = pTunnel->Owner;
+	if (!pOwner)
+		return false;
+
+	//found new building
+	return pOwner->Buildings.any_of([pTunnel](BuildingClass* pBld)
 	{
-		const auto pOwner = pTunnel->Owner;
-		if (!pOwner)
-			return false;
-
-		//found new building
-		return pOwner->Buildings.any_of([pTunnel](BuildingClass* pBld)
+		if (pTunnel != pBld && pBld->Health > 0 && !pBld->InLimbo && pBld->IsOnMap)
 		{
-				if (pTunnel != pBld && pBld->Health > 0 && !pBld->InLimbo && pBld->IsOnMap)
-				{
-					if (BuildingExtContainer::Instance.Find(pBld)->LimboID != -1)
-						return false;
-
-					const auto nCurMission = pBld->CurrentMission;
-					if (nCurMission != Mission::Construction && nCurMission != Mission::Selling)
-					{
-						if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->TunnelType == BuildingTypeExtContainer::Instance.Find(pTunnel->Type)->TunnelType)
-						{
-							return true;
-						}
-					}
-				}
-
+			if (BuildingExtContainer::Instance.Find(pBld)->LimboID != -1)
 				return false;
-		});
-	}
 
-	void TunnelFuncs::KillFootClass(FootClass * pFoot, TechnoClass * pKiller)
-	{
-		if (!pFoot || !pFoot->IsAlive)
-			return;
-
-		pFoot->RegisterDestruction(pKiller);
-		Debug::Log(__FUNCTION__" Called \n");
-		TechnoExtData::HandleRemove(pFoot, pKiller, false, false);
-	}
-
-	void TunnelFuncs::DestroyTunnel(std::vector<FootClass*>*pTunnelData, BuildingClass * pTunnel, TechnoClass * pKiller)
-	{
-		if (pTunnelData->empty() || FindSameTunnel(pTunnel))
-			return;
-
-		for (auto pFoot : *pTunnelData)
-		{
-			KillFootClass(pFoot, pKiller);
-		}
-
-		pTunnelData->clear();
-	}
-
-	void TunnelFuncs::EnterTunnel(std::vector<FootClass*>*pTunnelData, BuildingClass * pTunnel, FootClass * pFoot)
-	{
-		pFoot->SetTarget(nullptr);
-		pFoot->OnBridge = false;
-		pFoot->unknown_C4 = 0;
-		pFoot->GattlingValue = 0;
-		pFoot->SetGattlingStage(0);
-
-		if (auto const pCapturer = pFoot->MindControlledBy)
-		{
-			if (const auto pCmanager = pCapturer->CaptureManager)
+			const auto nCurMission = pBld->CurrentMission;
+			if (nCurMission != Mission::Construction && nCurMission != Mission::Selling)
 			{
-				pCmanager->FreeUnit(pFoot);
+				if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->TunnelType == BuildingTypeExtContainer::Instance.Find(pTunnel->Type)->TunnelType)
+				{
+					return true;
+				}
 			}
 		}
 
-		if (!pFoot->Limbo())
-		{
-			Debug::Log("Techno[%s] Trying to enter Tunnel[%s] but failed ! \n", pFoot->get_ID(), pTunnel->get_ID());
-			return;
-		}
+		return false;
+	});
+}
 
-		VocClass::PlayIndexAtPos(pTunnel->Type->EnterTransportSound, pTunnel->Location);
+void TunnelFuncs::KillFootClass(FootClass* pFoot, TechnoClass* pKiller)
+{
+	if (!pFoot || !pFoot->IsAlive)
+		return;
 
-		pFoot->Undiscover();
+	pFoot->RegisterDestruction(pKiller);
+	Debug::Log(__FUNCTION__" Called \n");
+	TechnoExtData::HandleRemove(pFoot, pKiller, false, false);
+}
 
-		if (pFoot->GetCurrentMission() == Mission::Hunt)
-			pFoot->AbortMotion();
+void TunnelFuncs::DestroyTunnel(std::vector<FootClass*>* pTunnelData, BuildingClass* pTunnel, TechnoClass* pKiller)
+{
+	if (pTunnelData->empty() || FindSameTunnel(pTunnel))
+		return;
 
-		pTunnelData->push_back(pFoot);
+	for (auto pFoot : *pTunnelData)
+	{
+		KillFootClass(pFoot, pKiller);
 	}
 
-	bool TunnelFuncs::CanEnterTunnel(std::vector<FootClass*>*pTunnelData, BuildingClass * pTunnel, FootClass * pEnterer)
-	{
-		if (pEnterer->SendCommand(RadioCommand::QueryCanEnter, pTunnel) != RadioCommand::AnswerPositive)
-			return false;
+	pTunnelData->clear();
+}
 
-		EnterTunnel(pTunnelData, pTunnel, pEnterer);
-		return true;
+void TunnelFuncs::EnterTunnel(std::vector<FootClass*>* pTunnelData, BuildingClass* pTunnel, FootClass* pFoot)
+{
+	pFoot->SetTarget(nullptr);
+	pFoot->OnBridge = false;
+	pFoot->unknown_C4 = 0;
+	pFoot->GattlingValue = 0;
+	pFoot->SetGattlingStage(0);
+
+	if (auto const pCapturer = pFoot->MindControlledBy)
+	{
+		if (const auto pCmanager = pCapturer->CaptureManager)
+		{
+			pCmanager->FreeUnit(pFoot);
+		}
 	}
 
-	std::vector<int>* TunnelFuncs::PopulatePassangerPIPData(TechnoClass * pThis, TechnoTypeClass * pType, bool& Fail)
+	if (!pFoot->Limbo())
 	{
-		static std::vector<int> PipData;
+		Debug::Log("Techno[%s] Trying to enter Tunnel[%s] but failed ! \n", pFoot->get_ID(), pTunnel->get_ID());
+		return;
+	}
 
-		int nPassangersTotal = pType->GetPipMax();
-		if (nPassangersTotal < 0)
-			nPassangersTotal = 0;
+	VocClass::PlayIndexAtPos(pTunnel->Type->EnterTransportSound, pTunnel->Location);
 
-		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	pFoot->Undiscover();
 
-		PipData.clear();
+	if (pFoot->GetCurrentMission() == Mission::Hunt)
+		pFoot->AbortMotion();
 
-		if (const auto pBld = specific_cast<BuildingClass*>(pThis))
-		{
-			const TunnelData* pTunnelData = HouseExtData::GetTunnelVector(pBld->Type, pThis->Owner);
-			const bool Absorber = pBld->Absorber();
+	pTunnelData->push_back(pFoot);
+}
 
-			if (!pTunnelData)
-			{
-				if (pThis->Passengers.NumPassengers > nPassangersTotal)
-				{
-					Fail = true;
-					return &PipData;
-				}
+bool TunnelFuncs::CanEnterTunnel(std::vector<FootClass*>* pTunnelData, BuildingClass* pTunnel, FootClass* pEnterer)
+{
+	if (pEnterer->SendCommand(RadioCommand::QueryCanEnter, pTunnel) != RadioCommand::AnswerPositive)
+		return false;
 
-				PipData.resize(nPassangersTotal);
+	EnterTunnel(pTunnelData, pTunnel, pEnterer);
+	return true;
+}
 
-				int nCargoSize = 0;
-				for (auto pPassenger = pThis->Passengers.GetFirstPassenger();
-					pPassenger;
-					pPassenger = generic_cast<FootClass*>(pPassenger->NextObject))
-				{
-					const auto pPassengerType = pPassenger->GetTechnoType();
+std::vector<int>* TunnelFuncs::PopulatePassangerPIPData(TechnoClass* pThis, TechnoTypeClass* pType, bool& Fail)
+{
+	static std::vector<int> PipData;
 
-					auto nSize = !Absorber ? (int)pPassengerType->Size : 1;
-					if (nSize <= 0)
-						nSize = 1;
+	int nPassangersTotal = pType->GetPipMax();
+	if (nPassangersTotal < 0)
+		nPassangersTotal = 0;
 
-					int nPip = 1;
-					const auto what = pPassenger->WhatAmI();
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-					if (what == InfantryClass::AbsID)
-						nPip = (int)(static_cast<InfantryTypeClass*>(pPassengerType)->Pip);
-					else if (what == UnitClass::AbsID)
-						nPip = 5;
+	PipData.clear();
 
-					//fetch first cargo size and change the pip
-					PipData[nCargoSize] = nPip;
-					for (int i = nSize - 1; i > 0; --i)
-					{ //check if the extra size is there and increment it to
-				   // total size
-						PipData[nCargoSize + i] = 3;     //set extra size to pip index 3
-					}
+	if (const auto pBld = specific_cast<BuildingClass*>(pThis))
+	{
+		const TunnelData* pTunnelData = HouseExtData::GetTunnelVector(pBld->Type, pThis->Owner);
+		const bool Absorber = pBld->Absorber();
 
-					nCargoSize += nSize;
-				}
-
-				return &PipData;
-			}
-			else
-			{
-				const int nTotal = pTunnelData->MaxCap > nPassangersTotal ? nPassangersTotal : pTunnelData->MaxCap;
-				PipData.resize(nTotal);
-
-				if ((int)pTunnelData->Vector.size() > nTotal)
-				{
-					Fail = true;
-					return &PipData;
-				}
-
-				for (size_t i = 0; i < pTunnelData->Vector.size(); ++i)
-				{
-					auto const& pContent = pTunnelData->Vector[i];
-					const auto what = pContent->WhatAmI();
-
-					int nPip = 1;
-					if (what == InfantryClass::AbsID)
-						nPip = (int)(static_cast<InfantryClass*>(pContent)->Type->Pip);
-					else if (what == UnitClass::AbsID)
-						nPip = 4;
-
-					PipData[i] = nPip;
-				}
-
-				return &PipData;
-			}
-		}
-		else
+		if (!pTunnelData)
 		{
 			if (pThis->Passengers.NumPassengers > nPassangersTotal)
 			{
@@ -6816,13 +6744,13 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 			{
 				const auto pPassengerType = pPassenger->GetTechnoType();
 
-				auto nSize = pTypeExt->Passengers_BySize.Get() ? (int)pPassengerType->Size : 1;
+				auto nSize = !Absorber ? (int)pPassengerType->Size : 1;
 				if (nSize <= 0)
 					nSize = 1;
 
+				int nPip = 1;
 				const auto what = pPassenger->WhatAmI();
 
-				int nPip = 1;
 				if (what == InfantryClass::AbsID)
 					nPip = (int)(static_cast<InfantryTypeClass*>(pPassengerType)->Pip);
 				else if (what == UnitClass::AbsID)
@@ -6841,1125 +6769,1195 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 
 			return &PipData;
 		}
-	}
-
-	std::pair<bool, FootClass*> TunnelFuncs::UnlimboOne(std::vector<FootClass*>*pVector, BuildingClass * pTunnel, DWORD Where)
-	{
-		auto pPassenger = pVector->back();
-		auto nCoord = pTunnel->GetCoords();
-
-		const auto nBldFacing = ((((short)pTunnel->PrimaryFacing.Current().Raw >> 7) + 1) >> 1);
-
-		pPassenger->OnBridge = pTunnel->OnBridge;
-		pPassenger->SetLocation(nCoord);
-
-		++Unsorted::ScenarioInit();
-		bool Succeeded = pPassenger->Unlimbo(nCoord, (DirType)nBldFacing);
-		--Unsorted::ScenarioInit();
-
-		if (Succeeded)
-		{
-			pVector->pop_back();
-			pPassenger->Scatter(CoordStruct::Empty, true, false);
-			return { true,  pPassenger };
-		}
-
-		return { false,  pPassenger };
-	}
-
-	bool TunnelFuncs::UnloadOnce(FootClass * pFoot, BuildingClass * pTunnel, bool silent)
-	{
-		const auto facing = (((((short)pTunnel->PrimaryFacing.Current().Raw + 0x8000) >> 12) + 1) >> 1);
-		const auto Loc = pTunnel->GetMapCoords();
-
-		int nOffset = 0;
-		bool IsLessThanseven = true;
-		bool Succeeded = false;
-		CellStruct nResult;
-		CellClass* CurrentAdj = nullptr;
-		CellClass* NextCell = nullptr;
-		size_t nFacing = 0;
-
-		//TODO Fix these loop
-		for (int i = 0;; ++i)
-		{
-			nFacing = (facing + i) & 7;
-			const CellStruct tmpCoords = CellSpread::AdjacentCell[nFacing];
-			nResult = tmpCoords + Loc;
-			CellStruct next = tmpCoords + tmpCoords + Loc;
-
-			CurrentAdj = MapClass::Instance->GetCellAt(nResult);
-			NextCell = MapClass::Instance->GetCellAt(next);
-
-			const auto nLevel = pTunnel->GetCellLevel();
-			const auto nOccupyResult = pFoot->IsCellOccupied(CurrentAdj, (FacingType)nFacing, nLevel, nullptr, true);
-			const auto nNextnOccupyResult = pFoot->IsCellOccupied(NextCell, (FacingType)nFacing, nLevel, nullptr, true);
-
-			if ((!(int)nNextnOccupyResult) &&
-				(!IsLessThanseven || (!(int)nOccupyResult)) &&
-				(CurrentAdj->Flags & CellFlags::BridgeHead) == CellFlags::Empty)
-				break;
-
-			IsLessThanseven = i == 7 ? false : true;
-
-			++nOffset;
-
-			if (nOffset >= 16)
-				return false;
-		}
-
-		const auto pFootType = pFoot->GetTechnoType();
-		++Unsorted::ScenarioInit();
-
-		CoordStruct nResultC = CellClass::Cell2Coord(nResult);
-		if (pFoot->WhatAmI() == AbstractType::Infantry)
-		{
-			nResultC = MapClass::Instance->PickInfantrySublocation(nResultC, false);
-		}
 		else
 		{
-			const auto nNearby = MapClass::Instance->NearByLocation(nResult, pFootType->SpeedType, -1, MovementZone::None, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
-			nResultC = CellClass::Cell2Coord(nNearby);
+			const int nTotal = pTunnelData->MaxCap > nPassangersTotal ? nPassangersTotal : pTunnelData->MaxCap;
+			PipData.resize(nTotal);
+
+			if ((int)pTunnelData->Vector.size() > nTotal)
+			{
+				Fail = true;
+				return &PipData;
+			}
+
+			for (size_t i = 0; i < pTunnelData->Vector.size(); ++i)
+			{
+				auto const& pContent = pTunnelData->Vector[i];
+				const auto what = pContent->WhatAmI();
+
+				int nPip = 1;
+				if (what == InfantryClass::AbsID)
+					nPip = (int)(static_cast<InfantryClass*>(pContent)->Type->Pip);
+				else if (what == UnitClass::AbsID)
+					nPip = 4;
+
+				PipData[i] = nPip;
+			}
+
+			return &PipData;
 		}
-
-		Succeeded = pFoot->Unlimbo(nResultC, DirType(32 * (nFacing & 0x3FFFFFF)));
-		--Unsorted::ScenarioInit();
-
-		if (Succeeded)
-		{
-			if (!silent)
-				VocClass::PlayIndexAtPos(pTunnel->Type->LeaveTransportSound, pTunnel->Location);
-
-			pFoot->QueueMission(Mission::Move, false);
-			pFoot->SetDestination(IsLessThanseven ? NextCell : CurrentAdj, true);
-			return true;
-		}
-
-		TunnelFuncs::KillFootClass(pFoot, nullptr);
-		return false;
 	}
-
-	void TunnelFuncs::HandleUnload(std::vector<FootClass*>*pTunnelData, BuildingClass * pTunnel)
+	else
 	{
-		if (UnloadOnce(pTunnelData->back(), pTunnel))
-			pTunnelData->pop_back();
+		if (pThis->Passengers.NumPassengers > nPassangersTotal)
+		{
+			Fail = true;
+			return &PipData;
+		}
+
+		PipData.resize(nPassangersTotal);
+
+		int nCargoSize = 0;
+		for (auto pPassenger = pThis->Passengers.GetFirstPassenger();
+			pPassenger;
+			pPassenger = generic_cast<FootClass*>(pPassenger->NextObject))
+		{
+			const auto pPassengerType = pPassenger->GetTechnoType();
+
+			auto nSize = pTypeExt->Passengers_BySize.Get() ? (int)pPassengerType->Size : 1;
+			if (nSize <= 0)
+				nSize = 1;
+
+			const auto what = pPassenger->WhatAmI();
+
+			int nPip = 1;
+			if (what == InfantryClass::AbsID)
+				nPip = (int)(static_cast<InfantryTypeClass*>(pPassengerType)->Pip);
+			else if (what == UnitClass::AbsID)
+				nPip = 5;
+
+			//fetch first cargo size and change the pip
+			PipData[nCargoSize] = nPip;
+			for (int i = nSize - 1; i > 0; --i)
+			{ //check if the extra size is there and increment it to
+		   // total size
+				PipData[nCargoSize + i] = 3;     //set extra size to pip index 3
+			}
+
+			nCargoSize += nSize;
+		}
+
+		return &PipData;
 	}
+}
+
+std::pair<bool, FootClass*> TunnelFuncs::UnlimboOne(std::vector<FootClass*>* pVector, BuildingClass* pTunnel, DWORD Where)
+{
+	auto pPassenger = pVector->back();
+	auto nCoord = pTunnel->GetCoords();
+
+	const auto nBldFacing = ((((short)pTunnel->PrimaryFacing.Current().Raw >> 7) + 1) >> 1);
+
+	pPassenger->OnBridge = pTunnel->OnBridge;
+	pPassenger->SetLocation(nCoord);
+
+	++Unsorted::ScenarioInit();
+	bool Succeeded = pPassenger->Unlimbo(nCoord, (DirType)nBldFacing);
+	--Unsorted::ScenarioInit();
+
+	if (Succeeded)
+	{
+		pVector->pop_back();
+		pPassenger->Scatter(CoordStruct::Empty, true, false);
+		return { true,  pPassenger };
+	}
+
+	return { false,  pPassenger };
+}
+
+bool TunnelFuncs::UnloadOnce(FootClass* pFoot, BuildingClass* pTunnel, bool silent)
+{
+	const auto facing = (((((short)pTunnel->PrimaryFacing.Current().Raw + 0x8000) >> 12) + 1) >> 1);
+	const auto Loc = pTunnel->GetMapCoords();
+
+	int nOffset = 0;
+	bool IsLessThanseven = true;
+	bool Succeeded = false;
+	CellStruct nResult;
+	CellClass* CurrentAdj = nullptr;
+	CellClass* NextCell = nullptr;
+	size_t nFacing = 0;
+
+	//TODO Fix these loop
+	for (int i = 0;; ++i)
+	{
+		nFacing = (facing + i) & 7;
+		const CellStruct tmpCoords = CellSpread::AdjacentCell[nFacing];
+		nResult = tmpCoords + Loc;
+		CellStruct next = tmpCoords + tmpCoords + Loc;
+
+		CurrentAdj = MapClass::Instance->GetCellAt(nResult);
+		NextCell = MapClass::Instance->GetCellAt(next);
+
+		const auto nLevel = pTunnel->GetCellLevel();
+		const auto nOccupyResult = pFoot->IsCellOccupied(CurrentAdj, (FacingType)nFacing, nLevel, nullptr, true);
+		const auto nNextnOccupyResult = pFoot->IsCellOccupied(NextCell, (FacingType)nFacing, nLevel, nullptr, true);
+
+		if ((!(int)nNextnOccupyResult) &&
+			(!IsLessThanseven || (!(int)nOccupyResult)) &&
+			(CurrentAdj->Flags & CellFlags::BridgeHead) == CellFlags::Empty)
+			break;
+
+		IsLessThanseven = i == 7 ? false : true;
+
+		++nOffset;
+
+		if (nOffset >= 16)
+			return false;
+	}
+
+	const auto pFootType = pFoot->GetTechnoType();
+	++Unsorted::ScenarioInit();
+
+	CoordStruct nResultC = CellClass::Cell2Coord(nResult);
+	if (pFoot->WhatAmI() == AbstractType::Infantry)
+	{
+		nResultC = MapClass::Instance->PickInfantrySublocation(nResultC, false);
+	}
+	else
+	{
+		const auto nNearby = MapClass::Instance->NearByLocation(nResult, pFootType->SpeedType, -1, MovementZone::None, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
+		nResultC = CellClass::Cell2Coord(nNearby);
+	}
+
+	Succeeded = pFoot->Unlimbo(nResultC, DirType(32 * (nFacing & 0x3FFFFFF)));
+	--Unsorted::ScenarioInit();
+
+	if (Succeeded)
+	{
+		if (!silent)
+			VocClass::PlayIndexAtPos(pTunnel->Type->LeaveTransportSound, pTunnel->Location);
+
+		pFoot->QueueMission(Mission::Move, false);
+		pFoot->SetDestination(IsLessThanseven ? NextCell : CurrentAdj, true);
+		return true;
+	}
+
+	TunnelFuncs::KillFootClass(pFoot, nullptr);
+	return false;
+}
+
+void TunnelFuncs::HandleUnload(std::vector<FootClass*>* pTunnelData, BuildingClass* pTunnel)
+{
+	if (UnloadOnce(pTunnelData->back(), pTunnel))
+		pTunnelData->pop_back();
+}
 #pragma endregion
 
 #pragma region AresHouseExt
 
-	bool AresHouseExt::CheckBasePlanSanity(HouseClass* const pThis)
+bool AresHouseExt::CheckBasePlanSanity(HouseClass* const pThis)
+{
+	// this shouldn't happen, but you never know
+	if (pThis->IsControlledByHuman() || pThis->IsNeutral())
 	{
-		// this shouldn't happen, but you never know
-		if (pThis->IsControlledByHuman() || pThis->IsNeutral())
-		{
-			return true;
-		}
-
-		auto AllIsWell = true;
-
-		auto const pRules = RulesClass::Instance();
-		auto const pType = pThis->Type;
-
-		auto const errorMsg = "AI House[%x] of country [%s] cannot build any object in "
-			"%s. The AI ain't smart enough for that.\n";
-
-		// if you don't have a base unit buildable, how did you get to base
-		// planning? only through crates or map actions, so have to validate base
-		// unit in other situations
-		auto const idxParent = pType->FindParentCountryIndex();
-		auto const canBuild = pRules->BaseUnit.any_of([pThis, idxParent](UnitTypeClass const* const pItem)
-	 {
-			 return pThis->CanExpectToBuild(pItem, idxParent);
-		});
-
-		if (!canBuild)
-		{
-			AllIsWell = false;
-			Debug::FatalError(errorMsg, pType->ID, "BaseUnit");
-		}
-
-		auto CheckList = [pThis, pType, idxParent, errorMsg, &AllIsWell](
-			Iterator<BuildingTypeClass const*> const list,
-			const char* const ListName) -> void
-			{
-				if (!HouseExtData::FindBuildable(pThis, idxParent, list))
-				{
-					AllIsWell = false;
-					Debug::FatalError(errorMsg, pThis, pType->ID, ListName);
-				}
-			};
-
-		// commented out lists that do not cause a crash, according to testers
-		//CheckList(make_iterator(pRules->Shipyard), "Shipyard");
-		CheckList(make_iterator(pRules->BuildPower), "BuildPower");
-		CheckList(make_iterator(pRules->BuildRefinery), "BuildRefinery");
-		CheckList(make_iterator(pRules->BuildWeapons), "BuildWeapons");
-		//CheckList(make_iterator(pRules->BuildConst), "BuildConst");
-		//CheckList(make_iterator(pRules->BuildBarracks), "BuildBarracks");
-		//CheckList(make_iterator(pRules->BuildTech), "BuildTech");
-		//CheckList(make_iterator(pRules->BuildRadar), "BuildRadar");
-		//CheckList(make_iterator(pRules->ConcreteWalls), "ConcreteWalls");
-		//CheckList(make_iterator(pRules->BuildDummy), "BuildDummy");
-		//CheckList(make_iterator(pRules->BuildNavalYard), "BuildNavalYard");
-
-		CheckList(HouseTypeExtContainer::Instance.Find(pType)->GetPowerplants(), "Powerplants");
-
-		//auto const pSide = SideClass::Array->GetItemOrDefault(pType->SideIndex);
-		//if(auto const pSideExt = SideExtContainer::Instance.Find(pSide)) {
-		//	CheckList(make_iterator(pSideExt->BaseDefenses), "Base Defenses");
-		//}
-
-		return AllIsWell;
+		return true;
 	}
 
-	void AresHouseExt::UpdateTogglePower(HouseClass * pThis)
+	auto AllIsWell = true;
+
+	auto const pRules = RulesClass::Instance();
+	auto const pType = pThis->Type;
+
+	auto const errorMsg = "AI House[%x] of country [%s] cannot build any object in "
+		"%s. The AI ain't smart enough for that.\n";
+
+	// if you don't have a base unit buildable, how did you get to base
+	// planning? only through crates or map actions, so have to validate base
+	// unit in other situations
+	auto const idxParent = pType->FindParentCountryIndex();
+	auto const canBuild = pRules->BaseUnit.any_of([pThis, idxParent](UnitTypeClass const* const pItem)
+ {
+	 return pThis->CanExpectToBuild(pItem, idxParent);
+	});
+
+	if (!canBuild)
 	{
-		auto pRulesExt = RulesExtData::Instance();
+		AllIsWell = false;
+		Debug::FatalError(errorMsg, pType->ID, "BaseUnit");
+	}
 
-		if (!pRulesExt->TogglePowerAllowed
-			|| pRulesExt->TogglePowerDelay <= 0
-			|| pRulesExt->TogglePowerIQ < 0
-			|| pRulesExt->TogglePowerIQ > pThis->IQLevel2
-			|| pThis->Buildings.Count == 0
-			|| pThis->IsBeingDrained
-			|| pThis->IsControlledByHuman()
-			|| pThis->PowerBlackoutTimer.InProgress())
+	auto CheckList = [pThis, pType, idxParent, errorMsg, &AllIsWell](
+		Iterator<BuildingTypeClass const*> const list,
+		const char* const ListName) -> void
 		{
-			return;
-		}
-
-		if (Unsorted::CurrentFrame % pRulesExt->TogglePowerDelay == 0)
-		{
-			struct ExpendabilityStruct
+			if (!HouseExtData::FindBuildable(pThis, idxParent, list))
 			{
-			private:
-				std::tuple<const int&, BuildingClass&> Tie() const
-				{
-					// compare with tie breaker to prevent desyncs
-					return std::tie(this->Value, *this->Building);
-				}
+				AllIsWell = false;
+				Debug::FatalError(errorMsg, pThis, pType->ID, ListName);
+			}
+		};
 
-			public:
-				bool operator < (const ExpendabilityStruct& rhs) const
-				{
-					return this->Tie() < rhs.Tie();
-				}
+	// commented out lists that do not cause a crash, according to testers
+	//CheckList(make_iterator(pRules->Shipyard), "Shipyard");
+	CheckList(make_iterator(pRules->BuildPower), "BuildPower");
+	CheckList(make_iterator(pRules->BuildRefinery), "BuildRefinery");
+	CheckList(make_iterator(pRules->BuildWeapons), "BuildWeapons");
+	//CheckList(make_iterator(pRules->BuildConst), "BuildConst");
+	//CheckList(make_iterator(pRules->BuildBarracks), "BuildBarracks");
+	//CheckList(make_iterator(pRules->BuildTech), "BuildTech");
+	//CheckList(make_iterator(pRules->BuildRadar), "BuildRadar");
+	//CheckList(make_iterator(pRules->ConcreteWalls), "ConcreteWalls");
+	//CheckList(make_iterator(pRules->BuildDummy), "BuildDummy");
+	//CheckList(make_iterator(pRules->BuildNavalYard), "BuildNavalYard");
 
-				bool operator > (const ExpendabilityStruct& rhs) const
-				{
-					return this->Tie() > rhs.Tie();
-				}
+	CheckList(HouseTypeExtContainer::Instance.Find(pType)->GetPowerplants(), "Powerplants");
 
-				BuildingClass* Building;
-				int Value;
-			};
+	//auto const pSide = SideClass::Array->GetItemOrDefault(pType->SideIndex);
+	//if(auto const pSideExt = SideExtContainer::Instance.Find(pSide)) {
+	//	CheckList(make_iterator(pSideExt->BaseDefenses), "Base Defenses");
+	//}
 
-			// properties: the higher this value is, the more likely
-			// this building is turned off (expendability)
-			auto GetExpendability = [](BuildingClass* pBld) -> int
-				{
-					auto pType = pBld->Type;
+	return AllIsWell;
+}
 
-					// disable super weapons, because a defenseless base is
-					// worse than one without super weapons
-					if (pType->HasSuperWeapon())
-					{
-						return pType->PowerDrain * 20 / 10;
-					}
+void AresHouseExt::UpdateTogglePower(HouseClass* pThis)
+{
+	auto pRulesExt = RulesExtData::Instance();
 
-					// non-base defenses should be disabled before going
-					// to the base defenses. but power intensive defenses
-					// might still evaluate worse
-					if (!pType->IsBaseDefense)
-					{
-						return pType->PowerDrain * 15 / 10;
-					}
+	if (!pRulesExt->TogglePowerAllowed
+		|| pRulesExt->TogglePowerDelay <= 0
+		|| pRulesExt->TogglePowerIQ < 0
+		|| pRulesExt->TogglePowerIQ > pThis->IQLevel2
+		|| pThis->Buildings.Count == 0
+		|| pThis->IsBeingDrained
+		|| pThis->IsControlledByHuman()
+		|| pThis->PowerBlackoutTimer.InProgress())
+	{
+		return;
+	}
 
-					// default case, use power
-					return pType->PowerDrain;
-				};
+	if (Unsorted::CurrentFrame % pRulesExt->TogglePowerDelay == 0)
+	{
+		struct ExpendabilityStruct
+		{
+		private:
+			std::tuple<const int&, BuildingClass&> Tie() const
+			{
+				// compare with tie breaker to prevent desyncs
+				return std::tie(this->Value, *this->Building);
+			}
 
-			// create a list of all buildings that can be powered down
-			// and give each building an expendability value
-			std::vector<ExpendabilityStruct> Buildings;
-			Buildings.reserve(pThis->Buildings.Count);
+		public:
+			bool operator < (const ExpendabilityStruct& rhs) const
+			{
+				return this->Tie() < rhs.Tie();
+			}
 
-			const auto HasLowPower = pThis->HasLowPower();
+			bool operator > (const ExpendabilityStruct& rhs) const
+			{
+				return this->Tie() > rhs.Tie();
+			}
 
-			for (auto const& pBld : pThis->Buildings)
+			BuildingClass* Building;
+			int Value;
+		};
+
+		// properties: the higher this value is, the more likely
+		// this building is turned off (expendability)
+		auto GetExpendability = [](BuildingClass* pBld) -> int
 			{
 				auto pType = pBld->Type;
-				if (pType->CanTogglePower() && pType->PowerDrain > 0)
+
+				// disable super weapons, because a defenseless base is
+				// worse than one without super weapons
+				if (pType->HasSuperWeapon())
 				{
-					// if low power, we get buildings with StuffEnabled, if enough
-					// power, we look for builidings that are disabled
-					if (pBld->StuffEnabled == HasLowPower)
-					{
-						Buildings.emplace_back(pBld, GetExpendability(pBld));
-					}
+					return pType->PowerDrain * 20 / 10;
 				}
-			}
 
-			int Surplus = pThis->PowerOutput - pThis->PowerDrain;
-
-			if (HasLowPower)
-			{
-				// most expendable building first
-				std::sort(Buildings.begin(), Buildings.end(), std::greater<>());
-
-				// turn off the expendable buildings until power is restored
-				for (const auto& item : Buildings)
+				// non-base defenses should be disabled before going
+				// to the base defenses. but power intensive defenses
+				// might still evaluate worse
+				if (!pType->IsBaseDefense)
 				{
-					auto Drain = item.Building->Type->PowerDrain;
-
-					item.Building->GoOffline();
-					Surplus += Drain;
-
-					if (Surplus >= 0)
-					{
-						break;
-					}
+					return pType->PowerDrain * 15 / 10;
 				}
-			}
-			else
-			{
-				// least expendable building first
-				std::sort(Buildings.begin(), Buildings.end(), std::less<>());
 
-				// turn on as many of them as possible
-				for (const auto& item : Buildings)
+				// default case, use power
+				return pType->PowerDrain;
+			};
+
+		// create a list of all buildings that can be powered down
+		// and give each building an expendability value
+		std::vector<ExpendabilityStruct> Buildings;
+		Buildings.reserve(pThis->Buildings.Count);
+
+		const auto HasLowPower = pThis->HasLowPower();
+
+		for (auto const& pBld : pThis->Buildings)
+		{
+			auto pType = pBld->Type;
+			if (pType->CanTogglePower() && pType->PowerDrain > 0)
+			{
+				// if low power, we get buildings with StuffEnabled, if enough
+				// power, we look for builidings that are disabled
+				if (pBld->StuffEnabled == HasLowPower)
 				{
-					auto Drain = item.Building->Type->PowerDrain;
-					if (Surplus - Drain >= 0)
-					{
-						item.Building->GoOnline();
-						Surplus -= Drain;
-					}
+					Buildings.emplace_back(pBld, GetExpendability(pBld));
 				}
 			}
 		}
-	}
 
-	bool AresHouseExt::UpdateAnyFirestormActive(bool const lastChange)
-	{
-		HouseExtData::IsAnyFirestormActive = lastChange;
+		int Surplus = pThis->PowerOutput - pThis->PowerDrain;
 
-		// if last change activated one, there is at least one. else...
-		if (!lastChange)
+		if (HasLowPower)
 		{
-			for (auto pHouse : *HouseClass::Array)
+			// most expendable building first
+			std::sort(Buildings.begin(), Buildings.end(), std::greater<>());
+
+			// turn off the expendable buildings until power is restored
+			for (const auto& item : Buildings)
 			{
-				if (pHouse->FirestormActive)
+				auto Drain = item.Building->Type->PowerDrain;
+
+				item.Building->GoOffline();
+				Surplus += Drain;
+
+				if (Surplus >= 0)
 				{
-					HouseExtData::IsAnyFirestormActive = true;
 					break;
 				}
 			}
 		}
-
-		return HouseExtData::IsAnyFirestormActive;
-	}
-
-	void AresHouseExt::SetFirestormState(HouseClass * pHouse, bool const active)
-	{
-		if (pHouse->FirestormActive == active)
-		{
-			return;
-		}
-
-		pHouse->FirestormActive = active;
-		UpdateAnyFirestormActive(active);
-
-		DynamicVectorClass<CellStruct> AffectedCoords;
-
-		for (auto const& pBld : pHouse->Buildings)
-		{
-			if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->Firestorm_Wall)
-			{
-				FirewallFunctions::UpdateFirewall(pBld, true);
-				auto const temp = pBld->GetMapCoords();
-				AffectedCoords.AddItem(temp);
-			}
-		}
-
-		MapClass::Instance->Update_Pathfinding_1();
-		MapClass::Instance->Update_Pathfinding_2(AffectedCoords);
-	}
-
-	void AresHouseExt::FormulateTypeList(std::vector<TechnoTypeClass*>&types, TechnoTypeClass * *items, int count, int houseidx)
-	{
-		if (!count)
-			return;
-
-		const auto end = items + count;
-		for (auto find = items; find != end; ++find)
-		{
-			if ((*find)->AllowedToStartInMultiplayer)
-			{
-				if ((*find)->InOwners(houseidx) && ((*find))->TechLevel <= Game::TechLevel())
-				{
-					types.push_back(*find);
-				}
-			}
-		}
-	}
-
-	std::vector<TechnoTypeClass*> AresHouseExt::GetTypeList()
-	{
-		DWORD avaibleHouses = 0u;
-		std::vector<TechnoTypeClass*> types;
-		types.reserve(InfantryTypeClass::Array->Count + UnitTypeClass::Array->Count);
-
-		for (auto pHouse : *HouseClass::Array)
-		{
-			if (!pHouse->Type->MultiplayPassive)
-			{
-				const auto& data = HouseTypeExtContainer::Instance.Find(pHouse->Type)->StartInMultiplayer_Types;
-				if (data.HasValue())
-				{
-					types.insert(types.end(), data.begin(), data.end());
-				}
-				else
-				{
-					avaibleHouses |= 1 << pHouse->Type->ArrayIndex;
-				}
-			}
-		}
-
-		FormulateTypeList(types, (TechnoTypeClass**)UnitTypeClass::Array->Items, UnitTypeClass::Array->Count, avaibleHouses);
-		FormulateTypeList(types, (TechnoTypeClass**)InfantryTypeClass::Array->Items, InfantryTypeClass::Array->Count, avaibleHouses);
-
-		//remove any `BaseUnit` included
-		//base unit given for free then ?
-		auto Iter = std::remove_if(types.begin(), types.end(), [](TechnoTypeClass* pItem)
-	 {
-			 for (int i = 0; i < RulesClass::Instance->BaseUnit.Count; ++i)
-			 {
-				 if (pItem == (RulesClass::Instance->BaseUnit.Items[i]))
-				 {
-					 return true;
-				 }
-			 }
-
-			 return false;
-		});
-
-		//idk these part
-		//but lets put it here
-		//need someone to test this to make sure if the calculation were correct :s
-		//-Otamaa
-
-		types.erase(Iter, types.end());
-		types.erase(std::unique(types.begin(), types.end()), types.end());
-		return types;
-	}
-
-	int AresHouseExt::GetTotalCost(const Nullable<int>&fixed)
-	{
-		if (GameModeOptionsClass::Instance->UnitCount <= 0)
-			return 0;
-
-		int totalCost = 0;
-		if (fixed.isset())
-		{
-			totalCost = fixed;
-		}
 		else
 		{
-			auto types = GetTypeList();
-			int total_ = 0;
+			// least expendable building first
+			std::sort(Buildings.begin(), Buildings.end(), std::less<>());
 
-			for (auto& tech : types)
+			// turn on as many of them as possible
+			for (const auto& item : Buildings)
 			{
-				total_ += tech->GetCost();
+				auto Drain = item.Building->Type->PowerDrain;
+				if (Surplus - Drain >= 0)
+				{
+					item.Building->GoOnline();
+					Surplus -= Drain;
+				}
 			}
+		}
+	}
+}
 
-			const int what = !types.size() ? 1 : types.size();
-			totalCost = (total_ + (what >> 1)) / what;
-			Debug::Log("Unit cost of %d derived from %u units totalling %d credits.\n", totalCost, what, total_);
+bool AresHouseExt::UpdateAnyFirestormActive(bool const lastChange)
+{
+	HouseExtData::IsAnyFirestormActive = lastChange;
+
+	// if last change activated one, there is at least one. else...
+	if (!lastChange)
+	{
+		for (auto pHouse : *HouseClass::Array)
+		{
+			if (pHouse->FirestormActive)
+			{
+				HouseExtData::IsAnyFirestormActive = true;
+				break;
+			}
+		}
+	}
+
+	return HouseExtData::IsAnyFirestormActive;
+}
+
+void AresHouseExt::SetFirestormState(HouseClass* pHouse, bool const active)
+{
+	if (pHouse->FirestormActive == active)
+	{
+		return;
+	}
+
+	pHouse->FirestormActive = active;
+	UpdateAnyFirestormActive(active);
+
+	DynamicVectorClass<CellStruct> AffectedCoords;
+
+	for (auto const& pBld : pHouse->Buildings)
+	{
+		if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->Firestorm_Wall)
+		{
+			FirewallFunctions::UpdateFirewall(pBld, true);
+			auto const temp = pBld->GetMapCoords();
+			AffectedCoords.AddItem(temp);
+		}
+	}
+
+	MapClass::Instance->Update_Pathfinding_1();
+	MapClass::Instance->Update_Pathfinding_2(AffectedCoords);
+}
+
+void AresHouseExt::FormulateTypeList(std::vector<TechnoTypeClass*>& types, TechnoTypeClass** items, int count, int houseidx)
+{
+	if (!count)
+		return;
+
+	const auto end = items + count;
+	for (auto find = items; find != end; ++find)
+	{
+		if ((*find)->AllowedToStartInMultiplayer)
+		{
+			if ((*find)->InOwners(houseidx) && ((*find))->TechLevel <= Game::TechLevel())
+			{
+				types.push_back(*find);
+			}
+		}
+	}
+}
+
+std::vector<TechnoTypeClass*> AresHouseExt::GetTypeList()
+{
+	DWORD avaibleHouses = 0u;
+	std::vector<TechnoTypeClass*> types;
+	types.reserve(InfantryTypeClass::Array->Count + UnitTypeClass::Array->Count);
+
+	for (auto pHouse : *HouseClass::Array)
+	{
+		if (!pHouse->Type->MultiplayPassive)
+		{
+			const auto& data = HouseTypeExtContainer::Instance.Find(pHouse->Type)->StartInMultiplayer_Types;
+			if (data.HasValue())
+			{
+				types.insert(types.end(), data.begin(), data.end());
+			}
+			else
+			{
+				avaibleHouses |= 1 << pHouse->Type->ArrayIndex;
+			}
+		}
+	}
+
+	FormulateTypeList(types, (TechnoTypeClass**)UnitTypeClass::Array->Items, UnitTypeClass::Array->Count, avaibleHouses);
+	FormulateTypeList(types, (TechnoTypeClass**)InfantryTypeClass::Array->Items, InfantryTypeClass::Array->Count, avaibleHouses);
+
+	//remove any `BaseUnit` included
+	//base unit given for free then ?
+	auto Iter = std::remove_if(types.begin(), types.end(), [](TechnoTypeClass* pItem)
+ {
+	 for (int i = 0; i < RulesClass::Instance->BaseUnit.Count; ++i)
+	 {
+		 if (pItem == (RulesClass::Instance->BaseUnit.Items[i]))
+		 {
+			 return true;
+		 }
+	 }
+
+	 return false;
+	});
+
+	//idk these part
+	//but lets put it here
+	//need someone to test this to make sure if the calculation were correct :s
+	//-Otamaa
+
+	types.erase(Iter, types.end());
+	types.erase(std::unique(types.begin(), types.end()), types.end());
+	return types;
+}
+
+int AresHouseExt::GetTotalCost(const Nullable<int>& fixed)
+{
+	if (GameModeOptionsClass::Instance->UnitCount <= 0)
+		return 0;
+
+	int totalCost = 0;
+	if (fixed.isset())
+	{
+		totalCost = fixed;
+	}
+	else
+	{
+		auto types = GetTypeList();
+		int total_ = 0;
+
+		for (auto& tech : types)
+		{
+			total_ += tech->GetCost();
 		}
 
-		return totalCost * GameModeOptionsClass::Instance->UnitCount;
+		const int what = !types.size() ? 1 : types.size();
+		totalCost = (total_ + (what >> 1)) / what;
+		Debug::Log("Unit cost of %d derived from %u units totalling %d credits.\n", totalCost, what, total_);
 	}
+
+	return totalCost * GameModeOptionsClass::Instance->UnitCount;
+}
 
 #pragma endregion
 
 #pragma region CustomFoundation
 
-	DWORD CustomFoundation::FoundationLength(CellStruct const* const pFoundation)
+DWORD CustomFoundation::FoundationLength(CellStruct const* const pFoundation)
+{
+	auto pFCell = pFoundation;
+	while (*pFCell != BuildingTypeExtData::FoundationEndMarker)
 	{
-		auto pFCell = pFoundation;
-		while (*pFCell != BuildingTypeExtData::FoundationEndMarker)
-		{
-			++pFCell;
-		}
-
-		// include the end marker
-		return static_cast<DWORD>(std::distance(pFoundation, pFCell + 1));
+		++pFCell;
 	}
 
-	const std::vector<CellStruct>* CustomFoundation::GetCoveredCells(
-		BuildingClass* const pThis, CellStruct const mainCoords,
-		int const shadowHeight)
+	// include the end marker
+	return static_cast<DWORD>(std::distance(pFoundation, pFCell + 1));
+}
+
+const std::vector<CellStruct>* CustomFoundation::GetCoveredCells(
+	BuildingClass* const pThis, CellStruct const mainCoords,
+	int const shadowHeight)
+{
+	auto const pFoundation = pThis->GetFoundationData(false);
+	//auto const len = FoundationLength(pFoundation);
+
+	PhobosGlobal::Instance()->TempCoveredCellsData.clear();
+	//PhobosGlobal::Instance()->TempCoveredCellsData.reserve(len * shadowHeight);
+
+	auto pFCell = pFoundation;
+
+	while (*pFCell != BuildingTypeExtData::FoundationEndMarker)
 	{
-		auto const pFoundation = pThis->GetFoundationData(false);
-		//auto const len = FoundationLength(pFoundation);
-
-		PhobosGlobal::Instance()->TempCoveredCellsData.clear();
-		//PhobosGlobal::Instance()->TempCoveredCellsData.reserve(len * shadowHeight);
-
-		auto pFCell = pFoundation;
-
-		while (*pFCell != BuildingTypeExtData::FoundationEndMarker)
+		auto actualCell = mainCoords + *pFCell;
+		for (auto i = shadowHeight; i > 0; --i)
 		{
-			auto actualCell = mainCoords + *pFCell;
-			for (auto i = shadowHeight; i > 0; --i)
-			{
-				PhobosGlobal::Instance()->TempCoveredCellsData.push_back(actualCell);
-				--actualCell.X;
-				--actualCell.Y;
-			}
-			++pFCell;
+			PhobosGlobal::Instance()->TempCoveredCellsData.push_back(actualCell);
+			--actualCell.X;
+			--actualCell.Y;
 		}
-
-		std::sort(PhobosGlobal::Instance()->TempCoveredCellsData.begin(),
-				  PhobosGlobal::Instance()->TempCoveredCellsData.end(),
-			[](const CellStruct& lhs, const CellStruct& rhs) -> bool
-	 {
-			 return lhs.X > rhs.X || lhs.X == rhs.X && lhs.Y > rhs.Y;
-			});
-
-		auto const it = std::unique(
-			PhobosGlobal::Instance()->TempCoveredCellsData.begin(),
-			PhobosGlobal::Instance()->TempCoveredCellsData.end());
-
-		PhobosGlobal::Instance()->TempCoveredCellsData.erase(it, PhobosGlobal::Instance()->TempCoveredCellsData.end());
-
-		return &PhobosGlobal::Instance()->TempCoveredCellsData;
+		++pFCell;
 	}
 
-	void CustomFoundation::GetDisplayRect(RectangleStruct & a1, CellStruct * a2)
+	std::sort(PhobosGlobal::Instance()->TempCoveredCellsData.begin(),
+			  PhobosGlobal::Instance()->TempCoveredCellsData.end(),
+		[](const CellStruct& lhs, const CellStruct& rhs) -> bool
+ {
+	 return lhs.X > rhs.X || lhs.X == rhs.X && lhs.Y > rhs.Y;
+		});
+
+	auto const it = std::unique(
+		PhobosGlobal::Instance()->TempCoveredCellsData.begin(),
+		PhobosGlobal::Instance()->TempCoveredCellsData.end());
+
+	PhobosGlobal::Instance()->TempCoveredCellsData.erase(it, PhobosGlobal::Instance()->TempCoveredCellsData.end());
+
+	return &PhobosGlobal::Instance()->TempCoveredCellsData;
+}
+
+void CustomFoundation::GetDisplayRect(RectangleStruct& a1, CellStruct* a2)
+{
+	int v2 = -512;
+	int v3 = -512;
+	int v4 = 512;
+	int v5 = 512;
+
+	if (a2->X == 0x7FFF && a2->Y == 0x7FFF)
 	{
-		int v2 = -512;
-		int v3 = -512;
-		int v4 = 512;
-		int v5 = 512;
-
-		if (a2->X == 0x7FFF && a2->Y == 0x7FFF)
-		{
-			a1.X = 0;
-			a1.Y = 0;
-			a1.Width = 0;
-			a1.Height = 0;
-			return;
-		}
-
-		int16_t* v6 = &a2->Y;
-
-		while (true)
-		{
-			int16_t v8 = *(v6 - 1);
-			int v12 = v3;
-			int v11 = v5;
-			int v9 = v4;
-			int v10 = v2;
-			if (v8 == 0x7FFF)
-			{
-				v9 = v4;
-				if (*v6 == 0x7FFF)
-					break;
-			}
-			v3 = *v6;
-			v6 += 2;
-			v2 = v8;
-			v5 = v3;
-			v4 = v8;
-			if (v8 >= v9)
-				v4 = v9;
-			if (v8 <= v10)
-				v2 = v10;
-			if (v3 >= v11)
-				v5 = v11;
-			if (v3 <= v12)
-				v3 = v12;
-		}
-
-		a1.X = v4;
-		a1.Y = v5;
-		a1.Width = v2;
-		a1.Height = v3;
+		a1.X = 0;
+		a1.Y = 0;
+		a1.Width = 0;
+		a1.Height = 0;
+		return;
 	}
+
+	int16_t* v6 = &a2->Y;
+
+	while (true)
+	{
+		int16_t v8 = *(v6 - 1);
+		int v12 = v3;
+		int v11 = v5;
+		int v9 = v4;
+		int v10 = v2;
+		if (v8 == 0x7FFF)
+		{
+			v9 = v4;
+			if (*v6 == 0x7FFF)
+				break;
+		}
+		v3 = *v6;
+		v6 += 2;
+		v2 = v8;
+		v5 = v3;
+		v4 = v8;
+		if (v8 >= v9)
+			v4 = v9;
+		if (v8 <= v10)
+			v2 = v10;
+		if (v3 >= v11)
+			v5 = v11;
+		if (v3 <= v12)
+			v3 = v12;
+	}
+
+	a1.X = v4;
+	a1.Y = v5;
+	a1.Width = v2;
+	a1.Height = v3;
+}
 
 #pragma endregion
 
 #pragma region MouseClassExt
 
-	const MouseCursor* MouseClassExt::GetCursorData(MouseCursorType nMouse)
+const MouseCursor* MouseClassExt::GetCursorData(MouseCursorType nMouse)
+{
+	if (!CursorTypeClass::Array.empty())
 	{
-		if (!CursorTypeClass::Array.empty())
-		{
-			return CursorTypeClass::Array[(int)nMouse]->CursorData.GetEx();
-		}
-
-		// if the custom cursor array is empty , then fix then index
-		if (nMouse >= MouseCursorType::count)
-			nMouse = MouseCursorType::SpyPlane;
-
-		return MouseCursor::DefaultCursors.begin() + (size_t)nMouse;
+		return CursorTypeClass::Array[(int)nMouse]->CursorData.GetEx();
 	}
 
-	const MouseCursor* MouseClassExt::GetCursorDataFromRawAction(Action nAction)
-	{
-		const auto fixedAction = MouseClassExt::GetActionIndex(nAction);
-		const auto Idx = fixedAction < MouseClassExt::CursorIdx.size() ? CursorIdx[fixedAction].Idx : 0;
-		return Idx != (size_t)MouseCursorType::Default ? MouseClassExt::GetCursorData((MouseCursorType)Idx) : nullptr;
-	}
+	// if the custom cursor array is empty , then fix then index
+	if (nMouse >= MouseCursorType::count)
+		nMouse = MouseCursorType::SpyPlane;
+
+	return MouseCursor::DefaultCursors.begin() + (size_t)nMouse;
+}
+
+const MouseCursor* MouseClassExt::GetCursorDataFromRawAction(Action nAction)
+{
+	const auto fixedAction = MouseClassExt::GetActionIndex(nAction);
+	const auto Idx = fixedAction < MouseClassExt::CursorIdx.size() ? CursorIdx[fixedAction].Idx : 0;
+	return Idx != (size_t)MouseCursorType::Default ? MouseClassExt::GetCursorData((MouseCursorType)Idx) : nullptr;
+}
 
 #pragma region MappedAction
 
-	std::array<MouseClassExt::MappedActions, (size_t)Action::count + 2> MouseClassExt::CursorIdx;
-	DynamicVectorClass<BuildType, DllAllocator<BuildType>> MouseClassExt::TabCameos[4u];
+std::array<MouseClassExt::MappedActions, (size_t)Action::count + 2> MouseClassExt::CursorIdx;
+DynamicVectorClass<BuildType, DllAllocator<BuildType>> MouseClassExt::TabCameos[4u];
 
-	void MouseClassExt::ClearMappedAction()
+void MouseClassExt::ClearMappedAction()
+{
+	std::memset(CursorIdx.data(), 0, sizeof(MappedActions) * CursorIdx.size());
+}
+
+void MouseClassExt::InsertMappedAction(MouseCursorType nCursorIdx, Action nAction, bool Shrouded)
+{
+	CursorIdx[(size_t)nAction].Idx = (size_t)nCursorIdx;
+	CursorIdx[(size_t)nAction].AllowShourd = Shrouded;
+}
+
+void MouseClassExt::InsertSWMappedAction(MouseCursorType nCursorIdx, Action nAction, bool Shrouded)
+{
+	switch ((AresNewActionType)nAction)
 	{
-		std::memset(CursorIdx.data(), 0, sizeof(MappedActions) * CursorIdx.size());
+	case AresNewActionType::SuperWeaponAllowed:
+	{
+		CursorIdx[(size_t)Action::count].Idx = (size_t)nCursorIdx;
+		CursorIdx[(size_t)Action::count].AllowShourd = Shrouded;
 	}
-
-	void MouseClassExt::InsertMappedAction(MouseCursorType nCursorIdx, Action nAction, bool Shrouded)
+	break;
+	case AresNewActionType::SuperWeaponDisallowed:
 	{
-		CursorIdx[(size_t)nAction].Idx = (size_t)nCursorIdx;
-		CursorIdx[(size_t)nAction].AllowShourd = Shrouded;
+		CursorIdx[(size_t)Action::count + 1].Idx = (size_t)nCursorIdx;
+		CursorIdx[(size_t)Action::count + 1].AllowShourd = Shrouded;
 	}
-
-	void MouseClassExt::InsertSWMappedAction(MouseCursorType nCursorIdx, Action nAction, bool Shrouded)
-	{
-		switch ((AresNewActionType)nAction)
-		{
-		case AresNewActionType::SuperWeaponAllowed:
-		{
-			CursorIdx[(size_t)Action::count].Idx = (size_t)nCursorIdx;
-			CursorIdx[(size_t)Action::count].AllowShourd = Shrouded;
-		}
+	break;
+	default:
 		break;
-		case AresNewActionType::SuperWeaponDisallowed:
-		{
-			CursorIdx[(size_t)Action::count + 1].Idx = (size_t)nCursorIdx;
-			CursorIdx[(size_t)Action::count + 1].AllowShourd = Shrouded;
-		}
-		break;
-		default:
-			break;
-		}
 	}
+}
 
-	int MouseClassExt::ByWeapon(TechnoClass * pThis, int nWeaponIdx, bool OutOfRange)
+int MouseClassExt::ByWeapon(TechnoClass* pThis, int nWeaponIdx, bool OutOfRange)
+{
+	//TODO :
+	//if (auto pBuilding = specific_cast<BuildingClass*>(pThis)) {
+	//	if(!pBuilding->IsPowerOnline())
+	//		return OutOfRange ? MouseCursorType::NoEnter : MouseCursorType::Enter;
+	//}
+
+	if (const auto pWeaponS = pThis->GetWeapon(nWeaponIdx))
 	{
-		//TODO :
-		//if (auto pBuilding = specific_cast<BuildingClass*>(pThis)) {
-		//	if(!pBuilding->IsPowerOnline())
-		//		return OutOfRange ? MouseCursorType::NoEnter : MouseCursorType::Enter;
-		//}
-
-		if (const auto pWeaponS = pThis->GetWeapon(nWeaponIdx))
+		if (const auto pWeapon = pWeaponS->WeaponType)
 		{
-			if (const auto pWeapon = pWeaponS->WeaponType)
-			{
-				const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
-				return ((OutOfRange ?
-					pWeaponExt->Cursor_AttackOutOfRange : pWeaponExt->Cursor_Attack).Get());
-			}
+			const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+			return ((OutOfRange ?
+				pWeaponExt->Cursor_AttackOutOfRange : pWeaponExt->Cursor_Attack).Get());
 		}
-
-		return int(OutOfRange ?
-		MouseCursorType::AttackOutOfRange : MouseCursorType::Attack);
 	}
+
+	return int(OutOfRange ?
+	MouseCursorType::AttackOutOfRange : MouseCursorType::Attack);
+}
 
 #pragma endregion
 
-	//7E198C - vtable
-	void MouseClassExt::_Update(const int* keyCode, const Point2D * mouseCoords)
+//7E198C - vtable
+void MouseClassExt::_Update(const int* keyCode, const Point2D* mouseCoords)
+{
+	ClearMappedAction();
+	const auto pCursorData = GetCursorData(this->MouseCursorIndex);
+	const auto nFrameRate = pCursorData->GetFrameRate();
+
+	if (nFrameRate && !MouseClass::Timer->GetTimeLeft())
 	{
-		ClearMappedAction();
+		this->MouseCursorCurrentFrame++;
+		this->MouseCursorCurrentFrame %= pCursorData->GetMouseFrameCount(this->MouseCursorIsMini);
+		MouseClass::Timer->Start(nFrameRate);
+		const int baseframe = pCursorData->GetMouseFrame(this->MouseCursorIsMini) + this->MouseCursorCurrentFrame;
+		const auto pShape = MouseClass::ShapeData();
+		WWMouseClass::Instance->Draw(pCursorData->GetMouseHotSpot(pShape), pShape, baseframe);
+	}
+
+	this->ScrollClass::Update_(keyCode, mouseCoords);
+}
+
+//7E19B0 - vtable
+bool MouseClassExt::_Override_Mouse_Shape(MouseCursorType mouse, bool wsmall)
+{
+	const auto pCursorData = GetCursorData(mouse);
+
+	if (pCursorData->SmallFrame == -1 || !pCursorData->SmallFrameCount)
+		wsmall = false;
+
+	if (!MouseClass::ShapeOverride()
+		|| MouseClass::ShapeData()
+			&& (mouse != this->MouseCursorIndex || wsmall != this->MouseCursorIsMini))
+	{
+		MouseClass::ShapeOverride = true;
+		MouseClass::Timer->Start(pCursorData->GetFrameRate());
+		this->MouseCursorCurrentFrame = 0;
+		const int nFrame = pCursorData->GetMouseFrame(wsmall);
+		const auto pShape = MouseClass::ShapeData();
+		WWMouseClass::Instance->Draw(pCursorData->GetMouseHotSpot(pShape), pShape, nFrame);
+		this->MouseCursorIndex = mouse;
+		this->MouseCursorIsMini = wsmall;
+		return true;
+	}
+	return false;
+}
+
+//7E19B8 - vtable
+void MouseClassExt::_Mouse_Small(bool wsmall)
+{
+	if (this->MouseCursorIsMini != wsmall)
+	{
 		const auto pCursorData = GetCursorData(this->MouseCursorIndex);
-		const auto nFrameRate = pCursorData->GetFrameRate();
-
-		if (nFrameRate && !MouseClass::Timer->GetTimeLeft())
-		{
-			this->MouseCursorCurrentFrame++;
-			this->MouseCursorCurrentFrame %= pCursorData->GetMouseFrameCount(this->MouseCursorIsMini);
-			MouseClass::Timer->Start(nFrameRate);
-			const int baseframe = pCursorData->GetMouseFrame(this->MouseCursorIsMini) + this->MouseCursorCurrentFrame;
-			const auto pShape = MouseClass::ShapeData();
-			WWMouseClass::Instance->Draw(pCursorData->GetMouseHotSpot(pShape), pShape, baseframe);
-		}
-
-		this->ScrollClass::Update_(keyCode, mouseCoords);
+		this->MouseCursorIsMini = wsmall;
+		const int baseframe = pCursorData->GetMouseFrame(wsmall) + this->MouseCursorCurrentFrame;
+		const auto pShape = MouseClass::ShapeData();
+		WWMouseClass::Instance->Draw(pCursorData->GetMouseHotSpot(pShape), pShape, baseframe);
 	}
+}
 
-	//7E19B0 - vtable
-	bool MouseClassExt::_Override_Mouse_Shape(MouseCursorType mouse, bool wsmall)
+//5BDBC0 - Not a vtable
+int MouseClassExt::_Get_Mouse_Current_Frame(MouseCursorType mouse, bool wsmall) const
+{
+	return GetCursorData(mouse)->GetMouseFrame(wsmall) + this->MouseCursorCurrentFrame;
+}
+
+//5BDB90 - Not a vtable
+int MouseClassExt::_Get_Mouse_Frame(MouseCursorType mouse, bool wsmall) const
+{
+	return GetCursorData(mouse)->GetMouseFrame(wsmall);
+}
+
+//5BDC00 - Not a vtable
+Point2D MouseClassExt::_Get_Mouse_Hotspot(MouseCursorType mouse) const
+{
+	return GetCursorData(mouse)->GetMouseHotSpot(MouseClass::ShapeData());
+}
+
+//5BE970 - Not a vtable
+int MouseClassExt::_Get_Mouse_Start_Frame(MouseCursorType mouse) const
+{
+	return GetCursorData(this->MouseCursorIndex)->StartFrame;
+}
+
+//5BE990 - Not a vtable
+int MouseClassExt::_Get_Mouse_Frame_Count(MouseCursorType mouse) const
+{
+	return GetCursorData(this->MouseCursorIndex)->FrameCount;
+}
+
+size_t MouseClassExt::GetActionIndex(Action nAction)
+{
+	switch ((AresNewActionType)nAction)
 	{
-		const auto pCursorData = GetCursorData(mouse);
-
-		if (pCursorData->SmallFrame == -1 || !pCursorData->SmallFrameCount)
-			wsmall = false;
-
-		if (!MouseClass::ShapeOverride()
-			|| MouseClass::ShapeData()
-				&& (mouse != this->MouseCursorIndex || wsmall != this->MouseCursorIsMini))
-		{
-			MouseClass::ShapeOverride = true;
-			MouseClass::Timer->Start(pCursorData->GetFrameRate());
-			this->MouseCursorCurrentFrame = 0;
-			const int nFrame = pCursorData->GetMouseFrame(wsmall);
-			const auto pShape = MouseClass::ShapeData();
-			WWMouseClass::Instance->Draw(pCursorData->GetMouseHotSpot(pShape), pShape, nFrame);
-			this->MouseCursorIndex = mouse;
-			this->MouseCursorIsMini = wsmall;
-			return true;
-		}
-		return false;
+	case AresNewActionType::SuperWeaponAllowed:
+	{
+		return (size_t)Action::count;
 	}
-
-	//7E19B8 - vtable
-	void MouseClassExt::_Mouse_Small(bool wsmall)
+	break;
+	case AresNewActionType::SuperWeaponDisallowed:
 	{
-		if (this->MouseCursorIsMini != wsmall)
-		{
-			const auto pCursorData = GetCursorData(this->MouseCursorIndex);
-			this->MouseCursorIsMini = wsmall;
-			const int baseframe = pCursorData->GetMouseFrame(wsmall) + this->MouseCursorCurrentFrame;
-			const auto pShape = MouseClass::ShapeData();
-			WWMouseClass::Instance->Draw(pCursorData->GetMouseHotSpot(pShape), pShape, baseframe);
-		}
+		return (size_t)Action::count + 1;
 	}
-
-	//5BDBC0 - Not a vtable
-	int MouseClassExt::_Get_Mouse_Current_Frame(MouseCursorType mouse, bool wsmall) const
-	{
-		return GetCursorData(mouse)->GetMouseFrame(wsmall) + this->MouseCursorCurrentFrame;
-	}
-
-	//5BDB90 - Not a vtable
-	int MouseClassExt::_Get_Mouse_Frame(MouseCursorType mouse, bool wsmall) const
-	{
-		return GetCursorData(mouse)->GetMouseFrame(wsmall);
-	}
-
-	//5BDC00 - Not a vtable
-	Point2D MouseClassExt::_Get_Mouse_Hotspot(MouseCursorType mouse) const
-	{
-		return GetCursorData(mouse)->GetMouseHotSpot(MouseClass::ShapeData());
-	}
-
-	//5BE970 - Not a vtable
-	int MouseClassExt::_Get_Mouse_Start_Frame(MouseCursorType mouse) const
-	{
-		return GetCursorData(this->MouseCursorIndex)->StartFrame;
-	}
-
-	//5BE990 - Not a vtable
-	int MouseClassExt::_Get_Mouse_Frame_Count(MouseCursorType mouse) const
-	{
-		return GetCursorData(this->MouseCursorIndex)->FrameCount;
-	}
-
-	size_t MouseClassExt::GetActionIndex(Action nAction)
-	{
-		switch ((AresNewActionType)nAction)
-		{
-		case AresNewActionType::SuperWeaponAllowed:
-		{
-			return (size_t)Action::count;
-		}
+	break;
+	default:
+		return (size_t)nAction;
 		break;
-		case AresNewActionType::SuperWeaponDisallowed:
-		{
-			return (size_t)Action::count + 1;
-		}
-		break;
-		default:
-			return (size_t)nAction;
-			break;
-		}
+	}
+}
+
+MouseCursorType MouseClassExt::ValidateCursorType(Action nAction)
+{
+	const auto IdxToSelect = GetActionIndex(nAction);
+
+	if (IdxToSelect < MouseClassExt::CursorIdx.size()
+		&& MouseClassExt::CursorIdx[IdxToSelect].Idx != (size_t)MouseCursorType::Default)
+	{
+		return (MouseCursorType)MouseClassExt::CursorIdx[IdxToSelect].Idx;
 	}
 
-	MouseCursorType MouseClassExt::ValidateCursorType(Action nAction)
+	switch (nAction)
 	{
-		const auto IdxToSelect = GetActionIndex(nAction);
-
-		if (IdxToSelect < MouseClassExt::CursorIdx.size()
-			&& MouseClassExt::CursorIdx[IdxToSelect].Idx != (size_t)MouseCursorType::Default)
-		{
-			return (MouseCursorType)MouseClassExt::CursorIdx[IdxToSelect].Idx;
-		}
-
-		switch (nAction)
-		{
-		case Action::Move:
-			return MouseCursorType::Move;
-		case Action::NoMove:
-		case Action::NoIvanBomb:
-			return MouseCursorType::NoMove;
-		case Action::Enter:
-		case Action::Capture:
-		case Action::Repair:
-		case Action::EnterTunnel:
-			return MouseCursorType::Enter;
-		case Action::Self_Deploy:
-		case Action::AreaAttack:
-			return MouseCursorType::Deploy;
-		case Action::Attack:
-			return MouseCursorType::Attack;
-		case Action::Harvest:
-			return MouseCursorType::AttackOutOfRange;
-		case Action::Select:
-		case Action::ToggleSelect:
-		case Action::SelectBeacon:
-			return MouseCursorType::Select;
-		case Action::Eaten:
-			return MouseCursorType::EngineerRepair;
-		case Action::Sell:
-			return MouseCursorType::Sell;
-		case Action::SellUnit:
-			return MouseCursorType::SellUnit;
-		case Action::NoSell:
-			return MouseCursorType::NoSell;
-		case Action::NoRepair:
-		case Action::NoGRepair:
-			return MouseCursorType::NoRepair;
-		case Action::Sabotage:
-		case Action::Demolish:
-			return MouseCursorType::Demolish;
-		case Action::Tote:
-			return MouseCursorType::PsychicReveal | MouseCursorType::Move_NE; // custom 87
-		case Action::Nuke:
-			return MouseCursorType::Nuke;
-		case Action::GuardArea:
-			return MouseCursorType::Protect;
-		case Action::Heal:
-		case Action::PlaceWaypoint:
-		case Action::TibSunBug:
-		case Action::EnterWaypointMode:
-		case Action::FollowWaypoint:
-		case Action::SelectWaypoint:
-		case Action::LoopWaypointPath:
-		case Action::AttackWaypoint:
-		case Action::EnterWaypoint:
-		case Action::PatrolWaypoint:
-			return MouseCursorType::Disallowed;
-		case Action::GRepair:
-			return MouseCursorType::Repair;
-		case Action::NoDeploy:
-			return MouseCursorType::NoDeploy;
-		case Action::NoEnterTunnel:
-		case Action::NoEnter:
-			return MouseCursorType::NoEnter;
-		case Action::TogglePower:
-			return MouseCursorType::NoForceShield | MouseCursorType::Move_NW; // custom 88
-		case Action::NoTogglePower:
-			return MouseCursorType::GeneticMutator | MouseCursorType::Move_NW; // custom 89
-		case Action::IronCurtain:
-			return MouseCursorType::IronCurtain;
-		case Action::LightningStorm:
-			return MouseCursorType::LightningStorm;
-		case Action::ChronoSphere:
-		case Action::ChronoWarp:
-			return MouseCursorType::Chronosphere;
-		case Action::ParaDrop:
-		case Action::AmerParaDrop:
-			return MouseCursorType::ParaDrop;
-		case Action::IvanBomb:
-			return MouseCursorType::IvanBomb;
-		case Action::Detonate:
-		case Action::DetonateAll:
-			return MouseCursorType::Detonate;
-		case Action::DisarmBomb:
-			return MouseCursorType::Disarm;
-		case Action::PlaceBeacon:
-			return MouseCursorType::Beacon;
-		case Action::AttackMoveNav:
-		case Action::AttackMoveTar:
-			return MouseCursorType::AttackOutOfRange2;
-		case Action::PsychicDominator:
-			return MouseCursorType::PsychicDominator;
-		case Action::SpyPlane:
-			return MouseCursorType::SpyPlane;
-		case Action::GeneticConverter:
-			return MouseCursorType::GeneticMutator;
-		case Action::ForceShield:
-			return MouseCursorType::ForceShield;
-		case Action::NoForceShield:
-			return MouseCursorType::NoForceShield;
-		case Action::Airstrike:
-			return MouseCursorType::AirStrike;
-		case Action::PsychicReveal:
-			return MouseCursorType::PsychicReveal;
-		}
-
-		return MouseCursorType::Default;
+	case Action::Move:
+		return MouseCursorType::Move;
+	case Action::NoMove:
+	case Action::NoIvanBomb:
+		return MouseCursorType::NoMove;
+	case Action::Enter:
+	case Action::Capture:
+	case Action::Repair:
+	case Action::EnterTunnel:
+		return MouseCursorType::Enter;
+	case Action::Self_Deploy:
+	case Action::AreaAttack:
+		return MouseCursorType::Deploy;
+	case Action::Attack:
+		return MouseCursorType::Attack;
+	case Action::Harvest:
+		return MouseCursorType::AttackOutOfRange;
+	case Action::Select:
+	case Action::ToggleSelect:
+	case Action::SelectBeacon:
+		return MouseCursorType::Select;
+	case Action::Eaten:
+		return MouseCursorType::EngineerRepair;
+	case Action::Sell:
+		return MouseCursorType::Sell;
+	case Action::SellUnit:
+		return MouseCursorType::SellUnit;
+	case Action::NoSell:
+		return MouseCursorType::NoSell;
+	case Action::NoRepair:
+	case Action::NoGRepair:
+		return MouseCursorType::NoRepair;
+	case Action::Sabotage:
+	case Action::Demolish:
+		return MouseCursorType::Demolish;
+	case Action::Tote:
+		return MouseCursorType::PsychicReveal | MouseCursorType::Move_NE; // custom 87
+	case Action::Nuke:
+		return MouseCursorType::Nuke;
+	case Action::GuardArea:
+		return MouseCursorType::Protect;
+	case Action::Heal:
+	case Action::PlaceWaypoint:
+	case Action::TibSunBug:
+	case Action::EnterWaypointMode:
+	case Action::FollowWaypoint:
+	case Action::SelectWaypoint:
+	case Action::LoopWaypointPath:
+	case Action::AttackWaypoint:
+	case Action::EnterWaypoint:
+	case Action::PatrolWaypoint:
+		return MouseCursorType::Disallowed;
+	case Action::GRepair:
+		return MouseCursorType::Repair;
+	case Action::NoDeploy:
+		return MouseCursorType::NoDeploy;
+	case Action::NoEnterTunnel:
+	case Action::NoEnter:
+		return MouseCursorType::NoEnter;
+	case Action::TogglePower:
+		return MouseCursorType::NoForceShield | MouseCursorType::Move_NW; // custom 88
+	case Action::NoTogglePower:
+		return MouseCursorType::GeneticMutator | MouseCursorType::Move_NW; // custom 89
+	case Action::IronCurtain:
+		return MouseCursorType::IronCurtain;
+	case Action::LightningStorm:
+		return MouseCursorType::LightningStorm;
+	case Action::ChronoSphere:
+	case Action::ChronoWarp:
+		return MouseCursorType::Chronosphere;
+	case Action::ParaDrop:
+	case Action::AmerParaDrop:
+		return MouseCursorType::ParaDrop;
+	case Action::IvanBomb:
+		return MouseCursorType::IvanBomb;
+	case Action::Detonate:
+	case Action::DetonateAll:
+		return MouseCursorType::Detonate;
+	case Action::DisarmBomb:
+		return MouseCursorType::Disarm;
+	case Action::PlaceBeacon:
+		return MouseCursorType::Beacon;
+	case Action::AttackMoveNav:
+	case Action::AttackMoveTar:
+		return MouseCursorType::AttackOutOfRange2;
+	case Action::PsychicDominator:
+		return MouseCursorType::PsychicDominator;
+	case Action::SpyPlane:
+		return MouseCursorType::SpyPlane;
+	case Action::GeneticConverter:
+		return MouseCursorType::GeneticMutator;
+	case Action::ForceShield:
+		return MouseCursorType::ForceShield;
+	case Action::NoForceShield:
+		return MouseCursorType::NoForceShield;
+	case Action::Airstrike:
+		return MouseCursorType::AirStrike;
+	case Action::PsychicReveal:
+		return MouseCursorType::PsychicReveal;
 	}
 
-	Action MouseClassExt::ValidateShroudedAction(Action nAction)
-	{
-		switch (nAction)
-		{
-		case Action::Attack:
-		{
-			return Action::Move;
-		}
-		case Action::NoMove:
-		{
-			auto const& nObjDvc = ObjectClass::CurrentObjects(); //current object with cursor
+	return MouseCursorType::Default;
+}
 
-			if (nObjDvc.Count)
+Action MouseClassExt::ValidateShroudedAction(Action nAction)
+{
+	switch (nAction)
+	{
+	case Action::Attack:
+	{
+		return Action::Move;
+	}
+	case Action::NoMove:
+	{
+		auto const& nObjDvc = ObjectClass::CurrentObjects(); //current object with cursor
+
+		if (nObjDvc.Count)
+		{
+			if (auto T = generic_cast<TechnoClass*>(nObjDvc[0]))
 			{
-				if (auto T = generic_cast<TechnoClass*>(nObjDvc[0]))
+				if (T->GetTechnoType()->MoveToShroud)
 				{
-					if (T->GetTechnoType()->MoveToShroud)
-					{
-						return Action::Move;
-					}
+					return Action::Move;
 				}
 			}
-
-			return Action::NoMove;
-		}
-		break;
-		case Action::Enter:
-		case Action::Self_Deploy:
-		case Action::Harvest:
-		case Action::Select:
-		case Action::ToggleSelect:
-		case Action::Capture:
-		case Action::Repair:
-		case Action::Sabotage:
-		case Action::DontUse2:
-		case Action::DontUse3:
-		case Action::DontUse4:
-		case Action::DontUse5:
-		case Action::DontUse6:
-		case Action::DontUse7:
-		case Action::DontUse8:
-		case Action::Damage:
-		case Action::GRepair:
-		case Action::EnterTunnel:
-		case Action::DragWaypoint:
-		case Action::AreaAttack:
-		case Action::IvanBomb:
-		case Action::NoIvanBomb:
-		case Action::Detonate:
-		case Action::DetonateAll:
-		case Action::DisarmBomb:
-		case Action::SelectNode:
-		case Action::AttackSupport:
-		case Action::Demolish:
-		case Action::Airstrike:
-		{
-			if (!MouseClassExt::CursorIdx[(size_t)nAction].AllowShourd)
-				return Action::None;
-			else
-				break;
-		}
-		case Action::Eaten:
-		case Action::NoGRepair:
-		case Action::NoRepair:
-			return Action::NoRepair;
-		case Action::SellUnit:
-		case Action::Sell:
-			return Action::NoSell;
-		case Action::TogglePower:
-			return Action::NoTogglePower;
-		case Action::NoEnterTunnel:
-			return Action::NoEnter;
-		case Action::ChronoWarp:
-			return Action::ChronoSphere;
-		case Action::SelectBeacon:
-			return Action::Select;
-		case Action::AmerParaDrop:
-			return Action::ParaDrop;
-		default:
-			break;
 		}
 
-		return nAction;
+		return Action::NoMove;
 	}
+	break;
+	case Action::Enter:
+	case Action::Self_Deploy:
+	case Action::Harvest:
+	case Action::Select:
+	case Action::ToggleSelect:
+	case Action::Capture:
+	case Action::Repair:
+	case Action::Sabotage:
+	case Action::DontUse2:
+	case Action::DontUse3:
+	case Action::DontUse4:
+	case Action::DontUse5:
+	case Action::DontUse6:
+	case Action::DontUse7:
+	case Action::DontUse8:
+	case Action::Damage:
+	case Action::GRepair:
+	case Action::EnterTunnel:
+	case Action::DragWaypoint:
+	case Action::AreaAttack:
+	case Action::IvanBomb:
+	case Action::NoIvanBomb:
+	case Action::Detonate:
+	case Action::DetonateAll:
+	case Action::DisarmBomb:
+	case Action::SelectNode:
+	case Action::AttackSupport:
+	case Action::Demolish:
+	case Action::Airstrike:
+	{
+		if (!MouseClassExt::CursorIdx[(size_t)nAction].AllowShourd)
+			return Action::None;
+		else
+			break;
+	}
+	case Action::Eaten:
+	case Action::NoGRepair:
+	case Action::NoRepair:
+		return Action::NoRepair;
+	case Action::SellUnit:
+	case Action::Sell:
+		return Action::NoSell;
+	case Action::TogglePower:
+		return Action::NoTogglePower;
+	case Action::NoEnterTunnel:
+		return Action::NoEnter;
+	case Action::ChronoWarp:
+		return Action::ChronoSphere;
+	case Action::SelectBeacon:
+		return Action::Select;
+	case Action::AmerParaDrop:
+		return Action::ParaDrop;
+	default:
+		break;
+	}
+
+	return nAction;
+}
 #pragma endregion
 
-	DWORD AresGlobalData::InternalVersion = 0x1414D121;
-	char AresGlobalData::ModName[0x40] = "Yuri's Revenge";
-	char AresGlobalData::ModVersion[0x40] = "1.001";
-	int AresGlobalData::ModIdentifier = 0;
-	CSFText AresGlobalData::ModNote = {};
-	byte AresGlobalData::GFX_DX_Force = 0;
-	int AresGlobalData::colorCount = 8;
-	int AresGlobalData::version = AresGlobalData::ModIdentifier;
+DWORD AresGlobalData::InternalVersion = 0x1414D121;
+char AresGlobalData::ModName[0x40] = "Yuri's Revenge";
+char AresGlobalData::ModVersion[0x40] = "1.001";
+int AresGlobalData::ModIdentifier = 0;
+CSFText AresGlobalData::ModNote = {};
+byte AresGlobalData::GFX_DX_Force = 0;
+int AresGlobalData::colorCount = 8;
+int AresGlobalData::version = AresGlobalData::ModIdentifier;
 
-	int AresGlobalData::uiColorText;
-	int AresGlobalData::uiColorTextButton = 0xFFFF; // #1644: needed for CD prompt
-	int AresGlobalData::uiColorTextCheckbox;
-	int AresGlobalData::uiColorTextRadio;
-	int AresGlobalData::uiColorTextLabel = 0xFFFF; // #1644: needed for CD prompt
-	int AresGlobalData::uiColorTextList;
-	int AresGlobalData::uiColorTextCombobox;
-	int AresGlobalData::uiColorTextGroupbox;
-	int AresGlobalData::uiColorTextEdit;
-	int AresGlobalData::uiColorTextSlider;
-	int AresGlobalData::uiColorTextObserver;
-	int AresGlobalData::uiColorCaret;
-	int AresGlobalData::uiColorSelection;
-	int AresGlobalData::uiColorSelectionCombobox;
-	int AresGlobalData::uiColorSelectionList;
-	int AresGlobalData::uiColorSelectionObserver;
-	int AresGlobalData::uiColorBorder1;
-	int AresGlobalData::uiColorBorder2;
-	int AresGlobalData::uiColorDisabled;
-	int AresGlobalData::uiColorDisabledLabel;
-	int AresGlobalData::uiColorDisabledButton;
-	int AresGlobalData::uiColorDisabledCombobox;
-	int AresGlobalData::uiColorDisabledCheckbox;
-	int AresGlobalData::uiColorDisabledList;
-	int AresGlobalData::uiColorDisabledSlider;
-	int AresGlobalData::uiColorDisabledObserver;
-	AresGlobalData::ColorData AresGlobalData::Colors[16 + 1];
+int AresGlobalData::uiColorText;
+int AresGlobalData::uiColorTextButton = 0xFFFF; // #1644: needed for CD prompt
+int AresGlobalData::uiColorTextCheckbox;
+int AresGlobalData::uiColorTextRadio;
+int AresGlobalData::uiColorTextLabel = 0xFFFF; // #1644: needed for CD prompt
+int AresGlobalData::uiColorTextList;
+int AresGlobalData::uiColorTextCombobox;
+int AresGlobalData::uiColorTextGroupbox;
+int AresGlobalData::uiColorTextEdit;
+int AresGlobalData::uiColorTextSlider;
+int AresGlobalData::uiColorTextObserver;
+int AresGlobalData::uiColorCaret;
+int AresGlobalData::uiColorSelection;
+int AresGlobalData::uiColorSelectionCombobox;
+int AresGlobalData::uiColorSelectionList;
+int AresGlobalData::uiColorSelectionObserver;
+int AresGlobalData::uiColorBorder1;
+int AresGlobalData::uiColorBorder2;
+int AresGlobalData::uiColorDisabled;
+int AresGlobalData::uiColorDisabledLabel;
+int AresGlobalData::uiColorDisabledButton;
+int AresGlobalData::uiColorDisabledCombobox;
+int AresGlobalData::uiColorDisabledCheckbox;
+int AresGlobalData::uiColorDisabledList;
+int AresGlobalData::uiColorDisabledSlider;
+int AresGlobalData::uiColorDisabledObserver;
+AresGlobalData::ColorData AresGlobalData::Colors[16 + 1];
 
-	void AresGlobalData::ReadAresRA2MD(CCINIClass * Ini)
+void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
+{
+	Debug::Log("--------- Loading Ares global settings -----------\n");
+
+	if (Ini)
 	{
-		Debug::Log("--------- Loading Ares global settings -----------\n");
+		auto const section2 = GameStrings::Colors();
+		colorCount = std::clamp(Ini->ReadInteger(section2, "Count", colorCount), 8, 17);
 
-		if (Ini)
-		{
-			auto const section2 = GameStrings::Colors();
-			colorCount = std::clamp(Ini->ReadInteger(section2, "Count", colorCount), 8, 17);
-
-			auto const ParseColorInt = [&Ini](const char* section, const char* key, int defColor) -> int
-				{
-					ColorStruct ndefault(defColor & 0xFF, (defColor >> 8) & 0xFF, (defColor >> 16) & 0xFF);
-					auto const color = Ini->ReadColor(section, key, ndefault);
-					return color.R | color.G << 8 | color.B << 16;
-				};
-
-			auto const section = "UISettings";
-
-			auto const ReadColor = [&Ini, section2, ParseColorInt]
-			(
-				const std::string& name,
-				ColorData& value,
-				int colorRGB,
-				const char* defTooltip,
-				const char* defColorScheme
-			)
-				{
-					// load the tooltip string
-
-					if (Ini->ReadString(section2, (name + ".Tooltip").c_str(), defTooltip, Phobos::readBuffer))
-						value.sttToolTipSublineText = StringTable::LoadString(Phobos::readBuffer);
-
-					if (Ini->ReadString(section2, (name + ".ColorScheme").c_str(), defColorScheme, Phobos::readBuffer))
-						PhobosCRT::strCopy(value.colorScheme, Phobos::readBuffer);
-
-					value.colorRGB = ParseColorInt(section2, (name + ".DisplayColor").c_str(), colorRGB);
-					value.colorSchemeIndex = -1;
-					value.selectedIndex = -1;
-				};
-
-			// menu colors. the color of labels, button texts, list items, stuff and others
-			uiColorText = ParseColorInt(section, "Color.Text", 0xFFFF);
-
-			// original color schemes
-			static constexpr reference<int, 0x8316A8, 0x9> const DefaultColors {};
-			constexpr std::string Slot_tags[] = {
-				"Slot1", "Slot2", "Slot3", "Slot4",
-				"Slot5", "Slot6", "Slot7", "Slot8",
-				"Slot9", "Slot10", "Slot11", "Slot12",
-				"Slot13", "Slot14", "Slot15", "Slot16"
+		auto const ParseColorInt = [&Ini](const char* section, const char* key, int defColor) -> int
+			{
+				ColorStruct ndefault(defColor & 0xFF, (defColor >> 8) & 0xFF, (defColor >> 16) & 0xFF);
+				auto const color = Ini->ReadColor(section, key, ndefault);
+				return color.R | color.G << 8 | color.B << 16;
 			};
 
-			ReadColor("Observer", Colors[0], DefaultColors[8], GameStrings::STT_PlayerColorObserver, GameStrings::LightGrey);
-			ReadColor(Slot_tags[0], Colors[1], DefaultColors[0], GameStrings::STT_PlayerColorGold, GameStrings::LightGold);
-			ReadColor(Slot_tags[1], Colors[2], DefaultColors[1], GameStrings::STT_PlayerColorRed, GameStrings::DarkRed);
-			ReadColor(Slot_tags[2], Colors[3], DefaultColors[2], GameStrings::STT_PlayerColorBlue, "DarkBlue");
-			ReadColor(Slot_tags[3], Colors[4], DefaultColors[3], GameStrings::STT_PlayerColorGreen, "DarkGreen");
-			ReadColor(Slot_tags[4], Colors[5], DefaultColors[4], GameStrings::STT_PlayerColorOrange, "Orange");
-			ReadColor(Slot_tags[5], Colors[6], DefaultColors[5], GameStrings::STT_PlayerColorSkyBlue, "DarkSky");
-			ReadColor(Slot_tags[6], Colors[7], DefaultColors[6], GameStrings::STT_PlayerColorPurple, "Purple");
-			ReadColor(Slot_tags[7], Colors[8], DefaultColors[7], GameStrings::STT_PlayerColorPink, "Magenta");
+		auto const section = "UISettings";
 
-			// additional color schemes so just increasing Count will produce nice colors
-			ReadColor(Slot_tags[8], Colors[9], 0xEF5D94, "STT:PlayerColorLilac", "NeonBlue");
-			ReadColor(Slot_tags[9], Colors[10], 0xE7FF73, "STT:PlayerColorLightBlue", "LightBlue");
-			ReadColor(Slot_tags[10], Colors[11], 0x63EFFF, "STT:PlayerColorLime", GameStrings::Yellow);
-			ReadColor(Slot_tags[11], Colors[12], 0x5AC308, "STT:PlayerColorTeal", GameStrings::Green);
-			ReadColor(Slot_tags[12], Colors[13], 0x0055BD, "STT:PlayerColorBrown", GameStrings::Red);
-			ReadColor(Slot_tags[13], Colors[14], 0x808080, "STT:PlayerColorCharcoal", GameStrings::Grey);
-
-			// blunt stuff
-			ReadColor(Slot_tags[14], Colors[15], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
-			ReadColor(Slot_tags[15], Colors[16], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
-
-			uiColorTextButton = ParseColorInt(section, "Color.Button.Text", uiColorText);
-			uiColorTextRadio = ParseColorInt(section, "Color.Radio.Text", uiColorText);
-			uiColorTextCheckbox = ParseColorInt(section, "Color.Checkbox.Text", uiColorText);
-			uiColorTextLabel = ParseColorInt(section, "Color.Label.Text", uiColorText);
-			uiColorTextList = ParseColorInt(section, "Color.List.Text", uiColorText);
-			uiColorTextCombobox = ParseColorInt(section, "Color.Combobox.Text", uiColorText);
-			uiColorTextGroupbox = ParseColorInt(section, "Color.Groupbox.Text", uiColorText);
-			uiColorTextSlider = ParseColorInt(section, "Color.Slider.Text", uiColorText);
-			uiColorTextEdit = ParseColorInt(section, "Color.Edit.Text", uiColorText);
-			uiColorTextObserver = ParseColorInt(section, "Color.Observer.Text", 0xEEEEEE);
-			uiColorCaret = ParseColorInt(section, "Color.Caret", 0xFFFF);
-			uiColorSelection = ParseColorInt(section, "Color.Selection", 0xFF);
-			uiColorSelectionCombobox = ParseColorInt(section, "Color.Combobox.Selection", uiColorSelection);
-			uiColorSelectionList = ParseColorInt(section, "Color.List.Selection", uiColorSelection);
-			uiColorSelectionObserver = ParseColorInt(section, "Color.Observer.Selection", 0x626262);
-			uiColorBorder1 = ParseColorInt(section, "Color.Border1", 0xC5BEA7);
-			uiColorBorder2 = ParseColorInt(section, "Color.Border2", 0x807A68);
-			uiColorDisabled = ParseColorInt(section, "Color.Disabled", 0x9F);
-			uiColorDisabledLabel = ParseColorInt(section, "Color.Label.Disabled", uiColorDisabled);
-			uiColorDisabledCombobox = ParseColorInt(section, "Color.Combobox.Disabled", uiColorDisabled);
-			uiColorDisabledSlider = ParseColorInt(section, "Color.Slider.Disabled", uiColorDisabled);
-			uiColorDisabledButton = ParseColorInt(section, "Color.Button.Disabled", 0xA7);
-			uiColorDisabledCheckbox = ParseColorInt(section, "Color.Checkbox.Disabled", uiColorDisabled);
-			uiColorDisabledList = ParseColorInt(section, "Color.List.Disabled", uiColorDisabled);
-			uiColorDisabledObserver = ParseColorInt(section, "Color.Observer.Disabled", 0x8F8F8F);
-
-			// read the mod's version info
-			if (Ini->ReadString("VersionInfo", GameStrings::Name, Phobos::readDefval, Phobos::readBuffer, std::size(ModName)))
+		auto const ReadColor = [&Ini, section2, ParseColorInt]
+		(
+			const std::string& name,
+			ColorData& value,
+			int colorRGB,
+			const char* defTooltip,
+			const char* defColorScheme
+		)
 			{
-				PhobosCRT::strCopy(ModName, Phobos::readBuffer);
-			}
+				// load the tooltip string
 
-			if (Ini->ReadString("VersionInfo", "Version", Phobos::readDefval, Phobos::readBuffer, std::size(ModVersion)))
-			{
-				PhobosCRT::strCopy(ModVersion, Phobos::readBuffer);
-			}
+				if (Ini->ReadString(section2, (name + ".Tooltip").c_str(), defTooltip, Phobos::readBuffer))
+					value.sttToolTipSublineText = StringTable::LoadString(Phobos::readBuffer);
 
-			AresSafeChecksummer crc;
-			crc.Add(ModName, strlen(ModName));
-			crc.Commit();
-			crc.Add(ModVersion, strlen(ModVersion));
-			ModIdentifier = Ini->ReadInteger("VersionInfo", "Identifier", static_cast<int>(crc.GetValue()));
+				if (Ini->ReadString(section2, (name + ".ColorScheme").c_str(), defColorScheme, Phobos::readBuffer))
+					PhobosCRT::strCopy(value.colorScheme, Phobos::readBuffer);
 
-			Debug::Log("Color count is %d\n", colorCount);
-			Debug::Log("Mod is %s (%s) with %X\n",
-				ModName,
-				ModVersion,
-				ModIdentifier
-			);
-		}
+				value.colorRGB = ParseColorInt(section2, (name + ".DisplayColor").c_str(), colorRGB);
+				value.colorSchemeIndex = -1;
+				value.selectedIndex = -1;
+			};
 
-		Debug::Log("-------------------Complete ----------------------\n");
-	}
+		// menu colors. the color of labels, button texts, list items, stuff and others
+		uiColorText = ParseColorInt(section, "Color.Text", 0xFFFF);
 
-	void AresGlobalData::ReadAresRA2MD()
-	{
-		CCFileClass UIMD_ini { "UIMD.INI" };
+		// original color schemes
+		static constexpr reference<int, 0x8316A8, 0x9> const DefaultColors {};
+		constexpr std::string Slot_tags[] = {
+			"Slot1", "Slot2", "Slot3", "Slot4",
+			"Slot5", "Slot6", "Slot7", "Slot8",
+			"Slot9", "Slot10", "Slot11", "Slot12",
+			"Slot13", "Slot14", "Slot15", "Slot16"
+		};
 
-		if (UIMD_ini.Exists() && UIMD_ini.Open(FileAccessMode::Read))
+		ReadColor("Observer", Colors[0], DefaultColors[8], GameStrings::STT_PlayerColorObserver, GameStrings::LightGrey);
+		ReadColor(Slot_tags[0], Colors[1], DefaultColors[0], GameStrings::STT_PlayerColorGold, GameStrings::LightGold);
+		ReadColor(Slot_tags[1], Colors[2], DefaultColors[1], GameStrings::STT_PlayerColorRed, GameStrings::DarkRed);
+		ReadColor(Slot_tags[2], Colors[3], DefaultColors[2], GameStrings::STT_PlayerColorBlue, "DarkBlue");
+		ReadColor(Slot_tags[3], Colors[4], DefaultColors[3], GameStrings::STT_PlayerColorGreen, "DarkGreen");
+		ReadColor(Slot_tags[4], Colors[5], DefaultColors[4], GameStrings::STT_PlayerColorOrange, "Orange");
+		ReadColor(Slot_tags[5], Colors[6], DefaultColors[5], GameStrings::STT_PlayerColorSkyBlue, "DarkSky");
+		ReadColor(Slot_tags[6], Colors[7], DefaultColors[6], GameStrings::STT_PlayerColorPurple, "Purple");
+		ReadColor(Slot_tags[7], Colors[8], DefaultColors[7], GameStrings::STT_PlayerColorPink, "Magenta");
+
+		// additional color schemes so just increasing Count will produce nice colors
+		ReadColor(Slot_tags[8], Colors[9], 0xEF5D94, "STT:PlayerColorLilac", "NeonBlue");
+		ReadColor(Slot_tags[9], Colors[10], 0xE7FF73, "STT:PlayerColorLightBlue", "LightBlue");
+		ReadColor(Slot_tags[10], Colors[11], 0x63EFFF, "STT:PlayerColorLime", GameStrings::Yellow);
+		ReadColor(Slot_tags[11], Colors[12], 0x5AC308, "STT:PlayerColorTeal", GameStrings::Green);
+		ReadColor(Slot_tags[12], Colors[13], 0x0055BD, "STT:PlayerColorBrown", GameStrings::Red);
+		ReadColor(Slot_tags[13], Colors[14], 0x808080, "STT:PlayerColorCharcoal", GameStrings::Grey);
+
+		// blunt stuff
+		ReadColor(Slot_tags[14], Colors[15], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
+		ReadColor(Slot_tags[15], Colors[16], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
+
+		uiColorTextButton = ParseColorInt(section, "Color.Button.Text", uiColorText);
+		uiColorTextRadio = ParseColorInt(section, "Color.Radio.Text", uiColorText);
+		uiColorTextCheckbox = ParseColorInt(section, "Color.Checkbox.Text", uiColorText);
+		uiColorTextLabel = ParseColorInt(section, "Color.Label.Text", uiColorText);
+		uiColorTextList = ParseColorInt(section, "Color.List.Text", uiColorText);
+		uiColorTextCombobox = ParseColorInt(section, "Color.Combobox.Text", uiColorText);
+		uiColorTextGroupbox = ParseColorInt(section, "Color.Groupbox.Text", uiColorText);
+		uiColorTextSlider = ParseColorInt(section, "Color.Slider.Text", uiColorText);
+		uiColorTextEdit = ParseColorInt(section, "Color.Edit.Text", uiColorText);
+		uiColorTextObserver = ParseColorInt(section, "Color.Observer.Text", 0xEEEEEE);
+		uiColorCaret = ParseColorInt(section, "Color.Caret", 0xFFFF);
+		uiColorSelection = ParseColorInt(section, "Color.Selection", 0xFF);
+		uiColorSelectionCombobox = ParseColorInt(section, "Color.Combobox.Selection", uiColorSelection);
+		uiColorSelectionList = ParseColorInt(section, "Color.List.Selection", uiColorSelection);
+		uiColorSelectionObserver = ParseColorInt(section, "Color.Observer.Selection", 0x626262);
+		uiColorBorder1 = ParseColorInt(section, "Color.Border1", 0xC5BEA7);
+		uiColorBorder2 = ParseColorInt(section, "Color.Border2", 0x807A68);
+		uiColorDisabled = ParseColorInt(section, "Color.Disabled", 0x9F);
+		uiColorDisabledLabel = ParseColorInt(section, "Color.Label.Disabled", uiColorDisabled);
+		uiColorDisabledCombobox = ParseColorInt(section, "Color.Combobox.Disabled", uiColorDisabled);
+		uiColorDisabledSlider = ParseColorInt(section, "Color.Slider.Disabled", uiColorDisabled);
+		uiColorDisabledButton = ParseColorInt(section, "Color.Button.Disabled", 0xA7);
+		uiColorDisabledCheckbox = ParseColorInt(section, "Color.Checkbox.Disabled", uiColorDisabled);
+		uiColorDisabledList = ParseColorInt(section, "Color.List.Disabled", uiColorDisabled);
+		uiColorDisabledObserver = ParseColorInt(section, "Color.Observer.Disabled", 0x8F8F8F);
+
+		// read the mod's version info
+		if (Ini->ReadString("VersionInfo", GameStrings::Name, Phobos::readDefval, Phobos::readBuffer, std::size(ModName)))
 		{
-			CCINIClass INI_UIMD { };
-			INI_UIMD.ReadCCFile(&UIMD_ini);
-			AresGlobalData::ReadAresRA2MD(&INI_UIMD);
+			PhobosCRT::strCopy(ModName, Phobos::readBuffer);
 		}
+
+		if (Ini->ReadString("VersionInfo", "Version", Phobos::readDefval, Phobos::readBuffer, std::size(ModVersion)))
+		{
+			PhobosCRT::strCopy(ModVersion, Phobos::readBuffer);
+		}
+
+		AresSafeChecksummer crc;
+		crc.Add(ModName, strlen(ModName));
+		crc.Commit();
+		crc.Add(ModVersion, strlen(ModVersion));
+		ModIdentifier = Ini->ReadInteger("VersionInfo", "Identifier", static_cast<int>(crc.GetValue()));
+
+		Debug::Log("Color count is %d\n", colorCount);
+		Debug::Log("Mod is %s (%s) with %X\n",
+			ModName,
+			ModVersion,
+			ModIdentifier
+		);
 	}
+
+	Debug::Log("-------------------Complete ----------------------\n");
+}
+
+void AresGlobalData::ReadAresRA2MD()
+{
+	CCFileClass UIMD_ini { "UIMD.INI" };
+
+	if (UIMD_ini.Exists() && UIMD_ini.Open(FileAccessMode::Read))
+	{
+		CCINIClass INI_UIMD { };
+		INI_UIMD.ReadCCFile(&UIMD_ini);
+		AresGlobalData::ReadAresRA2MD(&INI_UIMD);
+	}
+}

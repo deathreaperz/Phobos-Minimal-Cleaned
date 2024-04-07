@@ -4,6 +4,7 @@
 #include <Ext/BuildingType/Body.h>
 #include <Ext/WarheadType/Body.h>
 #include <Ext/Anim/Body.h>
+#include <algorithm>
 
 SuperClass* SW_LightningStorm::CurrentLightningStorm = nullptr;
 
@@ -34,7 +35,6 @@ bool SW_LightningStorm::Activate(SuperClass* pThis, const CellStruct& Coords, bo
 		if (!pData->Weather_UseSeparateState)
 		{
 			CurrentLightningStorm = pThis;
-
 			LightningStorm::Start(duration, deferment, Coords, pThis->Owner);
 		}
 		else
@@ -51,17 +51,13 @@ bool SW_LightningStorm::AbortFire(SuperClass* pSW, bool IsPlayer)
 {
 	SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(pSW->Type);
 
-	if (!pData->Weather_UseSeparateState)
+	if (!pData->Weather_UseSeparateState && (LightningStorm::IsActive || LightningStorm::HasDeferment()))
 	{
-		// only one Lightning Storm allowed
-		if (LightningStorm::IsActive || LightningStorm::HasDeferment())
+		if (IsPlayer)
 		{
-			if (IsPlayer)
-			{
-				pData->PrintMessage(pData->Message_Abort, pSW->Owner);
-			}
-			return true;
+			pData->PrintMessage(pData->Message_Abort, pSW->Owner);
 		}
+		return true;
 	}
 
 	return false;
@@ -70,7 +66,6 @@ bool SW_LightningStorm::AbortFire(SuperClass* pSW, bool IsPlayer)
 void SW_LightningStorm::Initialize(SWTypeExtData* pData)
 {
 	pData->AttachedToObject->Action = Action::LightningStorm;
-	// Defaults to Lightning Storm values
 	pData->Weather_DebrisMin = 2;
 	pData->Weather_DebrisMax = 4;
 	pData->Weather_IgnoreLightningRod = false;
@@ -87,19 +82,22 @@ void SW_LightningStorm::Initialize(SWTypeExtData* pData)
 	pData->Message_Abort = GameStrings::LightningStormActive_msg();
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::LightningStorm;
-	pData->CursorType = int(MouseCursorType::LightningStorm);
+	pData->CursorType = static_cast<int>(MouseCursorType::LightningStorm);
 
-	//
 	pData->Weather_UseSeparateState = false;
 }
 
 bool SW_LightningStorm::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
 	if (!this->IsLaunchsiteAlive(pBuilding))
+	{
 		return false;
+	}
 
 	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+	{
 		return true;
+	}
 
 	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }
@@ -107,8 +105,8 @@ bool SW_LightningStorm::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* 
 void SW_LightningStorm::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const char* section = pData->get_ID();
-
 	INI_EX exINI(pINI);
+
 	pData->Weather_Duration.Read(exINI, section, "Lightning.Duration");
 	pData->Weather_RadarOutage.Read(exINI, section, "Lightning.RadarOutage");
 	pData->Weather_HitDelay.Read(exINI, section, "Lightning.HitDelay");
