@@ -304,6 +304,7 @@ public:
 	double Shield_ConditionGreen {};
 	double Shield_ConditionYellow {};
 	double Shield_ConditionRed {};
+	double ConditionYellow_Terrain {};
 
 	AircraftPutDataRules MyPutData { };
 

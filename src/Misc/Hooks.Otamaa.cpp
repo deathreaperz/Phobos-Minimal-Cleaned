@@ -51,8 +51,6 @@
 #include <New/Entity/FlyingStrings.h>
 #pragma endregion
 
-DEFINE_JUMP(LJMP, 0x546C8B, 0x546CBF);
-
 DEFINE_HOOK(0x6FA2CF, TechnoClass_AI_DrawBehindAnim, 0x9) //was 4
 {
 	GET(TechnoClass*, pThis, ESI);
@@ -2922,18 +2920,18 @@ DEFINE_HOOK(0x73B0C5, UnitClass_Render_nullptrradio, 0x6)
 	return !pContact ? 0x73B124 : 0x0;
 }
 
-DEFINE_HOOK(0x6F91EC, TechnoClass_GreatestThreat_DeadTechnoInsideTracker, 0x6)
-{
-	GET(TechnoClass*, pTrackerTechno, EBP);
-
-	if (!pTrackerTechno->IsAlive)
-	{
-		Debug::Log("Found DeadTechno[%x - %s] on AircraftTracker!\n", pTrackerTechno, pTrackerTechno->get_ID());
-		return 0x6F9377; // next
-	}
-
-	return 0x0;//contunye
-}
+// DEFINE_HOOK(0x6F91EC, TechnoClass_GreatestThreat_DeadTechnoInsideTracker, 0x6)
+// {
+// 	GET(TechnoClass*, pTrackerTechno, EBP);
+//
+// 	if (!pTrackerTechno->IsAlive)
+// 	{
+// 		Debug::Log("Found DeadTechno[%x - %s] on AircraftTracker!\n", pTrackerTechno, pTrackerTechno->get_ID());
+// 		return 0x6F9377; // next
+// 	}
+//
+// 	return 0x0;//contunye
+// }
 
 /**
  *  Draw a radial to the screen.

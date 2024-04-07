@@ -493,7 +493,7 @@ DEFINE_HOOK(0x4FEA60, HouseClass_AI_UnitProduction, 0x6)
 }
 
 #include <Ext/Team/Body.h>
-
+//#pragma optimize("", off )
 template <class T, class Ttype >
 int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 {
@@ -584,46 +584,45 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 
 	const auto AIDiff = static_cast<int>(pHouse->GetAIDifficultyIndex());
 
-	if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDiff])
-	{
-		if (!BestChoices.empty())
-			EarliestTypenameIndex = BestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(BestChoices.size() - 1))];
-		else
-			EarliestTypenameIndex = -1;
-	}
+	if (ScenarioClass::Instance->Random.RandomFromMax(99) < RulesClass::Instance->FillEarliestTeamProbability[AIDiff])
+		return EarliestTypenameIndex;
+	if (!BestChoices.empty())
+		return BestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(BestChoices.size() - 1))];
 
-	return EarliestTypenameIndex;
+	return -1;
 }
-
-DEFINE_HOOK(0x6EF4D0, TeamClass_GetRemainingTaskForceMembers, 0x8)
-{
-	GET(TeamClass*, pThis, ECX);
-	GET_STACK(DynamicVectorClass<TechnoTypeClass*>*, pVec, 0x4);
-
-	const auto pType = pThis->Type;
-	const auto pTaskForce = pType->TaskForce;
-
-	// Store needed types in a set for faster lookups
-	std::unordered_set<TechnoTypeClass*> neededTypes;
-	for (int a = 0; a < pTaskForce->CountEntries; ++a) {
-		if (auto pType = pTaskForce->Entries[a].Type) {
-			neededTypes.insert(pType);
-		}
-	}
-
-	// Remove team members not needed in the task force
-	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember) {
-		if (neededTypes.find(pMember->GetTechnoType()) != neededTypes.end()
-			|| neededTypes.find(TechnoExtContainer::Instance.Find(pMember)->Type) != neededTypes.end()
-			|| TeamExtData::GroupAllowed(neededTypes, pMember->GetTechnoType())
-			|| TeamExtData::GroupAllowed(neededTypes, TechnoExtContainer::Instance.Find(pMember)->Type)) {
-			pVec->Remove(pMember->GetTechnoType());
-		}
-	}
-
-	return 0x6EF5B2;
-}
-
+//#pragma optimize("", on )
+//DEFINE_HOOK(0x6EF4D0, TeamClass_GetRemainingTaskForceMembers, 0x8)
+//{
+//	GET(TeamClass*, pThis, ECX);
+//	GET_STACK(DynamicVectorClass<TechnoTypeClass*>*, pVec, 0x4);
+//
+//	const auto pType = pThis->Type;
+//	const auto pTaskForce = pType->TaskForce;
+//
+//	for (int a = 0; a < pTaskForce->CountEntries; ++a) {
+//		for (int i = 0; i < pTaskForce->Entries[a].Amount; ++i) {
+//			if(auto pType = pTaskForce->Entries[a].Type) {
+//				pVec->AddItem(pType);
+//			}
+//		}
+//	}
+//
+//	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember) {
+//		for (auto pMemberNeeded : *pVec) {
+//			if ((pMemberNeeded == pMember->GetTechnoType()
+//				|| TechnoExtContainer::Instance.Find(pMember)->Type == pMemberNeeded
+//				|| TeamExtData::GroupAllowed(pMemberNeeded, pMember->GetTechnoType())
+//				|| TeamExtData::GroupAllowed(pMemberNeeded, TechnoExtContainer::Instance.Find(pMember)->Type)
+//
+//				)) {
+//				pVec->Remove(pMemberNeeded);
+//			}
+//		}
+//	}
+//
+//	return 0x6EF5B2;
+//}
 
 DEFINE_HOOK(0x4FEEE0, HouseClass_AI_InfantryProduction, 6)
 {
