@@ -101,28 +101,19 @@ void HouseExtData::UpdateVehicleProduction()
 	auto& bestChoices = HouseExtData::AIProduction_BestChoices;
 	auto& bestChoicesNaval = HouseExtData::AIProduction_BestChoicesNaval;
 
-	auto count = static_cast<size_t>(UnitTypeClass::Array->Count);
+	size_t count = static_cast<size_t>(UnitTypeClass::Array->Count);
 	creationFrames.assign(count, 0x7FFFFFFF);
 	values.assign(count, 0);
-
-	//	std::vector<TeamClass*> Teams;
 
 	for (auto currentTeam : *TeamClass::Array)
 	{
 		if (!currentTeam || currentTeam->Owner != pThis)
 			continue;
 
-		//		if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G"))
-		//			Debug::Log("HereIam\n");
-
-		//		Teams.push_back(currentTeam);
 		int teamCreationFrame = currentTeam->CreationFrame;
 
-		if ((!currentTeam->Type->Reinforce || currentTeam->IsFullStrength)
-			&& (currentTeam->IsForcedActive || currentTeam->IsHasBeen))
-		{
+		if ((!currentTeam->Type->Reinforce || currentTeam->IsFullStrength) && (currentTeam->IsForcedActive || currentTeam->IsHasBeen))
 			continue;
-		}
 
 		DynamicVectorClass<TechnoTypeClass*> taskForceMembers;
 		currentTeam->GetTaskForceMissingMemberTypes(taskForceMembers);
@@ -131,51 +122,24 @@ void HouseExtData::UpdateVehicleProduction()
 		{
 			const auto what = currentMember->WhatAmI();
 
-			if (what != UnitTypeClass::AbsID ||
-				(skipGround && !currentMember->Naval) ||
-				(skipNaval && currentMember->Naval))
+			if (what != UnitTypeClass::AbsID || (skipGround && !currentMember->Naval) || (skipNaval && currentMember->Naval))
 				continue;
 
 			const auto index = static_cast<size_t>(((UnitTypeClass*)currentMember)->ArrayIndex);
 			++values[index];
-
-			//			if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G")) {
-			//				Debug::Log("0100003I Unit %s  idx %d AddedValueResult %d\n", currentMember->ID, index, values[index]);
-			//			}
 
 			if (teamCreationFrame < creationFrames[index])
 				creationFrames[index] = teamCreationFrame;
 		}
 	}
 
-	//	for (int i = 0; i < (int)Teams.size(); ++i) {
-	//		Debug::Log("House [%s] Have [%d] Teams %s.\n", pThis->get_ID(), i, Teams[i]->get_ID());
-	//	}
-
-		//std::vector<int> Toremove {};
 	for (int i = 0; i < UnitClass::Array->Count; ++i)
 	{
 		const auto pUnit = UnitClass::Array->Items[i];
 
-		//if (VTable::Get(pUnit) != UnitClass::vtable){
-		//	const char* Caller = "unk";
-		//	//const char* Type = "unk";
-		//	if (MappedCaller.contains(pUnit)) {
-		//		Caller = MappedCaller[pUnit].c_str();
-		//	}
-
-		//	Debug::Log("UpdateVehicleProduction for [%s] UnitClass Array(%d) at [%d] contains broken pointer[%x allocated from %s] WTF ???\n", pThis->get_ID() , UnitClass::Array->Count , i, pUnit , Caller);
-		//	Toremove.push_back(i);
-		//	continue;
-		//}
-
 		if (values[pUnit->Type->ArrayIndex] > 0 && pUnit->CanBeRecruited(pThis))
 			--values[pUnit->Type->ArrayIndex];
 	}
-
-	//for (auto ToRemoveIdx : Toremove) {
-	//	UnitClass::Array->RemoveAt(ToRemoveIdx);
-	//}
 
 	bestChoices.clear();
 	bestChoicesNaval.clear();
@@ -187,7 +151,7 @@ void HouseExtData::UpdateVehicleProduction()
 	int earliestFrame = 0x7FFFFFFF;
 	int earliestFrameNaval = 0x7FFFFFFF;
 
-	for (auto i = 0u; i < count; ++i)
+	for (size_t i = 0; i < count; ++i)
 	{
 		auto type = UnitTypeClass::Array->Items[static_cast<int>(i)];
 		int currentValue = values[i];
@@ -197,11 +161,8 @@ void HouseExtData::UpdateVehicleProduction()
 
 		const auto buildableResult = pThis->CanBuild(type, false, false);
 
-		if (buildableResult == CanBuildResult::Unbuildable
-			|| type->GetActualCost(pThis) > pThis->Available_Money())
-		{
+		if (buildableResult == CanBuildResult::Unbuildable || type->GetActualCost(pThis) > pThis->Available_Money())
 			continue;
-		}
 
 		bool isNaval = type->Naval;
 		int* cBestValue = !isNaval ? &bestValue : &bestValueNaval;
@@ -225,33 +186,27 @@ void HouseExtData::UpdateVehicleProduction()
 		}
 	}
 
-	if (!skipGround)
+	int result_ground = earliestTypenameIndex;
+	if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
 	{
-		int result_ground = earliestTypenameIndex;
-		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
-		{
-			if (!bestChoices.empty())
-				result_ground = bestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(bestChoices.size() - 1))];
-			else
-				result_ground = -1;
-		}
-
-		pThis->ProducingUnitTypeIndex = result_ground;
+		if (!bestChoices.empty())
+			result_ground = bestChoices[ScenarioClass::Instance->Random.RandomFromMax(static_cast<int>(bestChoices.size()) - 1)];
+		else
+			result_ground = -1;
 	}
 
-	if (!skipNaval)
-	{
-		int result_naval = earliestTypenameIndexNaval;
-		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
-		{
-			if (!bestChoicesNaval.empty())
-				result_naval = bestChoicesNaval[ScenarioClass::Instance->Random.RandomFromMax(int(bestChoicesNaval.size() - 1))];
-			else
-				result_naval = -1;
-		}
+	pThis->ProducingUnitTypeIndex = result_ground;
 
-		this->ProducingNavalUnitTypeIndex = result_naval;
+	int result_naval = earliestTypenameIndexNaval;
+	if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
+	{
+		if (!bestChoicesNaval.empty())
+			result_naval = bestChoicesNaval[ScenarioClass::Instance->Random.RandomFromMax(static_cast<int>(bestChoicesNaval.size()) - 1)];
+		else
+			result_naval = -1;
 	}
+
+	this->ProducingNavalUnitTypeIndex = result_naval;
 }
 
 //DEFINE_HOOK(0x7258D0, AnnounceInvalidPointer_PhobosGlobal_Mapped, 0x6)
@@ -301,21 +256,30 @@ void HouseExtData::UpdateVehicleProduction()
 //	return 0;
 //}
 
-void BuildingClass_AI_PickWithFreeDocks(BuildingClass* pBuilding)
+void BuildingClass_AI_PickWithFreeDocks(BuildingClass* building)
 {
-	auto pRules = RulesExtData::Instance();
+	// Get the instance of RulesExtData
+	auto rulesExtData = RulesExtData::Instance();
 
-	if (!pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues))
-		return;
-
-	if (!pBuilding->Owner || pBuilding->Owner->IsNeutral() || pBuilding->Owner->IsControlledByHuman())
-		return;
-
-	if (pBuilding->Type->Factory == AbstractType::AircraftType)
+	// Check if parallel AI queues are allowed for AI
+	if (!rulesExtData->ForbidParallelAIQueues_Aircraft.Get(!rulesExtData->AllowParallelAIQueues))
 	{
-		if (pBuilding->Factory && !BuildingExtData::HasFreeDocks(pBuilding))
+		return;
+	}
+
+	// Check if the building has an owner and the owner is not neutral or controlled by a human
+	if (!building->Owner || building->Owner->IsNeutral() || building->Owner->IsControlledByHuman())
+	{
+		return;
+	}
+
+	// Check if the building is a factory of aircraft type and has free docks
+	if (building->Type->Factory == AbstractType::AircraftType)
+	{
+		if (building->Factory && !BuildingExtData::HasFreeDocks(building))
 		{
-			BuildingExtData::UpdatePrimaryFactoryAI(pBuilding);
+			// Update the primary factory AI for the building
+			BuildingExtData::UpdatePrimaryFactoryAI(building);
 		}
 	}
 }

@@ -944,14 +944,7 @@ DEFINE_HOOK(0x6F09C0, TeamTypeClass_CreateOneOf_Handled, 0x9)
 
 	if (!pHouse)
 	{
-		pHouse = pThis->Owner;
-		if (!pHouse)
-		{
-			if (HouseClass::Index_IsMP(pThis->idxHouse))
-			{
-				pHouse = HouseClass::FindByPlayerAt(pThis->idxHouse);
-			}
-		}
+		pHouse = pThis->Owner ? pThis->Owner : (HouseClass::Index_IsMP(pThis->idxHouse) ? HouseClass::FindByPlayerAt(pThis->idxHouse) : nullptr);
 	}
 
 	if (!pHouse)
@@ -960,29 +953,17 @@ DEFINE_HOOK(0x6F09C0, TeamTypeClass_CreateOneOf_Handled, 0x9)
 		return 0x6F0A2C;
 	}
 
-	if (!Unsorted::ScenarioInit)
+	if (!Unsorted::ScenarioInit && (pThis->Max < 0 || (SessionClass::Instance->GameMode != GameMode::Campaign ? pHouse->GetTeamCount(pThis) < pThis->Max : pThis->cntInstances < pThis->Max)))
 	{
-		if (pThis->Max >= 0)
-		{
-			if (SessionClass::Instance->GameMode != GameMode::Campaign)
-			{
-				if (pHouse->GetTeamCount(pThis) >= pThis->Max)
-				{
-					R->EAX<TeamClass*>(nullptr);
-					return 0x6F0A2C;
-				}
-			}
-			else if (pThis->cntInstances >= pThis->Max)
-			{
-				R->EAX<TeamClass*>(nullptr);
-				return 0x6F0A2C;
-			}
-		}
+		const auto pTeam = GameCreate<TeamClass>(pThis, pHouse, false);
+		Debug::Log("[%s - %x] Creating a new team named [%s - %x] caller [%x].\n", pHouse->get_ID(), pHouse, pThis->ID, pTeam, caller);
+		R->EAX(pTeam);
+	}
+	else
+	{
+		R->EAX<TeamClass*>(nullptr);
 	}
 
-	const auto pTeam = GameCreate<TeamClass>(pThis, pHouse, false);
-	Debug::Log("[%s - %x] Creating a new team named [%s - %x] caller [%x].\n", pHouse->get_ID(), pHouse, pThis->ID, pTeam, caller);
-	R->EAX(pTeam);
 	return 0x6F0A2C;
 }
 
@@ -1022,14 +1003,21 @@ DEFINE_HOOK(0x6E93BE, TeamClass_AI_TransportTargetLog, 0x5)
 	return 0x6E93D6;
 }
 
+// Define the hook for TeamMissionClass GatherAtEnemyCell_Log
 DEFINE_HOOK(0x6EF9BD, TeamMissionClass_GatherAtEnemyCell_Log, 0x5)
 {
+	// Extract the necessary variables using GET macro
 	GET(int const, nCellX, EAX);
 	GET(int const, nCellY, EDX);
 	GET(TeamClass* const, pThis, ESI);
 	GET(TechnoClass* const, pTechno, EDI);
 	GET(TeamTypeClass* const, pTeamType, ECX);
-	Debug::Log("[%x][%s] Team with Owner '%s' has chosen ( %d , %d ) for its GatherAtEnemy cell.\n", pThis, pTeamType->ID, pTechno->Owner ? pTechno->Owner->get_ID() : NONE_STR2, nCellX, nCellY);
+
+	// Log the information with debug message
+	Debug::Log("[%x][%s] Team with Owner '%s' has chosen (%d, %d) for its GatherAtEnemy cell.\n",
+			   pThis, pTeamType->ID, pTechno->Owner ? pTechno->Owner->get_ID() : NONE_STR2, nCellX, nCellY);
+
+	// Return the address of the next instruction
 	return 0x6EF9D0;
 }
 

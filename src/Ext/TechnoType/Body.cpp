@@ -2160,7 +2160,6 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->VoicePickup)
 		.Process(this->CrateGoodie_RerollChance)
 		.Process(this->Destroyed_CrateType)
-		.Process(this->AffectedByEMP)
 		.Process(this->Infantry_DimWhenEMPEd)
 		.Process(this->Infantry_DimWhenDisabled)
 		;

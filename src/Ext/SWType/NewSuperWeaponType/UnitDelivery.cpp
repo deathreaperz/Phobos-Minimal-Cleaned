@@ -95,14 +95,14 @@ void UnitDeliveryStateMachine::PlaceUnits()
 			continue;
 		}
 
-		auto Item = dynamic_cast<TechnoClass*>(pType->CreateObject(pOwner));
+		auto Item = static_cast<TechnoClass*>(pType->CreateObject(pOwner));
 
 		if (!Item)
 		{
 			continue;
 		}
 
-		auto ItemBuilding = dynamic_cast<BuildingClass*>(Item);
+		auto ItemBuilding = static_cast<BuildingClass*>(Item);
 
 		// get the best options to search for a place
 		short extentX = 1;

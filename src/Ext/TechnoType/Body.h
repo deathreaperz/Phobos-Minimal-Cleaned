@@ -232,7 +232,7 @@ public:
 	Valueable<int> ForceWeapon_UnderEMP { -1 };
 	Valueable<int> ForceWeapon_Cloaked { -1 };
 	Valueable<int> ForceWeapon_Disguised { -1 };
-	Valueable<bool> ImmuneToEMP { false };
+	Nullable<bool> ImmuneToEMP { };
 	Valueable<bool> Ammo_Shared { false };
 	Valueable<int> Ammo_Shared_Group { -1 };
 	Valueable<bool> Passengers_SyncOwner { false };
@@ -900,7 +900,6 @@ public:
 	Valueable<double> CrateGoodie_RerollChance { 0.0 };
 	NullableIdx<CrateTypeClass*> Destroyed_CrateType {};
 
-	OptionalStruct<bool, true> AffectedByEMP {};
 	Nullable<bool> Infantry_DimWhenEMPEd {};
 	Nullable<bool> Infantry_DimWhenDisabled {};
 
