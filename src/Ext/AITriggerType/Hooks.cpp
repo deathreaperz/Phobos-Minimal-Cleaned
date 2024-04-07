@@ -4,24 +4,22 @@
 #include <Ext/Rules/Body.h>
 #include <Ext/House/Body.h>
 
+// TODO
 static bool CheckPrereq(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClass* pHouse2)
 {
 	if (const auto pItem = pThis->ConditionObject)
-	{
 		return HouseExtData::PrereqValidate(pHouse2, pItem, false, true) == CanBuildResult::Buildable;
-	}
+
 	return false;
 }
 
-static bool CheckBridgeCondition(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClass* pHouse2)
-{
-	if (auto const pCiv = HouseClass::FindBySideIndex(RulesExtData::Instance()->CivilianSideIndex))
-	{
-		return pCiv->Buildings.any_of([](BuildingClass* const pBld)
- {
-	 return pBld->Type->BridgeRepairHut && pBld->Type->Repairable && MapClass::Instance->IsBridgeRepairNeeded(pBld->InlineMapCoords());
+static bool CheckBridgeCondition(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClass* pHouse2) {
+	if (auto const pCiv = HouseClass::FindBySideIndex(RulesExtData::Instance()->CivilianSideIndex)) {
+		return pCiv->Buildings.any_of([](BuildingClass* const pBld) {
+			return pBld->Type->BridgeRepairHut && pBld->Type->Repairable && MapClass::Instance->IsBrideRepairNeeded(pBld->InlineMapCoords());
 		});
 	}
+
 	return false;
 }
 
@@ -31,17 +29,19 @@ DEFINE_HOOK(0x41E8F0, Phobos_AITrigger_Handler, 0x8)
 	GET(AITriggerTypeClass*, pAITriggerType, ESI);
 	GET(HouseClass*, pHouse, EDI);
 
-	if (R->Origin() == 0x41E8F0)
-	{
+	// ES Stuffs
+	if(R->Origin() == 0x41E8F0) {
+
 		GET(HouseClass*, pHouse2, EBX);
 
-		if (pHouse2)
-		{
+		if (pHouse2) {
 			switch (static_cast<PhobosAINewConditionTypes>(pAITriggerType->ConditionType))
 			{
-			case PhobosAINewConditionTypes::CheckPrereq:
-				R->AL(CheckPrereq(pAITriggerType, pHouse, pHouse2));
+			case PhobosAINewConditionTypes::CheckPrereq: //it seems to check prereq stuffs
+			{
+				R->AL(CheckPrereq(pAITriggerType,pHouse,pHouse2));
 				return 0x41E9C7;
+			}
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 #include "ChronoWarp.h"
 
 #include <Ext/Building/Body.h>
+
 #include <Utilities/Helpers.h>
 
 bool SW_ChronoWarp::HandleThisType(SuperWeaponType type) const
@@ -322,7 +323,7 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 }
 
 void SW_ChronoWarp::Initialize(SWTypeExtData* pData)
-{
+{ 	// Every other thing will be read in the ChronoSphere.
 	pData->AttachedToObject->Action = Action::ChronoWarp;
 	pData->CursorType = (int)MouseCursorType::Chronosphere;
 }
@@ -352,6 +353,7 @@ void ChronoWarpStateMachine::Update()
 
 	if (passed == 1)
 	{
+		// redraw all buildings
 		for (auto const& item : this->Buildings)
 		{
 			if (item.building)
@@ -462,13 +464,17 @@ void ChronoWarpStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
 bool ChronoWarpStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return SWStateMachine::Load(Stm, RegisterForChange)
-		&& Stm.Process(this->Buildings, RegisterForChange)
-		&& Stm.Process(this->Duration, RegisterForChange).Success();
+		&& Stm
+		.Process(this->Buildings, RegisterForChange)
+		.Process(this->Duration, RegisterForChange)
+		.Success();
 }
 
 bool ChronoWarpStateMachine::Save(PhobosStreamWriter& Stm) const
 {
 	return SWStateMachine::Save(Stm)
-		&& Stm.Process(this->Buildings)
-		&& Stm.Process(this->Duration).Success();
+		&& Stm
+		.Process(this->Buildings)
+		.Process(this->Duration)
+		.Success();
 }

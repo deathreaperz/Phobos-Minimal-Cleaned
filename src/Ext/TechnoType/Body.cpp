@@ -697,7 +697,6 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Destroyed_CrateType.Read(exINI, pSection, "CrateGoodie.WhenDestroyed");
 		this->Infantry_DimWhenEMPEd.Read(exINI, pSection, "Infantry.DimUnderEMP");
 		this->Infantry_DimWhenDisabled.Read(exINI, pSection, "Infantry.DimWhenDisabled");
-
 #pragma region Prereq
 
 		std::string _Prerequisite_key = "Prerequisite";

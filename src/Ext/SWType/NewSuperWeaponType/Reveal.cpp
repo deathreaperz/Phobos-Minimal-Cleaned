@@ -16,12 +16,12 @@ bool SW_Reveal::HandleThisType(SuperWeaponType type) const
 
 bool SW_Reveal::Activate(SuperClass* const pThis, const CellStruct& Coords, bool const IsPlayer)
 {
-	const auto pSW = pThis->Type;
-	const auto pData = SWTypeExtContainer::Instance.Find(pSW);
+	auto const pSW = pThis->Type;
+	auto const pData = SWTypeExtContainer::Instance.Find(pSW);
 
 	if (pThis->IsCharged)
 	{
-		const auto range = this->GetRange(pData);
+		auto const range = this->GetRange(pData);
 		SW_Reveal::RevealMap(Coords, range.WidthOrRange, range.Height, pThis->Owner);
 	}
 
@@ -39,12 +39,12 @@ void SW_Reveal::Initialize(SWTypeExtData* pData)
 	pData->EVA_Ready = VoxClass::FindIndexById(GameStrings::EVA_PsychicRevealReady);
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::ParaDrop;
-	pData->CursorType = static_cast<int>(MouseCursorType::PsychicReveal);
+	pData->CursorType = int(MouseCursorType::PsychicReveal);
 }
 
 void SW_Reveal::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
-	pData->AttachedToObject->Action = (this->GetRange(pData).WidthOrRange < 0.0) ? Action::None : static_cast<Action>(AresNewActionType::SuperWeaponAllowed);
+	pData->AttachedToObject->Action = (this->GetRange(pData).WidthOrRange < 0.0) ? Action::None : (Action)AresNewActionType::SuperWeaponAllowed;
 }
 
 int SW_Reveal::GetSound(const SWTypeExtData* pData) const
@@ -67,8 +67,8 @@ SWRange SW_Reveal::GetRange(const SWTypeExtData* pData) const
 {
 	if (pData->SW_Range->empty())
 	{
-		// Default range values
-		const auto radius = std::min(RulesClass::Instance->PsychicRevealRadius, 10);
+		// real default values, that is, force max cellspread range of 10
+		auto const radius = MinImpl(RulesClass::Instance->PsychicRevealRadius, 10);
 		return { radius };
 	}
 	return pData->SW_Range;
@@ -80,36 +80,40 @@ void SW_Reveal::RevealMap(const CellStruct& Coords, float range, int height, Hou
 
 	if (revealer.AffectsHouse(Owner))
 	{
-		auto Apply = [&](bool add)
+		auto Apply = [=, &revealer](bool add)
 			{
 				if (range < 0.0)
 				{
-					// Reveal all cells without excessive function calls
+					// reveal all cells without hundred thousands function calls
 					MapClass::Instance->CellIteratorReset();
 					while (auto const pCell = MapClass::Instance->CellIteratorNext())
 					{
-						const auto& cell = pCell->MapCoords;
-						if (revealer.IsCellAvailable(cell) && revealer.IsCellAllowed(cell))
+						if (revealer.IsCellAvailable(pCell->MapCoords) && revealer.IsCellAllowed(pCell->MapCoords))
 						{
 							revealer.Process1(pCell, false, add);
 						}
 					}
+
+					//if (SessionClass::Instance->GameMode == GameMode::Internet || SessionClass::Instance->GameMode == GameMode::LAN)
+					//	AresNetEvent::Handlers::RaiseRevealMap(Owner);
 				}
 				else
 				{
-					// Default way to reveal, but one cell at a time
-					const auto& base = revealer.Base();
+					// default way to reveal, but reveal one cell at a time.
+					auto const& base = revealer.Base();
 
 					Helpers::Alex::for_each_in_rect_or_range<CellClass>(base, range, height,
-						[&](CellClass* pCell) -> bool
+						[=, &revealer](CellClass* pCell) -> bool
 					{
-							const auto& cell = pCell->MapCoords;
-							if (revealer.IsCellAvailable(cell) && revealer.IsCellAllowed(cell) &&
-								(height > 0 || cell.DistanceFrom(base) < range))
+						auto const& cell = pCell->MapCoords;
+						if (revealer.IsCellAvailable(cell) && revealer.IsCellAllowed(cell))
+						{
+							if (height > 0 || cell.DistanceFrom(base) < range)
 							{
 								revealer.Process1(pCell, false, add);
 							}
-							return true;
+						}
+						return true;
 					});
 				}
 			};

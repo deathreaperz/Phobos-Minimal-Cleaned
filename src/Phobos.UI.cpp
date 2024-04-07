@@ -1,6 +1,6 @@
 #include "Phobos.UI.h"
 
-#ifndef EXPERIMENTAL_IMGUI
+#ifdef EXPERIMENTAL_IMGUI
 
 /*
 	Based from : https://github.com/CCHyper/Vinifera/commits/dev/imgui-dev/
@@ -664,13 +664,6 @@ bool PhobosWindowClass::TeamList()
 			ImGui::Text("QueuedFocus [0x%x(%s)]", team->QueuedFocus, team->QueuedFocus ? team->QueuedFocus->GetThisClassName() : NONE_STR);
 			ImGui::Text("Focus [0x%x(%s)]", team->Focus, team->Focus ? team->Focus->GetThisClassName() : NONE_STR);
 			ImGui::Text("SpawnCell [0x%x(%d , %d)]", team->SpawnCell, team->SpawnCell ? team->SpawnCell->MapCoords.X : 0, team->SpawnCell ? team->SpawnCell->MapCoords.Y : 0);
-
-			ImGui::Text("Tag : %s(0x%x)", team->Tag ? team->Tag->Type->ID : NONE_STR, team->Tag);
-			ImGui::Text("Owner [%s(0x%x)]", team->Owner ? team->Owner->Type->ID : NONE_STR, team->Owner);
-			ImGui::Text("Target [%s(0x%x)]", team->Target ? team->Target->Type->ID : NONE_STR, team->Target);
-			ImGui::Text("TotalObjects %d", team->TotalObjects);
-			ImGui::Text("TotalThreatValue %d", team->TotalThreatValue);
-			ImGui::Text("CreationFrame %d", team->CreationFrame);
 
 			ImGui::TreePop();
 		}

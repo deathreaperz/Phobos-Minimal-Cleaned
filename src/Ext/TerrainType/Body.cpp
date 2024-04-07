@@ -111,7 +111,6 @@ void TerrainTypeExtData::Serialize(T& Stm)
 		.Process(this->HasCrumblingFrames)
 		.Process(this->CrumblingSound)
 		.Process(this->AnimationLength)
-
 		;
 }
 

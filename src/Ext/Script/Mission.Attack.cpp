@@ -449,10 +449,10 @@ void ScriptExtData::Mission_Attack(TeamClass* pTeam, bool repeatAction, Distance
 	}
 }
 
-TechnoClass* ScriptExtData::GreatestThreat(TechnoClass* pTechno, int method, DistanceMode calcThreatMode, HouseClass* onlyTargetThisHouseEnemy /*= nullptr*/, int attackAITargetType /*= -1*/, int idxAITargetTypeItem /*= -1*/, bool agentMode /*= false*/)
+TechnoClass* ScriptExtData::GreatestThreat(TechnoClass* pTechno, int method, DistanceMode calcThreatMode, HouseClass* onlyTargetThisHouseEnemy = nullptr, int attackAITargetType = -1, int idxAITargetTypeItem = -1, bool agentMode = false)
 {
 	TechnoClass* bestObject = nullptr;
-	double bestVal = -1.0;
+	double bestVal = -1;
 	bool unitWeaponsHaveAA = false;
 	bool unitWeaponsHaveAG = false;
 
@@ -463,17 +463,21 @@ TechnoClass* ScriptExtData::GreatestThreat(TechnoClass* pTechno, int method, Dis
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechnoType);
 	auto const AIDifficulty = static_cast<int>(pTechno->Owner->GetAIDifficultyIndex());
 	auto const DisguiseDetectionValue = pTypeExt->DetectDisguise_Percent.GetEx(RulesExtData::Instance()->AIDetectDisguise_Percent)->at(AIDifficulty);
-	auto const detectionValue = static_cast<int>(std::round(DisguiseDetectionValue * 100.0));
+	auto const detectionValue = (int)std::round(DisguiseDetectionValue * 100.0);
 
+	// Generic method for targeting
 	for (int i = 0; i < TechnoClass::Array->Count; i++)
 	{
 		auto object = TechnoClass::Array->Items[i];
+		if (!ScriptExtData::IsUnitAvailable(object, true) || object == pTechno)
+			continue;
 
-		if (!ScriptExtData::IsUnitAvailable(object, true) || object == pTechno || object->Spawned)
+		if (object->Spawned)
 			continue;
 
 		auto objectType = object->GetTechnoType();
 
+		// Note: the TEAM LEADER is picked for this task, be careful with leadership values in your mod
 		int weaponIndex = pTechno->SelectWeapon(object);
 		auto weaponType = pTechno->GetWeapon(weaponIndex)->WeaponType;
 
@@ -495,6 +499,7 @@ TechnoClass* ScriptExtData::GreatestThreat(TechnoClass* pTechno, int method, Dis
 				continue;
 		}
 
+		// Stealth ground unit check
 		if (object->CloakState == CloakState::Cloaked && !objectType->Naval)
 			continue;
 
@@ -504,65 +509,116 @@ TechnoClass* ScriptExtData::GreatestThreat(TechnoClass* pTechno, int method, Dis
 				continue;
 		}
 
-		if (object->CloakState == CloakState::Cloaked && objectType->Underwater &&
-			((pTechnoType->NavalTargeting == NavalTargetingType::Underwater_never) ||
-				(pTechnoType->NavalTargeting == NavalTargetingType::Naval_none)))
+		// Submarines aren't a valid target
+		if (object->CloakState == CloakState::Cloaked
+			&& objectType->Underwater
+			&& (pTechnoType->NavalTargeting == NavalTargetingType::Underwater_never
+				|| pTechnoType->NavalTargeting == NavalTargetingType::Naval_none))
 		{
 			continue;
 		}
 
-		if (objectType->Naval && (pTechnoType->LandTargeting == LandTargetingType::Land_not_okay) &&
-			(object->GetCell()->LandType != LandType::Water))
+		// Land not OK for the Naval unit
+		if (objectType->Naval
+			&& pTechnoType->LandTargeting == LandTargetingType::Land_not_okay
+			&& (object->GetCell()->LandType != LandType::Water))
 		{
 			continue;
 		}
 
+		// OnlyTargetHouseEnemy forces targets of a specific (hated) house
 		if (onlyTargetThisHouseEnemy && object->Owner != onlyTargetThisHouseEnemy)
 			continue;
 
-		if (!TechnoExtData::AllowedTargetByZone(pTechno, object, pTypeExt->TargetZoneScanType, weaponType) ||
-			objectType->Immune || object->TemporalTargetingMe || object->BeingWarpedOut || object->Owner == pTechno->Owner ||
-			(pTechno->Owner->IsAlliedWith(object) && !ScriptExtData::IsUnitMindControlledFriendly(pTechno->Owner, object)))
+		// Check map zone
+		if (!TechnoExtData::AllowedTargetByZone(pTechno, object, pTypeExt->TargetZoneScanType, weaponType))
 			continue;
 
-		if (ScriptExtData::EvaluateObjectWithMask(object, method, attackAITargetType, idxAITargetTypeItem, pTechno))
+		if (!objectType->Immune
+			&& !object->TemporalTargetingMe
+			&& !object->BeingWarpedOut
+			&& object->Owner != pTechno->Owner
+			&& (!pTechno->Owner->IsAlliedWith(object) || ScriptExtData::IsUnitMindControlledFriendly(pTechno->Owner, object)))
 		{
-			double value = 0.0;
+			double value = 0;
 
-			CellStruct newCell;
-			newCell.X = static_cast<short>(object->Location.X);
-			newCell.Y = static_cast<short>(object->Location.Y);
-
-			double threatMultiplier = 128.0;
-			double objectThreatValue = object->GetThreatValue();
-
-			if (objectType->SpecialThreatValue > 0)
+			if (ScriptExtData::EvaluateObjectWithMask(object, method, attackAITargetType, idxAITargetTypeItem, pTechno))
 			{
-				double const& TargetSpecialThreatCoefficientDefault = RulesClass::Instance->TargetSpecialThreatCoefficientDefault;
-				objectThreatValue += objectType->SpecialThreatValue * TargetSpecialThreatCoefficientDefault;
-			}
+				CellStruct newCell;
+				newCell.X = (short)object->Location.X;
+				newCell.Y = (short)object->Location.Y;
 
-			if (object->Owner->EnemyHouseIndex >= 0 &&
-				pTechno->Owner == HouseClass::Array->Items[object->Owner->EnemyHouseIndex])
-			{
-				double const& EnemyHouseThreatBonus = RulesClass::Instance->EnemyHouseThreatBonus;
-				objectThreatValue += EnemyHouseThreatBonus;
-			}
+				bool isGoodTarget = false;
 
-			objectThreatValue += object->Health * (1 - object->GetHealthPercentage());
-			value = (objectThreatValue * threatMultiplier) / ((pTechno->DistanceFrom(object) / 256.0) + 1.0);
+				if (calcThreatMode == DistanceMode::idkZero || calcThreatMode == DistanceMode::idkOne)
+				{
+					// Threat affected by distance
+					double threatMultiplier = 128.0;
+					double objectThreatValue = object->GetThreatValue();
 
-			if ((calcThreatMode == DistanceMode::idkZero || calcThreatMode == DistanceMode::idkOne) &&
-				((value > bestVal && bestVal >= 0) || bestVal < 0))
-			{
-				bestObject = object;
-				bestVal = value;
-			}
-			else if ((calcThreatMode == DistanceMode::Closest && value < bestVal && bestVal >= 0) ||
-					 (calcThreatMode == DistanceMode::Furtherst && value > bestVal && bestVal >= 0))
-			{
-				bestObject = object;
-				bestVal = value;
+					if (objectType->SpecialThreatValue > 0)
+					{
+						double const& TargetSpecialThreatCoefficientDefault = RulesClass::Instance->TargetSpecialThreatCoefficientDefault;
+						objectThreatValue += objectType->SpecialThreatValue * TargetSpecialThreatCoefficientDefault;
+					}
+
+					// Is Defender house targeting Attacker House? if "yes" then more Threat
+					if (object->Owner->EnemyHouseIndex >= 0 && pTechno->Owner == HouseClass::Array->Items[object->Owner->EnemyHouseIndex])
+					{
+						double const& EnemyHouseThreatBonus = RulesClass::Instance->EnemyHouseThreatBonus;
+						objectThreatValue += EnemyHouseThreatBonus;
+					}
+
+					// Extra threat based on current health. More damaged == More threat (almost destroyed objects gets more priority)
+					objectThreatValue += object->Health * (1 - object->GetHealthPercentage());
+					value = (objectThreatValue * threatMultiplier) / ((pTechno->DistanceFrom(object) / 256.0) + 1.0);
+
+					if (calcThreatMode == DistanceMode::idkZero)
+					{
+						// Is this object very FAR? then LESS THREAT against pTechno.
+						// More CLOSER? MORE THREAT for pTechno.
+						if (value > bestVal || bestVal < 0)
+							isGoodTarget = true;
+					}
+					else
+					{
+						// Is this object very FAR? then MORE THREAT against pTechno.
+						// More CLOSER? LESS THREAT for pTechno.
+						if (value < bestVal || bestVal < 0)
+							isGoodTarget = true;
+					}
+				}
+				else
+				{
+					// Selection affected by distance
+					if (calcThreatMode == DistanceMode::Closest)
+					{
+						// Is this object very FAR? then LESS THREAT against pTechno.
+						// More CLOSER? MORE THREAT for pTechno.
+						value = pTechno->DistanceFrom(object); // Note: distance is in leptons (*256)
+
+						if (value < bestVal || bestVal < 0)
+							isGoodTarget = true;
+					}
+					else
+					{
+						if (calcThreatMode == DistanceMode::Furtherst)
+						{
+							// Is this object very FAR? then MORE THREAT against pTechno.
+							// More CLOSER? LESS THREAT for pTechno.
+							value = pTechno->DistanceFrom(object); // Note: distance is in leptons (*256)
+
+							if (value > bestVal || bestVal < 0)
+								isGoodTarget = true;
+						}
+					}
+				}
+
+				if (isGoodTarget)
+				{
+					bestObject = object;
+					bestVal = value;
+				}
 			}
 		}
 	}

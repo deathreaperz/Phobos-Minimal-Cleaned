@@ -8,57 +8,78 @@
 
 void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, bool pickAllies = false, int attackAITargetType = -1, int idxAITargetTypeItem = -1)
 {
+	auto pScript = pTeam->CurrentScript;
+	bool bAircraftsWithoutAmmo = false;
 
-	if (!pTeam->CurrentScript)
+	if (!pScript)
 	{
 		pTeam->StepCompleted = true;
 		return;
 	}
 
-	auto pScript = pTeam->CurrentScript;
-	auto const& [act, scriptArgument] = pScript->GetCurrentAction();
+	auto const& [act, scriptArgument] = pScript->GetCurrentAction();// This is the target type
 	auto const& [nextAct, nextArg] = pScript->GetNextAction();
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 
 	if (!pTeamData)
 	{
 		pTeam->StepCompleted = true;
+		auto const& [nextAct, nextArg] = pScript->GetNextAction();
 		ScriptExtData::Log("AI Scripts - Move: [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d -> (Reason: ExtData found)\n",
-							pTeam->Type->ID, pScript->CurrentMission,
-							act, scriptArgument, pScript->Type->ID,
-							pScript->CurrentMission + 1, nextAct, nextArg);
+			pTeam->Type->ID,
+			pScript->CurrentMission,
+			act,
+			scriptArgument,
+			pScript->Type->ID,
+			pScript->CurrentMission + 1,
+			nextAct,
+			nextArg);
+
 		return;
 	}
 
+	// When the new target wasn't found it sleeps some few frames before the new attempt. This can save cycles and cycles of unnecessary executed lines.
 	if (pTeamData->WaitNoTargetTimer.InProgress())
-	{
 		return;
-	}
 
 	pTeamData->WaitNoTargetTimer.Stop();
-	pTeamData->WaitNoTargetAttempts = (pTeamData->WaitNoTargetAttempts > 0) ? pTeamData->WaitNoTargetAttempts - 1 : 0;
 
-	bool bAircraftsWithoutAmmo = false;
+	if (pTeamData->WaitNoTargetAttempts > 0)
+		pTeamData->WaitNoTargetAttempts--;
 
-	for (auto pCur = pTeam->FirstUnit; pCur; pCur = pCur->NextTeamMember)
+	FootClass* pCur = nullptr;
+	if (auto pFirst = pTeam->FirstUnit)
 	{
-		if (!ScriptExtData::IsUnitAvailable(pCur, false))
+		auto pNext = pFirst->NextTeamMember;
+
+		do
 		{
-			pTeam->RemoveMember(pCur, -1, 1);
-		}
-		else
-		{
-			auto pTechnoType = pCur->GetTechnoType();
-			if (pCur->WhatAmI() == AbstractType::Aircraft &&
-				!pCur->IsInAir() &&
-				static_cast<AircraftTypeClass*>(pTechnoType)->AirportBound &&
-				pCur->Ammo < pTechnoType->Ammo)
+			if (!ScriptExtData::IsUnitAvailable(pFirst, false))
+				pTeam->RemoveMember(pFirst, -1, 1);
+			else
 			{
-				bAircraftsWithoutAmmo = true;
+				auto const pTechnoType = pFirst->GetTechnoType();
+
+				if (pFirst->WhatAmI() == AbstractType::Aircraft
+					&& !pFirst->IsInAir()
+					&& static_cast<AircraftTypeClass*>(pTechnoType)->AirportBound
+					&& pFirst->Ammo < pTechnoType->Ammo)
+				{
+					bAircraftsWithoutAmmo = true;
+				}
 			}
+
+			pCur = pNext;
+
+			if (pNext)
+				pNext = pNext->NextTeamMember;
+
+			pFirst = pCur;
 		}
+		while (pCur);
 	}
 
+	// Find the Leader
 	if (!pTeamData->TeamLeader)
 	{
 		pTeamData->TeamLeader = ScriptExtData::FindTheTeamLeader(pTeam);
@@ -66,17 +87,25 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 
 	if (!pTeamData->TeamLeader || bAircraftsWithoutAmmo)
 	{
-		// Reset team data
 		pTeamData->IdxSelectedObjectFromAIList = -1;
 		pTeamData->CloseEnough = -1;
+
 		pTeamData->WaitNoTargetTimer.Stop();
 		pTeamData->WaitNoTargetAttempts = 0;
 
+		// This action finished
 		pTeam->StepCompleted = true;
+		auto const& [nextAct, nextArg] = pScript->GetNextAction();
 		ScriptExtData::Log("AI Scripts - Move: [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d -> (Reasons: No Leader | Aircrafts without ammo)\n",
-							pTeam->Type->ID, pScript->Type->ID,
-							pScript->CurrentMission, act, scriptArgument,
-							pScript->CurrentMission + 1, nextAct, nextArg);
+			pTeam->Type->ID,
+			pScript->Type->ID,
+			pScript->CurrentMission,
+			act,
+			scriptArgument,
+			pScript->CurrentMission + 1,
+			nextAct,
+			nextArg);
+
 		return;
 	}
 
@@ -85,112 +114,266 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 
 	if (!pFocus && !bAircraftsWithoutAmmo)
 	{
-		// Your logic for selecting a new target
+		// This part of the code is used for picking a new target.
+		int targetMask = scriptArgument;
+		auto selectedTarget = ScriptExtData::FindBestObject(
+			pTeamData->TeamLeader,
+			targetMask,
+			calcThreatMode,
+			pickAllies,
+			attackAITargetType,
+			idxAITargetTypeItem
+		);
+
+		if (selectedTarget)
+		{
+			ScriptExtData::Log("AI Scripts - Move: [%s] [%s] (line: %d = %d,%d) Leader [%s] (UID: %lu) selected [%s] (UID: %lu) as destination target.\n",
+				pTeam->Type->ID,
+				pScript->Type->ID,
+				pScript->CurrentMission,
+				act,
+				scriptArgument,
+				pLeaderUnitType->get_ID(),
+				pTeamData->TeamLeader->UniqueID,
+				selectedTarget->GetTechnoType()->get_ID(),
+				selectedTarget->UniqueID);
+
+			pTeam->Focus = selectedTarget;
+			pTeamData->WaitNoTargetAttempts = 0; // Disable Script Waits if there are any because a new target was selected
+			pTeamData->WaitNoTargetTimer.Stop();
+
+			for (auto pFoot = pTeam->FirstUnit; pFoot; pFoot = pFoot->NextTeamMember)
+			{
+				if (ScriptExtData::IsUnitAvailable(pFoot, false))
+				{
+					auto const pTechnoType = pFoot->GetTechnoType();
+
+					if (pTechnoType->Underwater && pTechnoType->LandTargeting == LandTargetingType::Land_not_okay && selectedTarget->GetCell()->LandType != LandType::Water) // Land not OK for the Naval unit
+					{
+						// Naval units like Submarines are unable to target ground targets except if they have anti-ground weapons. Ignore the attack
+						pFoot->SetTarget(nullptr);
+						pFoot->SetDestination(nullptr, false);
+						pFoot->QueueMission(Mission::Area_Guard, true);
+
+						continue;
+					}
+
+					// Reset previous command
+					pFoot->SetTarget(nullptr);
+					pFoot->SetDestination(nullptr, false);
+					pFoot->ForceMission(Mission::Guard);
+
+					// Get a cell near the target
+					pFoot->QueueMission(Mission::Move, false);
+					CoordStruct coord = TechnoExtData::PassengerKickOutLocation(selectedTarget, pFoot, 10);
+					coord = coord != CoordStruct::Empty ? coord : selectedTarget->Location;
+
+					if (CellClass* pCellDestination = MapClass::Instance->TryGetCellAt(coord))
+						pFoot->SetDestination(pCellDestination, true);
+
+					// Aircraft hack. I hate how this game auto-manages the aircraft missions.
+					if (pFoot->WhatAmI() == AbstractType::Aircraft && pFoot->Ammo > 0 && !pFoot->IsInAir())
+						pFoot->QueueMission(Mission::Move, false);
+				}
+			}
+		}
+		else
+		{
+			// No target was found with the specific criteria.
+
+			if (pTeamData->WaitNoTargetAttempts > 0)
+			{
+				pTeamData->WaitNoTargetTimer.Start(30); // No target? let's wait some frames
+				return;
+			}
+
+			pTeamData->IdxSelectedObjectFromAIList = -1;
+			pTeamData->CloseEnough = -1;
+
+			// This action finished
+			pTeam->StepCompleted = true;
+			auto const& [nextAct, nextArg] = pScript->GetNextAction();
+			ScriptExtData::Log("AI Scripts - Move: [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d (new target NOT FOUND)\n",
+				pTeam->Type->ID,
+				pScript->Type->ID,
+				pScript->CurrentMission,
+				act,
+				scriptArgument,
+				pScript->CurrentMission + 1,
+				nextAct,
+				nextArg);
+
+			return;
+		}
 	}
 	else
 	{
-		// Update "Move" mission for each team unit
+		// This part of the code is used for updating the "Move" mission in each team unit
 		if (ScriptExtData::MoveMissionEndStatus(pTeam, pFocus, pTeamData->TeamLeader, pTeamData->MoveMissionEndMode))
 		{
 			pTeamData->MoveMissionEndMode = 0;
 			pTeamData->IdxSelectedObjectFromAIList = -1;
 			pTeamData->CloseEnough = -1;
 
+			// This action finished
 			pTeam->StepCompleted = true;
+			auto const& [nextAct, nextArg] = pScript->GetNextAction();
 			ScriptExtData::Log("AI Scripts - Move: [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d (Reason: Reached destination)\n",
-								pTeam->Type->ID, pScript->Type->ID,
-								pScript->CurrentMission, act, scriptArgument,
-								pScript->CurrentMission + 1, nextAct, nextArg);
+				pTeam->Type->ID,
+				pScript->Type->ID,
+				pScript->CurrentMission,
+				act,
+				scriptArgument,
+				pScript->CurrentMission + 1,
+				nextAct,
+				nextArg
+			);
+			return;
 		}
 	}
 }
 
-TechnoClass* ScriptExtData::FindBestObject(TechnoClass* pTechno, int method, DistanceMode calcThreatMode, bool pickAllies, int attackAITargetType, int idxAITargetTypeItem)
+TechnoClass* ScriptExtData::FindBestObject(TechnoClass* pTechno, int method, DistanceMode calcThreatMode, bool pickAllies = false, int attackAITargetType = -1, int idxAITargetTypeItem = -1)
 {
 	TechnoClass* bestObject = nullptr;
-	double bestVal = -1.0;
+	double bestVal = -1;
 	HouseClass* enemyHouse = nullptr;
 	auto pTechnoType = pTechno->GetTechnoType();
 
+	// Favorite Enemy House case. If set, AI will focus against that House
 	if (!pickAllies && pTechno->BelongsToATeam())
 	{
 		if (auto pFoot = abstract_cast<FootClass*>(pTechno))
 		{
 			const int enemyHouseIndex = pFoot->Team->FirstUnit->Owner->EnemyHouseIndex;
 			const auto pHouseExt = HouseExtContainer::Instance.Find(pFoot->Team->Owner);
-			const bool onlyTargetHouseEnemy = pHouseExt->ForceOnlyTargetHouseEnemyMode != -1 ? pFoot->Team->Type->OnlyTargetHouseEnemy : pHouseExt->m_ForceOnlyTargetHouseEnemy;
+			const bool onlyTargetHouseEnemy = pHouseExt->ForceOnlyTargetHouseEnemyMode != -1 ?
+				pFoot->Team->Type->OnlyTargetHouseEnemy : pHouseExt->m_ForceOnlyTargetHouseEnemy;
 
 			if (onlyTargetHouseEnemy && enemyHouseIndex >= 0)
 				enemyHouse = HouseClass::Array->Items[enemyHouseIndex];
 		}
 	}
 
+	// Generic method for targeting
 	TechnoClass::Array->for_each([&](TechnoClass* pObj)
-	{
-		if (!ScriptExtData::IsUnitAvailable(pObj, true) || pObj == pTechno || (enemyHouse && enemyHouse != pObj->Owner) || pObj->InWhichLayer() == Layer::Underground)
-			return;
+ {
+	 if (!ScriptExtData::IsUnitAvailable(pObj, true) || pObj == pTechno)
+		 return;
 
-		if (auto objectType = pObj->GetTechnoType())
-		{
-			if (pObj->CloakState == CloakState::Cloaked && !objectType->Naval)
-				return;
+	 //if (pTechno->Spawned)
+	 //	return;
 
-			if (pObj->CloakState == CloakState::Cloaked && objectType->Underwater &&
-				(pTechnoType->NavalTargeting == NavalTargetingType::Underwater_never || pTechnoType->NavalTargeting == NavalTargetingType::Naval_none))
-			{
-				return;
-			}
+	 if (enemyHouse && enemyHouse != pObj->Owner)
+		 return;
 
-			if (objectType->Naval && pTechnoType->LandTargeting == LandTargetingType::Land_not_okay && pObj->GetCell()->LandType != LandType::Water)
-			{
-				return;
-			}
+	 // Don't pick underground units
+	 if (pObj->InWhichLayer() == Layer::Underground)
+		 return;
 
-			if ((pickAllies && pTechno->Owner->IsAlliedWith(pObj)) || (!pickAllies && !pTechno->Owner->IsAlliedWith(pObj)))
-			{
-				double value = 0.0;
+	 if (auto objectType = pObj->GetTechnoType())
+	 {
+		 // Stealth ground unit check
+		 if (pObj->CloakState == CloakState::Cloaked && !objectType->Naval)
+			 return;
 
-				if (ScriptExtData::EvaluateObjectWithMask(pObj, method, attackAITargetType, idxAITargetTypeItem, pTechno))
-				{
-					if (calcThreatMode == DistanceMode::idkZero || calcThreatMode == DistanceMode::idkOne)
-					{
-						double threatMultiplier = 128.0;
-						double objectThreatValue = pObj->GetThreatValue();
+		 // Submarines aren't a valid target
+		 if (pObj->CloakState == CloakState::Cloaked
+			 && objectType->Underwater
+			 && (pTechnoType->NavalTargeting == NavalTargetingType::Underwater_never
+				 || pTechnoType->NavalTargeting == NavalTargetingType::Naval_none))
+		 {
+			 return;
+		 }
 
-						if (objectType->SpecialThreatValue > 0)
-						{
-							objectThreatValue += objectType->SpecialThreatValue * RulesClass::Instance->TargetSpecialThreatCoefficientDefault;
-						}
+		 // Land not OK for the Naval unit
+		 if (objectType->Naval
+			 && pTechnoType->LandTargeting == LandTargetingType::Land_not_okay
+			 && pObj->GetCell()->LandType != LandType::Water)
+		 {
+			 return;
+		 }
 
-						if (pTechno->Owner == HouseClass::Array->Items[pObj->Owner->EnemyHouseIndex])
-						{
-							objectThreatValue += RulesClass::Instance->EnemyHouseThreatBonus;
-						}
+		 if ((pickAllies && pTechno->Owner->IsAlliedWith(pObj)) || (!pickAllies && !pTechno->Owner->IsAlliedWith(pObj)))
+		 {
+			 double value = 0;
 
-						objectThreatValue += pObj->Health * (1 - pObj->GetHealthPercentage());
-						value = (objectThreatValue * threatMultiplier) / ((pTechno->DistanceFrom(pObj) / 256.0) + 1.0);
+			 if (ScriptExtData::EvaluateObjectWithMask(pObj, method, attackAITargetType, idxAITargetTypeItem, pTechno))
+			 {
+				 bool isGoodTarget = false;
 
-						if ((calcThreatMode == DistanceMode::idkZero && (value > bestVal || bestVal < 0)) ||
-							(calcThreatMode == DistanceMode::idkOne && (value < bestVal || bestVal < 0)))
-						{
-							bestObject = pObj;
-							bestVal = value;
-						}
-					}
-					else
-					{
-						double distance = pTechno->DistanceFrom(pObj) / 256.0;
+				 if (calcThreatMode == DistanceMode::idkZero || calcThreatMode == DistanceMode::idkOne)
+				 {
+					 // Threat affected by distance
+					 double threatMultiplier = 128.0;
+					 double objectThreatValue = pObj->GetThreatValue();
 
-						if ((calcThreatMode == DistanceMode::Closest && (distance < bestVal || bestVal < 0)) ||
-							(calcThreatMode == DistanceMode::Furtherst && (distance > bestVal || bestVal < 0)))
-						{
-							bestObject = pObj;
-							bestVal = distance;
-						}
-					}
-				}
-			}
-		}
+					 if (objectType->SpecialThreatValue > 0)
+					 {
+						 double const& TargetSpecialThreatCoefficientDefault = RulesClass::Instance->TargetSpecialThreatCoefficientDefault;
+						 objectThreatValue += objectType->SpecialThreatValue * TargetSpecialThreatCoefficientDefault;
+					 }
+
+					 // Is Defender house targeting Attacker House? if "yes" then more Threat
+					 if (pTechno->Owner == HouseClass::Array->Items[pObj->Owner->EnemyHouseIndex])
+					 {
+						 double const& EnemyHouseThreatBonus = RulesClass::Instance->EnemyHouseThreatBonus;
+						 objectThreatValue += EnemyHouseThreatBonus;
+					 }
+
+					 // Extra threat based on current health. More damaged == More threat (almost destroyed objects gets more priority)
+					 objectThreatValue += pObj->Health * (1 - pObj->GetHealthPercentage());
+					 value = (objectThreatValue * threatMultiplier) / ((pTechno->DistanceFrom(pObj) / 256.0) + 1.0);
+
+					 if (calcThreatMode == DistanceMode::idkZero)
+					 {
+						 // Is this object very FAR? then LESS THREAT against pTechno.
+						 // More CLOSER? MORE THREAT for pTechno.
+						 if (value > bestVal || bestVal < 0)
+							 isGoodTarget = true;
+					 }
+					 else
+					 {
+						 // Is this object very FAR? then MORE THREAT against pTechno.
+						 // More CLOSER? LESS THREAT for pTechno.
+						 if (value < bestVal || bestVal < 0)
+							 isGoodTarget = true;
+					 }
+				 }
+				 else
+				 {
+					 // Selection affected by distance
+					 if (calcThreatMode == DistanceMode::Closest)
+					 {
+						 // Is this object very FAR? then LESS THREAT against pTechno.
+						 // More CLOSER? MORE THREAT for pTechno.
+						 value = pTechno->DistanceFrom(pObj); // Note: distance is in leptons (*256)
+
+						 if (value < bestVal || bestVal < 0)
+							 isGoodTarget = true;
+					 }
+					 else
+					 {
+						 if (calcThreatMode == DistanceMode::Furtherst)
+						 {
+							 // Is this object very FAR? then MORE THREAT against pTechno.
+							 // More CLOSER? LESS THREAT for pTechno.
+							 value = pTechno->DistanceFrom(pObj); // Note: distance is in leptons (*256)
+
+							 if (value > bestVal || bestVal < 0)
+								 isGoodTarget = true;
+						 }
+					 }
+				 }
+
+				 if (isGoodTarget)
+				 {
+					 bestObject = pObj;
+					 bestVal = value;
+				 }
+			 }
+		 }
+	 }
 	});
 
 	return bestObject;
@@ -198,16 +381,14 @@ TechnoClass* ScriptExtData::FindBestObject(TechnoClass* pTechno, int method, Dis
 
 void ScriptExtData::Mission_Move_List(TeamClass* pTeam, DistanceMode calcThreatMode, bool pickAllies, int attackAITargetType)
 {
-	TeamExtData* pTeamExt = TeamExtContainer::Instance.Find(pTeam);
-	pTeamExt->IdxSelectedObjectFromAIList = -1;
-
+	TeamExtContainer::Instance.Find(pTeam)->IdxSelectedObjectFromAIList = -1;
 	const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 
 	if (attackAITargetType < 0)
 		attackAITargetType = curArg;
 
 	const auto& Arr = RulesExtData::Instance()->AITargetTypesLists;
-	if (static_cast<size_t>(attackAITargetType) < Arr.size() && !Arr[attackAITargetType].empty())
+	if ((size_t)attackAITargetType < Arr.size() && !Arr[attackAITargetType].empty())
 	{
 		ScriptExtData::Mission_Move(pTeam, calcThreatMode, pickAllies, attackAITargetType, -1);
 		return;
@@ -234,38 +415,38 @@ void ScriptExtData::Mission_Move_List1Random(TeamClass* pTeam, DistanceMode calc
 	const auto& [curAct, curArg] = pScript->GetCurrentAction();
 
 	if (attackAITargetType < 0)
-	{
 		attackAITargetType = curArg;
-	}
 
 	if ((size_t)attackAITargetType < RulesExtData::Instance()->AITargetTypesLists.size())
 	{
-		const auto& aitargetTypesList = RulesExtData::Instance()->AITargetTypesLists[attackAITargetType];
-
-		if ((size_t)pTeamData->IdxSelectedObjectFromAIList < aitargetTypesList.size())
+		if ((size_t)pTeamData->IdxSelectedObjectFromAIList < RulesExtData::Instance()->AITargetTypesLists[attackAITargetType].size())
 		{
 			ScriptExtData::Mission_Move(pTeam, calcThreatMode, pickAllies, attackAITargetType, pTeamData->IdxSelectedObjectFromAIList);
 			return;
 		}
 
 		// Still no random target selected
-		if (!aitargetTypesList.empty())
+		if (!RulesExtData::Instance()->AITargetTypesLists[attackAITargetType].empty())
 		{
+			// Finding the objects from the list that actually exists in the map
 			TechnoClass::Array->for_each([&](TechnoClass* pTechno)
 			{
 				if (!ScriptExtData::IsUnitAvailable(pTechno, true))
-				{
 					return;
-				}
+
+				//if (pTechno->Spawned)
+				//	return;
 
 				auto pTechnoType = pTechno->GetTechnoType();
 				bool found = false;
 
-				for (auto j = 0u; j < aitargetTypesList.size() && !found; j++)
+				for (auto j = 0u; j < RulesExtData::Instance()->AITargetTypesLists[attackAITargetType].size() && !found; j++)
 				{
-					if (pTechnoType == aitargetTypesList[j] &&
-						((pickAllies && pTeam->FirstUnit->Owner->IsAlliedWith(pTechno)) ||
-							(!pickAllies && !pTeam->FirstUnit->Owner->IsAlliedWith(pTechno))))
+					if (pTechnoType == RulesExtData::Instance()->AITargetTypesLists[attackAITargetType][j]
+						&& ((pickAllies
+							&& pTeam->FirstUnit->Owner->IsAlliedWith(pTechno))
+							|| (!pickAllies
+								&& !pTeam->FirstUnit->Owner->IsAlliedWith(pTechno))))
 					{
 						Mission_Move_List1Random_validIndexes.push_back(j);
 						found = true;

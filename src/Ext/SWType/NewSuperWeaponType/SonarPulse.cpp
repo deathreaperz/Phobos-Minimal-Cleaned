@@ -11,7 +11,10 @@ std::vector<const char*> SW_SonarPulse::GetTypeString() const
 
 SuperWeaponFlags SW_SonarPulse::Flags(const SWTypeExtData* pData) const
 {
-	return (GetRange(pData).WidthOrRange > 0) ? SuperWeaponFlags::None : SuperWeaponFlags::NoEvent;
+	if (this->GetRange(pData).WidthOrRange > 0)
+		return SuperWeaponFlags::NoEvent;
+
+	return SuperWeaponFlags::None;
 }
 
 bool SW_SonarPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
@@ -21,12 +24,23 @@ bool SW_SonarPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 
 	auto Detect = [pThis, pData](TechnoClass* const pTechno) -> bool
 		{
-			if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner) || !pData->IsTechnoAffected(pTechno))
+			// is this thing affected at all?
+			if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner))
+			{
 				return true;
+			}
+
+			if (!pData->IsTechnoAffected(pTechno))
+			{
+				return true;
+			}
 
 			auto& nTime = TechnoExtContainer::Instance.Find(pTechno)->CloakSkipTimer;
-			nTime.Start(std::max(nTime.GetTimeLeft(), pData->Sonar_Delay.Get()));
 
+			nTime.Start(MaxImpl(
+				nTime.GetTimeLeft(), pData->Sonar_Delay.Get()));
+
+			// actually detect this
 			if (pTechno->CloakState != CloakState::Uncloaked)
 			{
 				pTechno->Uncloak(true);
@@ -36,10 +50,11 @@ bool SW_SonarPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 			return true;
 		};
 
-	auto const range = GetRange(pData);
+	auto const range = this->GetRange(pData);
 
 	if (range.WidthOrRange < 0)
 	{
+		// decloak everything regardless of ranges
 		for (auto const pTechno : *TechnoClass::Array)
 		{
 			Detect(pTechno);
@@ -47,10 +62,12 @@ bool SW_SonarPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 	}
 	else
 	{
+		// decloak everything in range
 		Helpers::Alex::DistinctCollector<TechnoClass*> items;
 		Helpers::Alex::for_each_in_rect_or_range<TechnoClass>(Coords, range.WidthOrRange, range.Height, items);
 		items.apply_function_for_each(Detect);
 
+		// radar event only if this isn't full map sonar
 		if (pData->SW_RadarEvent)
 		{
 			RadarEventClass::Create(RadarEventType::SuperweaponActivated, Coords);
@@ -63,8 +80,11 @@ bool SW_SonarPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 void SW_SonarPulse::Initialize(SWTypeExtData* pData)
 {
 	pData->AttachedToObject->Action = Action(AresNewActionType::SuperWeaponAllowed);
+	// some defaults
 	pData->SW_RadarEvent = false;
+
 	pData->Sonar_Delay = 60;
+
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::Stealth;
 	pData->SW_AffectsHouse = AffectedHouse::Enemies;
 	pData->SW_AffectsTarget = SuperWeaponTarget::Water;
@@ -75,15 +95,22 @@ void SW_SonarPulse::Initialize(SWTypeExtData* pData)
 void SW_SonarPulse::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const char* section = pData->get_ID();
+
 	pData->Sonar_Delay = pINI->ReadInteger(section, "SonarPulse.Delay", pData->Sonar_Delay);
-	pData->AttachedToObject->Action = (GetRange(pData).WidthOrRange < 0) ? Action::None : Action(AresNewActionType::SuperWeaponAllowed);
+
+	// full map detection?
+	pData->AttachedToObject->Action = (GetRange(pData).WidthOrRange < 0) ? Action::None : (Action)AresNewActionType::SuperWeaponAllowed;
 }
 
 bool SW_SonarPulse::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	return (IsLaunchsiteAlive(pBuilding) &&
-			(!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type)) ||
-			IsSWTypeAttachedToThis(pData, pBuilding));
+	if (!this->IsLaunchsiteAlive(pBuilding))
+		return false;
+
+	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+		return true;
+
+	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }
 
 SWRange SW_SonarPulse::GetRange(const SWTypeExtData* pData) const

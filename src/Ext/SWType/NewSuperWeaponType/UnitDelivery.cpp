@@ -44,12 +44,13 @@ void SW_UnitDelivery::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 bool SW_UnitDelivery::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	if (!this->IsLaunchsiteAlive(pBuilding) || (pData->SW_Lauchsites.empty() || !pData->SW_Lauchsites.Contains(pBuilding->Type)))
-	{
-		return this->IsSWTypeAttachedToThis(pData, pBuilding);
-	}
+	if (!this->IsLaunchsiteAlive(pBuilding))
+		return false;
 
-	return true;
+	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+		return true;
+
+	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }
 
 void UnitDeliveryStateMachine::Update()
@@ -71,38 +72,42 @@ void UnitDeliveryStateMachine::Update()
 	}
 }
 
+//This function doesn't skip any placeable items, no matter how
+//they are ordered. Infantry is grouped. Units are moved to the
+//center as close as they can.
 void UnitDeliveryStateMachine::PlaceUnits()
 {
 	const auto pData = SWTypeExtContainer::Instance.Find(this->Super->Type);
 
+	// some mod using this for an dummy SW , just skip everything if the SW_Deliverables
+	// is empty
 	if (pData->SW_Deliverables.empty())
-	{
 		return;
-	}
 
+	// get the house the units will belong to
 	const auto pOwner = HouseExtData::GetHouseKind(pData->SW_OwnerHouse, false, this->Super->Owner);
 	const bool IsHumanControlled = pOwner->IsControlledByHuman();
 	const bool bBaseNormal = pData->SW_BaseNormal;
 	const bool bDeliverBuildup = pData->SW_DeliverBuildups;
 	const size_t facingsize = pData->SW_Deliverables_Facing.size();
 
+	//Debug::Log("PlaceUnits for [%s] - Owner[%s] \n", pData->get_ID(), pOwner->get_ID());
+	// create an instance of each type and place it
 	for (size_t i = 0; i < pData->SW_Deliverables.size(); ++i)
 	{
 		auto pType = pData->SW_Deliverables[i];
 
 		if (!pType || pType->Strength == 0)
-		{
 			continue;
-		}
 
 		auto Item = static_cast<TechnoClass*>(pType->CreateObject(pOwner));
 
 		if (!Item)
-		{
 			continue;
-		}
 
-		auto ItemBuilding = static_cast<BuildingClass*>(Item);
+		//Debug::Log("PlaceUnits for [%s] - Owner[%s] After CreateObj[%s] \n", pData->get_ID(), pOwner->get_ID() , pType->ID);
+
+		const auto ItemBuilding = specific_cast<BuildingClass*>(Item);
 
 		// get the best options to search for a place
 		short extentX = 1;
