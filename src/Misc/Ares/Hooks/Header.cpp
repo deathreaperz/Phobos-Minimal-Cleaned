@@ -4456,7 +4456,7 @@ bool AresEMPulse::IsTypeEMPProne(TechnoClass* pTechno)
 		pTypeExt->ImmuneToEMP = !TypeImmune;
 	}
 
-	return pTypeExt->ImmuneToEMP.get();
+	return pTypeExt->ImmuneToEMP.Get();
 }
 
 bool AresEMPulse::isCurrentlyEMPImmune(WarheadTypeClass* pWarhead, TechnoClass* Target, HouseClass* SourceHouse)
