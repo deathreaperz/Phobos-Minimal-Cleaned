@@ -1,6 +1,10 @@
- #include "Body.h"
+#include "Body.h"
 
 #include <Ext/House/Body.h>
+
+#include <tuple>
+#include <vector>
+
 #ifndef aaa
 std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType, bool naval, HouseExtData* pData)
 {
@@ -11,13 +15,10 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 	switch (AbsType)
 	{
 	case AbstractType::BuildingType:
-	{
 		currFactory = &pData->Factory_BuildingType;
 		block = pRules->ForbidParallelAIQueues_Building.Get(!pRules->AllowParallelAIQueues);
 		break;
-	}
 	case AbstractType::UnitType:
-	{
 		if (!naval)
 		{
 			block = pRules->ForbidParallelAIQueues_Vehicle.Get(!pRules->AllowParallelAIQueues);
@@ -28,26 +29,20 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 			block = pRules->ForbidParallelAIQueues_Navy.Get(!pRules->AllowParallelAIQueues);
 			currFactory = &pData->Factory_NavyType;
 		}
-
 		break;
-	}
 	case AbstractType::InfantryType:
-	{
-		block = pRules->ForbidParallelAIQueues_Infantry.Get(!pRules->AllowParallelAIQueues);
 		currFactory = &pData->Factory_InfantryType;
+		block = pRules->ForbidParallelAIQueues_Infantry.Get(!pRules->AllowParallelAIQueues);
 		break;
-	}
 	case AbstractType::AircraftType:
-	{
 		currFactory = &pData->Factory_AircraftType;
 		block = pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues);
 		break;
-	}
 	default:
 		break;
 	}
 
-	return { currFactory  , block ,AbsType };
+	return { currFactory, block, AbsType };
 }
 
 //#include <ostream>

@@ -2174,7 +2174,7 @@ BuildingClass* IsAnySpysatActive(HouseClass* pThis)
 				const auto pExt = BuildingTypeExtContainer::Instance.Find(*begin);
 				//const auto Powered_ = pBld->IsOverpowered || (!PowerDown && !((*begin)->PowerDrain && LowpOwerHouse));
 
-				const bool IsFactoryPowered = !(*begin)->Powered || !pExt->FactoryPlant_RequirePower || Online;
+				const bool IsFactoryPowered = !pExt->FactoryPlant_RequirePower || ((*begin)->Powered && Online);
 
 				//recalculate the multiplier
 				if ((*begin)->FactoryPlant && IsFactoryPowered)
@@ -2187,7 +2187,7 @@ BuildingClass* IsAnySpysatActive(HouseClass* pThis)
 				}
 
 				//only pick first spysat
-				const bool IsSpySatPowered = !(*begin)->Powered || !pExt->SpySat_RequirePower || Online;
+				const bool IsSpySatPowered = !pExt->SpySat_RequirePower || ((*begin)->Powered && Online);
 				if (!Spysat && (*begin)->SpySat && !Jammered && IsSpySatPowered)
 				{
 					const bool IsDiscovered = pBld->DiscoveredByCurrentPlayer && SessionClass::Instance->GameMode == GameMode::Campaign;
@@ -2201,7 +2201,7 @@ BuildingClass* IsAnySpysatActive(HouseClass* pThis)
 				if (pExt->SpeedBonus.Enabled && Online)
 					++pHouseExt->Building_BuildSpeedBonusCounter[(*begin)];
 
-				const bool IsPurifierRequirePower = !(*begin)->Powered || !pExt->PurifierBonus_RequirePower || Online;
+				const bool IsPurifierRequirePower = !pExt->PurifierBonus_RequirePower || ((*begin)->Powered && Online);
 				// add eligible purifier
 				if ((*begin)->OrePurifier && IsPurifierRequirePower)
 					++pHouseExt->Building_OrePurifiersCounter[(*begin)];

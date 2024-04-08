@@ -1,6 +1,6 @@
 #pragma once
 
-#include <WarheadTypeClass.h>
+#include <WarheadFlags.h>
 #include <Helpers/Macro.h>
 
 struct VersesData

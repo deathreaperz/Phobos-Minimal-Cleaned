@@ -1,10 +1,8 @@
 #pragma once
 
-#include <Helpers/Macro.h>
-#include <YRPP.h>
-#include <WarheadTypeClass.h>
-
+#include <CRT.h>
 #include <sstream>
+#include <WarheadFlags.h>
 
 // converters
 struct Conversions
