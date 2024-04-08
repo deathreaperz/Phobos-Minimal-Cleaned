@@ -162,4 +162,3 @@ TrajectoryCheckReturnType SpiralTrajectory::OnAITechnoCheck(TechnoClass* pTechno
 {
 	return TrajectoryCheckReturnType::SkipGameCheck; // Bypass game checks entirely.
 }
-#pragma optimize("", on )

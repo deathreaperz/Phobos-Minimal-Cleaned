@@ -7,9 +7,8 @@
 #include "Body.h"
 #include <Ext/TechnoType/Body.h>
 #include <FactoryClass.h>
-#include <CCINIClass.h>
 
-DEFINE_HOOK(0x452678, BuildingClass_CanUpgrade_UpgradeBuildings, 0x6)
+DEFINE_HOOK(0x452678, BuildingClass_CanUpgrade_UpgradeBuildings, 0x6) //8
 {
 	enum { Continue = 0x4526A7, ForbidUpgrade = 0x4526B5 };
 
@@ -26,6 +25,7 @@ DEFINE_HOOK(0x452678, BuildingClass_CanUpgrade_UpgradeBuildings, 0x6)
 	return ForbidUpgrade;
 }
 
+// Parse Powered(Light|Effect|Special) keys for upgrade anims.
 DEFINE_HOOK(0x464749, BuildingTypeClass_ReadINI_PowerUpAnims, 0x6)
 {
 	GET(BuildingTypeClass*, pThis, EBP);
@@ -54,7 +54,8 @@ DEFINE_HOOK(0x464749, BuildingTypeClass_ReadINI_PowerUpAnims, 0x6)
 	return 0x46492E;
 }
 
-bool AllowUpgradeAnim(BuildingClass* pBuilding, BuildingAnimSlot anim)
+// Don't allow upgrade anims to be created if building is not upgraded or they require power to be shown and the building isn't powered.
+FORCEINLINE bool AllowUpgradeAnim(BuildingClass* pBuilding, BuildingAnimSlot anim)
 {
 	auto const pType = pBuilding->Type;
 
@@ -91,7 +92,7 @@ DEFINE_HOOK(0x45189D, BuildingClass_AnimUpdate_Upgrades, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x4408EB, BuildingClass_Unlimbo_UpgradeBuildings, 0x6)
+DEFINE_HOOK(0x4408EB, BuildingClass_Unlimbo_UpgradeBuildings, 0x6) //A
 {
 	enum { Continue = 0x440912, ForbidUpgrade = 0x440926 };
 

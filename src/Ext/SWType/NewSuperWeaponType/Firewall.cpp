@@ -6,7 +6,7 @@ SuperWeaponType SW_Firewall::FirewallType = SuperWeaponType::Invalid;
 
 SW_Firewall::~SW_Firewall()
 {
-	FirewallType = SuperWeaponType::Invalid;
+	SW_Firewall::FirewallType = SuperWeaponType::Invalid;
 }
 
 std::vector<const char*> SW_Firewall::GetTypeString() const
@@ -19,19 +19,19 @@ void SW_Firewall::Initialize(SWTypeExtData* pData)
 	pData->AttachedToObject->Action = Action::None;
 	pData->AttachedToObject->UseChargeDrain = true;
 	pData->SW_RadarEvent = false;
-}
+};
 
 void SW_Firewall::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
-	Initialize(pData);
-}
+	pData->AttachedToObject->Action = Action::None;
+	pData->AttachedToObject->UseChargeDrain = true;
+	pData->SW_RadarEvent = false;
+};
 
 bool SW_Firewall::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
 {
 	if (!pThis->Granted)
-	{
 		return false;
-	}
 
 	AresHouseExt::SetFirestormState(pThis->Owner, true);
 

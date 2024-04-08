@@ -24,39 +24,44 @@ SuperWeaponFlags SW_LightningStorm::Flags(const SWTypeExtData* pData) const
 
 bool SW_LightningStorm::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
 {
-	if (!pThis->IsCharged)
+	if (pThis->IsCharged)
 	{
-		return false;
-	}
+		SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(pThis->Type);
 
-	SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(pThis->Type);
-	auto duration = pData->Weather_Duration.Get(RulesClass::Instance->LightningStormDuration);
-	auto deferment = pData->SW_Deferment.Get(RulesClass::Instance->LightningDeferment);
+		auto duration = pData->Weather_Duration.Get(RulesClass::Instance->LightningStormDuration);
+		auto deferment = pData->SW_Deferment.Get(RulesClass::Instance->LightningDeferment);
 
-	if (!pData->Weather_UseSeparateState)
-	{
-		CurrentLightningStorm = pThis;
-		LightningStorm::Start(duration, deferment, Coords, pThis->Owner);
-	}
-	else
-	{
-		this->newStateMachine(duration, deferment, Coords, pThis, this->GetFirer(pThis, Coords, false));
-	}
+		if (!pData->Weather_UseSeparateState)
+		{
+			CurrentLightningStorm = pThis;
 
-	return true;
+			LightningStorm::Start(duration, deferment, Coords, pThis->Owner);
+		}
+		else
+		{
+			this->newStateMachine(duration, deferment, Coords, pThis, this->GetFirer(pThis, Coords, false));
+		}
+
+		return true;
+	}
+	return false;
 }
 
 bool SW_LightningStorm::AbortFire(SuperClass* pSW, bool IsPlayer)
 {
 	SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(pSW->Type);
 
-	if (!pData->Weather_UseSeparateState && (LightningStorm::IsActive || LightningStorm::HasDeferment()))
+	if (!pData->Weather_UseSeparateState)
 	{
-		if (IsPlayer)
+		// only one Lightning Storm allowed
+		if (LightningStorm::IsActive || LightningStorm::HasDeferment())
 		{
-			pData->PrintMessage(pData->Message_Abort, pSW->Owner);
+			if (IsPlayer)
+			{
+				pData->PrintMessage(pData->Message_Abort, pSW->Owner);
+			}
+			return true;
 		}
-		return true;
 	}
 
 	return false;
@@ -65,31 +70,44 @@ bool SW_LightningStorm::AbortFire(SuperClass* pSW, bool IsPlayer)
 void SW_LightningStorm::Initialize(SWTypeExtData* pData)
 {
 	pData->AttachedToObject->Action = Action::LightningStorm;
+	// Defaults to Lightning Storm values
 	pData->Weather_DebrisMin = 2;
 	pData->Weather_DebrisMax = 4;
 	pData->Weather_IgnoreLightningRod = false;
 	pData->Weather_ScatterCount = 1;
+
 	pData->Weather_RadarOutageAffects = AffectedHouse::Enemies;
+
 	pData->EVA_Detected = VoxClass::FindIndexById(GameStrings::EVA_WeatherDeviceReady);
 	pData->EVA_Ready = VoxClass::FindIndexById(GameStrings::EVA_LightningStormReady);
 	pData->EVA_Activated = VoxClass::FindIndexById(GameStrings::EVA_LightningStormCreated);
+
 	pData->Message_Launch = GameStrings::TXT_LIGHTNING_STORM_APPROACHING();
 	pData->Message_Activate = GameStrings::TXT_LIGHTNING_STORM();
 	pData->Message_Abort = GameStrings::LightningStormActive_msg();
+
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::LightningStorm;
-	pData->CursorType = static_cast<int>(MouseCursorType::LightningStorm);
+	pData->CursorType = int(MouseCursorType::LightningStorm);
+
+	//
 	pData->Weather_UseSeparateState = false;
 }
 
 bool SW_LightningStorm::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	return this->IsLaunchsiteAlive(pBuilding) &&
-		(pData->SW_Lauchsites.empty() || pData->SW_Lauchsites.Contains(pBuilding->Type) || this->IsSWTypeAttachedToThis(pData, pBuilding));
+	if (!this->IsLaunchsiteAlive(pBuilding))
+		return false;
+
+	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+		return true;
+
+	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }
 
 void SW_LightningStorm::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const char* section = pData->get_ID();
+
 	INI_EX exINI(pINI);
 	pData->Weather_Duration.Read(exINI, section, "Lightning.Duration");
 	pData->Weather_RadarOutage.Read(exINI, section, "Lightning.RadarOutage");

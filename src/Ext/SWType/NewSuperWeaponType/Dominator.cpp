@@ -21,6 +21,8 @@ bool SW_PsychicDominator::Activate(SuperClass* pThis, const CellStruct& Coords, 
 {
 	if (pThis->IsCharged)
 	{
+		// we do not use PsyDom::Start() here. instead, we set a global state and
+		// let the state machine take care of everything.
 		SW_PsychicDominator::CurrentPsyDom = pThis;
 		this->newStateMachine(Coords, pThis);
 	}
@@ -30,6 +32,7 @@ bool SW_PsychicDominator::Activate(SuperClass* pThis, const CellStruct& Coords, 
 
 bool SW_PsychicDominator::AbortFire(SuperClass* pSW, bool IsPlayer)
 {
+	// be one with Yuri! and only one.
 	if (PsyDom::IsActive())
 	{
 		if (IsPlayer)
@@ -45,6 +48,7 @@ bool SW_PsychicDominator::AbortFire(SuperClass* pSW, bool IsPlayer)
 void SW_PsychicDominator::Initialize(SWTypeExtData* pData)
 {
 	pData->AttachedToObject->Action = Action::PsychicDominator;
+	// Defaults to PsychicDominator values
 	pData->Dominator_FirstAnimHeight = 750;
 	pData->Dominator_SecondAnimHeight = 0;
 	pData->Dominator_Ripple = true;
@@ -68,6 +72,7 @@ void SW_PsychicDominator::Initialize(SWTypeExtData* pData)
 void SW_PsychicDominator::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const char* section = pData->AttachedToObject->ID;
+
 	INI_EX exINI(pINI);
 	pData->Dominator_FirstAnimHeight.Read(exINI, section, "Dominator.FirstAnimHeight");
 	pData->Dominator_SecondAnimHeight.Read(exINI, section, "Dominator.SecondAnimHeight");
@@ -85,7 +90,13 @@ void SW_PsychicDominator::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 bool SW_PsychicDominator::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	return this->IsLaunchsiteAlive(pBuilding) && (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type)) || this->IsSWTypeAttachedToThis(pData, pBuilding);
+	if (!this->IsLaunchsiteAlive(pBuilding))
+		return false;
+
+	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+		return true;
+
+	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }
 
 WarheadTypeClass* SW_PsychicDominator::GetWarhead(const SWTypeExtData* pData) const
@@ -233,10 +244,16 @@ void PsychicDominatorStateMachine::Update()
 
 bool PsychicDominatorStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
-	return SWStateMachine::Load(Stm, RegisterForChange) && Stm.Process(this->Deferment, RegisterForChange).Success();
+	return SWStateMachine::Load(Stm, RegisterForChange)
+		&& Stm
+		.Process(this->Deferment, RegisterForChange)
+		.Success();
 }
 
 bool PsychicDominatorStateMachine::Save(PhobosStreamWriter& Stm) const
 {
-	return SWStateMachine::Save(Stm) && Stm.Process(this->Deferment).Success();
+	return SWStateMachine::Save(Stm)
+		&& Stm
+		.Process(this->Deferment)
+		.Success();
 }

@@ -1,4 +1,5 @@
 #include "SpyPlane.h"
+
 #include <Ext/Techno/Body.h>
 
 std::vector<const char*> SW_SpyPlane::GetTypeString() const
@@ -8,7 +9,7 @@ std::vector<const char*> SW_SpyPlane::GetTypeString() const
 
 bool SW_SpyPlane::HandleThisType(SuperWeaponType type) const
 {
-	return type == SuperWeaponType::SpyPlane;
+	return (type == SuperWeaponType::SpyPlane);
 }
 
 bool SW_SpyPlane::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
@@ -16,35 +17,48 @@ bool SW_SpyPlane::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsP
 	SuperWeaponTypeClass* pSW = pThis->Type;
 	SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(pSW);
 
-	if (!pThis->IsCharged || !MapClass::Instance->GetCellAt(Coords))
+	if (pThis->IsCharged)
 	{
-		Debug::Log("SpyPlane [%s] SW Invalid Target !\n", pThis->get_ID());
-		return false;
-	}
-
-	const auto Default = HouseExtData::GetSpyPlane(pThis->Owner);
-	const auto& PlaneIdxes = pData->SpyPlanes_TypeIndex;
-	const auto& PlaneCounts = pData->SpyPlanes_Count;
-	const auto& PlaneMissions = pData->SpyPlanes_Mission;
-	const auto& PlaneRank = pData->SpyPlanes_Rank;
-
-	const auto IsEmpty = PlaneIdxes.empty();
-	const size_t nSize = IsEmpty ? 1 : PlaneIdxes.size();
-
-	for (auto idx = 0u; idx < nSize; idx++)
-	{
-		const int Amount = idx >= PlaneCounts.size() ? 1 : PlaneCounts[idx];
-		const Mission Mission = idx >= PlaneMissions.size() ? Mission::SpyplaneApproach : PlaneMissions[idx];
-		const Rank Rank = idx >= PlaneRank.size() ? Rank::Rookie : PlaneRank[idx];
-		const auto Plane = IsEmpty ? Default : PlaneIdxes[idx];
-
-		if (Plane && Plane->Strength != 0)
+		if (CellClass* pTarget = MapClass::Instance->GetCellAt(Coords))
 		{
-			TechnoExtData::SendPlane(Plane, Amount, pThis->Owner, Rank, Mission, MapClass::Instance->GetCellAt(Coords), nullptr);
+			const auto Default = HouseExtData::GetSpyPlane(pThis->Owner);
+
+			const auto& PlaneIdxes = pData->SpyPlanes_TypeIndex;
+			const auto& PlaneCounts = pData->SpyPlanes_Count;
+			const auto& PlaneMissions = pData->SpyPlanes_Mission;
+			const auto& PlaneRank = pData->SpyPlanes_Rank;
+
+			const auto IsEmpty = PlaneIdxes.empty();
+			const size_t nSize = IsEmpty ? 1 : PlaneIdxes.size();
+
+			for (auto idx = 0u; idx < nSize; idx++)
+			{
+				const int Amount = idx >= PlaneCounts.size() ? 1 : PlaneCounts[idx];
+				const Mission Mission = idx >= PlaneMissions.size() ? Mission::SpyplaneApproach : PlaneMissions[idx];
+				const Rank Rank = idx >= PlaneRank.size() ? Rank::Rookie : PlaneRank[idx];
+				const auto Plane = IsEmpty ? Default : PlaneIdxes[idx];
+
+				if (!Plane || Plane->Strength == 0)
+					continue;
+
+				TechnoExtData::SendPlane(Plane,
+					Amount,
+					pThis->Owner,
+					Rank,
+					Mission,
+					pTarget,
+					nullptr);
+			}
+
+			return true;
+		}
+		else
+		{
+			Debug::Log("SpyPlane [%s] SW Invalid Target ! \n", pThis->get_ID());
 		}
 	}
 
-	return true;
+	return false;
 }
 
 void SW_SpyPlane::Initialize(SWTypeExtData* pData)
@@ -52,15 +66,19 @@ void SW_SpyPlane::Initialize(SWTypeExtData* pData)
 	pData->AttachedToObject->Action = Action::SpyPlane;
 	// Defaults to Spy Plane values
 	pData->SW_RadarEvent = false;
+
 	pData->EVA_Ready = VoxClass::FindIndexById(GameStrings::EVA_SpyPlaneReady);
+
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::ParaDrop;
-	pData->CursorType = static_cast<int>(MouseCursorType::SpyPlane);
+	pData->CursorType = (int)MouseCursorType::SpyPlane;
 }
 
 void SW_SpyPlane::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const char* section = pData->AttachedToObject->ID;
+
 	INI_EX exINI(pINI);
+
 	pData->SpyPlanes_TypeIndex.Read(exINI, section, "SpyPlane.Type");
 	pData->SpyPlanes_Count.Read(exINI, section, "SpyPlane.Count");
 	pData->SpyPlanes_Mission.Read(exINI, section, "SpyPlane.Mission");
@@ -69,10 +87,11 @@ void SW_SpyPlane::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 bool SW_SpyPlane::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	if (!IsLaunchsiteAlive(pBuilding))
-	{
+	if (!this->IsLaunchsiteAlive(pBuilding))
 		return false;
-	}
 
-	return !pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type) || IsSWTypeAttachedToThis(pData, pBuilding);
+	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+		return true;
+
+	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }

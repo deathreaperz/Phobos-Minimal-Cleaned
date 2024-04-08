@@ -1,4 +1,5 @@
 #include "ParaDrop.h"
+
 #include <Utilities/Helpers.h>
 #include <Ext/House/Body.h>
 #include <Ext/Aircraft/Body.h>
@@ -17,11 +18,9 @@ bool SW_ParaDrop::Activate(SuperClass* const pThis, const CellStruct& Coords, bo
 {
 	if (pThis->IsCharged)
 	{
-		CellClass* pTarget = MapClass::Instance->TryGetCellAt(Coords);
-		if (pTarget)
-		{
-			return SendParadrop(pThis, pTarget);
-		}
+		auto pTarget = MapClass::Instance->TryGetCellAt(Coords);
+		// all set. send in the planes.
+		return pTarget ? this->SendParadrop(pThis, pTarget) : false;
 	}
 
 	return false;
@@ -45,10 +44,13 @@ void SW_ParaDrop::Initialize(SWTypeExtData* pData)
 		auto const& Num = RulesClass::Instance->AmerParaDropNum;
 		pPlane.Num.insert(pPlane.Num.end(), Num.begin(), Num.end());
 	}
+
 	pData->SW_RadarEvent = false;
+
 	pData->EVA_Ready = VoxClass::FindIndexById(GameStrings::EVA_ReinforcementsReady);
+
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::ParaDrop;
-	pData->CursorType = static_cast<int>(MouseCursorType::ParaDrop);
+	pData->CursorType = int(MouseCursorType::ParaDrop);
 }
 
 void SW_ParaDrop::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
@@ -58,9 +60,18 @@ void SW_ParaDrop::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	INI_EX exINI(pINI);
 	std::string _base;
 
-	auto CreateParaDropBase = [](const char* pID, std::string& base)
+	auto CreateParaDropBase = [](char* pID, std::string& base)
 		{
-			base = pID && *pID ? "ParaDrop." + std::string(pID) : GameStrings::ParaDrop();
+			// put a string like "Paradrop.Americans" into the buffer
+			if (pID && strlen(pID))
+			{
+				base = "ParaDrop.";
+				base += pID;
+			}
+			else
+			{
+				base = GameStrings::ParaDrop();
+			}
 		};
 
 	auto ParseParaDrop = [section, &exINI](const char* pID, int Plane, ParadropData& out)
@@ -361,9 +372,11 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 
 bool SW_ParaDrop::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	if (!IsLaunchsiteAlive(pBuilding))
+	if (!this->IsLaunchsiteAlive(pBuilding))
 		return false;
 
-	const bool hasLauchSite = !pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type);
-	return hasLauchSite || IsSWTypeAttachedToThis(pData, pBuilding);
+	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+		return true;
+
+	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }

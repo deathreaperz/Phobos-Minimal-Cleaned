@@ -834,34 +834,27 @@ int HouseExtData::TotalHarvesterCount(HouseClass* pThis)
 	return result;
 }
 
+// This basically gets same cell that AI script action 53 Gather at Enemy Base uses, and code for that (0x6EF700) was used as reference here.
 CellClass* HouseExtData::GetEnemyBaseGatherCell(HouseClass* pTargetHouse, HouseClass* pCurrentHouse, const CoordStruct& defaultCurrentCoords, SpeedType speedTypeZone, int extraDistance)
 {
 	if (!pTargetHouse || !pCurrentHouse)
-	{
 		return nullptr;
-	}
 
-	const CoordStruct targetBaseCoords = CellClass::Cell2Coord(pTargetHouse->GetBaseCenter());
+	const auto targetBaseCoords = CellClass::Cell2Coord(pTargetHouse->GetBaseCenter());
 
 	if (targetBaseCoords == CoordStruct::Empty)
-	{
 		return nullptr;
-	}
 
-	CoordStruct currentCoords = CellClass::Cell2Coord(pCurrentHouse->GetBaseCenter());
+	auto currentCoords = CellClass::Cell2Coord(pCurrentHouse->GetBaseCenter());
 
 	if (currentCoords == CoordStruct::Empty)
-	{
 		currentCoords = defaultCurrentCoords;
-	}
 
-	int deltaX = currentCoords.X - targetBaseCoords.X;
-	int deltaY = targetBaseCoords.Y - currentCoords.Y;
-
-	int distance = (RulesClass::Instance->AISafeDistance + extraDistance) * Unsorted::LeptonsPerCell;
-
-	CoordStruct newCoords = GeneralUtils::CalculateCoordsFromDistance(currentCoords, targetBaseCoords, distance);
-	CellStruct cellStruct = CellClass::Coord2Cell(newCoords);
+	const int deltaX = currentCoords.X - targetBaseCoords.X;
+	const int deltaY = targetBaseCoords.Y - currentCoords.Y;
+	const int distance = (RulesClass::Instance->AISafeDistance + extraDistance) * Unsorted::LeptonsPerCell;
+	auto newCoords = GeneralUtils::CalculateCoordsFromDistance(currentCoords, targetBaseCoords, distance);
+	auto cellStruct = CellClass::Coord2Cell(newCoords);
 	cellStruct = MapClass::Instance->NearByLocation(cellStruct, speedTypeZone, -1, MovementZone::Normal, false, 3, 3, false, false, false, true, cellStruct, false, false);
 
 	return MapClass::Instance->TryGetCellAt(cellStruct);

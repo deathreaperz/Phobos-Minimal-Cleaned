@@ -3146,7 +3146,7 @@ void NOINLINE SetType(TechnoClass* pThis, AbstractType rtti, TechnoTypeClass* pT
 	*CurType = pToType;
 }
 
-bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeClass* pToType, bool AdjustHealth)
+bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeClass* pToType, bool AdjustHealth, bool IsChangeOwnership)
 {
 	const auto& [prevType, rtti] = GetOriginalType(pThis, pToType);
 	const auto pOldType = (*prevType);
@@ -3164,11 +3164,16 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 
 	HouseClass* const pOwner = pThis->Owner;
 
-	// Remove tracking of old techno
-	if (!pThis->InLimbo)
-		pOwner->RegisterLoss(pThis, false);
+	//special cases , in this case dont need to do anything to the counter
+	//just convert the techno
+	if (!IsChangeOwnership)
+	{
+		// Remove tracking of old techno
+		if (!pThis->InLimbo)
+			pOwner->RegisterLoss(pThis, false);
 
-	pOwner->RemoveTracking(pThis);
+		pOwner->RemoveTracking(pThis);
+	}
 
 	const int oldHealth = pThis->Health;
 
@@ -3186,10 +3191,15 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		pThis->EstimatedHealth = pToType->Strength;
 	}
 
-	// Add tracking of new techno
-	pOwner->AddTracking(pThis);
-	if (!pThis->InLimbo)
-		pOwner->RegisterGain(pThis, true);
+	//special cases , in this case dont need to do anything to the counter
+	//just convert the techno
+	if (!IsChangeOwnership)
+	{
+		// Add tracking of new techno
+		pOwner->AddTracking(pThis);
+		if (!pThis->InLimbo)
+			pOwner->RegisterGain(pThis, true);
+	}
 
 	pOwner->RecheckTechTree = true;
 	TechnoExtContainer::Instance.Find(pThis)->Is_Operated = false;
