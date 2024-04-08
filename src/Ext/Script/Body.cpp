@@ -1760,13 +1760,11 @@ void ScriptExtData::Set_ForceJump_Countdown(TeamClass* pTeam, bool repeatLine = 
 	if (count <= 0)
 		count = 15 * curArgs;
 
-	if (count > 0)
-	{
-		pTeamData->ForceJump_InitialCountdown = count;
-		pTeamData->ForceJump_Countdown.Start(count);
-		pTeamData->ForceJump_RepeatMode = repeatLine;
-	}
-	else
+	pTeamData->ForceJump_InitialCountdown = count;
+	pTeamData->ForceJump_Countdown.Start(count);
+	pTeamData->ForceJump_RepeatMode = repeatLine;
+
+	if (count <= 0)
 	{
 		pTeamData->ForceJump_InitialCountdown = -1;
 		pTeamData->ForceJump_Countdown.Stop();

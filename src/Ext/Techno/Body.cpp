@@ -2985,7 +2985,8 @@ void TechnoExtData::HandleRemove(TechnoClass* pThis, TechnoClass* pSource, bool 
 	}
 	else
 	{
-		((FootClass*)pThis)->LiberateMember();
+		if (pThis->InLimbo && ((FootClass*)pThis)->ParasiteImUsing && ((FootClass*)pThis)->ParasiteImUsing->Victim)
+			((FootClass*)pThis)->ParasiteImUsing->ExitUnit();
 
 		const auto flight = pThis->GetLastFlightMapCoords();
 		if (flight.IsValid())
