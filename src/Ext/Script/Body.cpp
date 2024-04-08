@@ -951,30 +951,31 @@ void NOINLINE ScriptExtData::ExecuteTimedAreaGuardAction(TeamClass* pTeam)
 	auto const pScript = pTeam->CurrentScript;
 	auto const pScriptType = pScript->Type;
 
-	if (pScriptType->ScriptActions[pScript->CurrentMission].Argument <= 0)
+	int argument = pScriptType->ScriptActions[pScript->CurrentMission].Argument;
+
+	if (argument <= 0)
 	{
 		pTeam->StepCompleted = true;
 		return;
 	}
 
-	const auto Isticking = pTeam->GuardAreaTimer.IsTicking();
-	const auto TimeLeft = pTeam->GuardAreaTimer.GetTimeLeft();
-
-	if (!Isticking && !TimeLeft)
+	if (!pTeam->GuardAreaTimer.IsTicking() && pTeam->GuardAreaTimer.GetTimeLeft() == 0)
 	{
 		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 		{
 			if (TechnoExtData::IsInWarfactory(pUnit))
+			{
 				continue; // held back Timed area guard if one of the member still in warfactory
+			}
 
 			pUnit->QueueMission(Mission::Area_Guard, true);
 		}
 
-		pTeam->GuardAreaTimer.Start(15 * pScriptType->ScriptActions[pScript->CurrentMission].Argument);
+		pTeam->GuardAreaTimer.Start(15 * argument);
 	}
-	else if (Isticking && !TimeLeft)
+	else if (pTeam->GuardAreaTimer.IsTicking() && pTeam->GuardAreaTimer.GetTimeLeft() == 0)
 	{
-		pTeam->GuardAreaTimer.Stop(); // Needed
+		pTeam->GuardAreaTimer.Stop(); // Stop the timer if needed
 		pTeam->StepCompleted = true;
 	}
 }
@@ -983,7 +984,6 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 {
 	std::vector<FootClass*> transports;
 
-	// Collect available transports
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 	{
 		auto const pType = pUnit->GetTechnoType();
@@ -998,12 +998,10 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 
 	if (transports.empty())
 	{
-		// This action finished
 		pTeam->StepCompleted = true;
 		return;
 	}
 
-	// Now load units into transports
 	for (auto pTransport : transports)
 	{
 		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
@@ -1014,31 +1012,22 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 			if (pTransport != pUnit
 				&& pUnitType->WhatAmI() != AbstractType::AircraftType
 				&& !pUnit->InLimbo && !pUnitType->ConsideredAircraft
-				&& pUnit->Health > 0)
+				&& pUnit->Health > 0
+				&& pUnit->GetTechnoType()->Size > 0
+				&& pUnitType->Size <= pTransportType->SizeLimit
+				&& pUnitType->Size <= pTransportType->Passengers - pTransport->Passengers.GetTotalSize()
+				&& !pTransport->IsInAir()
+				&& pUnit->GetCurrentMission() != Mission::Enter)
 			{
-				if (pUnit->GetTechnoType()->Size > 0
-					&& pUnitType->Size <= pTransportType->SizeLimit
-					&& pUnitType->Size <= pTransportType->Passengers - pTransport->Passengers.GetTotalSize())
-				{
-					// If is still flying wait a bit more
-					if (pTransport->IsInAir())
-						break;
+				pUnit->QueueMission(Mission::Enter, false);
+				pUnit->SetTarget(nullptr);
+				pUnit->SetDestination(pTransport, true);
 
-					// All fine
-					if (pUnit->GetCurrentMission() != Mission::Enter)
-					{
-						pUnit->QueueMission(Mission::Enter, false);
-						pUnit->SetTarget(nullptr);
-						pUnit->SetDestination(pTransport, true);
-
-						break;
-					}
-				}
+				break;
 			}
 		}
 	}
 
-	// Is loading
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 	{
 		if (pUnit->GetCurrentMission() == Mission::Enter)
@@ -1053,7 +1042,6 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 		pExt->TeamLeader = pLeaderUnit;
 	}
 
-	// This action finished
 	pTeam->StepCompleted = true;
 }
 
@@ -1061,29 +1049,33 @@ void ScriptExtData::WaitUntilFullAmmoAction(TeamClass* pTeam)
 {
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 	{
-		if (ScriptExtData::IsUnitAvailable(pUnit, false))
+		if (!ScriptExtData::IsUnitAvailable(pUnit, false))
 		{
-			const auto pType = pUnit->GetTechnoType();
+			continue;
+		}
 
-			if (pType->Ammo > 0 && pUnit->Ammo < pType->Ammo)
+		const auto pType = pUnit->GetTechnoType();
+
+		if (pType->Ammo > 0 && pUnit->Ammo < pType->Ammo)
+		{
+			if (auto pAircraft = abstract_cast<AircraftClass*>(pUnit))
 			{
-				// If an aircraft object have AirportBound it must be evaluated
-				if (auto const pAircraft = abstract_cast<AircraftClass*>(pUnit))
+				if (pAircraft->Type->AirportBound)
 				{
-					if (pAircraft->Type->AirportBound)
-					{
-						// Reset last target, at long term battles this prevented the aircraft to pick a new target (rare vanilla YR bug)
-						pUnit->SetTarget(nullptr);
-						pUnit->LastTarget = nullptr;
-						// Fix YR bug (when returns from the last attack the aircraft switch in loop between Mission::Enter & Mission::Guard, making it impossible to land in the dock)
-						if (pUnit->IsInAir() && pUnit->CurrentMission != Mission::Enter)
-							pUnit->QueueMission(Mission::Enter, true);
+					pUnit->SetTarget(nullptr);
+					pUnit->LastTarget = nullptr;
 
-						break;
+					if (pUnit->IsInAir() && pUnit->CurrentMission != Mission::Enter)
+					{
+						pUnit->QueueMission(Mission::Enter, true);
 					}
-				}
-				else if (pType->Reload != 0) // Don't skip units that can reload themselves
+
 					break;
+				}
+			}
+			else if (pType->Reload == 0)
+			{
+				break;
 			}
 		}
 	}
@@ -1093,11 +1085,8 @@ void ScriptExtData::WaitUntilFullAmmoAction(TeamClass* pTeam)
 
 void ScriptExtData::Mission_Gather_NearTheLeader(TeamClass* pTeam, int countdown = -1)
 {
-	// This team has no units! END
 	if (!pTeam)
 	{
-		// This action finished
-		pTeam->StepCompleted = true;
 		return;
 	}
 
@@ -1106,180 +1095,149 @@ void ScriptExtData::Mission_Gather_NearTheLeader(TeamClass* pTeam, int countdown
 	bool gatherUnits = false;
 	auto const pExt = TeamExtContainer::Instance.Find(pTeam);
 
-	// Load countdown
 	if (pExt->Countdown_RegroupAtLeader >= 0)
+	{
 		countdown = pExt->Countdown_RegroupAtLeader;
+	}
 
-	// Gather permanently until all the team members are near of the Leader
 	if (initialCountdown == 0)
+	{
 		gatherUnits = true;
+	}
 
-	// Countdown updater
 	if (initialCountdown > 0)
 	{
 		if (countdown > 0)
 		{
-			countdown--; // Update countdown
+			countdown--;
 			gatherUnits = true;
 		}
-		else if (countdown == 0) // Countdown ended
+		else if (countdown == 0)
+		{
 			countdown = -1;
-		else // Start countdown.
+		}
+		else
 		{
 			countdown = initialCountdown * 15;
 			gatherUnits = true;
 		}
 
-		// Save counter
 		pExt->Countdown_RegroupAtLeader = countdown;
 	}
 
 	if (!gatherUnits)
 	{
-		// This action finished
-		pTeam->StepCompleted = true;
 		return;
+	}
+
+	pLeaderUnit = pExt->TeamLeader;
+
+	if (!pLeaderUnit)
+	{
+		pExt->Countdown_RegroupAtLeader = -1;
+		return;
+	}
+
+	double closeEnough = (pExt->CloseEnough > 0) ? std::exchange(pExt->CloseEnough, -1) : RulesClass::Instance->CloseEnough.ToCell();
+
+	if (pLeaderUnit->Locomotor.GetInterfacePtr()->Is_Moving_Now())
+	{
+		pLeaderUnit->SetDestination(nullptr, false);
+	}
+
+	pLeaderUnit->QueueMission(Mission::Guard, false);
+
+	int nUnits = -1;
+	int nTogether = 0;
+
+	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+	{
+		if (ScriptExtData::IsUnitAvailable(pUnit, true))
+		{
+			auto pTypeUnit = pUnit->GetTechnoType();
+
+			if (pUnit == pLeaderUnit)
+			{
+				nUnits++;
+				continue;
+			}
+
+			if (pTypeUnit->WhatAmI() == AbstractType::AircraftType && pUnit->Ammo <= 0 && pTypeUnit->Ammo > 0)
+			{
+				auto pAircraft = static_cast<AircraftTypeClass*>(pTypeUnit);
+
+				if (pAircraft->AirportBound)
+				{
+					pUnit->EnterIdleMode(false, true);
+					continue;
+				}
+			}
+
+			nUnits++;
+
+			if ((pUnit->DistanceFrom(pLeaderUnit) / 256.0) > closeEnough)
+			{
+				if (pUnit->Destination != pLeaderUnit)
+				{
+					pUnit->SetDestination(pLeaderUnit, false);
+					pUnit->QueueMission(Mission::Move, false);
+				}
+			}
+			else
+			{
+				if (pUnit->GetCurrentMission() != Mission::Area_Guard && pUnit->GetCurrentMission() != Mission::Attack)
+				{
+					pUnit->QueueMission(Mission::Area_Guard, true);
+				}
+				nTogether++;
+			}
+		}
+	}
+
+	if (nUnits >= 0 && nUnits == nTogether && (initialCountdown == 0 || (initialCountdown > 0 && countdown <= 0)))
+	{
+		pExt->Countdown_RegroupAtLeader = -1;
 	}
 	else
 	{
-		// Move all around the leader, the leader always in "Guard Area" Mission or simply in Guard Mission
-		int nTogether = 0;
-		int nUnits = -1; // Leader counts here
-		double closeEnough;
-
-		// Find the Leader
-		pLeaderUnit = pExt->TeamLeader;
-
-		if (!ScriptExtData::IsUnitAvailable(pLeaderUnit, true))
-		{
-			pLeaderUnit = ScriptExtData::FindTheTeamLeader(pTeam);
-			pExt->TeamLeader = pLeaderUnit;
-		}
-
-		if (!pLeaderUnit)
-		{
-			pExt->Countdown_RegroupAtLeader = -1;
-			// This action finished
-			pTeam->StepCompleted = true;
-
-			return;
-		}
-
-		// Leader's area radius where the Team members are considered "near" to the Leader
-		if (pExt->CloseEnough > 0)
-		{
-			// This a one-time-use value
-			closeEnough = std::exchange(pExt->CloseEnough, -1);
-		}
-		else
-		{
-			closeEnough = RulesClass::Instance->CloseEnough.ToCell();
-		}
-
-		// The leader should stay calm & be the group's center
-		if (pLeaderUnit->Locomotor.GetInterfacePtr()->Is_Moving_Now())
-			pLeaderUnit->SetDestination(nullptr, false);
-
-		pLeaderUnit->QueueMission(Mission::Guard, false);
-
-		// Check if units are around the leader
-		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
-		{
-			if (ScriptExtData::IsUnitAvailable(pUnit, true))
-			{
-				auto pTypeUnit = pUnit->GetTechnoType();
-
-				if (pUnit == pLeaderUnit)
-				{
-					nUnits++;
-					continue;
-				}
-
-				// Aircraft case
-				if (pTypeUnit->WhatAmI() == AbstractType::AircraftType && pUnit->Ammo <= 0 && pTypeUnit->Ammo > 0)
-				{
-					auto pAircraft = static_cast<AircraftTypeClass*>(pUnit->GetTechnoType());
-
-					if (pAircraft->AirportBound)
-					{
-						// This aircraft won't count for the script action
-						pUnit->EnterIdleMode(false, true);
-
-						continue;
-					}
-				}
-
-				nUnits++;
-
-				if ((pUnit->DistanceFrom(pLeaderUnit) / 256.0) > closeEnough)
-				{
-					// Leader's location is too far from me. Regroup
-					if (pUnit->Destination != pLeaderUnit)
-					{
-						pUnit->SetDestination(pLeaderUnit, false);
-						pUnit->QueueMission(Mission::Move, false);
-					}
-				}
-				else
-				{
-					// Is near of the leader, then protect the area
-					if (pUnit->GetCurrentMission() != Mission::Area_Guard || pUnit->GetCurrentMission() != Mission::Attack)
-						pUnit->QueueMission(Mission::Area_Guard, true);
-
-					nTogether++;
-				}
-			}
-		}
-
-		if (nUnits >= 0
-			&& nUnits == nTogether
-			&& (initialCountdown == 0
-				|| (initialCountdown > 0
-					&& countdown <= 0)))
-		{
-			pExt->Countdown_RegroupAtLeader = -1;
-			// This action finished
-			pTeam->StepCompleted = true;
-
-			return;
-		}
+		return;
 	}
 }
 
 void ScriptExtData::DecreaseCurrentTriggerWeight(TeamClass* pTeam, bool forceJumpLine = true, double modifier = 0)
 {
 	if (modifier <= 0)
+	{
 		modifier = pTeam->CurrentScript->GetCurrentAction().Argument;
-
-	if (modifier <= 0)
-		modifier = RulesClass::Instance->AITriggerFailureWeightDelta;
+		if (modifier <= 0)
+		{
+			modifier = RulesClass::Instance->AITriggerFailureWeightDelta;
+		}
+	}
 	else
-		modifier = modifier * (-1);
+	{
+		modifier *= -1;
+	}
 
 	ScriptExtData::ModifyCurrentTriggerWeight(pTeam, forceJumpLine, modifier);
 
-	// This action finished
 	if (forceJumpLine)
+	{
 		pTeam->StepCompleted = true;
-
-	return;
+	}
 }
 
 void ScriptExtData::IncreaseCurrentTriggerWeight(TeamClass* pTeam, bool forceJumpLine = true, double modifier = 0)
 {
-	if (modifier <= 0)
-		modifier = pTeam->CurrentScript->GetCurrentAction().Argument;
-
-	if (modifier <= 0)
-		modifier = abs(RulesClass::Instance->AITriggerSuccessWeightDelta);
+	modifier = (modifier <= 0) ? pTeam->CurrentScript->GetCurrentAction().Argument : modifier;
+	modifier = (modifier <= 0) ? abs(RulesClass::Instance->AITriggerSuccessWeightDelta) : modifier;
 
 	ScriptExtData::ModifyCurrentTriggerWeight(pTeam, forceJumpLine, modifier);
 
-	// This action finished
 	if (forceJumpLine)
+	{
 		pTeam->StepCompleted = true;
-
-	return;
+	}
 }
 
 void ScriptExtData::ModifyCurrentTriggerWeight(TeamClass* pTeam, bool forceJumpLine = true, double modifier = 0)
@@ -1320,67 +1278,67 @@ void ScriptExtData::ModifyCurrentTriggerWeight(TeamClass* pTeam, bool forceJumpL
 
 void ScriptExtData::WaitIfNoTarget(TeamClass* pTeam, int attempts = 0)
 {
-	// This method modifies the new attack actions preventing Team's Trigger to jump to next script action
-	// attempts == number of times the Team will wait if Mission_Attack(...) can't find a new target.
+	// This method modifies the new attack actions preventing Team's Trigger to jump to the next script action
+	// If attempts is negative, set it to the CurrentAction's argument
 	if (attempts < 0)
+	{
 		attempts = pTeam->CurrentScript->GetCurrentAction().Argument;
+	}
 
 	TeamExtContainer::Instance.Find(pTeam)->WaitNoTargetAttempts = abs(attempts);
 
-	// This action finished
+	// Mark the action as completed
 	pTeam->StepCompleted = true;
-
-	return;
 }
 
-void ScriptExtData::TeamWeightReward(TeamClass* pTeam, double award = 0)
+void ScriptExtData::TeamWeightReward(TeamClass* pTeam, double award)
 {
 	if (award <= 0)
+	{
 		award = pTeam->CurrentScript->GetCurrentAction().Argument;
+	}
 
 	if (award > 0)
+	{
 		TeamExtContainer::Instance.Find(pTeam)->NextSuccessWeightAward = award;
+	}
 
-	// This action finished
+	// Mark the action as completed
 	pTeam->StepCompleted = true;
-
-	return;
 }
 
 void ScriptExtData::PickRandomScript(TeamClass* pTeam, int idxScriptsList = -1)
 {
 	if (idxScriptsList < 0)
+	{
 		idxScriptsList = pTeam->CurrentScript->GetCurrentAction().Argument;
+	}
 
 	const auto& scriptList = RulesExtData::Instance()->AIScriptsLists;
-	if ((size_t)idxScriptsList < scriptList.size())
+	if (static_cast<size_t>(idxScriptsList) < scriptList.size())
 	{
 		const auto& objectsList = scriptList[idxScriptsList];
 
 		if (!objectsList.empty())
 		{
-			int IdxSelectedObject = ScenarioClass::Instance->Random.RandomFromMax(objectsList.size() - 1);
+			int idxSelectedObject = ScenarioClass::Instance->Random.RandomFromMax(objectsList.size() - 1);
 
-			ScriptTypeClass* pNewScript = objectsList[IdxSelectedObject];
+			ScriptTypeClass* pNewScript = objectsList[idxSelectedObject];
 
 			if (pNewScript->ActionsCount > 0)
 			{
-				TeamExtContainer::Instance.Find(pTeam)->PreviousScript =
-					std::exchange(pTeam->CurrentScript, GameCreate<ScriptClass>(pNewScript));
-				// Ready for jumping to the first line of the new script
+				auto pPreviousScript = std::exchange(pTeam->CurrentScript, GameCreate<ScriptClass>(pNewScript));
+				TeamExtContainer::Instance.Find(pTeam)->PreviousScript = pPreviousScript;
+
 				pTeam->CurrentScript->CurrentMission = -1;
 				pTeam->StepCompleted = true;
-
 				return;
 			}
 			else
 			{
 				pTeam->StepCompleted = true;
 				ScriptExtData::Log("AI Scripts - PickRandomScript: [%s] Aborting Script change because [%s] has 0 Action scripts!\n",
-					pTeam->Type->ID,
-					pNewScript->ID
-				);
-
+					pTeam->Type->ID, pNewScript->ID);
 				return;
 			}
 		}
@@ -1388,30 +1346,27 @@ void ScriptExtData::PickRandomScript(TeamClass* pTeam, int idxScriptsList = -1)
 
 	pTeam->StepCompleted = true;
 	ScriptExtData::Log("AI Scripts - PickRandomScript: [%s] [%s] Failed to change the Team Script with index [%d]!\n",
-		pTeam->Type->ID,
-		pTeam->CurrentScript->Type->ID,
-		idxScriptsList
-	);
+		pTeam->Type->ID, pTeam->CurrentScript->Type->ID, idxScriptsList);
 }
 
 void ScriptExtData::SetCloseEnoughDistance(TeamClass* pTeam, double distance = -1)
 {
-	// This passive method replaces the CloseEnough value from rulesmd.ini by a custom one. Used by Mission_Move()
-	if (distance <= 0)
-		distance = pTeam->CurrentScript->GetCurrentAction().Argument;
+	// This method sets the CloseEnough distance for the team
+	// If distance is not provided, get it from the team's current action argument
 
 	auto const pTeamData = TeamExtContainer::Instance.Find(pTeam);
 
 	if (distance > 0)
+	{
 		pTeamData->CloseEnough = distance;
-
-	if (distance <= 0)
+	}
+	else
+	{
 		pTeamData->CloseEnough = RulesClass::Instance->CloseEnough.ToCell();
+	}
 
-	// This action finished
+	// Mark this action as completed
 	pTeam->StepCompleted = true;
-
-	return;
 }
 
 void ScriptExtData::UnregisterGreatSuccess(TeamClass* pTeam)
@@ -1422,20 +1377,25 @@ void ScriptExtData::UnregisterGreatSuccess(TeamClass* pTeam)
 
 void ScriptExtData::SetMoveMissionEndMode(TeamClass* pTeam, int mode = 0)
 {
-	// This passive method replaces the CloseEnough value from rulesmd.ini by a custom one. Used by Mission_Move()
-	if (mode < 0 || mode > 2)
-		mode = pTeam->CurrentScript->GetCurrentAction().Argument;
+	// This method sets the MoveMissionEndMode for the team
 
-	if (auto const pTeamData = TeamExtContainer::Instance.Find(pTeam))
+	// Validate the mode input
+	if (mode < 0 || mode > 2)
 	{
-		if (mode >= 0 && mode <= 2)
-			pTeamData->MoveMissionEndMode = mode;
+		mode = pTeam->CurrentScript->GetCurrentAction().Argument;
 	}
 
-	// This action finished
-	pTeam->StepCompleted = true;
+	// Find the team data and update the MoveMissionEndMode if mode is valid
+	if (auto pTeamData = TeamExtContainer::Instance.Find(pTeam); pTeamData != nullptr)
+	{
+		if (mode >= 0 && mode <= 2)
+		{
+			pTeamData->MoveMissionEndMode = mode;
+		}
+	}
 
-	return;
+	// Mark the action as completed
+	pTeam->StepCompleted = true;
 }
 
 bool ScriptExtData::MoveMissionEndStatus(TeamClass* pTeam, TechnoClass* pFocus, FootClass* pLeader = nullptr, int mode = 0)
@@ -1457,97 +1417,44 @@ bool ScriptExtData::MoveMissionEndStatus(TeamClass* pTeam, TechnoClass* pFocus, 
 		return false;
 	}
 
-	double closeEnough = 0.0;
-
-	if (pTeamData->CloseEnough > 0)
-		closeEnough = pTeamData->CloseEnough;
-	else
-		closeEnough = RulesClass::Instance->CloseEnough.ToCell();
+	double closeEnough = pTeamData->CloseEnough > 0 ? pTeamData->CloseEnough : RulesClass::Instance->CloseEnough.ToCell();
 
 	bool bForceNextAction = mode == 2;
 
-	// Team already have a focused target
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 	{
 		if (ScriptExtData::IsUnitAvailable(pUnit, true)
 			&& !pUnit->TemporalTargetingMe
 			&& !pUnit->BeingWarpedOut)
 		{
-			if (mode == 2)
+			double distanceFromFocus = pUnit->DistanceFrom(pFocus->GetCell()) / 256.0;
+
+			if ((mode == 2 && distanceFromFocus > closeEnough) ||
+				(mode == 1 && distanceFromFocus > closeEnough) ||
+				(mode != 1 && mode != 2 && ScriptExtData::IsUnitAvailable(pLeader, false) && distanceFromFocus > closeEnough))
 			{
-				// Default mode: all members in range
-				if ((pUnit->DistanceFrom(pFocus->GetCell()) / 256.0) > closeEnough)
-				{
-					bForceNextAction = false;
-
-					if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo > 0)
-						pUnit->QueueMission(Mission::Move, false);
-
-					continue;
-				}
-				else
-				{
-					if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo <= 0)
-					{
-						pUnit->EnterIdleMode(false, true);
-
-						continue;
-					}
-				}
+				if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo > 0)
+					pUnit->QueueMission(Mission::Move, false);
 			}
 			else
 			{
+				if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo <= 0)
+				{
+					pUnit->EnterIdleMode(false, true);
+				}
+
 				if (mode == 1)
 				{
-					// Any member in range
-					if ((pUnit->DistanceFrom(pFocus->GetCell()) / 256.0) > closeEnough)
-					{
-						if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo > 0)
-							pUnit->QueueMission(Mission::Move, false);
-
-						continue;
-					}
-					else
-					{
-						bForceNextAction = true;
-
-						if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo <= 0)
-						{
-							pUnit->EnterIdleMode(false, true);
-
-							continue;
-						}
-					}
+					bForceNextAction = true;
 				}
-				else
+				else if (mode == 2 && distanceFromFocus > closeEnough)
 				{
-					// All other cases: Team Leader mode in range
-					if (ScriptExtData::IsUnitAvailable(pLeader, false))
-					{
-						if ((pUnit->DistanceFrom(pFocus->GetCell()) / 256.0) > closeEnough)
-						{
-							if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo > 0)
-								pUnit->QueueMission(Mission::Move, false);
-
-							continue;
-						}
-						else
-						{
-							if (pUnit->IsTeamLeader)
-								bForceNextAction = true;
-
-							if (pUnit->WhatAmI() == AbstractType::Aircraft && pUnit->Ammo <= 0)
-							{
-								pUnit->EnterIdleMode(false, true);
-
-								continue;
-							}
-						}
-					}
-					else
-					{
-						break;
-					}
+					bForceNextAction = false;
+				}
+				else if (ScriptExtData::IsUnitAvailable(pLeader, false) && distanceFromFocus > closeEnough)
+				{
+					if (pUnit->IsTeamLeader)
+						bForceNextAction = true;
 				}
 			}
 		}
@@ -1558,43 +1465,22 @@ bool ScriptExtData::MoveMissionEndStatus(TeamClass* pTeam, TechnoClass* pFocus, 
 
 void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 {
-	// This team has no units! END
-	//if (!pTeam)
-	//{
-	//	// This action finished
-	//	pTeam->StepCompleted = true;
-	//	const auto&[curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
-	//	const auto&[nextAct, nextArg] = pTeam->CurrentScript->GetNextAction();
-	//	ScriptExtData::Log("AI Scripts - SkipNextAction: [%s] [%s] (line: %d) Jump to next line: %d = %d,%d -> (No team members alive)\n",
-	//		pTeam->Type->ID,
-	//		pTeam->CurrentScript->Type->ID,
-	//		pTeam->CurrentScript->CurrentMission,
-	//		curAct,
-	//		curArg,
-	//		pTeam->CurrentScript->CurrentMission + 1,
-	//		nextAct,
-	//		nextArg);
-	//
-	//	return;
-	//}
+	if (!pTeam || pTeam->Type->ID == nullptr || pTeam->CurrentScript == nullptr)
+	{
+		ScriptExtData::Log("AI Scripts - SkipNextAction: Error - Invalid team or script!\n");
+		return;
+	}
 
-	if (successPercentage < 0 || successPercentage > 100)
-		successPercentage = pTeam->CurrentScript->GetCurrentAction().Argument;
+	successPercentage = std::clamp(successPercentage, 0, 100);
 
-	if (successPercentage < 0)
-		successPercentage = 0;
+	int randomPercentage = ScenarioClass::Instance->Random.RandomRanged(1, 100);
 
-	if (successPercentage > 100)
-		successPercentage = 100;
-
-	int percentage = ScenarioClass::Instance->Random.RandomRanged(1, 100);
-
-	if (percentage <= successPercentage)
+	if (randomPercentage <= successPercentage)
 	{
 		const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 		const auto& [nextAct, nextArg] = ScriptExtData::GetSpecificAction(pTeam->CurrentScript, pTeam->CurrentScript->CurrentMission + 2);
 
-		ScriptExtData::Log("AI Scripts - SkipNextAction: [%s] [%s] (line: %d = %d,%d) Next script line skipped successfuly. Next line will be: %d = %d,%d\n",
+		ScriptExtData::Log("AI Scripts - SkipNextAction: [%s] [%s] (line: %d = %d,%d) Next script line skipped successfully. Next line will be: %d = %d,%d\n",
 			pTeam->Type->ID,
 			pTeam->CurrentScript->Type->ID,
 			pTeam->CurrentScript->CurrentMission,
@@ -1608,7 +1494,6 @@ void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 		pTeam->CurrentScript->CurrentMission++;
 	}
 
-	// This action finished
 	pTeam->StepCompleted = true;
 }
 
@@ -1808,22 +1693,20 @@ FootClass* ScriptExtData::FindTheTeamLeader(TeamClass* pTeam)
 	FootClass* pLeaderUnit = nullptr;
 	int bestUnitLeadershipValue = -1;
 
-	if (!pTeam)
-		return pLeaderUnit;
-
-	// Find the Leader or promote a new one
-	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+	if (pTeam)
 	{
-		if (!IsUnitAvailable(pUnit, true) || !(pUnit->IsTeamLeader || pUnit->WhatAmI() == AbstractType::Aircraft))
-			continue;
-
-		// The team Leader will be used for selecting targets, if there are living Team Members then always exists 1 Leader.
-		int unitLeadershipRating = pUnit->GetTechnoType()->LeadershipRating;
-
-		if (unitLeadershipRating > bestUnitLeadershipValue)
+		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 		{
-			pLeaderUnit = pUnit;
-			bestUnitLeadershipValue = unitLeadershipRating;
+			if (IsUnitAvailable(pUnit, true) && (pUnit->IsTeamLeader || pUnit->WhatAmI() == AbstractType::Aircraft))
+			{
+				int unitLeadershipRating = pUnit->GetTechnoType()->LeadershipRating;
+
+				if (unitLeadershipRating > bestUnitLeadershipValue)
+				{
+					pLeaderUnit = pUnit;
+					bestUnitLeadershipValue = unitLeadershipRating;
+				}
+			}
 		}
 	}
 
@@ -1838,57 +1721,46 @@ bool ScriptExtData::IsExtVariableAction(int action)
 
 void ScriptExtData::Set_ForceJump_Countdown(TeamClass* pTeam, bool repeatLine = false, int count = 0)
 {
-	if (!pTeam)
-		return;
+	if (!pTeam) return;
+
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
-	const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
+	auto [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
 
-	if (count <= 0)
-		count = 15 * curArgs;
+	count = (count > 0) ? count : 15 * curArgs;
 
-	if (count > 0)
-	{
-		pTeamData->ForceJump_InitialCountdown = count;
-		pTeamData->ForceJump_Countdown.Start(count);
-		pTeamData->ForceJump_RepeatMode = repeatLine;
-	}
-	else
-	{
-		pTeamData->ForceJump_InitialCountdown = -1;
-		pTeamData->ForceJump_Countdown.Stop();
-		pTeamData->ForceJump_RepeatMode = false;
-	}
+	pTeamData->ForceJump_InitialCountdown = (count > 0) ? count : -1;
+	pTeamData->ForceJump_Countdown.Start(count);
+	pTeamData->ForceJump_RepeatMode = repeatLine;
 
 	auto pScript = pTeam->CurrentScript;
 
-	// This action finished
-	pTeam->StepCompleted = true;
+	// Log the action details
 	ScriptExtData::Log("AI Scripts - SetForceJumpCountdown: [%s] [%s](line: %d = %d,%d) Set Timed Jump -> (Countdown: %d, repeat action: %d)\n",
-		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
-		curAct,
-		curArgs,
-		count, repeatLine
-	);
+		pTeam->Type->ID, pScript->Type->ID, pScript->CurrentMission, curAct, curArgs, count, repeatLine);
+
+	// Mark the action as completed
+	pTeam->StepCompleted = true;
 }
 
 void ScriptExtData::Stop_ForceJump_Countdown(TeamClass* pTeam)
 {
-	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
+	// Retrieve TeamData from TeamExtContainer instance
+	TeamExtData* pTeamData = TeamExtContainer::Instance.Find(pTeam);
+
+	// Stop ForceJump countdown
 	pTeamData->ForceJump_InitialCountdown = -1;
 	pTeamData->ForceJump_Countdown.Stop();
 	pTeamData->ForceJump_RepeatMode = false;
 
-	auto pScript = pTeam->CurrentScript;
-
-	// This action finished
+	// Set StepCompleted flag to true
 	pTeam->StepCompleted = true;
+
+	// Log details of stopped Timed Jump
 	const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
 	ScriptExtData::Log("AI Scripts - StopForceJumpCountdown: [%s] [%s](line: %d = %d,%d): Stopped Timed Jump\n",
 		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
+		pTeam->CurrentScript->Type->ID,
+		pTeam->CurrentScript->CurrentMission,
 		curAct,
 		curArgs
 	);

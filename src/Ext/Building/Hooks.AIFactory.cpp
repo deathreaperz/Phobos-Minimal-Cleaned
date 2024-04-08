@@ -92,167 +92,73 @@ void HouseExtData::UpdateVehicleProduction()
 {
 	auto pThis = this->AttachedToObject;
 	const auto AIDifficulty = static_cast<int>(pThis->GetAIDifficultyIndex());
-	bool skipGround = pThis->ProducingUnitTypeIndex != -1;
-	bool skipNaval = this->ProducingNavalUnitTypeIndex != -1;
+
+	const bool skipGround = (pThis->ProducingUnitTypeIndex != -1);
+	const bool skipNaval = (this->ProducingNavalUnitTypeIndex != -1);
 
 	if ((skipGround && skipNaval) || (!skipGround && this->UpdateHarvesterProduction()))
+	{
 		return;
+	}
 
-	auto& creationFrames = HouseExtData::AIProduction_CreationFrames;
-	auto& values = HouseExtData::AIProduction_Values;
-	auto& bestChoices = HouseExtData::AIProduction_BestChoices;
-	auto& bestChoicesNaval = HouseExtData::AIProduction_BestChoicesNaval;
-
-	auto count = static_cast<size_t>(UnitTypeClass::Array->Count);
-	creationFrames.assign(count, 0x7FFFFFFF);
-	values.assign(count, 0);
-
-//	std::vector<TeamClass*> Teams;
+	std::vector<int> creationFrames(UnitTypeClass::Array->Count, 0x7FFFFFFF);
+	std::vector<int> values(UnitTypeClass::Array->Count, 0);
 
 	for (auto currentTeam : *TeamClass::Array)
 	{
-		if (!currentTeam || currentTeam->Owner != pThis)
-			continue;
-
-//		if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G"))
-//			Debug::Log("HereIam\n");
-
-//		Teams.push_back(currentTeam);
-		int teamCreationFrame = currentTeam->CreationFrame;
-
-		if ((!currentTeam->Type->Reinforce || currentTeam->IsFullStrength)
-			&& (currentTeam->IsForcedActive || currentTeam->IsHasBeen))
+		if (currentTeam && currentTeam->Owner == pThis &&
+			(!currentTeam->Type->Reinforce || currentTeam->IsFullStrength) &&
+			(currentTeam->IsForcedActive || currentTeam->IsHasBeen))
 		{
-			continue;
-		}
+			DynamicVectorClass<TechnoTypeClass*> taskForceMembers;
+			currentTeam->GetTaskForceMissingMemberTypes(taskForceMembers);
 
-		DynamicVectorClass<TechnoTypeClass*> taskForceMembers;
-		currentTeam->GetTaskForceMissingMemberTypes(taskForceMembers);
+			for (auto currentMember : taskForceMembers)
+			{
+				if (currentMember->WhatAmI() == UnitTypeClass::AbsID &&
+					(!skipGround || !currentMember->Naval) &&
+					(!skipNaval || currentMember->Naval))
+				{
+					const size_t index = static_cast<size_t>(((UnitTypeClass*)currentMember)->ArrayIndex);
+					++values[index];
 
-		for (auto currentMember : taskForceMembers)
-		{
-			const auto what = currentMember->WhatAmI();
-
-			if (what != UnitTypeClass::AbsID ||
-				(skipGround && !currentMember->Naval) ||
-				(skipNaval && currentMember->Naval))
-				continue;
-
-			const auto index = static_cast<size_t>(((UnitTypeClass*)currentMember)->ArrayIndex);
-			++values[index];
-
-//			if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G")) {
-//				Debug::Log("0100003I Unit %s  idx %d AddedValueResult %d\n", currentMember->ID, index, values[index]);
-//			}
-
-			if (teamCreationFrame < creationFrames[index])
-				creationFrames[index] = teamCreationFrame;
+					if (currentTeam->CreationFrame < creationFrames[index])
+					{
+						creationFrames[index] = currentTeam->CreationFrame;
+					}
+				}
+			}
 		}
 	}
 
-//	for (int i = 0; i < (int)Teams.size(); ++i) {
-//		Debug::Log("House [%s] Have [%d] Teams %s.\n", pThis->get_ID(), i, Teams[i]->get_ID());
-//	}
+	int bestValue = -1, bestValueNaval = -1;
+	int earliestTypeIndex = -1, earliestTypeIndexNaval = -1;
+	int earliestFrame = 0x7FFFFFFF, earliestFrameNaval = 0x7FFFFFFF;
 
-	//std::vector<int> Toremove {};
-	for (int i = 0; i < UnitClass::Array->Count; ++i) {
-		const auto pUnit = UnitClass::Array->Items[i];
-
-		//if (VTable::Get(pUnit) != UnitClass::vtable){
-
-		//	const char* Caller = "unk";
-		//	//const char* Type = "unk";
-		//	if (MappedCaller.contains(pUnit)) {
-		//		Caller = MappedCaller[pUnit].c_str();
-		//	}
-
-		//	Debug::Log("UpdateVehicleProduction for [%s] UnitClass Array(%d) at [%d] contains broken pointer[%x allocated from %s] WTF ???\n", pThis->get_ID() , UnitClass::Array->Count , i, pUnit , Caller);
-		//	Toremove.push_back(i);
-		//	continue;
-		//}
-
-		if (values[pUnit->Type->ArrayIndex] > 0 && pUnit->CanBeRecruited(pThis))
-			--values[pUnit->Type->ArrayIndex];
-	}
-
-	//for (auto ToRemoveIdx : Toremove) {
-	//	UnitClass::Array->RemoveAt(ToRemoveIdx);
-	//}
-
-	bestChoices.clear();
-	bestChoicesNaval.clear();
-
-	int bestValue = -1;
-	int bestValueNaval = -1;
-	int earliestTypenameIndex = -1;
-	int earliestTypenameIndexNaval = -1;
-	int earliestFrame = 0x7FFFFFFF;
-	int earliestFrameNaval = 0x7FFFFFFF;
-
-	for (auto i = 0u; i < count; ++i)
+	for (size_t i = 0; i < values.size(); ++i)
 	{
 		auto type = UnitTypeClass::Array->Items[static_cast<int>(i)];
 		int currentValue = values[i];
 
-		if (currentValue <= 0)
-			continue;
+		if (currentValue <= 0) continue;
 
-		const auto buildableResult = pThis->CanBuild(type, false, false);
-
-		if (buildableResult == CanBuildResult::Unbuildable
-			|| type->GetActualCost(pThis) > pThis->Available_Money())
+		if (pThis->CanBuild(type, false, false) == CanBuildResult::Buildable &&
+			type->GetActualCost(pThis) <= pThis->Available_Money())
 		{
-			continue;
-		}
+			bool isNaval = type->Naval;
+			int& currentBestValue = isNaval ? bestValueNaval : bestValue;
+			int& currentBestIndex = isNaval ? earliestTypeIndexNaval : earliestTypeIndex;
 
-		bool isNaval = type->Naval;
-		int* cBestValue = !isNaval ? &bestValue : &bestValueNaval;
-		std::vector<int>* cBestChoices = !isNaval ? &bestChoices : &bestChoicesNaval;
-
-		if (*cBestValue < currentValue || *cBestValue == -1)
-		{
-			*cBestValue = currentValue;
-			cBestChoices->clear();
-		}
-
-		cBestChoices->push_back(static_cast<int>(i));
-
-		int* cEarliestTypeNameIndex = !isNaval ? &earliestTypenameIndex : &earliestTypenameIndexNaval;
-		int* cEarliestFrame = !isNaval ? &earliestFrame : &earliestFrameNaval;
-
-		if (*cEarliestFrame > creationFrames[i] || *cEarliestTypeNameIndex == -1)
-		{
-			*cEarliestTypeNameIndex = static_cast<int>(i);
-			*cEarliestFrame = creationFrames[i];
+			if (currentBestValue < currentValue || currentBestValue == -1)
+			{
+				currentBestValue = currentValue;
+				currentBestIndex = static_cast<int>(i);
+			}
 		}
 	}
 
-	if (!skipGround)
-	{
-		int result_ground = earliestTypenameIndex;
-		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty]) {
-			if (!bestChoices.empty())
-				result_ground = bestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(bestChoices.size() - 1))];
-			else
-				result_ground = -1;
-		}
-
-		pThis->ProducingUnitTypeIndex = result_ground;
-	}
-
-	if (!skipNaval)
-	{
-		int result_naval = earliestTypenameIndexNaval;
-		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
-		{
-			if (!bestChoicesNaval.empty())
-				result_naval = bestChoicesNaval[ScenarioClass::Instance->Random.RandomFromMax(int(bestChoicesNaval.size() - 1))];
-			else
-				result_naval = -1;
-		}
-
-		this->ProducingNavalUnitTypeIndex = result_naval;
-	}
+	pThis->ProducingUnitTypeIndex = (!skipGround) ? earliestTypeIndex : -1;
+	this->ProducingNavalUnitTypeIndex = (!skipNaval) ? earliestTypeIndexNaval : -1;
 }
 
 //DEFINE_HOOK(0x7258D0, AnnounceInvalidPointer_PhobosGlobal_Mapped, 0x6)
