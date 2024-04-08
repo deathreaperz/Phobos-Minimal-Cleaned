@@ -11,18 +11,16 @@ std::vector<std::unique_ptr<SWStateMachine>> SWStateMachine::Array;
 
 void SWStateMachine::UpdateAll()
 {
-	for (size_t i = 0; i < SWStateMachine::Array.size(); ++i)
+	for (auto it = SWStateMachine::Array.begin(); it != SWStateMachine::Array.end();)
 	{
-		if (auto& pMachine = SWStateMachine::Array[i])
+		if ((*it)->Finished())
 		{
-			pMachine->Update();
-
-			if (pMachine->Finished())
-				SWStateMachine::Array.erase(SWStateMachine::Array.begin() + i);
+			it = SWStateMachine::Array.erase(it);
 		}
 		else
 		{
-			SWStateMachine::Array.erase(SWStateMachine::Array.begin() + i);
+			(*it)->Update();
+			++it;
 		}
 	}
 }
@@ -43,7 +41,6 @@ void SWStateMachine::PointerGotInvalid(AbstractClass* ptr, bool remove)
 
 void SWStateMachine::Clear()
 {
-	// hard-reset any super weapon related globals
 	SWStateMachine::Array.clear();
 	SW_NuclearMissile::CurrentNukeType = nullptr;
 	SW_PsychicDominator::CurrentPsyDom = nullptr;
@@ -52,8 +49,7 @@ void SWStateMachine::Clear()
 
 bool SWStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
-	return Stm
-		.Process(this->Clock)
+	return Stm.Process(this->Clock)
 		.Process(this->Super, RegisterForChange)
 		.Process(this->Type, RegisterForChange)
 		.Process(this->Coords)
@@ -62,11 +58,9 @@ bool SWStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 
 bool SWStateMachine::Save(PhobosStreamWriter& Stm) const
 {
-	// used to instantiate in ObjectFactory
 	Stm.Save(this->GetIdentifier());
 
-	return Stm
-		.Process(this->Clock)
+	return Stm.Process(this->Clock)
 		.Process(this->Super)
 		.Process(this->Type)
 		.Process(this->Coords)
@@ -75,8 +69,7 @@ bool SWStateMachine::Save(PhobosStreamWriter& Stm) const
 
 bool SWStateMachine::LoadGlobals(PhobosStreamReader& Stm)
 {
-	return Stm
-		.Process(Array)
+	return Stm.Process(Array)
 		.Process(SW_NuclearMissile::CurrentNukeType)
 		.Process(SW_PsychicDominator::CurrentPsyDom)
 		.Process(SW_LightningStorm::CurrentLightningStorm)
@@ -85,8 +78,7 @@ bool SWStateMachine::LoadGlobals(PhobosStreamReader& Stm)
 
 bool SWStateMachine::SaveGlobals(PhobosStreamWriter& Stm)
 {
-	return Stm
-		.Process(Array)
+	return Stm.Process(Array)
 		.Process(SW_NuclearMissile::CurrentNukeType)
 		.Process(SW_PsychicDominator::CurrentPsyDom)
 		.Process(SW_LightningStorm::CurrentLightningStorm)

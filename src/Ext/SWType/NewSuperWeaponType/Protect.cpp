@@ -1,5 +1,4 @@
 #include "Protect.h"
-
 #include <Ext/TechnoType/Body.h>
 #include <Utilities/Helpers.h>
 
@@ -18,8 +17,8 @@ bool SW_Protect::CanFireAt(const TargetingData* pTargeting, const CellStruct& ce
 {
 	auto ret = NewSWType::CanFireAt(pTargeting, cell, manual);
 
-	// if this is a force shield requiring buildings and a building is selected, check the modifier
-	if (ret && manual && pTargeting->TypeExt->Protect_IsForceShield && pTargeting->TypeExt->SW_RequiresTarget & SuperWeaponTarget::Building)
+	if (ret && manual && pTargeting->TypeExt->Protect_IsForceShield &&
+		(pTargeting->TypeExt->SW_RequiresTarget & SuperWeaponTarget::Building))
 	{
 		auto pCell = MapClass::Instance->GetCellAt(cell);
 		if (auto pBld = pCell->GetBuilding())
@@ -48,27 +47,26 @@ bool SW_Protect::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 		bool isForceShield = pData->Protect_IsForceShield;
 
 		int duration = pData->Protect_Duration.Get(isForceShield
-			? RulesClass::Instance->ForceShieldDuration : RulesClass::Instance->IronCurtainDuration);
+						? RulesClass::Instance->ForceShieldDuration
+						: RulesClass::Instance->IronCurtainDuration);
 
-		// play start sound
 		if (pSW->StartSound > -1)
 		{
 			VocClass::PlayAt(pSW->StartSound, Crd, nullptr);
 		}
 
-		// set up the special sound when the effect wears off
 		if (pThis->Type->SpecialSound > -1)
 		{
 			int playFadeSoundTime = pData->Protect_PlayFadeSoundTime.Get(isForceShield
-				? RulesClass::Instance->ForceShieldPlayFadeSoundTime : 0);
-
+								   ? RulesClass::Instance->ForceShieldPlayFadeSoundTime
+								   : 0);
 			pThis->SpecialSoundDuration = duration - playFadeSoundTime;
 			pThis->SpecialSoundLocation = Crd;
 		}
 
-		// shut down power
 		int powerOutageDuration = pData->Protect_PowerOutageDuration.Get(isForceShield
-			? RulesClass::Instance->ForceShieldBlackoutDuration : 0);
+								  ? RulesClass::Instance->ForceShieldBlackoutDuration
+								  : 0);
 
 		if (powerOutageDuration > 0)
 		{
@@ -80,30 +78,22 @@ bool SW_Protect::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 
 		auto IronCurtain = [=](TechnoClass* pTechno) -> bool
 			{
-				// we shouldn't do anything
 				if (pTechno->IsImmobilized || pTechno->IsBeingWarpedOut())
 				{
 					return true;
 				}
 
-				// is this thing affected at all?
-				if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner))
+				if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner) ||
+					!pData->IsTechnoAffected(pTechno))
 				{
 					return true;
 				}
 
-				if (!pData->IsTechnoAffected(pTechno))
-				{
-					return true;
-				}
-
-				// protect this techno
 				pTechno->IronCurtain(duration, pThis->Owner, force);
 
 				return true;
 			};
 
-		// protect everything in range
 		Helpers::Alex::DistinctCollector<TechnoClass*> items;
 		Helpers::Alex::for_each_in_rect_or_range<TechnoClass>(Coords, range.WidthOrRange, range.Height, items);
 		items.apply_function_for_each(IronCurtain);
@@ -116,13 +106,11 @@ void SW_Protect::Initialize(SWTypeExtData* pData)
 {
 	auto type = pData->AttachedToObject->Type;
 
-	// iron curtain and force shield, as well as protect
 	pData->SW_AnimHeight = 5;
 
 	if (type == SuperWeaponType::ForceShield)
 	{
 		pData->AttachedToObject->Action = Action::ForceShield;
-		// force shield
 		pData->Protect_IsForceShield = true;
 		pData->SW_RadarEvent = false;
 
@@ -134,18 +122,17 @@ void SW_Protect::Initialize(SWTypeExtData* pData)
 		pData->SW_RequiresHouse = AffectedHouse::Team;
 		pData->SW_RequiresTarget = SuperWeaponTarget::Building;
 
-		pData->CursorType = int(MouseCursorType::ForceShield);
-		pData->NoCursorType = int(MouseCursorType::NoForceShield);
+		pData->CursorType = static_cast<int>(MouseCursorType::ForceShield);
+		pData->NoCursorType = static_cast<int>(MouseCursorType::NoForceShield);
 	}
 	else
 	{
 		pData->AttachedToObject->Action = Action::IronCurtain;
-		// iron curtain and protect
 		pData->EVA_Ready = VoxClass::FindIndexById(GameStrings::EVA_IronCurtainReady);
 		pData->EVA_Detected = VoxClass::FindIndexById(GameStrings::EVA_IronCurtainDetected);
 		pData->EVA_Activated = VoxClass::FindIndexById(GameStrings::EVA_IronCurtainActivated);
 		pData->SW_AITargetingMode = SuperWeaponAITargetingMode::IronCurtain;
-		pData->CursorType = int(MouseCursorType::IronCurtain);
+		pData->CursorType = static_cast<int>(MouseCursorType::IronCurtain);
 	}
 }
 
@@ -161,19 +148,24 @@ void SW_Protect::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 bool SW_Protect::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	if (!this->IsLaunchsiteAlive(pBuilding))
+	if (!IsLaunchsiteAlive(pBuilding))
+	{
 		return false;
+	}
 
 	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+	{
 		return true;
+	}
 
-	return this->IsSWTypeAttachedToThis(pData, pBuilding);
+	return IsSWTypeAttachedToThis(pData, pBuilding);
 }
 
 AnimTypeClass* SW_Protect::GetAnim(const SWTypeExtData* pData) const
 {
-	return pData->SW_Anim.Get(pData->AttachedToObject->Type == SuperWeaponType::ForceShield ?
-		RulesClass::Instance->ForceShieldInvokeAnim : RulesClass::Instance->IronCurtainInvokeAnim);
+	return pData->SW_Anim.Get(pData->AttachedToObject->Type == SuperWeaponType::ForceShield
+		   ? RulesClass::Instance->ForceShieldInvokeAnim
+		   : RulesClass::Instance->IronCurtainInvokeAnim);
 }
 
 SWRange SW_Protect::GetRange(const SWTypeExtData* pData) const

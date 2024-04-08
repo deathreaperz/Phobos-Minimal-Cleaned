@@ -20,16 +20,10 @@ bool SW_ChronoSphere::Activate(SuperClass* const pThis, const CellStruct& Coords
 	if (pThis->IsCharged)
 	{
 		auto const pTarget = MapClass::Instance->GetCellAt(Coords);
-
-		// remember the current source position
 		pThis->ChronoMapCoords = Coords;
-
-		// position to play the animation at
 		auto coords = pTarget->GetCoordsWithBridge();
 		coords.Z += pData->SW_AnimHeight;
 
-		// recoded to support customizable anims
-		// and visibility for allies, too.
 		if (auto const pAnimType = GetAnim(pData))
 		{
 			SWTypeExtData::CreateChronoAnim(pThis, coords, pAnimType);
@@ -37,11 +31,8 @@ bool SW_ChronoSphere::Activate(SuperClass* const pThis, const CellStruct& Coords
 
 		if (IsPlayer)
 		{
-			// find the corresponding warp SW type.
 			int idxWarp = SuperWeaponTypeClass::FindIndexById(pData->SW_PostDependent);
-
-			// fallback to use the first warp if there is no specific one
-			auto const& Types = *SuperWeaponTypeClass::Array;
+			const auto& Types = *SuperWeaponTypeClass::Array;
 
 			if (!Types.ValidIndex(idxWarp) || Types[idxWarp]->Type != SuperWeaponType::ChronoWarp)
 			{
@@ -77,7 +68,7 @@ void SW_ChronoSphere::Initialize(SWTypeExtData* pData)
 	pData->EVA_Activated = VoxClass::FindIndexById(GameStrings::EVA_ChronosphereActivated);
 
 	pData->SW_AffectsTarget = SuperWeaponTarget::Infantry | SuperWeaponTarget::Unit;
-	pData->CursorType = (int)MouseCursorType::Chronosphere;
+	pData->CursorType = static_cast<int>(MouseCursorType::Chronosphere);
 	pData->AttachedToObject->Action = Action::ChronoSphere;
 }
 
@@ -99,8 +90,7 @@ void SW_ChronoSphere::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	pData->Chronosphere_BlastSrc.Read(exINI, section, "Chronosphere.BlastSrc");
 	pData->Chronosphere_BlastDest.Read(exINI, section, "Chronosphere.BlastDest");
 	pData->Chronosphere_KillCargo.Read(exINI, section, "Chronosphere.KillCargo");
-	// reconstruct the original value, then re-read (otherwise buildings will be affected if
-	// the SW section is defined in game mode inis or maps without restating SW.AffectsTarget)
+
 	if (!pData->Chronosphere_AffectBuildings)
 	{
 		pData->SW_AffectsTarget = (pData->SW_AffectsTarget & ~SuperWeaponTarget::Building);
@@ -108,7 +98,6 @@ void SW_ChronoSphere::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 	pData->SW_AffectsTarget.Read(exINI, section, "SW.AffectsTarget");
 
-	// we handle the distinction between buildings and deployed vehicles ourselves
 	pData->Chronosphere_AffectBuildings = ((pData->SW_AffectsTarget & SuperWeaponTarget::Building) != SuperWeaponTarget::None);
 	pData->SW_AffectsTarget = (pData->SW_AffectsTarget | SuperWeaponTarget::Building);
 }

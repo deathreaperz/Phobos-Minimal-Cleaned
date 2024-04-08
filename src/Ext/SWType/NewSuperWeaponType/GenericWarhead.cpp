@@ -2,7 +2,6 @@
 
 #include <Ext/Anim/Body.h>
 #include <Ext/WarheadType/Body.h>
-
 #include <Misc/Ares/Hooks/Classes/AttachedAffects.h>
 
 std::vector<const char*> SW_GenericWarhead::GetTypeString() const
@@ -19,24 +18,12 @@ void SW_GenericWarhead::Initialize(SWTypeExtData* pData)
 
 WarheadTypeClass* SW_GenericWarhead::GetWarhead(const SWTypeExtData* pData) const
 {
-	if (pData->SW_Warhead.isset())
-		return pData->SW_Warhead;
-
-	if (pData->AttachedToObject->WeaponType)
-		return pData->AttachedToObject->WeaponType->Warhead;
-
-	return nullptr;
+	return (pData->SW_Warhead.isset()) ? pData->SW_Warhead : (pData->AttachedToObject->WeaponType ? pData->AttachedToObject->WeaponType->Warhead : nullptr);
 }
 
 int SW_GenericWarhead::GetDamage(const SWTypeExtData* pData) const
 {
-	if (pData->SW_Damage.isset())
-		return pData->SW_Damage;
-
-	if (pData->AttachedToObject->WeaponType)
-		return pData->AttachedToObject->WeaponType->Damage;
-
-	return 0;
+	return (pData->SW_Damage.isset()) ? pData->SW_Damage : (pData->AttachedToObject->WeaponType ? pData->AttachedToObject->WeaponType->Damage : 0);
 }
 
 bool SW_GenericWarhead::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
@@ -45,19 +32,23 @@ bool SW_GenericWarhead::Activate(SuperClass* pThis, const CellStruct& Coords, bo
 	auto const pData = SWTypeExtContainer::Instance.Find(pType);
 
 	const auto pFirer = this->GetFirer(pThis, Coords, false);
-	const auto nDeferement = pData->SW_Deferment.Get(-1);
+	const auto nDeferment = pData->SW_Deferment.Get(-1);
 	const auto pWarhead = this->GetWarhead(pData);
 
 	if (!pWarhead)
 	{
-		Debug::Log("launch GenericWarhead SW ([%s]) Without Waarhead\n", pThis->Type->ID);
+		Debug::Log("launch GenericWarhead SW [%s] Without Warhead\n", pThis->Type->ID);
 		return true;
 	}
 
-	if (nDeferement <= 0)
+	if (nDeferment <= 0)
+	{
 		GenericWarheadStateMachine::SentPayload(pFirer, pThis, pData, this, Coords);
+	}
 	else
-		this->newStateMachine(nDeferement, Coords, pThis, pFirer);
+	{
+		this->newStateMachine(nDeferment, Coords, pThis, pFirer);
+	}
 
 	return true;
 }
@@ -65,10 +56,14 @@ bool SW_GenericWarhead::Activate(SuperClass* pThis, const CellStruct& Coords, bo
 bool SW_GenericWarhead::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
 	if (!this->IsLaunchsiteAlive(pBuilding))
+	{
 		return false;
+	}
 
 	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
+	{
 		return true;
+	}
 
 	return this->IsSWTypeAttachedToThis(pData, pBuilding);
 }
@@ -83,9 +78,9 @@ void SW_GenericWarhead::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 void GenericWarheadStateMachine::Update()
 {
-	if (this->Finished())
+	if (Finished())
 	{
-		this->SentPayload(this->Firer, this->Super, this->GetTypeExtData(), this->Type, this->Coords);
+		SentPayload(Firer, Super, GetTypeExtData(), Type, Coords);
 	}
 }
 
@@ -100,65 +95,41 @@ void GenericWarheadStateMachine::SentPayload(TechnoClass* pFirer, SuperClass* pS
 	}
 
 	const auto pWarhead = pNewType->GetWarhead(pData);
-	auto const pCell = MapClass::Instance->GetCellAt(loc);
+	const auto pCell = MapClass::Instance->GetCellAt(loc);
 	const auto damage = pNewType->GetDamage(pData);
 	auto detonationCoords = pCell->GetCoordsWithBridge();
 
 	if (pData->Generic_Warhead_Detonate)
 	{
 		AbstractClass* pTarget = pCell->GetSomeObject({}, pCell->ContainsBridge());
-		WarheadTypeExtData::DetonateAt(
-		pWarhead,
-		pTarget ? pTarget : pCell,
-		detonationCoords,
-		pFirer,
-		damage,
-		 pSuper->Owner
-		);
+		WarheadTypeExtData::DetonateAt(pWarhead, pTarget ? pTarget : pCell, detonationCoords, pFirer, damage, pSuper->Owner);
 	}
 	else
 	{
-		// crush, kill, destroy
-		auto const pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
-		WarheadTypeExtData::CreateIonBlast(pWarhead, detonationCoords);
-		pWHExt->applyIronCurtain(detonationCoords, pSuper->Owner, damage);
+		WarheadTypeExtContainer::Instance.Find(pWarhead)->applyIronCurtain(detonationCoords, pSuper->Owner, damage);
 		WarheadTypeExtData::applyEMP(pWarhead, detonationCoords, pFirer);
 		AresAE::applyAttachedEffect(pWarhead, detonationCoords, pSuper->Owner);
-
-		// Otamaa : design changes here is intended
-		// as MC now part of bigger `Detonate` function , that also check various state
-		// TODO : make everything work together better , for now this may give an headache for
-		//		  someone that touching the code  , please bear it with me for a while !
 		MapClass::DamageArea(detonationCoords, damage, pFirer, pWarhead, pWarhead->Tiberium, pSuper->Owner);
-
-		if (auto const pAnimType = MapClass::SelectDamageAnimation(damage, pWarhead, pCell->LandType, detonationCoords))
+		if (auto pAnimType = MapClass::SelectDamageAnimation(damage, pWarhead, pCell->LandType, detonationCoords))
 		{
-			//Otamaa Added
 			auto pAnim = GameCreate<AnimClass>(pAnimType, detonationCoords);
 			pAnim->Owner = pSuper->Owner;
 		}
-
 		MapClass::FlashbangWarheadAt(damage, pWarhead, detonationCoords, false, SpotlightFlags::None);
 	}
 }
 
-bool  GenericWarheadStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
+bool GenericWarheadStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
-	return SWStateMachine::Load(Stm, RegisterForChange)
-		&& Stm
-		.Process(Firer)
-		.Success();
+	return SWStateMachine::Load(Stm, RegisterForChange) && Stm.Process(Firer).Success();
 }
 
-bool  GenericWarheadStateMachine::Save(PhobosStreamWriter& Stm) const
+bool GenericWarheadStateMachine::Save(PhobosStreamWriter& Stm) const
 {
-	return SWStateMachine::Save(Stm)
-		&& Stm
-		.Process(Firer)
-		.Success();
+	return SWStateMachine::Save(Stm) && Stm.Process(Firer).Success();
 }
 
-void  GenericWarheadStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
+void GenericWarheadStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
 {
 	AnnounceInvalidPointer(Firer, ptr, remove);
 }

@@ -1,14 +1,17 @@
 #include "EMPulse.h"
 
-#include <Utilities/Helpers.h>
+#include <vector>
+#include <limits>
+#include <algorithm>
 
+#include <Utilities/Helpers.h>
 #include <Ext/Building/Body.h>
 #include <Ext/Bullet/Body.h>
 #include <Ext/BulletType/Body.h>
 
 std::vector<const char*> SW_EMPulse::GetTypeString() const
 {
-	return { "EMPulse" , "ChemLauncher" , "MultiLauncher" , "FireAt" };
+	return { "EMPulse", "ChemLauncher", "MultiLauncher", "FireAt" };
 }
 
 bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
@@ -16,12 +19,7 @@ bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 	auto pData = SWTypeExtContainer::Instance.Find(pThis->Type);
 	pThis->Owner->EMPTarget = Coords;
 
-	// the maximum number of buildings to fire. negative means all.
-	const auto Count = (pData->SW_MaxCount >= 0)
-		? static_cast<size_t>(pData->SW_MaxCount)
-		: std::numeric_limits<size_t>::max();
-
-	// if linked, only one needs to be in range (and CanFireAt checked that already).
+	const size_t Count = (pData->SW_MaxCount >= 0) ? static_cast<size_t>(pData->SW_MaxCount) : std::numeric_limits<size_t>::max();
 	const bool ignoreRange = pData->EMPulse_Linked || pData->EMPulse_TargetSelf;
 
 	auto IsEligible = [=](BuildingClass* pBld)
@@ -72,8 +70,8 @@ void SW_EMPulse::Initialize(SWTypeExtData* pData)
 	pData->EMPulse_TargetSelf = false;
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::None;
-	pData->CursorType = int(MouseCursorType::Attack);
-	pData->NoCursorType = int(MouseCursorType::AttackOutOfRange);
+	pData->CursorType = static_cast<int>(MouseCursorType::Attack);
+	pData->NoCursorType = static_cast<int>(MouseCursorType::AttackOutOfRange);
 }
 
 void SW_EMPulse::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
@@ -88,22 +86,20 @@ void SW_EMPulse::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	pData->EMPulse_PulseBall.Read(exINI, section, "EMPulse.PulseBall");
 	pData->EMPulse_Cannons.Read(exINI, section, "EMPulse.Cannons");
 
-	pData->AttachedToObject->Action = pData->EMPulse_TargetSelf ? Action::None : (Action)AresNewActionType::SuperWeaponAllowed;
+	pData->AttachedToObject->Action = pData->EMPulse_TargetSelf ? Action::None : Action(AresNewActionType::SuperWeaponAllowed);
 }
 
 bool SW_EMPulse::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
 	const auto pBldExt = BuildingExtContainer::Instance.Find(pBuilding);
-	if (pBldExt->LimboID != -1)
+	if (pBldExt->LimboID != -1 || !this->IsLaunchsiteAlive(pBuilding))
+	{
 		return false;
+	}
 
-	if (!this->IsLaunchsiteAlive(pBuilding))
-		return false;
-
-	// don't further question the types in this list
 	if (!pData->EMPulse_Cannons.empty() && pData->EMPulse_Cannons.Contains(pBuilding->Type))
 	{
-		return true; //quick exit
+		return true;
 	}
 
 	return pBuilding->Type->EMPulseCannon && this->IsSWTypeAttachedToThis(pData, pBuilding);
@@ -113,32 +109,18 @@ std::pair<double, double> SW_EMPulse::GetLaunchSiteRange(const SWTypeExtData* pD
 {
 	if (pData->EMPulse_TargetSelf)
 	{
-		// no need for any range check
 		return { -1.0, -1.0 };
 	}
 
 	if (!pBuilding)
 	{
-		// for EMP negative ranges mean default value, so this forces
-		// to do the check regardless of the actual value
 		return { 0.0, 0.0 };
 	}
 
 	if (auto pWeap = pBuilding->GetWeapon(0)->WeaponType)
 	{
-		// get maximum range
-		double maxRange = pData->SW_RangeMaximum;
-		if (maxRange < 0.0)
-		{
-			maxRange = pWeap->Range / 256.0;
-		}
-
-		// get minimum range
-		double minRange = pData->SW_RangeMinimum;
-		if (minRange < 0.0)
-		{
-			minRange = pWeap->MinimumRange / 256.0;
-		}
+		double maxRange = pData->SW_RangeMaximum >= 0.0 ? pData->SW_RangeMaximum : pWeap->Range / 256.0;
+		double minRange = pData->SW_RangeMinimum >= 0.0 ? pData->SW_RangeMinimum : pWeap->MinimumRange / 256.0;
 
 		return { minRange, maxRange };
 	}

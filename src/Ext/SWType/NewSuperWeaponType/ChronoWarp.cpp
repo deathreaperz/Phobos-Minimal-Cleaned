@@ -1,7 +1,5 @@
 #include "ChronoWarp.h"
-
 #include <Ext/Building/Body.h>
-
 #include <Utilities/Helpers.h>
 
 bool SW_ChronoWarp::HandleThisType(SuperWeaponType type) const
@@ -27,18 +25,19 @@ void KillCargo(TechnoClass* pTech, HouseClass* killer)
 		pBuilding->Occupants.Count = 0;
 	}
 
-	const auto pFoot = generic_cast<FootClass*>(pTech);
-
-	while (pTech->Passengers.GetFirstPassenger())
+	if (auto pFoot = generic_cast<FootClass*>(pTech))
 	{
-		FootClass* pPassenger = pFoot ? pFoot->RemoveFirstPassenger() : pTech->Passengers.RemoveFirstPassenger();
+		while (pTech->Passengers.GetFirstPassenger())
+		{
+			FootClass* pPassenger = pFoot ? pFoot->RemoveFirstPassenger() : pTech->Passengers.RemoveFirstPassenger();
 
-		if (pPassenger->Team)
-			pPassenger->Team->RemoveMember(pPassenger);
+			if (pPassenger->Team)
+				pPassenger->Team->RemoveMember(pPassenger);
 
-		KillCargo(pPassenger, killer);
-		pPassenger->RegisterKill(killer);
-		pPassenger->UnInit();
+			KillCargo(pPassenger, killer);
+			pPassenger->RegisterKill(killer);
+			pPassenger->UnInit();
+		}
 	}
 }
 
@@ -323,9 +322,10 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 }
 
 void SW_ChronoWarp::Initialize(SWTypeExtData* pData)
-{ 	// Every other thing will be read in the ChronoSphere.
+{
+	// Initialize superweapon properties
 	pData->AttachedToObject->Action = Action::ChronoWarp;
-	pData->CursorType = (int)MouseCursorType::Chronosphere;
+	pData->CursorType = static_cast<int>(MouseCursorType::Chronosphere);
 }
 
 bool SW_ChronoWarp::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
@@ -345,6 +345,7 @@ bool SW_ChronoWarp::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBui
 	}
 
 	return SWTypeExtContainer::Instance.Find(pSource->Type)->GetNewSWType()->IsLaunchSite(pData, pBuilding);
+	return true;
 }
 
 void ChronoWarpStateMachine::Update()
@@ -468,6 +469,7 @@ bool ChronoWarpStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChang
 		.Process(this->Buildings, RegisterForChange)
 		.Process(this->Duration, RegisterForChange)
 		.Success();
+	return true;
 }
 
 bool ChronoWarpStateMachine::Save(PhobosStreamWriter& Stm) const
@@ -477,4 +479,5 @@ bool ChronoWarpStateMachine::Save(PhobosStreamWriter& Stm) const
 		.Process(this->Buildings)
 		.Process(this->Duration)
 		.Success();
+	return true;
 }
