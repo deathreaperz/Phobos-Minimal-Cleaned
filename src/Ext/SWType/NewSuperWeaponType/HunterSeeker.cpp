@@ -25,13 +25,6 @@ bool SW_HunterSeeker::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 		return false;
 	}
 
-	//testing
-	// TODO : Re-enable this
-	// somwhat HS Causing desync on ROTE ?
-	// need to investigate further
-	//if (IS_SAME_STR_(pType->ID, "SOVSCRAP"))
-	//	return true;
-
 	// the maximum number of buildings to fire. negative means all.
 	const auto Count = (pExt->SW_MaxCount >= 0)
 		? static_cast<size_t>(pExt->SW_MaxCount)
@@ -41,38 +34,36 @@ bool SW_HunterSeeker::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 	// create hunterseeker regardless building alive state
 	// only check if cell is actually eligible
 	size_t Success = 0;
-	Helpers::Alex::for_each_if_n(pOwner->Buildings.begin(), pOwner->Buildings.end(),
-		Count,
-		[=](BuildingClass* pBld) { return this->IsLaunchSite_HS(pExt, pBld); },
-		[=, &Success](BuildingClass* pBld)
- {
-	 auto cell = this->GetLaunchCell(pExt, pBld, pType);
+	for (auto pBld : pOwner->Buildings)
+	{
+		if (!IsLaunchSite_HS(pExt, pBld))
+			continue;
 
-	 if (cell == CellStruct::Empty)
-	 {
-		 return;
-	 }
+		auto cell = GetLaunchCell(pExt, pBld, pType);
 
-	 // create a hunter seeker
-	 if (auto pHunter = (UnitClass*)pType->CreateObject(pOwner))
-	 {
-		 TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
+		if (cell == CellStruct::Empty)
+			continue;
 
-		 // put it on the map and let it go
+		// create a hunter seeker
+		auto pHunter = static_cast<UnitClass*>(pType->CreateObject(pOwner));
+		if (!pHunter)
+			continue;
 
-		 if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
-		 {
-			 pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
-			 pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
-			 pHunter->NextMission();
-			 ++Success;
-		 }
-		 else
-		 {
-			 GameDelete<true, false>(pHunter);
-		 }
-	 }
-		});
+		TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
+
+		// put it on the map and let it go
+		if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
+		{
+			pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
+			pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
+			pHunter->NextMission();
+			++Success;
+		}
+		else
+		{
+			GameDelete<true, false>(pHunter);
+		}
+	}
 
 	// no launch building found
 	if (!Success)
@@ -85,7 +76,8 @@ bool SW_HunterSeeker::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 }
 
 void SW_HunterSeeker::Initialize(SWTypeExtData* pData)
-{	// Defaults to HunterSeeker values
+{
+	// Defaults to HunterSeeker values
 	pData->SW_MaxCount = 1;
 
 	pData->EVA_Detected = VoxClass::FindIndexById("EVA_HunterSeekerDetected");
@@ -121,7 +113,7 @@ void SW_HunterSeeker::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 bool SW_HunterSeeker::IsLaunchSite_HS(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
 	// don't further question the types in this list
-		// get the appropriate launch buildings list
+	// get the appropriate launch buildings list
 	const auto HSBuilding = !pData->HunterSeeker_Buildings.empty()
 		? make_iterator(pData->HunterSeeker_Buildings) : make_iterator(RulesExtData::Instance()->HunterSeekerBuildings);
 

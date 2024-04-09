@@ -16,47 +16,43 @@ bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 	auto pData = SWTypeExtContainer::Instance.Find(pThis->Type);
 	pThis->Owner->EMPTarget = Coords;
 
-	// the maximum number of buildings to fire. negative means all.
-	const auto Count = (pData->SW_MaxCount >= 0)
-		? static_cast<size_t>(pData->SW_MaxCount)
-		: std::numeric_limits<size_t>::max();
+	const auto Count = static_cast<size_t>(pData->SW_MaxCount);
 
-	// if linked, only one needs to be in range (and CanFireAt checked that already).
 	const bool ignoreRange = pData->EMPulse_Linked || pData->EMPulse_TargetSelf;
 
 	auto IsEligible = [=](BuildingClass* pBld)
-		{
-			return this->IsLaunchSiteEligible(pData, Coords, pBld, ignoreRange);
-		};
+	{
+		return this->IsLaunchSiteEligible(pData, Coords, pBld, ignoreRange);
+	};
 
-	// only call on up to Count buildings that suffice IsEligible
 	Helpers::Alex::for_each_if_n(pThis->Owner->Buildings.begin(), pThis->Owner->Buildings.end(),
 		Count, IsEligible, [=](BuildingClass* pBld)
-	{
-		if (!pData->EMPulse_TargetSelf)
 		{
-			// set extended properties
-			TechnoExtContainer::Instance.Find(pBld)->SuperTarget = Coords;
-			TechnoExtContainer::Instance.Find(pBld)->LinkedSW = pThis;
-			// setup the cannon and start the fire mission
-			pBld->FiringSWType = pThis->Type->ArrayIndex;
-			pBld->QueueMission(Mission::Missile, false);
-			pBld->NextMission();
-		}
-		else
-		{
-			// create a bullet and detonate immediately
-			if (auto pWeapon = pBld->GetWeapon(0)->WeaponType)
+			if (!pData->EMPulse_TargetSelf)
 			{
-				if (auto pBullet = BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->CreateBullet(pBld, pBld, pWeapon, false, true))
+				auto pBldExt = TechnoExtContainer::Instance.Find(pBld);
+				pBldExt->SuperTarget = Coords;
+				pBldExt->LinkedSW = pThis;
+				pBld->FiringSWType = pThis->Type->ArrayIndex;
+				pBld->QueueMission(Mission::Missile, false);
+				pBld->NextMission();
+			}
+			else
+			{
+				auto pWeapon = pBld->GetWeapon(0)->WeaponType;
+				if (pWeapon)
 				{
-					pBullet->Limbo();
-					pBullet->Detonate(BuildingExtData::GetCenterCoords(pBld));
-					pBullet->Release();
+					auto pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pWeapon->Projectile);
+					auto pBullet = pBulletTypeExt->CreateBullet(pBld, pBld, pWeapon, false, true);
+					if (pBullet)
+					{
+						pBullet->Limbo();
+						pBullet->Detonate(BuildingExtData::GetCenterCoords(pBld));
+						pBullet->Release();
+					}
 				}
 			}
-		}
-	});
+		});
 
 	return true;
 }
@@ -72,8 +68,8 @@ void SW_EMPulse::Initialize(SWTypeExtData* pData)
 	pData->EMPulse_TargetSelf = false;
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::None;
-	pData->CursorType = int(MouseCursorType::Attack);
-	pData->NoCursorType = int(MouseCursorType::AttackOutOfRange);
+	pData->CursorType = static_cast<int>(MouseCursorType::Attack);
+	pData->NoCursorType = static_cast<int>(MouseCursorType::AttackOutOfRange);
 }
 
 void SW_EMPulse::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
@@ -100,10 +96,9 @@ bool SW_EMPulse::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuildi
 	if (!this->IsLaunchsiteAlive(pBuilding))
 		return false;
 
-	// don't further question the types in this list
 	if (!pData->EMPulse_Cannons.empty() && pData->EMPulse_Cannons.Contains(pBuilding->Type))
 	{
-		return true; //quick exit
+		return true;
 	}
 
 	return pBuilding->Type->EMPulseCannon && this->IsSWTypeAttachedToThis(pData, pBuilding);
@@ -113,27 +108,23 @@ std::pair<double, double> SW_EMPulse::GetLaunchSiteRange(const SWTypeExtData* pD
 {
 	if (pData->EMPulse_TargetSelf)
 	{
-		// no need for any range check
 		return { -1.0, -1.0 };
 	}
 
 	if (!pBuilding)
 	{
-		// for EMP negative ranges mean default value, so this forces
-		// to do the check regardless of the actual value
 		return { 0.0, 0.0 };
 	}
 
-	if (auto pWeap = pBuilding->GetWeapon(0)->WeaponType)
+	auto pWeap = pBuilding->GetWeapon(0)->WeaponType;
+	if (pWeap)
 	{
-		// get maximum range
 		double maxRange = pData->SW_RangeMaximum;
 		if (maxRange < 0.0)
 		{
 			maxRange = pWeap->Range / 256.0;
 		}
 
-		// get minimum range
 		double minRange = pData->SW_RangeMinimum;
 		if (minRange < 0.0)
 		{

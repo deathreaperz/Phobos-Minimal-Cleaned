@@ -50,7 +50,7 @@ void SW_ParaDrop::Initialize(SWTypeExtData* pData)
 	pData->EVA_Ready = VoxClass::FindIndexById(GameStrings::EVA_ReinforcementsReady);
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::ParaDrop;
-	pData->CursorType = int(MouseCursorType::ParaDrop);
+	pData->CursorType = static_cast<int>(MouseCursorType::ParaDrop);
 }
 
 void SW_ParaDrop::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
@@ -372,11 +372,8 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 
 bool SW_ParaDrop::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-	if (!this->IsLaunchsiteAlive(pBuilding))
-		return false;
+    if (!IsLaunchsiteAlive(pBuilding))
+        return false;
 
-	if (!pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type))
-		return true;
-
-	return this->IsSWTypeAttachedToThis(pData, pBuilding);
+    return !pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type) || IsSWTypeAttachedToThis(pData, pBuilding);
 }

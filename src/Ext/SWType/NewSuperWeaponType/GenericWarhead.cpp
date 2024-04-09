@@ -19,24 +19,12 @@ void SW_GenericWarhead::Initialize(SWTypeExtData* pData)
 
 WarheadTypeClass* SW_GenericWarhead::GetWarhead(const SWTypeExtData* pData) const
 {
-	if (pData->SW_Warhead.isset())
-		return pData->SW_Warhead;
-
-	if (pData->AttachedToObject->WeaponType)
-		return pData->AttachedToObject->WeaponType->Warhead;
-
-	return nullptr;
+	return pData->SW_Warhead.isset() ? pData->SW_Warhead : (pData->AttachedToObject->WeaponType ? pData->AttachedToObject->WeaponType->Warhead : nullptr);
 }
 
 int SW_GenericWarhead::GetDamage(const SWTypeExtData* pData) const
 {
-	if (pData->SW_Damage.isset())
-		return pData->SW_Damage;
-
-	if (pData->AttachedToObject->WeaponType)
-		return pData->AttachedToObject->WeaponType->Damage;
-
-	return 0;
+	return pData->SW_Damage.isset() ? pData->SW_Damage : (pData->AttachedToObject->WeaponType ? pData->AttachedToObject->WeaponType->Damage : 0);
 }
 
 bool SW_GenericWarhead::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
@@ -50,7 +38,7 @@ bool SW_GenericWarhead::Activate(SuperClass* pThis, const CellStruct& Coords, bo
 
 	if (!pWarhead)
 	{
-		Debug::Log("launch GenericWarhead SW ([%s]) Without Waarhead\n", pThis->Type->ID);
+		Debug::Log("launch GenericWarhead SW ([%s]) Without Warhead\n", pThis->Type->ID);
 		return true;
 	}
 
@@ -108,12 +96,12 @@ void GenericWarheadStateMachine::SentPayload(TechnoClass* pFirer, SuperClass* pS
 	{
 		AbstractClass* pTarget = pCell->GetSomeObject({}, pCell->ContainsBridge());
 		WarheadTypeExtData::DetonateAt(
-		pWarhead,
-		pTarget ? pTarget : pCell,
-		detonationCoords,
-		pFirer,
-		damage,
-		 pSuper->Owner
+			pWarhead,
+			pTarget ? pTarget : pCell,
+			detonationCoords,
+			pFirer,
+			damage,
+			pSuper->Owner
 		);
 	}
 	else
@@ -142,7 +130,7 @@ void GenericWarheadStateMachine::SentPayload(TechnoClass* pFirer, SuperClass* pS
 	}
 }
 
-bool  GenericWarheadStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
+bool GenericWarheadStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return SWStateMachine::Load(Stm, RegisterForChange)
 		&& Stm
@@ -150,7 +138,7 @@ bool  GenericWarheadStateMachine::Load(PhobosStreamReader& Stm, bool RegisterFor
 		.Success();
 }
 
-bool  GenericWarheadStateMachine::Save(PhobosStreamWriter& Stm) const
+bool GenericWarheadStateMachine::Save(PhobosStreamWriter& Stm) const
 {
 	return SWStateMachine::Save(Stm)
 		&& Stm
@@ -158,7 +146,7 @@ bool  GenericWarheadStateMachine::Save(PhobosStreamWriter& Stm) const
 		.Success();
 }
 
-void  GenericWarheadStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
+void GenericWarheadStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
 {
 	AnnounceInvalidPointer(Firer, ptr, remove);
 }

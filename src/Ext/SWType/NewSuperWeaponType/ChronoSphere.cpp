@@ -14,54 +14,54 @@ SuperWeaponFlags SW_ChronoSphere::Flags(const SWTypeExtData* pData) const
 
 bool SW_ChronoSphere::Activate(SuperClass* const pThis, const CellStruct& Coords, bool const IsPlayer)
 {
+	if (!pThis->IsCharged)
+		return false;
+
 	auto const pSW = pThis->Type;
 	auto const pData = SWTypeExtContainer::Instance.Find(pSW);
 
-	if (pThis->IsCharged)
+	auto const pTarget = MapClass::Instance->GetCellAt(Coords);
+
+	// remember the current source position
+	pThis->ChronoMapCoords = Coords;
+
+	// position to play the animation at
+	auto coords = pTarget->GetCoordsWithBridge();
+	coords.Z += pData->SW_AnimHeight;
+
+	// recoded to support customizable anims
+	// and visibility for allies, too.
+	if (auto const pAnimType = GetAnim(pData))
 	{
-		auto const pTarget = MapClass::Instance->GetCellAt(Coords);
+		SWTypeExtData::CreateChronoAnim(pThis, coords, pAnimType);
+	}
 
-		// remember the current source position
-		pThis->ChronoMapCoords = Coords;
+	if (IsPlayer)
+	{
+		// find the corresponding warp SW type.
+		int idxWarp = SuperWeaponTypeClass::FindIndexById(pData->SW_PostDependent);
 
-		// position to play the animation at
-		auto coords = pTarget->GetCoordsWithBridge();
-		coords.Z += pData->SW_AnimHeight;
+		// fallback to use the first warp if there is no specific one
+		auto const& Types = *SuperWeaponTypeClass::Array;
 
-		// recoded to support customizable anims
-		// and visibility for allies, too.
-		if (auto const pAnimType = GetAnim(pData))
+		if (!Types.ValidIndex(idxWarp) || Types[idxWarp]->Type != SuperWeaponType::ChronoWarp)
 		{
-			SWTypeExtData::CreateChronoAnim(pThis, coords, pAnimType);
-		}
-
-		if (IsPlayer)
-		{
-			// find the corresponding warp SW type.
-			int idxWarp = SuperWeaponTypeClass::FindIndexById(pData->SW_PostDependent);
-
-			// fallback to use the first warp if there is no specific one
-			auto const& Types = *SuperWeaponTypeClass::Array;
-
-			if (!Types.ValidIndex(idxWarp) || Types[idxWarp]->Type != SuperWeaponType::ChronoWarp)
+			for (auto const& pWarp : Types)
 			{
-				for (auto const& pWarp : Types)
+				if (pWarp->Type == SuperWeaponType::ChronoWarp)
 				{
-					if (pWarp->Type == SuperWeaponType::ChronoWarp)
-					{
-						idxWarp = Types.GetItemIndex(&pWarp);
-						break;
-					}
+					idxWarp = Types.GetItemIndex(&pWarp);
+					break;
 				}
 			}
-
-			if (idxWarp == -1)
-			{
-				Debug::Log("[ChronoSphere::Activate] There is no SuperWeaponType with Type=ChronoWarp. Aborted.\n");
-			}
-
-			Unsorted::CurrentSWType = idxWarp;
 		}
+
+		if (idxWarp == -1)
+		{
+			Debug::Log("[ChronoSphere::Activate] There is no SuperWeaponType with Type=ChronoWarp. Aborted.\n");
+		}
+
+		Unsorted::CurrentSWType = idxWarp;
 	}
 
 	return true;

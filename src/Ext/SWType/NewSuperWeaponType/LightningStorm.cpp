@@ -87,7 +87,7 @@ void SW_LightningStorm::Initialize(SWTypeExtData* pData)
 	pData->Message_Abort = GameStrings::LightningStormActive_msg();
 
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::LightningStorm;
-	pData->CursorType = int(MouseCursorType::LightningStorm);
+	pData->CursorType = static_cast<int>(MouseCursorType::LightningStorm);
 
 	//
 	pData->Weather_UseSeparateState = false;

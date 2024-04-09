@@ -9,71 +9,76 @@ std::vector<const char*> SW_MeteorShower::GetTypeString() const
 	return { "MeteorShower" };
 }
 
-// TODO : support deferment
 bool SW_MeteorShower::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
 {
-	if (pThis->IsCharged)
+	if (!pThis->IsCharged)
+		return true;
+
+	const auto pCell = MapClass::Instance->TryGetCellAt(Coords);
+	if (!pCell)
+		return true;
+
+	auto const pData = SWTypeExtContainer::Instance.Find(pThis->Type);
+	auto pFirer = this->GetFirer(pThis, Coords, false);
+
+	const auto nCoord = pCell->GetCoordsWithBridge();
+
+	const int count = ScenarioClass::Instance->Random.RandomFromMax(pData->MeteorCounts);
+
+	AnimTypeClass* large_meteor = pData->MeteorLarge;
+	AnimTypeClass* small_meteor = pData->MeteorSmall;
+	VoxelAnimTypeClass* large_Impact = pData->MeteorImpactLarge;
+	VoxelAnimTypeClass* small_Impact = pData->MeteorImpactSmall;
+	const int nMaxForrand = count * 70;
+
+	for (int i = 0; i < count; ++i)
 	{
-		if (const auto pCell = MapClass::Instance->TryGetCellAt(Coords))
+		const int x_adj = ScenarioClass::Instance->Random.Random() % (nMaxForrand);
+		const int y_adj = ScenarioClass::Instance->Random.Random() % (nMaxForrand);
+
+		Coordinate nwhere = nCoord;
+
+		nwhere.X += x_adj;
+		nwhere.Y += y_adj;
+
+		nwhere.Z = MapClass::Instance->GetCellFloorHeight(nwhere);
+
+		AnimTypeClass* anim = ScenarioClass::Instance->Random.PercentChance(pData->MeteorKindChance) ?
+			large_meteor : small_meteor;
+
+		if (anim)
 		{
-			auto const pData = SWTypeExtContainer::Instance.Find(pThis->Type);
-			auto pFirer = this->GetFirer(pThis, Coords, false);
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(anim, nwhere),
+				pThis->Owner,
+				nullptr,
+				pFirer,
+				false
+			);
+		}
+	}
 
-			const auto nCoord = pCell->GetCoordsWithBridge();
+	if (ScenarioClass::Instance->Random.PercentChance(pData->MeteorAddImpactChance))
+	{
+		const auto impactCount = pData->MeteorImactCounts.Get();
 
-			const int count = ScenarioClass::Instance->Random.RandomFromMax(pData->MeteorCounts);
+		for (int a = 0; a < impactCount; ++a)
+		{
+			Coordinate im_where = nCoord;
 
-			AnimTypeClass* large_meteor = pData->MeteorLarge;
-			AnimTypeClass* small_meteor = pData->MeteorSmall;
-			VoxelAnimTypeClass* large_Impact = pData->MeteorImpactLarge;
-			VoxelAnimTypeClass* small_Impact = pData->MeteorImpactSmall;
-			const int nMaxForrand = count * 70;
+			const int x_adj = ScenarioClass::Instance->Random.Random() % (impactCount);
+			const int y_adj = ScenarioClass::Instance->Random.Random() % (impactCount);
 
-			for (int i = 0; i < count; ++i)
+			im_where.X += x_adj;
+			im_where.Y += y_adj;
+
+			im_where.Z = MapClass::Instance->GetCellFloorHeight(im_where);
+
+			VoxelAnimTypeClass* impact = ScenarioClass::Instance->Random.PercentChance(pData->MeteorImpactKindChance) ?
+				large_Impact : small_Impact;
+
+			if (impact)
 			{
-				const int x_adj = ScenarioClass::Instance->Random.Random() % (nMaxForrand);
-				const int y_adj = ScenarioClass::Instance->Random.Random() % (nMaxForrand);
-
-				Coordinate nwhere = nCoord;
-
-				nwhere.X += x_adj;
-				nwhere.Y += y_adj;
-
-				nwhere.Z = MapClass::Instance->GetCellFloorHeight(nwhere);
-
-				if (AnimTypeClass* anim = ScenarioClass::Instance->Random.PercentChance(pData->MeteorKindChance) ?
-					large_meteor : small_meteor)
-				{
-					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(anim, nwhere),
-						pThis->Owner,
-						nullptr,
-						pFirer,
-						false
-					);
-				}
-			}
-
-			if (ScenarioClass::Instance->Random.PercentChance(pData->MeteorAddImpactChance))
-			{
-				const auto count = pData->MeteorImactCounts.Get();
-
-				for (int a = 0; a < count; ++a)
-				{
-					Coordinate im_where = nCoord;
-
-					const int x_adj = ScenarioClass::Instance->Random.Random() % (count);
-					const int y_adj = ScenarioClass::Instance->Random.Random() % (count);
-
-					im_where.X += x_adj;
-					im_where.Y += y_adj;
-
-					im_where.Z = MapClass::Instance->GetCellFloorHeight(im_where);
-					if (VoxelAnimTypeClass* impact = ScenarioClass::Instance->Random.PercentChance(pData->MeteorImpactKindChance) ?
-						large_Impact : small_Impact)
-					{
-						VoxelAnimExtContainer::Instance.Find(GameCreate<VoxelAnimClass>(impact, &im_where, pThis->Owner))->Invoker = pFirer;
-					}
-				}
+				VoxelAnimExtContainer::Instance.Find(GameCreate<VoxelAnimClass>(impact, &im_where, pThis->Owner))->Invoker = pFirer;
 			}
 		}
 	}
