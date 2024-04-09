@@ -46,25 +46,23 @@ void RadSiteExtData::CreateInstance(CoordStruct const& nCoord, int spread, int a
 void RadSiteExtData::CreateLight()
 {
 	const auto pThis = this->AttachedToObject;
-	const auto nLevelDelay = this->Type->GetLevelDelay();
-	const auto nLightDelay = this->Type->GetLightDelay();
-	const auto nRadcolor = this->Type->GetColor();
+	const auto& type = this->Type;
 
-	//if(Phobos::Otamaa::IsAdmin)
-	//	Debug::Log("RadSite [%s] CreateLight With Color [%d , %d , %d] \n", Type->Name.data(), nRadcolor.R, nRadcolor.G, nRadcolor.B);
-
-	const auto nTintFactor = this->Type->GetTintFactor();
-	const auto nRadLevelFactor = pThis->RadLevel * this->Type->GetLightFactor();
+	const auto nLevelDelay = type->GetLevelDelay();
+	const auto nLightDelay = type->GetLightDelay();
+	const auto nRadcolor = type->GetColor();
+	const auto nTintFactor = type->GetTintFactor();
+	const auto nRadLevelFactor = pThis->RadLevel * type->GetLightFactor();
 	const auto nLightFactor = std::clamp(nRadLevelFactor, 1.0, 2000.0);
-	const auto nDuration = (double)pThis->RadDuration;
+	const auto nDuration = static_cast<double>(pThis->RadDuration);
 
 	pThis->RadLevelTimer.Start(nLevelDelay);
 	pThis->RadLightTimer.Start(nLightDelay);
-	pThis->Intensity = int(nLightFactor);
-	pThis->LevelSteps = int(nDuration / (double)nLevelDelay);
-	pThis->IntensitySteps = int(nDuration / (double)nLightDelay);
-	pThis->IntensityDecrement = int(nLightFactor / (nDuration / (double)nLightDelay));
-	const TintStruct nTintBuffer { nRadcolor  , nTintFactor };
+	pThis->Intensity = static_cast<int>(nLightFactor);
+	pThis->LevelSteps = static_cast<int>(nDuration / nLevelDelay);
+	pThis->IntensitySteps = static_cast<int>(nDuration / nLightDelay);
+	pThis->IntensityDecrement = static_cast<int>(nLightFactor / (nDuration / nLightDelay));
+	const TintStruct nTintBuffer { nRadcolor, nTintFactor };
 
 	pThis->Tint = nTintBuffer;
 
@@ -76,13 +74,11 @@ void RadSiteExtData::CreateLight()
 	else
 	{
 		auto const pCell = MapClass::Instance->GetCellAt(pThis->BaseCell);
-		{
-			auto const pLight = GameCreate<LightSourceClass>(pCell->GetCoordsWithBridge(), pThis->SpreadInLeptons, static_cast<int>(nLightFactor), nTintBuffer);
-			pThis->LightSource = pLight;
-			pLight->DetailLevel = 0;
-			pLight->Activate(false);
-			pThis->Radiate();
-		}
+		auto const pLight = GameCreate<LightSourceClass>(pCell->GetCoordsWithBridge(), pThis->SpreadInLeptons, static_cast<int>(nLightFactor), nTintBuffer);
+		pThis->LightSource = pLight;
+		pLight->DetailLevel = 0;
+		pLight->Activate(false);
+		pThis->Radiate();
 	}
 }
 
@@ -91,7 +87,7 @@ void RadSiteExtData::Add(int amount)
 {
 	const auto pThis = this->AttachedToObject;
 	pThis->Deactivate();
-	const auto nInput = int(double(pThis->RadLevel * pThis->RadTimeLeft) / (double)pThis->RadDuration) + amount;
+	const auto nInput = pThis->RadLevel + amount;
 	pThis->RadLevel = nInput;
 	const auto nInput_2 = nInput * this->Type->GetDurationMultiple();
 	pThis->RadDuration = nInput_2;
@@ -103,7 +99,7 @@ void RadSiteExtData::SetRadLevel(int amount)
 {
 	const auto pThis = this->AttachedToObject;
 	const auto nMax = this->Type->GetLevelMax();
-	const auto nDecidedamount = MinImpl(amount, nMax);
+	const auto nDecidedamount = std::min(amount, nMax);
 	const int mult = this->Type->GetDurationMultiple();
 	pThis->RadLevel = nDecidedamount;
 	pThis->RadDuration = mult * nDecidedamount;
@@ -122,11 +118,13 @@ const double RadSiteExtData::GetRadLevelAt(CellStruct const& cell)
 	const auto nMax = static_cast<double>(pThis->Spread);
 	const auto nDistance = cell.DistanceFrom(pThis->BaseCell);
 
-	if (!nMax && !nDistance)
+	if (nMax == 0.0 && nDistance == 0.0)
 		return currentLevel;
 
-	return (nDistance > nMax)
-		? 0.0 : (nMax - nDistance) / nMax * currentLevel;
+	if (nDistance > nMax)
+		return 0.0;
+
+	return (nMax - nDistance) / nMax * currentLevel;
 }
 
 bool NOINLINE IsFiniteNumber(double x)
@@ -144,16 +142,13 @@ const double RadSiteExtData::GetRadLevelAt(double distance)
 
 	const auto nMax = static_cast<double>(pThis->Spread);
 
-	if (!nMax && !distance)
+	if (nMax == 0.0 && distance == 0.0)
 		return currentLevel;
 
-	const auto result = (distance > nMax)
-		? 0.0 : (nMax - distance) / nMax * currentLevel;
+	if (distance > nMax)
+		return 0.0;
 
-	//if (!IsFiniteNumber(result))
-	//	DebugBreak();
-
-	return result;
+	return (nMax - distance) / nMax * currentLevel;
 }
 
 //return false mean it is already death
@@ -168,31 +163,27 @@ const RadSiteExtData::DamagingState RadSiteExtData::ApplyRadiationDamage(TechnoC
 	if ((pUnit && pUnit->DeathFrameCounter > 0))
 		return RadSiteExtData::DamagingState::Ignore;
 
+	if (!this->Type->GetWarheadDetonate())
 	{
-		if (!this->Type->GetWarheadDetonate())
-		{
-			HouseClass* const pOwner = this->TechOwner ? this->TechOwner->Owner : this->HouseOwner;
-			const auto result = pTarget->ReceiveDamage(&damage, distance, pWarhead, this->TechOwner, false, true, pOwner);
+		HouseClass* const pOwner = this->TechOwner ? this->TechOwner->Owner : this->HouseOwner;
+		const auto result = pTarget->ReceiveDamage(&damage, distance, pWarhead, this->TechOwner, false, true, pOwner);
 
-			if (result != DamageState::NowDead && result != DamageState::PostMortem)
-				return RadSiteExtData::DamagingState::Continue;
-			else if (result == DamageState::PostMortem)
-				return RadSiteExtData::DamagingState::Ignore;
-		}
-		else
-		{
-			auto const coords = pTarget->GetCoords();
-			HouseClass* const pOwner = this->TechOwner ? this->TechOwner->Owner : this->HouseOwner;
-			WarheadTypeExtData::DetonateAt(pWarhead, pTarget, coords, this->TechOwner, damage, pOwner);
+		if (result != DamageState::NowDead && result != DamageState::PostMortem)
+			return RadSiteExtData::DamagingState::Continue;
+		else if (result == DamageState::PostMortem)
+			return RadSiteExtData::DamagingState::Ignore;
+	}
+	else
+	{
+		auto const coords = pTarget->GetCoords();
+		HouseClass* const pOwner = this->TechOwner ? this->TechOwner->Owner : this->HouseOwner;
+		WarheadTypeExtData::DetonateAt(pWarhead, pTarget, coords, this->TechOwner, damage, pOwner);
 
-			if ((pUnit && pUnit->DeathFrameCounter > 0))
-				return RadSiteExtData::DamagingState::Ignore;
-		}
+		if ((pUnit && pUnit->DeathFrameCounter > 0))
+			return RadSiteExtData::DamagingState::Ignore;
 	}
 
-	const auto res = pTarget->IsAlive && !pTarget->InLimbo && pTarget->Health > 0 && !pTarget->IsSinking && !pTarget->IsCrashing;
-
-	return res ? RadSiteExtData::DamagingState::Continue : RadSiteExtData::DamagingState::Dead;
+	return pTarget->IsAlive && !pTarget->InLimbo && pTarget->Health > 0 && !pTarget->IsSinking && !pTarget->IsCrashing ? RadSiteExtData::DamagingState::Continue : RadSiteExtData::DamagingState::Dead;
 }
 
 // =============================

@@ -34,36 +34,38 @@ bool SW_HunterSeeker::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 	// create hunterseeker regardless building alive state
 	// only check if cell is actually eligible
 	size_t Success = 0;
-	for (auto pBld : pOwner->Buildings)
-	{
-		if (!IsLaunchSite_HS(pExt, pBld))
-			continue;
+	Helpers::Alex::for_each_if_n(pOwner->Buildings.begin(), pOwner->Buildings.end(),
+		Count,
+		[=](BuildingClass* pBld) { return this->IsLaunchSite_HS(pExt, pBld); },
+		[=, &Success](BuildingClass* pBld)
+ {
+	 auto cell = this->GetLaunchCell(pExt, pBld, pType);
 
-		auto cell = GetLaunchCell(pExt, pBld, pType);
+	 if (cell == CellStruct::Empty)
+	 {
+		 return;
+	 }
 
-		if (cell == CellStruct::Empty)
-			continue;
+	 // create a hunter seeker
+	 if (auto pHunter = (UnitClass*)pType->CreateObject(pOwner))
+	 {
+		 TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
 
-		// create a hunter seeker
-		auto pHunter = static_cast<UnitClass*>(pType->CreateObject(pOwner));
-		if (!pHunter)
-			continue;
+		 // put it on the map and let it go
 
-		TechnoExtContainer::Instance.Find(pHunter)->LinkedSW = pThis;
-
-		// put it on the map and let it go
-		if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
-		{
-			pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
-			pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
-			pHunter->NextMission();
-			++Success;
-		}
-		else
-		{
-			GameDelete<true, false>(pHunter);
-		}
-	}
+		 if (pHunter->Unlimbo(CellClass::Cell2Coord(cell), DirType::East))
+		 {
+			 pHunter->Locomotor->Acquire_Hunter_Seeker_Target();
+			 pHunter->QueueMission((pHunter->Type->Harvester || pHunter->Type->ResourceGatherer) ? Mission::Area_Guard : Mission::Attack, false);
+			 pHunter->NextMission();
+			 ++Success;
+		 }
+		 else
+		 {
+			 GameDelete<true, false>(pHunter);
+		 }
+	 }
+		});
 
 	// no launch building found
 	if (!Success)

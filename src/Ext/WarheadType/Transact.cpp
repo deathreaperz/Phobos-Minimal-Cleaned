@@ -102,17 +102,17 @@ TransactData WarheadTypeExtData::TransactGetSourceAndTarget(TechnoClass* pTarget
 	//		Experience
 	int sourceExp = IsTargetAffected(pOwner, pTarget, !this->Transact_Experience_Target_Percent_CalcFromSource, !this->Transact_Experience_Source_Percent_CalcFromTarget) ?
 		TransactGetValue(pTarget, pOwner,
-		this->Transact_Experience_Source_Flat,
-		this->Transact_Experience_Source_Percent,
-		this->Transact_Experience_Source_Percent_CalcFromTarget) : 0;
+			this->Transact_Experience_Source_Flat,
+			this->Transact_Experience_Source_Percent,
+			this->Transact_Experience_Source_Percent_CalcFromTarget) : 0;
 
 	sourceValues.push_back(sourceExp / targets);
 	// TARGET
 	//		Experience
 	int targetExp = IsTargetAffected(pTarget, pOwner, !this->Transact_Experience_Source_Percent_CalcFromTarget, !this->Transact_Experience_Target_Percent_CalcFromSource, true) ?
 		TransactGetValue(pOwner, pTarget,
-		this->Transact_Experience_Target_Flat, this->Transact_Experience_Target_Percent,
-		this->Transact_Experience_Target_Percent_CalcFromSource) : 0;
+			this->Transact_Experience_Target_Flat, this->Transact_Experience_Target_Percent,
+			this->Transact_Experience_Target_Percent_CalcFromSource) : 0;
 
 	targetValues.push_back(targetExp / targets);
 
@@ -189,8 +189,8 @@ void WarheadTypeExtData::TransactOnAllUnits(std::vector<TechnoClass*>& nVec, Hou
 		const int count = !this->Transact_SpreadAmongTargets ? 1 : nVec.size();
 
 		std::for_each(nVec.begin(), nVec.end(), [this, pOwner, pHouse, &count](TechnoClass* const pTech)
- {
-	 TransactOnOneUnit(pTech, pOwner, count);
+		{
+		TransactOnOneUnit(pTech, pOwner, count);
 		});
 	}
 	else
