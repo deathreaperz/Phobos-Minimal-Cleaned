@@ -12,10 +12,10 @@
 
 #include <Memory.h>
 
-void ApplyVeinsDamage(AnimClass* pThis, int VeinDamage, WarheadTypeClass* VeinWarhead)
+void ApplyVeinsDamage(AnimClass* pThis ,int VeinDamage , WarheadTypeClass* VeinWarhead)
 {
 	//causing game to lock up atm
-	if (pThis->Type->IsVeins && VeinWarhead)
+	if (pThis->Type->IsVeins && VeinWarhead  &&  RulesExtData::Instance()->VeinsAttack_interval)
 	{
 		auto coord = pThis->GetCoords();
 		auto pCoorCell = MapClass::Instance->GetCellAt(coord);
@@ -31,7 +31,7 @@ void ApplyVeinsDamage(AnimClass* pThis, int VeinDamage, WarheadTypeClass* VeinWa
 			pThis->__ToDelete_197 = true; // wut
 		}
 
-		if (Unsorted::CurrentFrame % 2 == 0)
+		if (Unsorted::CurrentFrame % RulesExtData::Instance()->VeinsAttack_interval == 0)
 		{
 			while (pFirst != nullptr)
 			{
@@ -46,7 +46,7 @@ void ApplyVeinsDamage(AnimClass* pThis, int VeinDamage, WarheadTypeClass* VeinWa
 						continue;
 
 					const auto pType = pTechno->GetTechnoType();
-					if ((!RulesExtData::Instance()->VeinsDamagingWeightTreshold.isset() || pType->Weight >= RulesExtData::Instance()->VeinsDamagingWeightTreshold)
+					if ( (!RulesExtData::Instance()->VeinsDamagingWeightTreshold.isset() || pType->Weight >= RulesExtData::Instance()->VeinsDamagingWeightTreshold)
 						&& !pType->ImmuneToVeins
 						&& !pTechno->HasAbility(AbilityType::VeinProof)
 						&& pTechno->GetHeight() <= 5
@@ -54,7 +54,7 @@ void ApplyVeinsDamage(AnimClass* pThis, int VeinDamage, WarheadTypeClass* VeinWa
 					{
 						int dmg = VeinDamage;
 						pFirst->ReceiveDamage(&dmg, 0, VeinWarhead, nullptr, false, false, nullptr);
-						Debug::Log("VeinAnim[%x] Damaging[%s - %x]\n", pThis, pTechno->get_ID(), pTechno);
+						//Debug::Log("VeinAnim[%x] Damaging[%s - %x]\n", pThis, pTechno->get_ID(), pTechno);
 					}
 
 					pFirst = pNext;
@@ -70,8 +70,7 @@ DEFINE_HOOK(0x424cfb, AnimClass_Init_Additionals, 6)
 
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis);
 
-	if (pTypeExt->AltReport.isset())
-	{
+	if (pTypeExt->AltReport.isset()) {
 		VocClass::PlayIndexAtPos(pTypeExt->AltReport, pThis->GetCoords(), nullptr);
 	}
 
@@ -83,15 +82,14 @@ DEFINE_HOOK(0x424cfb, AnimClass_Init_Additionals, 6)
 
 DEFINE_HOOK(0x4243BC, AnimClass_AI_Veins, 0x6)
 {
-	enum
-	{
+	enum {
 		ContinueDrawTiberium = 0x4243CC,
 		ContinueNotTiberium = 0x42442E
 	};
 
 	GET(AnimClass*, pThis, ESI);
 	ApplyVeinsDamage(pThis, RulesClass::Instance->VeinDamage, RulesExtData::Instance()->Veinhole_Warhead);
-	return pThis->Type->IsAnimatedTiberium ?
+	return pThis->Type->IsAnimatedTiberium  ?
 		ContinueDrawTiberium : ContinueNotTiberium;
 }
 
@@ -105,13 +103,11 @@ DEFINE_HOOK(0x685078, Generate_OreTwinkle_Anims, 0x7)
 			TiberiumClass::Array->GetItemOrDefault(location->GetContainedTiberiumIndex())
 		);
 
-		if (!pTibExt)
+		if(!pTibExt)
 			return 0x0;
 
-		if (!ScenarioClass::Instance->Random.RandomFromMax(pTibExt->GetTwinkleChance() - 1))
-		{
-			if (auto pAnimtype = pTibExt->GetTwinkleAnim())
-			{
+		if (!ScenarioClass::Instance->Random.RandomFromMax(pTibExt->GetTwinkleChance() - 1)) {
+			if (auto pAnimtype = pTibExt->GetTwinkleAnim()) {
 				GameCreate<AnimClass>(pAnimtype, location->GetCoords(), 1);
 			}
 		}
@@ -132,7 +128,7 @@ DEFINE_HOOK(0x423CC1, AnimClass_AI_HasExtras_Expired, 0x6)
 	R->Stack(STACK_OFFS(0x8C, 0x78), R->AL());
 
 	return AnimExtData::OnExpired(pThis, LandIsWater, EligibleHeight) ?
-		SkipGameCode : 0x0;
+		SkipGameCode : 0x0 ;
 }
 
 //crash and corrup ESI pointer around
@@ -151,7 +147,7 @@ DEFINE_HOOK(0x42504D, AnimClass_Middle_SpawnCreater, 0xA) //was 4
 	GET_STACK(int, nY, STACK_OFFS(0x30, 0x20));
 
 	return AnimExtData::OnMiddle_SpawnSmudge(pThis, pCell, { nX ,nY }) ?
-		0x42513F : 0x0;
+		0x42513F : 0x0 ;
 }
 
 DEFINE_HOOK(0x42264D, AnimClass_Init, 0x5)
@@ -174,6 +170,7 @@ DEFINE_HOOK(0x42264D, AnimClass_Init, 0x5)
 
 #ifdef ENABLE_NEWHOOKS
 TODO : retest for desync
+
 
 DEFINE_HOOK(0x4242BA, AnimClass_AI_SetCoord, 0x6)
 {

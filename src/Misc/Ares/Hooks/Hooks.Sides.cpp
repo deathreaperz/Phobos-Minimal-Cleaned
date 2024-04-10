@@ -19,8 +19,7 @@ DWORD MixFileYuriFiles(REGISTERS* R, DWORD dwReturnAddress1, DWORD dwReturnAddre
 {
 	GET(ScenarioClass*, pScen, EAX);
 
-	if (SideClass* pSide = SideClass::Array->GetItemOrDefault(pScen->PlayerSideIndex))
-	{
+	if (SideClass* pSide = SideClass::Array->GetItemOrDefault(pScen->PlayerSideIndex)) {
 		return SideExtContainer::Instance.Find(pSide)->SidebarYuriFileNames
 			? dwReturnAddress1
 			: dwReturnAddress2
@@ -45,8 +44,7 @@ DEFINE_HOOK(0x72F440, Game_InitializeToolTipColor, 0xA)
 {
 	GET(int, idxSide, ECX);
 
-	if (SideClass* pSide = SideClass::Array->GetItemOrDefault(idxSide))
-	{
+	if (SideClass* pSide = SideClass::Array->GetItemOrDefault(idxSide)) {
 		CCToolTip::ToolTipTextColor = SideExtContainer::Instance.Find(pSide)->ToolTipTextColor;
 		return 0x72F495;
 	}
@@ -60,17 +58,17 @@ DEFINE_HOOK(0x72D730, Game_LoadMultiplayerScoreAssets, 5)
 	auto pSide = SideClass::Array->GetItemOrDefault(idxSide);
 	auto pExt = SideExtContainer::Instance.Find(pSide);
 
-	static constexpr reference<bool, 0xB0FBB8u> const MultiplayerScoreAssetsAlreadyLoaded {};
+	static constexpr reference<bool , 0xB0FBB8u> const MultiplayerScoreAssetsAlreadyLoaded{};
 	if (!MultiplayerScoreAssetsAlreadyLoaded)
 	{
-		static constexpr reference<SHPStruct*, 0xB0FB1Cu> const MPxSCRNy_SHP {};
-		static constexpr reference<bool, 0xB0FC7Du> const MPxSCRNy_Loaded {};
+		static constexpr reference<SHPStruct* , 0xB0FB1Cu> const MPxSCRNy_SHP {};
+		static constexpr reference<bool , 0xB0FC7Du> const MPxSCRNy_Loaded {};
 
 		// load the images
 		MPxSCRNy_SHP = FileSystem::LoadWholeFileEx<SHPStruct>(pExt->ScoreMultiplayBackground, MPxSCRNy_Loaded());
 
-		static constexpr reference<BytePalette*, 0xB0FBB0u> const MPxSCRN_Palette {};
-		static constexpr reference<ConvertClass*, 0xB0FBB4u> const MPxSCRN_Convert {};
+		static constexpr reference<BytePalette* , 0xB0FBB0u> const MPxSCRN_Palette {};
+		static constexpr reference<ConvertClass* , 0xB0FBB4u> const MPxSCRN_Convert {};
 
 		// load the palette
 		ConvertClass::CreateFromFile(pExt->ScoreMultiplayPalette, MPxSCRN_Palette(), MPxSCRN_Convert());
@@ -87,17 +85,17 @@ DEFINE_HOOK(0x72D300, Game_LoadCampaignScoreAssets, 5)
 	auto pSide = SideClass::Array->GetItemOrDefault(idxSide);
 	auto pExt = SideExtContainer::Instance.Find(pSide);
 
-	static constexpr reference<bool, 0xB0FBACu> const CampaignScoreAssetsAlreadyLoaded {};
+	static constexpr reference<bool , 0xB0FBACu> const CampaignScoreAssetsAlreadyLoaded {};
 
 	if (!CampaignScoreAssetsAlreadyLoaded)
 	{
-		static constexpr reference<SHPStruct*, 0xB0FB34u> const SxCRBKyy_SHP {};
-		static constexpr reference<SHPStruct*, 0xB0FB00u> const SxCRTyy_SHP {};
-		static constexpr reference<SHPStruct*, 0xB0FB30u> const SxCRAyy_SHP {};
+		static constexpr reference<SHPStruct* , 0xB0FB34u> const SxCRBKyy_SHP {};
+		static constexpr reference<SHPStruct* , 0xB0FB00u> const SxCRTyy_SHP {};
+		static constexpr reference<SHPStruct* , 0xB0FB30u> const SxCRAyy_SHP {};
 
-		static constexpr reference<bool, 0xB0FC70u> const SxCRBKyy_Loaded {};
-		static constexpr reference<bool, 0xB0FC71u> const SxCRTyy_Loaded {};
-		static constexpr reference<bool, 0xB0FC72u> const SxCRAyy_Loaded {};
+		static constexpr reference<bool , 0xB0FC70u> const SxCRBKyy_Loaded {};
+		static constexpr reference<bool ,0xB0FC71u> const SxCRTyy_Loaded {};
+		static constexpr reference<bool , 0xB0FC72u> const SxCRAyy_Loaded {};
 
 		// load the images
 		SxCRBKyy_SHP = FileSystem::LoadWholeFileEx<SHPStruct>(pExt->ScoreCampaignBackground, SxCRBKyy_Loaded());
@@ -105,8 +103,8 @@ DEFINE_HOOK(0x72D300, Game_LoadCampaignScoreAssets, 5)
 		SxCRAyy_SHP = FileSystem::LoadWholeFileEx<SHPStruct>(pExt->ScoreCampaignAnimation, SxCRAyy_Loaded());
 
 		// load the palette
-		static constexpr reference<BytePalette*, 0xB0FBA4u> const xSCORE_Palette {};
-		static constexpr reference<ConvertClass*, 0xB0FBA8u> const xSCORE_Convert {};
+		static constexpr reference<BytePalette* , 0xB0FBA4u> const xSCORE_Palette {};
+		static constexpr reference<ConvertClass* , 0xB0FBA8u> const xSCORE_Convert {};
 		ConvertClass::CreateFromFile(pExt->ScoreCampaignPalette, xSCORE_Palette(), xSCORE_Convert());
 
 		CampaignScoreAssetsAlreadyLoaded = true;
@@ -127,12 +125,10 @@ DEFINE_HOOK(0x72B690, LoadScreenPal_Load, 0xA)
 
 	const char* pPALFile = nullptr;
 
-	if (pData)
-	{
+	if (pData) {
 		pPALFile = pData->LoadScreenPalette;
 	}
-	else if (n == 0)
-	{
+	else if (n == 0) {
 		pPALFile = GameStrings::MPLSU_PAL();	//need to recode cause I broke the code with the jump
 	}
 	else
@@ -141,8 +137,8 @@ DEFINE_HOOK(0x72B690, LoadScreenPal_Load, 0xA)
 	}
 
 	//some ASM-less magic! =)
-	static constexpr reference<BytePalette*, 0xB0FB94u> const _0xB0FB94u_ {};
-	static constexpr reference<ConvertClass*, 0xB0FB98> const _0xB0FB98u_ {};
+	static constexpr reference<BytePalette* , 0xB0FB94u> const _0xB0FB94u_{};
+	static constexpr reference<ConvertClass* , 0xB0FB98> const _0xB0FB98u_{};
 	ConvertClass::CreateFromFile(pPALFile, _0xB0FB94u_(), _0xB0FB98u_());
 
 	return 0x72B804;
@@ -154,10 +150,8 @@ DEFINE_HOOK(0x6847B7, ScenarioClass_PrepareMapAndUDP, 6)
 
 	SideExtData::CurrentLoadTextColor = -1;
 
-	if (auto pData = HouseTypeExtContainer::Instance.Find(pType))
-	{
-		if (pData->LoadTextColor != -1)
-		{
+	if (auto pData = HouseTypeExtContainer::Instance.Find(pType)) {
+		if (pData->LoadTextColor != -1) {
 			SideExtData::CurrentLoadTextColor = pData->LoadTextColor;
 		}
 	}
@@ -191,10 +185,8 @@ DEFINE_HOOK(0x686D7F, INIClass_ReadScenario_CacheSP, 6)
 
 	SideExtData::CurrentLoadTextColor = -1;
 
-	if (pINI->ReadString(ScenarioClass::Instance->FileName, "LoadScreenText.Color", pDefault, Phobos::readBuffer))
-	{
-		if (ColorScheme* pCS = ColorScheme::Find(Phobos::readBuffer))
-		{
+	if (pINI->ReadString(ScenarioClass::Instance->FileName, "LoadScreenText.Color", pDefault, Phobos::readBuffer)) {
+		if (ColorScheme* pCS = ColorScheme::Find(Phobos::readBuffer)) {
 			SideExtData::CurrentLoadTextColor = pCS->ArrayIndex; // TODO: check if off by one. see ColorScheme.h
 		}
 	}
@@ -240,18 +232,16 @@ DEFINE_HOOK(0x683C70, sub_683AB0_LoadingScoreA, 7)
 	// magic value for the default loading theme
 	idxLoadingTheme = -2;
 
-	if (SessionClass::Instance->GameMode == GameMode::Campaign)
-	{
+	if (SessionClass::Instance->GameMode == GameMode::Campaign) {
 		// single player missions read from the scenario
 		idxLoadingTheme = pINI->ReadTheme(GameStrings::Basic(), "LoadingTheme", -2);
+
 	}
-	else
-	{
+	else {
 		// override the default for multiplayer matches
-		if (auto pSpot = SessionClass::Instance->StartSpots[0])
-		{
-			if (((size_t)pSpot->Country) < HouseTypeClass::Array->size())
-			{
+		if (auto pSpot = SessionClass::Instance->StartSpots[0]) {
+			if (((size_t)pSpot->Country) < HouseTypeClass::Array->size()) {
+
 				const auto pType = HouseTypeClass::Array->Items[pSpot->Country];
 				const auto pSide = SideClass::Array->Items[pType->SideIndex];
 
@@ -279,8 +269,7 @@ DEFINE_HOOK(0x5C9B75, Global_DrawScoreScreen_ScoreTheme, 5)
 
 	if (!HouseClass::IsCurrentPlayerObserver())
 	{
-		if (auto pSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex))
-		{
+		if(auto pSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex)){
 			pTheme = HouseClass::CurrentPlayer->Defeated
 				? SideExtContainer::Instance.Find(pSide)->ScoreMultiplayThemeLose
 				: SideExtContainer::Instance.Find(pSide)->ScoreMultiplayThemeWin;
@@ -293,8 +282,7 @@ DEFINE_HOOK(0x5C9B75, Global_DrawScoreScreen_ScoreTheme, 5)
 DWORD FORCEINLINE LoadTextColor(REGISTERS* R, DWORD dwReturnAddress)
 {
 	// if there is a cached LoadTextColor, use that.
-	if (auto pCS = ColorScheme::Array->GetItemOrDefault(SideExtData::CurrentLoadTextColor))
-	{
+	if (auto pCS = ColorScheme::Array->GetItemOrDefault(SideExtData::CurrentLoadTextColor)) {
 		R->EAX(pCS);
 		return dwReturnAddress;
 	}
@@ -318,8 +306,7 @@ DEFINE_HOOK(0x5CA110, Game_GetMultiplayerScoreScreenBar, 5)
 	GET(unsigned int, idxBar, ECX);
 
 	BSurface* ret = nullptr;
-	if (auto pSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex))
-	{
+	if (auto pSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex)){
 		ret = PCX::Instance->GetSurface(SideExtContainer::Instance.Find(pSide)->GetMultiplayerScoreBarFilename(idxBar));
 	}
 
@@ -387,7 +374,7 @@ DEFINE_HOOK(0x6C922C, ScoreDialog_Handle_ScoreThemeFirst, 5)
 		pTitle = pScen->OverParTitle;
 		pMessage = pScen->OverParMessage;
 
-		if (pSide)
+		if(pSide)
 			pSinglePlayerScoreTheme = SideExtContainer::Instance.Find(pSide)->ScoreCampaignThemeOverPar;
 	}
 	else
@@ -408,8 +395,7 @@ DEFINE_HOOK(0x6C935C, ScoreDialog_Handle_ScoreThemeSecond, 5)
 {
 	REF_STACK(const char*, pTheme, 0x0);
 
-	if (pSinglePlayerScoreTheme)
-	{
+	if (pSinglePlayerScoreTheme) {
 		pTheme = pSinglePlayerScoreTheme;
 	}
 

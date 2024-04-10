@@ -36,6 +36,7 @@ DEFINE_HOOK(0x6FA054, TechnoClass_Update_Veterancy, 0x6)
 // handle all veterancy gains ourselves
 DEFINE_HOOK(0x702E9D, TechnoClass_RegisterDestruction_Veterancy, 0x6)
 {
+
 	GET(TechnoClass*, pKiller, EDI);
 	GET(TechnoClass*, pVictim, ESI);
 	GET(const int, Score, EBP);

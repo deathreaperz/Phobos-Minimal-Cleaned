@@ -45,6 +45,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 
 		//if the house dont have power at all disable all the penalties
 		{
+
 			const double nLowPowerPenalty = pTypeExt->BuildTime_LowPowerPenalty.Get(RulesClass::Instance->LowPowerPenaltyModifier);
 			const double nMinLowPoweProductionSpeed = pTypeExt->BuildTime_MinLowPower.Get(RulesClass::Instance->MinLowPowerProductionSpeed);
 			const double nMaxLowPowerProductionSpeed = pTypeExt->BuildTime_MaxLowPower.Get(RulesClass::Instance->MaxLowPowerProductionSpeed);
@@ -60,8 +61,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 				powerdivisor = nMaxLowPowerProductionSpeed;
 			}
 
-			if (powerdivisor < 0.01)
-			{
+			if (powerdivisor < 0.01) {
 				powerdivisor = 0.01;
 			}
 
@@ -70,17 +70,17 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 
 		if (nFactorySpeed > 0.0)
 		{//Multiple Factory
+
 			const int factoryCount = pOwner->FactoryCount(what, isNaval);
 			const int divisor = (cap > 0 && factoryCount >= cap) ? cap : factoryCount;
 
-			for (int i = divisor - 1; i > 0; --i)
-			{
+			for (int i = divisor - 1; i > 0 ; --i) {
 				finalSpeed *= nFactorySpeed;
 			}
 		}
 
 		const auto bonus = BuildingTypeExtData::GetExternalFactorySpeedBonus(pThis);
-		if (bonus > 0.0)
+		if(bonus > 0.0)
 			finalSpeed = int((double)finalSpeed * bonus);
 	}
 
@@ -180,6 +180,7 @@ DEFINE_HOOK(0x70BE80, TechnoClass_ShouldSelfHealOneStep, 5)
 
 // 	GET(TechnoClass* const, pThis, ESI);
 
+
 // 	//handle everything
 // 	return SkipAnySelfHeal;
 // }
@@ -249,12 +250,11 @@ DEFINE_HOOK(0x70380A, TechnoClass_Cloak_CloakSound, 6)
 	const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	R->ECX(pExt->CloakSound.Get(RulesClass::Instance->CloakSound));
 
-	if (const auto pAnimType = pExt->CloakAnim.Get(RulesExtData::Instance()->CloakAnim))
-	{
-		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pThis->GetCoords()),
-		pThis->Owner,
-		nullptr,
-		false
+	if (const auto pAnimType = pExt->CloakAnim.Get(RulesExtData::Instance()->CloakAnim)) {
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pThis->GetCoords()),
+			pThis->Owner,
+			nullptr,
+			false
 		);
 	}
 	return 0x703810;
@@ -269,8 +269,7 @@ DEFINE_HOOK(0x70375B, TechnoClass_Uncloak_DecloakSound, 6)
 
 	R->ECX(pTypeExt->DecloakSound.Get(nDefault));
 
-	if (const auto pAnimType = pTypeExt->DecloakAnim.Get(RulesExtData::Instance()->DecloakAnim))
-	{
+	if (const auto pAnimType = pTypeExt->DecloakAnim.Get(RulesExtData::Instance()->DecloakAnim)) {
 		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pThis->GetCoords()),
 			pThis->Owner,
 			nullptr,
@@ -370,7 +369,7 @@ DEFINE_HOOK(0x707B19, TechnoClass_PointerGotInvalid_SpawnCloakOwner, 6)
 	GET(AbstractClass*, ptr, EBP);
 	GET_STACK(bool, remove, 0x28);
 
-	if (!pThis->SpawnManager || !remove && pThis->Owner == ptr)
+	if(!pThis->SpawnManager || !remove &&  pThis->Owner == ptr)
 		return 0x707B29;
 
 	R->ECX(pThis->SpawnManager);
@@ -494,11 +493,11 @@ DEFINE_HOOK(0x6F6AC9, TechnoClass_Remove_Early, 6)
 	// #617 powered units
 	TechnoExtContainer::Instance.Find(pThis)->PoweredUnit.reset(nullptr);
 
-	//#1573, #1623, #255 attached effects
-	AresAE::Remove(&TechnoExtContainer::Instance.Find(pThis)->AeData, pThis);
 
-	if (TechnoExtContainer::Instance.Find(pThis)->TechnoValueAmount != 0)
-	{
+	//#1573, #1623, #255 attached effects
+	AresAE::Remove(&TechnoExtContainer::Instance.Find(pThis)->AeData , pThis);
+
+	if (TechnoExtContainer::Instance.Find(pThis)->TechnoValueAmount != 0) {
 		TechnoExt_ExtData::Ares_AddMoneyStrings(pThis, true);
 	}
 
@@ -651,6 +650,7 @@ DEFINE_HOOK(0x70FBE0, TechnoClass_Activate_AresReplace, 6)
 	return 0x70FC85;
 }
 
+
 DEFINE_HOOK(0x6FD438, TechnoClass_FireLaser, 6)
 {
 	GET(WeaponTypeClass*, pWeapon, ECX);
@@ -661,8 +661,7 @@ DEFINE_HOOK(0x6FD438, TechnoClass_FireLaser, 6)
 		pBeam->IsHouseColor = true;
 
 	// Fixes drawing thick lasers for non-PrismSupport building-fired lasers.
-	if (pData->Laser_Thickness > 1)
-	{
+	if (pData->Laser_Thickness > 1) {
 		pBeam->Thickness = pData->Laser_Thickness;
 	}
 
@@ -675,7 +674,7 @@ DEFINE_HOOK(0x6f526c, TechnoClass_DrawExtras_PowerOff, 5)
 {
 	GET(TechnoClass*, pTechno, EBP);
 
-	if (!pTechno->IsAlive)
+	if(!pTechno->IsAlive)
 		return 0x6F5347;
 
 	GET_STACK(RectangleStruct*, pRect, 0xA0);
@@ -828,7 +827,7 @@ DEFINE_HOOK(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 					GameStrings::TXT_PRIMARY() : GameStrings::TXT_PRI()));
 			}
 
-			if (!BuildingExtContainer::Instance.Find(pBuilding)->RegisteredJammers.empty())
+			if(!BuildingExtContainer::Instance.Find(pBuilding)->RegisteredJammers.empty())
 				DrawTheStuff(Phobos::UI::BuidingRadarJammedLabel);
 		}
 	}
@@ -974,18 +973,15 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 	SlaveManagerClass* pSlaveManager = nullptr;
 	AirstrikeClass* pAirstrike = nullptr;
 
-	if (pType->Spawns)
-	{
+	if (pType->Spawns) {
 		pSpawnManager = GameCreate<SpawnManagerClass>(pThis, pType->Spawns, pType->SpawnsNumber, pType->SpawnRegenRate, pType->SpawnReloadRate);
 	}
 
-	if (pType->Enslaves)
-	{
+	if (pType->Enslaves) {
 		pSlaveManager = GameCreate<SlaveManagerClass>(pThis, pType->Enslaves, pType->SlavesNumber, pType->SlaveRegenRate, pType->SlaveReloadRate);
 	}
 
-	if (pType->AirstrikeTeam > 0 && pType->AirstrikeTeamType)
-	{
+	if (pType->AirstrikeTeam > 0 && pType->AirstrikeTeamType) {
 		pAirstrike = GameCreate<AirstrikeClass>(pThis);
 	}
 
@@ -995,6 +991,7 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 
 	for (auto i = 0; i < WeaponCount; ++i)
 	{
+
 		if (auto const pWeapon = pType->GetWeapon(i)->WeaponType)
 		{
 			TechnoExt_ExtData::InitWeapon(pThis, pType, pWeapon, i, pCapturer, pParasite, pTemporal, "Weapon", IsFoot);
@@ -1088,12 +1085,11 @@ DEFINE_HOOK(0x707EEA, TechnoClass_GetGuardRange_Demacroize, 0x6)
 // customizable berserk fire rate modification
 DEFINE_HOOK(0x6FF28F, TechnoClass_Fire_BerserkROFMultiplier, 6)
 {
-	enum { SkipROF = 0x6FF2BE, SetROF = 0x6FF29E };
+	enum { SkipROF = 0x6FF2BE , SetROF = 0x6FF29E };
 	GET(TechnoClass*, pThis, ESI);
 	GET(int, ROF, EAX);
 
-	if (pThis->Berzerk)
-	{
+	if (pThis->Berzerk) {
 		const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 		double multiplier = pExt->BerserkROFMultiplier.Get(RulesExtData::Instance()->BerserkROFMultiplier);
 		ROF = static_cast<int>(ROF * multiplier);
@@ -1172,7 +1168,7 @@ DEFINE_HOOK(0x7119D5, TechnoTypeClass_CTOR_NoInit_Particles, 0x6)
 {
 	GET(TechnoTypeClass*, pThis, ESI)
 
-		(*(uintptr_t*)((char*)pThis + offsetof(TechnoTypeClass, DamageParticleSystems))) = ParticleSystemTypeClass::TypeListArray.getAddrs();
+	(*(uintptr_t*)((char*)pThis + offsetof(TechnoTypeClass, DamageParticleSystems))) = ParticleSystemTypeClass::TypeListArray.getAddrs();
 	(*(uintptr_t*)((char*)pThis + offsetof(TechnoTypeClass, DestroyParticleSystems))) = ParticleSystemTypeClass::TypeListArray.getAddrs();
 
 	return 0x711A00;
@@ -1211,18 +1207,16 @@ DEFINE_HOOK(0x6FF2D1, TechnoClass_FireAt_Facings, 0x6)
 
 	int nIdx = 0;
 
-	if (pWeapon->Anim.Count > 1)
-	{ //only execute if the anim count is more than 1
+	if (pWeapon->Anim.Count > 1) { //only execute if the anim count is more than 1
 		const auto highest = Conversions::Int2Highest(pWeapon->Anim.Count);
 
 		// 2^highest is the frame count, 3 means 8 frames
-		if (highest >= 3)
-		{
+		if (highest >= 3) {
 			nIdx = pThis->GetRealFacing().GetValue(highest, 1u << (highest - 3));
 		}
 	}
 
-	R->EDI(pWeapon->Anim.GetItemOrDefault(nIdx, nullptr));
+	R->EDI(pWeapon->Anim.GetItemOrDefault(nIdx , nullptr));
 	return 0x6FF31B;
 }
 
@@ -1255,8 +1249,7 @@ DEFINE_HOOK(0x6F826E, TechnoClass_CanAutoTargetObject_CivilianEnemy, 0x5)
 	GET(TechnoClass*, pTarget, ESI);
 	GET(TechnoTypeClass*, pTargetType, EBP);
 
-	enum
-	{
+	enum {
 		Undecided = 0,
 		ConsiderEnemy = 0x6F8483,
 		ConsiderCivilian = 0x6F83B1,
@@ -1266,22 +1259,18 @@ DEFINE_HOOK(0x6F826E, TechnoClass_CanAutoTargetObject_CivilianEnemy, 0x5)
 	const auto pExt = TechnoTypeExtContainer::Instance.Find(pTargetType);
 
 	// always consider this an enemy
-	if (pExt->CivilianEnemy)
-	{
+	if (pExt->CivilianEnemy) {
 		return ConsiderEnemy;
 	}
 
 	// if the potential target is attacking an allied object, consider it an enemy
 	// to not allow civilians to overrun a player
-	if (const auto pTargetTarget = abstract_cast<TechnoClass*>(pTarget->Target))
-	{
-		if (pThis->Owner->IsAlliedWith(pTargetTarget))
-		{
+	if (const auto pTargetTarget = abstract_cast<TechnoClass*>(pTarget->Target)) {
+		if (pThis->Owner->IsAlliedWith(pTargetTarget)) {
 			const auto pData = RulesExtData::Instance();
 
 			if (pThis->Owner->IsControlledByHuman() ?
-				pData->AutoRepelPlayer : pData->AutoRepelAI)
-			{
+				pData->AutoRepelPlayer : pData->AutoRepelAI) {
 				return ConsiderEnemy;
 			}
 		}
@@ -1294,14 +1283,12 @@ DEFINE_HOOK(0x7162B0, TechnoTypeClass_GetPipMax_MindControl, 0x6)
 {
 	GET(TechnoTypeClass* const, pThis, ECX);
 
-	auto const GetMindDamage = [](WeaponTypeClass const* const pWeapon)
-		{
-			return (pWeapon && pWeapon->Warhead->MindControl) ? pWeapon->Damage : 0;
-		};
+	auto const GetMindDamage = [](WeaponTypeClass const* const pWeapon) {
+		return (pWeapon && pWeapon->Warhead->MindControl) ? pWeapon->Damage : 0;
+	};
 
 	auto count = GetMindDamage(pThis->GetWeapon(0)->WeaponType);
-	if (count <= 0)
-	{
+	if (count <= 0) {
 		count = GetMindDamage(pThis->GetWeapon(1)->WeaponType);
 	}
 
@@ -1313,11 +1300,10 @@ DEFINE_HOOK(0x6FC3FE, TechnoClass_CanFire_Immunities, 0x6)
 {
 	enum { FireIllegal = 0x6FC86A, ContinueCheck = 0x6FC425 };
 
-	GET(WarheadTypeClass*, pWarhead, EAX);
+	GET(WarheadTypeClass* , pWarhead , EAX);
 	GET(TechnoClass*, pTarget, EBP);
 
-	if (pTarget)
-	{
+	if(pTarget)	{
 		//const auto nRank = pTarget->Veterancy.GetRemainingLevel();
 
 		//const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
@@ -1325,7 +1311,7 @@ DEFINE_HOOK(0x6FC3FE, TechnoClass_CanFire_Immunities, 0x6)
 		//	 TechnoExtData::HasImmunity(nRank, pTarget , pWHExt->ImmunityType.Get()))
 		//	return FireIllegal;
 
-		if (pWarhead->Psychedelic && TechnoExtData::IsPsionicsImmune(pTarget))
+		if(pWarhead->Psychedelic && TechnoExtData::IsPsionicsImmune(pTarget))
 			return FireIllegal;
 	}
 
@@ -1415,7 +1401,7 @@ DEFINE_HOOK(0x6FE31C, TechnoClass_Fire_AllowDamage, 8)
 // health bar for detected submerged units
 DEFINE_HOOK(0x6F534E, TechnoClass_DrawExtras_Insignia, 0x5)
 {
-	enum { SkipGameCode = 0x6F5388, CheckDrawHealthAllowed = 0x6F538E };
+	enum { SkipGameCode = 0x6F5388  , CheckDrawHealthAllowed = 0x6F538E};
 
 	GET(TechnoClass*, pThis, EBP);
 	GET_STACK(Point2D*, pLocation, STACK_OFFS(0x98, -0x4));

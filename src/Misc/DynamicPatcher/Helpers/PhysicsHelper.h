@@ -57,6 +57,7 @@ struct PhysicsHelper
 				}
 			}
 
+
 			if (!passBuilding)
 			{
 				if (BuildingClass* pBuilding = pTargetCell->GetBuilding())

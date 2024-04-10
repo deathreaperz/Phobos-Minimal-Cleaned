@@ -1,4 +1,4 @@
-#include <Utilities/Debug.h>
+ #include <Utilities/Debug.h>
 
 #include <Ext/Rules/Body.h>
 /***
@@ -11,11 +11,11 @@
  * particles don't render, spotlights aren't created, ...
  ***/
 
- // DEFINE_HOOK(0x48A634, FlashbangWarheadAt_Details, 5)
- // {
- // 	const auto details = RulesExtData::DetailsCurrentlyEnabled();
- // 	return details ? 0x48A64Au : 0x48A641u;
- // }
+// DEFINE_HOOK(0x48A634, FlashbangWarheadAt_Details, 5)
+// {
+// 	const auto details = RulesExtData::DetailsCurrentlyEnabled();
+// 	return details ? 0x48A64Au : 0x48A641u;
+// }
 
 DEFINE_HOOK(0x5FF86E, SpotlightClass_Draw_Details, 5)
 {

@@ -26,5 +26,6 @@ private:
 			.Process(spawnFireOnceDelay)
 			.Process(spawnFireFlag)
 			.Success() && Stm.RegisterChange(this);
+
 	}
 };

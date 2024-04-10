@@ -84,7 +84,7 @@ NOINLINE INIClass::INISection* GetSection(INIClass* pINI, const char* pSection)
 			}
 
 			if (len)
-			{
+	{
 				*cf.Bytes = 0;
 				std::memcpy(cf.Bytes, &pSection[len_t], len);
 				cf.ByteIndex = len;
@@ -171,8 +171,7 @@ DEFINE_STRONG_HOOK(0x528A10, INIClass_GetString, 5)
 		if (auto result = GetKeyValue(pThis, pSection, pKey, pDefault))
 		{
 			auto resultcopy = result;
-			for (auto i = *result; i <= ' '; i = *++resultcopy)
-			{
+			for (auto i = *result; i <= ' '; i = *++resultcopy) {
 				if (!i)
 					break;
 			}
@@ -206,13 +205,14 @@ DEFINE_STRONG_HOOK(0x526CC0, INIClass_Section_GetKeyName, 7)
 
 	auto pResult = GetSection(pThis, pSection);
 
-	if (pResult&& idx < pResult->EntryIndex.Count())
+	if (pResult && idx < pResult->EntryIndex.Count())
 	{
 		if (pResult == SectionCompare
 			&& (KeyCompareIdx + 1) == idx
 			&& NodeCompare != pResult->Entries.GetLast()
 			)
 		{
+
 			auto result = NodeCompare->Next();
 			++KeyCompareIdx;
 			NodeCompare = result;
@@ -268,7 +268,7 @@ DEFINE_STRONG_HOOK(0x5260d9, INIClass_Parse_Override, 7)
 	}
 	return 0;
 }
-
+	
 #ifndef IteratorChar
 DEFINE_STRONG_HOOK(0x5260A2, INIClass_Parse_IteratorChar1, 6)
 {
@@ -503,6 +503,7 @@ DEFINE_STRONG_HOOK(0x474314, CCINIClass_ReadCCFile2, 6)
 
 			if (canLoad)
 			{
+
 				CCFileClass xFile { buffer };
 				if (xFile.Exists())
 				{

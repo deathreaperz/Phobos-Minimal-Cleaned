@@ -76,7 +76,7 @@ inline int PhobosToolTip::GetBuildTime(TechnoTypeClass* pType) const
 		reinterpret_cast<UnitClass*>(BuildTimeDatas)->Type = (UnitTypeClass*)pType;
 		break;
 	default:
-		return 54;
+			return 54;
 	}
 
 	const auto pTrick = reinterpret_cast<TechnoClass*>(BuildTimeDatas);
@@ -108,8 +108,7 @@ void PhobosToolTip::HelpText(const BuildType& cameo)
 		this->HelpText(ObjectTypeClass::FetchTechnoType(cameo.ItemType, cameo.ItemIndex));
 }
 
-struct TimerDatas
-{
+struct TimerDatas {
 	int m_buildtimeresult;
 	int m_second;
 	int m_min;
@@ -140,7 +139,7 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 			Debug::FatalError("[%s] change BuildTime result from [%d] to [%d]!\n", pType->ID, data->m_buildtimeresult, nBuildTime);
 
 		if (data->m_second != nSec)
-			Debug::FatalError("[%s] change Second result from [%d] to [%d] [BuildTime %s]!\n", pType->ID, data->m_second, nSec, data->m_buildtimeresult);
+			Debug::FatalError("[%s] change Second result from [%d] to [%d] [BuildTime %s]!\n", pType->ID, data->m_second, nSec , data->m_buildtimeresult);
 
 		if (data->m_min != nMin)
 			Debug::FatalError("[%s] change Min result from [%d] to [%d]!\n", pType->ID, data->m_min, nMin);
@@ -174,7 +173,7 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 int PhobosToolTip::TickTimeToSeconds(int tickTime)
 {
 	//if(!Phobos::Config::RealTimeTimers)
-	return tickTime / 15;
+		return tickTime / 15;
 
 	//if (Phobos::Config::RealTimeTimers_Adaptive ||
 	//GameOptionsClass::Instance->GameSpeed == 0
@@ -308,6 +307,7 @@ DEFINE_HOOK(0x478EF8, CCToolTip_Draw2_SetMaxWidth, 0x5)
 			R->EAX(Phobos::UI::MaxToolTipWidth);
 		else
 			R->EAX(DSurface::ViewBounds->Width);
+
 	}
 	return 0;
 }
@@ -406,8 +406,7 @@ DEFINE_HOOK(0x478F77, CCToolTip_Draw2_SetY, 0x6)
 // there is a padding zone so text isn't drawn into border
 DEFINE_HOOK(0x479029, CCToolTip_Draw2_SetPadding, 0x5)
 {
-	if (PhobosToolTip::Instance.IsCameo)
-	{
+	if (PhobosToolTip::Instance.IsCameo) {
 		if (Phobos::UI::MaxToolTipWidth > 0)
 			R->EDX(R->EDX() - 5);
 	}

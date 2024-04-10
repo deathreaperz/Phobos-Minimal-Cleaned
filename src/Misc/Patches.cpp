@@ -1,6 +1,7 @@
 #include "Patches.h"
 #include <Utilities/Macro.h>
 
+
 #pragma once
 
 #include <AlphaLightingRemapClass.h>
@@ -141,12 +142,12 @@ void BlittersFix::Apply() //C3 Z-aware SHP translucency fixes
 	);
 
 	// 50% translucency blitter pt. 1
-	Patch::Apply_RAW(0x4987F7, {
+	Patch::Apply_RAW(0x4987F7,{
 		0x66, 0xBA, 0xDE, 0xF7	// mov	dx, 0xF7DE
 	 });
 
 	// 50% translucency blitter pt. 2
-	Patch::Apply_RAW(0x498817, {
+	Patch::Apply_RAW(0x498817,{
 		0x8B, 0x04, 0x41,			// mov    eax, DWORD PTR [ecx+eax*2]
 		0x89, 0xC1,					// mov    ecx, eax
 		0x33, 0x0B,					// xor    ecx, DWORD PTR [ebx]
@@ -158,7 +159,7 @@ void BlittersFix::Apply() //C3 Z-aware SHP translucency fixes
 	});
 
 	// 75% translucency blitter
-	Patch::Apply_RAW(0x4985FE, {
+	Patch::Apply_RAW(0x4985FE,{
 		0x66, 0xBE, 0xDE, 0xF7,					// mov    si, 0xF7DE
 		0x66, 0x8B, 0x0A,						// mov    cx, WORD PTR [edx]
 		0x31, 0xC0,								// xor    eax, eax
@@ -191,7 +192,7 @@ void BlittersFix::Apply() //C3 Z-aware SHP translucency fixes
 
 void PoseDirOverride::Apply()
 {
-	Patch::Apply_RAW(0x41B7BE, {
+	Patch::Apply_RAW(0x41B7BE,{
 		0x8B, 0xC0,  // mov    eax , eax
 		0x90 // nop
 	});

@@ -15,7 +15,7 @@ void PassengersFunctional::AI(TechnoClass* pThis)
 				{
 					auto nMission = pTranporter->GetCurrentMission();
 					if (nMission != Mission::Attack)
-						pThis->Override_Mission(Mission::Sleep, nullptr, nullptr);
+						pThis->Override_Mission(Mission::Sleep, nullptr,nullptr);
 				}
 
 				if (pTransportExt->MyPassangersData.ForceFire)
@@ -30,8 +30,7 @@ bool PassengersFunctional::CanFire(TechnoClass* pThis)
 	if (auto const pTranporter = pThis->Transporter)
 	{
 		auto const pType = pTranporter->GetTechnoType();
-		if (pType->OpenTopped)
-		{
+		if (pType->OpenTopped) {
 			auto const pTransportExt = TechnoTypeExtContainer::Instance.Find(pType);
 
 			switch (pTranporter->GetCurrentMission())

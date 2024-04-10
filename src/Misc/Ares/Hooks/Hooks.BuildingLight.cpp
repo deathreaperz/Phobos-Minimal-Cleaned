@@ -51,7 +51,7 @@ DEFINE_HOOK(0x4370c0, BuildingLightClass_SDDTOR, 0xA)
 
 DEFINE_HOOK(0x435820, BuildingLightClass_CTOR, 6)
 {
-	GET_STACK(TechnoClass*, pTech, 0x4);
+	GET_STACK(TechnoClass*, pTech , 0x4);
 	GET(BuildingLightClass*, pThis, ECX);
 
 	if (pTech)
@@ -126,12 +126,10 @@ DEFINE_HOOK(0x435cd3, BuildingLightClass_Draw_Spotlight, 6)
 	TechnoTypeExtData* pTypeData = TechnoTypeExtContainer::Instance.Find(Owner->GetTechnoType());
 
 	SpotlightFlags Flags = SpotlightFlags::None;
-	if (pTypeData->Spot_DisableColor)
-	{
+	if (pTypeData->Spot_DisableColor) {
 		Flags |= SpotlightFlags::NoColor;
-	}
-	else
-	{
+
+	} else {
 		if (pTypeData->Spot_DisableR)
 		{
 			Flags |= SpotlightFlags::NoRed;
@@ -155,13 +153,11 @@ DEFINE_HOOK(0x4368C9, BuildingLightClass_Update_Trigger, 0x5)
 {
 	GET(TechnoClass*, pTechno, EAX);
 
-	if (pTechno->AttachedTag)
-	{
+	if (pTechno->AttachedTag) {
 		pTechno->AttachedTag->RaiseEvent(TriggerEvent::EnemyInSpotlight, pTechno, CellStruct::Empty, 0, 0);
 	}
 
-	if (pTechno->IsAlive && pTechno->AttachedTag)
-	{
+	if (pTechno->IsAlive && pTechno->AttachedTag) {
 		//66
 		pTechno->AttachedTag->RaiseEvent((TriggerEvent)AresTriggerEvents::EnemyInSpotlightNow, pTechno, CellStruct::Empty, 0, 0);
 	}

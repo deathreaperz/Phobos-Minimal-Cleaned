@@ -31,7 +31,7 @@ namespace SavedGames
 {
 	int HowManyTimesISavedForThisScenario = 0;
 
-	//issue #18
+		//issue #18
 	struct CustomMissionID
 	{
 		SET_SAVENAME("CustomMissionID");
@@ -52,7 +52,7 @@ namespace SavedGames
 		CustomMissionID(noinit_t()) { }
 	};
 
-	// More fun
+		// More fun
 	struct ExtraMetaInfo
 	{
 		int CurrentFrame;

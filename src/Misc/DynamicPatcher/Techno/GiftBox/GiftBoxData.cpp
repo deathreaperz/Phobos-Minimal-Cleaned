@@ -6,7 +6,7 @@ void GiftBoxData::Read(INI_EX& parser, const char* pSection)
 	if (!Gifts.empty())
 	{
 		Enable = true;
-		Nums.resize(Gifts.size(), 1);
+		Nums.resize(Gifts.size() ,1);
 
 		if (parser.ReadString(pSection, "GiftBox.Nums"))
 		{
@@ -16,6 +16,7 @@ void GiftBoxData::Read(INI_EX& parser, const char* pSection)
 				cur;
 				cur = strtok_s(nullptr, Phobos::readDelims, &context))
 			{
+
 				int buffer = 1;
 				if (Parser<int>::TryParse(cur, &buffer))
 					Nums[nCount] = buffer;

@@ -84,7 +84,7 @@ DEFINE_HOOK(0x451330, BuildingClass_GetCrewCount, 0xA)
 
 			// value divided by "cost per survivor"
 			// clamp between 1 and 5
-			count = std::clamp(pThis->Type->GetRefund(pHouse, 0) / divisor, 1, 5);
+			count = std::clamp(pThis->Type->GetRefund(pHouse, 0) / divisor, 1 , 5);
 		}
 	}
 
@@ -217,6 +217,7 @@ DEFINE_HOOK(0x442D1B, BuildingClass_Init_Academy, 6)
 	if (pThis->Type->Trainable && HouseExtContainer::Instance.Find(pThis->Owner)->Is_ConstructionYardSpied)
 		pThis->Veterancy.Veterancy = 1.0f;
 
+
 	HouseExtData::ApplyAcademy(pThis->Owner, pThis, AbstractType::Building);
 
 	return 0;
@@ -259,7 +260,7 @@ DEFINE_HOOK(0x442974, BuildingClass_ReceiveDamage_Malicious, 6)
 	GET(BuildingClass*, pThis, ESI);
 	GET_STACK(WarheadTypeClass*, pWH, 0xA8);
 
-	if (WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative)
+	if(WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative)
 		return 0x442980;
 
 	BuildingExtContainer::Instance.Find(pThis)->ReceiveDamageWarhead = pWH;
@@ -268,8 +269,7 @@ DEFINE_HOOK(0x442974, BuildingClass_ReceiveDamage_Malicious, 6)
 	return 0x442980;
 }
 
-DEFINE_HOOK(0x442290, BuildingClass_ReceiveDamage_Nonprovocative_DonotSetLAT, 0x6)
-{
+DEFINE_HOOK(0x442290, BuildingClass_ReceiveDamage_Nonprovocative_DonotSetLAT, 0x6){
 	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFSET(0x9C, 0xC));
 	return WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative ? 0x4422C1 : 0x0;
 }
@@ -292,10 +292,9 @@ DEFINE_HOOK(0x44C844, BuildingClass_MissionRepair_Reload, 6)
 	{
 		if (auto const pLink = pThis->GetNthLink(i))
 		{
-			auto const SendCommand = [=](RadioCommand command)
-				{
-					return pThis->SendCommand(command, pLink) == RadioCommand::AnswerPositive;
-				};
+			auto const SendCommand = [=](RadioCommand command) {
+				return pThis->SendCommand(command, pLink) == RadioCommand::AnswerPositive;
+			};
 
 			// check if reloaded and repaired already
 			auto const pLinkType = pLink->GetTechnoType();
@@ -445,8 +444,7 @@ DEFINE_HOOK(0x44A04C, BuildingClass_Destruction_CopyEMPDuration, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x69281E, DisplayClass_ChooseAction_TogglePower, 0xA)
-{
+DEFINE_HOOK(0x69281E, DisplayClass_ChooseAction_TogglePower, 0xA) {
 	GET(TechnoClass*, pTarget, ESI);
 	REF_STACK(Action, action, STACK_OFFS(0x20, 0x10));
 
@@ -512,7 +510,7 @@ DEFINE_HOOK(0x441F12, BuildingClass_Destroy_RubbleYell, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
-	if (pThis->GetCurrentMission() == Mission::Selling)
+	if(pThis->GetCurrentMission() == Mission::Selling)
 		return 0x0;
 
 	const auto pTypeExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
@@ -559,8 +557,7 @@ DEFINE_HOOK(0x519FAF, InfantryClass_UpdatePosition_EngineerRepairsFriendly, 6)
 			pThis->Limbo();
 			CellStruct Cell = pThis->GetMapCoords();
 			Target->KickOutUnit(pThis, Cell);
-			if (wasSelected)
-			{
+			if (wasSelected) {
 				pThis->Select();
 			}
 
@@ -700,7 +697,9 @@ DEFINE_HOOK(0x44840B, BuildingClass_ChangeOwnership_Tech, 6)
 					.Process(IsResetBudgetOnCapture)
 					.Success();
 			}
+
 		} AdditionalProduceCashData {};
+
 
 //these based on vinifera source
 // additional data , including the upgrades
@@ -721,6 +720,7 @@ struct ProduceCashData
 
 		for (size_t i = 0; i < count; ++i)
 		{
+
 			if (auto pType = FromType[i])
 			{
 				CurrentProduceCashBudget[i] = BuildingTypeExtContainer::Instance.Find(pType)->AdditionalProduceCashData.ProduceCashBudget;
@@ -765,6 +765,7 @@ struct ProduceCashData
 
 							if (additionaldata->CurrentProduceCashBudget[i] > 0)
 							{
+
 								if (additionaldata->CurrentProduceCashBudget[i] != -1)
 								{
 									additionaldata->CurrentProduceCashBudget[i] -= MaxImpl(0, amount);
@@ -842,6 +843,7 @@ struct ProduceCashData
 	//handle the Upgrades
 	static void Unlimbo(BuildingClass* pBld)
 	{
+
 	}
 
 	//handle the main building case
@@ -877,6 +879,7 @@ struct ProduceCashData
 			}
 		}
 	}
+
 };
 */
 
@@ -944,14 +947,13 @@ DEFINE_HOOK(0x4482BD, BuildingClass_ChangeOwnership_ProduceCash, 6)
 		{
 			if (bld->ProduceCashStartup || bld->ProduceCashAmount)
 			{
-				if (!pExt->BeignMCEd)
-				{
+
+				if(!pExt->BeignMCEd) {
 					pExt->BeignMCEd = false;
 					startup += bld->ProduceCashStartup;
 				}
 
-				if (bld->ProduceCashDelay)
-				{
+				if (bld->ProduceCashDelay) {
 					timer->Start(bld->ProduceCashDelay + 1);
 				}
 			}
@@ -960,6 +962,7 @@ DEFINE_HOOK(0x4482BD, BuildingClass_ChangeOwnership_ProduceCash, 6)
 
 	if (startup)
 	{
+
 		if (!pNewOwner->Type->MultiplayPassive)
 		{
 			pNewOwner->TransactMoney(startup);
@@ -1006,10 +1009,9 @@ DEFINE_HOOK(0x43FD2C, BuildingClass_Update_ProduceCash, 6)
 		}
 	}
 
-	if (produceAmount && !pThis->Owner->Type->MultiplayPassive && pThis->IsPowerOnline())
-	{
-		if (BuildingTypeExtContainer::Instance.Find(pThis->Type)->ProduceCashDisplay)
-		{
+	if (produceAmount && !pThis->Owner->Type->MultiplayPassive && pThis->IsPowerOnline()) {
+
+		if (BuildingTypeExtContainer::Instance.Find(pThis->Type)->ProduceCashDisplay) {
 			TechnoExtContainer::Instance.Find(pThis)->TechnoValueAmount += produceAmount;
 		}
 
@@ -1156,18 +1158,15 @@ DEFINE_HOOK(0x451E40, BuildingClass_DestroyNthAnim_Destroy, 0x7)
 
 	if (AnimState == -2)
 	{
-		for (int i = 0; i < 21; ++i)
-		{
-			if (auto pAnim = std::exchange(pThis->Anims[i], nullptr))
-			{
+		for (int i = 0; i < 21; ++i) {
+			if (auto pAnim = std::exchange(pThis->Anims[i], nullptr)) {
 				pAnim->UnInit();
 			}
 		}
 	}
 	else
 	{
-		if (auto pAnim = std::exchange(pThis->Anims[AnimState], nullptr))
-		{
+		if (auto pAnim = std::exchange(pThis->Anims[AnimState] , nullptr)) {
 			pAnim->UnInit();
 		}
 	}
@@ -1270,8 +1269,7 @@ DEFINE_HOOK(0x44BB1B, BuildingClass_Mi_Repair_Promote, 0x6)
 }
 
 // remember that this building ejected its survivors already
-DEFINE_HOOK(0x44A8A2, BuildingClass_Mi_Selling_Crew, 0xA)
-{
+DEFINE_HOOK(0x44A8A2, BuildingClass_Mi_Selling_Crew, 0xA) {
 	GET(BuildingClass*, pThis, EBP);
 	pThis->NoCrew = BuildingTypeExtContainer::Instance.Find(pThis->Type)->SpawnCrewOnlyOnce;
 	return 0;
@@ -1337,31 +1335,31 @@ DEFINE_HOOK(0x449FF8, BuildingClass_Mi_Selling_PutMcv, 7)
 // start after free unit checks 0x446B16
 //FreeUnit end 0x446EE2
 
-DEFINE_HOOK(0x45EE30, BuildingClass_GetActualCost_FreeUnitCount, 0x6)
+DEFINE_HOOK(0x45EE30 , BuildingClass_GetActualCost_FreeUnitCount , 0x6)
 {
-	GET(BuildingTypeClass*, pThis, EBX);
-	GET(HouseClass*, pHouse, EBP);
+	GET(BuildingTypeClass* , pThis ,EBX);
+	GET(HouseClass* , pHouse , EBP);
 
-	if (!pThis->FreeUnit)
+	if(!pThis->FreeUnit)
 		return 0x45EE58;
 
 	const int FreeUnitamount = BuildingTypeExtContainer::Instance.Find(pThis)->FreeUnit_Count;
-	if (!FreeUnitamount)
+	if(!FreeUnitamount)
 		return 0x45EE58;
 
 	R->EAX(pThis->FreeUnit->GetActualCost(pHouse) * FreeUnitamount);
 	return 0x45EE45;
 }
 
-DEFINE_HOOK(0x45EDA3, BuildingClass_GetCost_FreeUnitCount, 0x6)
+DEFINE_HOOK(0x45EDA3 , BuildingClass_GetCost_FreeUnitCount , 0x6)
 {
-	GET(BuildingTypeClass*, pThis, EBX);
+	GET(BuildingTypeClass* , pThis ,EBX);
 
-	if (!pThis->FreeUnit)
+	if(!pThis->FreeUnit)
 		return 0x45EDC8;
 
 	const int FreeUnitamount = BuildingTypeExtContainer::Instance.Find(pThis)->FreeUnit_Count;
-	if (!FreeUnitamount)
+	if(!FreeUnitamount)
 		return 0x45EDC8;
 
 	R->EAX(pThis->FreeUnit->GetCost() * FreeUnitamount);
@@ -1373,20 +1371,15 @@ void SetFreeUnitMission(UnitClass* pUnit)
 	Mission nMissions;
 
 	//Initial DriverKilled
-	if (TechnoExtContainer::Instance.Find(pUnit)->Is_DriverKilled)
-	{
+	if (TechnoExtContainer::Instance.Find(pUnit)->Is_DriverKilled) {
 		nMissions = Mission::Sleep;
-	}
-	else
-	{
+	} else {
+
 		if (pUnit->Type->Harvester ||
 			pUnit->Type->Weeder ||
-			pUnit->Type->ResourceGatherer)
-		{
+			pUnit->Type->ResourceGatherer) {
 			nMissions = Mission::Harvest;
-		}
-		else
-		{
+		} else {
 			nMissions = !pUnit->Owner->IsControlledByHuman()
 				? Mission::Hunt : Mission::Area_Guard;
 		}
@@ -1396,9 +1389,9 @@ void SetFreeUnitMission(UnitClass* pUnit)
 	pUnit->NextMission();
 }
 
-void SpawnFreeUnits(BuildingClass* pBuilding, int count)
-{
-	if (!count)
+void SpawnFreeUnits(BuildingClass* pBuilding , int count) {
+
+	if(!count)
 		return;
 
 	std::vector<bool> placements(count);
@@ -1407,32 +1400,26 @@ void SpawnFreeUnits(BuildingClass* pBuilding, int count)
 	const auto pBldCell = CellClass::Coord2Cell(pBldLoc);
 	const auto placement_first = pBldCell + CellSpread::AdjacentCell[(size_t)FacingType::South];
 
-	for (auto& place : placements)
-	{
-		if (auto pUnit = (UnitClass*)pBuilding->Type->FreeUnit->CreateObject(pBuilding->Owner))
-		{
-			if (pUnit->Unlimbo(CellClass::Cell2Coord(placement_first), DirType::West))
-			{
+	for(auto& place : placements) {
+		if(auto pUnit = (UnitClass*)pBuilding->Type->FreeUnit->CreateObject(pBuilding->Owner)) {
+			if(pUnit->Unlimbo(CellClass::Cell2Coord(placement_first) , DirType::West)) {
 				SetFreeUnitMission(pUnit);
 				place = true;
 				continue;
 			}
 
 			// weeee
-			for (int i = 0; i < 2; ++i)
-			{
+			for(int i = 0 ; i < 2; ++i) {
 				const auto pBldLoc_Cell = CellClass::Coord2Cell(pBuilding->Location);
 				int zone = MapClass::Instance->GetMapZone(pBldLoc_Cell, pUnit->Type->MovementZone, false);
-				auto nearbyLoc = MapClass::Instance->NearByLocation(pBldLoc_Cell,
+				auto nearbyLoc = MapClass::Instance->NearByLocation(pBldLoc_Cell ,
 				pUnit->Type->SpeedType,
-				zone,
+				zone ,
 				pUnit->Type->MovementZone,
-				false, 1, 1, !i, true, false, false, CellStruct::Empty, false, false);
+				false,1 , 1 , !i , true ,false ,false ,CellStruct::Empty,	false , false );
 
-				if (nearbyLoc.IsValid())
-				{
-					if (pUnit->Unlimbo(CellClass::Cell2Coord(nearbyLoc), DirType::SouthWest))
-					{
+				if(nearbyLoc.IsValid()) {
+					if(pUnit->Unlimbo(CellClass::Cell2Coord(nearbyLoc) , DirType::SouthWest)) {
 						SetFreeUnitMission(pUnit);
 						place = true;
 						break; // berak from 2nd loop
@@ -1440,16 +1427,15 @@ void SpawnFreeUnits(BuildingClass* pBuilding, int count)
 				}
 			}
 
-			if (!place)
-			{
-				GameDelete<true, false>(pUnit);
+			if(!place){
+				GameDelete<true , false>(pUnit);
 				pBuilding->Owner->TransactMoney(pBuilding->Type->FreeUnit->GetRefund(pBuilding->Owner, true));
 			}
 		}
 	}
 }
 
-DEFINE_HOOK(0x446B16, BuildingClass_Place_FreeUnits, 0x7)
+DEFINE_HOOK(0x446B16 , BuildingClass_Place_FreeUnits , 0x7)
 {
 	GET(BuildingClass* const, pThis, EBP);
 	SpawnFreeUnits(pThis, BuildingTypeExtContainer::Instance.Find(pThis->Type)->FreeUnit_Count);
@@ -1592,6 +1578,7 @@ DEFINE_HOOK(0x4456E5, BuildingClass_UpdateConstructionOptions_ExcludeDisabled, 0
 //	return true;
 //}
 
+
 DEFINE_HOOK(0x73A1BC, UnitClass_UpdatePosition_EnteredGrinder, 0x7)
 {
 	GET(UnitClass* const, Vehicle, EBP);
@@ -1677,9 +1664,8 @@ DEFINE_HOOK(0x7004AD, TechnoClass_GetActionOnObject_Saboteur, 0x6)
 
 DEFINE_HOOK(0x51EE6B, InfantryClass_GetActionOnObject_Saboteur, 6)
 {
-	enum
-	{
-		infiltratable = 0x51EEEDu, Notinfiltratable = 0x51F04Eu
+	enum {
+		infiltratable = 0x51EEEDu , Notinfiltratable = 0x51F04Eu
 	};
 
 	GET(InfantryClass*, pThis, EDI);
@@ -1755,8 +1741,7 @@ DEFINE_HOOK(0x51B2CB, InfantryClass_SetTarget_Saboteur, 0x6)
 	GET(InfantryClass*, pThis, ESI);
 	GET(ObjectClass* const, pTarget, EDI);
 
-	if (const auto pBldObject = specific_cast<BuildingClass*>(pTarget))
-	{
+	if (const auto pBldObject = specific_cast<BuildingClass*>(pTarget)) {
 		const auto nResult = TechnoExt_ExtData::GetiInfiltrateActionResult(pThis, pBldObject);
 
 		if (nResult == Action::Move || nResult == Action::NoMove || nResult == Action::Enter)
@@ -1830,6 +1815,7 @@ DEFINE_HOOK(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
 		}
 
 	return SkipInfiltrate;
+
 }
 
 DEFINE_HOOK(0x7376D9, UnitClass_ReceivedRadioCommand_DockUnload_Facing, 5)
@@ -1972,7 +1958,7 @@ DEFINE_HOOK(0x455DA0, BuildingClass_IsFactory_CloningFacility, 6)
 
 	const auto what = pThis->Type->Factory;
 
-	if (what == AircraftTypeClass::AbsID
+	if(what == AircraftTypeClass::AbsID
 		|| BuildingTypeExtContainer::Instance.Find(pThis->Type)->CloningFacility)
 		return 0x455DCD;
 
@@ -2265,8 +2251,7 @@ DEFINE_HOOK(0x457D58, BuildingClass_CanBeOccupied_SpecificOccupiers, 6)
 	const bool isRaidable = pBuildTypeExt->BunkerRaidable && occupantCount == 0;
 	const bool controlledByCurrentPlayer = SessionClass::Instance->GameMode == GameMode::Campaign && pThis->Owner->ControlledByCurrentPlayer() && pInf->Owner->ControlledByCurrentPlayer();
 
-	if (sameOwner || controlledByCurrentPlayer || isNeutral || isRaidable)
-	{
+	if (sameOwner || controlledByCurrentPlayer || isNeutral || isRaidable) {
 		return AllowOccupy;
 	}
 
@@ -2385,8 +2370,7 @@ DEFINE_HOOK(0x445F80, BuildingClass_Place, 5)
 {
 	GET(BuildingClass*, pThis, ECX);
 
-	if (pThis->Type->SecretLab)
-	{
+	if (pThis->Type->SecretLab) {
 		BuildingExtData::UpdateSecretLab(pThis);
 	}
 

@@ -38,10 +38,8 @@ DEFINE_HOOK(0x6E20D8, TActionClass_DestroyAttached_Loop, 0x5)
 DEFINE_HOOK(0x6DE0D3, TActionClass_Execute_MessageColor, 6)
 {
 	int idxColor = 0;
-	if (SideClass* pSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex))
-	{
-		if (SideExtData* pExt = SideExtContainer::Instance.Find(pSide))
-		{
+	if (SideClass* pSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex)) {
+		if (SideExtData* pExt = SideExtContainer::Instance.Find(pSide)) {
 			idxColor = pExt->MessageTextColorIndex;
 		}
 	}
@@ -57,8 +55,7 @@ DEFINE_HOOK(0x41E893, AITriggerTypeClass_ConditionMet_SideIndex, 0xA)
 
 	enum { Eligible = 0x41E8D7, NotEligible = 0x41E8A1 };
 
-	if (!triggerSide)
-	{
+	if (!triggerSide) {
 		return Eligible;
 	}
 
@@ -121,8 +118,8 @@ DEFINE_HOOK(0x6DD8D7, TActionClass_Execute_Ares, 0xA)
 		R->AL(ret);
 		return Handled;
 	}
-	//Debug::Log("TAction[%x] triggering vanilla [%d]\n" , pAction , (int)pAction->ActionKind);
-// replicate the original instructions, using underflow
+		//Debug::Log("TAction[%x] triggering vanilla [%d]\n" , pAction , (int)pAction->ActionKind);
+	// replicate the original instructions, using underflow
 	uint32_t const value = static_cast<uint32_t>(pAction->ActionKind) - 1;
 	R->EDX(value);
 	return (value > 144u) ? Handled : Default;
@@ -167,18 +164,18 @@ DEFINE_HOOK(0x71f683, TEventClass_GetFlags_Ares, 5)
 }
 
 // the general events requiring a house
-DEFINE_HOOK(0x71F06C, EventClass_HasOccured_PlayerAtX1, 5)
-{
-	GET(int const, param, ECX);
+ DEFINE_HOOK(0x71F06C, EventClass_HasOccured_PlayerAtX1, 5)
+ {
+ 	GET(int const, param, ECX);
 
-	auto const pHouse = AresTEventExt::ResolveHouseParam(param);
-	R->EAX(pHouse);
+ 	auto const pHouse = AresTEventExt::ResolveHouseParam(param);
+ 	R->EAX(pHouse);
 
-	// continue normally if a house was found or this isn't Player@X logic,
-	// otherwise return false directly so events don't fire for non-existing
-	// players.
-	return (pHouse || !HouseClass::Index_IsMP(param)) ? 0x71F071u : 0x71F0D5u;
-}
+ 	// continue normally if a house was found or this isn't Player@X logic,
+ 	// otherwise return false directly so events don't fire for non-existing
+ 	// players.
+ 	return (pHouse || !HouseClass::Index_IsMP(param)) ? 0x71F071u : 0x71F0D5u;
+ }
 
 // validation for Spy as House, the Entered/Overflown Bys and the Crossed V/H Lines
 DEFINE_HOOK_AGAIN(0x71ED33, EventClass_HasOccured_PlayerAtX2, 5)
@@ -207,7 +204,7 @@ DEFINE_HOOK(0x71EE79, EventClass_HasOccured_PlayerAtX3, 9)
 	return (pHouse->ArrayIndex == param) ? 0x71EE82u : 0x71F163u;
 }
 
-static std::array<const char*, (size_t)TriggerEvent::count> TriggerEventsName {
+static std::array<const char* , (size_t)TriggerEvent::count> TriggerEventsName {
 {
 	"None",
 	"EnteredBy" ,
@@ -274,24 +271,24 @@ static std::array<const char*, (size_t)TriggerEvent::count> TriggerEventsName {
 }
 };
 
-DEFINE_HOOK(0x71E949, TEventClass_HasOccured_Ares, 7)
-{
-	GET(TEventClass*, pThis, EBP);
-	REF_STACK(EventArgs, args, (0x2C + 0x4));
-	enum { return_true = 0x71F1B1, return_false = 0x71F163 };
+ DEFINE_HOOK(0x71E949, TEventClass_HasOccured_Ares, 7)
+ {
 
-	//const char* name = "Unknown";
-	//if(args.EventType < TriggerEvent::count)
-	//	name =TriggerEventsName[(int)args.EventType];
+ 	GET(TEventClass*, pThis, EBP);
+ 	REF_STACK(EventArgs, args, (0x2C + 0x4));
+ 	enum { return_true = 0x71F1B1, return_false = 0x71F163 };
 
-	bool result = false;
-	//Debug::Log("Event [%d - %s] IsOccured \n" , (int)args.EventType , name);
-	if (AresTEventExt::HasOccured(pThis, args, result))
-	{
-		//Debug::Log("Event [%d - %s] AresEventHas Occured \n" , (int)args.EventType , name);
-		return result ? return_true : return_false;
-	}
-	//Debug::Log("Event [%d - %s] AresEventNot Occured \n" , (int)args.EventType , name);
+ 	//const char* name = "Unknown";
+ 	//if(args.EventType < TriggerEvent::count)
+ 	//	name =TriggerEventsName[(int)args.EventType];
 
-	return 0;
-}
+ 	bool result = false;
+ 	//Debug::Log("Event [%d - %s] IsOccured \n" , (int)args.EventType , name);
+ 	if (AresTEventExt::HasOccured(pThis, args, result)) {
+ 		//Debug::Log("Event [%d - %s] AresEventHas Occured \n" , (int)args.EventType , name);
+ 		return result ? return_true : return_false;
+ 	}
+ 	//Debug::Log("Event [%d - %s] AresEventNot Occured \n" , (int)args.EventType , name);
+
+ 	return 0;
+ }

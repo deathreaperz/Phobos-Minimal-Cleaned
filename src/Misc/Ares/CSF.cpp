@@ -50,11 +50,9 @@ const wchar_t* CSFLoader::GetDynamicString(const char* pLabelName, const wchar_t
 
 	auto pData = &DynamicStrings[pLabelName];
 
-	if ((!pData->Text || !pData->Text[0]))
-	{
+	if((!pData->Text || !pData->Text[0])) {
 		swprintf_s(pData->Text, 101u, pPattern, pDefault);
-		if (Phobos::Otamaa::OutputMissingStrings)
-		{
+		if(Phobos::Otamaa::OutputMissingStrings) {
 			Debug::Log("[CSFLoader] Added label \"%s\" with value \"%ls\".\n", pLabelName, pData->Text);
 		}
 	}
@@ -88,6 +86,7 @@ DEFINE_HOOK(0x7349cf, StringTable_ParseFile_Buffer, 7)
 
 	return 0x0;
 }
+
 
 DEFINE_HOOK(0x7346D0, CSF_LoadBaseFile, 6)
 {
@@ -185,8 +184,7 @@ DEFINE_HOOK(0x6BD886, CSF_LoadExtraFiles, 5)
 
 	CSFLoader::LoadAdditionalCSF(_ares.c_str());
 
-	for (int idx = 0; idx < 100; ++idx)
-	{
+	for (int idx = 0; idx < 100; ++idx) {
 		CSFLoader::LoadAdditionalCSF(std::format("stringtable{:02}.csf", idx).c_str());
 	}
 
@@ -198,8 +196,7 @@ DEFINE_HOOK(0x734E83, CSF_LoadString_1, 6)
 {
 	GET(const char*, pName, EBX);
 
-	if (!strncmp(pName, "NOSTR:", 6))
-	{
+	if (!strncmp(pName, "NOSTR:", 6)) {
 		R->EAX(CSFLoader::GetDynamicString(pName, L"%hs", &pName[6]));
 		return 0x734F0F;
 	}

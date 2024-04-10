@@ -77,5 +77,5 @@ public:
 
 	static AnimExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(AnimExtContainer, AnimExtData, "AnimClass");
+	CONSTEXPR_NOCOPY_CLASSB(AnimExtContainer , AnimExtData, "AnimClass");
 };

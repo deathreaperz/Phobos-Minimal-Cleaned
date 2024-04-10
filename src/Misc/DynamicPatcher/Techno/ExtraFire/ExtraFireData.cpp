@@ -31,8 +31,7 @@ void ExtraFireData::ReadRules(INI_EX& parserRules, const char* pSection_rules)
 			std::string _buffer("ExtraFire.EliteWeapon");
 			_buffer += std::to_string(b + 1);
 
-			if (!parserRules.ReadString(pSection_rules, _buffer.c_str()))
-			{
+			if (!parserRules.ReadString(pSection_rules, _buffer.c_str())) {
 				AttachedWeapon.EliteWeaponX[b] = AttachedWeapon.WeaponX[b];
 				continue;
 			}
@@ -40,6 +39,7 @@ void ExtraFireData::ReadRules(INI_EX& parserRules, const char* pSection_rules)
 			detail::parse_Alloc_values<WeaponTypeClass*>(AttachedWeapon.EliteWeaponX[b], parserRules, pSection_rules, _buffer.c_str(), true);
 		}
 	}
+
 }
 
 void ExtraFireData::ReadArt(INI_EX& parserArt, const char* pSection_Art)

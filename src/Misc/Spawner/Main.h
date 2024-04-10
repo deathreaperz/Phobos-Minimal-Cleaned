@@ -30,14 +30,13 @@
 class CCINIClass;
 struct SpawnerMain
 {
-	struct Configs
-	{
+	struct Configs {
 		static bool Enabled; // false
 		static bool Active; //false
 
 	public:
 
-		bool DumpTypes { false };
+		bool DumpTypes {false};
 		bool MPDebug { false };
 		bool SingleProcAffinity { true };
 
@@ -58,8 +57,7 @@ struct SpawnerMain
 		static std::unique_ptr<Configs> m_Ptr;
 	};
 
-	struct GameConfigs
-	{
+	struct GameConfigs {
 		static void Init();
 		static bool StartGame();
 		static void AssignHouses();
@@ -304,13 +302,11 @@ struct SpawnerMain
 	static void LoadConfigurations(); // Early load settings from ra2md
 	static void ApplyStaticOptions(); // Apply all the settings
 
-	static Configs* GetMainConfigs()
-	{
+	static Configs* GetMainConfigs() {
 		return Configs::m_Ptr.get();
 	}
 
-	static GameConfigs* GetGameConfigs()
-	{
+	static GameConfigs* GetGameConfigs() {
 		return GameConfigs::m_Ptr.get();
 	}
 };

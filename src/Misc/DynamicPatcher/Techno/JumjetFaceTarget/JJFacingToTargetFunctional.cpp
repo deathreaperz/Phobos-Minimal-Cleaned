@@ -38,6 +38,7 @@ void JJFacingFunctional::AI(TechnoExtData* pExt, TechnoTypeExtData* pTypeExt)
 	//		}
 	//		else if (auto pTarget = pFoot->Target)
 	//		{
+
 	//			int nWeapon = pFoot->SelectWeapon(pTarget);
 	//			bool canFire = false;
 	//			auto const nFireError = pExt->Get()->GetFireError(pTarget, nWeapon, true);

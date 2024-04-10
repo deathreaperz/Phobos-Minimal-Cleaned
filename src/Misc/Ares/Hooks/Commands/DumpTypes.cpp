@@ -44,8 +44,7 @@ const wchar_t* DumperTypesCommandClass::GetUIDescription() const
 
 void DumperTypesCommandClass::Execute(WWKey dwUnk) const
 {
-	if (this->CheckDebugDeactivated())
-	{
+	if (this->CheckDebugDeactivated()) {
 		return;
 	}
 
@@ -75,8 +74,7 @@ void DumperTypesCommandClass::Execute(WWKey dwUnk) const
 	Debug::Log("Dumping Art Types\n\n");
 	Debug::Log("[Movies]\n");
 
-	for (int i = 0; i < MovieInfo<GameDeleter>::Array->Count; ++i)
-	{
+	for (int i = 0; i < MovieInfo<GameDeleter>::Array->Count; ++i) {
 		Debug::Log("%d = %s\n", i, MovieInfo<GameDeleter>::Array->Items[i].Name);
 	}
 
@@ -102,8 +100,7 @@ void DumperTypesCommandClass::Execute(WWKey dwUnk) const
 	// yes , iam sorry
 	// sometime i need the rules that you lock behind the mix
 	// so i can validate and fix the stuffs , enable it with your own risk ! -Otamaa
-	if (Phobos::Otamaa::IsAdmin)
-	{
+	if(Phobos::Otamaa::IsAdmin) {
 		GenericNode* sectionNode = CCINIClass::INI_Rules()->Sections.First();
 		while (sectionNode)
 		{

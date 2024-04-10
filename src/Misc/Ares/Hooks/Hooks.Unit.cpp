@@ -193,7 +193,7 @@ DEFINE_HOOK(0x74642C, UnitClass_ReceiveGunner, 6)
 {
 	GET(UnitClass*, Unit, ESI);
 
-	const auto pTemp = std::exchange(Unit->TemporalImUsing, nullptr);
+	const auto pTemp = std::exchange(Unit->TemporalImUsing , nullptr);
 
 	if (pTemp)
 		pTemp->LetGo();
@@ -371,7 +371,7 @@ DEFINE_HOOK(0x6F6A58, TechnoClass_DrawHealthBar_HidePips_KillDriver, 6)
 	// prevent player from seeing pips on transports with killed drivers.
 	GET(TechnoClass*, pThis, ESI);
 	return HouseClass::IsCurrentPlayerObserver() ||
-		TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled ? 0x6F6AB6u : 0u;
+	TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled ? 0x6F6AB6u : 0u;
 }
 
 DEFINE_HOOK(0x7087EB, TechnoClass_ShouldRetaliate_KillDriver, 6)
@@ -492,8 +492,7 @@ DEFINE_HOOK(0x718871, TeleportLocomotionClass_UnfreezeObject_SinkOrSwim, 7)
 DEFINE_HOOK(0x508D4A, HouseClass_UpdatePower_LocalDrain2, 6)
 {
 	GET(HouseClass*, pThis, ESI);
-	if (pThis->PowerOutput < 0)
-	{
+	if(pThis->PowerOutput < 0) {
 		pThis->PowerOutput = 0;
 	}
 	return 0;
@@ -509,10 +508,10 @@ DEFINE_HOOK(0x73DE90, UnitClass_Mi_Unload_SimpleDeployer, 0x6)
 		&& pTypeExt->Convert_Deploy
 		&& TechnoExt_ExtData::ConvertToType(pThis, pTypeExt->Convert_Deploy))
 	{
-		if (pTypeExt->Convert_Deploy_Delay > 0)
+		if(pTypeExt->Convert_Deploy_Delay > 0)
 			TechnoExtContainer::Instance.Find(pThis)->Convert_Deploy_Delay
-			//.Start(100);
-			.Start(pTypeExt->Convert_Deploy_Delay);
+				//.Start(100);
+				.Start(pTypeExt->Convert_Deploy_Delay);
 
 		pThis->Deployed = false;
 	}
@@ -686,6 +685,7 @@ DEFINE_HOOK(0x74410D, UnitClass_Mi_AreaGuard_KickFrameDelay, 5)
 		0x74416C : 0x744129;
 }
 
+
 DEFINE_HOOK_AGAIN(0x735678, UnitClass_Init_Academy, 6) // inlined in CTOR
 DEFINE_HOOK(0x74689B, UnitClass_Init_Academy, 6)
 {
@@ -703,7 +703,7 @@ DEFINE_HOOK(0x74689B, UnitClass_Init_Academy, 6)
 	}
 
 	AbstractType type = AbstractType::Unit;
-	if (pType->ConsideredAircraft)
+	if(pType->ConsideredAircraft)
 		type = AbstractType::Aircraft;
 	else if (pType->Organic)
 		type = AbstractType::Infantry;
@@ -778,6 +778,7 @@ DEFINE_HOOK(0x53C450, TechnoClass_CanBePermaMC, 5)
 	if (pThis && pThis->WhatAmI() != AbstractType::Building
 		&& !pThis->IsIronCurtained() && !pThis->IsInAir())
 	{
+
 		const auto TechnoExt = TechnoExtContainer::Instance.Find(pThis);
 		if (!TechnoExtData::IsPsionicsImmune(pThis) && !TechnoExt->Type->BalloonHover)
 		{
@@ -832,50 +833,50 @@ DEFINE_HOOK(0x6F8EE3, TechnoClass_FindTargetType_Heal, 6)
 
 DEFINE_HOOK(0x51C913, InfantryClass_CanFire_Heal, 7)
 {
-	enum { retFireIllegal = 0x51C939, retContinue = 0x51C947 };
+	enum { retFireIllegal = 0x51C939 , retContinue = 0x51C947 };
 	GET(InfantryClass*, pThis, EBX);
 	GET(ObjectClass*, pTarget, EDI);
-	GET_STACK(int, nWeaponIdx, STACK_OFFSET(0x20, 0x8));
+	GET_STACK(int , nWeaponIdx , STACK_OFFSET(0x20 , 0x8));
 
 	const auto pThatTechno = generic_cast<TechnoClass*>(pTarget);
 
-	if (!pThatTechno || pThatTechno->IsIronCurtained())
-	{
+	if (!pThatTechno || pThatTechno->IsIronCurtained()){
 		return retFireIllegal;
 	}
 
-	return  TechnoExt_ExtData::FiringAllowed(pThis, pThatTechno, pThis->GetWeapon(nWeaponIdx)->WeaponType) ?
+	return  TechnoExt_ExtData::FiringAllowed(pThis , pThatTechno, pThis->GetWeapon(nWeaponIdx)->WeaponType) ?
 		retContinue : retFireIllegal;
+
 }
 
 DEFINE_HOOK(0x741113, UnitClass_CanFire_Heal, 0xA)
 {
-	enum { retFireIllegal = 0x74113A, retContinue = 0x741149 };
+	enum { retFireIllegal = 0x74113A , retContinue = 0x741149 };
 	GET(UnitClass*, pThis, ESI);
 	GET(TechnoClass*, pThatTechno, EDI);
-	GET_STACK(int, nWeaponIdx, STACK_OFFSET(0x1C, 0x8));
+	GET_STACK(int , nWeaponIdx , STACK_OFFSET(0x1C , 0x8));
 
-	return !pThatTechno->IsIronCurtained() && TechnoExt_ExtData::FiringAllowed(pThis, pThatTechno, pThis->GetWeapon(nWeaponIdx)->WeaponType) ?
-		retContinue : retFireIllegal;
+	return !pThatTechno->IsIronCurtained() && TechnoExt_ExtData::FiringAllowed(pThis, pThatTechno , pThis->GetWeapon(nWeaponIdx)->WeaponType ) ?
+		retContinue : retFireIllegal ;
 }
 
 DEFINE_HOOK(0x6F7F4F, TechnoClass_EvalObject_NegativeDamage, 0x7)
 {
-	enum { SetHealthRatio = 0x6F7F56, ContinueCheck = 0x6F7F6D, retFalse = 0x6F894F };
+	enum { SetHealthRatio = 0x6F7F56 , ContinueCheck = 0x6F7F6D , retFalse = 0x6F894F };
 	GET(TechnoClass*, pThis, EDI);
 	GET(ObjectClass*, pThat, ESI);
 
 	const auto nRulesGreen = RulesClass::Instance->ConditionGreen;
 	const auto pThatTechno = generic_cast<TechnoClass*>(pThat);
 
-	if (!pThatTechno)
-	{
+	if (!pThatTechno){
 		return pThat->GetHealthPercentage_() >= nRulesGreen ?
 			retFalse : ContinueCheck;
 	}
 
-	return !pThatTechno->IsIronCurtained() && TechnoExt_ExtData::FiringAllowed(pThis, pThatTechno, pThis->GetWeapon(pThis->SelectWeapon(pThatTechno))->WeaponType) ?
-		ContinueCheck : retFalse;
+	return !pThatTechno->IsIronCurtained() && TechnoExt_ExtData::FiringAllowed(pThis,pThatTechno ,pThis->GetWeapon(pThis->SelectWeapon(pThatTechno))->WeaponType) ?
+		 ContinueCheck : retFalse;
+
 }
 
 template<bool CheckKeyPress>
@@ -885,8 +886,7 @@ std::pair<bool, int> HealActionProhibited(TechnoClass* pTarget, WeaponTypeClass*
 	const auto pThatShield = pThatTechnoExt->GetShield();
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
 
-	if constexpr (CheckKeyPress)
-	{
+	if constexpr (CheckKeyPress) {
 		if (WWKeyboardClass::Instance->IsForceMoveKeyPressed())
 			return { true , -1 };
 	}
@@ -895,14 +895,13 @@ std::pair<bool, int> HealActionProhibited(TechnoClass* pTarget, WeaponTypeClass*
 	{
 		const auto pShieldType = pThatShield->GetType();
 
-		if (pWHExt->GetVerses(pShieldType->Armor).Verses <= 0.0)
-		{
+		if (pWHExt->GetVerses(pShieldType->Armor).Verses <= 0.0) {
 			return { true , -1 };
 		}
 
 		const auto pFoot = abstract_cast<FootClass*>(pTarget);
 
-		if (!pThatShield->CanBePenetrated(pWeapon->Warhead) || ((pFoot && pFoot->ParasiteEatingMe)))
+		if (!pThatShield->CanBePenetrated(pWeapon->Warhead)|| ((pFoot && pFoot->ParasiteEatingMe)))
 		{
 			if (pShieldType->CanBeHealed)
 			{
@@ -914,6 +913,7 @@ std::pair<bool, int> HealActionProhibited(TechnoClass* pTarget, WeaponTypeClass*
 				}
 				else
 				{
+
 					if (pThatShield->GetType()->PassthruNegativeDamage)
 						return { pTarget->IsFullHP() , -1 };
 					else
@@ -953,14 +953,11 @@ DEFINE_HOOK(0x51E710, InfantryClass_GetActionOnObject_Heal, 7)
 
 	const auto pWeapon = pThis->GetWeapon(pThis->SelectWeapon(pThatTechno))->WeaponType;
 	const auto pThatType = pThatTechno->GetTechnoType();
-	const auto& [ret, nCursorShield] = HealActionProhibited<true>(pThatTechno, pWeapon);
+	const auto&[ret ,nCursorShield] = HealActionProhibited<true>(pThatTechno, pWeapon);
 
-	if (ret)
-	{
-		if (const auto pBuilding = specific_cast<BuildingClass*>(pThatTechno))
-		{
-			if (pBuilding->Type->Grinding)
-			{
+	if (ret) {
+		if (const auto pBuilding = specific_cast<BuildingClass*>(pThatTechno)) {
+			if (pBuilding->Type->Grinding) {
 				return NextCheck2;
 			}
 		}
@@ -977,7 +974,7 @@ DEFINE_HOOK(0x51E710, InfantryClass_GetActionOnObject_Heal, 7)
 
 DEFINE_HOOK(0x73FDBD, UnitClass_GetActionOnObject_Heal, 5)
 {
-	enum { ContinueCheck = 0x73FE48, CheckIfTargetIsBuilding = 0x73FE2F, DoActionSelect = 0x73FE3B, DoActionGRepair = 0x73FE22, CheckObjectHP = 0x73FE08 };
+	enum { ContinueCheck = 0x73FE48 , CheckIfTargetIsBuilding = 0x73FE2F, DoActionSelect = 0x73FE3B , DoActionGRepair = 0x73FE22 , CheckObjectHP = 0x73FE08 };
 	GET(UnitClass*, pThis, ESI);
 	GET(ObjectClass*, pThat, EDI);
 	GET(Action, nAct, EBX);
@@ -986,26 +983,24 @@ DEFINE_HOOK(0x73FDBD, UnitClass_GetActionOnObject_Heal, 5)
 		return ContinueCheck;
 
 	const auto pThatTechno = generic_cast<TechnoClass*>(pThat);
-	if (WWKeyboardClass::Instance->IsForceMoveKeyPressed() ||
+	if(WWKeyboardClass::Instance->IsForceMoveKeyPressed() ||
 		pThis == pThat ||
 		!pThatTechno ||
 		!pThat->IsSurfaced()
 	  )
 		return DoActionSelect;
 
-	if (auto const pAir = specific_cast<AircraftClass*>(pThat))
-	{
-		if (pAir->GetCell()->GetBuilding())
-		{
+	if (auto const pAir = specific_cast<AircraftClass*>(pThat)) {
+		if (pAir->GetCell()->GetBuilding()) {
 			return ContinueCheck;
 		}
 	}
 
 	auto pThatType = pThat->GetTechnoType();
 	const auto& [ret, nCursorSelected] = HealActionProhibited<false>(pThatTechno,
-				pThis->GetWeapon(pThis->SelectWeapon(pThat))->WeaponType);
+			    pThis->GetWeapon(pThis->SelectWeapon(pThat))->WeaponType);
 
-	if (ret)
+	if(ret)
 		return DoActionSelect;
 
 	size_t nCursor = nCursorSelected != -1 ? (size_t)nCursorSelected :
@@ -1129,9 +1124,9 @@ DEFINE_HOOK(0x739956, DeploysInto_UndeploysInto_SyncStatuses, 0x6) //UnitClass_D
 	// attahed bomb
 	// ae
 	// original owner
-	TechnoExt_ExtData::TransferIvanBomb(pFrom, pTo);
-	AresAE::TransferAttachedEffects(pFrom, pTo);
-	TechnoExt_ExtData::TransferOriginalOwner(pFrom, pTo);
+	TechnoExt_ExtData::TransferIvanBomb(pFrom , pTo);
+	AresAE::TransferAttachedEffects(pFrom , pTo);
+	TechnoExt_ExtData::TransferOriginalOwner(pFrom , pTo);
 	//AresData::TechnoTransferAffects(pFrom, pTo);
 	TechnoExtData::TransferMindControlOnDeploy(pFrom, pTo);
 	ShieldClass::SyncShieldToAnother(pFrom, pTo);
@@ -1188,8 +1183,7 @@ DEFINE_HOOK(0x4D7221, FootClass_Put_Prereqs, 6)
 
 	auto const pType = pThis->GetTechnoType();
 
-	if (TechnoTypeExtContainer::Instance.Find(pType)->IsGenericPrerequisite())
-	{
+	if (TechnoTypeExtContainer::Instance.Find(pType)->IsGenericPrerequisite()) {
 		pThis->Owner->RecheckTechTree = true;
 	}
 
@@ -1248,7 +1242,7 @@ DEFINE_HOOK(0x74192E, UnitClass_CrushCell_CrushDecloak, 0x5)
 
 DEFINE_HOOK(0x7418A1, UnitClass_CrusCell_TiltWhenCrushSomething, 0x5)
 {
-	enum { DoNotTilt = 0x7418AA, Tilt = 0x7418A6 };
+	enum { DoNotTilt = 0x7418AA , Tilt = 0x7418A6 };
 	GET(ObjectClass* const, pVictim, ESI);
 	GET(UnitClass* const, pThis, EDI);
 	GET(AbstractType, nWhat, EAX);
@@ -1299,11 +1293,9 @@ DEFINE_HOOK(0x7418AA, UnitClass_CrushCell_CrushDamage, 6)
 
 			pThis->ReceiveDamage(
 				&damage, 0, pWarhead, nullptr, false, false, nullptr);
-			if (pVictimTypeExt->CrushDamagePlayWHAnim)
-			{
+			if (pVictimTypeExt->CrushDamagePlayWHAnim) {
 				auto loc = pVictim->GetCoords();
-				if (auto pAnimType = MapClass::SelectDamageAnimation(damage, pWarhead, pThis->GetCell()->LandType, loc))
-				{
+				if (auto pAnimType = MapClass::SelectDamageAnimation(damage, pWarhead, pThis->GetCell()->LandType, loc)) {
 					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, loc),
 						pThis->Owner, pVictim->GetOwningHouse(), pThis, false);
 				}
@@ -1321,7 +1313,7 @@ DEFINE_HOOK(0x735584, UnitClass_CTOR_TurretROT, 6)
 	return 0x73558A;
 }
 
-DEFINE_HOOK(0x413ffa, AircraftClass_Init_TurretROT, 6)
+DEFINE_HOOK(0x413ffa , AircraftClass_Init_TurretROT , 6)
 {
 	GET(AircraftTypeClass*, pType, EDX);
 	R->EAX(TechnoTypeExtContainer::Instance.Find(pType)->TurretRot.Get(pType->ROT));
@@ -1469,11 +1461,11 @@ DEFINE_HOOK(0x700E47, TechnoClass_CanDeploySlashUnload_Immobile, 0xA)
 
 	// recreate replaced check, and also disallow if unit is still warping or dropping in.
 	return TechnoExtContainer::Instance.Find(pThis)->Convert_Deploy_Delay.InProgress()
-		|| pThis->IsUnderEMP()
-		|| pThis->IsWarpingIn()
-		|| pThis->IsFallingDown
-		|| TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled
-		? 0x700DCE : 0x700E59;
+	|| pThis->IsUnderEMP()
+	|| pThis->IsWarpingIn()
+	|| pThis->IsFallingDown
+	|| TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled
+	 ? 0x700DCE : 0x700E59;
 }
 
 DEFINE_HOOK(0x7384BD, UnitClass_ReceiveDamage_OreMinerUnderAttack, 6)
@@ -1499,25 +1491,25 @@ DEFINE_HOOK(0x739F21, UnitClass_UpdatePosition_Visceroid, 6)
 	if (!pThis->Type->SmallVisceroid
 		 || TechnoExtContainer::Instance.Find(pThis)->MergePreventionTimer.InProgress()
 		 || !pThis->Destination
-		 || pThis->Destination->WhatAmI() != UnitClass::AbsID)
+		 ||  pThis->Destination->WhatAmI() != UnitClass::AbsID)
 		return 0x0;
 
 	const auto pThis_Large = TechnoTypeExtContainer::Instance.Find(pThis->Type)->LargeVisceroid.Get(RulesClass::Instance->LargeVisceroid);
 
-	if (!pThis_Large
+	if(!pThis_Large
 		|| pThis_Large->Strength <= 0
 		|| !TechnoExt_ExtData::IsUnitAlive(pThis))
 		return 0x0;
 
 	UnitClass* pDest = static_cast<UnitClass*>(pThis->Destination);
-	if (!pDest->Type->SmallVisceroid || TechnoExtContainer::Instance.Find(pDest)->MergePreventionTimer.InProgress())
+	if(!pDest->Type->SmallVisceroid || TechnoExtContainer::Instance.Find(pDest)->MergePreventionTimer.InProgress())
 		return 0x0;
 
-	if (pThis->Owner != pDest->Owner)
+	if(pThis->Owner != pDest->Owner)
 		return 0x0;
 
 	const auto pDest_Large = TechnoTypeExtContainer::Instance.Find(pDest->Type)->LargeVisceroid.Get(RulesClass::Instance->LargeVisceroid);
-	if (pDest_Large != pThis_Large)
+	if(pDest_Large != pThis_Large)
 		return 0x0;
 
 	// fleshbag erotic
@@ -1527,7 +1519,7 @@ DEFINE_HOOK(0x739F21, UnitClass_UpdatePosition_Visceroid, 6)
 		if (CellClass::Coord2Cell(pThis->GetCoords()) == CellClass::Coord2Cell(pDest->GetCoords()))
 		{
 			// two become one
-			TechnoExt_ExtData::ConvertToType(pDest, pThis_Large, false);
+			TechnoExt_ExtData::ConvertToType(pDest , pThis_Large , false);
 			pDest->IsSelected = pThis->IsSelected;
 			pDest->Override_Mission(pThis->IsArmed() ? Mission::Hunt : Mission::Area_Guard);
 			pThis->Limbo();

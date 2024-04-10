@@ -6,6 +6,7 @@
 
 void TurretAngle::OnPut(TechnoClass* pTechno, CoordStruct* pCoord, DirType dirType)
 {
+
 }
 
 void TurretAngle::OnPut(CoordStruct* pCoord, DirType dirType)
@@ -18,8 +19,7 @@ void TurretAngle::OnPut(CoordStruct* pCoord, DirType dirType)
 
 		LockTurretDir = bodyDir;
 
-		if (DefaultAngleIsChange(bodyDir))
-		{
+		if (DefaultAngleIsChange(bodyDir)) {
 			ChangeDefaultDir = true;
 			OwnerObject->SecondaryFacing.Set_Current(LockTurretDir);
 		}
@@ -60,6 +60,7 @@ void TurretAngle::OnUpdate()
 
 		if (pTarget)
 		{
+
 			DirStruct targetDir = OwnerObject->GetDirectionOverObject(pTarget);
 
 			int targetDirIndex = Helpers_DP::Dir2FacingIndex(targetDir, 180) * 2;
@@ -128,11 +129,10 @@ void TurretAngle::OnUpdate()
 
 bool TurretAngle::DefaultAngleIsChange(DirStruct bodyDir)
 {
-	int bodyDirIndex = Helpers_DP::Dir2FacingIndex(bodyDir, 180) * 2;
+	int bodyDirIndex = Helpers_DP::Dir2FacingIndex(bodyDir ,180) * 2;
 	auto const& [ChangeDefaultDir, newDefaultDir] = TryGetDefaultAngle(bodyDirIndex);
 
-	if (ChangeDefaultDir)
-	{
+	if (ChangeDefaultDir) {
 		LockTurretDir = newDefaultDir;
 	}
 
@@ -144,8 +144,7 @@ std::pair<bool, DirStruct> TurretAngle::TryGetDefaultAngle(int& bodyDirIndex)
 	if (Data->DefaultAngle > 0)
 	{
 		bodyDirIndex += Data->DefaultAngle;
-		if (bodyDirIndex > 360)
-		{
+		if (bodyDirIndex > 360) {
 			bodyDirIndex -= 360;
 		}
 
@@ -164,8 +163,7 @@ void TurretAngle::BlockTurretFacing(const DirStruct& bodyDir, int bodyDirIndex, 
 {
 	int targetAngle = TurretAngleData::GetTurnAngle(bodyTargetDelta, min, max) + bodyDirIndex;
 
-	if (targetAngle > 360)
-	{
+	if (targetAngle > 360) {
 		targetAngle -= 360;
 	}
 
@@ -173,8 +171,7 @@ void TurretAngle::BlockTurretFacing(const DirStruct& bodyDir, int bodyDirIndex, 
 	LockTurret = true;
 	int angle = IncludedAngle360(bodyDirIndex, targetAngle);
 
-	if (max - min <= 180)
-	{
+	if (max - min <= 180) {
 		ForceTurretToForward(bodyDir, bodyDirIndex, min, max, angle);
 	}
 }
@@ -190,8 +187,7 @@ bool TurretAngle::ForceTurretToForward(const DirStruct& bodyDir, int bodyDirInde
 		if (InDeadZone(turretAngle, min, max))
 		{
 			int turnAngle = TurretAngleData::GetTurnAngle(turretAngle, min, max) + bodyDirIndex;
-			if (turnAngle > 360)
-			{
+			if (turnAngle > 360) {
 				turnAngle -= 360;
 			}
 
@@ -236,8 +232,7 @@ void TurretAngle::TurnToLeft(int turretAngle, int bodyDirIndex, const DirStruct&
 	{
 		turnAngle = turretAngle - 90 + bodyDirIndex;
 
-		if (turnAngle > 360)
-		{
+		if (turnAngle > 360) {
 			turnAngle -= 360;
 		}
 
@@ -257,8 +252,7 @@ void TurretAngle::TurnToRight(int turretAngle, int bodyDirIndex, const DirStruct
 	{
 		turnAngle = turretAngle + 90 + bodyDirIndex;
 
-		if (turnAngle > 360)
-		{
+		if (turnAngle > 360) {
 			turnAngle -= 360;
 		}
 
@@ -286,7 +280,7 @@ bool TurretAngle::TryTurnBodyToAngle(const DirStruct& targetDir, int bodyDirInde
 
 			if (bodyTargetDelta < angleZone.X || bodyTargetDelta > angleZone.Y)
 			{
-				int turnAngle = TurretAngleData::GetTurnAngle(bodyTargetDelta, angleZone.X, angleZone.Y);
+				int turnAngle = TurretAngleData::GetTurnAngle(bodyTargetDelta, angleZone.X , angleZone.Y);
 				int turnDelta = 0;
 				if (turnAngle < bodyTargetDelta)
 				{

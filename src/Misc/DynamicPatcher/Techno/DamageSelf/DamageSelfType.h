@@ -76,7 +76,7 @@ public:
 			.Process(IgnoreArmor)
 			.Process(Decloak)
 			.Process(Type)
-			.Success()
+			.Success() 
 			//&& Stm.RegisterChange(this)
 			;
 	}
@@ -111,14 +111,14 @@ public:
 		return Hit;
 	}
 
+
 	DamageSelfState() : Hit { }
 		, delay { }
 		, Data { }
 		, DelayTimer { }
-	{
-	}
+	{ }
 
-	DamageSelfState(int Delay, const DamageSelfType& DData) : Hit { false }
+	DamageSelfState(int Delay , const DamageSelfType& DData) : Hit { false }
 		, delay { Delay }
 		, Data { }
 		, DelayTimer { }
@@ -143,6 +143,7 @@ public:
 	bool Save(PhobosStreamWriter& Stm) const
 	{ return const_cast<DamageSelfState*>(this)->Serialize(Stm); }
 
+
 	bool Hit;
 	int delay;
 	std::unique_ptr<DamageSelfType> Data;
@@ -154,7 +155,7 @@ public:
 	template <typename T>
 	bool Serialize(T& Stm)
 	{
-		//	Debug::Log("Processing Element From DamageSelfState ! \n");
+	//	Debug::Log("Processing Element From DamageSelfState ! \n");
 		return Stm
 			.Process(Hit)
 			.Process(delay)

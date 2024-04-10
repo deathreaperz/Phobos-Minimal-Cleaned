@@ -167,6 +167,7 @@ DEFINE_HOOK(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 
 	if (const auto pTechno = generic_cast<TechnoClass*>(pTarget))
 	{
+
 		if (pTechno->IsCrashing || pTechno->IsSinking)
 			return 0x6F894F;
 
@@ -188,6 +189,7 @@ DEFINE_HOOK(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 		}
 		case AbstractType::Unit:
 		{
+
 			const auto pUnit = (UnitClass*)pTarget;
 
 			if (pUnit->DeathFrameCounter > 0)

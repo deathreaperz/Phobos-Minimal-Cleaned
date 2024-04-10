@@ -25,8 +25,7 @@ const wchar_t* MapSnapshotCommandClass::GetUIDescription() const
 
 void MapSnapshotCommandClass::Execute(WWKey dwUnk) const
 {
-	if (this->CheckDebugDeactivated())
-	{
+	if (this->CheckDebugDeactivated()) {
 		return;
 	}
 

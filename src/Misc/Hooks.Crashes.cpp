@@ -7,8 +7,7 @@ DEFINE_HOOK(0x6FC32B, TechnoClass_CanFire_NoWeapon, 0x8)
 	GET(WeaponStruct*, pWeaponstruct, EAX);
 	GET_STACK(int, nWeaponIdx, 0x28);
 
-	if (!pWeaponstruct || !pWeaponstruct->WeaponType)
-	{
+	if (!pWeaponstruct || !pWeaponstruct->WeaponType) {
 		R->EDI<WeaponTypeClass*>(nullptr);
 		//const auto pType = pThis->GetTechnoType();
 		//Debug::Log("TechnoClass[%s] CanFire NoWeapon at idx [%d] \n", pType->get_ID() , nWeaponIdx);
@@ -27,8 +26,8 @@ DEFINE_HOOK(0x709992, TechnoClass_TargetSomethingNearby_NoWeapon, 0x6)
 	GET(TechnoClass*, pTarget, EDI);
 	GET(WeaponStruct*, pWeaponstruct, EAX);
 
-	if (!pTarget || !pWeaponstruct || !pWeaponstruct->WeaponType)
-	{
+	if (!pTarget || !pWeaponstruct || !pWeaponstruct->WeaponType){
+
 		//if(!pTarget)
 		//	Debug::Log("TechnoClass[%s] TargetSomethingNearby Notarget\n", pThis->get_ID());
 		//else
@@ -47,8 +46,7 @@ DEFINE_HOOK(0x6F7CD5, TechnoClass_EvalueateObj_NoWeapon, 0x6)
 	GET(TechnoClass*, pThis, EDI);
 	GET(WeaponStruct*, pWeaponstruct, EAX);
 
-	if (!pWeaponstruct || !pWeaponstruct->WeaponType)
-	{
+	if (!pWeaponstruct || !pWeaponstruct->WeaponType) {
 		//Debug::Log("TechnoClass[%s] EvalueateObj NoWeapon Target[%s]\n", pThis->get_ID(), pTarget->get_ID());
 		return 0x6F894F;
 	}
@@ -64,8 +62,7 @@ DEFINE_HOOK(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
 	GET(TechnoClass*, pTarget, ESI);
 	GET(WeaponStruct*, pWeaponstruct, EAX);
 
-	if (!pWeaponstruct || !pWeaponstruct->WeaponType)
-	{
+	if (!pWeaponstruct || !pWeaponstruct->WeaponType) {
 		//Debug::Log("TechnoClass[%s] Coef No NoWeapon Target[%s]\n", pThis->get_ID() , pTarget->get_ID());
 		return 0x70CED2;
 	}
@@ -150,8 +147,7 @@ DEFINE_HOOK(0x70CD1C, TechnoClass_Coef_CheckTarget, 0xA)
 
 DEFINE_HOOK(0x5D6BF1, MultiplayerGameMode_SetBaseSpawnCell_CheckAvail, 0x5)
 {
-	struct ScenStruct
-	{
+	struct ScenStruct {
 		DynamicVectorClass<CellStruct> CellVector;
 	};
 
@@ -217,9 +213,8 @@ DEFINE_HOOK(0x70F820, TechnoClass_GetOriginalOwner_ValidateCaptureManager, 0x6)
 	HouseClass* pOwner = pThis->Owner;
 
 	if ((pThis->MindControlledByHouse || pThis->MindControlledByAUnit)
-		&& pThis->OriginallyOwnedByHouse)
-	{ // chek this first before assign it
-	 // game crash will occur if this return nullptr
+		&& pThis->OriginallyOwnedByHouse) { // chek this first before assign it
+											// game crash will occur if this return nullptr
 		pOwner = pThis->OriginallyOwnedByHouse;
 	}
 

@@ -3,6 +3,7 @@
 
 struct AttachFireData
 {
+
 	Valueable<bool> UseROF { true };
 	Valueable<bool> CheckRange { false };
 	Valueable<bool> RadialFire { false };

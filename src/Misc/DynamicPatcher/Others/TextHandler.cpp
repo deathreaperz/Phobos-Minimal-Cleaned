@@ -12,7 +12,7 @@ void PrintTextData::Read(INI_EX& reader, const char* section, const char* title)
 	Offs.Read(reader, section, nBuff);
 	Offset = Offs.Get();
 
-	Offs = ShadowOffset;
+	Offs = ShadowOffset ;
 	IMPL_SNPRNINTF(nBuff, sizeof(nBuff), "%sShadowOffset", title);
 	Offs.Read(reader, section, nBuff);
 	ShadowOffset = Offs.Get();
@@ -27,7 +27,7 @@ void PrintTextData::Read(INI_EX& reader, const char* section, const char* title)
 	Col.Read(reader, section, nBuff);
 	ShadowColor = Col.Get();
 
-	Valueable<bool> bUseShp { UseSHP };
+	Valueable<bool> bUseShp{ UseSHP };
 	IMPL_SNPRNINTF(nBuff, sizeof(nBuff), "%sUseSHP", title);
 	bUseShp.Read(reader, section, nBuff);
 	UseSHP = bUseShp.Get();
@@ -125,5 +125,6 @@ void DamageTextTypeData::Read(INI_EX& reader, const char* section, const char* t
 	Damage.Read(reader, section, nBuff);
 	IMPL_SNPRNINTF(nBuff, sizeof(nBuff), "%sRepair.", title);
 	Repair.Read(reader, section, nBuff);
+
 }
 #endif

@@ -28,8 +28,7 @@ const wchar_t* AIControlCommandClass::GetUIDescription() const
 
 void AIControlCommandClass::Execute(WWKey dwUnk) const
 {
-	if (this->CheckDebugDeactivated())
-	{
+	if (this->CheckDebugDeactivated()) {
 		return;
 	}
 
@@ -48,6 +47,7 @@ void AIControlCommandClass::Execute(WWKey dwUnk) const
 
 		//notify
 		MessageListClass::Instance->PrintMessage(L"AI assumed control!");
+
 	}
 	else
 	{

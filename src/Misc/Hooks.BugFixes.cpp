@@ -71,10 +71,8 @@ DEFINE_HOOK(0x4D7431, FootClass_ReceiveDamage_DyingFix, 0x5)
 	GET(FootClass* const, pThis, ESI);
 	GET(DamageState const, result, EAX);
 
-	if (result != DamageState::PostMortem)
-	{
-		if ((pThis->IsSinking || (!pThis->IsAttackedByLocomotor && pThis->IsCrashing)))
-		{
+	if (result != DamageState::PostMortem) {
+		if ((pThis->IsSinking || (!pThis->IsAttackedByLocomotor && pThis->IsCrashing))) {
 			R->EAX(DamageState::PostMortem);
 		}
 	}
@@ -90,6 +88,7 @@ DEFINE_HOOK(0x737D57, UnitClass_ReceiveDamage_DyingFix, 0x7)
 	// Immediately release locomotor warhead's hold on a crashable unit if it dies while attacked by one.
 	if (result == DamageState::NowDead)
 	{
+
 		if (pThis->IsAttackedByLocomotor && pThis->GetTechnoType()->Crashable)
 			pThis->IsAttackedByLocomotor = false;
 
@@ -105,6 +104,7 @@ DEFINE_HOOK(0x737D57, UnitClass_ReceiveDamage_DyingFix, 0x7)
 				&& pThis->DeathFrameCounter <= 0
 				)
 			{
+
 				pThis->Stun();
 				const auto loco = pThis->Locomotor.GetInterfacePtr();
 
@@ -128,10 +128,8 @@ DEFINE_HOOK(0x5F452E, TechnoClass_Selectable_DeathCounter, 0x6) // 8
 {
 	GET(TechnoClass*, pThis, ESI);
 
-	if (auto pUnit = specific_cast<UnitClass*>(pThis))
-	{
-		if (pUnit->DeathFrameCounter > 0)
-		{
+	if (auto pUnit = specific_cast<UnitClass*>(pThis)) {
+		if (pUnit->DeathFrameCounter > 0) {
 			return 0x5F454E;
 		}
 	}
@@ -143,10 +141,8 @@ DEFINE_HOOK(0x737CBB, UnitClass_ReceiveDamage_DeathCounter, 0x6)
 {
 	GET(FootClass*, pThis, ESI);
 
-	if (auto pUnit = specific_cast<UnitClass*>(pThis))
-	{
-		if (pUnit->DeathFrameCounter > 0)
-		{
+	if (auto pUnit = specific_cast<UnitClass*>(pThis)) {
+		if (pUnit->DeathFrameCounter > 0) {
 			return 0x737D26;
 		}
 	}
@@ -180,8 +176,8 @@ DEFINE_HOOK(0x702299, TechnoClass_ReceiveDamage_DebrisMaximumsFix, 0xA)
 			amountToSpawn = LessOrEqualTo(amountToSpawn, totalSpawnAmount);
 			totalSpawnAmount -= amountToSpawn;
 
-			for (; amountToSpawn > 0; --amountToSpawn)
-			{
+			for (; amountToSpawn > 0; --amountToSpawn) {
+
 				auto pVoxAnim = GameCreate<VoxelAnimClass>(pType->DebrisTypes.Items[currentIndex],
 				&nCoords, pThis->Owner);
 
@@ -283,8 +279,7 @@ bool NOINLINE IsTemporalptrValid(TemporalClass* pThis)
 	return VTable::Get(pThis) == TemporalClass::vtable;
 }
 
-void IsTechnoShouldBeAliveAfterTemporal(TechnoClass* pThis)
-{
+void IsTechnoShouldBeAliveAfterTemporal(TechnoClass* pThis) {
 	if (pThis->TemporalTargetingMe)
 	{
 		// Also check for vftable here to guarantee the TemporalClass not being destoryed already.
@@ -411,13 +406,10 @@ DEFINE_HOOK(0x706389, TechnoClass_DrawAsSHP_TintAndIntensity, 0x6)
 
 	BuildingClass* pBld = specific_cast<BuildingClass*>(pThis);
 
-	if (pBld)
-	{
+	if (pBld) {
 		if ((pBld->CurrentMission == Mission::Construction)
-			&& pBld->BState == BStateType::Construction && pBld->Type->Buildup)
-		{
-			if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->BuildUp_UseNormalLIght.Get())
-			{
+			&& pBld->BState == BStateType::Construction && pBld->Type->Buildup ) {
+			if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->BuildUp_UseNormalLIght.Get()) {
 				R->EBP(1000);
 			}
 		}
@@ -441,6 +433,7 @@ DEFINE_HOOK(0x706389, TechnoClass_DrawAsSHP_TintAndIntensity, 0x6)
 		NeedUpdate = true;
 	}
 
+
 	// Boris
 	if (pThis->Airstrike && pThis->Airstrike->Target == pThis)
 	{
@@ -452,18 +445,13 @@ DEFINE_HOOK(0x706389, TechnoClass_DrawAsSHP_TintAndIntensity, 0x6)
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
 	// EMP
-	if (pThis->IsUnderEMP())
-	{
-		if (!bInf || pTypeExt->Infantry_DimWhenEMPEd.Get(((InfantryTypeClass*)(pTypeExt->AttachedToObject))->Cyborg))
-		{
+	if (pThis->IsUnderEMP()) {
+		if (!bInf || pTypeExt->Infantry_DimWhenEMPEd.Get(((InfantryTypeClass*)(pTypeExt->AttachedToObject))->Cyborg)) {
 			R->EBP(nIntensity / 2);
 			NeedUpdate = true;
 		}
-	}
-	else if (pThis->IsDeactivated())
-	{
-		if (!bInf || pTypeExt->Infantry_DimWhenDisabled.Get(((InfantryTypeClass*)(pTypeExt->AttachedToObject))->Cyborg))
-		{
+	} else if (pThis->IsDeactivated()) {
+		if (!bInf || pTypeExt->Infantry_DimWhenDisabled.Get(((InfantryTypeClass*)(pTypeExt->AttachedToObject))->Cyborg)) {
 			R->EBP(nIntensity / 2);
 			NeedUpdate = true;
 		}
@@ -578,6 +566,7 @@ DEFINE_HOOK(0x73EFD8, UnitClass_Mission_Hunt_DeploysInto, 0x6)
 	break;
 	case 2:
 	{
+
 		// Skip MCV-specific & player control checks if coming from deploy script action.
 		if (pThis->Type->Category == Category::Support && !pThis->IsOwnedByCurrentPlayer)
 		{
@@ -621,6 +610,7 @@ DEFINE_HOOK(0x4DACDD, FootClass_CrashingVoice, 0x6)
 					VocClass::PlayIndexAtPos(pType->VoiceCrashing, nCoord);
 
 				VocClass::PlayIndexAtPos(pType->CrashingSound, nCoord, &pThis->Audio7);
+
 			}
 			else
 			{
@@ -662,6 +652,7 @@ DEFINE_HOOK(0x456776, BuildingClass_DrawRadialIndicator_Visibility, 0x6)
 	{
 		if (pThis->Owner && pThis->Owner == HouseClass::CurrentPlayer())
 			return ContinueDraw;
+
 	}
 
 	return DoNotDraw;
@@ -822,9 +813,8 @@ DEFINE_HOOK(0x51A996, InfantryClass_PerCellProcess_KillOnImpassable, 0x5)
 	if (landType == LandType::Rock)
 		return ContinueChecks;
 
-	if (landType == LandType::Water)
-	{
-		if (GroundType::GetCost(landType, pThis->Type->SpeedType) == 0.0)
+	if (landType == LandType::Water) {
+		if (GroundType::GetCost(landType ,pThis->Type->SpeedType) == 0.0)
 			return ContinueChecks;
 	}
 
@@ -928,6 +918,7 @@ DEFINE_JUMP(LJMP, 0x447709, 0x447727);
 //		RetFireIllegal : Continue;
 //}
 
+
 // Updates layers of all animations attached to the given techno.
 void UpdateAttachedAnimLayers(TechnoClass* pThis)
 {
@@ -988,7 +979,7 @@ DEFINE_HOOK(0x688F8C, ScenarioClass_ScanPlaceUnit_CheckMovement, 0x5)
 	const auto pTechnoType = pTechno->GetTechnoType();
 	if (!pCell->IsClearToMove(pTechnoType->SpeedType, 0, 0, ZoneType::None, MovementZone::Normal, -1, 1))
 	{
-		if (Phobos::Otamaa::IsAdmin)
+		if(Phobos::Otamaa::IsAdmin)
 			Debug::Log("Techno[%s - %s] Not Allowed to exist at cell [%d . %d] !\n", pTechnoType->ID, pTechno->GetThisClassName(), pCell->MapCoords.X, pCell->MapCoords.Y);
 
 		return 0x688FB9;
@@ -1009,13 +1000,14 @@ DEFINE_HOOK(0x68927B, ScenarioClass_ScanPlaceUnit_CheckMovement2, 0x5)
 	const auto pTechnoType = pTechno->GetTechnoType();
 	if (!pCell->IsClearToMove(pTechnoType->SpeedType, 0, 0, ZoneType::None, MovementZone::Normal, -1, 1))
 	{
-		if (Phobos::Otamaa::IsAdmin)
+		if(Phobos::Otamaa::IsAdmin)
 			Debug::Log("Techno[%s - %s] Not Allowed to exist at cell [%d . %d] !\n", pTechnoType->ID, pTechno->GetThisClassName(), pCell->MapCoords.X, pCell->MapCoords.Y);
 
 		return 0x689295;
 	}
 
 	return 0;
+
 }
 
 // In vanilla YR, game destroys building animations directly by calling constructor.
@@ -1102,10 +1094,8 @@ DEFINE_HOOK(0x53AD85, IonStormClass_AdjustLighting_ColorSchemes, 0x5)
 
 	int paletteCount = 0;
 
-	for (auto pSchemes = ColorScheme::GetPaletteSchemesFromIterator(it); pSchemes; pSchemes = ColorScheme::GetPaletteSchemesFromIterator(it))
-	{
-		for (int i = 1; i < pSchemes->Count; i += 2)
-		{
+	for (auto pSchemes = ColorScheme::GetPaletteSchemesFromIterator(it); pSchemes; pSchemes = ColorScheme::GetPaletteSchemesFromIterator(it)) {
+		for (int i = 1; i < pSchemes->Count; i += 2) {
 			pSchemes->Items[i]->LightConvert->UpdateColors(red, green, blue, tint);
 		}
 
@@ -1121,13 +1111,13 @@ DEFINE_HOOK(0x53AD85, IonStormClass_AdjustLighting_ColorSchemes, 0x5)
 	return SkipGameCode;
 }
 
+
 //// Set ShadeCount to 53 to initialize the palette fully shaded - this is required to make it not draw over shroud for some reason.
 DEFINE_HOOK(0x68C4C4, GenerateColorSpread_ShadeCountSet, 0x5)
 {
 	// some mod dont like the result of this fix
 	// so toggle is added
-	if (Phobos::Config::ApplyShadeCountFix)
-	{
+	if (Phobos::Config::ApplyShadeCountFix) {
 		//shade count
 		if (R->EDX<int>() == 1)
 			R->EDX(53);
@@ -1194,8 +1184,7 @@ DEFINE_HOOK(0x741050, UnitClass_CanFire_DeployToFire, 0x6)
 	if (pThis->Type->DeployToFire
 		&& pThis->CanDeployNow()
 		&& !CanDeployIntoBuilding(pThis, true)
-		)
-	{
+		) {
 		return MustDeploy;
 	}
 
@@ -1215,7 +1204,7 @@ DEFINE_HOOK(0x5349A5, Map_ClearVectors_Veinhole, 0x5)
 // normally not even attempted to enter but things like MapClass::NearByLocation() can still end up trying to pick.
 DEFINE_HOOK(0x4834E5, CellClass_IsClearToMove_BridgeEdges, 0x5)
 {
-	enum { IsNotClear = 0x48351E, Continue = 0x0 };
+	enum { IsNotClear = 0x48351E , Continue = 0x0 };
 
 	GET(CellClass*, pThis, ESI);
 	GET(int, level, EAX);
@@ -1223,8 +1212,7 @@ DEFINE_HOOK(0x4834E5, CellClass_IsClearToMove_BridgeEdges, 0x5)
 
 	if (isBridge && pThis->ContainsBridge()
 		&& (level == -1 || level == (pThis->Level + Unsorted::BridgeLevels))
-		&& !(pThis->Flags & CellFlags::Unknown_200))
-	{
+		&& !(pThis->Flags & CellFlags::Unknown_200)) {
 		return IsNotClear;
 	}
 
@@ -1256,8 +1244,7 @@ DEFINE_HOOK(0x689EB0, ScenarioClass_ReadMap_SkipHeaderInCampaign, 0x6)
 
 	ScenarioExtData::s_LoadFromINIFile(pItem, pINI);
 
-	if (SessionClass::IsCampaign())
-	{
+	if (SessionClass::IsCampaign()) {
 		Debug::Log("Skipping [Header] Section for Campaign Mode!\n");
 		return 0x689FC0;
 	}
@@ -1296,25 +1283,23 @@ DEFINE_HOOK(0x4D4B43, FootClass_Mission_Capture_ForbidUnintended, 0x6)
 	return 0;
 }
 
-void SetSkirmishHouseName(HouseClass* pHouse, bool IsHuman)
+
+void SetSkirmishHouseName(HouseClass* pHouse , bool IsHuman)
 {
 	int spawn_position = pHouse->GetSpawnPosition();
 
 	// Default behaviour if something went wrong
 	if (spawn_position < 0 || spawn_position > 7)
 	{
-		if (IsHuman || pHouse->IsHumanPlayer)
-		{
+		if (IsHuman || pHouse->IsHumanPlayer) {
 			strncpy_s(pHouse->PlainName, GameStrings::human_player(), 14u);
-		}
-		else
-		{
+		} else {
 			strncpy_s(pHouse->PlainName, GameStrings::Computer_(), 8u);
 		}
 	}
 	else
 	{
-		strncpy_s(pHouse->PlainName, GameStrings::PlayerAt[7u - spawn_position], 12u);
+		strncpy_s(pHouse->PlainName, GameStrings::PlayerAt[7u - spawn_position] , 12u);
 	}
 
 	Debug::Log("%s, %ls, position %d\n", pHouse->PlainName, pHouse->UIName, spawn_position);
@@ -1324,7 +1309,7 @@ DEFINE_HOOK(0x68804A, AssignHouses_PlayerHouses, 0x5)
 {
 	GET(HouseClass*, pPlayerHouse, EBP);
 
-	SetSkirmishHouseName(pPlayerHouse, true);
+	SetSkirmishHouseName(pPlayerHouse , true);
 
 	return 0x68808E;
 }
@@ -1333,7 +1318,7 @@ DEFINE_HOOK(0x688210, AssignHouses_ComputerHouses, 0x5)
 {
 	GET(HouseClass*, pAiHouse, EBP);
 
-	SetSkirmishHouseName(pAiHouse, false);
+	SetSkirmishHouseName(pAiHouse , false);
 
 	return 0x688252;
 }

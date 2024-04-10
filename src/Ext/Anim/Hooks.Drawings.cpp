@@ -15,8 +15,7 @@ DEFINE_HOOK(0x4236F0, AnimClass_DrawIt_Tiled_Palette, 0x6)
 {
 	GET(AnimClass* const, pThis, ESI);
 
-	if (const auto pCustom = AnimTypeExtContainer::Instance.Find(pThis->Type)->Palette)
-	{
+	if (const auto pCustom = AnimTypeExtContainer::Instance.Find(pThis->Type)->Palette) {
 		R->EDX(pCustom->GetConvert<PaletteManager::Mode::Temperate>());
 		return 0x4236F6;
 	}
@@ -213,6 +212,7 @@ struct DummyStructForDrawing
 
 						if (v16->HasCompression(shapenum))
 						{
+
 							if (auto blitter = drawer->Select_RLE_Blitter(flags))
 							{
 								reused_rect.X = xpos;
@@ -279,6 +279,7 @@ struct DummyStructForDrawing
 				}
 			}
 		}
+
 	}
 };
 

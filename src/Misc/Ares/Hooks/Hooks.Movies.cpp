@@ -17,8 +17,7 @@ class MoviesList
 		{
 			char buffer[0x20];
 			auto const pID = this->FilenameBuffer.c_str();
-			if (int len = pINI->ReadString(pID, "Description", Phobos::readDefval, buffer))
-			{
+			if (int len = pINI->ReadString(pID, "Description", Phobos::readDefval, buffer)) {
 				this->DescriptionBuffer.assign(buffer, buffer + len);
 			}
 
@@ -73,7 +72,7 @@ void MoviesList::Unlock(char const* const pFilename)
 
 void MoviesList::LoadListFromINI()
 {
-	Debug::Log("Reading %s\n", StaticVars::MovieMDINI.c_str());
+	Debug::Log("Reading %s\n" , StaticVars::MovieMDINI.c_str());
 
 	CCFileClass file { StaticVars::MovieMDINI.c_str() };
 
@@ -91,24 +90,20 @@ void MoviesList::LoadListFromINI()
 			char buffer[0x20];
 			auto const pKey = ini.GetKeyName(GameStrings::Movies(), i);
 			bool read = true;
-			if (int len = ini.ReadString(GameStrings::Movies(), pKey, Phobos::readDefval, buffer))
-			{
-				if (!this->FindMovie(buffer))
-				{
+			if (int len = ini.ReadString(GameStrings::Movies(), pKey, Phobos::readDefval, buffer)) {
+				if (!this->FindMovie(buffer)) {
 					this->Array.emplace_back().FilenameBuffer.assign(buffer, buffer + len);
 				}
 			}
 		}
 
-		for (auto& item : this->Array)
-		{
+		for (auto& item : this->Array) {
 			item.ReadFromINI(&ini);
 		}
 	}
 
 	// load unlocked state
-	for (auto& item : this->Array)
-	{
+	for (auto& item : this->Array) {
 		item.Unlocked = CCINIClass::INI_RA2MD().ReadBool("UnlockedMovies", item.Filename, item.Unlocked);
 	}
 }

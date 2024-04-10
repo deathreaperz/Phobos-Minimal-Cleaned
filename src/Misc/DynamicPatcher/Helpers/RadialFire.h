@@ -11,16 +11,14 @@ struct RadialFireHelper
 	float DeltaZ;
 
 	RadialFireHelper(TechnoClass* pTechno, int burst, int splitAngle)
-		: Burst { burst }, Degrees { 0 }, Delta { 0 }, DeltaZ { 0.0f }
+		: Burst { burst }, Degrees { 0 } , Delta { 0 } , DeltaZ { 0.0f }
 	{
 		InitData(pTechno->HasTurret() ? pTechno->TurretFacing() : pTechno->PrimaryFacing.Desired(), splitAngle);
 	}
 
 	RadialFireHelper(const DirStruct& dir, int burst, int splitAngle)
 		: Burst { burst }, Degrees { 0 }, Delta { 0 }, DeltaZ { 0.0f }
-	{
-		InitData(dir, splitAngle);
-	}
+	{ InitData(dir, splitAngle); }
 
 	RadialFireHelper(const RadialFireHelper& other) = default;
 	RadialFireHelper& operator=(const RadialFireHelper& other) = default;
@@ -47,8 +45,8 @@ struct RadialFireHelper
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
 		// Debug::Log("Loading Element From RadialFire ! \n");
-		return Serialize(Stm);
-	}
+	 	return Serialize(Stm);
+	 }
 
 	bool Save(PhobosStreamWriter& Stm)
 	{ return Serialize(Stm); }
@@ -75,4 +73,5 @@ protected:
 		Delta = splitAngle / (Burst + 1);
 		DeltaZ = static_cast<float>(1.0 / (Burst / 2.0 + 1));
 	}
+
 };

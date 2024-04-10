@@ -66,10 +66,8 @@ DEFINE_HOOK(0x423630, AnimClass_Draw_It, 0x6)
 		auto const pCell = pAnim->GetCell();
 		auto const pBuilding = pCell->GetBuilding();
 
-		if (pBuilding && pBuilding->IsAlive && !pBuilding->Type->Invisible)
-		{
-			if (auto& pPaintBall = TechnoExtContainer::Instance.Find(pBuilding)->PaintBallState)
-			{
+		if (pBuilding && pBuilding->IsAlive && !pBuilding->Type->Invisible) {
+			if (auto& pPaintBall = TechnoExtContainer::Instance.Find(pBuilding)->PaintBallState) {
 				pPaintBall->DrawSHP_Paintball_BuildAnim(pBuilding, R);
 			}
 		}
@@ -93,8 +91,7 @@ DEFINE_HOOK(0x706640, TechnoClass_DrawVXL_Colour, 0x5)
 {
 	GET(TechnoClass* const, pOwnerObject, ECX);
 
-	if (pOwnerObject->WhatAmI() == BuildingClass::AbsID)
-	{
+	if (pOwnerObject->WhatAmI() == BuildingClass::AbsID) {
 		if (auto& pPaintBall = TechnoExtContainer::Instance.Find(pOwnerObject)->PaintBallState)
 			pPaintBall->DrawVXL_Paintball(pOwnerObject, R, true);
 	}

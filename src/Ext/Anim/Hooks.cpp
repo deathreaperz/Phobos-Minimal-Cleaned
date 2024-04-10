@@ -41,17 +41,17 @@ DEFINE_HOOK(0x423939, AnimClass_BounceAI_AttachedSystem, 0x6)
 	return 0;
 }
 
+
 DEFINE_HOOK(0x4232E2, AnimClass_DrawIt_AltPalette, 0x6)
 {
-	enum { SkipGameCode = 0x4232EA, SetAltPaletteLightConvert = 0x4232F0 };
+	enum { SkipGameCode = 0x4232EA  , SetAltPaletteLightConvert = 0x4232F0 };
 
 	GET(AnimClass*, pThis, ESI);
 
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 	int schemeIndex = RulesExtData::Instance()->AnimRemapDefaultColorScheme;
 
-	if (((pTypeExt->CreateUnit && pTypeExt->CreateUnit_RemapAnim.Get(pTypeExt->RemapAnim)) || pTypeExt->RemapAnim) && pThis->Owner)
-	{
+	if (((pTypeExt->CreateUnit && pTypeExt->CreateUnit_RemapAnim.Get(pTypeExt->RemapAnim)) || pTypeExt->RemapAnim) && pThis->Owner) {
 		schemeIndex = pThis->Owner->ColorSchemeIndex - 1;
 	}
 
@@ -90,6 +90,7 @@ DEFINE_HOOK(0x423B95, AnimClass_AI_HideIfNoOre_Threshold, 0x6)
 	}
 
 	return 0x0;
+
 } //was 8
 
 //DEFINE_JUMP(VTABLE, 0x7E33CC, GET_OFFSET(AnimExtData::GetLayer_patch));
@@ -153,7 +154,7 @@ DEFINE_HOOK(0x424CB0, AnimClass_InWhichLayer_AttachedObjectLayer, 0x6)
 
 	GET(AnimClass*, pThis, ECX);
 
-	if (!pThis->Type)
+	if(!pThis->Type)
 		return 0x0;
 
 	auto pExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
@@ -234,7 +235,7 @@ DEFINE_HOOK(0x424AEC, AnimClass_AI_SetMission, 0x6)
 //the stack is change , so i need to replace everything if i want just use normal hook
 //this make it unnessesary
 //replace the vtable call
-void __fastcall Dummy(DWORD t, DWORD, Mission m, bool e) { }
+void __fastcall Dummy(DWORD t, DWORD , Mission m, bool e){ }
 DEFINE_JUMP(CALL6, 0x424B04, GET_OFFSET(Dummy));
 
 DEFINE_HOOK(0x423365, AnimClass_DrawIt_ExtraShadow, 0x8)

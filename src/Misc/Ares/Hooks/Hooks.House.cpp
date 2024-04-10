@@ -64,14 +64,12 @@ DEFINE_HOOK(0x6AA164, StripClass_Draw_DrawObserverFlag, 6)
 	const auto idx = pCountry->ArrayIndex2;
 
 	//special cases
-	if (idx == -2)
-	{
+	if (idx == -2) {
 		R->EAX(idx);
 		return 0x6AA1CD;
 	}
 
-	if (idx == -3)
-	{
+	if (idx == -3) {
 		R->EAX(idx);
 		return 0x6AA17D;
 	}
@@ -120,10 +118,8 @@ DEFINE_HOOK(0x4E3560, Game_GetFlagSurface, 5)
 		return 0x4E3686;
 	}
 
-	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n))
-	{
-		if (auto pSurface = HouseTypeExtContainer::Instance.Find(pHouse)->FlagFile.GetSurface())
-		{
+	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n)) {
+		if (auto pSurface = HouseTypeExtContainer::Instance.Find(pHouse)->FlagFile.GetSurface()) {
 			R->EAX(pSurface);
 			return 0x4E3686; //override result
 		}
@@ -136,10 +132,9 @@ DEFINE_HOOK(0x4E38A0, LoadPlayerCountryString, 5)
 {
 	GET(int, n, ECX);
 
-	enum { NextCompare = 0x4E38BC, Neg2Result = 0x4E38A5, RetResult = 0x4E39F1 };
+	enum { NextCompare = 0x4E38BC, Neg2Result = 0x4E38A5 , RetResult = 0x4E39F1 };
 
-	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n))
-	{
+	if(auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n)) {
 		R->EAX(HouseTypeExtContainer::Instance.Find(pHouse)->StatusText->Text);
 		return RetResult; //replaced
 	}
@@ -152,14 +147,12 @@ DEFINE_HOOK(0x553412, LoadProgressMgr_Draw_LSFile, 9)
 	GET(int, n, EBX);
 	enum { SwitchStatement = 0x553421, DefaultResult = 0x553416, RetResult = 0x55342C };
 
-	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n))
-	{
+	if(auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n)) {
 		R->EDX(HouseTypeExtContainer::Instance.Find(pHouse)->LoadScreenBackground.data());
 		return RetResult;//replaced
 	}
 
-	if (n == 0)
-	{
+	if (n == 0) {
 		return DefaultResult; //USA
 	}
 
@@ -171,14 +164,12 @@ DEFINE_HOOK(0x5536da, LoadProgressMgr_Draw_LSName, 9)
 	GET(int, n, EBX);
 	enum { SwitchStatement = 0x5536FB, DefaultResult = 0x5536DE, RetResult = 0x553820 };
 
-	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n))
-	{
+	if(auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n)){
 		R->EDI(HouseTypeExtContainer::Instance.Find(pHouse)->LoadScreenName->Text);
 		return RetResult;//replaced
 	}
 
-	if (n == 0)
-	{
+	if (n == 0) {
 		return DefaultResult; //USA
 	}
 
@@ -191,13 +182,12 @@ DEFINE_HOOK(0x553a05, LoadProgressMgr_Draw_LSSpecialName, 6)
 	enum { SwitchStatement = 0x553A28, DefaultResult = 0x553A0D, RetResult = 0x553B3B };
 
 	// any valid index will be override
-	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n))
-	{
+	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n)) {
 		R->EAX(HouseTypeExtContainer::Instance.Find(pHouse)->LoadScreenSpecialName->Text);
 		return RetResult;
 	}
 
-	if (n == 0) // Index 0 is USA
+	if(n == 0) // Index 0 is USA
 		return DefaultResult;
 
 	R->EAX(n);
@@ -210,13 +200,12 @@ DEFINE_HOOK(0x553d06, LoadProgressMgr_Draw_LSBrief, 6)
 	enum { SwitchStatement = 0x553D2B, DefaultResult = 0x553D0E, RetResult = 0x553E54 };
 
 	// any valid index will be override
-	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n))
-	{
+	if (auto pHouse = HouseTypeClass::Array->GetItemOrDefault(n)) {
 		R->ESI(HouseTypeExtContainer::Instance.Find(pHouse)->LoadScreenBrief->Text);
 		return RetResult;
 	}
 
-	if (n == 0) // Index 0 is USA
+	if(n == 0) // Index 0 is USA
 		return DefaultResult;
 
 	R->EAX(n);
@@ -244,18 +233,14 @@ bool KeepThisAlive(HouseClass* pHouse, TechnoClass* pTech, AbstractType what, ui
 	bool ret = true;
 	bool defaultKeppAlive = false;
 
-	if (pType->Insignificant || pType->DontScore)
-	{
+	if (pType->Insignificant || pType->DontScore) {
 		ret = false;
-	}
-	else
-	{
+	} else {
 		ret = true;
 		defaultKeppAlive = what == BuildingClass::AbsID;
 	}
 
-	if (result->Get(defaultKeppAlive))
-	{
+	if (result->Get(defaultKeppAlive)) {
 		const int add = 2 * keep - 1;
 		HouseExtContainer::Instance.Find(pHouse)->KeepAliveCount += add;
 		if (what == BuildingClass::AbsID)
@@ -371,13 +356,12 @@ DEFINE_HOOK(0x688B37, MPGameModeClass_CreateStartingUnits_B, 5)
 {
 	enum { hasBaseUnit = 0x688B75, hasNoBaseUnit = 0x688C09 };
 
-	GET_STACK(HouseClass*, pHouse, 0x10);
+	GET_STACK(HouseClass *, pHouse, 0x10);
 
 	const int idxParent = pHouse->Type->FindParentCountryIndex();
 
-	if (const auto Item =
-		HouseExtData::FindOwned(pHouse, idxParent, make_iterator(RulesClass::Instance->BaseUnit)))
-	{
+	if(const auto Item =
+		HouseExtData::FindOwned(pHouse , idxParent , make_iterator(RulesClass::Instance->BaseUnit))) {
 		R->ESI<UnitClass*>((UnitClass*)Item->CreateObject(pHouse));
 		R->EBP(0);
 		R->EDI<HouseClass*>(pHouse);
@@ -453,12 +437,11 @@ DEFINE_HOOK(0x5227A3, Sides_Disguise, 6) // InfantryClass_SetDefaultDisguise
 		pThis = R->ECX<InfantryClass*>();
 		dwReturnAddress = 0x5227EC;
 	}
-	else if (R->Origin() == 0x6F422F)
+	else if(R->Origin() == 0x6F422F)
 	{
-		GET(TechnoClass*, pTech, ESI);
+		GET(TechnoClass* , pTech , ESI);
 
-		if (pTech->WhatAmI() != InfantryClass::AbsID)
-		{
+		if(pTech->WhatAmI() != InfantryClass::AbsID) {
 			return 0x0;
 		}
 
@@ -466,19 +449,15 @@ DEFINE_HOOK(0x5227A3, Sides_Disguise, 6) // InfantryClass_SetDefaultDisguise
 		dwReturnAddress = 0x6F4277;
 	}
 
-	if (pThis)
-	{
-		if (auto pDisguise = HouseExtData::GetDisguise(pHouse))
-		{
+	if (pThis) {
+		if (auto pDisguise = HouseExtData::GetDisguise(pHouse)) {
 			pThis->Disguise = pDisguise;
 			return dwReturnAddress;
-		}
-		else if (const auto pDefaultDisguiseType = TechnoTypeExtContainer::Instance.Find(pThis->Type)->DefaultDisguise.Get(nullptr))
-		{
+		} else if (const auto pDefaultDisguiseType = TechnoTypeExtContainer::Instance.Find(pThis->Type)->DefaultDisguise.Get(nullptr)){
 			pThis->Disguise = pDefaultDisguiseType;
 			return dwReturnAddress;
 		}
-	}
+		}
 
 	return 0;
 }
@@ -551,23 +530,22 @@ DEFINE_HOOK(0x4FE782, HouseClass_AI_BaseConstructionUpdate_PickPowerplant, 6)
 
 	const auto it = pExt->GetPowerplants();
 
-	for (auto const& pPower : it)
-	{
+	for (auto const& pPower : it) {
 		if (HouseExtData::PrereqValidate(pThis, pPower, false, true) == CanBuildResult::Buildable
 			&& HouseExtData::PrerequisitesMet(pThis, pPower)
-		)
-		{
+		) {
 			Eligible.push_back(pPower);
 		}
 	}
 
 	BuildingTypeClass* pResult = nullptr;
-	if (!Eligible.empty())
-	{
+	if (!Eligible.empty()) {
+
 		if ((int)Eligible.size() > 1)
 			pResult = Eligible[ScenarioClass::Instance->Random.RandomFromMax((int)Eligible.size() - 1)];
 		else
 			pResult = Eligible[0];
+
 	}
 	else if (!it.empty())
 	{
@@ -589,8 +567,7 @@ DEFINE_HOOK(0x4F8EBD, HouseClass_Update_HasBeenDefeated, 5)
 {
 	GET(HouseClass*, pThis, ESI);
 
-	if (HouseExtContainer::Instance.Find(pThis)->KeepAliveCount)
-	{
+	if (HouseExtContainer::Instance.Find(pThis)->KeepAliveCount) {
 		return 0x4F8F87;
 	}
 
@@ -679,9 +656,8 @@ DEFINE_HOOK(0x50965E, HouseClass_CanInstantiateTeam, 5)
 			if (RulesExtData::Instance()->AllowBypassBuildLimit[Owner->GetAIDifficultyIndex()])
 			{
 				CanBuild = BuildLimitAllows;
-			}
-			else
-			{
+			} else {
+
 				CanBuild = HouseExtData::BuildLimitRemaining(Owner, Type) >= ptrEntry->Amount ?
 					BuildLimitAllows : TryToRecruit;
 			}
@@ -742,8 +718,7 @@ DEFINE_HOOK(0x505C95, HouseClass_GenerateAIBuildList_CountExtra, 7)
 				auto count = MaxImpl(pExt->AIBuildCounts->at(idxDifficulty), 1);
 
 				// random optional building counts
-				if (pExt->AIExtraCounts.isset())
-				{
+				if (pExt->AIExtraCounts.isset()) {
 					auto const& max = pExt->AIExtraCounts->at(idxDifficulty);
 					count += Random.RandomFromMax(MaxImpl(max, 0));
 				}
@@ -765,13 +740,10 @@ DEFINE_HOOK(0x505C95, HouseClass_GenerateAIBuildList_CountExtra, 7)
 	{
 		auto const it = SideExtContainer::Instance.Find(pSide)->GetBaseDefenseCounts();
 
-		if (idxDifficulty < it.size())
-		{
+		if (idxDifficulty < it.size()) {
 			R->EAX(it[idxDifficulty]);
 			return 0x505CE9;
-		}
-		else
-		{
+		} else {
 			Debug::Log("WTF! vector has %u items, requested item #%u\n",
 				it.size(), idxDifficulty);
 		}
@@ -800,7 +772,7 @@ DEFINE_HOOK(0x505360, HouseClass_PrerequisitesForTechnoTypeAreListed, 5)
 	GET_STACK(DynamicVectorClass<BuildingTypeClass*> *, pBuildingsToCheck, 0x8);
 	GET_STACK(int, pListCount, 0xC);
 
-	R->EAX(Prereqs::PrerequisitesListed(pBuildingsToCheck->Items, pListCount, pItem));
+	R->EAX(Prereqs::PrerequisitesListed(pBuildingsToCheck->Items, pListCount , pItem));
 
 	return 0x505486;
 }
@@ -919,9 +891,7 @@ DEFINE_HOOK(0x50B370, HouseClass_ShouldDisableCameo, 5)
 
 		// #1521738: to stay consistent, use the new method to calculate this
 		if (HouseExtData::BuildLimitRemaining(pThis, pType) - queued <= 0)
-		{ ret = true; }
-		else
-		{
+		{ ret = true; } else {
 			const auto state = HouseExtData::HasFactory(pThis, pType, true, true, false, true);
 			ret = (state.first < NewFactoryState::Available_Alternative);
 		}
@@ -1108,8 +1078,7 @@ DEFINE_HOOK(0x4F9610, HouseClass_GiveTiberium_Storage, 0xA)
 		double rest = 0.0;
 
 		// this is the upper limit for stored tiberium
-		if (amount > curStorage)
-		{
+		if (amount > curStorage) {
 			rest = amount - curStorage;
 			amount = float(curStorage);
 		}
@@ -1117,8 +1086,7 @@ DEFINE_HOOK(0x4F9610, HouseClass_GiveTiberium_Storage, 0xA)
 		// go through all buildings and fill them up until all is in there
 		for (auto const& pBuilding : pThis->Buildings)
 		{
-			if (amount <= 0.0)
-			{
+			if (amount <= 0.0) {
 				break;
 			}
 
@@ -1129,10 +1097,8 @@ DEFINE_HOOK(0x4F9610, HouseClass_GiveTiberium_Storage, 0xA)
 				// put as much tiberium into this silo
 				double freeSpace = (double)storage - storage_->GetAmounts();
 
-				if (freeSpace > 0.0)
-				{
-					if (freeSpace > amount)
-					{
+				if (freeSpace > 0.0) {
+					if (freeSpace > amount) {
 						freeSpace = amount;
 					}
 
@@ -1146,8 +1112,7 @@ DEFINE_HOOK(0x4F9610, HouseClass_GiveTiberium_Storage, 0xA)
 		amount += (float)rest;
 
 		//no free space , just give the money ,..
-		if (amount > 0.0)
-		{
+		if(amount > 0.0) {
 			auto const pTib = TiberiumClass::Array->Items[idxType];
 			pThis->Balance += int(amount * pTib->Value * pThis->Type->IncomeMult);
 		}
@@ -1283,8 +1248,7 @@ DEFINE_HOOK(0x4FC731, HouseClass_DestroyAll_ReturnStructures, 7)
 	GET(TechnoClass*, pTechno, ESI);
 
 	// do not return structures in campaigns
-	if (SessionClass::Instance->IsCampaign())
-	{
+	if (SessionClass::Instance->IsCampaign()) {
 		return 0;
 	}
 
@@ -1304,14 +1268,14 @@ DEFINE_HOOK(0x4FC731, HouseClass_DestroyAll_ReturnStructures, 7)
 			if (canReturn && pExt->Returnable.Get(RulesExtData::Instance()->ReturnStructures))
 			{
 				// this may change owner
-				if (occupants)
-				{
+				if (occupants) {
 					pBld->KillOccupants(nullptr);
 				}
 
 				// don't do this when killing occupants already changed owner
 				if (pBld->GetOwningHouse() == pThis)
 				{
+
 					// fallback to first civilian side house, same logic SlaveManager uses
 					if (!pInitialOwner)
 					{
@@ -1355,8 +1319,7 @@ DEFINE_HOOK(0x4F8F54, HouseClass_Update_SlaveMinerCheck, 6)
 	GET(HouseClass*, pThis, ESI);
 	GET(int, n, EDI);
 
-	for (auto const& ref : RulesClass::Instance->BuildRefinery)
-	{
+	for (auto const& ref : RulesClass::Instance->BuildRefinery) {
 		//new sane way to find a slave miner
 		if (ref && ref->SlavesNumber > 0)
 			n += pThis->ActiveBuildingTypes.GetItemCount(ref->ArrayIndex);
@@ -1377,10 +1340,8 @@ DEFINE_HOOK(0x4F8C97, HouseClass_Update_BuildConst, 6)
 	AresHouseExt::SetFirestormState(pThis, false);
 
 	// should play low power EVA for more than three BuildConst items
-	for (auto const& pItem : RulesClass::Instance->BuildConst)
-	{
-		if (pItem && pThis->ActiveBuildingTypes.GetItemCount(pItem->ArrayIndex) > 0)
-		{
+	for (auto const& pItem : RulesClass::Instance->BuildConst) {
+		if (pItem && pThis->ActiveBuildingTypes.GetItemCount(pItem->ArrayIndex) > 0) {
 			return NotifyLowPower;
 		}
 	}
@@ -1414,8 +1375,7 @@ DEFINE_HOOK(0x4F8C23, HouseClass_Update_SilosNeededEVA, 5)
 
 	VoxClass::Play("EVA_SilosNeeded");
 
-	if (const CSFText& Message = RulesExtData::Instance()->MessageSilosNeeded)
-	{
+	if (const CSFText& Message = RulesExtData::Instance()->MessageSilosNeeded) {
 		Message.PrintAsMessage(pThis->ColorSchemeIndex);
 	}
 

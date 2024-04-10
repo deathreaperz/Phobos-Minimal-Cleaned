@@ -89,6 +89,7 @@ public:
 protected:
 	GenericNodeOfINISection FirstNode;
 	GenericNodeOfINISection LastNode;
+
 };
 
 class INISection;
@@ -97,8 +98,7 @@ class ListOfINISection : public GenericListOfINISection
 public:
 
 	ListOfINISection() = default;
-	virtual ~ListOfINISection() override
-	{
+	virtual ~ListOfINISection() override {
 		JMP_THIS(0x40E4C0);
 	}
 
@@ -124,14 +124,12 @@ public:
 	IndexClassOfINIEntry EntryIndex;
 	INIComment* Comments;
 
-	//DTOR
-	void DeallocINISection()
-	{
+	//DTOR 
+	void DeallocINISection() {
 		JMP_THIS(0x52AB80);
 	}
 
-	void VectorDealloc(char args)
-	{
+	void VectorDealloc(char args) {
 		JMP_THIS(0x52AE00);
 	}
 };

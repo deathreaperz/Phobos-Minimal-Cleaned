@@ -25,8 +25,7 @@ public:
 	{
 	}
 
-	~PrismForwarding()
-	{
+	~PrismForwarding() {
 		this->RemoveFromNetwork(true);
 		this->Senders.clear();
 	}

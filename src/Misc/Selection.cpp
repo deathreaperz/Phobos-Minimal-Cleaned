@@ -54,8 +54,7 @@ public:
 			int nLocalY = selectable.Point.Y - this->TacticalPos.Y;
 
 			if ((nLocalX >= pRect->Left && nLocalX < pRect->Right + pRect->Left) &&
-				(nLocalY >= pRect->Top && nLocalY < pRect->Bottom + pRect->Top))
-			{
+				(nLocalY >= pRect->Top && nLocalY < pRect->Bottom + pRect->Top)) {
 				return true;
 			}
 		}
@@ -64,10 +63,8 @@ public:
 
 	bool IsHighPriorityInRect(LTRBStruct* rect)
 	{
-		for (const auto& selected : Array)
-		{
-			if (this->IsInSelectionRect(rect, selected) && ObjectClass_IsSelectable(selected.Techno))
-			{
+		for (const auto& selected : Array){
+			if (this->IsInSelectionRect(rect, selected) && ObjectClass_IsSelectable(selected.Techno)){
 				return !TechnoTypeExtContainer::Instance.Find(selected.Techno->GetTechnoType())->LowSelectionPriority;
 			}
 		}
@@ -83,8 +80,7 @@ public:
 		if (pRect->Right <= 0 || pRect->Bottom <= 0 || this->SelectableCount <= 0)
 			return;
 
-		for (const auto& selected : Array)
-		{
+		for (const auto& selected : Array){
 			if (this->IsInSelectionRect(pRect, selected))
 			{
 				const auto pTechno = selected.Techno;
@@ -119,10 +115,9 @@ public:
 	}
 
 	static // Reversed from Tactical::MakeSelection
-		void __fastcall Tactical_MakeFilteredSelection(ExtSelection* pThis, void* _, callback_type fpCheckCallback)
+	void __fastcall Tactical_MakeFilteredSelection(ExtSelection* pThis, void*_, callback_type fpCheckCallback)
 	{
-		if (pThis->Band.Left || pThis->Band.Top)
-		{
+		if (pThis->Band.Left || pThis->Band.Top) {
 			int nLeft = pThis->Band.Left;
 			int nRight = pThis->Band.Right;
 			int nTop = pThis->Band.Top;
@@ -135,8 +130,8 @@ public:
 
 			LTRBStruct rect { nLeft , nTop, nRight - nLeft + 1, nBottom - nTop + 1 };
 
-			const bool bPriorityFiltering = Phobos::Config::PrioritySelectionFiltering
-				&& pThis->IsHighPriorityInRect(&rect);
+			const bool bPriorityFiltering = Phobos::Config::PrioritySelectionFiltering 
+			&& pThis->IsHighPriorityInRect(&rect);
 
 			pThis->SelectFiltered(&rect, fpCheckCallback, bPriorityFiltering);
 
@@ -149,7 +144,7 @@ static_assert(sizeof(ExtSelection) == sizeof(TacticalClass), "MustBe Same!");
 
 #ifndef aaa
 // Replace single call
-DEFINE_JUMP(CALL, 0x4ABCEB, GET_OFFSET(ExtSelection::Tactical_MakeFilteredSelection));
+DEFINE_JUMP(CALL,0x4ABCEB, GET_OFFSET(ExtSelection::Tactical_MakeFilteredSelection));
 
 // Replace vanilla function. For in case another module tries to call the vanilla function at offset
 DEFINE_JUMP(LJMP, 0x6D9FF0, GET_OFFSET(ExtSelection::Tactical_MakeFilteredSelection));

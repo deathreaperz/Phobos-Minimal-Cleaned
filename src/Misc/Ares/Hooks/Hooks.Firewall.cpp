@@ -58,8 +58,7 @@ DEFINE_HOOK(0x43EFB3, BuildingClass_GetStaticImageFrame, 6)
 
 	const auto FrameIdx = FirewallFunctions::GetImageFrameIndex(pThis);
 
-	if (FrameIdx < 0)
-	{
+	if (FrameIdx < 0) {
 		return 0x43EFC6;
 	}
 
@@ -111,7 +110,7 @@ DEFINE_HOOK(0x4423E7, BuildingClass_ReceiveDamage_FSW, 5)
 	GET(BuildingClass* const, pThis, ESI);
 	GET_STACK(int* const, pDamage, 0xA0);
 
-	if (FirewallFunctions::IsActiveFirestormWall(pThis, nullptr))
+	if (FirewallFunctions::IsActiveFirestormWall(pThis , nullptr))
 	{
 		auto const pExt = RulesExtData::Instance();
 		auto const& coefficient = pExt->DamageToFirestormDamageCoefficient;
@@ -153,6 +152,7 @@ static void RecalculateCells(BuildingClass* pThis)
 				map->RecalculateZones(cell);
 
 			map->RecalculateSubZones(cell);
+
 		}
 	}
 }
@@ -196,10 +196,9 @@ DEFINE_HOOK(0x51BD4C, InfantryClass_Update_BuildingBelow, 6)
 {
 	GET(InfantryClass*, pThis, EDI);
 	GET(BuildingClass*, pBld, EDI);
-	enum
-	{
+	enum {
 		canPass = 0x51BD7D,
-		checkHouseFirewallActive = 0x51BD56,
+		checkHouseFirewallActive = 0x51BD56 ,
 		cannotPass = 0x51BD68
 	};
 
@@ -216,11 +215,11 @@ DEFINE_HOOK(0x51BD4C, InfantryClass_Update_BuildingBelow, 6)
 
 DEFINE_HOOK(0x51C4C8, InfantryClass_IsCellOccupied, 6)
 {
-	GET(InfantryClass* const, pThis, EBP);
+	GET(InfantryClass* const, pThis , EBP);
 	GET(BuildingClass* const, pBld, ESI);
 
-	enum
-	{
+	enum {
+
 		Impassable = 0x51C7D0,
 		Ignore = 0x51C70F,
 		NoDecision = 0x51C4EB,
@@ -240,7 +239,7 @@ DEFINE_HOOK(0x51C4C8, InfantryClass_IsCellOccupied, 6)
 
 DEFINE_HOOK(0x73F7B0, UnitClass_IsCellOccupied, 6)
 {
-	GET(UnitClass* const, pThis, EBX);
+	GET(UnitClass* const , pThis , EBX);
 	GET(BuildingClass* const, pBld, ESI);
 
 	enum
@@ -268,14 +267,10 @@ DEFINE_HOOK(0x4DA53E, FootClass_Update_AresAddition, 6)
 
 	auto const pType = pThis->GetTechnoType();
 
-	if (HouseExtData::IsAnyFirestormActive)
-	{
-		if (pThis->IsAlive && !pThis->InLimbo && !pThis->InOpenToppedTransport && !pType->IgnoresFirestorm)
-		{
-			if (auto const pBld = pThis->GetCell()->GetBuilding())
-			{
-				if (FirewallFunctions::IsActiveFirestormWall(pBld, nullptr))
-				{
+	if (HouseExtData::IsAnyFirestormActive) {
+		if (pThis->IsAlive && !pThis->InLimbo && !pThis->InOpenToppedTransport && !pType->IgnoresFirestorm) {
+			if (auto const pBld = pThis->GetCell()->GetBuilding()) {
+				if (FirewallFunctions::IsActiveFirestormWall(pBld, nullptr)) {
 					FirewallFunctions::ImmolateVictim(pBld, pThis, true);
 				}
 			}
@@ -312,14 +307,13 @@ DEFINE_HOOK(0x4DA53E, FootClass_Update_AresAddition, 6)
 						{
 							pThis->Health += health;
 
-							if (pThis->Health > pType->Strength)
-							{
+							if (pThis->Health > pType->Strength) {
 								pThis->Health = pType->Strength;
 							}
 
 							if (wasDamaged
 								&& (pThis->GetHealthPercentage() > RulesClass::Instance->ConditionYellow
-									|| pThis->GetHeight() < -10))
+								|| pThis->GetHeight() < -10))
 							{
 								if (auto& dmgParticle = pThis->DamageParticleSystem)
 								{
@@ -367,11 +361,11 @@ DEFINE_HOOK(0x467B94, BulletClass_Update_Ranged, 7)
 		{
 			HouseClass* pOwner = pThis->Owner ? pThis->Owner->Owner : BulletExtContainer::Instance.Find(pThis)->Owner;
 			if (WarheadTypeExtContainer::Instance.Find(RulesExtData::Instance()->FirestormWarhead)->CanAffectHouse(pBld->Owner, pOwner))
-				pOwner = nullptr; // clear the pointer if can affect the bullet owner
+				pOwner =  nullptr; // clear the pointer if can affect the bullet owner
 
 			if (FirewallFunctions::IsActiveFirestormWall(pBld, pOwner))
 			{
-				FirewallFunctions::ImmolateVictim(pBld, pThis, false);
+				FirewallFunctions::ImmolateVictim(pBld , pThis, false);
 				BulletExtData::HandleBulletRemove(pThis, ScenarioClass::Instance->Random.RandomBool(), true);
 				return 0x467FBA;
 			}
@@ -402,6 +396,7 @@ DEFINE_HOOK(0x4688BD, BulletClass_SetMovement_Obstacle, 6)
 		auto const pBld = pCell->GetBuilding();
 		FirewallFunctions::ImmolateVictim(pBld, pThis, false);
 		BulletExtData::HandleBulletRemove(pThis, ScenarioClass::Instance->Random.RandomBool(), true);
+
 	}
 	else
 	{
@@ -424,8 +419,7 @@ DEFINE_HOOK(0x6FF008, TechnoClass_Fire_FSW, 8)
 	REF_STACK(CoordStruct const, src, 0x44);
 	REF_STACK(CoordStruct const, tgt, 0x88);
 
-	if (!HouseExtData::IsAnyFirestormActive)
-	{
+	if (!HouseExtData::IsAnyFirestormActive) {
 		return 0;
 	}
 
@@ -434,15 +428,13 @@ DEFINE_HOOK(0x6FF008, TechnoClass_Fire_FSW, 8)
 		: R->EBX<BulletClass*>()
 		;
 
-	if (!Bullet->Type->IgnoresFirestorm)
-	{
+	if (!Bullet->Type->IgnoresFirestorm) {
 		return 0;
 	}
 
 	auto const crd = MapClass::Instance->FindFirstFirestorm(src, tgt, Bullet->Owner->Owner);
 
-	if (crd.IsValid())
-	{
+	if (crd.IsValid()) {
 		Bullet->Target = MapClass::Instance->GetCellAt(crd)->GetContent();
 		Bullet->Owner->ShouldLoseTargetNow = 1;
 	}

@@ -10,7 +10,7 @@ struct VoxFile
 	char Name[9];
 
 	//need to define a == operator so it can be used in array classes
-	bool operator == (const VoxFile& other) const
+	bool operator == (const VoxFile &other) const
 	{
 		return !CRT::strcmp(this->Name, other.Name);
 	}
@@ -19,7 +19,7 @@ struct VoxFile
 class VoxClass2 : public VoxClass
 {
 public:
-	VoxClass2(char* pName) : VoxClass(pName) { }
+	VoxClass2(char* pName) : VoxClass(pName) {}
 
 	~VoxClass2() = default;
 

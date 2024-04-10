@@ -16,8 +16,7 @@ public:
 
 	void InvalidatePointer(AnimClass* ptr, bool bDetach)
 	{
-		if (ptr == this->Anim.get())
-		{
+		if (ptr == this->Anim.get()) {
 			this->Anim.release();
 		}
 	}
@@ -60,6 +59,7 @@ private:
 			&& Stm.RegisterChange(this) // announce this type
 			;
 	}
+
 };
 
 struct AresAEData
@@ -89,9 +89,9 @@ struct AresAEData
 	}
 
 private:
-	AresAEData(const AresAEData& other) = delete;
-	AresAEData& operator=(const AresAEData& other) = delete;
-	AresAEData& operator=(AresAEData&&) = delete;
+	AresAEData(const AresAEData& other)=delete;
+	AresAEData&operator=(const AresAEData& other)=delete;
+	AresAEData&operator=(AresAEData&&)=delete;
 
 	template <typename T>
 	bool Serialize(T& Stm)

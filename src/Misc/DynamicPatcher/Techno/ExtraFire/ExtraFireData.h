@@ -16,8 +16,7 @@ struct ExtraFireData
 		ValueableVector<CoordStruct> WeaponXFLH { };
 		ValueableVector<CoordStruct> EliteWeaponXFLH { };
 
-		FLHData* AsPointer() const
-		{
+		FLHData* AsPointer() const{
 			return const_cast<FLHData*>(this);
 		}
 
@@ -67,7 +66,7 @@ struct ExtraFireData
 
 	//confuse ? , yeah me too :kekw:
 	void ReadArt(INI_EX& parserArt, const char* pSection_Art);
-	void ReadRules(INI_EX& parserRules, const char* pSection_rules);
+	void ReadRules(INI_EX& parserRules,const char* pSection_rules);
 
 	template <typename T>
 	void Serialize(T& Stm)
@@ -78,4 +77,5 @@ struct ExtraFireData
 
 		//Stm.RegisterChange(this);
 	}
+
 };

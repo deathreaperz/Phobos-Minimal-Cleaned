@@ -20,8 +20,7 @@ struct TrailData
 		, OnTileTypes { }
 		, FLHs { flh }
 		, Onturrents { nTur }
-	{
-	}
+	{ }
 
 	~TrailData() = default;
 
@@ -53,6 +52,7 @@ struct TrailData
 			.Success() //&& Stm.RegisterChange(this)
 			;
 	}
+
 };
 
 //managing the vector
@@ -69,6 +69,7 @@ namespace TrailsManager
 
 	template<typename T>
 	void CleanUp(T* pOwner);
+
 };
 
 //reading
@@ -92,7 +93,7 @@ struct TrailsReader
 		for (size_t i = 0; ; ++i)
 		{
 			NullableIdx <TrailType> trail;
-			std::string _base = "Trail";
+			std::string _base  = "Trail";
 			_base += std::to_string(i);
 
 			trail.Read(nParser, pSection, (_base + ".Type").c_str());
@@ -105,8 +106,7 @@ struct TrailsReader
 
 			detail::read(Back.FLHs, nParser, pSection, (_base + ".FLH").c_str());
 
-			if (IsForTechno)
-			{
+			if (IsForTechno) {
 				detail::read(Back.Onturrents, nParser, pSection, (_base + ".IsOnTurret").c_str());
 			}
 
@@ -124,4 +124,5 @@ struct TrailsReader
 
 		//Stm.RegisterChange(this);
 	}
+
 };

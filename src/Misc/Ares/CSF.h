@@ -8,8 +8,7 @@
 class CSFLoader
 {
 public:
-	struct BiggerCSFString
-	{
+	struct BiggerCSFString {
 		wchar_t Text[0x500];
 	};
 

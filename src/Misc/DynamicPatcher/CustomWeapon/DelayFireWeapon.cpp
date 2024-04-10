@@ -9,11 +9,9 @@ void DelayFireWeapon::ReduceOnce()
 }
 
 bool DelayFireWeapon::NotDone() const { return Count > 0; }
-bool DelayFireWeapon::Load(PhobosStreamReader& Stm, bool RegisterForChange) { return Serialize(Stm); }
-bool DelayFireWeapon::Save(PhobosStreamWriter& Stm) const
-{
-	return
-		const_cast<DelayFireWeapon*>(this)->Serialize(Stm);
+bool DelayFireWeapon::Load(PhobosStreamReader& Stm, bool RegisterForChange) { return Serialize(Stm);  }
+bool DelayFireWeapon::Save(PhobosStreamWriter& Stm) const { return 
+	const_cast<DelayFireWeapon*>(this)->Serialize(Stm);
 }
 
 template <typename T>
@@ -29,5 +27,5 @@ bool DelayFireWeapon::Serialize(T& Stm)
 		.Process(Timer)
 		.Success()
 		&& Stm.RegisterChange(this);
-	;
+		;
 }

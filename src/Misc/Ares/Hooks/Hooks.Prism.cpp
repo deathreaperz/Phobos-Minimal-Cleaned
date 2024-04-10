@@ -1,3 +1,4 @@
+
 #include "Header.h"
 
 #include <Ext/Building/Body.h>
@@ -14,12 +15,9 @@ void WeaponTypeExtData::FireRadBeam(TechnoClass* pFirer, WeaponTypeClass* pWeapo
 		supportRadBeam->SetCoordsSource(source);
 		supportRadBeam->SetCoordsTarget(target);
 
-		if (pExt->Beam_IsHouseColor)
-		{
+		if (pExt->Beam_IsHouseColor) {
 			supportRadBeam->Color = pFirer->Owner->LaserColor;
-		}
-		else
-		{
+		} else {
 			supportRadBeam->Color = pExt->GetBeamColor();
 		}
 
@@ -38,6 +36,7 @@ void WeaponTypeExtData::FireEbolt(TechnoClass* pFirer, WeaponTypeClass* pWeapon,
 		supportEBolt->AlternateColor = pWeapon->IsAlternateColor;
 		supportEBolt->Fire(source, target, 0); //messing with 3rd arg seems to make bolts more jumpy, and parts of them disappear
 	}
+
 }
 
 DEFINE_HOOK(0x44B2FE, BuildingClass_Mi_Attack_IsPrism, 6)
@@ -84,6 +83,7 @@ DEFINE_HOOK(0x44B2FE, BuildingClass_Mi_Attack_IsPrism, 6)
 
 			//now we have all the towers we know the longest chain, and can set all the towers' charge delays
 			pMasterData->PrismForwarding.SetChargeDelay(LongestChain);
+
 		}
 		else if (pThis->PrismStage == PrismChargeState::Slave)
 		{
@@ -197,8 +197,9 @@ DEFINE_HOOK(0x4503F0, BuildingClass_Update_Prism, 9)
 				if (pType->GetBuildingAnim(BuildingAnimSlot::Special).Anim[0])
 				{ //only if it actually has a special anim
 					pThis->DestroyNthAnim(BuildingAnimSlot::Active);
-					pThis->Game_PlayNthAnim(BuildingAnimSlot::Special, !pThis->IsGreenHP(), pThis->GetOccupantCount() > 0, 0);
+					pThis->Game_PlayNthAnim(BuildingAnimSlot::Special ,!pThis->IsGreenHP(),pThis->GetOccupantCount() > 0 ,0);
 				}
+
 			}
 		}
 	}
@@ -214,10 +215,10 @@ DEFINE_HOOK(0x44ABD0, BuildingClass_FireLaser, 5)
 	auto const pTypeData = BuildingTypeExtContainer::Instance.Find(pType);
 
 	CoordStruct sourceXYZ;
-	pThis->GetFLH(&sourceXYZ, 0, CoordStruct::Empty);
+	pThis->GetFLH(&sourceXYZ ,0, CoordStruct::Empty);
 
-	const int idxSupport = pThis->Veterancy.IsElite() ?
-		pTypeData->PrismForwarding.EliteSupportWeaponIndex : pTypeData->PrismForwarding.SupportWeaponIndex;
+	const int idxSupport = pThis->Veterancy.IsElite()  ?
+		pTypeData->PrismForwarding.EliteSupportWeaponIndex : pTypeData->PrismForwarding.SupportWeaponIndex ;
 
 	auto const supportWeapon = (idxSupport != -1)
 		? pType->GetWeapon(idxSupport)->WeaponType : nullptr;
@@ -266,8 +267,7 @@ DEFINE_HOOK(0x44ABD0, BuildingClass_FireLaser, 5)
 		}
 
 		//IsRadBeam
-		if (supportWeapon->IsRadBeam)
-		{
+		if (supportWeapon->IsRadBeam) {
 			CoordStruct target = targetXYZ;
 			WeaponTypeExtData::FireRadBeam(pThis, supportWeapon, sourceXYZ, target);
 		}
@@ -352,6 +352,7 @@ DEFINE_HOOK(0x6FF4DE, TechnoClass_Fire_IsLaser, 6)
 
 		if (auto const pLaser = pBld->CreateLaser(pTarget, idxWeapon, pTWeapon, CoordStruct::Empty))
 		{
+
 			//default thickness for buildings. this was 3 for PrismType (rising to 5 for supported prism) but no idea what it was for non-PrismType - setting to 3 for all BuildingTypes now.
 			pLaser->Thickness = Thickness == -1 ? 3 : Thickness;
 			auto const pBldTypeData = BuildingTypeExtContainer::Instance.Find(pBld->Type);
@@ -420,7 +421,7 @@ DEFINE_HOOK(0x448277, BuildingClass_ChangeOwner_PrismForwardAndLeaveBomb, 5)
 
 	announce = announce && !pThis->Type->IsVehicle();
 
-	if (announce && (pThis->Type->Powered || pThis->Type->PoweredSpecial))
+	if(announce && (pThis->Type->Powered || pThis->Type->PoweredSpecial))
 		pThis->UpdatePowerDown();
 
 	// #754 - evict Hospital/Armory contents
@@ -475,19 +476,16 @@ DEFINE_HOOK(0x71AF76, TemporalClass_Fire_PrismForwardAndWarpable, 9)
 
 	// bugfix #874 B: Temporal warheads affect Warpable=no units
 	// it has been checked: this is warpable. free captured and destroy spawned units.
-	if (pThis->SpawnManager)
-	{
+	if (pThis->SpawnManager) {
 		pThis->SpawnManager->KillNodes();
 	}
 
-	if (pThis->CaptureManager)
-	{
+	if (pThis->CaptureManager) {
 		pThis->CaptureManager->FreeAll();
 	}
 
 	// prism forward
-	if (pThis->WhatAmI() == BuildingClass::AbsID)
-	{
+	if (pThis->WhatAmI() == BuildingClass::AbsID) {
 		BuildingExtContainer::Instance.Find((BuildingClass*)pThis)->PrismForwarding.RemoveFromNetwork(true);
 	}
 

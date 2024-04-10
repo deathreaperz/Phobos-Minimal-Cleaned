@@ -19,8 +19,7 @@ struct DelayFireWeapon
 		, Delay { delay }
 		, Count { count }
 		, Timer { delay }
-	{
-	}
+	{ }
 
 	explicit DelayFireWeapon(WeaponTypeClass* pWeapon, AbstractClass* pTarget, int delay, int count) noexcept :
 		FireOwnWeapon { false }
@@ -30,8 +29,7 @@ struct DelayFireWeapon
 		, Delay { delay }
 		, Count { count }
 		, Timer { delay }
-	{
-	}
+	{ }
 
 	DelayFireWeapon() noexcept :
 		FireOwnWeapon { false }
@@ -41,8 +39,7 @@ struct DelayFireWeapon
 		, Delay { 0 }
 		, Count { 1 }
 		, Timer { 0 }
-	{
-	}
+	{ }
 
 	~DelayFireWeapon() = default;
 
@@ -59,4 +56,5 @@ struct DelayFireWeapon
 private:
 	template <typename T>
 	bool Serialize(T& Stm);
+
 };

@@ -27,8 +27,7 @@ FORCEINLINE void ReadListFromSection(CCINIClass* pINI, const char* pSection, std
 	{
 		char buffer[0x80];
 
-		if (pINI->ReadString(pSection, pINI->GetKeyName(pSection, i), Phobos::readDefval, buffer) > 0)
-		{
+		if (pINI->ReadString(pSection, pINI->GetKeyName(pSection, i), Phobos::readDefval, buffer) > 0) {
 			strings.emplace_back(buffer);
 		}
 	}
@@ -39,23 +38,19 @@ std::unique_ptr<SpawnerMain::Configs> SpawnerMain::Configs::m_Ptr = std::make_un
 bool SpawnerMain::Configs::Enabled = false;
 bool SpawnerMain::Configs::Active = false;
 
-class NOVTABLE StaticLoadOptionsClass
-{
+class NOVTABLE StaticLoadOptionsClass {
 public:
 	// constructor
-	StaticLoadOptionsClass()
-	{
+	StaticLoadOptionsClass() {
 		JMP_THIS(0x558740);
 	}
 
 	// virtuals
-	virtual ~StaticLoadOptionsClass()
-	{
+	virtual ~StaticLoadOptionsClass() {
 		JMP_THIS(0x55A0D0);
 	}
 
-	static bool LoadMission(const char* pFilename)
-	{
+	static bool LoadMission(const char* pFilename) {
 		JMP_THIS(0x559D60);
 	}
 
@@ -70,10 +65,8 @@ public:
 	DECLARE_PROPERTY(DynamicVectorClass<FileEntryClass*>, FileEntries);
 };
 
-void SpawnerMain::ExeRun(bool HasCNCnet)
-{
-	if (HasCNCnet)
-	{
+void SpawnerMain::ExeRun(bool HasCNCnet) {
+	if (HasCNCnet) {
 		Debug::FatalErrorAndExit("This dll already include cncnet5.dll code , please remove first\n");
 	}
 }
@@ -98,17 +91,15 @@ void SpawnerMain::CmdLineParse(char* pArg)
 	}
 }
 
-void SpawnerMain::PrintInitializeLog()
-{
+void SpawnerMain::PrintInitializeLog() {
 	Debug::Log("Initialized " SPAWNER_PRODUCT_NAME "\n");
 }
 
 void SpawnerMain::LoadConfigurations()
 {
-	if (auto pINI = &CCINIClass::INI_RA2MD)
-	{
-		if (pINI->GetSection(GameStrings::Options()))
-		{
+	if (auto pINI = &CCINIClass::INI_RA2MD) {
+
+		if (pINI->GetSection(GameStrings::Options())) {
 			auto pMainConfigs = SpawnerMain::GetMainConfigs();
 			pMainConfigs->MPDebug = pINI->ReadBool(GameStrings::Options(), "MPDEBUG", pMainConfigs->MPDebug);
 			pMainConfigs->SingleProcAffinity = pINI->ReadBool(GameStrings::Options(), "SingleProcAffinity", pMainConfigs->SingleProcAffinity);
@@ -119,10 +110,10 @@ void SpawnerMain::LoadConfigurations()
 			pMainConfigs->SpeedControl = pINI->ReadBool(GameStrings::Options(), "SpeedControl", pMainConfigs->SpeedControl);
 			pMainConfigs->AllowTaunts = pINI->ReadBool(GameStrings::Options(), "AllowTaunts", pMainConfigs->AllowTaunts);
 			pMainConfigs->AllowChat = pINI->ReadBool(GameStrings::Options(), "AllowChat", pMainConfigs->AllowChat);
+
 		}
 
-		if (pINI->GetSection(GameStrings::Video()))
-		{
+		if (pINI->GetSection(GameStrings::Video())) {
 			auto pMainConfigs = SpawnerMain::GetMainConfigs();
 			pMainConfigs->WindowedMode = pINI->ReadBool(GameStrings::Video(), "Video.Windowed", pMainConfigs->WindowedMode);
 			pMainConfigs->NoWindowFrame = pINI->ReadBool(GameStrings::Video(), "NoWindowFrame", pMainConfigs->NoWindowFrame);
@@ -164,8 +155,7 @@ void SpawnerMain::ApplyStaticOptions()
 	{
 		GameOptionsClass::WindowedMode = true;
 
-		if (pMainConfigs->NoWindowFrame)
-		{
+		if (pMainConfigs->NoWindowFrame) {
 			Patch::Apply_RAW(0x777CC0, // CreateMainWindow
 			{
 				0x68, 0x00, 0x00, 0x0A, 0x86 // push    0x860A0000; vs 0x02CA0000
@@ -181,10 +171,8 @@ void SpawnerMain::ApplyStaticOptions()
 	Game::LANTaunts = pMainConfigs->AllowTaunts;
 
 	// Set 3rd party ddraw.dll options
-	for (auto& dllData : Patch::ModuleDatas)
-	{
-		if (IS_SAME_STR_(dllData.ModuleName.c_str(), "ddraw.dll"))
-		{
+	for (auto& dllData : Patch::ModuleDatas) {
+		if (IS_SAME_STR_(dllData.ModuleName.c_str(), "ddraw.dll")) {
 			if (bool* gameHandlesClose = (bool*)GetProcAddress(dllData.Handle, "GameHandlesClose"))
 				*gameHandlesClose = !pMainConfigs->DDrawHandlesClose;
 
@@ -206,6 +194,7 @@ void SpawnerMain::ApplyStaticOptions()
 	//		*TargetFPS = SpawnerMain::Configs::DDrawTargetFPS;
 	//}
 }
+
 
 constexpr char* PlayerSectionArray[8] = {
 	"Settings",
@@ -251,8 +240,7 @@ constexpr char* AlliancesTagArray[8] = {
 	"HouseAllyEight"
 };
 
-class CCINIClassDummy : public CCINIClass
-{
+class CCINIClassDummy : public CCINIClass {
 public:
 
 	int NOINLINE ReadString_WithoutAresHook(const char* pSection, const char* pKey, const char* pDefault, char* pBuffer, size_t szBufferSize)
@@ -341,8 +329,7 @@ void SpawnerMain::GameConfigs::LoadFromINIFile(CCINIClass* pINI)
 		TunnelId = pINI->ReadInteger(GameStrings::Settings(), "Port", TunnelId);
 		ListenPort = pINI->ReadInteger(GameStrings::Settings(), "Port", ListenPort);
 
-		if (pINI->GetSection(GameStrings::Tunnel()))
-		{
+		if (pINI->GetSection(GameStrings::Tunnel())) {
 			pINI->ReadString(GameStrings::Tunnel(), "Ip", TunnelIp, TunnelIp, sizeof(TunnelIp));
 			TunnelPort = pINI->ReadInteger(GameStrings::Tunnel(), "Port", TunnelPort);
 		}
@@ -363,7 +350,7 @@ void SpawnerMain::GameConfigs::LoadFromINIFile(CCINIClass* pINI)
 	ContinueWithoutHumans = pINI->ReadBool(GameStrings::Settings(), "ContinueWithoutHumans", ContinueWithoutHumans);
 	DefeatedBecomesObserver = pINI->ReadBool(GameStrings::Settings(), "DefeatedBecomesObserver", DefeatedBecomesObserver);
 	Observer_ShowAIOnSidebar = pINI->ReadBool(GameStrings::Settings(), "Observer.ShowAIOnSidebar", Observer_ShowAIOnSidebar);
-	Observer_ShowMultiplayPassive = pINI->ReadBool(GameStrings::Settings(), "Observer.ShowMultiplayPassiveOnSidebar", Phobos::Otamaa::IsAdmin ? true : Observer_ShowMultiplayPassive);
+	Observer_ShowMultiplayPassive = pINI->ReadBool(GameStrings::Settings(), "Observer.ShowMultiplayPassiveOnSidebar",  Phobos::Otamaa::IsAdmin  ? true : Observer_ShowMultiplayPassive);
 	// Custom Mixes
 	ReadListFromSection(pINI, "PreloadMixes", PreloadMixes);
 	ReadListFromSection(pINI, "PostloadMixes", PostloadMixes);
@@ -418,27 +405,24 @@ void SpawnerMain::GameConfigs::HouseConfig::LoadFromINIFile(CCINIClass* pINI, in
 	}
 }
 
-void SpawnerMain::GameConfigs::Init()
-{
+void SpawnerMain::GameConfigs::Init() {
+
 	if (!SpawnerMain::Configs::Enabled)
 		return;
 
 	SpawnerMain::GameConfigs::m_Ptr = std::make_unique<SpawnerMain::GameConfigs>();
 
-	CCFileClass file { "SPAWN.INI" };
+	CCFileClass file{ "SPAWN.INI" };
 
-	if (!file.Exists())
-	{
+	if (!file.Exists()) {
 		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, file.FileName);
-	}
-	else
-	{
-		if (!file.Open(FileAccessMode::ReadWrite))
-		{
+	} else {
+
+		if (!file.Open(FileAccessMode::ReadWrite)) {
 			Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, file.FileName);
 		}
 
-		CCINIClass ini {};
+		CCINIClass ini{};
 		ini.ReadCCFile(&file);
 		SpawnerMain::GameConfigs::m_Ptr->LoadFromINIFile(&ini);
 	}
@@ -479,8 +463,8 @@ void SpawnerMain::GameConfigs::Init()
 	Patch::Apply_LJMP(0x6D1639, 0x6D1640); // TabClass_6D1610
 }
 
-bool SpawnerMain::GameConfigs::StartGame()
-{
+bool SpawnerMain::GameConfigs::StartGame() {
+
 	if (SpawnerMain::Configs::Active)
 		return 0;
 
@@ -505,6 +489,7 @@ bool SpawnerMain::GameConfigs::StartGame()
 		return false;
 	}
 
+
 	SpawnerMain::GameConfigs::LoadSidesStuff();
 
 	bool result = m_Ptr->LoadSaveGame
@@ -519,8 +504,7 @@ bool SpawnerMain::GameConfigs::StartGame()
 	return result;
 }
 
-void SpawnerMain::GameConfigs::AssignHouses()
-{
+void SpawnerMain::GameConfigs::AssignHouses() {
 	ScenarioClass::AssignHouses();
 
 	const int count = MinImpl(HouseClass::Array->Count, (int)std::size(SpawnerMain::GameConfigs::m_Ptr->Houses));
@@ -596,8 +580,7 @@ void SpawnerMain::GameConfigs::AssignHouses()
 	}
 }
 
-bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName)
-{
+bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName) {
 	if (pScenarioName[0] == 0)
 	{
 		Debug::Log("[Spawner] Failed Read Scenario [%s]\n", pScenarioName);
@@ -775,8 +758,8 @@ bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName)
 	}
 }
 
-bool SpawnerMain::GameConfigs::LoadSavedGame(const char* saveGameName)
-{
+bool SpawnerMain::GameConfigs::LoadSavedGame(const char* saveGameName) {
+
 	if (!saveGameName[0] || !StaticLoadOptionsClass::LoadMission(saveGameName))
 	{
 		Debug::Log("[Spawner] Failed Load Game [%s]\n", saveGameName);
@@ -792,8 +775,7 @@ bool SpawnerMain::GameConfigs::LoadSavedGame(const char* saveGameName)
 	return true;
 }
 
-void SpawnerMain::GameConfigs::InitNetwork()
-{
+void SpawnerMain::GameConfigs::InitNetwork() {
 	Tunnel::Id = htons((u_short)SpawnerMain::GameConfigs::m_Ptr->TunnelId);
 	Tunnel::Ip = inet_addr(SpawnerMain::GameConfigs::m_Ptr->TunnelIp);
 	Tunnel::Port = htons((u_short)SpawnerMain::GameConfigs::m_Ptr->TunnelPort);
@@ -841,8 +823,8 @@ void SpawnerMain::GameConfigs::InitNetwork()
 
 	if (SpawnerMain::GameConfigs::m_Ptr->QuickMatch)
 	{
-		Game::EnableMPDebug = false;
-		Game::DrawMPDebugStats = false;
+		Game::EnableMPDebug     = false;
+		Game::DrawMPDebugStats  = false;
 		Game::EnableMPSyncDebug = false;
 	}
 
@@ -861,16 +843,14 @@ void SpawnerMain::GameConfigs::LoadSidesStuff()
 		pItem->LoadFromINI(pINI);
 }
 
-DEFINE_HOOK(0x6BD7CB, WinMain_SpawnerInit, 0x5)
-{
+DEFINE_HOOK(0x6BD7CB, WinMain_SpawnerInit, 0x5) {
 	SpawnerMain::GameConfigs::Init();
 	return 0x0;
 }
 
 // Display UIGameMode if is set
 // Otherwise use mode name from MPModesMD.ini
-DEFINE_HOOK(0x65812E, RadarClass_DiplomacyDialog_UIGameMode, 0x6)
-{
+DEFINE_HOOK(0x65812E, RadarClass_DiplomacyDialog_UIGameMode, 0x6) {
 	enum { Show = 0x65813E, DontShow = 0x65814D };
 
 	if (SpawnerMain::Configs::Enabled && SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0])
@@ -887,8 +867,7 @@ DEFINE_HOOK(0x65812E, RadarClass_DiplomacyDialog_UIGameMode, 0x6)
 }
 
 // Clear UIGameMode on game load
-DEFINE_HOOK(0x689669, ScenarioClass_Load_Suffix_Spawner, 0x6)
-{
+DEFINE_HOOK(0x689669, ScenarioClass_Load_Suffix_Spawner, 0x6) {
 	if (SpawnerMain::Configs::Enabled)
 		SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0] = 0;
 
@@ -901,8 +880,7 @@ namespace MPlayerDefeated
 	HouseClass* pThis = nullptr;
 }
 
-DEFINE_HOOK(0x4FC0B6, HouseClass_MPlayerDefeated_SaveArgument, 0x5)
-{
+DEFINE_HOOK(0x4FC0B6, HouseClass_MPlayerDefeated_SaveArgument, 0x5) {
 	MPlayerDefeated::pThis = (SpawnerMain::Configs::Enabled && !SessionClass::IsCampaign())
 		? R->ECX<HouseClass*>()
 		: nullptr;
@@ -912,8 +890,7 @@ DEFINE_HOOK(0x4FC0B6, HouseClass_MPlayerDefeated_SaveArgument, 0x5)
 
 // Skip match-end logic if MPlayerDefeated called for observer
 DEFINE_HOOK_AGAIN(0x4FC332, HouseClass_MPlayerDefeated_SkipObserver, 0x5)
-DEFINE_HOOK(0x4FC262, HouseClass_MPlayerDefeated_SkipObserver, 0x6)
-{
+DEFINE_HOOK(0x4FC262, HouseClass_MPlayerDefeated_SkipObserver, 0x6) {
 	enum { ProcEpilogue = 0x4FC6BC };
 
 	if (!MPlayerDefeated::pThis)
@@ -924,8 +901,7 @@ DEFINE_HOOK(0x4FC262, HouseClass_MPlayerDefeated_SkipObserver, 0x6)
 		: 0;
 }
 
-DEFINE_HOOK(0x4FC551, HouseClass_MPlayerDefeated_NoEnemies, 0x5)
-{
+DEFINE_HOOK(0x4FC551, HouseClass_MPlayerDefeated_NoEnemies, 0x5) {
 	enum { ProcEpilogue = 0x4FC6BC };
 
 	if (!MPlayerDefeated::pThis)
@@ -949,8 +925,7 @@ DEFINE_HOOK(0x4FC551, HouseClass_MPlayerDefeated_NoEnemies, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x4FC57C, HouseClass_MPlayerDefeated_CheckAliveAndHumans, 0x7)
-{
+DEFINE_HOOK(0x4FC57C, HouseClass_MPlayerDefeated_CheckAliveAndHumans, 0x7) {
 	enum { ProcEpilogue = 0x4FC6BC, FinishMatch = 0x4FC591 };
 
 	if (!MPlayerDefeated::pThis)
