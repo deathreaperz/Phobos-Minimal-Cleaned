@@ -10,7 +10,6 @@
 #include <HouseClass.h>
 #include <Utilities/Debug.h>
 
-
 DEFINE_HOOK(0x547043, IsometricTileTypeClass_ReadFromFile, 0x6)
 {
 	GET(int, FileSize, EBX);
@@ -48,10 +47,13 @@ DEFINE_HOOK(0x7272B5, TriggerTypeClass_LoadFromINI_House, 6)
 	GET(TriggerTypeClass* const, pTrig, EBP);
 	GET(const char*, pHouse, ESI);
 
-	if (index < 0) {
+	if (index < 0)
+	{
 		Debug::FatalError("TriggerType '%s' refers to a house named '%s', which does not exist. In case no house is needed, use '<none>' explicitly.", pTrig->ID, pHouse);
 		R->EDX<HouseTypeClass*>(nullptr);
-	} else {
+	}
+	else
+	{
 		R->EDX<HouseTypeClass*>(HouseTypeClass::Array->Items[index]);
 	}
 
@@ -63,9 +65,9 @@ DEFINE_HOOK(0x749088, FixedWidthCounter_ResetWithGivenCount, 6)
 {
 	GET(unsigned int, Width, EAX);
 
-	if (Width > 512) {
-
-		if(CounterLog)
+	if (Width > 512)
+	{
+		if (CounterLog)
 			Debug::Log("Counter attempted to overflow (given width of %d exceeds maximum allowed width of 512).\n", Width);
 
 		R->EAX(512);

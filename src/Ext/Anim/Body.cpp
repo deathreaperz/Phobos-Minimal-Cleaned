@@ -23,14 +23,15 @@ void AnimExtData::OnInit(AnimClass* pThis, CoordStruct* pCoord)
 
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 
-	if (pTypeExt->ConcurrentChance.Get() >= 1.0 && !pTypeExt->ConcurrentAnim.empty()) {
-		if (ScenarioClass::Instance->Random.RandomDouble() <= pTypeExt->ConcurrentChance.Get()) {
-
+	if (pTypeExt->ConcurrentChance.Get() >= 1.0 && !pTypeExt->ConcurrentAnim.empty())
+	{
+		if (ScenarioClass::Instance->Random.RandomDouble() <= pTypeExt->ConcurrentChance.Get())
+		{
 			auto const nIdx = pTypeExt->ConcurrentAnim.size() == 1 ?
-			0 : ScenarioClass::Instance->Random.RandomFromMax(pTypeExt->ConcurrentAnim.size() - 1);
+				0 : ScenarioClass::Instance->Random.RandomFromMax(pTypeExt->ConcurrentAnim.size() - 1);
 
-			if (auto pType = pTypeExt->ConcurrentAnim[nIdx]) {
-
+			if (auto pType = pTypeExt->ConcurrentAnim[nIdx])
+			{
 				if (pType == pThis->Type)
 					return;
 
@@ -227,10 +228,10 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 		{
 			AbstractClass* pTarget = AnimExtData::GetTarget(pThis);
 			// use target loc instead of anim loc , it doesnt work well with bridges
-			WarheadTypeExtData::DetonateAt(pWarhead, pTarget , pTarget ? pTarget->GetCoords() : nCoord, pInvoker, nDamageResult , pOwner);
-
-		} else {
-
+			WarheadTypeExtData::DetonateAt(pWarhead, pTarget, pTarget ? pTarget->GetCoords() : nCoord, pInvoker, nDamageResult, pOwner);
+		}
+		else
+		{
 			MapClass::DamageArea(nCoord, nDamageResult, pInvoker, pWarhead, pWarhead->Tiberium, pOwner);
 			MapClass::FlashbangWarheadAt(nDamageResult, pWarhead, nCoord);
 		}
@@ -265,7 +266,8 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 				CoordStruct InitialCoord = nCoord;
 				InitialCoord.Z -= MapClass::Instance->GetCellFloorHeight(nCoord);
 
-				if(!pAnimTypeExt->SpawnParticleModeUseAresCode) {
+				if (!pAnimTypeExt->SpawnParticleModeUseAresCode)
+				{
 					for (int i = 0; i < pType->NumParticles; ++i)
 					{
 						CoordStruct nDestCoord = CoordStruct::Empty;
@@ -276,18 +278,22 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 							ParticleSystemClass::Instance->SpawnParticle(pParticleType, &nDestCoord);
 						}
 					}
-				}else
+				}
+				else
 				{
 					int numParticle = pType->NumParticles;
 					const auto nMin = pAnimTypeExt->ParticleRangeMin.Get();
 					const auto nMax = pAnimTypeExt->ParticleRangeMax.Get();
 
-					if(nMin || nMax) {
+					if (nMin || nMax)
+					{
 						double rad = 6.283185307179586 / numParticle;
 						double start_distance = 0.0;
 
-						if(numParticle > 0) {
-							do {
+						if (numParticle > 0)
+						{
+							do
+							{
 								int rand = std::abs(ScenarioClass::Instance->Random.RandomRanged((int)nMin, (int)nMax));
 								double randDouble = ScenarioClass::Instance->Random.RandomDouble() * rad + start_distance;
 								CoordStruct dest {
@@ -300,16 +306,19 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 								ParticleSystemClass::Instance->SpawnParticle(pParticleType, &dest);
 								start_distance += rad;
 								--numParticle;
-							} while(numParticle);
+							}
+							while (numParticle);
 						}
 					}
 				}
 			}
 		}
 
-		for (const auto& nLauch : pTypeExt->Launchs) {
-			if (nLauch.LaunchWhat) {
-				Helpers::Otamaa::LauchSW(nLauch , pHouse, nCoord , pObject);
+		for (const auto& nLauch : pTypeExt->Launchs)
+		{
+			if (nLauch.LaunchWhat)
+			{
+				Helpers::Otamaa::LauchSW(nLauch, pHouse, nCoord, pObject);
 			}
 		}
 	}
@@ -322,7 +331,8 @@ AbstractClass* AnimExtData::GetTarget(AnimClass* pThis)
 	auto const pType = pThis->Type;
 	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pType);
 
-	if (!pTypeExt->Damage_TargetFlag.isset()) {
+	if (!pTypeExt->Damage_TargetFlag.isset())
+	{
 		return pThis->GetCell();
 	}
 
@@ -346,7 +356,7 @@ AbstractClass* AnimExtData::GetTarget(AnimClass* pThis)
 	}
 	case DamageDelayTargetFlag::Invoker:
 	{
-		if(auto const pExt = AnimExtContainer::Instance.Find(pThis))
+		if (auto const pExt = AnimExtContainer::Instance.Find(pThis))
 			return pExt->Invoker;
 	}
 	}
@@ -371,7 +381,7 @@ bool AnimExtData::InvalidateIgnorable(AbstractClass* ptr)
 
 void AnimExtData::InvalidatePointer(AbstractClass* const ptr, bool bRemoved)
 {
-	AnnounceInvalidPointer(this->Invoker, ptr , bRemoved);
+	AnnounceInvalidPointer(this->Invoker, ptr, bRemoved);
 	AnnounceInvalidPointer(this->ParentBuilding, ptr, bRemoved);
 
 	if (this->AttachedSystem.get() == ptr)
@@ -408,8 +418,8 @@ const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimCla
 		return { false ,OwnerHouseKind::Default };
 
 	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pAnim->Type);
-	if (!pTypeExt->NoOwner) {
-
+	if (!pTypeExt->NoOwner)
+	{
 		const auto Owner = pTypeExt->GetAnimOwnerHouseKind();
 
 		if (Owner == OwnerHouseKind::Invoker && !pInvoker || Owner == OwnerHouseKind::Victim && !pVictim)
@@ -433,8 +443,8 @@ const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimCla
 
 	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pAnim->Type);
 
-	if (!pTypeExt->NoOwner) {
-
+	if (!pTypeExt->NoOwner)
+	{
 		if (auto const pAnimExt = AnimExtContainer::Instance.Find(pAnim))
 			pAnimExt->Invoker = pTechnoInvoker;
 
@@ -546,16 +556,19 @@ DEFINE_HOOK(0x422131, AnimClass_CTOR, 0x6)
 
 	if (pItem)
 	{
-		if (pItem->Fetch_ID() == -2 && pItem->Type) {
-			Debug::Log("Anim[%s - %x] with some weird ID\n", pItem->Type->ID , pItem);
+		if (pItem->Fetch_ID() == -2 && pItem->Type)
+		{
+			Debug::Log("Anim[%s - %x] with some weird ID\n", pItem->Type->ID, pItem);
 		}
 
-		if(!pItem->Type) {
+		if (!pItem->Type)
+		{
 			Debug::Log("Anim[%x] with no Type pointer\n", pItem);
 			return 0x0;
 		}
 
-		if (auto pExt = AnimExtContainer::Instance.Allocate(pItem)) {
+		if (auto pExt = AnimExtContainer::Instance.Allocate(pItem))
+		{
 			// Something about creating this in constructor messes with debris anims, so it has to be done for them later.
 			if (!pItem->HasExtras)
 				pExt->CreateAttachedSystem();

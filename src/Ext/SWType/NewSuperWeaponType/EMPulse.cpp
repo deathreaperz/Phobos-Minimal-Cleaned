@@ -21,9 +21,9 @@ bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 	const bool ignoreRange = pData->EMPulse_Linked || pData->EMPulse_TargetSelf;
 
 	auto IsEligible = [=](BuildingClass* pBld)
-	{
-		return this->IsLaunchSiteEligible(pData, Coords, pBld, ignoreRange);
-	};
+		{
+			return this->IsLaunchSiteEligible(pData, Coords, pBld, ignoreRange);
+		};
 
 	Helpers::Alex::for_each_if_n(pThis->Owner->Buildings.begin(), pThis->Owner->Buildings.end(),
 		Count, IsEligible, [=](BuildingClass* pBld)

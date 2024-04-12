@@ -81,37 +81,37 @@ void SW_Reveal::RevealMap(const CellStruct& Coords, float range, int height, Hou
 		return;
 
 	auto Apply = [=, &revealer](bool add)
-	{
-		if (range < 0.0)
 		{
-			MapClass::Instance->CellIteratorReset();
-			while (auto const pCell = MapClass::Instance->CellIteratorNext())
+			if (range < 0.0)
 			{
-				if (revealer.IsCellAvailable(pCell->MapCoords) && revealer.IsCellAllowed(pCell->MapCoords))
+				MapClass::Instance->CellIteratorReset();
+				while (auto const pCell = MapClass::Instance->CellIteratorNext())
 				{
-					revealer.Process1(pCell, false, add);
+					if (revealer.IsCellAvailable(pCell->MapCoords) && revealer.IsCellAllowed(pCell->MapCoords))
+					{
+						revealer.Process1(pCell, false, add);
+					}
 				}
 			}
-		}
-		else
-		{
-			auto const& base = revealer.Base();
+			else
+			{
+				auto const& base = revealer.Base();
 
-			Helpers::Alex::for_each_in_rect_or_range<CellClass>(base, range, height,
-				[=, &revealer](CellClass* pCell) -> bool
-				{
-					auto const& cell = pCell->MapCoords;
-					if (revealer.IsCellAvailable(cell) && revealer.IsCellAllowed(cell))
+				Helpers::Alex::for_each_in_rect_or_range<CellClass>(base, range, height,
+					[=, &revealer](CellClass* pCell) -> bool
 					{
-						if (height > 0 || cell.DistanceFrom(base) < range)
+						auto const& cell = pCell->MapCoords;
+						if (revealer.IsCellAvailable(cell) && revealer.IsCellAllowed(cell))
 						{
-							revealer.Process1(pCell, false, add);
+							if (height > 0 || cell.DistanceFrom(base) < range)
+							{
+								revealer.Process1(pCell, false, add);
+							}
 						}
-					}
-					return true;
-				});
-		}
-	};
+						return true;
+					});
+			}
+		};
 
 	Apply(false);
 	Apply(true);

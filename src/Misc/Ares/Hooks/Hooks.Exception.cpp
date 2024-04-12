@@ -1,4 +1,3 @@
-
 #include "Header.h"
 
 #include "Classes/Dialogs.h"
@@ -483,7 +482,6 @@ void WriteLog(const HouseClass* it, int idx, DWORD checksum, FILE* F)
 		}
 		fprintf(F, "\n");
 	}
-
 }
 
 // calls WriteLog and appends a newline
@@ -678,4 +676,3 @@ DEFINE_STRONG_HOOK(0x6516F0, Multiplay_LogToSync_MPDEBUG, 6)
 
 	return 0x651781;
 }
-

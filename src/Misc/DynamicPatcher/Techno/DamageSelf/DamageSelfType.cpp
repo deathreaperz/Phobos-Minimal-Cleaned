@@ -6,10 +6,10 @@
 
 void DamageSelfType::Read(INI_EX& parser, const char* pSection)
 {
-	detail::read(Enable , parser , pSection, "SelfDamaging");
+	detail::read(Enable, parser, pSection, "SelfDamaging");
 
-	if (Enable) {
-
+	if (Enable)
+	{
 		detail::read(DeactiveWhenCivilian, parser, pSection, "SelfDamaging.DeactiveWhenCivilian");
 		detail::read(Warhead, parser, pSection, "SelfDamaging.Warhead");
 		if (!Warhead)
@@ -24,11 +24,11 @@ void DamageSelfType::Read(INI_EX& parser, const char* pSection)
 	}
 }
 
-
 void DamageSelfState::OnPut(std::unique_ptr<DamageSelfState>& pState, const DamageSelfType& DData)
 {
-	if (DData.Enable) {
-		pState = std::make_unique<DamageSelfState>(DData.ROF,DData);
+	if (DData.Enable)
+	{
+		pState = std::make_unique<DamageSelfState>(DData.ROF, DData);
 	}
 }
 
@@ -55,7 +55,8 @@ void DamageSelfState::PlayWHAnim(ObjectClass* pObj, int realDamage, WarheadTypeC
 	CoordStruct location = pObj->GetCoords();
 	LandType landType = LandType::Clear;
 
-	if (auto pCell = MapClass::Instance->GetCellAt(location)) {
+	if (auto pCell = MapClass::Instance->GetCellAt(location))
+	{
 		landType = pCell->LandType;
 	}
 
@@ -92,7 +93,7 @@ void DamageSelfState::TechnoClass_Update_DamageSelf(TechnoClass* pTechno)
 					// Logger.Log($"{Game.CurrentFrame} {pTechno}[{pTechno.Ref.Type.Ref.Base.Base.ID}] 收到自伤 {realDamage} 而死，设置了平静的移除");
 					// 本次伤害足够打死目标，移除单位
 					Debug::Log(__FUNCTION__" Called \n");
-					TechnoExtData::HandleRemove(pTechno , nullptr, false , false);
+					TechnoExtData::HandleRemove(pTechno, nullptr, false, false);
 					return;
 				}
 			}
@@ -101,7 +102,7 @@ void DamageSelfState::TechnoClass_Update_DamageSelf(TechnoClass* pTechno)
 			{
 				// 维修或者显形直接炸
 				int nDamage = Data->Damage;
-				if(pTechno->Health > 0 && pTechno->IsAlive && !pTechno->IsSinking && !pTechno->IsCrashing)
+				if (pTechno->Health > 0 && pTechno->IsAlive && !pTechno->IsSinking && !pTechno->IsCrashing)
 					pTechno->ReceiveDamage(&nDamage, 0, Data->Warhead, nullptr, Data->IgnoreArmor, pTechno->GetTechnoType()->Crewed, pHouse);
 			}
 			else
@@ -117,7 +118,7 @@ void DamageSelfState::TechnoClass_Update_DamageSelf(TechnoClass* pTechno)
 				if (realDamage >= pTechno->Health)
 				{
 					// 本次伤害足够打死目标
-					if(pTechno->Health > 0 &&pTechno->IsAlive && !pTechno->IsSinking && !pTechno->IsCrashing)
+					if (pTechno->Health > 0 && pTechno->IsAlive && !pTechno->IsSinking && !pTechno->IsCrashing)
 						pTechno->ReceiveDamage(&realDamage, 0, Data->Warhead, nullptr, true, pTechno->GetTechnoType()->Crewed, pHouse);
 				}
 				else

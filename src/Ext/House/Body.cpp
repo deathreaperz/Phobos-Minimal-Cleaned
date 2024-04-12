@@ -46,17 +46,17 @@ void HouseExtData::InitializeConstant()
 
 void HouseExtData::InitializeTrackers(HouseClass* pHouse)
 {
-	auto pExt = HouseExtContainer::Instance.Find(pHouse);
-	pExt->BuiltAircraftTypes.PopulateCounts(AircraftTypeClass::Array->Count);
-	pExt->BuiltInfantryTypes.PopulateCounts(InfantryTypeClass::Array->Count);
-	pExt->BuiltUnitTypes.PopulateCounts(UnitTypeClass::Array->Count);
-	pExt->BuiltBuildingTypes.PopulateCounts(BuildingTypeClass::Array->Count);
-	pExt->KilledAircraftTypes.PopulateCounts(AircraftTypeClass::Array->Count);
-	pExt->KilledInfantryTypes.PopulateCounts(InfantryTypeClass::Array->Count);
-	pExt->KilledUnitTypes.PopulateCounts(UnitTypeClass::Array->Count);
-	pExt->KilledBuildingTypes.PopulateCounts(BuildingTypeClass::Array->Count);
-	pExt->CapturedBuildings.PopulateCounts(BuildingTypeClass::Array->Count);
-	pExt->CollectedCrates.PopulateCounts(CrateTypeClass::Array.size());
+	//auto pExt = HouseExtContainer::Instance.Find(pHouse);
+	//pExt->BuiltAircraftTypes.PopulateCounts(AircraftTypeClass::Array->Count);
+	//pExt->BuiltInfantryTypes.PopulateCounts(InfantryTypeClass::Array->Count);
+	//pExt->BuiltUnitTypes.PopulateCounts(UnitTypeClass::Array->Count);
+	//pExt->BuiltBuildingTypes.PopulateCounts(BuildingTypeClass::Array->Count);
+	//pExt->KilledAircraftTypes.PopulateCounts(AircraftTypeClass::Array->Count);
+	//pExt->KilledInfantryTypes.PopulateCounts(InfantryTypeClass::Array->Count);
+	//pExt->KilledUnitTypes.PopulateCounts(UnitTypeClass::Array->Count);
+	//pExt->KilledBuildingTypes.PopulateCounts(BuildingTypeClass::Array->Count);
+	//pExt->CapturedBuildings.PopulateCounts(BuildingTypeClass::Array->Count);
+	//pExt->CollectedCrates.PopulateCounts(CrateTypeClass::Array.size());
 }
 
 RequirementStatus HouseExtData::RequirementsMet(
@@ -287,7 +287,7 @@ CanBuildResult HouseExtData::PrereqValidate(
 
 	if (builtLimitResult == CanBuildResult::Buildable && pItem->WhatAmI() == BuildingTypeClass::AbsID && !BuildingTypeExtContainer::Instance.Find((BuildingTypeClass*)pItem)->PowersUp_Buildings.empty())
 	{
-		return static_cast<CanBuildResult>(BuildingTypeExtData::CheckBuildLimit(pHouse, (BuildingTypeClass*)pItem, includeQueued));
+		return static_cast<CanBuildResult>(HouseExtData::CheckBuildLimit(pHouse, (BuildingTypeClass*)pItem, includeQueued));
 	}
 
 	return builtLimitResult;
@@ -1213,19 +1213,29 @@ BuildLimitStatus HouseExtData::CheckBuildLimit(
 	bool const includeQueued)
 {
 	int BuildLimit = pItem->BuildLimit;
+	int remaining = BuildLimitRemaining(pHouse, pItem);
 
-	const auto& req = TechnoTypeExtContainer::Instance.Find(pItem)->BuildLimit_Requires;
-	if (!req.empty() && !Prereqs::HouseOwnsAll(pHouse, (int*)req.data(), req.size()))
+	if (BuildLimit > 0 && remaining <= 0)
 	{
-		BuildLimit = INT_MAX;
+		return !includeQueued || !pHouse->GetFactoryProducing(pItem)
+			? BuildLimitStatus::ReachedPermanently
+			: BuildLimitStatus::NotReached;
 	}
+
+	return (remaining > 0)
+		? BuildLimitStatus::NotReached
+		: BuildLimitStatus::ReachedTemporarily
+		;
+}
+
+signed int HouseExtData::BuildLimitRemaining(
+	HouseClass const* const pHouse, TechnoTypeClass* pItem)
+{
+	int BuildLimit = pItem->BuildLimit;
 
 	if (BuildLimit < 0)
 	{
-		return ((-(BuildLimit + pHouse->CountOwnedEver(pItem))) > 0)
-			? BuildLimitStatus::NotReached
-			: BuildLimitStatus::ReachedTemporarily
-			;
+		return -(BuildLimit + pHouse->CountOwnedEver(pItem));
 	}
 	else
 	{
@@ -1234,33 +1244,7 @@ BuildLimitStatus HouseExtData::CheckBuildLimit(
 		if (cur < 0)
 			Debug::FatalError("%s for [%s - %x] CountOwned return less than 0 when counted\n", pItem->ID, pHouse->Type->ID, pHouse);
 
-		int Remaining = BuildLimit - cur;
-
-		if (BuildLimit > 0 && Remaining <= 0)
-		{
-			return !includeQueued || !pHouse->GetFactoryProducing(pItem) ?
-				BuildLimitStatus::ReachedPermanently : BuildLimitStatus::NotReached;
-		}
-
-		return (Remaining > 0)
-			? BuildLimitStatus::NotReached
-			: BuildLimitStatus::ReachedTemporarily
-			;
-	}
-}
-
-signed int HouseExtData::BuildLimitRemaining(
-	HouseClass const* const pHouse, TechnoTypeClass* pItem)
-{
-	auto const BuildLimit = pItem->BuildLimit;
-
-	if (BuildLimit < 0)
-	{
-		return -(BuildLimit + pHouse->CountOwnedEver(pItem));
-	}
-	else
-	{
-		return BuildLimit - HouseExtData::CountOwnedNowTotal(pHouse, pItem);
+		return BuildLimit - cur;
 	}
 }
 
@@ -1504,16 +1488,16 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->KeepAliveBuildingCount)
 		.Process(this->TiberiumStorage)
 
-		.Process(this->BuiltAircraftTypes)
-		.Process(this->BuiltInfantryTypes)
-		.Process(this->BuiltUnitTypes)
-		.Process(this->BuiltBuildingTypes)
-		.Process(this->KilledAircraftTypes)
-		.Process(this->KilledInfantryTypes)
-		.Process(this->KilledUnitTypes)
-		.Process(this->KilledBuildingTypes)
-		.Process(this->CapturedBuildings)
-		.Process(this->CollectedCrates)
+		//.Process(this->BuiltAircraftTypes)
+		//.Process(this->BuiltInfantryTypes)
+		//.Process(this->BuiltUnitTypes)
+		//.Process(this->BuiltBuildingTypes)
+		//.Process(this->KilledAircraftTypes)
+		//.Process(this->KilledInfantryTypes)
+		//.Process(this->KilledUnitTypes)
+		//.Process(this->KilledBuildingTypes)
+		//.Process(this->CapturedBuildings)
+		//.Process(this->CollectedCrates)
 		;
 }
 

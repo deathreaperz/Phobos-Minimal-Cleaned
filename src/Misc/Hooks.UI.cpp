@@ -18,12 +18,15 @@
 
 DEFINE_HOOK(0x777C41, UI_ApplyAppIcon, 0x9)
 {
-	GET(HINSTANCE , instance , ESI);
+	GET(HINSTANCE, instance, ESI);
 
-	if (!Phobos::AppIconPath.empty()) {
+	if (!Phobos::AppIconPath.empty())
+	{
 		Debug::Log("Applying AppIcon from \"%s\"\n", Phobos::AppIconPath.c_str());
 		R->EAX(LoadImageA(instance, Phobos::AppIconPath.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
-	}else{
+	}
+	else
+	{
 		R->EAX(LoadIconA(instance, (LPCSTR)93));
 	}
 
@@ -33,13 +36,13 @@ DEFINE_HOOK(0x777C41, UI_ApplyAppIcon, 0x9)
 DEFINE_HOOK(0x640B8D, LoadingScreen_DisableEmptySpawnPositions, 0x6)
 {
 	GET(bool const, esi, ESI);
-	return(Phobos::UI::DisableEmptySpawnPositions || !esi) ? 0x640CE2: 0x640B93;
+	return(Phobos::UI::DisableEmptySpawnPositions || !esi) ? 0x640CE2 : 0x640B93;
 }
 
- //Allow size = 0 for map previews
+//Allow size = 0 for map previews
 DEFINE_HOOK(0x641B41, LoadingScreen_SkipPreview, 0x8)
 {
-	enum { Continue = 0x0 , return_true = 0x641D59 };
+	enum { Continue = 0x0, return_true = 0x641D59 };
 
 	GET(RectangleStruct*, pRect, EAX);
 	return (pRect->Width > 0 && pRect->Height > 0)
@@ -70,7 +73,7 @@ DEFINE_HOOK(0x641EE0, PreviewClass_ReadPreview, 0x6)
 	return 0x64203D;
 }
 
-DEFINE_HOOK(0x4A25E3, CreditsClass_GraphicLogic_Additionals , 0x8)
+DEFINE_HOOK(0x4A25E3, CreditsClass_GraphicLogic_Additionals, 0x8)
 {
 	const auto pPlayer = HouseClass::CurrentPlayer();
 	if (HouseExtData::IsObserverPlayer(pPlayer) || pPlayer->Defeated)
@@ -85,29 +88,29 @@ DEFINE_HOOK(0x4A25E3, CreditsClass_GraphicLogic_Additionals , 0x8)
 
 	const auto pSideExt = SideExtContainer::Instance.Find(pSide);
 
-	 if (Phobos::UI::ShowHarvesterCounter)
-	 {
-	 	const auto nActive = HouseExtData::ActiveHarvesterCount(pPlayer);
-	 	const auto nTotal = HouseExtData::TotalHarvesterCount(pPlayer);
-	 	const auto nPercentage = nTotal == 0 ? 1.0 : (double)nActive / (double)nTotal;
+	if (Phobos::UI::ShowHarvesterCounter)
+	{
+		const auto nActive = HouseExtData::ActiveHarvesterCount(pPlayer);
+		const auto nTotal = HouseExtData::TotalHarvesterCount(pPlayer);
+		const auto nPercentage = nTotal == 0 ? 1.0 : (double)nActive / (double)nTotal;
 
-	 	const ColorStruct clrToolTip = nPercentage > Phobos::UI::HarvesterCounter_ConditionYellow
-	 		? Drawing::TooltipColor() : nPercentage > Phobos::UI::HarvesterCounter_ConditionRed
-	 		? pSideExt->Sidebar_HarvesterCounter_Yellow : pSideExt->Sidebar_HarvesterCounter_Red;
+		const ColorStruct clrToolTip = nPercentage > Phobos::UI::HarvesterCounter_ConditionYellow
+			? Drawing::TooltipColor() : nPercentage > Phobos::UI::HarvesterCounter_ConditionRed
+			? pSideExt->Sidebar_HarvesterCounter_Yellow : pSideExt->Sidebar_HarvesterCounter_Red;
 
 		std::wstring Harv = std::format(L"{}{}/{}", Phobos::UI::HarvesterLabel, nActive, nTotal);
 
-	 	Point2D vPos {
-	 		DSurface::Sidebar->Get_Width() / 2 + 50 + pSideExt->Sidebar_HarvesterCounter_Offset.Get().X,
-	 		2 + pSideExt->Sidebar_HarvesterCounter_Offset.Get().Y
-	 	};
+		Point2D vPos {
+			DSurface::Sidebar->Get_Width() / 2 + 50 + pSideExt->Sidebar_HarvesterCounter_Offset.Get().X,
+			2 + pSideExt->Sidebar_HarvesterCounter_Offset.Get().Y
+		};
 
-	 	RectangleStruct vRect = DSurface::Sidebar->Get_Rect();
-	 	DSurface::Sidebar->DSurfaceDrawText(
+		RectangleStruct vRect = DSurface::Sidebar->Get_Rect();
+		DSurface::Sidebar->DSurfaceDrawText(
 		Harv.c_str()
 			, &vRect, &vPos, Drawing::ColorStructToWord(clrToolTip), 0,
-	 		TextPrintType::UseGradPal | TextPrintType::Center | TextPrintType::Metal12);
-	 }
+			TextPrintType::UseGradPal | TextPrintType::Center | TextPrintType::Metal12);
+	}
 
 	if (Phobos::UI::ShowPowerDelta)
 	{
@@ -132,7 +135,6 @@ DEFINE_HOOK(0x4A25E3, CreditsClass_GraphicLogic_Additionals , 0x8)
 				? pSideExt->Sidebar_PowerDelta_Yellow.Get() : pSideExt->Sidebar_PowerDelta_Red;
 
 			ShowPower = std::format(L"{}{}", Phobos::UI::PowerLabel, delta);
-
 		}
 
 		const auto TextFlags = static_cast<TextPrintType>(static_cast<int>(TextPrintType::UseGradPal | TextPrintType::Metal12)
@@ -176,7 +178,8 @@ DEFINE_HOOK(0x715A4D, Replace_XXICON_With_New, 0x7)         //TechnoTypeClass::R
 
 DEFINE_HOOK(0x6A8463, StripClass_OperatorLessThan_CameoPriority, 5)
 {
-	enum {
+	enum
+	{
 		rTrue = 0x6A8692,
 		rFalse = 0x6A86A0,
 		rTrue_ = 0x6A8477,
@@ -266,7 +269,8 @@ DEFINE_HOOK(0x683E41, ScenarioClass_Start_ShowBriefing, 0x6)
 }
 
 // Skip redrawing the screen if we're gonna show the briefing screen immediately after loading screen finishes on initially launched mission.
-DEFINE_HOOK(0x683F66, PauseGame_ShowBriefing, 0x5) {
+DEFINE_HOOK(0x683F66, PauseGame_ShowBriefing, 0x5)
+{
 	return BriefingTemp::ShowBriefing ? 0x683FAA : 0;
 }
 
@@ -280,14 +284,16 @@ DEFINE_HOOK(0x55D14F, AuxLoop_ShowBriefing, 0x5)
 }
 
 // Skip redrawing the screen if we're gonna show the briefing screen immediately after loading screen finishes on succeeding missions.
-DEFINE_HOOK(0x685D95, DoWin_ShowBriefing, 0x5) {
+DEFINE_HOOK(0x685D95, DoWin_ShowBriefing, 0x5)
+{
 	return BriefingTemp::ShowBriefing ? 0x685D9F : 0;
 }
 
 // Set briefing dialog resume button text.
 DEFINE_HOOK(0x65F764, BriefingDialog_ShowBriefing, 0x5)
 {
-	if (BriefingTemp::ShowBriefing) {
+	if (BriefingTemp::ShowBriefing)
+	{
 		SendMessageA(GetDlgItem(R->ESI<HWND>(), 1059), 1202, 0, reinterpret_cast<LPARAM>(Phobos::UI::ShowBriefingResumeButtonLabel));
 	}
 
@@ -297,7 +303,8 @@ DEFINE_HOOK(0x65F764, BriefingDialog_ShowBriefing, 0x5)
 // Set briefing dialog resume button status bar label.
 DEFINE_HOOK(0x604985, GetDialogUIStatusLabels_ShowBriefing, 0x5)
 {
-	if (BriefingTemp::ShowBriefing) {
+	if (BriefingTemp::ShowBriefing)
+	{
 		R->EAX(Phobos::UI::ShowBriefingResumeButtonStatusLabel);
 		return 0x60498A;
 	}

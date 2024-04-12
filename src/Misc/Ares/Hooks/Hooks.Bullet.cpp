@@ -19,14 +19,15 @@
 #include <Ext/VoxelAnim/Body.h>
 #include <Ext/BuildingType/Body.h>
 
-
 DEFINE_HOOK(0x5f4fe7, ObjectClass_Put, 8)
 {
 	GET(ObjectClass*, pThis, ESI);
 	GET(ObjectTypeClass*, pType, EBX);
 
-	if(pType) {
-		if(auto pBullet = specific_cast<BulletClass*>(pThis)) {
+	if (pType)
+	{
+		if (auto pBullet = specific_cast<BulletClass*>(pThis))
+		{
 			BulletExtContainer::Instance.Find(pBullet)->CreateAttachedSystem();
 		}
 
@@ -91,7 +92,8 @@ DEFINE_HOOK(0x46837F, BulletClass_DrawSHP_SetAnimPalette, 6)
 
 	const auto pTypeExt = BulletTypeExtContainer::Instance.Find(pType);
 
-	if (const auto pConvert = pTypeExt->GetBulletConvert()) {
+	if (const auto pConvert = pTypeExt->GetBulletConvert())
+	{
 		R->EBX(pConvert);
 		return 0x4683D7;
 	}
@@ -113,25 +115,28 @@ DEFINE_HOOK(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
 	bool createdAnim = false;
 
 	int creationInterval = pWarheadExt->Splashed ?
-			pWarheadExt->SplashList_CreationInterval : pWarheadExt->AnimList_CreationInterval;
+		pWarheadExt->SplashList_CreationInterval : pWarheadExt->AnimList_CreationInterval;
 
 	int* remainingInterval = &pWarheadExt->RemainingAnimCreationInterval;
 	if (creationInterval > 0 && pThis->Owner)
-			remainingInterval = &TechnoExtContainer::Instance.Find(pThis->Owner)->WHAnimRemainingCreationInterval;
+		remainingInterval = &TechnoExtContainer::Instance.Find(pThis->Owner)->WHAnimRemainingCreationInterval;
 
 	if (creationInterval < 1 || *remainingInterval <= 0)
 	{
-		HouseClass* pInvoker = nullptr ;
+		HouseClass* pInvoker = nullptr;
 		HouseClass* pVictim = nullptr;
 
-		if (const TechnoClass* Target = generic_cast<TechnoClass*>(pThis->Target)) {
+		if (const TechnoClass* Target = generic_cast<TechnoClass*>(pThis->Target))
+		{
 			pVictim = Target->Owner;
 		}
 
-		if (const auto pTech = pThis->Owner) {
+		if (const auto pTech = pThis->Owner)
+		{
 			pInvoker = pThis->Owner->GetOwningHouse();
-
-		} else {
+		}
+		else
+		{
 			if (auto const pBulletExt = BulletExtContainer::Instance.Find(pThis))
 				pInvoker = pBulletExt->Owner;
 		}
@@ -143,31 +148,33 @@ DEFINE_HOOK(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
 		else if (pWarheadExt->AnimList_CreateAll && !pWarheadExt->Splashed)
 			types = pWarheadExt->AttachedToObject->AnimList;
 
-			for (auto pType : types)
+		for (auto pType : types)
+		{
+			if (!pType)
+				continue;
+
 			{
-				if (!pType)
-					continue;
+				auto const pAnim = GameCreate<AnimClass>(pType, XYZ, 0, 1, (AnimFlag)0x2600, -15, false);
+				createdAnim = true;
 
-					{
-						auto const pAnim = GameCreate<AnimClass>(pType, XYZ, 0, 1, (AnimFlag)0x2600, -15, false);
-						createdAnim = true;
+				if (const auto pTech = pThis->Owner)
+				{
+					if (auto const pAnimExt = AnimExtContainer::Instance.Find(pAnim))
+						pAnimExt->Invoker = pTech;
+				}
 
-						if (const auto pTech = pThis->Owner) {
-							if (auto const pAnimExt = AnimExtContainer::Instance.Find(pAnim))
-								pAnimExt->Invoker = pTech;
-						}
-
-						if (pAnim->Type->MakeInfantry > -1)
-						{
-							AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim);
-						}
-						else
-						{
-							AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim, pInvoker);
-						}
-					}
+				if (pAnim->Type->MakeInfantry > -1)
+				{
+					AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim);
+				}
+				else
+				{
+					AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim, pInvoker);
+				}
 			}
-	}else
+		}
+	}
+	else
 	{
 		(*remainingInterval)--;
 	}

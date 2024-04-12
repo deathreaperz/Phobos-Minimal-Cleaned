@@ -21,7 +21,6 @@
 #include <Misc/DynamicPatcher/Techno/GiftBox/GiftBoxFunctional.h>
 #include <Misc/DynamicPatcher/Techno/FighterGuardArea/FighterAreaGuardFunctional.h>
 
-
 #include <New/Entity/FlyingStrings.h>
 #include <New/Entity/VerticalLaserClass.h>
 #include <New/Entity/HomingMissileTargetTracker.h>

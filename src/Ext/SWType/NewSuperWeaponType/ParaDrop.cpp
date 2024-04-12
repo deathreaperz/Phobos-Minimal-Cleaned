@@ -372,8 +372,8 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 
 bool SW_ParaDrop::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const
 {
-    if (!IsLaunchsiteAlive(pBuilding))
-        return false;
+	if (!IsLaunchsiteAlive(pBuilding))
+		return false;
 
-    return !pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type) || IsSWTypeAttachedToThis(pData, pBuilding);
+	return !pData->SW_Lauchsites.empty() && pData->SW_Lauchsites.Contains(pBuilding->Type) || IsSWTypeAttachedToThis(pData, pBuilding);
 }

@@ -10,7 +10,6 @@
 #include <TerrainTypeClass.h>
 #include <SmudgeTypeClass.h>
 
-
 DEFINE_HOOK(0x7274AF, TriggerTypeClass_LoadFromINI_Read_Events, 5)
 {
 	R->Stack(0x0, Phobos::readBuffer);
@@ -146,7 +145,7 @@ DEFINE_HOOK(0x7125DF, TechnoTypeClass_LoadFromINI_ListLength, 7)
 	detail::ParseVector<ParticleSystemTypeClass*>(pThis->DamageParticleSystems, exINI, pSection, GameStrings::DamageParticleSystems, "Expect valid ParticleSystemType");
 	detail::ParseVector<ParticleSystemTypeClass*>(pThis->DestroyParticleSystems, exINI, pSection, GameStrings::DestroyParticleSystems, "Expect valid ParticleSystemType");
 
-	detail::ParseVector<BuildingTypeClass*>(pThis->Dock, exINI, pSection, GameStrings::Dock , "Expect valid BuildingType");
+	detail::ParseVector<BuildingTypeClass*>(pThis->Dock, exINI, pSection, GameStrings::Dock, "Expect valid BuildingType");
 
 	detail::ParseVector(pThis->DebrisMaximums, exINI, pSection, GameStrings::DebrisMaximums, "Expect valid number");
 	detail::ParseVector<VoxelAnimTypeClass*>(pThis->DebrisTypes, exINI, pSection, GameStrings::DebrisTypes, "Expect valid VoxelAnimType");
@@ -296,9 +295,9 @@ DEFINE_HOOK(0x511D16, HouseTypeClass_LoadFromINI_Buffer_CountryVeteran, 9)
 	GET(CCINIClass*, pINI, ESI);
 
 	INI_EX exINI(pINI);
-	detail::ParseVector<InfantryTypeClass*,true>(pHouseType->VeteranInfantry, exINI, pHouseType->ID, GameStrings::VeteranInfantry, "Expect valid InfantryType");
-	detail::ParseVector<UnitTypeClass*,true>(pHouseType->VeteranUnits, exINI, pHouseType->ID, GameStrings::VeteranUnits, "Expect valid UnitType");
-	detail::ParseVector<AircraftTypeClass*,true>(pHouseType->VeteranAircraft, exINI, pHouseType->ID, GameStrings::VeteranAircraft, "Expect valid AircraftType");
+	detail::ParseVector<InfantryTypeClass*, true>(pHouseType->VeteranInfantry, exINI, pHouseType->ID, GameStrings::VeteranInfantry, "Expect valid InfantryType");
+	detail::ParseVector<UnitTypeClass*, true>(pHouseType->VeteranUnits, exINI, pHouseType->ID, GameStrings::VeteranUnits, "Expect valid UnitType");
+	detail::ParseVector<AircraftTypeClass*, true>(pHouseType->VeteranAircraft, exINI, pHouseType->ID, GameStrings::VeteranAircraft, "Expect valid AircraftType");
 
 	return 0x51208C;
 }

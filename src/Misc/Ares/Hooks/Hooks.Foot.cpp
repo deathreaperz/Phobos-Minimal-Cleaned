@@ -111,7 +111,7 @@ DEFINE_HOOK(0x4D9A83, FootClass_PointerGotInvalid_OccupierVehicleThief, 0x6)
 
 	if (pType->VehicleThief
 		&& pInfantry->Destination
-		&& (pInfantry->Destination->AbstractFlags & AbstractFlags::Foot) )
+		&& (pInfantry->Destination->AbstractFlags & AbstractFlags::Foot))
 	{
 		return 0x4D9AB9;
 	}
@@ -124,7 +124,8 @@ DEFINE_HOOK(0x4DB87E, FootClass_SetLocation_Parasite, 0x6)
 {
 	GET(FootClass* const, F, ESI);
 
-	if (F->ParasiteEatingMe) {
+	if (F->ParasiteEatingMe)
+	{
 		F->ParasiteEatingMe->SetLocation(F->Location);
 	}
 
@@ -136,12 +137,13 @@ DEFINE_HOOK(0x4D8D95, FootClass_UpdatePosition_HunterSeeker, 0xA)
 	GET(FootClass* const, pThis, ESI);
 
 	// ensure the target won't get away
-	if (pThis->GetTechnoType()->HunterSeeker) {
-		if (auto const pTarget = abstract_cast<TechnoClass*>(pThis->Target)) {
-
+	if (pThis->GetTechnoType()->HunterSeeker)
+	{
+		if (auto const pTarget = abstract_cast<TechnoClass*>(pThis->Target))
+		{
 			const auto pWpS = pThis->GetWeapon(0);
 
-			if(pWpS && pWpS->WeaponType)
+			if (pWpS && pWpS->WeaponType)
 			{
 				auto damage = pWpS->WeaponType->Damage;
 				pTarget->ReceiveDamage(&damage, 0, pWpS->WeaponType->Warhead, pThis, true, true, pThis->Owner);
@@ -171,18 +173,22 @@ DEFINE_HOOK(0x4DAA68, FootClass_Update_MoveSound, 0x6)
 
 	const auto pType = pThis->GetTechnoType();
 
-	if(pType->IdleRate && TechnoTypeExtContainer::Instance.Find(pType)->NoIdleSound) {
-		if(!pThis->Locomotor->Is_Moving_Now()) {
+	if (pType->IdleRate && TechnoTypeExtContainer::Instance.Find(pType)->NoIdleSound)
+	{
+		if (!pThis->Locomotor->Is_Moving_Now())
+		{
 			pThis->__MovingSoundDelay = 0;
 			return 0x4DAB3C;
 		}
 	}
 
-	if (pThis->__PlayingMovingSound) {
+	if (pThis->__PlayingMovingSound)
+	{
 		return 0x4DAAEE;
 	}
 
-	if (pThis->LocomotorSource) {
+	if (pThis->LocomotorSource)
+	{
 		pThis->Audio7.AudioEventHandleEndLooping();
 		return 0x4DAAEE;
 	}
@@ -195,7 +201,8 @@ DEFINE_HOOK(0x4D7524, FootClass_ActionOnObject_Allow, 9)
 	//overwrote the ja, need to replicate it
 	GET(Action, CursorIndex, EBP);
 
-	if (CursorIndex == Action::None || CursorIndex > Action::Airstrike) {
+	if (CursorIndex == Action::None || CursorIndex > Action::Airstrike)
+	{
 		return CursorIndex == Action(127) || CursorIndex == Action(126) ? 0x4D769F : 0x4D7CC0;
 	}
 
@@ -282,7 +289,7 @@ DEFINE_HOOK(0x4DA8B2, FootClass_Update_AnimRate, 6)
 	return Undecided;
 }
 
- //rotation when crashing made optional
+//rotation when crashing made optional
 DEFINE_HOOK(0x4DECAE, FootClass_Crash_Spin, 5)
 {
 	GET(FootClass*, pThis, ESI);
@@ -293,7 +300,8 @@ DEFINE_HOOK(0x518744, InfantryClass_ReceiveDamage_ElectricDeath, 6)
 {
 	AnimTypeClass* El = RulesExtData::Instance()->ElectricDeath;
 
-	if (!El) {
+	if (!El)
+	{
 		El = AnimTypeClass::Array->Items[0];
 	}
 
@@ -343,7 +351,7 @@ DEFINE_HOOK(0x4D85E4, FootClass_UpdatePosition_TiberiumDamage, 9)
 
 		if (pThis->ReceiveDamage(&damage, 0, pWarhead, nullptr, false, false, nullptr) == DamageState::NowDead)
 		{
-			TechnoExt_ExtData::SpawnVisceroid(crd, RulesClass::Instance->SmallVisceroid, transmogrify, ScenarioClass::Instance->TiberiumDeathToVisceroid , HouseExtData::FindNeutral());
+			TechnoExt_ExtData::SpawnVisceroid(crd, RulesClass::Instance->SmallVisceroid, transmogrify, ScenarioClass::Instance->TiberiumDeathToVisceroid, HouseExtData::FindNeutral());
 			return 0x4D8F29;
 		}
 	}

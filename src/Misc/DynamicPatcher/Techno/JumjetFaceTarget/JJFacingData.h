@@ -29,5 +29,4 @@ public:
 
 		//Stm.RegisterChange(this);
 	}
-
 };

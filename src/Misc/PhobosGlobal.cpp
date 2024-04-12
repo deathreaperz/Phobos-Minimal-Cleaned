@@ -20,13 +20,11 @@ void PhobosGlobal::Clear()
 
 void PhobosGlobal::PointerGotInvalid(AbstractClass* ptr, bool removed)
 {
-
 }
 
 bool PhobosGlobal::SaveGlobals(PhobosStreamWriter& stm) { return PhobosGlobal::Instance()->Serialize(stm); }
 bool PhobosGlobal::LoadGlobals(PhobosStreamReader& stm)
 {
-
 	if (PhobosGlobal::Instance()->Serialize(stm))
 	{
 #ifndef ENABLE_FOUNDATIONHOOK

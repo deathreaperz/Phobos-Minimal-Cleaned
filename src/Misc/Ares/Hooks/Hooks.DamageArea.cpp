@@ -41,7 +41,7 @@ DEFINE_HOOK(0x4895B8, DamageArea_CellSpread1, 0x6)
 	if (spread < 0)
 		return 0x4899DA;
 
-	//to avoid unnessesary allocation check 
+	//to avoid unnessesary allocation check
 	//simplify the assembly result
 	pIter = DLLCreate<CellSpreadEnumerator>(spread);
 
@@ -145,70 +145,78 @@ DEFINE_HOOK(0x4893BA, DamageArea_DamageAir, 0x9)
 #include <Constructable.h>
 
 static DynamicVectorClass<ObjectClass*, DllAllocator<ObjectClass*>> Targets {};
-static DynamicVectorClass<DamageGroup* , DllAllocator<DamageGroup*>> Handled {};
+static DynamicVectorClass<DamageGroup*, DllAllocator<DamageGroup*>> Handled {};
 
 DEFINE_HOOK(0x4899DA, DamageArea_Damage_MaxAffect, 7)
 {
 	REF_STACK(DamageGroup**, items, 0x3C);
 	REF_STACK(int, count, 0x48);
- 	//REF_STACK(DynamicVectorClass<DamageGroup*>, groups, 0xE0 - 0xA8);
- 	GET_BASE(WarheadTypeClass*, pWarhead, 0xC);
+	//REF_STACK(DynamicVectorClass<DamageGroup*>, groups, 0xE0 - 0xA8);
+	GET_BASE(WarheadTypeClass*, pWarhead, 0xC);
 
- 	const int MaxAffect = WarheadTypeExtContainer::Instance.Find(pWarhead)->CellSpread_MaxAffect;
+	const int MaxAffect = WarheadTypeExtContainer::Instance.Find(pWarhead)->CellSpread_MaxAffect;
 
- 	if (MaxAffect < 0) {
- 		return 0;
- 	}
+	if (MaxAffect < 0)
+	{
+		return 0;
+	}
 
- 	Targets.Reset();
+	Targets.Reset();
 	Handled.Reset();
 
 	const auto g_end = items + count;
 
-	for (auto g_begin = items; g_begin != g_end; ++g_begin) {
-
+	for (auto g_begin = items; g_begin != g_end; ++g_begin)
+	{
 		DamageGroup* group = *g_begin;
- 		// group could have been cleared by previous iteration.
- 		// only handle if has not been handled already.
- 		if (group && Targets.AddUnique(group->Target)) {
- 			Handled.Reset();
+		// group could have been cleared by previous iteration.
+		// only handle if has not been handled already.
+		if (group && Targets.AddUnique(group->Target))
+		{
+			Handled.Reset();
 
- 			// collect all slots containing damage groups for this target
- 			std::for_each(g_begin, g_end, [group](DamageGroup* item) {
- 				if (item && item->Target == group->Target) {
- 					Handled.AddItem(item);
- 				}
- 			});
+			// collect all slots containing damage groups for this target
+			std::for_each(g_begin, g_end, [group](DamageGroup* item)
+ {
+	 if (item && item->Target == group->Target)
+	 {
+		 Handled.AddItem(item);
+	 }
+			});
 
- 			// if more than allowed, sort them and remove the ones further away
- 			if (Handled.Count > MaxAffect) {
- 				Helpers::Alex::selectionsort(
- 					Handled.begin(), Handled.begin() + MaxAffect, Handled.end(),
- 					[](DamageGroup* a, DamageGroup* b) {
- 						return a->Distance < b->Distance;
- 					});
+			// if more than allowed, sort them and remove the ones further away
+			if (Handled.Count > MaxAffect)
+			{
+				Helpers::Alex::selectionsort(
+					Handled.begin(), Handled.begin() + MaxAffect, Handled.end(),
+					[](DamageGroup* a, DamageGroup* b)
+ {
+	 return a->Distance < b->Distance;
+					});
 
-				std::for_each(Handled.begin() + MaxAffect, Handled.end(), [](DamageGroup* ppItem) {
-					ppItem->Target = nullptr;
+				std::for_each(Handled.begin() + MaxAffect, Handled.end(), [](DamageGroup* ppItem)
+ {
+	 ppItem->Target = nullptr;
 				});
- 			}
- 		}
- 	}
-
- 	// move all the empty ones to the back, then remove them
- 	auto const end = std::remove_if(items, &items[count], [](DamageGroup* pGroup) {
-
-		if(!pGroup->Target) {
-			GameDelete<false, false>(pGroup);
-			return true;
+			}
 		}
+	}
 
- 		return false;
- 	});
+	// move all the empty ones to the back, then remove them
+	auto const end = std::remove_if(items, &items[count], [](DamageGroup* pGroup)
+ {
+	 if (!pGroup->Target)
+	 {
+		 GameDelete<false, false>(pGroup);
+		 return true;
+	 }
 
- 	count = int(std::distance(items , end));
+	 return false;
+	});
 
- 	return 0;
+	count = int(std::distance(items, end));
+
+	return 0;
 }
 
 DEFINE_HOOK(0x489562, DamageArea_DestroyCliff, 9)

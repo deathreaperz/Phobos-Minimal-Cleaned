@@ -8,24 +8,27 @@ public:
 	DirStruct ToDir { };
 	int Facing { 8 };
 
-	void TurnTo(DirStruct toDir, int facing) {
+	void TurnTo(DirStruct toDir, int facing)
+	{
 		NeedToTurn = true;
 		ToDir = toDir;
 		Facing = facing;
 	}
 
-	void Turning() {
+	void Turning()
+	{
 		NeedToTurn = false;
 	}
 
-	void Cancel() {
+	void Cancel()
+	{
 		NeedToTurn = false;
 	}
 
 	template <typename T>
 	void Serialize(T& Stm)
 	{
-		 Stm
+		Stm
 			.Process(NeedToTurn)
 			.Process(ToDir)
 			.Process(Facing)

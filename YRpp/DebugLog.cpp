@@ -2,7 +2,7 @@
 
 #include <Utilities/Debug.h>
 
-void GameDebugLog::HookLogEnd(DWORD addr , const char* pFormat, size_t size , long long time)
+void GameDebugLog::HookLogEnd(DWORD addr, const char* pFormat, size_t size, long long time)
 {
 #ifndef aaa
 	if (!Debug::LogFileActive())
@@ -10,8 +10,9 @@ void GameDebugLog::HookLogEnd(DWORD addr , const char* pFormat, size_t size , lo
 #endif
 	const int time_i = (int)time;
 #ifndef aaa
-	if(time_i > 0){
-		fprintf(Debug::LogFile, "[%x] %s [%d] , Spend %d s\n", addr , pFormat , size , time_i);
+	if (time_i > 0)
+	{
+		fprintf(Debug::LogFile, "[%x] %s [%d] , Spend %d s\n", addr, pFormat, size, time_i);
 		Debug::Flush();
 	}
 #else

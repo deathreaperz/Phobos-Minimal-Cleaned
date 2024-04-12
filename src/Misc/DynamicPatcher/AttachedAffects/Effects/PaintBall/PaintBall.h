@@ -27,7 +27,8 @@ public:
 		, IgnoreFog { false }
 		, IgnoreShroud { false }
 		, Override { true }
-	{}
+	{
+	}
 
 	virtual ~PaintballType() = default;
 
@@ -37,7 +38,8 @@ public:
 		, IgnoreFog { nData.IgnoreFog }
 		, IgnoreShroud { nData.IgnoreShroud }
 		, Override { nData.Override }
-	{}
+	{
+	}
 
 	PaintballType(PaintballType& nData) : Color { nData.Color }
 		, BrightMultiplier { nData.BrightMultiplier }
@@ -45,7 +47,8 @@ public:
 		, IgnoreFog { nData.IgnoreFog }
 		, IgnoreShroud { nData.IgnoreShroud }
 		, Override { nData.Override }
-	{}
+	{
+	}
 
 	void Read(INI_EX& parser, const char* pSection);
 
@@ -83,23 +86,25 @@ public:
 
 	virtual void Disable(WarheadTypeClass* pAffector)
 	{
-		if (Token == pAffector) {
+		if (Token == pAffector)
+		{
 			timer.Stop();
 		}
 	}
 
-	virtual void Disable(bool bForce) {
-		if ((!Token) || bForce) {
+	virtual void Disable(bool bForce)
+	{
+		if ((!Token) || bForce)
+		{
 			timer.Stop();
 			Token = nullptr;
 			Data.clear();
 		}
 	}
 
-
 	virtual bool IsActive() { return timer.InProgress(); }
 
-	void Enable(int nDuration , PaintballType data, WarheadTypeClass* pAffector)
+	void Enable(int nDuration, PaintballType data, WarheadTypeClass* pAffector)
 	{
 		Enable(nDuration, pAffector, data);
 	}
@@ -125,7 +130,7 @@ public:
 	uintptr_t GetBright(uintptr_t bright)
 	{
 		const double b = bright * Data.get().BrightMultiplier;
-		return static_cast<uintptr_t>(std::clamp(static_cast<int>(b),0,2000));
+		return static_cast<uintptr_t>(std::clamp(static_cast<int>(b), 0, 2000));
 	}
 
 	void Update(TechnoClass* pThis);
@@ -133,7 +138,8 @@ public:
 	PaintBall() : Token { }
 		, Data { }
 		, timer { }
-	{ }
+	{
+	}
 
 	void DrawSHP_Paintball(TechnoClass* pTech, REGISTERS* R);
 	void DrawSHP_Paintball_BuildAnim(TechnoClass* pTech, REGISTERS* R);
@@ -146,7 +152,7 @@ public:
 	{ return const_cast<PaintBall*>(this)->Serialize(Stm); }
 
 	WarheadTypeClass* Token;
-	OptionalStruct<PaintballType,true> Data;
+	OptionalStruct<PaintballType, true> Data;
 
 private:
 	CDTimerClass timer;
@@ -157,19 +163,19 @@ public:
 	{
 		//Debug::Log("Processing Element From PaintBall ! \n");
 		return Stm
-			.Process(Token,true)
+			.Process(Token, true)
 			.Process(Data, true)
-			.Process(timer,false)
+			.Process(timer, false)
 			.Success()
 			;
 	}
 };
 
-
 template <>
 struct Savegame::ObjectFactory<PaintBall>
 {
-	std::unique_ptr<PaintBall> operator() (PhobosStreamReader& Stm) const {
+	std::unique_ptr<PaintBall> operator() (PhobosStreamReader& Stm) const
+	{
 		return std::make_unique<PaintBall>();
 	}
 };

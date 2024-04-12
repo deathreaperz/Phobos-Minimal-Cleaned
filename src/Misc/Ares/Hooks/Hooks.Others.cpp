@@ -1,4 +1,3 @@
-
 #include <AbstractClass.h>
 #include <TechnoClass.h>
 #include <TeamClass.h>
@@ -54,7 +53,6 @@
 
 #include <strsafe.h>
 
-
 #include "AresChecksummer.h"
 #include "Classes/Dialogs.h"
 
@@ -62,14 +60,13 @@
 
 #include <Ares_TechnoExt.h>
 
-
 #include <Misc/Spawner/Main.h>
 
 #include <Misc/Spawner/Main.h>
 
 DEFINE_HOOK(0x52C5E0, Ares_NOLOGO, 0x7)
 {
-	if(SpawnerMain::Configs::Enabled)
+	if (SpawnerMain::Configs::Enabled)
 		return 0x52C5F8; //skip showing looading screen
 
 	return Phobos::Otamaa::NoLogo ? 0x52C5F3 : 0x0;
@@ -106,6 +103,18 @@ DEFINE_HOOK(0x4CA0E3, FactoryClass_AbandonProduction_Invalidate, 0x6)
 
 DEFINE_JUMP(LJMP, 0x565215, 0x56522D);
 
+int cell_Distance_Squared(CoordStruct& our_coord, CoordStruct& their_coord)
+{
+	int our_cell_x = our_coord.X / Unsorted::LeptonsPerCell;
+	int their_cell_x = their_coord.X / Unsorted::LeptonsPerCell;
+	int our_cell_y = our_coord.Y / Unsorted::LeptonsPerCell;
+	int their_cell_y = their_coord.Y / Unsorted::LeptonsPerCell;
+
+	int x_distance = our_cell_x - their_cell_x;
+	int y_distance = our_cell_y - their_cell_y;
+	return x_distance * x_distance + y_distance * y_distance;
+}
+
 DEFINE_HOOK(0x5F6500, AbstractClass_Distance2DSquared_1, 8)
 {
 	GET(AbstractClass*, pThis, ECX);
@@ -114,9 +123,11 @@ DEFINE_HOOK(0x5F6500, AbstractClass_Distance2DSquared_1, 8)
 	int nResult = 0;
 	if (pThat)
 	{
-		const auto nThisCoord = pThis->GetCoords();
-		const auto nThatCoord = pThat->GetCoords();
-		nResult = (int)nThisCoord.DistanceFromXY(nThatCoord);
+		auto nThisCoord = pThis->GetCoords();
+		auto nThatCoord = pThat->GetCoords();
+		nResult = //(int)nThisCoord.DistanceFromXY(nThatCoord)
+			cell_Distance_Squared(nThisCoord, nThatCoord);
+		;
 	}
 
 	R->EAX(nResult);
@@ -126,9 +137,12 @@ DEFINE_HOOK(0x5F6500, AbstractClass_Distance2DSquared_1, 8)
 DEFINE_HOOK(0x5F6560, AbstractClass_Distance2DSquared_2, 5)
 {
 	GET(AbstractClass*, pThis, ECX);
-	auto const nThisCoord = pThis->GetCoords();
+	auto nThisCoord = pThis->GetCoords();
 	GET_STACK(CoordStruct*, pThatCoord, 0x4);
-	R->EAX((int)nThisCoord.DistanceFromXY(*pThatCoord));
+	R->EAX(
+		//(int)nThisCoord.DistanceFromXY(*pThatCoord)
+		cell_Distance_Squared(nThisCoord, *pThatCoord)
+	);
 	return 0x5F659B;
 }
 
@@ -208,7 +222,7 @@ DEFINE_HOOK(0x5F77F0, ObjectTypeClass_UnloadPipsSHP, 0x5)
 	{
 		if (TechnoTypeClass::ShapesIsAllocated[i] && FileSystem::ShapesAllocated[i])
 		{
-			GameDelete<true, false>(std::exchange(FileSystem::ShapesAllocated[i] , nullptr));
+			GameDelete<true, false>(std::exchange(FileSystem::ShapesAllocated[i], nullptr));
 			TechnoTypeClass::ShapesIsAllocated[i] = false;
 		}
 	}
@@ -497,11 +511,15 @@ DEFINE_HOOK(0x47243F, CaptureManagerClass_DecideUnitFate_BuildingFate, 0x6)
 	GET(TechnoClass*, pVictim, EBX);
 
 	//Neutral techno should not do anything after get freed/captured
-	if(pVictim->Owner->IsNeutral()) {
+	if (pVictim->Owner->IsNeutral())
+	{
 		pVictim->Override_Mission(Mission::Sleep);
 		return 0x472604;
-	} else {
-		if (pVictim->WhatAmI() == BuildingClass::AbsID) {
+	}
+	else
+	{
+		if (pVictim->WhatAmI() == BuildingClass::AbsID)
+		{
 			// 1. add to team and other fates don't really make sense for buildings
 			// 2. BuildingClass::Mission_Hunt() implementation is to do nothing!
 			pVictim->QueueMission(Mission::Guard, 0);
@@ -795,15 +813,18 @@ DEFINE_HOOK(0x4B93BD, ScenarioClass_GenerateDropshipLoadout_FreeAnims, 7)
 {
 	GET_STACK(SHPStruct*, pBackground, 0xAC);
 
-	if (pBackground) {
-		GameDelete<true, false>(std::exchange(pBackground , nullptr));
+	if (pBackground)
+	{
+		GameDelete<true, false>(std::exchange(pBackground, nullptr));
 	}
 
 	LEA_STACK(SHPStruct**, pSwipeAnims, 0x290);
 
-	for (auto i = 0; i < 4; ++i) {
-		if (auto pAnim = pSwipeAnims[i]) {
-			GameDelete<true, false>(std::exchange(pAnim , nullptr));
+	for (auto i = 0; i < 4; ++i)
+	{
+		if (auto pAnim = pSwipeAnims[i])
+		{
+			GameDelete<true, false>(std::exchange(pAnim, nullptr));
 		}
 	}
 
@@ -1125,7 +1146,8 @@ DEFINE_JUMP(LJMP, 0x52BB64, 0x52BB95) //Expand_MIX_Deorg
 
 DEFINE_HOOK(0x5301AC, InitBootstrapMixfiles_CustomMixes_Preload, 0x5)
 {
-	for(auto& preloadMix : SpawnerMain::GetGameConfigs()->PreloadMixes) {
+	for (auto& preloadMix : SpawnerMain::GetGameConfigs()->PreloadMixes)
+	{
 		SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(preloadMix.c_str()));
 		Debug::Log("Loading Preloaded Mix Name : %s \n", preloadMix.c_str());
 	}
@@ -1135,7 +1157,8 @@ DEFINE_HOOK(0x5301AC, InitBootstrapMixfiles_CustomMixes_Preload, 0x5)
 
 DEFINE_HOOK(0x53044A, InitBootstrapMixfiles_CustomMixes_Postload, 0x10)
 {
-	for(auto& postloadMix : SpawnerMain::GetGameConfigs()->PostloadMixes) {
+	for (auto& postloadMix : SpawnerMain::GetGameConfigs()->PostloadMixes)
+	{
 		SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(postloadMix.c_str()));
 		Debug::Log("Loading Postload Mix Name : %s \n", postloadMix.c_str());
 	}
@@ -1226,17 +1249,17 @@ DEFINE_HOOK(0x6d4b25, TacticalClass_Draw_TheDarkSideOfTheMoon, 6)
 	int offset = AdvCommBarHeight;
 
 	auto DrawText_Helper = [](const wchar_t* string, int& offset, int color)
-	{
-		auto wanted = Drawing::GetTextDimensions(string);
+		{
+			auto wanted = Drawing::GetTextDimensions(string);
 
-		auto h = DSurface::Composite->Get_Height();
-		RectangleStruct rect = { 0, h - wanted.Height - offset, wanted.Width, wanted.Height };
+			auto h = DSurface::Composite->Get_Height();
+			RectangleStruct rect = { 0, h - wanted.Height - offset, wanted.Width, wanted.Height };
 
-		DSurface::Composite->Fill_Rect(rect, COLOR_BLACK);
-		DSurface::Composite->DrawText_Old(string, 0, rect.Y, color);
+			DSurface::Composite->Fill_Rect(rect, COLOR_BLACK);
+			DSurface::Composite->DrawText_Old(string, 0, rect.Y, color);
 
 			offset += wanted.Height;
-	};
+		};
 
 	if (!AresGlobalData::ModNote.Label)
 	{

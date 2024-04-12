@@ -88,7 +88,6 @@ public:
 protected:
 	GenericNodeOfINIEntry FirstNode;
 	GenericNodeOfINIEntry LastNode;
-
 };
 
 class INIEntry;
@@ -361,7 +360,6 @@ public:
 protected:
 	GenericNodeOfINIEntryPtr FirstNode;
 	GenericNodeOfINIEntryPtr LastNode;
-
 };
 
 class ListOfINIEntryPtr : public GenericListOfINIEntryPtr

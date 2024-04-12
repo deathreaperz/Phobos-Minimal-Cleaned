@@ -8,15 +8,18 @@
 #include <Misc/DynamicPatcher/Helpers/Helpers.h>
 #include <Misc/DynamicPatcher/CustomWeapon/CustomWeapon.h>
 
-static Iterator<WeaponTypeClass*> GetWeaponAndFLH(TechnoClass* pThis, const ExtraFireData& nExtraFireData, int nWeaponIdx , CoordStruct& selectedFLh)
+static Iterator<WeaponTypeClass*> GetWeaponAndFLH(TechnoClass* pThis, const ExtraFireData& nExtraFireData, int nWeaponIdx, CoordStruct& selectedFLh)
 {
 	auto const pType = pThis->GetTechnoType();
 
 	ExtraFireData::FLHData* ptrFlhData = nullptr;
 
-	if (auto pTransporter = pThis->Transporter) {
+	if (auto pTransporter = pThis->Transporter)
+	{
 		ptrFlhData = TechnoTypeExtContainer::Instance.Find(pTransporter->GetTechnoType())->MyExtraFireData.AttachedFLH.AsPointer();
-	} else {
+	}
+	else
+	{
 		ptrFlhData = nExtraFireData.AttachedFLH.AsPointer();
 	}
 
@@ -39,7 +42,7 @@ static Iterator<WeaponTypeClass*> GetWeaponAndFLH(TechnoClass* pThis, const Extr
 			(ptrFlhData)->WeaponXFLH.empty() :
 			(ptrFlhData)->EliteWeaponXFLH.empty()))
 		{
-			if (!((!IsElite?
+			if (!((!IsElite ?
 				(ptrFlhData)->WeaponXFLH.size() :
 				(ptrFlhData)->EliteWeaponXFLH.size())
 				< (size_t)nWeaponIdx))
@@ -50,7 +53,7 @@ static Iterator<WeaponTypeClass*> GetWeaponAndFLH(TechnoClass* pThis, const Extr
 			}
 		}
 
-		const auto selected =  (IsElite ? nExtraFireData.AttachedWeapon.EliteWeaponX : nExtraFireData.AttachedWeapon.WeaponX).begin() + nWeaponIdx;
+		const auto selected = (IsElite ? nExtraFireData.AttachedWeapon.EliteWeaponX : nExtraFireData.AttachedWeapon.WeaponX).begin() + nWeaponIdx;
 		return make_iterator(selected->data(), selected->size());
 	}
 	else
@@ -101,41 +104,44 @@ void ExtraFirefunctional::GetWeapon(TechnoClass* pThis, AbstractClass* pTarget, 
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 	const auto& nExtraFireData = pTypeExt->MyExtraFireData;
 	CoordStruct nFLH = CoordStruct::Empty;
-	const auto nSelectedWeapon=  GetWeaponAndFLH(pThis, nExtraFireData, nWeaponIdx , nFLH);
+	const auto nSelectedWeapon = GetWeaponAndFLH(pThis, nExtraFireData, nWeaponIdx, nFLH);
 
 	if (nSelectedWeapon.empty())
 		return;
 
 	const auto ROF = TechnoExtData::GetROFMult(pThis);
 
-	if (nFLH == CoordStruct::Empty) {
-		if(auto const pWPStr = pThis->GetWeapon(nWeaponIdx)) {
+	if (nFLH == CoordStruct::Empty)
+	{
+		if (auto const pWPStr = pThis->GetWeapon(nWeaponIdx))
+		{
 			nFLH = pWPStr->FLH;
 		}
 	}
 
-	nSelectedWeapon.for_each([&](WeaponTypeClass* pWeapon){
-		bool bFire = true;
-		int nRof = 0;
-		if (auto const pWeaponTypeExt = WeaponTypeExtContainer::Instance.Find(pWeapon))
+	nSelectedWeapon.for_each([&](WeaponTypeClass* pWeapon)
+{
+	bool bFire = true;
+	int nRof = 0;
+	if (auto const pWeaponTypeExt = WeaponTypeExtContainer::Instance.Find(pWeapon))
+	{
+		const auto& fireData = pWeaponTypeExt->MyAttachFireDatas;
+
+		if (fireData.UseROF)
 		{
-			const auto& fireData = pWeaponTypeExt->MyAttachFireDatas;
+			auto& nTimer = pExt->ExtraWeaponTimers[pWeapon];
+			bFire = false;
+			nRof = (int)(pWeapon->ROF * ROF);
 
-			if (fireData.UseROF)
+			if (nTimer.Expired())
 			{
-				auto& nTimer = pExt->ExtraWeaponTimers[pWeapon];
-				bFire = false;
-				nRof = (int)(pWeapon->ROF * ROF);
-
-				if (nTimer.Expired())
-				{
-					nTimer.Start(nRof);
-					pExt->MyWeaponManager.FireCustomWeapon(pThis, pThis, pTarget, pWeapon, nFLH, CoordStruct::Empty, nRof);
-				}
+				nTimer.Start(nRof);
+				pExt->MyWeaponManager.FireCustomWeapon(pThis, pThis, pTarget, pWeapon, nFLH, CoordStruct::Empty, nRof);
 			}
 		}
+	}
 
-		if (bFire)
-			pExt->MyWeaponManager.FireCustomWeapon(pThis, pThis, pTarget, pWeapon, nFLH, CoordStruct::Empty, ROF);
+	if (bFire)
+		pExt->MyWeaponManager.FireCustomWeapon(pThis, pThis, pTarget, pWeapon, nFLH, CoordStruct::Empty, ROF);
 	});
 }

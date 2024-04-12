@@ -16,7 +16,8 @@ struct CustomWeaponManager
 		simulateBurstQueue.clear();
 	}
 
-	void reserve(size_t newsize) {
+	void reserve(size_t newsize)
+	{
 		simulateBurstQueue.reserve(newsize);
 	}
 

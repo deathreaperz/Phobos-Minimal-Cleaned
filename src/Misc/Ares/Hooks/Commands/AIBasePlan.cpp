@@ -29,7 +29,8 @@ const wchar_t* AIBasePlanCommandClass::GetUIDescription() const
 
 void AIBasePlanCommandClass::Execute(WWKey dwUnk) const
 {
-	if (this->CheckDebugDeactivated()) {
+	if (this->CheckDebugDeactivated())
+	{
 		return;
 	}
 
@@ -63,4 +64,3 @@ void AIBasePlanCommandClass::Execute(WWKey dwUnk) const
 
 	MessageListClass::Instance->PrintMessage(L"Dumped AI Base Plan");
 }
-

@@ -54,5 +54,4 @@ void AircraftDiveFunctional::OnFire(TechnoExtData* pExt, TechnoTypeExtData* pTyp
 
 	// if (pTypeExt->MyDiveData.PullUpAfterFire)
 	// 	pExt->MyDiveData.CanDive = false;
-
 }

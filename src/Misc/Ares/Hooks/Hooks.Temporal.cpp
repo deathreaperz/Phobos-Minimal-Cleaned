@@ -48,7 +48,7 @@ DEFINE_HOOK(0x46920B, BulletClass_Detonate, 6)
 	auto const pTechno = pThis->Owner ? pThis->Owner : nullptr;
 	auto const pOwnerHouse = pTechno ? pTechno->Owner : BulletExtContainer::Instance.Find(pThis)->Owner;
 
-	pWHExt->Detonate(pTechno, pOwnerHouse, pThis, *pCoordsDetonation , pThis->WeaponType ? pThis->WeaponType->Damage : 0);
+	pWHExt->Detonate(pTechno, pOwnerHouse, pThis, *pCoordsDetonation, pThis->WeaponType ? pThis->WeaponType->Damage : 0);
 	PhobosGlobal::Instance()->DetonateDamageArea = false;
 
 	// this snapping stuff does not belong here. it should go into BulletClass::Fire
@@ -56,16 +56,18 @@ DEFINE_HOOK(0x46920B, BulletClass_Detonate, 6)
 	auto snapped = false;
 
 	static auto const SnapDistance = 64;
-	if (pThis->Target && pThis->DistanceFrom(pThis->Target) < SnapDistance) {
+	if (pThis->Target && pThis->DistanceFrom(pThis->Target) < SnapDistance)
+	{
 		coords = pThis->Target->GetCoords();
 		snapped = true;
 	}
 
 	// these effects should be applied no matter what happens to the target
-	 WarheadTypeExtData::CreateIonBlast(pWarhead, coords);
+	WarheadTypeExtData::CreateIonBlast(pWarhead, coords);
 
 	bool targetStillOnMap = true;
-	if (snapped && pWeaponExt && AresWPWHExt::conductAbduction(pThis->WeaponType, pThis->Owner, pThis->Target, coords)) {
+	if (snapped && pWeaponExt && AresWPWHExt::conductAbduction(pThis->WeaponType, pThis->Owner, pThis->Target, coords))
+	{
 		// ..and neuter the bullet, since it's not supposed to hurt the prisoner after the abduction
 		pThis->Health = 0;
 		pThis->DamageMultiplier = 0;
@@ -76,14 +78,15 @@ DEFINE_HOOK(0x46920B, BulletClass_Detonate, 6)
 	// if the target gets abducted, there's nothing there to apply IC, EMP, etc. to
 	// mind that conductAbduction() neuters the bullet, so if you wish to change
 	// this check, you have to fix that as well
-	if (targetStillOnMap) {
-
+	if (targetStillOnMap)
+	{
 		auto const damage = pThis->WeaponType ? pThis->WeaponType->Damage : 0;
 		pWHExt->applyIronCurtain(coords, pOwnerHouse, damage);
 		WarheadTypeExtData::applyEMP(pWarhead, coords, pThis->Owner);
 		AresAE::applyAttachedEffect(pWarhead, coords, pOwnerHouse);
 
-		if (snapped && AresWPWHExt::applyOccupantDamage(pThis)) {
+		if (snapped && AresWPWHExt::applyOccupantDamage(pThis))
+		{
 			// ..and neuter the bullet, since it's not supposed to hurt the prisoner after the abduction
 			pThis->Health = 0;
 			pThis->DamageMultiplier = 0;
@@ -91,13 +94,13 @@ DEFINE_HOOK(0x46920B, BulletClass_Detonate, 6)
 		}
 	}
 
-	if(pWHExt->PermaMC)
+	if (pWHExt->PermaMC)
 		return 0x469AA4u;
 
 	if (!pWHExt->MindControl_UseTreshold)
 		return 0u;
 
-	return BulletExtData::ApplyMCAlternative(pThis) ? 0x469AA4u  : 0u;
+	return BulletExtData::ApplyMCAlternative(pThis) ? 0x469AA4u : 0u;
 }
 
 DEFINE_HOOK(0x71AAAC, TemporalClass_Update_Abductor, 6)
@@ -109,7 +112,7 @@ DEFINE_HOOK(0x71AAAC, TemporalClass_Update_Abductor, 6)
 	auto const pWeapon = pThis->Owner->GetWeapon(nWeaponIDx)->WeaponType;
 	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
 
-	return pWeaponExt->Abductor_Temporal && AresWPWHExt::conductAbduction(pWeapon, pOwner, pThis->Target , CoordStruct::Empty)
+	return pWeaponExt->Abductor_Temporal && AresWPWHExt::conductAbduction(pWeapon, pOwner, pThis->Target, CoordStruct::Empty)
 		? 0x71AAD5 : 0x0;
 }
 
@@ -132,8 +135,9 @@ DEFINE_HOOK(0x71A8BD, TemporalClass_Update_WarpAway, 5)
 
 	const auto pTarget = pThis->Target;
 
-	if(auto pAnimType = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead)->Temporal_WarpAway.Get(RulesClass::Instance()->WarpAway)) {
-		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pTarget->Location ,0,1, AnimFlag(0x600),0,0),
+	if (auto pAnimType = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead)->Temporal_WarpAway.Get(RulesClass::Instance()->WarpAway))
+	{
+		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pTarget->Location, 0, 1, AnimFlag(0x600), 0, 0),
 			pThis->Owner ? pThis->Owner->Owner : nullptr,
 			pTarget->Owner,
 			pThis->Owner,
@@ -278,19 +282,23 @@ DEFINE_HOOK(0x71944E, TeleportLocomotionClass_ILocomotion_Process, 6)
 	return 0x719454;
 }
 
-DEFINE_HOOK(0x71AFD0 , TemporalClass_Logic_Unit_OreMinerUnderAttack, 0x5)
+DEFINE_HOOK(0x71AFD0, TemporalClass_Logic_Unit_OreMinerUnderAttack, 0x5)
 {
-	GET(TemporalClass* , pThis ,ESI);
+	GET(TemporalClass*, pThis, ESI);
 
-	if(auto pTarget = (UnitClass*)pThis->Target) {
-		if(pTarget->Type->Harvester) {
+	if (auto pTarget = (UnitClass*)pThis->Target)
+	{
+		if (pTarget->Type->Harvester)
+		{
 			const auto nWeaponIDx = TechnoExtContainer::Instance.Find(pThis->Owner)->idxSlot_Warp;
 			auto const pWeapon = pThis->Owner->GetWeapon(nWeaponIDx)->WeaponType;
 			const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
 
-			if(!pWHExt->Malicious && pTarget->Owner == HouseClass::CurrentPlayer) {
+			if (!pWHExt->Malicious && pTarget->Owner == HouseClass::CurrentPlayer)
+			{
 				auto nDest = pTarget->GetDestination();
-				if (RadarEventClass::Create(RadarEventType::HarvesterAttacked, CellClass::Coord2Cell(nDest))) {
+				if (RadarEventClass::Create(RadarEventType::HarvesterAttacked, CellClass::Coord2Cell(nDest)))
+				{
 					VoxClass::Play(GameStrings::EVA_OreMinerUnderAttack(), -1, -1);
 				}
 			}
@@ -307,7 +315,7 @@ DEFINE_HOOK(0x71B0AE, TemporalClass_Logic_Building_UnderAttack, 0x7)
 
 	BuildingExtContainer::Instance.Find(pBld)->ReceiveDamageWarhead =
 		pThis->Owner->GetWeapon(TechnoExtContainer::Instance.Find(pThis->Owner)->idxSlot_Warp)
-			 ->WeaponType->Warhead;
+		->WeaponType->Warhead;
 
 	return 0x0;
 }

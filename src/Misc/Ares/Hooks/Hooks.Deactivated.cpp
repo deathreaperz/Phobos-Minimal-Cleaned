@@ -4,7 +4,8 @@ DEFINE_HOOK(0x417F83, AircraftClass_GetActionOnCell_Deactivated, 0x6)
 {
 	GET(AircraftClass* const, pThis, ESI);
 
-	if (pThis->Deactivated) {
+	if (pThis->Deactivated)
+	{
 		R->EAX(Action::None);
 		return 0x417F94;
 	}
@@ -25,14 +26,15 @@ DEFINE_HOOK(0x4436F7, BuildingClass_ActionOnCell_Deactivated, 0x5)
 {
 	GET(BuildingClass* const, pThis, ECX);
 	return (pThis->Deactivated)
-		? 0x443729 : 0 ;
+		? 0x443729 : 0;
 }
 
 DEFINE_HOOK(0x447548, BuildingClass_GetActionOnCell_Deactivated, 0x6)
 {
 	GET(BuildingClass* const, pThis, ESI);
 
-	if (pThis->Deactivated) {
+	if (pThis->Deactivated)
+	{
 		R->EBX(Action::None);
 		return 0x44776D;
 	}
@@ -74,7 +76,8 @@ DEFINE_HOOK(0x51D0DD, InfantryClass_Scatter_Deactivated, 0x6)
 DEFINE_HOOK(0x7404B9, UnitClass_GetCursorOverCell_Deactivated, 6)
 {
 	GET(UnitClass* const, pThis, ESI);
-	if (pThis->Deactivated) {
+	if (pThis->Deactivated)
+	{
 		R->EAX(Action::None);
 		return 0x740805;
 	}
@@ -84,8 +87,10 @@ DEFINE_HOOK(0x7404B9, UnitClass_GetCursorOverCell_Deactivated, 6)
 DEFINE_HOOK(0x5200B3, InfantryClass_UpdatePanic_Deactivated, 6)
 {
 	GET(InfantryClass* const, pThis, ESI);
-	if (pThis->Deactivated) {
-		if (pThis->PanicDurationLeft > 0) {
+	if (pThis->Deactivated)
+	{
+		if (pThis->PanicDurationLeft > 0)
+		{
 			--pThis->PanicDurationLeft;
 		}
 		return 0x52025A;

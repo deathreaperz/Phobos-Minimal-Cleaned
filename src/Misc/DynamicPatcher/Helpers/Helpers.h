@@ -38,7 +38,7 @@ public:
 	static CoordStruct GetInaccurateOffset(float scatterMin, float scatterMax);
 	static VelocityClass GetBulletArcingVelocity(const CoordStruct& sourcePos, CoordStruct& targetPos,
 			double speed, int gravity, bool lobber, bool inaccurate, float scatterMin, float scatterMax,
-			int zOffset , ArcingVelocityData& outData);
+			int zOffset, ArcingVelocityData& outData);
 
 	static CoordStruct OneCellOffsetToTarget(CoordStruct& sourcePos, CoordStruct& targetPos);
 	static int ColorAdd2RGB565(ColorStruct colorAdd);
@@ -157,11 +157,11 @@ public:
 
 	static void PlayReportSound(WeaponTypeClass* pWeapon, CoordStruct& sourcePos, TechnoClass* pTechno = nullptr);
 
-	static void DrawWeaponAnim(WeaponTypeClass* pWeapon, CoordStruct& sourcePos, CoordStruct& targetPos ,TechnoClass* pOwner , AbstractClass* pTarget);
+	static void DrawWeaponAnim(WeaponTypeClass* pWeapon, CoordStruct& sourcePos, CoordStruct& targetPos, TechnoClass* pOwner, AbstractClass* pTarget);
 	static BulletClass* FireBulletTo(TechnoClass* pAttacker, AbstractClass* pTarget, WeaponTypeClass* pWeapon, CoordStruct& sourcePos, CoordStruct& targetPos, VelocityClass& VelocityClass);
 	static BulletClass* FireBullet(TechnoClass* pAttacker, AbstractClass* pTarget, WeaponTypeClass* pWeapon, CoordStruct& sourcePos, CoordStruct& targetPos, VelocityClass& VelocityClass);
 
-	static TechnoClass* CreateAndPutTechno(TechnoTypeClass* pType, HouseClass* pHouse, CoordStruct& location, CellClass* pCell = nullptr , bool bPathfinding = false);
+	static TechnoClass* CreateAndPutTechno(TechnoTypeClass* pType, HouseClass* pHouse, CoordStruct& location, CellClass* pCell = nullptr, bool bPathfinding = false);
 
 	static std::vector<BulletClass*> GetCellSpreadBullets(CoordStruct& location, double spread)
 	{
@@ -174,7 +174,8 @@ public:
 		for (int i = bullets->Count - 1; i >= 0; i--)
 		{
 			auto const pBullet = bullets->Items[i];
-			if (pBullet->GetCoords().DistanceFrom(location) <= dist) {
+			if (pBullet->GetCoords().DistanceFrom(location) <= dist)
+			{
 				pBulletSet.push_back(pBullet);
 			}
 		}
@@ -188,12 +189,12 @@ public:
 		//bool allied = false;
 		//bool enemies = false;
 
-		int count = std::count_if(AircraftClass::Array->begin(), AircraftClass::Array->end() , [pHouse,&padList](AircraftClass* const pAircraft){
+		int count = std::count_if(AircraftClass::Array->begin(), AircraftClass::Array->end(), [pHouse, &padList](AircraftClass* const pAircraft)
+{
+	if (!IsDeadOrInvisible(pAircraft) && pAircraft->Owner && pAircraft->Owner == pHouse && pAircraft->Type->AirportBound)
+		return padList.contains(pAircraft->Type);
 
-			if (!IsDeadOrInvisible(pAircraft) && pAircraft->Owner && pAircraft->Owner == pHouse && pAircraft->Type->AirportBound)
-				return padList.contains(pAircraft->Type);
-
-			return false;
+	return false;
 		});
 
 		/*
@@ -242,7 +243,8 @@ public:
 		int index = 0;
 		int p = ScenarioClass::Instance->Random.RandomFromMax(maxValue);
 
-		for(const auto& [tKey, idx] : targetPad) {
+		for (const auto& [tKey, idx] : targetPad)
+		{
 			if (p >= tKey.X && p < tKey.Y)
 			{
 				index = idx;
@@ -255,7 +257,8 @@ public:
 
 	static bool Bingo(const ValueableVector<double>& chances, int index)
 	{
-		if (chances.empty() || chances.size() < (size_t)(index + 1)) {
+		if (chances.empty() || chances.size() < (size_t)(index + 1))
+		{
 			return true;
 		}
 

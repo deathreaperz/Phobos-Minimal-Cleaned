@@ -30,12 +30,13 @@ public:
 	static constexpr int ResponseTime2 = 0x30;
 
 #pragma pack(push, 1)
-	struct NetData {
+	struct NetData
+	{
 		EventType Type;
 		bool IsExecuted;
 		char HouseIndex;
 		uint32_t Frame;
-		
+
 		union
 		{
 			char DataBuffer[104];
@@ -49,7 +50,6 @@ public:
 	};
 #pragma pack(pop)
 
-
 	static bool Enable;
 	static unsigned char MaxLatencyLevel;
 	static int WorstMaxAhead;
@@ -57,7 +57,8 @@ public:
 	static void SendResponseTime2();
 	static void HandleResponseTime2(EventClass* event);
 
-	static inline constexpr EventType GetEventType() {
+	static inline constexpr EventType GetEventType()
+	{
 		return static_cast<EventType>(ProtocolZero::ResponseTime2);
 	}
 };

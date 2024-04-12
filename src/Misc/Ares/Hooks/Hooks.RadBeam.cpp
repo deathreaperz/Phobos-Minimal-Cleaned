@@ -32,7 +32,8 @@ DEFINE_HOOK(0x6FD79C, TechnoClass_FireRadBeam2, 6)
 
 	WeaponTypeExtData* pData = WeaponTypeExtContainer::Instance.Find(pSource);
 
-	if (!pData->Beam_IsHouseColor) {
+	if (!pData->Beam_IsHouseColor)
+	{
 		Rad->Color = pData->GetBeamColor();
 	}
 

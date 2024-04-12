@@ -131,7 +131,7 @@ DEFINE_HOOK(0x51E488, InfantryClass_GetCursorOverObject2, 5)
 {
 	GET(TechnoClass* const, Target, ESI);
 	return !BombExtContainer::Instance.Find(Target->AttachedBomb)
-			->Weapon->Ivan_Detachable
+		->Weapon->Ivan_Detachable
 		? 0x51E49E : 0x0;
 }
 
@@ -169,12 +169,12 @@ DEFINE_HOOK(0x438761, BombClass_Detonate_Handle, 0x7)
 
 //new
 DEFINE_JUMP(VTABLE, 0x7E3D4C, GET_OFFSET(BombExtData::GetOwningHouse));
-DEFINE_JUMP(VTABLE, 0x7E3D38 , GET_OFFSET(BombExtData::InvalidatePointer));
+DEFINE_JUMP(VTABLE, 0x7E3D38, GET_OFFSET(BombExtData::InvalidatePointer));
 
 //new
 DEFINE_HOOK(0x6F51F8, TechnoClass_DrawExtras_IvanBombImage_Pos, 0x9)
 {
-	GET(TechnoClass* const , pThis, EBP);
+	GET(TechnoClass* const, pThis, EBP);
 	GET(CoordStruct*, pCoordBuffA, ECX);
 	R->EAX(pThis->GetCenterCoords(pCoordBuffA));
 	return 0x6F5201;
@@ -201,7 +201,7 @@ DEFINE_HOOK(0x46934D, IvanBombs_Spread, 6)
 		// single target or spread switch
 		if (pBullet->WH->CellSpread < 0.5f)
 		{
-			if(!pBullet->Target || !(pBullet->Target->AbstractFlags & AbstractFlags::Object))
+			if (!pBullet->Target || !(pBullet->Target->AbstractFlags & AbstractFlags::Object))
 				return 0x469AA4;
 
 			// single target
@@ -211,8 +211,9 @@ DEFINE_HOOK(0x46934D, IvanBombs_Spread, 6)
 		{
 			// cell spread
 			CoordStruct tgtCoords = pBullet->GetTargetCoords();
-			Helpers::Alex::ApplyFuncToCellSpreadItems(tgtCoords, pBullet->WH->CellSpread, [=](TechnoClass* pTarget) {
-				TechnoExt_ExtData::PlantBomb(pBullet->Owner, pTarget, pWeapon);
+			Helpers::Alex::ApplyFuncToCellSpreadItems(tgtCoords, pBullet->WH->CellSpread, [=](TechnoClass* pTarget)
+ {
+	 TechnoExt_ExtData::PlantBomb(pBullet->Owner, pTarget, pWeapon);
 			}, false, false);
 		}
 	}
@@ -243,7 +244,8 @@ DEFINE_HOOK(0x447218, BuildingClass_GetActionOnObject_Deactivated, 6)
 	GET(BuildingClass* const, pThis, ESI);
 	GET_STACK(ObjectClass*, pThat, 0x1C);
 
-	if (pThis->Deactivated) {
+	if (pThis->Deactivated)
+	{
 		R->EAX(TechnoExt_ExtData::GetAction(pThis, pThat));
 		return 0x447273;
 	}
@@ -256,7 +258,8 @@ DEFINE_HOOK(0x73FD5A, UnitClass_GetActionOnObject_Deactivated, 5)
 	GET(UnitClass* const, pThis, ECX);
 	GET_STACK(ObjectClass*, pThat, 0x20);
 
-	if (pThis->Deactivated) {
+	if (pThis->Deactivated)
+	{
 		R->EAX(TechnoExt_ExtData::GetAction(pThis, pThat));
 		return 0x73FD72;
 	}
@@ -269,7 +272,8 @@ DEFINE_HOOK(0x51E440, InfantryClass_GetActionOnObject_Deactivated, 8)
 	GET(InfantryClass* const, pThis, EDI);
 	GET_STACK(ObjectClass*, pThat, 0x3C);
 
-	if (pThis->Deactivated) {
+	if (pThis->Deactivated)
+	{
 		R->EAX(TechnoExt_ExtData::GetAction(pThis, pThat));
 		return 0x51E458;
 	}
@@ -282,7 +286,8 @@ DEFINE_HOOK(0x417CCB, AircraftClass_GetActionOnObject_Deactivated, 5)
 	GET(AircraftClass* const, pThis, ECX);
 	GET_STACK(ObjectClass*, pThat, 0x20);
 
-	if (pThis->Deactivated) {
+	if (pThis->Deactivated)
+	{
 		R->EAX(TechnoExt_ExtData::GetAction(pThis, pThat));
 		return 0x417CDF;
 	}
@@ -295,7 +300,8 @@ DEFINE_HOOK(0x6FFEC0, TechnoClass_GetActionOnObject_IvanBombsA, 5)
 	GET(TechnoClass* const, pThis, ECX);
 	GET_STACK(ObjectClass*, pObject, 0x4);
 
-	if (TechnoExt_ExtData::CanDetonate(pThis, pObject)) {
+	if (TechnoExt_ExtData::CanDetonate(pThis, pObject))
+	{
 		R->EAX(Action::Detonate);
 		return 0x7005EF;
 	}
@@ -310,7 +316,7 @@ DEFINE_HOOK(0x6FFEC0, TechnoClass_GetActionOnObject_IvanBombsA, 5)
 	// Cursor NoMove
 	MouseCursorFuncs::SetMouseCursorAction(pTypeExt->Cursor_NoMove.Get(), Action::NoMove, false);
 
-	if(!pObject)
+	if (!pObject)
 		return 0x0;
 
 	if (const auto pTargetType = pObject->GetTechnoType())
@@ -332,15 +338,15 @@ DEFINE_HOOK(0x44A1FF, BuildingClass_Mi_Selling_DetonatePostBuildup, 6)
 {
 	GET(BuildingClass* const, pStructure, EBP);
 
-	if (const auto pBomb = pStructure->AttachedBomb) {
+	if (const auto pBomb = pStructure->AttachedBomb)
+	{
 		if (BombExtContainer::Instance.Find(pBomb)->Weapon->Ivan_DetonateOnSell.Get())
 			pBomb->Detonate();// Otamaa : detonate may kill the techno before this function
-			// so this can possibly causing some weird crashes if that happening
+		// so this can possibly causing some weird crashes if that happening
 	}
 
 	return 0;
 }
-
 
 DEFINE_HOOK(0x4D9F7B, FootClass_Sell_Detonate, 6)
 {
@@ -350,10 +356,11 @@ DEFINE_HOOK(0x4D9F7B, FootClass_Sell_Detonate, 6)
 	int money = pThis->GetRefund();
 	pThis->Owner->GiveMoney(money);
 
-	if (const auto pBomb = pThis->AttachedBomb) {
+	if (const auto pBomb = pThis->AttachedBomb)
+	{
 		if (BombExtContainer::Instance.Find(pBomb)->Weapon->Ivan_DetonateOnSell.Get())
 			pBomb->Detonate(); // Otamaa : detonate may kill the techno before this function
-			// so this can possibly causing some weird crashes if that happening
+		// so this can possibly causing some weird crashes if that happening
 	}
 
 	if (pThis->Owner->ControlledByCurrentPlayer())
@@ -365,10 +372,10 @@ DEFINE_HOOK(0x4D9F7B, FootClass_Sell_Detonate, 6)
 		VocClass::PlayAt(pTypeExt->SellSound, loc);
 	}
 
-	FlyingStrings::AddMoneyString(RulesExtData::Instance()->DisplayIncome  , money, pThis->Owner, RulesExtData::Instance()->DisplayIncome_Houses, loc);
+	FlyingStrings::AddMoneyString(RulesExtData::Instance()->DisplayIncome, money, pThis->Owner, RulesExtData::Instance()->DisplayIncome_Houses, loc);
 
 	//this thing may already death , just
-	return pThis->IsAlive  ? 0x4D9FCB : 0x4D9FE9;
+	return pThis->IsAlive ? 0x4D9FCB : 0x4D9FE9;
 }
 
 // custom ivan bomb attachment

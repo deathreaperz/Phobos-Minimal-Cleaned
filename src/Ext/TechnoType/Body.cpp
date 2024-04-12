@@ -741,6 +741,8 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		GenericPrerequisite::Parse(pINI, pSection, (_Prerequisite_key + ".Negative").c_str(), this->Prerequisite_Negative);
 		GenericPrerequisite::Parse(pINI, pSection, (_Prerequisite_key + ".Display").c_str(), this->Prerequisite_Display);
 		GenericPrerequisite::Parse(pINI, pSection, (_Prerequisite_key + "Override").c_str(), pThis->PrerequisiteOverride);
+
+		//TODO : properly Enable this
 		GenericPrerequisite::Parse(pINI, pSection, "BuildLimit.Requres", this->BuildLimit_Requires);
 
 		GenericPrerequisite::Parse(pINI, pSection, (std::string("Convert.Script.") + _Prerequisite_key).c_str(), this->Convert_Scipt_Prereq);
@@ -1214,10 +1216,21 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->ShadowSizeCharacteristicHeight.Read(exINI, pSection, "ShadowSizeCharacteristicHeight");
 
+		if (auto pTalkBuble = FileSystem::TALKBUBL_SHP())
+		{
+			for (int i = 0; i < pTalkBuble->Frames; ++i)
+			{
+				std::string base = "TalkbubbleFrame";
+				base += std::to_string(i);
+				this->TalkbubbleVoices[i].Read(exINI, pSection, (base + ".Voices").c_str());
+			}
+		}
+
 		if (this->AttachtoType != AbstractType::BuildingType)
 		{
 			this->Untrackable.Read(exINI, pSection, "Untrackable");
 			this->LargeVisceroid.Read(exINI, pSection, "Visceroid.Large");
+			this->HarvesterDumpAmount.Read(exINI, pSection, "HarvesterDumpAmount");
 			this->DropPodProp.Read(exINI, pSection);
 		}
 	}
@@ -2187,6 +2200,8 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Infantry_DimWhenDisabled)
 		.Process(this->Convert_HumanToComputer)
 		.Process(this->Convert_ComputerToHuman)
+		.Process(this->TalkbubbleVoices)
+		.Process(this->HarvesterDumpAmount)
 		;
 }
 

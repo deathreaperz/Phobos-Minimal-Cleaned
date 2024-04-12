@@ -19,7 +19,8 @@ public:
 	static bool SaveGlobals(PhobosStreamWriter& stm);
 	static bool LoadGlobals(PhobosStreamReader& stm);
 
-	inline static PhobosGlobal* Instance() {
+	inline static PhobosGlobal* Instance()
+	{
 		return GlobalObject.get();
 	}
 
@@ -29,7 +30,8 @@ public:
 	static void Clear();
 	static void PointerGotInvalid(AbstractClass* ptr, bool removed);
 
-	static void Init() {
+	static void Init()
+	{
 		GlobalObject = std::make_unique<PhobosGlobal>();
 	}
 

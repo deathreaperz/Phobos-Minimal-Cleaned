@@ -17,7 +17,8 @@ void ParicleSystem_Web_AI(ParticleSystemClass* pThis)
 	for (auto& particle : pThis->Particles)
 		particle->BehaviourUpdate();
 
-	for (int i = pThis->Particles.Count - 1; i > 0; --i) {
+	for (int i = pThis->Particles.Count - 1; i > 0; --i)
+	{
 		auto particle = pThis->Particles[i];
 
 		if (pThis->Particles[i]->hasremaining)
@@ -37,7 +38,8 @@ void ParicleSystem_Web_AI(ParticleSystemClass* pThis)
 
 			particle->UnInit();
 		}
-		else {
+		else
+		{
 			particle->BehaviourCoordUpdate();
 		}
 	}
@@ -47,9 +49,12 @@ void Particle_Web_AI(ParticleClass* pThis)
 {
 	auto pCell = MapClass::Instance->GetCellAt(pThis->Location);
 
-	if (auto pWarhead = pThis->Type->Warhead) {
-		for(auto pCur = pCell->FirstObject; pCur; pCur = pCur->NextObject) {
-			if (pCur && pCur->IsAlive && pCur->Health > 0) {
+	if (auto pWarhead = pThis->Type->Warhead)
+	{
+		for (auto pCur = pCell->FirstObject; pCur; pCur = pCur->NextObject)
+		{
+			if (pCur && pCur->IsAlive && pCur->Health > 0)
+			{
 				int damage = pThis->Type->Damage;
 				pCur->ReceiveDamage(&damage, 0, pWarhead, nullptr, false, false, nullptr);
 			}
@@ -63,7 +68,8 @@ void Particle_Web_AI(ParticleClass* pThis)
 	if (!(Ecs % Ecs_))
 		++pThis->StartStateAI;
 
-	if (pThis->StartStateAI == pThis->Type->EndStateAI) {
+	if (pThis->StartStateAI == pThis->Type->EndStateAI)
+	{
 		if (pThis->Type->DeleteOnStateLimit)
 			pThis->hasremaining = false;
 		else
@@ -235,12 +241,13 @@ DEFINE_HOOK(0x72590E, AnnounceInvalidPointer_Particle, 0x9)
 //	return 0x62C309;
 //}
 
-void ParticleClass_Gas_Transmography(ObjectClass* pItem, TechnoClass* pAttacker , HouseClass* pOwner , int distance, const CoordStruct& loc, ParticleTypeExtData* pTypeExt, HouseClass* transmoOwner)
+void ParticleClass_Gas_Transmography(ObjectClass* pItem, TechnoClass* pAttacker, HouseClass* pOwner, int distance, const CoordStruct& loc, ParticleTypeExtData* pTypeExt, HouseClass* transmoOwner)
 {
 	int damage = pTypeExt->AttachedToObject->Damage;
-	if (pItem->ReceiveDamage(&damage, distance, pTypeExt->AttachedToObject->Warhead, pAttacker, false, false, pOwner) == DamageState::NowDead) {
-		if (pTypeExt->TransmogrifyChance >= 0) {
-
+	if (pItem->ReceiveDamage(&damage, distance, pTypeExt->AttachedToObject->Warhead, pAttacker, false, false, pOwner) == DamageState::NowDead)
+	{
+		if (pTypeExt->TransmogrifyChance >= 0)
+		{
 			if (pTypeExt->TransmogrifyOwner != OwnerHouseKind::Neutral)
 				transmoOwner = HouseExtData::GetHouseKind(pTypeExt->TransmogrifyOwner, true, nullptr, pOwner, pItem->GetOwningHouse());
 
@@ -264,23 +271,23 @@ DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 		{
 			if (pOccupy && pOccupy->IsAlive && pOccupy->Health > 0)
 			{
-				 if (auto pTechno = generic_cast<TechnoClass*>(pOccupy))
-				 {
-				 	if (pTechno->IsSinking || pTechno->IsCrashing || pTechno->TemporalTargetingMe)
-				 		continue;
-
-				 	if (pTechno->WhatAmI() != BuildingClass::AbsID && TechnoExtData::IsChronoDelayDamageImmune(static_cast<FootClass*>(pTechno)))
+				if (auto pTechno = generic_cast<TechnoClass*>(pOccupy))
+				{
+					if (pTechno->IsSinking || pTechno->IsCrashing || pTechno->TemporalTargetingMe)
 						continue;
-				 }
 
-				 auto nX = abs(pThis->Location.X - pOccupy->Location.X);
-				 auto nY = abs(pThis->Location.Y - pOccupy->Location.Y);
-				 ParticleClass_Gas_Transmography(pOccupy, pAttacker, pOwner, Game::AdjustHeight(nX + nY), pOccupy->Location, pTypeExt, transmoOwner);
+					if (pTechno->WhatAmI() != BuildingClass::AbsID && TechnoExtData::IsChronoDelayDamageImmune(static_cast<FootClass*>(pTechno)))
+						continue;
+				}
+
+				auto nX = abs(pThis->Location.X - pOccupy->Location.X);
+				auto nY = abs(pThis->Location.Y - pOccupy->Location.Y);
+				ParticleClass_Gas_Transmography(pOccupy, pAttacker, pOwner, Game::AdjustHeight(nX + nY), pOccupy->Location, pTypeExt, transmoOwner);
 			}
 		}
-
-	} else {
-
+	}
+	else
+	{
 		const auto pVec = Helpers::Alex::getCellSpreadItems(pThis->Location, std::ceil(pTypeExt->DamageRange.Get()));
 
 		for (const auto pItem : pVec)
@@ -321,8 +328,8 @@ DEFINE_HOOK(0x62CCB8, ParticleClass_Update_Fire, 7)
 	const auto pCell = MapClass::Instance->GetCellAt(pThis->Location);
 	const auto pTypeExt = ParticleTypeExtContainer::Instance.Find(pThis->Type);
 
-	for (auto pOccupy = pCell->GetContent(pThis->Location.Z); pOccupy; pOccupy = pOccupy->NextObject) {
-
+	for (auto pOccupy = pCell->GetContent(pThis->Location.Z); pOccupy; pOccupy = pOccupy->NextObject)
+	{
 		if (pOccupy && pOccupy->IsAlive && pOccupy->Health > 0 && !pOccupy->InLimbo)
 		{
 			if (pThis->ParticleSystem && pOccupy == pThis->ParticleSystem->Owner)
@@ -341,8 +348,10 @@ DEFINE_HOOK(0x62CCB8, ParticleClass_Update_Fire, 7)
 			int length = (int)(pThis->Location.DistanceFrom(pOccupy->GetCoords()) / 10.0);
 
 			pOccupy->ReceiveDamage(&damage, length, pThis->Type->Warhead, pAttacker, false, false, pOwner);
-			if (pTypeExt->Fire_DamagingAnim) {
-				if (auto pAnimType = MapClass::SelectDamageAnimation(pThis->Type->Damage, pThis->Type->Warhead, pCell->LandType, pThis->Location)) {
+			if (pTypeExt->Fire_DamagingAnim)
+			{
+				if (auto pAnimType = MapClass::SelectDamageAnimation(pThis->Type->Damage, pThis->Type->Warhead, pCell->LandType, pThis->Location))
+				{
 					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pThis->Location),
 						pOwner, pOccupy->GetOwningHouse(), pAttacker, false);
 				}

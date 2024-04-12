@@ -17,7 +17,7 @@ DEFINE_HOOK(0x6CF2C0, SwizzleManagerClass_Here_I_Am, 5)
 	GET_STACK(void*, oldP, 0x8);
 	GET_STACK(void*, newP, 0xC);
 	GET_STACK(DWORD, caller, 0x0);
-	R->EAX<HRESULT>(PhobosSwizzle::Instance.RegisterChange_Hook(caller , oldP, newP));
+	R->EAX<HRESULT>(PhobosSwizzle::Instance.RegisterChange_Hook(caller, oldP, newP));
 	return 0x6CF316;
 }
 

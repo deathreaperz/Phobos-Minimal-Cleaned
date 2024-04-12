@@ -61,7 +61,6 @@ DEFINE_HOOK(0x730F1C, ObjectClass_StopCommand, 0x5)
 	return 0;
 }
 
-
 DEFINE_HOOK(0x69252D, ScrollClass_ProcessClickCoords_VirtualUnit, 0x8)
 {
 	GET(TechnoClass*, pThis, ESI);
@@ -70,8 +69,6 @@ DEFINE_HOOK(0x69252D, ScrollClass_ProcessClickCoords_VirtualUnit, 0x8)
 	return pExt && pExt->VirtualUnit ? 0x6925E6 : 0x0;
 }
 #endif
-
-
 
 static bool CeaseFire(TechnoClass* pThis)
 {
@@ -135,7 +132,6 @@ DEFINE_HOOK(0x6B743E, SpawnManagerAI_SpawnSupportFLH, 0x8)
 		}
 	}
 
-
 	return 0x0;
 }
 
@@ -160,7 +156,6 @@ namespace CalculatePinch
 
 				pFirer->AngleRotatedForwards = (float)(-ext->RockerPitch.Get() * Math::cos(theta));
 				pFirer->AngleRotatedSideways = (float)(ext->RockerPitch.Get() * Math::sin(theta));
-
 			}
 		}
 	}
@@ -175,10 +170,8 @@ namespace CalculatePinch
 
 // 	bool Slectable = true;
 
-
 // 	if (auto pExt = TechnoExtContainer::Instance.Find(pThis))
 // 		Slectable = !pExt->VirtualUnit.Get();
-
 
 // 	return Slectable || !bNotSlectable ? 0x0 : 0x5F45A9;
 
@@ -217,7 +210,8 @@ DEFINE_HOOK(0x6FDD61, TechnoClass_FireAt_OverrideWeapon, 0x5)
 	GET(TechnoClass*, pThis, ESI);
 	//GET_STACK(AbstractClass*, pTarget, 0x4);
 
-	if (auto pExt = TechnoExtContainer::Instance.Find(pThis)) {
+	if (auto pExt = TechnoExtContainer::Instance.Find(pThis))
+	{
 		R->EBX(pThis->GetWeapon(pExt->CurrentWeaponIdx)->WeaponType);
 		return 0x6FDD71;
 	}
@@ -231,8 +225,10 @@ DEFINE_HOOK(0x6F6CA0, TechnoClass_Unlimbo_Early, 0x7)
 	GET_STACK(CoordStruct*, pCoord, (0x4));
 	//GET_STACK(DirType, faceDir, (0x8));
 
-	if (auto pExt = TechnoExtContainer::Instance.Find(pThis)) {
-		if (auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())) {
+	if (auto pExt = TechnoExtContainer::Instance.Find(pThis))
+	{
+		if (auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType()))
+		{
 			DamageSelfState::OnPut(pExt->DamageSelfState, pTypeExt->DamageSelfData);
 			GiftBoxFunctional::Init(pExt, pTypeExt);
 			AircraftPutDataFunctional::OnPut(pExt, pTypeExt, pCoord);
@@ -247,39 +243,46 @@ DEFINE_HOOK(0x6FC016, TechnoClass_Select_SkipVoice, 0x8)
 	GET(TechnoClass*, pThis, ESI);
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	return pExt && pExt->SkipVoice ? 0x6FC01E :0x0;
+	return pExt && pExt->SkipVoice ? 0x6FC01E : 0x0;
 }
 
 WeaponTypeClass* GetWeaponType(TechnoClass* pThis, int which)
 {
 	WeaponTypeClass* pBuffer = nullptr;
 
-    if ( which == -1 ) {
-        auto const pType = pThis->GetTechnoType();
+	if (which == -1)
+	{
+		auto const pType = pThis->GetTechnoType();
 
-        if (pType->TurretCount > 0) {
-			if (auto const pCurWeapon = pThis->GetWeapon(pThis->CurrentGattlingStage)) {
+		if (pType->TurretCount > 0)
+		{
+			if (auto const pCurWeapon = pThis->GetWeapon(pThis->CurrentGattlingStage))
+			{
 				pBuffer = pCurWeapon->WeaponType;
 			}
-		} else {
-            if (auto const pPriStruct = pThis->GetWeapon(0)) {
+		}
+		else
+		{
+			if (auto const pPriStruct = pThis->GetWeapon(0))
+			{
 				pBuffer = pPriStruct->WeaponType;
 			}
 
-            if (auto const pSecStruct = pThis->GetWeapon(1) ) {
+			if (auto const pSecStruct = pThis->GetWeapon(1))
+			{
 				pBuffer = pSecStruct->WeaponType;
-            }
-        }
-    }
-    else
-    {
-        if (auto const pSelected = pThis->GetWeapon(which) )
-        {
-            pBuffer = pSelected->WeaponType;
+			}
 		}
-    }
+	}
+	else
+	{
+		if (auto const pSelected = pThis->GetWeapon(which))
+		{
+			pBuffer = pSelected->WeaponType;
+		}
+	}
 
-    return  pBuffer;
+	return  pBuffer;
 }
 //9
 DEFINE_HOOK(0x6F9039, TechnoClass_Greatest_Threat_GuardRange, 0x9)
@@ -288,12 +291,14 @@ DEFINE_HOOK(0x6F9039, TechnoClass_Greatest_Threat_GuardRange, 0x9)
 	auto const pTypeGuardRange = pTechno->GetTechnoType()->GuardRange;
 	auto nGuarRange = pTypeGuardRange == -1 ? 512 : pTypeGuardRange;
 
-	if (auto pPri = GetWeaponType(pTechno , 0)) {
+	if (auto pPri = GetWeaponType(pTechno, 0))
+	{
 		if (pPri->Range > nGuarRange)
 			nGuarRange = pPri->Range;
 	}
 
-	if(auto pSec = GetWeaponType(pTechno ,1)) {
+	if (auto pSec = GetWeaponType(pTechno, 1))
+	{
 		if (pSec->Range > nGuarRange)
 			nGuarRange = pSec->Range;
 	}
@@ -302,7 +307,7 @@ DEFINE_HOOK(0x6F9039, TechnoClass_Greatest_Threat_GuardRange, 0x9)
 	return 0x6F903E;
 }
 
-DEFINE_HOOK(0x41A697, AircraftClass_Mission_Guard_NoTarget_Enter , 6)
+DEFINE_HOOK(0x41A697, AircraftClass_Mission_Guard_NoTarget_Enter, 6)
 {
 	GET(TechnoClass*, pTechno, ESI);
 
@@ -311,13 +316,13 @@ DEFINE_HOOK(0x41A697, AircraftClass_Mission_Guard_NoTarget_Enter , 6)
 	if (!pExt->MyFighterData)
 		return 0x0;
 
-	if(pExt->MyFighterData->IsAreaGuardRolling())
+	if (pExt->MyFighterData->IsAreaGuardRolling())
 		return 0x41A6AC;
 
 	return 0;
 }
 
-DEFINE_HOOK(0x41A96C, AircraftClass_Mission_GuardArea_NoTarget_Enter , 6)
+DEFINE_HOOK(0x41A96C, AircraftClass_Mission_GuardArea_NoTarget_Enter, 6)
 {
 	GET(TechnoClass*, pTechno, ESI);
 

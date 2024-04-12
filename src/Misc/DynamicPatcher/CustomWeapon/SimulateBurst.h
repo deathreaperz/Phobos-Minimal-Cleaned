@@ -18,7 +18,7 @@ struct SimulateBurst
 	int Index;
 	CDTimerClass Timer;
 
-	SimulateBurst(WeaponTypeClass* pWeaponType, TechnoClass* pShooter, AbstractClass* pTarget, CoordStruct flh, int burst, int minRange, int range,const AttachFireData& fireData, int flipY)
+	SimulateBurst(WeaponTypeClass* pWeaponType, TechnoClass* pShooter, AbstractClass* pTarget, CoordStruct flh, int burst, int minRange, int range, const AttachFireData& fireData, int flipY)
 		:WeaponType { pWeaponType }
 		, Shooter { pShooter }
 		, Target { pTarget }
@@ -31,7 +31,8 @@ struct SimulateBurst
 		, Flag { flipY }
 		, Index { 0 }
 		, Timer { fireData.SimulateBurstDelay }
-	{  }
+	{
+	}
 
 	SimulateBurst()
 		:WeaponType { nullptr }
@@ -46,11 +47,13 @@ struct SimulateBurst
 		, Flag {  }
 		, Index { 0 }
 		, Timer { }
-	{ }
+	{
+	}
 
 	~SimulateBurst() = default;
 
-	bool CanFire() {
+	bool CanFire()
+	{
 		if (Timer.Expired())
 		{
 			Timer.Start(FireData.SimulateBurstDelay);
@@ -59,7 +62,8 @@ struct SimulateBurst
 		return false;
 	}
 
-	void CountOne() {
+	void CountOne()
+	{
 		Index++;
 		switch (FireData.SimulateBurstMode)
 		{
@@ -104,7 +108,7 @@ private:
 			.Process(Timer)
 			.Success()
 			&& Stm.RegisterChange(this)
-		;
+			;
 	}
 };
 

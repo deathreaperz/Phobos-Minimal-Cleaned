@@ -61,7 +61,8 @@ static bool ClearLastLoc(Tbase* pBase)
 	if (!pExt || pExt->Trails.empty())
 		return false;
 
-	for (auto& pTrail : pExt->Trails) {
+	for (auto& pTrail : pExt->Trails)
+	{
 		pTrail.ClearLastLocation();
 	}
 
@@ -139,14 +140,15 @@ void TrailsManager::Construct(BulletClass* pOwner, bool IsConverted)
 	if (!pExt || !pTypeExt)
 		return;
 
-	if (!pExt->Trails.empty()) {
+	if (!pExt->Trails.empty())
+	{
 		return;
 	}
 
 	if (pTypeExt->Trails.CurrentData.empty())
 		return;
 
-	for (const auto & pTrails : pTypeExt->Trails.CurrentData)
+	for (const auto& pTrails : pTypeExt->Trails.CurrentData)
 	{
 		const auto pType = TrailType::Array[pTrails.CurrentType].get();
 
@@ -176,7 +178,8 @@ void TrailsManager::Construct(VoxelAnimClass* pOwner, bool IsConverted)
 	if (!pExt || !pTypeExt)
 		return;
 
-	if (!pExt->Trails.empty()) {
+	if (!pExt->Trails.empty())
+	{
 		return;
 	}
 
@@ -212,12 +215,13 @@ void TrailsManager::Construct(ParticleClass* pOwner, bool IsConverted)
 	if (!pExt || !pTypeExt)
 		return;
 
-	if (!pExt->Trails.empty()) {
-		return ;
+	if (!pExt->Trails.empty())
+	{
+		return;
 	}
 
 	if (pTypeExt->Trails.CurrentData.empty())
-		return ;
+		return;
 
 	for (const auto& pTrails : pTypeExt->Trails.CurrentData)
 	{
@@ -406,7 +410,8 @@ void TrailsManager::Hide(VoxelAnimClass* pOwner)
 	if (pExt->Trails.empty())
 		return;
 
-	for (auto& pTrail : pExt->Trails) {
+	for (auto& pTrail : pExt->Trails)
+	{
 		pTrail.ClearLastLocation();
 	}
 }
@@ -422,7 +427,8 @@ void TrailsManager::Hide(ParticleClass* pOwner)
 	if (!pExt || pExt->Trails.empty())
 		return;
 
-	for (auto& pTrail : pExt->Trails) {
+	for (auto& pTrail : pExt->Trails)
+	{
 		pTrail.ClearLastLocation();
 	}
 }
@@ -451,7 +457,6 @@ void TrailsManager::CleanUp(TechnoClass* pOwner)
 	{
 		pTrail.ClearLastLocation();
 	}
-
 }
 
 template<>
@@ -469,7 +474,6 @@ void TrailsManager::CleanUp(BulletClass* pOwner)
 	{
 		pTrail.ClearLastLocation();
 	}
-
 }
 
 template<>

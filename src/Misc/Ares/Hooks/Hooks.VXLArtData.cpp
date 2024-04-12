@@ -85,7 +85,7 @@ DEFINE_HOOK(0x5F887B, ObjectTypeClass_Load3DArt_Barrels, 6)
 		//	return 0x5F8844;
 		//}
 
-		auto &nArr = i < TechnoTypeClass::MaxWeapons ?
+		auto& nArr = i < TechnoTypeClass::MaxWeapons ?
 			pThis->ChargerBarrels[i] :
 			pTypeExt->BarrelImageData[i - TechnoTypeClass::MaxWeapons];
 
@@ -132,7 +132,7 @@ DEFINE_HOOK(0x5F865F, ObjectTypeClass_Load3DArt_Turrets, 6)
 		auto& nArr = i < TechnoTypeClass::MaxWeapons ?
 			pThis->ChargerTurrets[i] :
 			pTypeExt->TurretImageData[i - TechnoTypeClass::MaxWeapons];
-			;
+		;
 
 		ImageStatusses nPairStatus = ImageStatusses::ReadVoxel(_buffer.c_str(), 1);
 		nPairStatus.swap(nArr);
@@ -142,7 +142,6 @@ DEFINE_HOOK(0x5F865F, ObjectTypeClass_Load3DArt_Turrets, 6)
 			Debug::Log("%s Techno Turret [%s] at[%d] cannot be loaded , breaking the loop ! \n", pThis->ID, _buffer.c_str(), i);
 			break;
 		}
-
 	}
 
 	return 0x5F868C;
@@ -270,13 +269,17 @@ DEFINE_HOOK(0x7072A1, suka707280_ChooseTheGoddamnMatrix, 0x7)
 
 	matRet = pVXL->HVA->Matrixes[shadow_index_now + pVXL->HVA->LayerCount * frameChoosen];
 
-	// TO TEST : Check if this is the proper Z offset to shift the sections to the same level
-	matRet.TranslateZ(
-		-matRet.GetZVal()
-		- pVXL->VXL->TailerData->Bounds[0].Z
-	);
+	// A nasty temporary backward compatibility option
+	if (pVXL->HVA->LayerCount > 1 || pThis->GetTechnoType()->Turret)
+	{
+		// TO TEST : Check if this is the proper Z offset to shift the sections to the same level
+		matRet.TranslateZ(
+			-matRet.GetZVal()
+			- pVXL->VXL->TailerData->Bounds[0].Z
+		);
+	}
 
-	matRet = (*pMat)* matRet;
+	matRet = (*pMat) * matRet;
 
 	// Recover vanilla instructions
 	if (pThis->GetTechnoType()->UseBuffer)
@@ -372,7 +375,8 @@ DEFINE_HOOK(0x4147F9, AircraftClass_Draw_Shadow, 0x6)
 	return FinishDrawing;
 }
 
-void TranslateAngleRotated(Matrix3D* mtx , TechnoClass* pThis  , TechnoTypeClass* pType) {
+void TranslateAngleRotated(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pType)
+{
 	float arf = pThis->AngleRotatedForwards;
 	float ars = pThis->AngleRotatedSideways;
 	// lazy, don't want to hook inside Shadow_Matrix
@@ -388,8 +392,8 @@ void TranslateAngleRotated(Matrix3D* mtx , TechnoClass* pThis  , TechnoTypeClass
 	}
 }
 
-VoxelStruct* GetmainVxl(TechnoClass* pThis, TechnoTypeClass* pType , VoxelIndexKey& key){
-
+VoxelStruct* GetmainVxl(TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKey& key)
+{
 	if (pType->NoSpawnAlt && pThis->SpawnManager && pThis->SpawnManager->CountDockedSpawns() == 0)
 	{
 		key = std::bit_cast<VoxelIndexKey>(-1);// I'd just assume most of the time we have spawn
@@ -399,7 +403,7 @@ VoxelStruct* GetmainVxl(TechnoClass* pThis, TechnoTypeClass* pType , VoxelIndexK
 	return &pType->MainVoxel;
 }
 
-void DecideScaleAndIndex(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKey& key, ILocomotion* iLoco , int height)
+void DecideScaleAndIndex(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKey& key, ILocomotion* iLoco, int height)
 {
 	const double baseScale_log = RulesExtData::Instance()->AirShadowBaseScale_log; // -ln(baseScale) precomputed
 
@@ -461,7 +465,7 @@ DEFINE_HOOK(0x73C47A, UnitClass_DrawAsVXL_Shadow, 0x5)
 	const auto height = pThis->GetHeight();
 	DecideScaleAndIndex(&shadow_matrix, pThis, pType, vxl_index_key, loco, height);
 
-	VoxelStruct* main_vxl = GetmainVxl(pThis , pType , vxl_index_key);
+	VoxelStruct* main_vxl = GetmainVxl(pThis, pType, vxl_index_key);
 
 	// TODO : adjust shadow point according to height
 	// There was a bit deviation that I cannot decipher, might need help with that
@@ -505,7 +509,7 @@ DEFINE_HOOK(0x73C47A, UnitClass_DrawAsVXL_Shadow, 0x5)
 				   surface,
 				   shadow_point
 			);
-}
+	}
 
 	if (!uTypeExt->TurretShadow.Get(RulesExtData::Instance()->DrawTurretShadow) || main_vxl == &pType->TurretVoxel)
 		return SkipDrawing;
@@ -515,7 +519,7 @@ DEFINE_HOOK(0x73C47A, UnitClass_DrawAsVXL_Shadow, 0x5)
 	rot.RotateZ(static_cast<float>(pThis->SecondaryFacing.Current().GetRadian<32>() - pThis->PrimaryFacing.Current().GetRadian<32>()));
 	auto tur_mtx = mtx * rot; // unfortunately we won't have TurretVoxelScaleX/Y given the amount of work
 
-	auto tur = TechnoTypeExtData::GetTurretsVoxel(pType , pThis->CurrentTurretNumber);
+	auto tur = TechnoTypeExtData::GetTurretsVoxel(pType, pThis->CurrentTurretNumber);
 
 	// sorry but you're fucked
 	if (tur && tur->VXL && tur->HVA)

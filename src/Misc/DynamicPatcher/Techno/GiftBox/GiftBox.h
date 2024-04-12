@@ -21,10 +21,11 @@ public:
 	}
 
 	GiftBox() :
-		  IsOpen { false }
+		IsOpen { false }
 		, Delay { 0 }
 		, DelayTimer { }
-	{}
+	{
+	}
 
 	~GiftBox() = default;
 
@@ -53,10 +54,9 @@ public:
 
 		if (Delay > 0)
 			DelayTimer.Start(nDelay);
-
 	}
 
-	void Release(TechnoClass* pOwner , GiftBoxData& nData);
+	void Release(TechnoClass* pOwner, GiftBoxData& nData);
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{ return Serialize(Stm); }
@@ -78,12 +78,13 @@ private:
 			//&& Stm.RegisterChange(this);
 			;
 	}
-
 };
 
 template <>
-struct Savegame::ObjectFactory<GiftBox> {
-	std::unique_ptr<GiftBox> operator() (PhobosStreamReader& Stm) const {
+struct Savegame::ObjectFactory<GiftBox>
+{
+	std::unique_ptr<GiftBox> operator() (PhobosStreamReader& Stm) const
+	{
 		return std::make_unique<GiftBox>();
 	}
 };
