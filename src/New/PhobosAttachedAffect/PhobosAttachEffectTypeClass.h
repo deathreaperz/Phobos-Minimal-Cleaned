@@ -100,11 +100,11 @@ public:
 		return this->Tint_Color.isset() || this->Tint_Intensity != 0.0;
 	}
 
-	bool HasGroup(const char* pGroupID)
+	constexpr bool HasGroup(const char* pGroupID)
 	{
 		for (const auto& group : this->Groups)
 		{
-			if (IS_SAME_STR_N(group.c_str(), pGroupID))
+			if (group == pGroupID)
 			{
 				return true;
 			}
@@ -113,7 +113,7 @@ public:
 		return false;
 	}
 
-	bool HasGroups(std::vector<std::string> const& groupIDs, bool requireAll)
+	constexpr bool HasGroups(std::vector<std::string> const& groupIDs, bool requireAll)
 	{
 		size_t foundCount = 0;
 
@@ -121,7 +121,7 @@ public:
 		{
 			for (const auto& requiredGroup : groupIDs)
 			{
-				if (IS_SAME_STR_N(group.c_str(), requiredGroup.c_str()))
+				if (group == requiredGroup)
 				{
 					if (!requireAll)
 						return true;

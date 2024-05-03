@@ -75,7 +75,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 
 			for (int i = divisor - 1; i > 0; --i)
 			{
-				finalSpeed *= nFactorySpeed;
+				finalSpeed = static_cast<int>(finalSpeed * nFactorySpeed);
 			}
 		}
 

@@ -127,7 +127,7 @@ void SW_LightningStorm::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	pData->Weather_Debris.Read(exINI, section, "Lightning.Debris");
 	pData->Weather_Sounds.Read(exINI, section, "Lightning.Sounds");
 	pData->Weather_UseSeparateState.Read(exINI, section, "Lightning.UseSeparateState");
-	pData->Weather_LightningRodTypes.Read(exINI, section, "Lightning.LighningRodTypes");
+	pData->Weather_LightningRodTypes.Read(exINI, section, "Lightning.LightningRodTypes");
 }
 
 WarheadTypeClass* SW_LightningStorm::GetWarhead(const SWTypeExtData* pData) const

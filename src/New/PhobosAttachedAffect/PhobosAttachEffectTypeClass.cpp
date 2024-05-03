@@ -15,10 +15,10 @@ std::vector<PhobosAttachEffectTypeClass*> PhobosAttachEffectTypeClass::GetTypesF
 
 	for (const auto& group : groupIDs)
 	{
-		if (map->contains(group))
+		auto iter = map->find(group);
+		if (iter != map->end())
 		{
-			auto const values = &map->at(group);
-			types.insert(values->begin(), values->end());
+			types.insert(iter->second.begin(), iter->second.end());
 		}
 	}
 
@@ -29,7 +29,7 @@ void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
 {
 	const char* pSection = this->Name;
 
-	if (strcmp(pSection, NONE_STR) == 0)
+	if (IS_SAME_STR_N(pSection, NONE_STR))
 		return;
 
 	INI_EX exINI(pINI);
