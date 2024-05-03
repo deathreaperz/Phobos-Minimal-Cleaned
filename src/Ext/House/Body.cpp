@@ -59,6 +59,13 @@ void HouseExtData::InitializeTrackers(HouseClass* pHouse)
 	//pExt->CollectedCrates.PopulateCounts(CrateTypeClass::Array.size());
 }
 
+bool HouseExtData::IsMutualAllies(HouseClass const* pThis, HouseClass const* pHouse)
+{
+	return pHouse == pThis
+		|| (pThis->Allies.Contains(pHouse->ArrayIndex)
+			&& pHouse->Allies.Contains(pThis->ArrayIndex));
+}
+
 RequirementStatus HouseExtData::RequirementsMet(
 	HouseClass* pHouse, TechnoTypeClass* pItem)
 {
@@ -139,7 +146,7 @@ RequirementStatus HouseExtData::RequirementsMet(
 					}
 				}
 
-				return (pHouse->TechLevel >= pItem->TechLevel) ?
+				return (pHouse->StaticData.TechLevel >= pItem->TechLevel) ?
 					RequirementStatus::Complete : RequirementStatus::Incomplete;
 			}
 		}
@@ -349,9 +356,7 @@ bool HouseExtData::CheckFactoryOwners(HouseClass* pHouse, TechnoTypeClass* pItem
 
 		if (pExt->FactoryOwners_Forbidden.empty() || !pExt->FactoryOwners_Forbidden.Contains(pBldExt->OriginalHouseType))
 		{
-			const auto pBldExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
-
-			if (pBld->Type->Factory == whatItem || pBldExt->Type->FactoryOwners_HasAllPlans)
+			if (pBld->Type->Factory == whatItem || BuildingTypeExtContainer::Instance.Find(pBld->Type)->Type->FactoryOwners_HasAllPlans)
 			{
 				return true;
 			}
@@ -860,19 +865,38 @@ CellClass* HouseExtData::GetEnemyBaseGatherCell(HouseClass* pTargetHouse, HouseC
 	return MapClass::Instance->TryGetCellAt(cellStruct);
 }
 
-HouseClass* HouseExtData::FindCivilianSide()
+HouseClass* HouseExtContainer::Civilian = nullptr;
+HouseClass* HouseExtContainer::Special = nullptr;
+HouseClass* HouseExtContainer::Neutral = nullptr;
+
+HouseClass* HouseExtData::FindFirstCivilianHouse()
 {
-	return HouseClass::FindBySideIndex(RulesExtData::Instance()->CivilianSideIndex);
+	if (!HouseExtContainer::Civilian)
+	{
+		HouseExtContainer::Civilian = HouseClass::FindBySideIndex(RulesExtData::Instance()->CivilianSideIndex);
+	}
+
+	return HouseExtContainer::Civilian;
 }
 
 HouseClass* HouseExtData::FindSpecial()
 {
-	return HouseClass::FindByCountryIndex(RulesExtData::Instance()->SpecialCountryIndex);
+	if (!HouseExtContainer::Special)
+	{
+		HouseExtContainer::Special = HouseClass::FindByCountryIndex(RulesExtData::Instance()->SpecialCountryIndex);
+	}
+
+	return HouseExtContainer::Special;
 }
 
 HouseClass* HouseExtData::FindNeutral()
 {
-	return HouseClass::FindByCountryIndex(RulesExtData::Instance()->NeutralCountryIndex);
+	if (!HouseExtContainer::Neutral)
+	{
+		HouseExtContainer::Neutral = HouseClass::FindByCountryIndex(RulesExtData::Instance()->NeutralCountryIndex);
+	}
+
+	return HouseExtContainer::Neutral;
 }
 
 void HouseExtData::ForceOnlyTargetHouseEnemy(HouseClass* pThis, int mode = -1)
@@ -917,7 +941,7 @@ HouseClass* HouseExtData::GetHouseKind(OwnerHouseKind const& kind, bool const al
 	case OwnerHouseKind::Victim:
 		return pVictim ? pVictim : pDefault;
 	case OwnerHouseKind::Civilian:
-		return HouseExtData::FindCivilianSide();// HouseClass::FindCivilianSide();
+		return HouseExtData::FindFirstCivilianHouse();// HouseClass::FindFirstCivilianHouse();
 	case OwnerHouseKind::Special:
 		return HouseExtData::FindSpecial();//  HouseClass::FindSpecial();
 	case OwnerHouseKind::Neutral:
@@ -948,7 +972,7 @@ HouseClass* HouseExtData::GetSlaveHouse(SlaveReturnTo const& kind, HouseClass* c
 	case SlaveReturnTo::Master:
 		return pVictim;
 	case SlaveReturnTo::Civilian:
-		return HouseExtData::FindCivilianSide();
+		return HouseExtData::FindFirstCivilianHouse();
 	case SlaveReturnTo::Special:
 		return HouseExtData::FindSpecial();
 	case SlaveReturnTo::Neutral:
@@ -1103,7 +1127,7 @@ bool HouseExtData::UpdateHarvesterProduction()
 
 		if (pThis->IQLevel2 >= RulesClass::Instance->Harvester && !pThis->IsTiberiumShort
 			&& !pThis->IsControlledByHuman() && harvesters < maxHarvesters
-			&& pThis->TechLevel >= pHarvesterUnit->TechLevel)
+			&& pThis->StaticData.TechLevel >= pHarvesterUnit->TechLevel)
 		{
 			pThis->ProducingUnitTypeIndex = pHarvesterUnit->ArrayIndex;
 			return true;
@@ -1208,12 +1232,80 @@ void HouseExtData::UpdateAutoDeathObjects()
 	}
 }
 
+BuildLimitStatus HouseExtData::BuildLimitGroupCheck(HouseClass const* const pThis, TechnoTypeClass* pItem, bool includeQueued)
+{
+	auto pItemExt = TechnoTypeExtContainer::Instance.Find(pItem);
+	if (pItemExt->BuildLimit_Group_Types.empty())
+		return BuildLimitStatus::NotReached;
+
+	if (pItemExt->BuildLimit_Group_Any.Get())
+	{
+		bool reachedLimit = false;
+		for (size_t i = 0;
+			i < MinImpl(
+				pItemExt->BuildLimit_Group_Types.size(),
+				pItemExt->BuildLimit_Group_Limits.size())
+			; i++)
+		{
+			TechnoTypeClass* pType = pItemExt->BuildLimit_Group_Types[i];
+			int ownedNow = HouseExtData::CountOwnedNowTotal(pThis, pType);
+			if (ownedNow >= pItemExt->BuildLimit_Group_Limits[i])
+			{
+				reachedLimit |= (includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
+					? false : true;
+			}
+		}
+		return reachedLimit ?
+			BuildLimitStatus::ReachedPermanently :
+			BuildLimitStatus::NotReached;
+	}
+	else
+	{
+		if (pItemExt->BuildLimit_Group_Limits.size() == 1U)
+		{
+			int sum = 0;
+			bool reachedLimit = false;
+			for (auto& pType : pItemExt->BuildLimit_Group_Types)
+			{
+				sum += HouseExtData::CountOwnedNowTotal(pThis, pType);
+			}
+			if (sum >= pItemExt->BuildLimit_Group_Limits[0])
+			{
+				for (auto& pType : pItemExt->BuildLimit_Group_Types)
+				{
+					reachedLimit |= (includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
+						? false : true;
+				}
+			}
+			return reachedLimit ?
+				BuildLimitStatus::ReachedPermanently :
+				BuildLimitStatus::NotReached;
+		}
+		else
+		{
+			for (size_t i = 0;
+			i < MinImpl(
+				pItemExt->BuildLimit_Group_Types.size(),
+				pItemExt->BuildLimit_Group_Limits.size())
+			; i++)
+			{
+				TechnoTypeClass* pType = pItemExt->BuildLimit_Group_Types[i];
+				int ownedNow = HouseExtData::CountOwnedNowTotal(pThis, pType);
+				if (ownedNow < pItemExt->BuildLimit_Group_Limits[i]
+				|| includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
+					return BuildLimitStatus::NotReached;
+			}
+			return BuildLimitStatus::ReachedPermanently;
+		}
+	}
+}
+
 BuildLimitStatus HouseExtData::CheckBuildLimit(
 	HouseClass const* const pHouse, TechnoTypeClass* pItem,
 	bool const includeQueued)
 {
 	int BuildLimit = pItem->BuildLimit;
-	int remaining = BuildLimitRemaining(pHouse, pItem);
+	int remaining = HouseExtData::BuildLimitRemaining(pHouse, pItem);
 
 	if (BuildLimit > 0 && remaining <= 0)
 	{
@@ -1542,6 +1634,10 @@ void HouseExtContainer::Clear()
 
 	HouseExtData::CloakEVASpeak.Stop();
 	HouseExtData::SubTerraneanEVASpeak.Stop();
+
+	Civilian = 0;
+	Special = 0;
+	Neutral = 0;
 }
 // =============================
 // container hooks

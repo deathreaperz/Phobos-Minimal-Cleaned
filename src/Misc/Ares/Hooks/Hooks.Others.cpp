@@ -705,37 +705,6 @@ DEFINE_HOOK(0x424EC5, AnimClass_ReInit_TiberiumChainReaction_Damage, 6)
 	return 0x424ECB;
 }
 
-DEFINE_HOOK(0x71C7C2, TerrainClass_Update_ForestFire, 6)
-{
-	GET(TerrainClass*, pThis, ESI);
-
-	const auto& flammability = RulesClass::Instance->TreeFlammability;
-
-	// burn spread probability this frame
-	if (flammability > 0.0)
-	{
-		if (pThis->IsBurning && ScenarioClass::Instance->Random.RandomFromMax(99) == 0)
-		{
-			const auto pCell = pThis->GetCell();
-
-			// check all neighbour cells that contain terrain objects and
-			// roll the dice for each of them.
-			for (int i = 0; i < 8; ++i)
-			{
-				if (auto pTree = pCell->GetNeighbourCell((FacingType)i)->GetTerrain(false))
-				{
-					if (!pTree->IsBurning && ScenarioClass::Instance->Random.RandomDouble() < flammability)
-					{
-						pTree->Ignite();
-					}
-				}
-			}
-		}
-	}
-
-	return 0;
-}
-
 DEFINE_HOOK(0x71C5D2, TerrainClass_Ignite_IsFlammable, 6)
 {
 	GET(TerrainClass*, pThis, EDI);
@@ -795,19 +764,23 @@ DEFINE_JUMP(LJMP, 0x53173F, 0x531749);
 // 	return 0x531749;
 // }
 
-DEFINE_HOOK(0x535DB6, SetStructureTabCommandClass_Execute_Power, 6)
-{
-	GET(BuildingClass*, pBuild, EAX);
-	R->EAX(pBuild->FindFactory(false, true));
-	return 0x535DC2;
-}
+DEFINE_PATCH(0x535DB9, 0x01);
 
-DEFINE_HOOK(0x535E76, SetDefenseTabCommandClass_Execute_Power, 6)
-{
-	GET(BuildingClass*, pBuild, EAX);
-	R->EAX(pBuild->FindFactory(false, true));
-	return 0x535E82;
-}
+//DEFINE_HOOK(0x535DB6, SetStructureTabCommandClass_Execute_Power, 6)
+//{
+//	GET(BuildingClass*, pBuild, EAX);
+//	R->EAX(pBuild->FindFactory(false, true));
+//	return 0x535DC2;
+//}
+
+DEFINE_PATCH(0x535E79, 0x01);
+
+//DEFINE_HOOK(0x535E76, SetDefenseTabCommandClass_Execute_Power, 6)
+//{
+//	GET(BuildingClass*, pBuild, EAX);
+//	R->EAX(pBuild->FindFactory(false, true));
+//	return 0x535E82;
+//}
 
 DEFINE_HOOK(0x4B93BD, ScenarioClass_GenerateDropshipLoadout_FreeAnims, 7)
 {
@@ -1155,7 +1128,7 @@ DEFINE_HOOK(0x5301AC, InitBootstrapMixfiles_CustomMixes_Preload, 0x5)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x53044A, InitBootstrapMixfiles_CustomMixes_Postload, 0x10)
+DEFINE_HOOK(0x53044A, InitBootstrapMixfiles_CustomMixes_Postload, 0x6)
 {
 	for (auto& postloadMix : SpawnerMain::GetGameConfigs()->PostloadMixes)
 	{

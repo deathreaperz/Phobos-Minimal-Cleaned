@@ -7,7 +7,7 @@
 
 #include <New/Type/RadTypeClass.h>
 #include <New/Type/CursorTypeClass.h>
-
+#include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
 #include <New/Entity/ElectricBoltClass.h>
 
 #include <Misc/DynamicPatcher/Others/DamageText.h>
@@ -130,6 +130,7 @@ public:
 
 	ValueableVector<WarheadTypeClass*> ExtraWarheads {};
 	ValueableVector<int> ExtraWarheads_DamageOverrides {};
+	ValueableVector<double> ExtraWarheads_DetonationChances {};
 
 	Valueable<double> Burst_Retarget { 0.0 };
 	Nullable<bool> KickOutPassenger {};
@@ -145,6 +146,16 @@ public:
 
 	//Nullable<bool> BlockageTargetingBypassDamageOverride {};
 	Nullable<double> RecoilForce {};
+
+	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_RequiredTypes {};
+	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_DisallowedTypes {};
+	std::vector<std::string> AttachEffect_RequiredGroups {};
+	std::vector<std::string> AttachEffect_DisallowedGroups {};
+	ValueableVector<int> AttachEffect_RequiredMinCounts {};
+	ValueableVector<int> AttachEffect_RequiredMaxCounts {};
+	ValueableVector<int> AttachEffect_DisallowedMinCounts {};
+	ValueableVector<int> AttachEffect_DisallowedMaxCounts {};
+	Valueable<bool> AttachEffect_IgnoreFromSameSource { false };
 
 	WeaponTypeExtData() noexcept = default;
 	~WeaponTypeExtData() noexcept = default;
@@ -166,6 +177,7 @@ public:
 	}
 
 	ColorStruct GetBeamColor() const;
+	bool HasRequiredAttachedEffects(TechnoClass* pTechno, TechnoClass* pFirer);
 
 	constexpr FORCEINLINE static size_t size_Of()
 	{
@@ -194,6 +206,8 @@ public:
 
 	static void FireRadBeam(TechnoClass* pFirer, WeaponTypeClass* pWeapon, CoordStruct& source, CoordStruct& target);
 	static void FireEbolt(TechnoClass* pFirer, WeaponTypeClass* pWeapon, CoordStruct& source, CoordStruct& target, int idx);
+
+	static int GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass* pFirer, std::optional<int> fallback = std::nullopt);
 };
 
 class WeaponTypeExtContainer final :public Container<WeaponTypeExtData>

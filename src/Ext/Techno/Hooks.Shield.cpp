@@ -142,47 +142,67 @@ DEFINE_HOOK(0x7019D8, TechnoClass_ReceiveDamage_SkipLowDamageCheck, 0x5)
 	return SkipLowDamageCheck;
 }
 
-#define REPLACE_ARMOR(addr , regWP , regTech , name)\
-DEFINE_HOOK(addr, name, 0x6) {\
-GET(WeaponTypeClass*, pWeapon, regWP);\
-GET(TechnoClass*, pTarget, regTech);\
-	if (TechnoExtData::ReplaceArmor(R, pTarget, pWeapon))\
-		{ return R->Origin() + 6; } return 0; }
-
-DEFINE_HOOK(0x70CF39, TechnoClass_EvalThreatRating_Shield, 0x6)
-{
-	GET(WeaponTypeClass*, pWeapon, EBX);
-	GET(ObjectClass*, pTarget, ESI);
-
-	if (auto pTechno = generic_cast<TechnoClass*>(pTarget))
-	{
-		if (TechnoExtData::ReplaceArmor(R, pTechno, pWeapon))
-			return R->Origin() + 6;
-	}
-
-	return 0;
-}
-
-REPLACE_ARMOR(0x6F7D31, EBP, ESI, TechnoClass_CanAutoTargetObject_Shield) //
-REPLACE_ARMOR(0x6FCB64, EBX, EBP, TechnoClass_CanFire_Shield) //
-REPLACE_ARMOR(0x708AEB, ESI, EBP, TechnoClass_ShouldRetaliate_Shield) //
-
 #undef REPLACE_ARMOR
 
 #include <Ext/Super/Body.h>
+#include <New/PhobosAttachedAffect/Functions.h>
 
 DEFINE_HOOK(0x6F6AC4, TechnoClass_Remove_AfterRadioClassRemove, 0x5)
 {
 	GET(TechnoClass*, pThis, ECX);
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pExt->Type);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
-	if (pThis->Owner && pThis->Owner->CountOwnedAndPresent(pExt->Type) <= 0 && !pTypeExt->Linked_SW.empty())
+	if (pThis->Owner && pThis->Owner->CountOwnedAndPresent(pTypeExt->AttachedToObject) <= 0 && !pTypeExt->Linked_SW.empty())
 		pThis->Owner->UpdateSuperWeaponsOwned();
 
 	if (const auto pShieldData = pExt->GetShield())
 		pShieldData->OnRemove();
+
+	bool markForRedraw = false;
+	bool altered = false;
+	std::vector<std::unique_ptr<PhobosAttachEffectClass>>::iterator it;
+
+	// Do not remove attached effects from undeploying buildings.
+	if (auto const pBuilding = specific_cast<BuildingClass*>(pThis))
+	{
+		if ((pBuilding->Type->UndeploysInto && pBuilding->CurrentMission == Mission::Selling && pBuilding->MissionStatus == 2))
+		{
+			return 0;
+		}
+	}
+
+	for (it = pExt->PhobosAE.begin(); it != pExt->PhobosAE.end(); )
+	{
+		auto const attachEffect = it->get();
+
+		if ((attachEffect->GetType()->DiscardOn & DiscardCondition::Entry) != DiscardCondition::None)
+		{
+			altered = true;
+
+			if (attachEffect->GetType()->HasTint())
+				markForRedraw = true;
+
+			if (attachEffect->ResetIfRecreatable())
+			{
+				++it;
+				continue;
+			}
+
+			it = pExt->PhobosAE.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	if (altered)
+		AresAE::RecalculateStat(&TechnoExtContainer::Instance.Find(pThis)->AeData, pThis);
+
+	if (markForRedraw)
+		pThis->MarkForRedraw();
 
 	return 0;
 }

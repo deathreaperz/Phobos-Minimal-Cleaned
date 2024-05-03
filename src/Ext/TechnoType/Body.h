@@ -17,6 +17,8 @@
 #include <New/Type/DroppodProperties.h>
 #include <New/Type/CrateTypeClass.h>
 
+#include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
+
 #include <New/AnonymousType/PassengerDeletionTypeClass.h>
 
 #include <FileSystem.h>
@@ -34,6 +36,8 @@
 
 #include <New/AnonymousType/AresAttachEffectTypeClass.h>
 #include <Utilities/MultiBoolFixedArray.h>
+
+#include <Misc/Defines.h>
 
 class ArmorTypeClass;
 struct ImageStatusses
@@ -205,7 +209,7 @@ public:
 	Valueable<bool> OpenTopped_IgnoreRangefinding { false };
 	Valueable<bool> OpenTopped_AllowFiringIfDeactivated { true };
 	Valueable<bool> OpenTopped_ShareTransportTarget { true };
-
+	Valueable<bool> OpenTopped_UseTransportRangeModifiers { false };
 	Valueable<bool> AutoFire { false };
 	Valueable<bool> AutoFire_TargetSelf { false };
 
@@ -450,11 +454,6 @@ public:
 	ValueableVector<int> Prerequisite_Display {};
 
 	ValueableVector<int> BuildLimit_Requires {};
-
-	Nullable<int> Riparius_FrameIDx { };
-	Nullable<int> Cruentus_FrameIDx { };
-	Nullable<int> Vinifera_FrameIDx { };
-	Nullable<int> Aboreus_FrameIDx { };
 
 	Promotable<int> CrushLevel {};
 	Promotable<int> CrushableLevel {};
@@ -851,7 +850,7 @@ public:
 	DWORD Secret_RequiredHouses { 0xFFFFFFFF };
 	DWORD Secret_ForbiddenHouses { 0xFFFFFFFF };
 
-	std::bitset<32> RequiredStolenTech {};
+	std::bitset<MaxHouseCount> RequiredStolenTech {};
 
 	Valueable<bool> ReloadInTransport { false };
 	Valueable<bool> Weeder_TriggerPreProductionBuildingAnim { false };
@@ -912,6 +911,30 @@ public:
 	std::vector<ValueableIdxVector<VocClass>> TalkbubbleVoices {};
 
 	Nullable<float> HarvesterDumpAmount { };
+	Valueable<bool> NoExtraSelfHealOrRepair { false };
+
+	//add this just in case the implementation chages
+#pragma region BuildLimitGroup
+	ValueableVector<TechnoTypeClass*> BuildLimit_Group_Types { };
+	Valueable<bool> BuildLimit_Group_Any { false };
+	ValueableVector<int> BuildLimit_Group_Limits { };
+	Valueable<bool> BuildLimit_Group_Stop { false };
+#pragma endregion
+
+	NullableVector<int> Tiberium_PipIdx {};
+	Nullable<int> Tiberium_EmptyPipIdx {};
+	Valueable<SHPStruct*> Tiberium_PipShapes {};
+	Valueable<PaletteManager*> Tiberium_PipShapes_Palette {};
+
+	Nullable<ColorStruct> Tint_Color {};
+	Valueable<double> Tint_Intensity { 0.0 };
+	Valueable<AffectedHouse> Tint_VisibleToHouses { AffectedHouse::All };
+
+	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_AttachTypes {};
+	ValueableVector<int> AttachEffect_DurationOverrides {};
+	ValueableVector<int> AttachEffect_Delays {};
+	ValueableVector<int> AttachEffect_InitialDelays {};
+	NullableVector<int> AttachEffect_RecreationDelays {};
 
 	TechnoTypeExtData() noexcept = default;
 	~TechnoTypeExtData() noexcept = default;

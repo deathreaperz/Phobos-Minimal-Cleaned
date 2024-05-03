@@ -118,14 +118,15 @@ DEFINE_HOOK(0x6F7D3D, TechnoClass_CanAutoTargetObject_Verses, 0x7)
 
 	GET(ObjectClass*, pTarget, ESI);
 	GET(WarheadTypeClass*, pWH, ECX);
+	GET(WeaponTypeClass*, pWeapon, EBP);
 	//GET(int, nArmor, EAX);
 
 	const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
 
 	//if ((size_t)nArmor > ArmorTypeClass::Array.size())
 	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
-	const auto armor = (int)TechnoExtData::GetArmor(pTarget);
-	const auto vsData = &pData->Verses[armor];
+	Armor armor = TechnoExtData::GetTechnoArmor(pTarget, pWH);
+	const auto vsData = &pData->Verses[(int)armor];
 
 	return vsData->Flags.PassiveAcquire  //|| !(vsData->Verses <= 0.02)
 		? ContinueCheck
@@ -139,11 +140,12 @@ DEFINE_HOOK(0x6FCB6A, TechnoClass_CanFire_Verses, 0x7)
 
 	GET(ObjectClass*, pTarget, EBP);
 	GET(WarheadTypeClass*, pWH, EDI);
+	GET(WeaponTypeClass*, pWeapon, EBX);
 	//GET(int, nArmor, EAX);
 
 	const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
-	const auto armor = (int)TechnoExtData::GetArmor(pTarget);
-	const auto vsData = &pData->Verses[armor];
+	Armor armor = TechnoExtData::GetTechnoArmor(pTarget, pWH);
+	const auto vsData = &pData->Verses[(int)armor];
 
 	//if ((size_t)nArmor > ArmorTypeClass::Array.size())
 	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
@@ -180,7 +182,7 @@ DEFINE_HOOK(0x70CEA0, TechnoClass_EvalThreatRating_TargetWeaponWarhead_Verses, 0
 
 	//if ((int)pThisType->Armor > ArmorTypeClass::Array.size())
 	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
-	const auto armor = (int)TechnoExtData::GetArmor(pThis);
+	const auto armor = (int)TechnoExtData::GetTechnoArmor(pThis, pTargetWH);
 	const auto vsData = &pData->Verses[armor];
 
 	double nMult = 0.0;
@@ -207,39 +209,41 @@ DEFINE_HOOK(0x70CF45, TechnoClass_EvalThreatRating_ThisWeaponWarhead_Verses, 0xB
 
 	//if ((size_t)nArmor > ArmorTypeClass::Array.size())
 	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
-	const auto armor = (int)TechnoExtData::GetArmor(pTarget);
-	const auto vsData = &pData->Verses[armor];
+	Armor armor = TechnoExtData::GetTechnoArmor(pTarget, pWH);
+
+	const auto vsData = &pData->Verses[(int)armor];
 
 	R->Stack(0x10, dCoeff * vsData->Verses + dmult);
 	return 0x70CF58;
 }
 
-DEFINE_HOOK(0x6F36E3, TechnoClass_SelectWeapon_Verses, 0x5)
-{
-	enum
-	{
-		UseSecondary = 0x6F3745,
-		ContinueCheck = 0x6F3754,
-		UsePrimary = 0x6F37AD,
-	};
-
-	GET(TechnoClass*, pTarget, EBP);
-	GET_STACK(WeaponTypeClass*, pSecondary, 0x10); //secondary
-	GET_STACK(WeaponTypeClass*, pPrimary, 0x14); //primary
-
-	const int nArmor = (int)TechnoExtData::GetArmor(pTarget);
-	//if ((size_t)nArmor > ArmorTypeClass::Array.size())
-	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
-
-	const auto vsData_Secondary = &WarheadTypeExtContainer::Instance.Find(pSecondary->Warhead)->Verses[nArmor];
-
-	if (vsData_Secondary->Verses == 0.0)
-		return UsePrimary;
-
-	const auto vsData_Primary = &WarheadTypeExtContainer::Instance.Find(pPrimary->Warhead)->Verses[nArmor];
-
-	return vsData_Primary->Verses != 0.0 ? ContinueCheck : UseSecondary;
-}
+// shield weapon selecting is applied earlier
+//DEFINE_HOOK(0x6F36E3, TechnoClass_SelectWeapon_Verses, 0x5)
+//{
+//	enum
+//	{
+//		UseSecondary = 0x6F3745,
+//		ContinueCheck = 0x6F3754,
+//		UsePrimary = 0x6F37AD,
+//	};
+//
+//	GET(TechnoClass*, pTarget, EBP);
+//	GET_STACK(WeaponTypeClass*, pSecondary, 0x10); //secondary
+//	GET_STACK(WeaponTypeClass*, pPrimary, 0x14); //primary
+//
+//	const int nArmor = (int)TechnoExtData::GetArmor(pTarget);
+//	if ((size_t)nArmor > ArmorTypeClass::Array.size())
+//		Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
+//
+//	const auto vsData_Secondary = &WarheadTypeExtContainer::Instance.Find(pSecondary->Warhead)->Verses[nArmor];
+//
+//	if (vsData_Secondary->Verses == 0.0)
+//		return UsePrimary;
+//
+//	const auto vsData_Primary = &WarheadTypeExtContainer::Instance.Find(pPrimary->Warhead)->Verses[nArmor];
+//
+//	return vsData_Primary->Verses != 0.0 ? ContinueCheck : UseSecondary;
+//}
 
 DEFINE_HOOK(0x708AF7, TechnoClass_ShouldRetaliate_Verses, 0x7)
 {
@@ -247,6 +251,7 @@ DEFINE_HOOK(0x708AF7, TechnoClass_ShouldRetaliate_Verses, 0x7)
 
 	GET(TechnoClass*, pSource, EBP);
 	GET(WarheadTypeClass*, pWH, ECX);
+	//GET(WeaponTypeClass*, pWeapon, ESI);
 	//GET(int, nArmor, EAX);
 
 	const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
@@ -256,8 +261,8 @@ DEFINE_HOOK(0x708AF7, TechnoClass_ShouldRetaliate_Verses, 0x7)
 	if (pData->Nonprovocative)
 		return DoNotRetaliate;
 
-	const auto armor = (int)TechnoExtData::GetArmor(pSource);
-	const auto vsData = &pData->Verses[armor];
+	Armor armor = TechnoExtData::GetTechnoArmor(pSource, pWH);
+	const auto vsData = &pData->Verses[(int)armor];
 
 	return vsData->Flags.Retaliate //|| !(vsData->Verses <= 0.0099999998)
 		? Retaliate

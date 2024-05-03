@@ -2,9 +2,10 @@
 
 #include <Ext/Team/Body.h>
 #include <Ext/Rules/Body.h>
+#include <Ext/Techno/Body.h>
 
 // 1-based like the original action '6,n' (so the first script line is n=1)
-void ScriptExtData::ConditionalJumpIfTrue(TeamClass* pTeam, int newScriptLine = -1)
+void ScriptExtData::ConditionalJumpIfTrue(TeamClass* pTeam, int newScriptLine)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -23,14 +24,14 @@ void ScriptExtData::ConditionalJumpIfTrue(TeamClass* pTeam, int newScriptLine = 
 		const auto& [prevAct, prevArgs] = ScriptExtData::GetSpecificAction(pScript, scriptArgument - 1);
 
 		Debug::Log("DEBUG: [%s] [%s] %d = %d,%d - Conditional Jump was a success! - New Line: %d = %d,%d\n",
-		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
-		curAct,
-		curArgs,
-		scriptArgument - 1,
-		prevAct,
-		prevArgs
+			pTeam->Type->ID,
+			pScript->Type->ID,
+			pScript->CurrentMission,
+			curAct,
+			curArgs,
+			scriptArgument - 1,
+			prevAct,
+			prevArgs
 		);
 
 		// Start conditional jump!
@@ -47,7 +48,7 @@ void ScriptExtData::ConditionalJumpIfTrue(TeamClass* pTeam, int newScriptLine = 
 }
 
 // 1-based like the original action '6,n' (so the first script line is n=1)
-void ScriptExtData::ConditionalJumpIfFalse(TeamClass* pTeam, int newScriptLine = -1)
+void ScriptExtData::ConditionalJumpIfFalse(TeamClass* pTeam, int newScriptLine)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -66,14 +67,14 @@ void ScriptExtData::ConditionalJumpIfFalse(TeamClass* pTeam, int newScriptLine =
 		const auto& [prevAct, prevArgs] = ScriptExtData::GetSpecificAction(pScript, scriptArgument - 1);
 
 		Debug::Log("DEBUG: [%s] [%s] %d = %d,%d - Conditional Jump was a success! - New Line: %d = %d,%d\n",
-		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
-		curAct,
-		curArgs,
-		scriptArgument - 1,
-		prevAct,
-		prevArgs
+			pTeam->Type->ID,
+			pScript->Type->ID,
+			pScript->CurrentMission,
+			curAct,
+			curArgs,
+			scriptArgument - 1,
+			prevAct,
+			prevArgs
 		);
 
 		// Start conditional jump!
@@ -104,13 +105,13 @@ void ScriptExtData::ConditionalJump_KillEvaluation(TeamClass* pTeam)
 
 	int counter = pTeamData->ConditionalJump_Counter;
 	int comparator = pTeamData->ConditionalJump_ComparatorValue;
-	pTeamData->ConditionalJump_Evaluation = ScriptExtData::ConditionalJump_MakeEvaluation(pTeamData->ConditionalJump_ComparatorMode, counter, comparator);
+	pTeamData->ConditionalJump_Evaluation = ConditionalJump_MakeEvaluation(pTeamData->ConditionalJump_ComparatorMode, counter, comparator);
 
 	// This action finished
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ConditionalJump_ManageKillsCounter(TeamClass* pTeam, int enable = -1)
+void ScriptExtData::ConditionalJump_ManageKillsCounter(TeamClass* pTeam, int enable)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -120,21 +121,13 @@ void ScriptExtData::ConditionalJump_ManageKillsCounter(TeamClass* pTeam, int ena
 	if (scriptArgument < 0 || scriptArgument > 1)
 		scriptArgument = curArgs;
 
-	if (scriptArgument <= 0)
-		scriptArgument = 0;
-	else
-		scriptArgument = 1;
-
-	if (scriptArgument <= 0)
-		pTeamData->ConditionalJump_EnabledKillsCount = false;
-	else
-		pTeamData->ConditionalJump_EnabledKillsCount = true;
+	pTeamData->ConditionalJump_EnabledKillsCount = (scriptArgument > 0);
 
 	// This action finished
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ConditionalJump_SetIndex(TeamClass* pTeam, int index = -1000000)
+void ScriptExtData::ConditionalJump_SetIndex(TeamClass* pTeam, int index)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -148,7 +141,7 @@ void ScriptExtData::ConditionalJump_SetIndex(TeamClass* pTeam, int index = -1000
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ConditionalJump_SetComparatorValue(TeamClass* pTeam, int value = -1)
+void ScriptExtData::ConditionalJump_SetComparatorValue(TeamClass* pTeam, int value)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -163,7 +156,7 @@ void ScriptExtData::ConditionalJump_SetComparatorValue(TeamClass* pTeam, int val
 }
 
 // Possible values are 3:">=" -> 0:"<", 1:"<=", 2:"==", 3:">=", 4:">", 5:"!="
-void ScriptExtData::ConditionalJump_SetComparatorMode(TeamClass* pTeam, int value = -1)
+void ScriptExtData::ConditionalJump_SetComparatorMode(TeamClass* pTeam, int value)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -209,7 +202,7 @@ void ScriptExtData::ConditionalJump_ResetVariables(TeamClass* pTeam)
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ConditionalJump_ManageResetIfJump(TeamClass* pTeam, int enable = -1)
+void ScriptExtData::ConditionalJump_ManageResetIfJump(TeamClass* pTeam, int enable)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -218,10 +211,7 @@ void ScriptExtData::ConditionalJump_ManageResetIfJump(TeamClass* pTeam, int enab
 	if (enable < 0)
 		enable = curArgs;
 
-	if (enable > 0)
-		pTeamData->ConditionalJump_ResetVariablesIfJump = true;
-	else
-		pTeamData->ConditionalJump_ResetVariablesIfJump = false;
+	pTeamData->ConditionalJump_ResetVariablesIfJump = (enable > 0);
 
 	// This action finished
 	pTeam->StepCompleted = true;
@@ -256,7 +246,9 @@ void ScriptExtData::ConditionalJump_CheckObjects(TeamClass* pTeam)
 				for (size_t i = 0; i < objectsList.size(); i++)
 				{
 					if (objectsList[i] == pTechno->GetTechnoType()
-						//TeamExt::GroupAllowed(objectsList[i] , pTechno->GetTechnoType())
+						|| objectsList[i] == TechnoExtContainer::Instance.Find(pTechno)->Type
+						//|| TeamExtData::GroupAllowed(objectsList[i], pTechno->GetTechnoType())
+						//|| TeamExtData::GroupAllowed(objectsList[i], TechnoExtContainer::Instance.Find(pTechno)->Type)
 						)
 					{
 						countValue++;
@@ -275,7 +267,7 @@ void ScriptExtData::ConditionalJump_CheckObjects(TeamClass* pTeam)
 }
 
 // A simple counter. The count can be increased or decreased
-void ScriptExtData::ConditionalJump_CheckCount(TeamClass* pTeam, int modifier = 0)
+void ScriptExtData::ConditionalJump_CheckCount(TeamClass* pTeam, int modifier)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -294,7 +286,7 @@ void ScriptExtData::ConditionalJump_CheckCount(TeamClass* pTeam, int modifier = 
 	pTeamData->ConditionalJump_Counter += modifier;
 	int currentCount = pTeamData->ConditionalJump_Counter;
 	int comparatorValue = pTeamData->ConditionalJump_ComparatorValue;
-	pTeamData->ConditionalJump_Evaluation = ScriptExtData::ConditionalJump_MakeEvaluation(pTeamData->ConditionalJump_ComparatorMode, currentCount, comparatorValue);
+	pTeamData->ConditionalJump_Evaluation = ConditionalJump_MakeEvaluation(pTeamData->ConditionalJump_ComparatorMode, currentCount, comparatorValue);
 
 	// This action finished
 	pTeam->StepCompleted = true;
@@ -302,7 +294,7 @@ void ScriptExtData::ConditionalJump_CheckCount(TeamClass* pTeam, int modifier = 
 
 bool ScriptExtData::ConditionalJump_MakeEvaluation(int comparatorMode, int studiedValue, int comparatorValue)
 {
-	int result = false;
+	bool result = false;
 
 	// Comparators are like in [AITriggerTypes] from aimd.ini
 	switch (comparatorMode)
@@ -375,7 +367,7 @@ void ScriptExtData::ConditionalJump_CheckHumanIsMostHated(TeamClass* pTeam)
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ConditionalJump_CheckAliveHumans(TeamClass* pTeam, int mode = 0)
+void ScriptExtData::ConditionalJump_CheckAliveHumans(TeamClass* pTeam, int mode)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
@@ -388,38 +380,36 @@ void ScriptExtData::ConditionalJump_CheckAliveHumans(TeamClass* pTeam, int mode 
 
 	auto pHouse = pTeam->Owner;
 
+	pTeamData->ConditionalJump_Evaluation = false;
+
+	// Find an alive human House
+	for (const auto& pNode : pHouse->AngerNodes)
 	{
-		pTeamData->ConditionalJump_Evaluation = false;
-
-		// Find an alive human House
-		for (const auto& pNode : pHouse->AngerNodes)
+		if (!pNode.House->Type->MultiplayPassive
+			&& !pNode.House->Defeated
+			&& !pNode.House->IsObserver()
+			&& pNode.House->IsControlledByHuman())
 		{
-			if (!pNode.House->Type->MultiplayPassive
-				&& !pNode.House->Defeated
-				&& !pNode.House->IsObserver()
-				&& pNode.House->IsControlledByHuman())
+			if (mode == 1 && !pHouse->IsAlliedWith(pNode.House)) // Mode 1: Enemy humans
 			{
-				if (mode == 1 && !pHouse->IsAlliedWith(pNode.House)) // Mode 1: Enemy humans
-				{
-					pTeamData->ConditionalJump_Evaluation = true;
-					break;
-				}
-				else if (mode == 2 && !pHouse->IsAlliedWith(pNode.House)) // Mode 2: Friendly humans
-				{
-					pTeamData->ConditionalJump_Evaluation = true;
-					break;
-				}
-
-				// mode 0: Any human
 				pTeamData->ConditionalJump_Evaluation = true;
 				break;
 			}
-		}
+			else if (mode == 2 && pHouse->IsAlliedWith(pNode.House)) // Mode 2: Friendly humans
+			{
+				pTeamData->ConditionalJump_Evaluation = true;
+				break;
+			}
 
-		// If we are looking for any human the own House should be checked
-		if (mode == 0 && pHouse->IsControlledByHuman())
+			// mode 0: Any human
 			pTeamData->ConditionalJump_Evaluation = true;
+			break;
+		}
 	}
+
+	// If we are looking for any human, the own House should be checked
+	if (mode == 0 && pHouse->IsControlledByHuman())
+		pTeamData->ConditionalJump_Evaluation = true;
 
 	// This action finished
 	pTeam->StepCompleted = true;

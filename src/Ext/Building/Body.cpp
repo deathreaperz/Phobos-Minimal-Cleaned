@@ -276,6 +276,36 @@ void BuildingExtData::UpdatePoweredKillSpawns() const
 	}
 }
 
+void BuildingExtData::UpdateSpyEffecAnimDisplay()
+{
+	auto const pThis = this->AttachedToObject;
+	auto const nMission = pThis->GetCurrentMission();
+
+	if (pThis->InLimbo || !pThis->IsOnMap || this->LimboID != -1 || nMission == Mission::Selling)
+		return;
+
+	if (this->SpyEffectAnim)
+	{
+		if (HouseClass::IsCurrentPlayerObserver() || EnumFunctions::CanTargetHouse(
+			this->Type->SpyEffect_Anim_DisplayHouses,
+			SpyEffectAnim->Owner, HouseClass::CurrentPlayer))
+		{
+			SpyEffectAnim->Invisible = false;
+		}
+		else
+		{
+			SpyEffectAnim->Invisible = true;
+		}
+
+		if (SpyEffectAnimDuration > 0)
+			SpyEffectAnimDuration--;
+		else if (SpyEffectAnimDuration == 0)
+		{
+			SpyEffectAnim.release();
+		}
+	}
+}
+
 void BuildingExtData::UpdateAutoSellTimer()
 {
 	auto const pThis = this->AttachedToObject;
@@ -299,7 +329,7 @@ void BuildingExtData::UpdateAutoSellTimer()
 			if (!pThis->Owner || pThis->Occupants.Count || pThis->Owner->Type->MultiplayPassive)
 				return;
 
-			if (!pThis->Owner->IsCurrentPlayer())
+			if (pThis->Owner->IsControlledByHuman())
 				return;
 
 			const double nValue = pRulesExt->AI_AutoSellHealthRatio->at(pThis->Owner->GetCorrectAIDifficultyIndex());
@@ -443,8 +473,12 @@ CoordStruct BuildingExtData::GetCenterCoords(BuildingClass* pBuilding, bool incl
 
 void BuildingExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	AnnounceInvalidPointer(CurrentAirFactory, ptr, bRemoved);
-	AnnounceInvalidPointer<TechnoClass*>(RegisteredJammers, ptr, bRemoved);
+	AnnounceInvalidPointer(this->CurrentAirFactory, ptr, bRemoved);
+	AnnounceInvalidPointer<TechnoClass*>(this->RegisteredJammers, ptr, bRemoved);
+	if (bRemoved && ptr == this->SpyEffectAnim.get())
+	{
+		this->SpyEffectAnim.release();
+	}
 
 	this->PrismForwarding.InvalidatePointer(ptr, bRemoved);
 }
@@ -773,7 +807,7 @@ void BuildingExtData::LimboDeliver(BuildingTypeClass* pType, HouseClass* pOwner,
 		pBuildingExt->TechnoExt->RevengeWeapons.clear();
 		pBuildingExt->TechnoExt->DamageSelfState.release();
 		pBuildingExt->TechnoExt->MyGiftBox.release();
-		pBuildingExt->TechnoExt->PaintBallState.release();
+		pBuildingExt->TechnoExt->PaintBallStates.clear();
 		pBuildingExt->TechnoExt->ExtraWeaponTimers.clear();
 		pBuildingExt->TechnoExt->MyWeaponManager.Clear();
 		pBuildingExt->TechnoExt->MyWeaponManager.CWeaponManager.Clear();
@@ -909,6 +943,8 @@ void BuildingExtData::Serialize(T& Stm)
 		.Process(this->GrindingWeapon_AccumulatedCredits)
 		.Process(this->BeignMCEd)
 		.Process(this->LastFlameSpawnFrame)
+		.Process(this->SpyEffectAnim)
+		.Process(this->SpyEffectAnimDuration)
 		;
 }
 

@@ -16,6 +16,8 @@
 #include <New/Type/DigitalDisplayTypeClass.h>
 #include <New/Type/CrateTypeClass.h>
 
+#include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
+
 //#include <Ext/TechnoType/Body.h>
 
 #include <Ext/WarheadType/Body.h>
@@ -128,6 +130,8 @@ void RulesExtData::s_LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	LaserTrailTypeClass::LoadFromINIList(&CCINIClass::INI_Art.get());
 	DigitalDisplayTypeClass::LoadFromINIList(pINI);
 
+	PhobosAttachEffectTypeClass::LoadFromINIOnlyTheList(pINI);
+
 	Data->LoadBeforeTypeData(pThis, pINI);
 }
 
@@ -145,6 +149,7 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 	HoverTypeClass::ReadListFromINI(pINI);
 	ShieldTypeClass::ReadListFromINI(pINI);
 	RadTypeClass::ReadListFromINI(pINI);
+	PhobosAttachEffectTypeClass::ReadListFromINI(pINI);
 
 	pData->DefaultAircraftDamagedSmoke = AnimTypeClass::Find(GameStrings::SGRYSMK1());
 	pData->FirestormActiveAnim.Read(iniEX, AUDIOVISUAL_SECTION, "FirestormActiveAnim");
@@ -487,11 +492,10 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		}
 	}
 
-	if (OverlayTypeClass::Array->Count > 255)
-	{
-		Debug::Log("Reaching over 255 OverlayTypes!.\n");
-		Debug::RegisterParserError();
-	}
+	//if (OverlayTypeClass::Array->Count > 255) {
+	//	Debug::Log("Reaching over 255 OverlayTypes!.\n");
+	//	Debug::RegisterParserError();
+	//}
 
 	for (auto pWH : *WarheadTypeClass::Array)
 	{

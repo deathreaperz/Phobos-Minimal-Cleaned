@@ -68,57 +68,78 @@ DEFINE_HOOK(0x62D44A, ParticleClass_GasDirection_AI_WinDirMult, 0x6)
 	return 0x62D456;
 }
 
-DEFINE_HOOK(0x62BD69, ParticleClass_ProcessGasBehaviour_NoWind, 6)
+//DEFINE_HOOK(0x62BD69, ParticleClass_ProcessGasBehaviour_NoWind, 6)
+//{
+//	GET(ParticleClass* const, pThis, EBP);
+//
+//	return pThis->Type->WindEffect == -1
+//		? 0x62C200 : 0x0;
+//}
+//
+//DEFINE_HOOK(0x62C361, ParticleClass_ProcessGasBehaviour_DisOnWater, 6)
+//{
+//	GET(ParticleClass*, pThis, EBP);
+//	GET(ParticleTypeClass* const, pType, EDI);
+//
+//	const auto pTypeExt = ParticleTypeExtContainer::Instance.Find(pType);
+//
+//	if (pType->WindEffect == -1)
+//	{
+//		const auto pCell = pThis->GetCell();
+//		if (pCell->ContainsBridge() || (pCell->LandType != LandType::Beach && pCell->LandType != LandType::Water))
+//			return 0;
+//	}
+//	else
+//	{
+//
+//		if (!pTypeExt->DeleteWhenReachWater)
+//			return 0;
+//
+//		const auto pCell = pThis->GetCell();
+//		if (pCell->ContainsBridge() || (pCell->LandType != LandType::Beach && pCell->LandType != LandType::Water))
+//			return 0;
+//	}
+//
+//	pThis->hasremaining = 1;
+//	//GameDelete<true,false>(pThis);
+//	pThis->UnInit();
+//	return 0x62C394;
+//}
+//
+DEFINE_HOOK(0x62BE2B, ParticleClass_Gas_AI_DriftSpeed, 0x5)
 {
-	GET(ParticleClass* const, pThis, EBP);
+	GET(ParticleClass*, pParticle, EBP);
+	GET(int, value_X, EBX);
+	GET(int, value_Y, EDI);
+	const auto pExt = ParticleTypeExtContainer::Instance.Find(pParticle->Type);
+	const auto maxDriftSpeedX = &pExt->Gas_DriftSpeedX.Get();
+	const auto minDriftSpeedY = &pExt->Gas_DriftSpeedY.Get();
 
-	return pThis->Type->WindEffect == -1
-		? 0x62C200 : 0x0;
-}
-
-DEFINE_HOOK(0x62C361, ParticleClass_ProcessGasBehaviour_DisOnWater, 6)
-{
-	GET(ParticleClass*, pThis, EBP);
-	GET(ParticleTypeClass* const, pType, EDI);
-
-	const auto pTypeExt = ParticleTypeExtContainer::Instance.Find(pType);
-
-	if (pType->WindEffect == -1)
+	if (value_X >= maxDriftSpeedX->Y)
 	{
-		const auto pCell = pThis->GetCell();
-		if (pCell->ContainsBridge() || (pCell->LandType != LandType::Beach && pCell->LandType != LandType::Water))
-			return 0;
+		if (value_X > maxDriftSpeedX->X)
+		{
+			pParticle->GasVelocity.X = maxDriftSpeedX->X;
+		}
 	}
 	else
 	{
-		if (!pTypeExt->DeleteWhenReachWater)
-			return 0;
-
-		const auto pCell = pThis->GetCell();
-		if (pCell->ContainsBridge() || (pCell->LandType != LandType::Beach && pCell->LandType != LandType::Water))
-			return 0;
+		pParticle->GasVelocity.X = maxDriftSpeedX->Y;
 	}
 
-	pThis->hasremaining = 1;
-	//GameDelete<true,false>(pThis);
-	pThis->UnInit();
-	return 0x62C394;
-}
+	if (value_Y >= minDriftSpeedY->Y)
+	{
+		if (value_Y > minDriftSpeedY->X)
+		{
+			pParticle->GasVelocity.X = minDriftSpeedY->X;
+		}
+	}
+	else
+	{
+		pParticle->GasVelocity.X = minDriftSpeedY->Y;
+	}
 
-DEFINE_HOOK(0x62BE30, ParticleClass_Gas_AI_DriftSpeed, 0x8)
-{
-	enum { ContinueAI = 0x62BE60 };
-
-	GET(ParticleClass*, pParticle, EBP);
-
-	const auto pExt = ParticleTypeExtContainer::Instance.Find(pParticle->Type);
-	const int maxDriftSpeed = pExt->Gas_DriftSpeed->X;
-	const int minDriftSpeed = pExt->Gas_DriftSpeed->Y;
-
-	pParticle->GasVelocity.X = std::clamp(pParticle->GasVelocity.X, minDriftSpeed, maxDriftSpeed);
-	pParticle->GasVelocity.Y = std::clamp(pParticle->GasVelocity.X, minDriftSpeed, maxDriftSpeed);
-
-	return ContinueAI;
+	return 0x62BE60;
 }
 
 //DEFINE_HOOK(0x62CD2F, ParticleClass_Update_Fire, 8)

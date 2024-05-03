@@ -50,6 +50,11 @@ bool PhobosTrajectoryType::UpdateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 		pType = (std::make_unique<StraightTrajectoryType>());
 	}
 	break;
+	case TrajectoryFlag::StraightVariantB:
+	{
+		pType = (std::make_unique<StraightVariantBTrajectoryType>());
+	}
+	break;
 	case TrajectoryFlag::Bombard:
 	{
 		pType = (std::make_unique<BombardTrajectoryType>());
@@ -107,8 +112,28 @@ std::array<const char*, (size_t)TrajectoryFlag::Count> PhobosTrajectoryType::Tra
 	{"Spiral"} ,
 	{"Wave"} ,
 	{"Arcing" },
+	{"StraightVarianB" },
  }
 };
+
+bool PhobosTrajectory::CanSnap(std::unique_ptr<PhobosTrajectory>& traj)
+{
+	constexpr TrajectoryFlag flags[] = {
+		TrajectoryFlag::Straight,
+		TrajectoryFlag::StraightVariantB,
+		TrajectoryFlag::Bombard,
+	};
+
+	for (auto flag : flags)
+	{
+		if (traj->Flag == flag)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
 
 void PhobosTrajectoryType::CreateType(std::unique_ptr<PhobosTrajectoryType>& pType, CCINIClass* const pINI, const char* pSection, const char* pKey)
 {
@@ -287,6 +312,10 @@ bool PhobosTrajectory::UpdateType(BulletClass* pBullet, std::unique_ptr<PhobosTr
 		pTraj = std::make_unique<StraightTrajectory>(pBullet, pType);
 		break;
 
+	case TrajectoryFlag::StraightVariantB:
+		pTraj = std::make_unique<StraightTrajectoryVarianB>(pBullet, pType);
+		break;
+
 	case TrajectoryFlag::Bombard:
 		pTraj = std::make_unique<BombardTrajectory>(pBullet, pType);
 		break;
@@ -354,6 +383,10 @@ void PhobosTrajectory::ProcessFromStream(PhobosStreamReader& Stm, std::unique_pt
 		{
 		case TrajectoryFlag::Straight:
 			pTraj = std::make_unique<StraightTrajectory>();
+			break;
+
+		case TrajectoryFlag::StraightVariantB:
+			pTraj = std::make_unique<StraightTrajectoryVarianB>();
 			break;
 
 		case TrajectoryFlag::Bombard:

@@ -32,17 +32,6 @@
 //	return 0x0;
 //}
 //
-//DEFINE_HOOK(0x737C90 , UnitClass_TakeDamage_caller ,0x5)
-//{
-//	GET(UnitClass*, pThis, ECX);
-//	REF_STACK(args_ReceiveDamage, args, 0x4);
-//	GET_STACK(DWORD, caller, 0x0);
-//
-//	if (IS_SAME_STR_(pThis->Type->ID, "HARV"))
-//		Debug::Log("Harv [%s]DamageResult %d , HP %d/%d Called %x.\n", args.WH->ID, *args.Damage, pThis->Health, pThis->Type->Strength , caller);
-//
-//	return 0x0;
-//}
 
 DEFINE_HOOK(0x5F53DB, ObjectClass_ReceiveDamage_Handled, 0xA)
 {
@@ -67,7 +56,7 @@ DEFINE_HOOK(0x5F53DB, ObjectClass_ReceiveDamage_Handled, 0xA)
 
 	if (!bIgnoreDefenses)
 	{
-		MapClass::GetTotalDamage(&args, TechnoExtData::GetArmor(pObject));
+		MapClass::GetTotalDamage(&args, TechnoExtData::GetTechnoArmor(pObject, args.WH));
 		//this already calculate distance damage from epicenter
 		pWHExt->ApplyRecalculateDistanceDamage(pObject, &args);
 	}
@@ -266,6 +255,24 @@ DEFINE_HOOK(0x702050, TechnoClass_ReceiveDamage_ResultDestroyed, 6)
 
 	GiftBoxFunctional::Destroy(pTechExt, pTypeExt);
 
+	std::set<PhobosAttachEffectTypeClass*> cumulativeTypes;
+
+	for (auto const& attachEffect : pTechExt->PhobosAE)
+	{
+		auto const pType = attachEffect->GetType();
+
+		if (pType->ExpireWeapon.isset() && (pType->ExpireWeapon_TriggerOn & ExpireWeaponCondition::Death) != ExpireWeaponCondition::None)
+		{
+			if (!pType->Cumulative || !pType->ExpireWeapon_CumulativeOnlyOnce || !cumulativeTypes.contains(pType))
+			{
+				if (pType->Cumulative && pType->ExpireWeapon_CumulativeOnlyOnce)
+					cumulativeTypes.insert(pType);
+
+				attachEffect->ExpireWeapon();
+			}
+		}
+	}
+
 	return 0x0;
 }
 
@@ -276,6 +283,28 @@ DEFINE_HOOK(0x701914, TechnoClass_ReceiveDamage_Damaging, 0x7)
 	//IsDamaging = R->EAX() > 0;
 	return 0;
 }
+
+//DEFINE_HOOK(0x4D7330, FootClass_ReceiveDamage_probe, 0x8) {
+//	GET(FootClass*, pThis, ECX);
+//
+//	auto id = pThis->get_ID();
+//	if (IS_SAME_STR_("MDUMMY7", id))
+//		Debug::Log(__FUNCTION__" Executed\n");
+//
+//	return 0;
+//}
+
+//DEFINE_HOOK(0x737C90 , UnitClass_TakeDamage_probe ,0x5)
+//{
+//	GET(UnitClass*, pThis, ECX);
+//	REF_STACK(args_ReceiveDamage, args, 0x4);
+//	GET_STACK(DWORD, caller, 0x0);
+//
+//	if (IS_SAME_STR_(pThis->Type->ID, "MDUMMY7"))
+//		Debug::Log("%s [%s]DamageResult %d , HP %d/%d Called %x.\n", pThis->Type->ID, args.WH->ID, *args.Damage, pThis->Health, pThis->Type->Strength , caller);
+//
+//	return 0x0;
+//}
 
 DEFINE_HOOK(0x702819, TechnoClass_ReceiveDamage_Aftermath, 0xA)
 {
@@ -453,6 +482,19 @@ DEFINE_HOOK(0x701BFE, TechnoClass_ReceiveDamage_Abilities, 0x6)
 	return RetObjectClassRcvDamage;
 }
 
+//DEFINE_HOOK(0x4D7431, FootClass_TakeDamage_ProbeResult, 0x5)
+//{
+//	GET(DamageState, result, EAX);
+//	GET(WarheadTypeClass*, pWH, EBP);
+//	GET(FootClass*, pThis, ESI);
+//
+//	if (IS_SAME_STR_("EradiationWH", pWH->ID) && IS_SAME_STR_("PENTGENX", pThis->get_ID())) {
+//		Debug::Log("Affected [%d] by[%s]\n", (int)result, pWH->ID);
+//	}
+//
+//	return 0x0;
+//}
+
 DEFINE_HOOK(0x737F97, UnitClass_ReceiveDamage_Survivours, 0xA)
 {
 	//GET(UnitTypeClass*, pType, EAX);
@@ -461,6 +503,29 @@ DEFINE_HOOK(0x737F97, UnitClass_ReceiveDamage_Survivours, 0xA)
 	GET_STACK(bool, select, 0x13);
 	GET_STACK(bool, ignoreDefenses, 0x58);
 	GET_STACK(bool, preventPassangersEscape, STACK_OFFSET(0x44, 0x18));
+
+	if (pThis && pThis->Passengers.NumPassengers > 0)
+	{
+		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+		if (pTypeExt->Passengers_SyncOwner && pTypeExt->Passengers_SyncOwner_RevertOnExit)
+		{
+			auto pPassenger = pThis->Passengers.GetFirstPassenger();
+			auto pExt = TechnoExtContainer::Instance.Find(pPassenger);
+
+			if (pExt->OriginalPassengerOwner)
+				pPassenger->SetOwningHouse(pExt->OriginalPassengerOwner, false);
+
+			while (pPassenger->NextObject)
+			{
+				pPassenger = abstract_cast<FootClass*>(pPassenger->NextObject);
+				pExt = TechnoExtContainer::Instance.Find(pPassenger);
+
+				if (pExt->OriginalPassengerOwner)
+					pPassenger->SetOwningHouse(pExt->OriginalPassengerOwner, false);
+			}
+		}
+	}
 
 	TechnoExt_ExtData::SpawnSurvivors(pThis, pKiller, select, ignoreDefenses, preventPassangersEscape);
 

@@ -789,7 +789,7 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			this->SpyEffect_StolenTechIndex_result.reset();
 			do
 			{
-				if ((*pos) > -1 && (*pos) < 32)
+				if ((*pos) > -1 && (*pos) < MaxHouseCount)
 				{
 					this->SpyEffect_StolenTechIndex_result.set((*pos));
 				}
@@ -815,6 +815,12 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->SpyEffect_NavalVeterancy.Read(exINI, pSection, "SpyEffect.NavalVeterancy");
 		this->SpyEffect_AircraftVeterancy.Read(exINI, pSection, "SpyEffect.AircraftVeterancy");
 		this->SpyEffect_BuildingVeterancy.Read(exINI, pSection, "SpyEffect.BuildingVeterancy");
+
+		this->SpyEffect_SellDelay.Read(exINI, pSection, "SpyEffect.SellDelay");
+
+		this->SpyEffect_Anim.Read(exINI, pSection, "SpyEffect.Anim");
+		this->SpyEffect_Anim_Duration.Read(exINI, pSection, "SpyEffect.Anim.Duration");
+		this->SpyEffect_Anim_DisplayHouses.Read(exINI, pSection, "SpyEffect.Anim.DisplayHouses");
 
 		this->CanC4_AllowZeroDamage.Read(exINI, pSection, "CanC4.AllowZeroDamage");
 		this->C4_Modifier.Read(exINI, pSection, "C4Modifier");
@@ -1230,7 +1236,12 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->IsDestroyableObstacle)
 		.Process(this->EVA_Online)
 		.Process(this->EVA_Offline)
-		.Process(Explodes_DuringBuildup)
+		.Process(this->Explodes_DuringBuildup)
+
+		.Process(this->SpyEffect_SellDelay)
+		.Process(this->SpyEffect_Anim)
+		.Process(this->SpyEffect_Anim_Duration)
+		.Process(this->SpyEffect_Anim_DisplayHouses)
 		;
 }
 

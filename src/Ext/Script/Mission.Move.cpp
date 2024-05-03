@@ -381,7 +381,8 @@ TechnoClass* ScriptExtData::FindBestObject(TechnoClass* pTechno, int method, Dis
 
 void ScriptExtData::Mission_Move_List(TeamClass* pTeam, DistanceMode calcThreatMode, bool pickAllies, int attackAITargetType)
 {
-	TeamExtContainer::Instance.Find(pTeam)->IdxSelectedObjectFromAIList = -1;
+	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
+	pTeamData->IdxSelectedObjectFromAIList = -1;
 	const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 
 	if (attackAITargetType < 0)

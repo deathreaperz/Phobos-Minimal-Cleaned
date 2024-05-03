@@ -4,7 +4,7 @@
 #include <Ext/Rules/Body.h>
 #include <Ext/House/Body.h>
 
-void ScriptExtData::ManageTriggersFromList(TeamClass* pTeam, int idxAITriggerType = -1, bool isEnabled = false)
+void ScriptExtData::ManageTriggersFromList(TeamClass* pTeam, int idxAITriggerType, bool isEnabled)
 {
 	auto pScript = pTeam->CurrentScript;
 	const auto& [curAct, curArgs] = pScript->GetCurrentAction();
@@ -26,11 +26,11 @@ void ScriptExtData::ManageTriggersFromList(TeamClass* pTeam, int idxAITriggerTyp
 		return;
 	}
 
-	const auto Iter_triggerList_inside = Iterator(triggetList[idxAITriggerType]);
+	const auto& triggerListInside = triggetList[idxAITriggerType];
 
 	for (auto pTrigger : *AITriggerTypeClass::Array)
 	{
-		if (Iter_triggerList_inside.contains(pTrigger))
+		if (std::find(triggerListInside.begin(), triggerListInside.end(), pTrigger) != triggerListInside.end())
 		{
 			pTrigger->IsEnabled = isEnabled;
 		}
@@ -40,7 +40,7 @@ void ScriptExtData::ManageTriggersFromList(TeamClass* pTeam, int idxAITriggerTyp
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ManageAllTriggersFromHouse(TeamClass* pTeam, HouseClass* pHouse = nullptr, int sideIdx = -1, int houseIdx = -1, bool isEnabled = true)
+void ScriptExtData::ManageAllTriggersFromHouse(TeamClass* pTeam, HouseClass* pHouse, int sideIdx, int houseIdx, bool isEnabled)
 {
 	// if pHouse is set then it overwrites any argument
 	if (pHouse)
@@ -58,7 +58,7 @@ void ScriptExtData::ManageAllTriggersFromHouse(TeamClass* pTeam, HouseClass* pHo
 	for (auto pTrigger : *AITriggerTypeClass::Array)
 	{
 		if ((houseIdx == -1 || houseIdx == pTrigger->HouseIndex) &&
-				(sideIdx == 0 || sideIdx == pTrigger->SideIndex))
+			(sideIdx == 0 || sideIdx == pTrigger->SideIndex))
 		{
 			pTrigger->IsEnabled = isEnabled;
 		}
@@ -68,7 +68,7 @@ void ScriptExtData::ManageAllTriggersFromHouse(TeamClass* pTeam, HouseClass* pHo
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::SetSideIdxForManagingTriggers(TeamClass* pTeam, int sideIdx = -1)
+void ScriptExtData::SetSideIdxForManagingTriggers(TeamClass* pTeam, int sideIdx)
 {
 	auto pScript = pTeam->CurrentScript;
 	const auto& [curAct, curArgs] = pScript->GetCurrentAction();
@@ -85,7 +85,7 @@ void ScriptExtData::SetSideIdxForManagingTriggers(TeamClass* pTeam, int sideIdx 
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::SetHouseIdxForManagingTriggers(TeamClass* pTeam, int houseIdx = 1000000)
+void ScriptExtData::SetHouseIdxForManagingTriggers(TeamClass* pTeam, int houseIdx)
 {
 	auto pScript = pTeam->CurrentScript;
 	const auto& [curAct, curArgs] = pScript->GetCurrentAction();
@@ -104,7 +104,7 @@ void ScriptExtData::SetHouseIdxForManagingTriggers(TeamClass* pTeam, int houseId
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ManageAITriggers(TeamClass* pTeam, int enabled = -1)
+void ScriptExtData::ManageAITriggers(TeamClass* pTeam, int enabled)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	auto pScript = pTeam->CurrentScript;
@@ -130,7 +130,7 @@ void ScriptExtData::ManageAITriggers(TeamClass* pTeam, int enabled = -1)
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetType = -1, bool isEnabled = false)
+void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetType, bool isEnabled)
 {
 	auto pScript = pTeam->CurrentScript;
 	const auto& [curAct, curArgs] = pScript->GetCurrentAction();
@@ -152,9 +152,9 @@ void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetT
 		return;
 	}
 
-	const auto targetList_inside = Iterator(targetList[idxAITargetType]);
+	const auto& targetListInside = targetList[idxAITargetType];
 
-	if (targetList_inside.empty())
+	if (targetListInside.empty())
 	{
 		pTeam->StepCompleted = true;
 		return;
@@ -190,13 +190,10 @@ void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetT
 		{
 			for (auto entry : entriesList)
 			{
-				for (auto const& target_ : targetList_inside)
+				if (std::find(targetListInside.begin(), targetListInside.end(), entry) != targetListInside.end())
 				{
-					if (TeamExtData::GroupAllowed(entry, target_))
-					{
-						pTrigger->IsEnabled = isEnabled;
-						break;
-					}
+					pTrigger->IsEnabled = isEnabled;
+					break;
 				}
 			}
 		}

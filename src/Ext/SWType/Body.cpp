@@ -379,9 +379,16 @@ bool SWTypeExtData::TryFire(SuperClass* pThis, bool IsPlayer)
 	// don't try to fire if we obviously haven't enough money
 	if (pThis->Owner->CanTransactMoney(pExt->Money_Amount.Get()))
 	{
+		if (pExt->SW_AutoFire_CheckAvail && !pExt->IsAvailable(pThis->Owner))
+			return false;
+
 		if (SWTypeExtData::IsTargetConstraintsEligible(pThis, IsPlayer))
 		{
 			const auto pNewType = pExt->GetNewSWType();
+			if (!pNewType)
+			{
+				Debug::FatalErrorAndExit("Trying to fire SW [%s] with invalid Type[%d]\n", pThis->Type->ID, (int)pThis->Type->Type);
+			}
 			const auto& pTargetingData = pNewType->GetTargetingData(pExt, pThis->Owner);
 			const auto& [Cell, Flag] = SWTypeExtData::PickSuperWeaponTarget(pNewType, pTargetingData.get(), pThis);
 
@@ -1424,7 +1431,12 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	std::vector<int> weights {};
 	detail::ReadVectors(weights, exINI, pSection, "LimboDelivery.RandomWeights");
 	if (!weights.empty())
-		this->LimboDelivery_RandomWeightsData[0] = weights;
+	{
+		if (this->LimboDelivery_RandomWeightsData.size())
+			this->LimboDelivery_RandomWeightsData[0] = std::move(weights);
+		else
+			this->LimboDelivery_RandomWeightsData.push_back(std::move(weights));
+	}
 
 	this->LimboKill_Affected.Read(exINI, pSection, "LimboKill.Affected");
 	this->LimboKill_IDs.Read(exINI, pSection, "LimboKill.IDs");
@@ -1491,6 +1503,7 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SW_Group.Read(exINI, pSection, "SW.Group");
 	this->SW_Shots.Read(exINI, pSection, "SW.Shots");
 	this->SW_AutoFire.Read(exINI, pSection, "SW.AutoFire");
+	this->SW_AutoFire_CheckAvail.Read(exINI, pSection, "SW.AutoFire.CheckAvail");
 	this->SW_AllowPlayer.Read(exINI, pSection, "SW.AllowPlayer");
 	this->SW_AllowAI.Read(exINI, pSection, "SW.AllowAI");
 	this->SW_AffectsHouse.Read(exINI, pSection, "SW.AffectsHouse");
@@ -1503,6 +1516,28 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SW_Next_IgnoreInhibitors.Read(exINI, pSection, "SW.Next.IgnoreInhibitors");
 	this->SW_Next_IgnoreDesignators.Read(exINI, pSection, "SW.Next.IgnoreDesignators");
 	this->SW_Next_RollChances.Read(exINI, pSection, "SW.Next.RollChances");
+
+	std::string basetag = "SW.Next.RandomWeights";
+	for (size_t i = 0; ; ++i)
+	{
+		ValueableVector<int> weights2;
+		weights2.Read(exINI, pSection, (basetag + std::to_string(i)).c_str());
+
+		if (!weights2.size())
+			break;
+
+		this->SW_Next_RandomWeightsData.push_back(weights2);
+	}
+
+	ValueableVector<int> weights2;
+	weights2.Read(exINI, pSection, basetag.c_str());
+	if (weights2.size())
+	{
+		if (this->SW_Next_RandomWeightsData.size())
+			this->SW_Next_RandomWeightsData[0] = std::move(weights2);
+		else
+			this->SW_Next_RandomWeightsData.push_back(std::move(weights2));
+	}
 
 	//
 	this->Converts.Read(exINI, pSection, "Converts");
@@ -1785,8 +1820,12 @@ void SWTypeExtData::ApplySWNext(SuperClass* pSW, const CellStruct& cell, bool Is
 	// random mode
 	if (!this->SW_Next_RandomWeightsData.empty())
 	{
-		std::vector<int> results = this->WeightedRollsHandler(&this->SW_Next_RollChances, &this->SW_Next_RandomWeightsData, this->SW_Next.size());
-		for (const int& result : results)
+		for (const int& result :
+			this->WeightedRollsHandler(
+				&this->SW_Next_RollChances,
+				&this->SW_Next_RandomWeightsData,
+				this->SW_Next.size())
+			)
 		{
 			SWTypeExtData::Launch(pSW, pSW->Owner, this, this->SW_Next[result], cell, IsPlayer);
 		}
@@ -1917,7 +1956,8 @@ bool SWTypeExtData::IsAvailable(HouseClass* pHouse)
 		return false;
 
 	// allow only certain houses, disallow forbidden houses
-	if (!this->SW_RequiredHouses.Contains(pHouse->Type) || this->SW_ForbiddenHouses.Contains(pHouse->Type))
+	if (!((this->SW_RequiredHouses.data & (1u << pHouse->Type->ArrayIndex)) != 0u)
+			|| ((this->SW_ForbiddenHouses.data & (1u << pHouse->Type->ArrayIndex)) != 0u))
 		return false;
 
 	// check that any aux building exist and no neg building
@@ -2188,6 +2228,7 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->SW_Group)
 		.Process(this->SW_Shots)
 		.Process(this->SW_AutoFire)
+		.Process(this->SW_AutoFire_CheckAvail)
 		.Process(this->SW_AllowPlayer)
 		.Process(this->SW_AllowAI)
 		.Process(this->SW_AffectsHouse)

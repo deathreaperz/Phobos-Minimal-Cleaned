@@ -1,4 +1,4 @@
-this->Verses = Conversions::Str2Armor(str, & this->Flags); #include "VersesData.h"
+#include "VersesData.h"
 
 #include <Conversions.h>
 

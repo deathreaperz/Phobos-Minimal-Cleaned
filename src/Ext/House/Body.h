@@ -10,6 +10,7 @@
 #include <New/Entity/NewTiberiumStorageClass.h>
 #include <New/Entity/TrackerClass.h>
 
+#include <Misc/Defines.h>
 #include <map>
 
 struct LauchData
@@ -129,7 +130,7 @@ public:
 
 	int AvaibleDocks { 0 };
 
-	std::bitset<32> StolenTech {};
+	std::bitset<MaxHouseCount> StolenTech {};
 	IndexBitfield<HouseClass*> RadarPersist {};
 	HelperedVector<HouseTypeClass*> FactoryOwners_GatheredPlansOf {};
 	HelperedVector<BuildingClass*> Academies {};
@@ -206,7 +207,7 @@ public:
 		return SideClass::Array->GetItemOrDefault(pHouse->SideIndex);
 	}
 
-	static HouseClass* FindCivilianSide();
+	static HouseClass* FindFirstCivilianHouse();
 	static HouseClass* FindSpecial();
 	static HouseClass* FindNeutral();
 	static HouseClass* GetHouseKind(OwnerHouseKind const& kind, bool allowRandom, HouseClass* pDefault, HouseClass* pInvoker = nullptr, HouseClass* pVictim = nullptr);
@@ -282,6 +283,7 @@ public:
 	static int CountOwnedNowTotal(HouseClass const* pHouse, TechnoTypeClass* pItem);
 	static signed int BuildLimitRemaining(HouseClass const* pHouse, TechnoTypeClass* pItem);
 	static BuildLimitStatus CheckBuildLimit(HouseClass const* pHouse, TechnoTypeClass* pItem, bool includeQueued);
+	static BuildLimitStatus BuildLimitGroupCheck(HouseClass const* const  pThis, TechnoTypeClass* pItem, bool includeQueued);
 
 	static TunnelData* GetTunnelVector(HouseClass* pHouse, size_t nTunnelIdx);
 	static TunnelData* GetTunnelVector(BuildingTypeClass* pBld, HouseClass* pHouse);
@@ -304,6 +306,9 @@ public:
 
 	static void IncremetCrateTracking(HouseClass* pHouse, Powerup type);
 	static void InitializeTrackers(HouseClass* pHouse);
+
+	static bool IsMutualAllies(HouseClass const* pThis, HouseClass const* pHouse);
+
 private:
 	bool UpdateHarvesterProduction();
 
@@ -331,6 +336,10 @@ public:
 	CONSTEXPR_NOCOPY_CLASSB(HouseExtContainer, HouseExtData, "HouseClass");
 public:
 	static HouseExtContainer Instance;
+
+	static HouseClass* Civilian;
+	static HouseClass* Special;
+	static HouseClass* Neutral;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);

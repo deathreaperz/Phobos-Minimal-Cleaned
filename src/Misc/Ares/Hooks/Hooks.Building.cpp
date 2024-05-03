@@ -268,11 +268,21 @@ DEFINE_HOOK(0x442974, BuildingClass_ReceiveDamage_Malicious, 6)
 	return 0x442980;
 }
 
-DEFINE_HOOK(0x442290, BuildingClass_ReceiveDamage_Nonprovocative_DonotSetLAT, 0x6)
+DEFINE_HOOK(0x44227E, BuildingClass_ReceiveDamage_Nonprovocative_DonotSetLAT, 0x6)
 {
+	GET(BuildingClass*, pThis, ESI);
 	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFSET(0x9C, 0xC));
-	return WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative ? 0x4422C1 : 0x0;
+
+	if (WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative)
+		return 0x4422C1;
+
+	if (!R->EBP<AbstractClass*>())
+		return 0x4422C1;
+
+	R->AL(pThis->IsStrange());
+	return 0x44228C;
 }
+
 // replaces the UnitReload handling and makes each docker independent of all
 // others. this means planes don't have to wait one more ReloadDelay because
 // the first docker triggered repair mission while the other dockers arrive
@@ -638,12 +648,30 @@ DEFINE_HOOK(0x4566d5, BuildingClass_GetRangeOfRadial_LargeGap, 6)
 	return 0x456745;
 }
 
+bool Bld_ChangeOwnerAnnounce;
+DEFINE_HOOK(0x448260, BuildingClass_SetOwningHouse_ContextSet, 0x8)
+{
+	GET_STACK(bool, announce, 0x8);
+	Bld_ChangeOwnerAnnounce = announce;
+	return 0x0;
+}
+
+DEFINE_HOOK(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
+{
+	GET(FootClass* const, pThis, ESI);
+	GET(HouseClass* const, pNewOwner, EDI);
+	//GET_STACK(bool const, bAnnounce, 0x58 + 0x8); // this thing already used
+	//discarded
+	pThis->TechnoClass::SetOwningHouse(pNewOwner, Bld_ChangeOwnerAnnounce);
+	return 0x448BED;
+}
+
 DEFINE_HOOK(0x44840B, BuildingClass_ChangeOwnership_Tech, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	GET(HouseClass*, pNewOwner, EBX);
 
-	if (pThis->Owner != pNewOwner)
+	if (pThis->Owner != pNewOwner && Bld_ChangeOwnerAnnounce)
 	{
 		const auto pExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
 		const auto color = HouseClass::CurrentPlayer->ColorSchemeIndex;
@@ -2208,7 +2236,7 @@ DEFINE_HOOK(0x45F2B4, BuildingTypeClass_Load2DArt_BuildupTime, 5)
 	return 0x45F310;
 }
 
-DEFINE_HOOK(0x447a63, BuildingClass_QueueImageAnim_Sell, 3)
+DEFINE_HOOK(0x447a63, BuildingClass_QueueImageAnim_Sell, 6)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	GET_BASE(int, frames, 0x8);
@@ -2361,6 +2389,7 @@ DEFINE_HOOK(0x43FE69, BuildingClass_Update_SensorArray, 0xA)
 	pExt->DisplayIncomeString();
 	pExt->UpdatePoweredKillSpawns();
 	pExt->UpdateAutoSellTimer();
+	pExt->UpdateSpyEffecAnimDisplay();
 	return 0;
 }
 

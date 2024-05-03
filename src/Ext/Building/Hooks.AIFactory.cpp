@@ -1,7 +1,6 @@
 #include "Body.h"
 
 #include <Ext/House/Body.h>
-
 #ifndef aaa
 std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType, bool naval, HouseExtData* pData)
 {
@@ -21,21 +20,21 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 	{
 		if (!naval)
 		{
-			currFactory = &pData->Factory_VehicleType;
 			block = pRules->ForbidParallelAIQueues_Vehicle.Get(!pRules->AllowParallelAIQueues);
+			currFactory = &pData->Factory_VehicleType;
 		}
 		else
 		{
-			currFactory = &pData->Factory_NavyType;
 			block = pRules->ForbidParallelAIQueues_Navy.Get(!pRules->AllowParallelAIQueues);
+			currFactory = &pData->Factory_NavyType;
 		}
 
 		break;
 	}
 	case AbstractType::InfantryType:
 	{
-		currFactory = &pData->Factory_InfantryType;
 		block = pRules->ForbidParallelAIQueues_Infantry.Get(!pRules->AllowParallelAIQueues);
+		currFactory = &pData->Factory_InfantryType;
 		break;
 	}
 	case AbstractType::AircraftType:
@@ -48,7 +47,7 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 		break;
 	}
 
-	return { currFactory, block, AbsType };
+	return { currFactory  , block ,AbsType };
 }
 
 //#include <ostream>
@@ -593,39 +592,48 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 
 	return -1;
 }
-//#pragma optimize("", on )
 
-//DEFINE_HOOK(0x6EF4D0, TeamClass_GetRemainingTaskForceMembers, 0x8)
-//{
-//	GET(TeamClass*, pThis, ECX);
-//	GET_STACK(DynamicVectorClass<TechnoTypeClass*>*, pVec, 0x4);
-//
-//	const auto pType = pThis->Type;
-//	const auto pTaskForce = pType->TaskForce;
-//
-//	for (int a = 0; a < pTaskForce->CountEntries; ++a) {
-//		for (int i = 0; i < pTaskForce->Entries[a].Amount; ++i) {
-//			if(auto pType = pTaskForce->Entries[a].Type) {
-//				pVec->AddItem(pType);
-//			}
-//		}
-//	}
-//
-//	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember) {
-//		for (auto pMemberNeeded : *pVec) {
-//			if ((pMemberNeeded == pMember->GetTechnoType()
-//				|| TechnoExtContainer::Instance.Find(pMember)->Type == pMemberNeeded
-//				|| TeamExtData::GroupAllowed(pMemberNeeded, pMember->GetTechnoType())
-//				|| TeamExtData::GroupAllowed(pMemberNeeded, TechnoExtContainer::Instance.Find(pMember)->Type)
-//
-//				)) {
-//				pVec->Remove(pMemberNeeded);
-//			}
-//		}
-//	}
-//
-//	return 0x6EF5B2;
-//}
+//#pragma optimize("", on )
+DEFINE_HOOK(0x6EF4D0, TeamClass_GetRemainingTaskForceMembers, 0x8)
+{
+	GET(TeamClass*, pThis, ECX);
+	GET_STACK(DynamicVectorClass<TechnoTypeClass*>*, pVec, 0x4);
+
+	const auto pType = pThis->Type;
+	const auto pTaskForce = pType->TaskForce;
+
+	for (int a = 0; a < pTaskForce->CountEntries; ++a)
+	{
+		for (int i = 0; i < pTaskForce->Entries[a].Amount; ++i)
+		{
+			if (auto pType = pTaskForce->Entries[a].Type)
+			{
+				pVec->AddItem(pType);
+			}
+		}
+	}
+
+	//remove first finded similarity
+	for (auto pMember = pThis->FirstUnit; pMember; pMember = pMember->NextTeamMember)
+	{
+		for (auto pMemberNeeded : *pVec)
+		{
+			if ((pMemberNeeded == pMember->GetTechnoType()
+				|| TechnoExtContainer::Instance.Find(pMember)->Type == pMemberNeeded
+				//|| TeamExtData::GroupAllowed(pMemberNeeded, pMember->GetTechnoType())
+				//|| TeamExtData::GroupAllowed(pMemberNeeded, TechnoExtContainer::Instance.Find(pMember)->Type)
+
+				))
+			{
+				pVec->Remove<true>(pMemberNeeded);
+				break;
+			}
+		}
+	}
+
+	return 0x6EF5B2;
+}
+//#pragma optimize("", off )
 
 DEFINE_HOOK(0x4FEEE0, HouseClass_AI_InfantryProduction, 6)
 {

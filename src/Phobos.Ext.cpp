@@ -350,6 +350,7 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	HouseTypeExtContainer::Instance.Clear();
 	IsometricTileTypeExtContainer::Instance.Clear();
 	OverlayTypeExtContainer::Instance.Clear();
+	TiberiumExtContainer::Instance.Clear();
 	PhobosGlobal::Clear();
 	SWStateMachine::Clear();
 	ArmorTypeClass::Clear();
@@ -380,7 +381,8 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	GenericPrerequisite::Clear();
 	CrateTypeClass::Clear();
 	StaticVars::Clear();
-
+	PhobosAttachEffectTypeClass::Clear();
+	PhobosAttachEffectTypeClass::GroupsMap.clear();
 	return 0;
 }
 
@@ -543,6 +545,8 @@ DEFINE_HOOK(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 		Process_Load<GenericPrerequisite>(pStm) &&
 		Process_Load<CrateTypeClass>(pStm) &&
 		Process_Load<NewSWType>(pStm) &&
+		Process_Load<TiberiumExtContainer>(pStm) &&
+		Process_Load<PhobosAttachEffectTypeClass>(pStm) &&
 		Process_Load<StaticVars>(pStm)
 		;
 
@@ -593,6 +597,8 @@ DEFINE_HOOK(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 			Process_Save<GenericPrerequisite>(pStm) &&
 			Process_Save<CrateTypeClass>(pStm) &&
 			Process_Save<NewSWType>(pStm) &&
+			Process_Save<TiberiumExtContainer>(pStm) &&
+			Process_Save<PhobosAttachEffectTypeClass>(pStm) &&
 			Process_Save<StaticVars>(pStm)
 			;
 

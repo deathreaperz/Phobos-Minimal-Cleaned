@@ -443,6 +443,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->OpenTopped_IgnoreRangefinding.Read(exINI, pSection, "OpenTopped.IgnoreRangefinding");
 		this->OpenTopped_AllowFiringIfDeactivated.Read(exINI, pSection, "OpenTopped.AllowFiringIfDeactivated");
 		this->OpenTopped_ShareTransportTarget.Read(exINI, pSection, "OpenTopped.ShareTransportTarget");
+		this->OpenTopped_UseTransportRangeModifiers.Read(exINI, pSection, "OpenTopped.UseTransportRangeModifiers");
 
 		this->AutoFire.Read(exINI, pSection, "AutoFire");
 		this->AutoFire_TargetSelf.Read(exINI, pSection, "AutoFire.TargetSelf");
@@ -664,12 +665,6 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->TankDisguiseAsTank.Read(exINI, pSection, "Disguise.AsTank"); // code disabled , crash
 		this->DisguiseDisAllowed.Read(exINI, pSection, "Disguise.Allowed");  // code disabled , crash
 		this->ChronoDelay_Immune.Read(exINI, pSection, "ChronoDelay.Immune");
-
-		this->Riparius_FrameIDx.Read(exINI, pSection, "Storage0FrameIdx");
-		this->Cruentus_FrameIDx.Read(exINI, pSection, "Storage1FrameIdx");
-		this->Vinifera_FrameIDx.Read(exINI, pSection, "Storage2FrameIdx");
-		this->Aboreus_FrameIDx.Read(exINI, pSection, "Storage3FrameIdx");
-
 		this->CrushLevel.Read(exINI, pSection, "%sCrushLevel");
 		this->CrushableLevel.Read(exINI, pSection, "%sCrushableLevel");
 		this->DeployCrushableLevel.Read(exINI, pSection, "%sDeployCrushableLevel");
@@ -760,7 +755,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 				cur = strtok_s(nullptr, Phobos::readDelims, &context))
 			{
 				signed int idx = std::atoi(cur);
-				if (idx > -1 && idx < 32)
+				if (idx > -1 && idx < MaxHouseCount)
 				{
 					this->RequiredStolenTech.set(idx);
 				}
@@ -1141,6 +1136,16 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->DetectDisguise_Percent.Read(exINI, pSection, "DetectDisguise.Percent");
 		this->PassengerTurret.Read(exINI, pSection, "PassengerTurret");
 
+		this->Tint_Color.Read(exINI, pSection, "Tint.Color");
+		this->Tint_Intensity.Read(exINI, pSection, "Tint.Intensity");
+		this->Tint_VisibleToHouses.Read(exINI, pSection, "Tint.VisibleToHouses");
+
+		this->AttachEffect_AttachTypes.Read(exINI, pSection, "AttachEffect.AttachTypes");
+		this->AttachEffect_DurationOverrides.Read(exINI, pSection, "AttachEffect.DurationOverrides");
+		this->AttachEffect_Delays.Read(exINI, pSection, "AttachEffect.Delays");
+		this->AttachEffect_InitialDelays.Read(exINI, pSection, "AttachEffect.InitialDelays");
+		this->AttachEffect_RecreationDelays.Read(exINI, pSection, "AttachEffect.RecreationDelays");
+
 #pragma region AircraftOnly
 		if (this->AttachtoType == AircraftTypeClass::AbsID)
 		{
@@ -1222,9 +1227,23 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			{
 				std::string base = "TalkbubbleFrame";
 				base += std::to_string(i);
-				this->TalkbubbleVoices[i].Read(exINI, pSection, (base + ".Voices").c_str());
+				this->TalkbubbleVoices.emplace_back().Read(exINI, pSection, (base + ".Voices").c_str());
 			}
 		}
+
+		this->NoExtraSelfHealOrRepair.Read(exINI, pSection, "NoExtraSelfHealOrRepair");
+
+#pragma region BuildLimitGroup
+		this->BuildLimit_Group_Types.Read(exINI, pSection, "BuildLimitGroup.Types");
+		this->BuildLimit_Group_Any.Read(exINI, pSection, "BuildLimitGroup.ContentIfAnyMatch");
+		this->BuildLimit_Group_Limits.Read(exINI, pSection, "BuildLimitGroup.Nums");
+		this->BuildLimit_Group_Stop.Read(exINI, pSection, "BuildLimitGroup.NotBuildableIfQueueMatch");
+#pragma endregion
+
+		this->Tiberium_EmptyPipIdx.Read(exINI, pSection, "StorageEmptyPipIndex");
+		this->Tiberium_PipIdx.Read(exINI, pSection, "StoragePipIndexes");
+		this->Tiberium_PipShapes.Read(exINI, pSection, "StoragePipShapes");
+		this->Tiberium_PipShapes_Palette.Read(exINI, pSection, "StoragePipShapesPalette");
 
 		if (this->AttachtoType != AbstractType::BuildingType)
 		{
@@ -1588,7 +1607,7 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->OpenTopped_IgnoreRangefinding)
 		.Process(this->OpenTopped_AllowFiringIfDeactivated)
 		.Process(this->OpenTopped_ShareTransportTarget)
-
+		.Process(this->OpenTopped_UseTransportRangeModifiers)
 		.Process(this->AutoFire)
 		.Process(this->AutoFire_TargetSelf)
 		.Process(this->NoSecondaryWeaponFallback)
@@ -1849,10 +1868,10 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Bounty_IgnoreEnablers)
 		.Process(this->MissileHoming)
 
-		.Process(this->Riparius_FrameIDx)
-		.Process(this->Cruentus_FrameIDx)
-		.Process(this->Vinifera_FrameIDx)
-		.Process(this->Aboreus_FrameIDx)
+		.Process(this->Tiberium_EmptyPipIdx)
+		.Process(this->Tiberium_PipIdx)
+		.Process(this->Tiberium_PipShapes)
+		.Process(this->Tiberium_PipShapes_Palette)
 
 		.Process(this->CrushLevel)
 		.Process(this->CrushableLevel)
@@ -2202,6 +2221,24 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Convert_ComputerToHuman)
 		.Process(this->TalkbubbleVoices)
 		.Process(this->HarvesterDumpAmount)
+		.Process(this->NoExtraSelfHealOrRepair)
+
+#pragma region BuildLimitGroup
+		.Process(this->BuildLimit_Group_Types)
+		.Process(this->BuildLimit_Group_Any)
+		.Process(this->BuildLimit_Group_Limits)
+		.Process(this->BuildLimit_Group_Stop)
+#pragma endregion
+
+		.Process(this->Tint_Color)
+		.Process(this->Tint_Intensity)
+		.Process(this->Tint_VisibleToHouses)
+
+		.Process(this->AttachEffect_AttachTypes)
+		.Process(this->AttachEffect_DurationOverrides)
+		.Process(this->AttachEffect_Delays)
+		.Process(this->AttachEffect_InitialDelays)
+		.Process(this->AttachEffect_RecreationDelays)
 		;
 }
 

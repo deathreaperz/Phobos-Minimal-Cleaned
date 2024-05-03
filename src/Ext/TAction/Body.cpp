@@ -600,21 +600,23 @@ bool TActionExt::DrawLaserBetweenWaypoints(TActionClass* pThis, HouseClass* pHou
 // #1004906: support more than 100 waypoints
 bool TActionExt::PlayAudioAtRandomWP(TActionClass* pThis, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct* plocation)
 {
-	std::vector<CellStruct> waypoints {};
-	waypoints.reserve(ScenarioExtData::Instance()->Waypoints.size());
+	ScenarioExtData::Instance()->DefinedAudioWaypoints.reserve(ScenarioExtData::Instance()->Waypoints.size());
 
 	auto const pScen = ScenarioClass::Instance();
 
-	for (auto const& [idx, cell] : ScenarioExtData::Instance()->Waypoints)
-	{
-		if (pScen->IsDefinedWaypoint(idx))
-			waypoints.push_back(cell);
-	}
-
-	if (!waypoints.empty())
+	if (!ScenarioExtData::Instance()->DefinedAudioWaypoints.empty())
 	{
 		VocClass::PlayIndexAtPos(pThis->Value,
-		CellClass::Cell2Coord(waypoints[pScen->Random.RandomFromMax(waypoints.size() - 1)]));
+		CellClass::Cell2Coord(ScenarioExtData::Instance()->DefinedAudioWaypoints
+			[pScen->Random.RandomFromMax(ScenarioExtData::Instance()->DefinedAudioWaypoints.size() - 1)]));
+	}
+	else
+	{
+		for (auto const& [idx, cell] : ScenarioExtData::Instance()->Waypoints)
+		{
+			if (pScen->IsDefinedWaypoint(idx))
+				ScenarioExtData::Instance()->DefinedAudioWaypoints.push_back(cell);
+		}
 	}
 
 	return true;
@@ -645,20 +647,24 @@ bool TActionExt::SaveGame(TActionClass* pThis, HouseClass* pHouse, ObjectClass* 
 				);
 			};
 
-		char fName[0x80];
-
 		SYSTEMTIME time;
-		GetLocalTime(&time);
+		Imports::GetLocalTime.get()(&time);
+		const std::string fName = std::format("Map.{:04}{:02}{:02}-{:02}{:02}{:02}-{:05}.sav",
+			time.wYear,
+			time.wMonth,
+			time.wDay,
+			time.wHour,
+			time.wMinute,
+			time.wSecond,
+			time.wMilliseconds
+		);
 
-		_snprintf_s(fName, 0x7F, "Map.%04u%02u%02u-%02u%02u%02u-%05u.sav",
-			time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
+		const std::wstring fDesc = std::format(L"{} - {}"
+			, SessionClass::Instance->GameMode == GameMode::Campaign ? ScenarioClass::Instance->UINameLoaded : ScenarioClass::Instance->Name
+			, StringTable::LoadString(pThis->Text)
+		);
 
-		wchar_t fDescription[0x80] = { 0 };
-		wcscpy_s(fDescription, ScenarioClass::Instance->UINameLoaded);
-		wcscat_s(fDescription, L" - ");
-		wcscat_s(fDescription, StringTable::LoadString(pThis->Text));
-
-		bool Status = ScenarioClass::Instance->SaveGame(fName, fDescription);
+		bool Status = ScenarioClass::Instance->SaveGame(fName.c_str(), fDesc.c_str());
 
 		WWMouseClass::Instance->ShowCursor();
 

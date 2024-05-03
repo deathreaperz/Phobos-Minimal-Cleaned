@@ -1724,7 +1724,7 @@ DEFINE_HOOK(0x467E59, BulletClass_Update_NukeBall, 5)
 //	}
 //	auto targetcoord = pTarget->GetCoords();
 //
-//	R->EAX(SW_NuclearMissile::DropNukeAt(pNukeSW, targetcoord, nullptr, pThis->Owner ? pThis->Owner->Owner : HouseExtData::FindCivilianSide(), pPaylod));
+//	R->EAX(SW_NuclearMissile::DropNukeAt(pNukeSW, targetcoord, nullptr, pThis->Owner ? pThis->Owner->Owner : HouseExtData::FindFirstCivilianHouse(), pPaylod));
 //	return ret;
 //}
 
@@ -2082,7 +2082,7 @@ DEFINE_HOOK(0x53A6CF, LightningStorm_Update, 7)
 		{
 			if (pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2)
 			{
-				LightningStorm::BoltsPresent->RemoveAt(i);
+				LightningStorm::BoltsPresent->RemoveAt<true>(i);
 			}
 		}
 	}
@@ -2098,7 +2098,7 @@ DEFINE_HOOK(0x53A6CF, LightningStorm_Update, 7)
 			{
 				auto const crdStrike = pAnim->GetCoords();
 				LightningStorm::Strike2(crdStrike);
-				LightningStorm::CloudsManifesting->RemoveAt(i);
+				LightningStorm::CloudsManifesting->RemoveAt<true>(i);
 			}
 		}
 	}
@@ -2130,7 +2130,7 @@ DEFINE_HOOK(0x53A6CF, LightningStorm_Update, 7)
 				auto pAnimImage = pAnim->Type->GetImage();
 				if (pAnim->Animation.Value >= pAnimImage->Frames - 1)
 				{
-					LightningStorm::CloudsPresent->RemoveAt(i);
+					LightningStorm::CloudsPresent->RemoveAt<true>(i);
 				}
 			}
 		}

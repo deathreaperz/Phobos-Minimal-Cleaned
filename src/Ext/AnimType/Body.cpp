@@ -145,6 +145,8 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->AdditionalHeight.Read(exINI, pID, "AdditionalHeight");
 	this->AltReport.Read(exINI, pID, "AltReport");
+
+	this->SpawnsData.Read(exINI, pID);
 #pragma endregion
 }
 
@@ -153,11 +155,12 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 	if (!pThis->Type)
 		return;
 
-	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 	auto pExt = AnimExtContainer::Instance.Find(pThis);
 
 	if (pExt->AllowCreateUnit)
 		return;
+
+	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 
 	if (const auto pUnit = pTypeExt->CreateUnit.Get())
 	{
@@ -168,7 +171,7 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 
 		auto pCell = pThis->GetCell();
 
-		bool allowBridges = GroundType::GetCost(LandType::Clear, pUnit->SpeedType) > 0.0;
+		bool allowBridges = pExt->WasOnBridge || GroundType::GetCost(LandType::Clear, pUnit->SpeedType) > 0.0;
 		bool isBridge = allowBridges && pCell->ContainsBridge();
 
 		if (pTypeExt->CreateUnit_ConsiderPathfinding
@@ -178,15 +181,12 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 				pUnit->SpeedType, -1, pUnit->MovementZone, isBridge, 1, 1, true,
 				false, false, isBridge, CellStruct::Empty, false, false);
 
-			CellClass* pCell = MapClass::Instance->TryGetCellAt(nCell);
+			pCell = MapClass::Instance->TryGetCellAt(nCell);
 			if (!pCell)
 				return;
 
 			Location = pCell->GetCoords();
 		}
-
-		if (!pCell)
-			return;
 
 		isBridge = allowBridges && pCell->ContainsBridge();
 		int bridgeZ = isBridge ? Unsorted::BridgeHeight : 0;
@@ -216,7 +216,7 @@ HouseClass* GetOwnerForSpawned(AnimClass* pThis)
 {
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 	if (!pThis->Owner || ((!pTypeExt->CreateUnit_KeepOwnerIfDefeated && pThis->Owner->Defeated)))
-		return HouseExtData::FindCivilianSide();
+		return HouseExtData::FindFirstCivilianHouse();
 
 	return pThis->Owner;
 }
@@ -264,7 +264,7 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 			{
 				auto pCreateUnitAnim = GameCreate<AnimClass>(pCreateUnitAnimType, pAnimExt->CreateUnitLocation);
 				pCreateUnitAnim->Owner = decidedOwner;
-				AnimExtContainer::Instance.Find(pCreateUnitAnim)->Invoker = AnimExtData::GetTechnoInvoker(pThis, pTypeExt->Damage_DealtByInvoker.Get());
+				AnimExtContainer::Instance.Find(pCreateUnitAnim)->Invoker = AnimExtData::GetTechnoInvoker(pThis);
 			}
 
 			if (pTechno->HasTurret() && pAnimExt->DeathUnitTurretFacing.has_value())
@@ -383,6 +383,8 @@ void AnimTypeExtData::ProcessDestroyAnims(FootClass* pThis, TechnoClass* pKiller
 			pAnimExt->DeathUnitTurretFacing = pThis->SecondaryFacing.Current();
 		}
 	}
+
+	pAnimExt->WasOnBridge = pThis->OnBridge;
 }
 
 void AnimTypeExtData::ValidateSpalshAnims()
@@ -469,6 +471,7 @@ void AnimTypeExtData::Serialize(T& Stm)
 
 		.Process(this->AdditionalHeight)
 		.Process(this->AltReport)
+		.Process(this->SpawnsData)
 		;
 }
 

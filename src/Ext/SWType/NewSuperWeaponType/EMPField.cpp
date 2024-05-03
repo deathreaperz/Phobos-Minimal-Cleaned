@@ -9,13 +9,18 @@ std::vector<const char*> SW_EMPField::GetTypeString() const
 
 bool SW_EMPField::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer)
 {
-	auto pData = SWTypeExtContainer::Instance.Find(pThis->Type);
+	auto pType = pThis->Type;
+	auto pData = SWTypeExtContainer::Instance.Find(pType);
 
 	if (pData->EMPField_Duration <= 0)
 		return false;
 
 	auto pFirer = this->GetFirer(pThis, Coords, false);
 
+	// TODO : creating version that not require WH to be function !
+	//
+	//AresEMPulse::CreateEMPulse()
+	//does not work ?
 	return GameCreate<EMPulseClass>(Coords, this->GetRange(pData).width(), pData->EMPField_Duration.Get(), pFirer);
 }
 
@@ -24,8 +29,8 @@ void SW_EMPField::Initialize(SWTypeExtData* pData)
 	pData->AttachedToObject->Action = Action(AresNewActionType::SuperWeaponAllowed);
 	pData->SW_RadarEvent = false;
 	pData->SW_AITargetingMode = SuperWeaponAITargetingMode::IronCurtain;
-	pData->CursorType = static_cast<int>(MouseCursorType::Attack);
-	pData->NoCursorType = static_cast<int>(MouseCursorType::AttackOutOfRange);
+	pData->CursorType = int(MouseCursorType::Attack);
+	pData->NoCursorType = int(MouseCursorType::AttackOutOfRange);
 }
 
 void SW_EMPField::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)

@@ -3,57 +3,25 @@
 
 bool AresAttachEffectTypeClass::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
-	return Stm
-		.Process(this->Owner)
-		.Process(this->Duration)
-		.Process(this->Cumulative)
-		.Process(this->ForceDecloak)
-		.Process(this->DiscardOnEntry)
-		.Process(this->AnimType)
-		.Process(this->AnimResetOnReapply)
-		.Process(this->TemporalHidesAnim)
-		.Process(this->FirepowerMultiplier)
-		.Process(this->ArmorMultiplier)
-		.Process(this->SpeedMultiplier)
-		.Process(this->ROFMultiplier)
-		.Process(this->ReceiveRelativeDamageMult)
-		.Process(this->Cloakable)
-		.Process(this->Delay)
-		.Success()
-		&& Stm.RegisterChange(this); // announce this type
+	return this->Serialize(Stm);
 }
 
 bool AresAttachEffectTypeClass::Save(PhobosStreamWriter& Stm) const
 {
-	return Stm
-		.Process(this->Owner)
-		.Process(this->Duration)
-		.Process(this->Cumulative)
-		.Process(this->ForceDecloak)
-		.Process(this->DiscardOnEntry)
-		.Process(this->AnimType)
-		.Process(this->AnimResetOnReapply)
-		.Process(this->TemporalHidesAnim)
-		.Process(this->FirepowerMultiplier)
-		.Process(this->ArmorMultiplier)
-		.Process(this->SpeedMultiplier)
-		.Process(this->ROFMultiplier)
-		.Process(this->ReceiveRelativeDamageMult)
-		.Process(this->Cloakable)
-		.Process(this->Delay)
-		.Success()
-		&& Stm.RegisterChange(this);
+	return const_cast<AresAttachEffectTypeClass*>(this)->Serialize(Stm);
 }
 
 void AresAttachEffectTypeClass::Read(INI_EX& exINI)
 {
 	if (!this->Owner)
 	{
-		Debug::FatalErrorAndExit("AttachedEffectType Is Missing OwnerPointer!\n");
+		Debug::FatalErrorAndExit("AttahedAffectType Is Missing OwnerPointer!\n");
 	}
 
 	auto const pSection = this->Owner->ID;
 	this->Duration.Read(exINI, pSection, "AttachEffect.Duration");
+	// cumulative no : will override the existing duration
+	// cumulative yes : will add new AE object onto the techno vector
 	this->Cumulative.Read(exINI, pSection, "AttachEffect.Cumulative");
 	this->AnimType.Read(exINI, pSection, "AttachEffect.Animation");
 	this->AnimResetOnReapply.Read(exINI, pSection, "AttachEffect.AnimResetOnReapply");
@@ -70,4 +38,14 @@ void AresAttachEffectTypeClass::Read(INI_EX& exINI)
 	this->InitialDelay.Read(exINI, pSection, "AttachEffect.InitialDelay");
 
 	this->PenetratesIC.Read(exINI, pSection, "AttachEffect.PenetratesIronCurtain");
+	this->DisableSelfHeal.Read(exINI, pSection, "AttachEffect.DisableSelfHeal");
+	this->DisableWeapons.Read(exINI, pSection, "AttachEffect.DisableWeapons");
+	this->Untrackable.Read(exINI, pSection, "AttachEffect.Untrackable");
+
+	this->WeaponRange_Multiplier.Read(exINI, pSection, "AttachEffect.WeaponRange.Multiplier");
+	this->WeaponRange_ExtraRange.Read(exINI, pSection, "AttachEffect.WeaponRange.ExtraRange");
+	this->WeaponRange_AllowWeapons.Read(exINI, pSection, "AttachEffect.WeaponRange.AllowWeapons");
+	this->WeaponRange_DisallowWeapons.Read(exINI, pSection, "AttachEffect.WeaponRange.DisallowWeapons");
+
+	this->ROFMultiplier_ApplyOnCurrentTimer.Read(exINI, pSection, "AttachEffect.ROFMultiplier.ApplyOnCurrentTimer");
 }

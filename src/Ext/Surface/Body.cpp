@@ -21,7 +21,7 @@ void SurfaceExt::BlurRect(const RectangleStruct& rect, float blurSize)
 
 	const auto line_length = this->Get_Pitch() / sizeof(WORD);
 
-	auto ptr = static_cast<WORD*>(this->Lock(bound.X, bound.Y));
+	auto ptr = (WORD*)this->Lock(bound.X, bound.Y);
 	if (!ptr)
 		return;
 
@@ -54,8 +54,8 @@ void SurfaceExt::BlurRect(const RectangleStruct& rect, float blurSize)
 					int li = ti;
 					int ri = ti + r;
 
-					const int fv[3] = { in[ti * c + 0], in[ti * c + 1], in[ti * c + 2] };
-					const int lv[3] = { in[(ti + w - 1) * c + 0], in[(ti + w - 1) * c + 1], in[(ti + w - 1) * c + 2] };
+					int fv[3] = { in[ti * c + 0], in[ti * c + 1], in[ti * c + 2] };
+					int lv[3] = { in[(ti + w - 1) * c + 0], in[(ti + w - 1) * c + 1], in[(ti + w - 1) * c + 2] };
 					int val[3] = { (r + 1) * fv[0], (r + 1) * fv[1], (r + 1) * fv[2] };
 
 					for (int j = 0; j < r; j++)
@@ -108,8 +108,8 @@ void SurfaceExt::BlurRect(const RectangleStruct& rect, float blurSize)
 					int li = ti;
 					int ri = ti + r * w;
 
-					const int fv[3] = { in[ti * c + 0], in[ti * c + 1], in[ti * c + 2] };
-					const int lv[3] = { in[(ti + w * (h - 1)) * c + 0], in[(ti + w * (h - 1)) * c + 1], in[(ti + w * (h - 1)) * c + 2] };
+					int fv[3] = { in[ti * c + 0], in[ti * c + 1], in[ti * c + 2] };
+					int lv[3] = { in[(ti + w * (h - 1)) * c + 0], in[(ti + w * (h - 1)) * c + 1], in[(ti + w * (h - 1)) * c + 2] };
 					int val[3] = { (r + 1) * fv[0], (r + 1) * fv[1], (r + 1) * fv[2] };
 
 					for (int j = 0; j < r; j++)

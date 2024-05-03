@@ -74,7 +74,7 @@ void BulletExtData::ApplyAirburst(BulletClass* pThis)
 			// fill with technos in range
 			TechnoClass::Array->for_each([&](TechnoClass* pTechno)
  {
-	 if (pWHExt->CanDealDamage(pTechno, false, !pExt->Splits_TargetingUseVerses.Get()))
+	 if (pTechno && pWHExt->CanDealDamage(pTechno, false, !pExt->Splits_TargetingUseVerses.Get()))
 	 {
 		 if (!pTechno->IsInPlayfield || !pTechno->IsOnMap || (!pExt->RetargetOwner.Get() && pTechno == pBulletOwner))
 			 return;
@@ -111,10 +111,10 @@ void BulletExtData::ApplyAirburst(BulletClass* pThis)
 
 				while ((int)targets.size() < (cluster))
 				{
-					int x = random.RandomRanged(-nMinRange, nMaxRange);
-					int y = random.RandomRanged(-nMinRange, nMaxRange);
+					const int x = random.RandomRanged(-nMinRange, nMaxRange);
+					const int y = random.RandomRanged(-nMinRange, nMaxRange);
 
-					CellStruct cell { static_cast<short>(x + cellDest.X), static_cast<short>(cellDest.Y + y) };
+					const CellStruct cell { static_cast<short>(x + cellDest.X), static_cast<short>(cellDest.Y + y) };
 					targets.push_back(MapClass::Instance->GetCellAt(cell));
 				}
 			}
@@ -223,8 +223,8 @@ VelocityClass BulletExtData::GenerateVelocity(BulletClass* pThis, AbstractClass*
 	double const radians_fromXY = dir_fromXY.GetRadian();
 	double const sin_rad = Math::sin(radians_fromXY);
 	double const cos_rad = Math::cos(radians_fromXY);
-	double nMult_Cos = Math::cos(0.7853262558535721);
-	double nMult_Sin = Math::sin(0.7853262558535721);
+	const double nMult_Cos = Math::cos(0.7853262558535721);
+	const double nMult_Sin = Math::sin(0.7853262558535721);
 
 	velocity.X = cos_rad * nFirstMag;
 	velocity.Y -= sin_rad * nFirstMag;
@@ -288,7 +288,7 @@ int BulletExtData::GetShrapAmount(BulletClass* pThis)
 {
 	if (pThis->Type->ShrapnelCount < 0)
 	{
-		if (auto pOwner = pThis->Owner)
+		if (const auto pOwner = pThis->Owner)
 		{
 			return (-pThis->Type->ShrapnelCount) -
 				static_cast<int>(pOwner->GetCoords().
@@ -313,7 +313,7 @@ bool BulletExtData::AllowShrapnel(BulletClass* pThis, CellClass* pCell)
 		return false;
 	}
 
-	if (auto const pObject = pCell->FirstObject)
+	if (const auto pObject = pCell->FirstObject)
 	{
 		if ((((DWORD*)pObject)[0]) != BuildingClass::vtable || pData->Shrapnel_AffectsBuildings)
 			return true;
@@ -349,7 +349,7 @@ bool BulletExtData::ShrapnelTargetEligible(BulletClass* pThis, AbstractClass* pT
 		break;
 		default:
 		{
-			if (auto pType = pTargetObj->GetType())
+			if (const auto pType = pTargetObj->GetType())
 			{
 				if (GeneralUtils::GetWarheadVersusArmor(pWH, pType->Armor) < 0.001)
 				{
@@ -515,7 +515,7 @@ bool BulletExtData::ApplyMCAlternative(BulletClass* pThis)
 		return false;
 
 	const auto pTargetType = pTarget->GetTechnoType();
-	double currentHealthPerc = pTarget->GetHealthPercentage();
+	const double currentHealthPerc = pTarget->GetHealthPercentage();
 	const bool flipComparations = pWarheadExt->MindControl_Threshold_Inverse;
 	double nTreshold = pWarheadExt->MindControl_Threshold;
 
@@ -674,7 +674,7 @@ void BulletExtData::InitializeLaserTrails()
 		return;
 
 	const auto pOwner = pThis->Owner ?
-		pThis->Owner->Owner : (this->Owner ? this->Owner : HouseExtData::FindCivilianSide());
+		pThis->Owner->Owner : (this->Owner ? this->Owner : HouseExtData::FindFirstCivilianHouse());
 
 	for (auto const& idxTrail : pTypeExt->LaserTrail_Types)
 	{
@@ -743,11 +743,8 @@ void BulletExtData::InterceptBullet(BulletClass* pThis, TechnoClass* pSource, We
 
 					pThis->Type = pWeaponOverride->Projectile;
 
-					if (!pExt->LaserTrails.empty())
-					{
-						pExt->LaserTrails.clear();
-						pExt->InitializeLaserTrails();
-					}
+					pExt->LaserTrails.clear();
+					pExt->InitializeLaserTrails();
 
 					TrailsManager::CleanUp(pExt->AttachedToObject);
 					TrailsManager::Construct(pExt->AttachedToObject);

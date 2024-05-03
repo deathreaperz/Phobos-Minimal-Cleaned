@@ -90,7 +90,7 @@ bool AnimExtData::OnExpired(AnimClass* pThis, bool LandIsWater, bool EligibleHei
 	auto const pAnimTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 
 	{
-		TechnoClass* const pTechOwner = AnimExtData::GetTechnoInvoker(pThis, pAnimTypeExt->Damage_DealtByInvoker);
+		TechnoClass* const pTechOwner = AnimExtData::GetTechnoInvoker(pThis);
 		auto const pOwner = !pThis->Owner && pTechOwner ? pTechOwner->Owner : pThis->Owner;
 
 		if (!LandIsWater || EligibleHeight)
@@ -143,6 +143,8 @@ bool AnimExtData::OnExpired(AnimClass* pThis, bool LandIsWater, bool EligibleHei
 	return true;
 }
 
+#include <Misc/PhobosGlobal.h>
+
 DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 {
 	enum { SkipDamage = 0x42465D, CheckIsActive = 0x42464C };
@@ -153,10 +155,9 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	const auto pExt = AnimExtContainer::Instance.Find(pThis);
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 	const int delay = pTypeExt->Damage_Delay.Get();
-	TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis, pTypeExt->Damage_DealtByInvoker);
+	TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis);
 	const double damageMultiplier = (pThis->OwnerObject && pThis->OwnerObject->WhatAmI() == TerrainClass::AbsID) ? 5.0 : 1.0;
 
-	bool adjustAccum = false;
 	double damage = 0;
 	int appliedDamage = 0;
 
@@ -169,15 +170,19 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	}
 	else if (delay <= 0 || pThis->Type->Damage < 1.0) // If Damage.Delay is less than 1 or Damage is a fraction.
 	{
-		adjustAccum = true;
 		damage = damageMultiplier * pThis->Type->Damage + pThis->Accum;
-		pThis->Accum = damage;
 
 		// Deal damage if it is at least 1, otherwise accumulate it for later.
 		if (damage >= 1.0)
+		{
 			appliedDamage = static_cast<int>(std::round(damage));
+			pThis->Accum = damage - appliedDamage;
+		}
 		else
+		{
+			pThis->Accum = damage;
 			return SkipDamage;
+		}
 	}
 	else
 	{
@@ -190,19 +195,14 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 
 		// Use Type->Damage as the actually dealt damage.
 		appliedDamage = static_cast<int>((pThis->Type->Damage) * damageMultiplier);
+		pThis->Accum = 0.0;
 	}
 
 	if (appliedDamage <= 0 || pThis->IsPlaying)
 		return  SkipDamage;
 
-	// Store fractional damage if needed, or reset the accum if hit the Damage.Delay counter.
-	if (adjustAccum)
-		pThis->Accum = damage - appliedDamage;
-	else
-		pThis->Accum = 0.0;
-
 	const auto nCoord = pExt && pExt->BackupCoords.has_value() ? pExt->BackupCoords.get() : pThis->GetCoords();
-	const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->GetOwningHouse() : nullptr;
+	const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->Owner : nullptr;
 
 	if (auto const pWeapon = pTypeExt->Weapon.Get(nullptr))
 	{
@@ -222,6 +222,29 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 		auto const pWarhead = pThis->Type->Warhead ? pThis->Type->Warhead :
 			!pTypeExt->IsInviso ? RulesClass::Instance->FlameDamage2 : RulesClass::Instance->C4Warhead;
 
+		/*if (IS_SAME_STR_("ZTARGET_B", pThis->Type->ID) && pInvoker &&  IS_SAME_STR_("MDUMMY7", pInvoker->get_ID())){
+			auto invoker_loc = pInvoker->GetCoords();
+			Debug::Log(__FUNCTION__" Executed Invoker [%d %d %d] Anim[%d %d %d]\n",
+				invoker_loc.X,
+				invoker_loc.Y,
+				invoker_loc.Z,
+				nCoord.X,
+				nCoord.Y,
+				nCoord.Z
+			);
+
+			auto checks = Helpers::Alex::getCellSpreadItems(pThis->GetCoords(), pWarhead->CellSpread, false, false);
+			for (auto pTech : checks) {
+				if (pTech->Owner && !pTech->Owner->IsAlliedWith(pOwner)
+					&& abs(GeneralUtils::GetWarheadVersusArmor(pWarhead, pTech->GetTechnoType()->Armor) > 0.001)
+					)
+				{
+					GameDebugLog::Log("Affecting Techno[%s] with owner[%s] from [%s]\n", pTech->get_ID(), pTech->Owner->get_ID(), pOwner->get_ID());
+				}
+			}
+
+			PhobosGlobal::Instance()->AnimAttachedto = pInvoker;
+		}*/
 		const auto nDamageResult = static_cast<int>(appliedDamage * TechnoExtData::GetDamageMult(pInvoker, !pTypeExt->Damage_ConsiderOwnerVeterancy.Get()));
 
 		if (pTypeExt->Warhead_Detonate.Get())
@@ -232,7 +255,11 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 		}
 		else
 		{
+			// Ares keep the `Source` nullptr so it can affect everything
+			// if the `Source` contains `OwnerObject` it will cause problem because the techno need `DamageSelf`
+			// in order to deal damage to itself ,..
 			MapClass::DamageArea(nCoord, nDamageResult, pInvoker, pWarhead, pWarhead->Tiberium, pOwner);
+			//PhobosGlobal::Instance()->AnimAttachedto = nullptr;
 			MapClass::FlashbangWarheadAt(nDamageResult, pWarhead, nCoord);
 		}
 	}
@@ -250,9 +277,9 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 
 	{
 		auto pAnimTypeExt = pTypeExt;
-		const auto pObject = AnimExtData::GetTechnoInvoker(pThis, pTypeExt->Damage_DealtByInvoker.Get());
+		const auto pObject = AnimExtData::GetTechnoInvoker(pThis);
 		const auto pHouse = !pThis->Owner && pObject ? pObject->Owner : pThis->Owner;
-		const auto nCoord = pThis->GetCoords();
+		const auto nCoord = pThis->Location;
 
 		Helper::Otamaa::SpawnMultiple(
 			pAnimTypeExt->SpawnsMultiple,
@@ -271,8 +298,8 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 					for (int i = 0; i < pType->NumParticles; ++i)
 					{
 						CoordStruct nDestCoord = CoordStruct::Empty;
-						if (pAnimTypeExt->ParticleChance.isset() ?
-							(ScenarioClass::Instance->Random.RandomFromMax(99) < abs(pAnimTypeExt->ParticleChance.Get())) : true)
+						if (!pAnimTypeExt->ParticleChance.isset() ||
+							(ScenarioClass::Instance->Random.RandomFromMax(99) < abs(pAnimTypeExt->ParticleChance.Get())))
 						{
 							nDestCoord = Helper::Otamaa::GetRandomCoordsInsideLoops(pAnimTypeExt->ParticleRangeMin.Get(), pAnimTypeExt->ParticleRangeMax.Get(), InitialCoord, i);
 							ParticleSystemClass::Instance->SpawnParticle(pParticleType, &nDestCoord);
@@ -282,17 +309,18 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 				else
 				{
 					int numParticle = pType->NumParticles;
-					const auto nMin = pAnimTypeExt->ParticleRangeMin.Get();
-					const auto nMax = pAnimTypeExt->ParticleRangeMax.Get();
 
-					if (nMin || nMax)
+					if (numParticle > 0)
 					{
-						double rad = 6.283185307179586 / numParticle;
-						double start_distance = 0.0;
+						const auto nMin = pAnimTypeExt->ParticleRangeMin.Get();
+						const auto nMax = pAnimTypeExt->ParticleRangeMax.Get();
 
-						if (numParticle > 0)
+						if (nMin || nMax)
 						{
-							do
+							double rad = 6.283185307179586 / numParticle;
+							double start_distance = 0.0;
+
+							for (; numParticle > 0; --numParticle)
 							{
 								int rand = std::abs(ScenarioClass::Instance->Random.RandomRanged((int)nMin, (int)nMax));
 								double randDouble = ScenarioClass::Instance->Random.RandomDouble() * rad + start_distance;
@@ -305,9 +333,14 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 								dest.Z = InitialCoord.Z + MapClass::Instance->GetCellFloorHeight(dest);
 								ParticleSystemClass::Instance->SpawnParticle(pParticleType, &dest);
 								start_distance += rad;
-								--numParticle;
 							}
-							while (numParticle);
+						}
+						else
+						{
+							for (int i = 0; i < numParticle; ++i)
+							{
+								ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
+							}
 						}
 					}
 				}
@@ -465,14 +498,10 @@ const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimCla
 	return { false , OwnerHouseKind::Default };
 }
 
-TechnoClass* AnimExtData::GetTechnoInvoker(AnimClass* pThis, bool DealthByOwner)
+TechnoClass* AnimExtData::GetTechnoInvoker(AnimClass* pThis)
 {
-	if (!DealthByOwner)
+	if (!AnimTypeExtContainer::Instance.Find(pThis->Type)->Damage_DealtByInvoker)
 		return nullptr;
-
-	auto const pExt = AnimExtContainer::Instance.Find(pThis);
-	if (pExt && pExt->Invoker)
-		return pExt->Invoker;
 
 	if (pThis->OwnerObject)
 	{
@@ -488,6 +517,12 @@ TechnoClass* AnimExtData::GetTechnoInvoker(AnimClass* pThis, bool DealthByOwner)
 		}
 	}
 
+	//additional behaviour 1
+	auto const pExt = AnimExtContainer::Instance.Find(pThis);
+	if (pExt && pExt->Invoker)
+		return pExt->Invoker;
+
+	//additional behaviour 2
 	if (auto const pBullet = pThis->AttachedBullet)
 		return pBullet->Owner;
 
@@ -534,9 +569,11 @@ void AnimExtData::Serialize(T& Stm)
 		.Process(this->Invoker)
 		.Process(this->OwnerSet)
 		.Process(this->AllowCreateUnit)
+		.Process(this->WasOnBridge)
 		.Process(this->AttachedSystem)
 		.Process(this->ParentBuilding)
 		.Process(this->CreateUnitLocation)
+		.Process(this->SpawnsStatusData)
 		;
 }
 

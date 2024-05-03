@@ -5,6 +5,7 @@
 #include <Ext/Team/Body.h>
 #include <Ext/Techno/Body.h>
 #include <Ext/WarheadType/Body.h>
+#include <Ext/WeaponType/Body.h>
 
 // Contains ScriptExtData::Mission_Attack and its helper functions.
 
@@ -489,8 +490,12 @@ TechnoClass* ScriptExtData::GreatestThreat(TechnoClass* pTechno, int method, Dis
 
 		if (!agentMode)
 		{
-			if (weaponType && GeneralUtils::GetWarheadVersusArmor(weaponType->Warhead, TechnoExtData::GetArmor(object)) == 0.0)
+			if (weaponType && GeneralUtils::GetWarheadVersusArmor(
+				weaponType->Warhead,
+				TechnoExtData::GetTechnoArmor(object, weaponType->Warhead)) == 0.0)
+			{
 				continue;
+			}
 
 			if (object->IsInAir() && !unitWeaponsHaveAA)
 				continue;
@@ -794,8 +799,8 @@ bool ScriptExtData::EvaluateObjectWithMask(TechnoClass* pTechno, int mask, int a
 			const auto distanceToTarget = pTeamLeader->DistanceFrom(pTechno) / 256.0;
 			const auto pWeaponPrimary = TechnoExtData::GetCurrentWeapon(pTechno);
 			const auto pWeaponSecondary = TechnoExtData::GetCurrentWeapon(pTechno, true);
-			const bool primaryCheck = pWeaponPrimary && distanceToTarget <= (pWeaponPrimary->Range / 256.0 * 4.0);
-			const bool secondaryCheck = pWeaponSecondary && distanceToTarget <= (pWeaponSecondary->Range / 256.0 * 4.0);
+			const bool primaryCheck = pWeaponPrimary && distanceToTarget <= (WeaponTypeExtData::GetRangeWithModifiers(pWeaponPrimary, pTechno) / 256.0 * 4.0);
+			const bool secondaryCheck = pWeaponSecondary && distanceToTarget <= (WeaponTypeExtData::GetRangeWithModifiers(pWeaponSecondary, pTechno) / 256.0 * 4.0);
 			const bool guardRangeCheck = pTeamLeader->GetTechnoType()->GuardRange > 0 && distanceToTarget <= (pTeamLeader->GetTechnoType()->GuardRange / 256.0 * 2.0);
 
 			return primaryCheck
@@ -1298,7 +1303,8 @@ bool ScriptExtData::EvaluateObjectWithMask(TechnoClass* pTechno, int mask, int a
 
 void ScriptExtData::Mission_Attack_List(TeamClass* pTeam, bool repeatAction, DistanceMode calcThreatMode, int attackAITargetType)
 {
-	TeamExtContainer::Instance.Find(pTeam)->IdxSelectedObjectFromAIList = -1;
+	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
+	pTeamData->IdxSelectedObjectFromAIList = -1;
 	const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 
 	if (attackAITargetType < 0)
@@ -1425,7 +1431,7 @@ bool ScriptExtData::IsUnitArmed(TechnoClass* pTechno)
 		return false;
 
 	const auto pWeapons = ScriptExtData::GetWeapon(pTechno);
-	return pWeapons.first || pWeapons.second;
+	return pWeapons.first != nullptr || pWeapons.second != nullptr;
 }
 
 bool ScriptExtData::IsUnitMindControlledFriendly(HouseClass* pHouse, TechnoClass* pTechno)

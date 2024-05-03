@@ -107,6 +107,17 @@ void TiberiumExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			if (i == 0)
 			{
 				first = pOverlay;
+
+				auto iter = TiberiumExtContainer::LinkedType.find(pOverlay);
+				if (iter != TiberiumExtContainer::LinkedType.end())
+				{
+					if (iter->second != this->AttachedToObject)
+						Debug::FatalErrorAndExit("OverlayType[%s] already assigned to [%s] Tiberium! \n", pOverlay->ID, iter->second->ID);
+				}
+				else
+				{
+					TiberiumExtContainer::LinkedType.emplace(pOverlay, this->AttachedToObject);
+				}
 			}
 			else if (first && pOverlay->ArrayIndex != (first->ArrayIndex + i))
 			{
@@ -173,6 +184,26 @@ void TiberiumExtData::Serialize(T& Stm)
 }
 
 TiberiumExtContainer TiberiumExtContainer::Instance;
+std::map<OverlayTypeClass*, TiberiumClass*> TiberiumExtContainer::LinkedType;
+
+bool TiberiumExtContainer::LoadGlobals(PhobosStreamReader& Stm)
+{
+	return Stm
+		.Process(LinkedType)
+		.Success();
+}
+
+bool TiberiumExtContainer::SaveGlobals(PhobosStreamWriter& Stm)
+{
+	return Stm
+		.Process(LinkedType)
+		.Success();
+}
+
+void TiberiumExtContainer::Clear()
+{
+	LinkedType.clear();
+}
 
 // =============================
 // container hooks

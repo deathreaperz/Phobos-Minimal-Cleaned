@@ -157,7 +157,7 @@ DEFINE_HOOK(0x6F6CFE, TechnoClass_Unlimbo_LaserTrails, 0x6)
 	GET(TechnoClass*, pThis, ESI);
 
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pExt->Type);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
 	if (!pExt->LaserTrails.empty())
 	{
@@ -189,6 +189,11 @@ DEFINE_HOOK(0x70A4FB, TechnoClass_Draw_Pips_SelfHealGain, 0x5)
 	GET(TechnoClass*, pThis, ECX);
 	GET_STACK(Point2D*, pLocation, STACK_OFFS(0x74, -0x4));
 	GET_STACK(RectangleStruct*, pBounds, STACK_OFFS(0x74, -0xC));
+
+	const auto pType = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pType->NoExtraSelfHealOrRepair)
+		return SkipGameDrawing;
 
 	// if (const auto pFoot = generic_cast<FootClass*>(pThis)){
 	// 	if (const auto pParasiteFoot = pFoot->ParasiteEatingMe) {
@@ -344,22 +349,48 @@ DEFINE_HOOK(0x702672, TechnoClass_ReceiveDamage_RevengeWeapon, 0x5)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET_STACK(TechnoClass*, pSource, STACK_OFFSET(0xC4, 0x10));
+	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFSET(0xC4, 0xC));
 
 	if (pSource)
 	{
 		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+		bool AllowRevenge = true;
 
-		if (pTypeExt && pTypeExt->RevengeWeapon.isset() &&
-			EnumFunctions::CanTargetHouse(pTypeExt->RevengeWeapon_AffectsHouses, pThis->Owner, pSource->Owner))
+		if (pWH)
 		{
-			WeaponTypeExtData::DetonateAt(pTypeExt->RevengeWeapon.Get(), pSource, pThis, true, nullptr);
+			auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
+			AllowRevenge = !pWHExt->IgnoreRevenge;
+		}
+		auto SourCoords = pSource->GetCoords();
+
+		if (AllowRevenge)
+		{
+			if (pTypeExt && pTypeExt->RevengeWeapon.isset() &&
+				EnumFunctions::CanTargetHouse(pTypeExt->RevengeWeapon_AffectsHouses, pThis->Owner, pSource->Owner))
+			{
+				WeaponTypeExtData::DetonateAt(pTypeExt->RevengeWeapon.Get(), pSource, pThis, true, nullptr);
+			}
+
+			for (const auto& weapon : pExt->RevengeWeapons)
+			{
+				if (EnumFunctions::CanTargetHouse(weapon.ApplyToHouses, pThis->Owner, pSource->Owner))
+					WeaponTypeExtData::DetonateAt(weapon.Value, pSource, pThis, true, nullptr);
+			}
 		}
 
-		for (const auto& weapon : pExt->RevengeWeapons)
+		for (auto& attachEffect : pExt->PhobosAE)
 		{
-			if (EnumFunctions::CanTargetHouse(weapon.ApplyToHouses, pThis->Owner, pSource->Owner))
-				WeaponTypeExtData::DetonateAt(weapon.Value, pSource, pThis, true, nullptr);
+			if (!attachEffect->IsActive())
+				continue;
+
+			auto const pType = attachEffect->GetType();
+
+			if (!pType->RevengeWeapon.isset())
+				continue;
+
+			if (EnumFunctions::CanTargetHouse(pType->RevengeWeapon_AffectsHouses, pThis->Owner, pSource->Owner))
+				WeaponTypeExtData::DetonateAt(pType->RevengeWeapon, pSource->IsAlive ? pSource : nullptr, pThis, true, nullptr);
 		}
 	}
 

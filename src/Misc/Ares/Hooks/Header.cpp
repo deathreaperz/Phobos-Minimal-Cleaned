@@ -42,6 +42,7 @@
 #include <Ext/TEvent/Body.h>
 #include <Ext/TAction/Body.h>
 #include <Ext/Bomb/Body.h>
+#include <Ext/CaptureManager/Body.h>
 
 #include <New/Type/ArmorTypeClass.h>
 #include <New/Type/GenericPrerequisite.h>
@@ -59,6 +60,9 @@
 #include "AresChecksummer.h"
 
 #include <versionhelpers.h>
+
+#include <TriggerTypeClass.h>
+#include <TagTypeClass.h>
 
 PhobosMap<ObjectClass*, AlphaShapeClass*> StaticVars::ObjectLinkedAlphas {};
 std::vector<unsigned char> StaticVars::ShpCompression1Buffer {};
@@ -789,9 +793,10 @@ bool TechnoExt_ExtData::IsCloakable(TechnoClass* pThis, bool allowPassive)
 {
 	TechnoTypeClass* pType = pThis->GetTechnoType();
 	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	// object disallowed from cloaking
-	if (!pTypeExt->CloakAllowed)
+	if (!pTypeExt->CloakAllowed || pExt->AE_ForceDecloak)
 	{
 		return false;
 	}
@@ -837,8 +842,12 @@ bool TechnoExt_ExtData::CloakDisallowed(TechnoClass* pThis, bool allowPassive)
 {
 	if (TechnoExt_ExtData::IsCloakable(pThis, allowPassive))
 	{
-		return TechnoExtContainer::Instance.Find(pThis)->CloakSkipTimer.InProgress() || pThis->IsUnderEMP() || pThis->IsParalyzed()
-			|| pThis->IsBeingWarpedOut() || pThis->IsWarpingIn();
+		auto pExt = TechnoExtContainer::Instance.Find(pThis);
+		return pExt->CloakSkipTimer.InProgress()
+			|| pThis->IsUnderEMP()
+			|| pThis->IsParalyzed()
+			|| pThis->IsBeingWarpedOut()
+			|| pThis->IsWarpingIn();
 	}
 
 	return true;
@@ -1215,9 +1224,7 @@ bool TechnoExt_ExtData::PerformActionHijack(TechnoClass* pFrom, TechnoClass* con
 		const auto controller = pThis->MindControlledBy;
 		if (controller)
 		{
-			++Unsorted::ScenarioInit;
-			controller->CaptureManager->FreeUnit(pThis);
-			--Unsorted::ScenarioInit;
+			CaptureExt::FreeUnit(controller->CaptureManager, pThis, true);
 		}
 
 		// let's make a steal
@@ -1241,9 +1248,7 @@ bool TechnoExt_ExtData::PerformActionHijack(TechnoClass* pFrom, TechnoClass* con
 		// hook up the original mind-controller with the target #762
 		if (controller)
 		{
-			++Unsorted::ScenarioInit;
-			controller->CaptureManager->CaptureUnit(pTarget);
-			--Unsorted::ScenarioInit;
+			CaptureExt::CaptureUnit(controller->CaptureManager, pThis, true);
 		}
 
 		// reboot the slave manager
@@ -1594,10 +1599,8 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 				// the hijacker will now be controlled instead of the unit
 				if (auto const pController = pThis->MindControlledBy)
 				{
-					++Unsorted::ScenarioInit; // disables sound effects
-					pController->CaptureManager->FreeUnit(pThis);
-					pController->CaptureManager->CaptureUnit(pHijacker); // does the immunetopsionics check for us
-					--Unsorted::ScenarioInit;
+					CaptureExt::FreeUnit(pController->CaptureManager, pThis, true);
+					CaptureExt::CaptureUnit(pController->CaptureManager, pHijacker, true);
 					pHijacker->QueueMission(Mission::Guard, true); // override the fate the AI decided upon
 				}
 
@@ -1926,7 +1929,7 @@ void TechnoExt_ExtData::doTraverseTo(BuildingClass* currentBuilding, BuildingCla
 		auto item = currentBuilding->Occupants.Items[0];
 		targetBuilding->Occupants.AddItem(item);
 		TechnoExtContainer::Instance.Find(item)->GarrisonedIn = targetBuilding;
-		currentBuilding->Occupants.Remove(item); // maybe switch Add/Remove if the game gets pissy about multiple of them walking around
+		currentBuilding->Occupants.Remove<true>(item); // maybe switch Add/Remove if the game gets pissy about multiple of them walking around
 	}
 
 	// fix up firing index, as decrementing the source occupants can invalidate it
@@ -2361,6 +2364,7 @@ void TechnoExt_ExtData::UpdateDisplayTo(BuildingClass* pThis)
 			}
 		}
 
+		//TODO RadarVisible
 		pHouse->RadarVisibleTo.data = presistData;
 		MapClass::Instance->RedrawSidebar(2);
 	}
@@ -2371,6 +2375,7 @@ bool TechnoExt_ExtData::InfiltratedBy(BuildingClass* EnteredBuilding, HouseClass
 	auto EnteredType = EnteredBuilding->Type;
 	auto Owner = EnteredBuilding->Owner;
 	auto pTypeExt = BuildingTypeExtContainer::Instance.Find(EnteredBuilding->Type);
+	auto pBldExt = BuildingExtContainer::Instance.Find(EnteredBuilding);
 
 	if (!pTypeExt->SpyEffect_Custom)
 	{
@@ -2756,6 +2761,32 @@ bool TechnoExt_ExtData::InfiltratedBy(BuildingClass* EnteredBuilding, HouseClass
 		effectApplied = true;
 	}
 
+	if (pTypeExt->SpyEffect_SellDelay.isset())
+	{
+		if (!pBldExt->AutoSellTimer.HasStarted())
+		{
+			pBldExt->AutoSellTimer.Start(pTypeExt->SpyEffect_SellDelay > 0 ?
+				pTypeExt->SpyEffect_SellDelay : static_cast<int>(RulesClass::Instance->C4Delay));
+		}
+
+		if (evaForOwner || evaForEnterer)
+		{
+			VoxClass::Play(GameStrings::EVA_BuildingInfiltrated);
+		}
+		effectApplied = true;
+	}
+
+	if (pTypeExt->SpyEffect_Anim && pTypeExt->SpyEffect_Anim_Duration > 0)
+	{
+		pBldExt->SpyEffectAnim.reset(GameCreate<AnimClass>(pTypeExt->SpyEffect_Anim, EnteredBuilding->GetCoords()));
+		pBldExt->SpyEffectAnim->SetOwnerObject(EnteredBuilding);
+		pBldExt->SpyEffectAnim->RemainingIterations = 0xFFU;
+		pBldExt->SpyEffectAnim->Owner = EnteredBuilding->Owner;
+
+		pBldExt->SpyEffectAnimDuration = pTypeExt->SpyEffect_Anim_Duration;
+		effectApplied = true;
+	}
+
 	if (effectApplied)
 	{
 		EnteredBuilding->UpdatePlacement(PlacementType::Redraw);
@@ -2894,7 +2925,7 @@ BuildingClass* TechnoExt_ExtData::CreateBuilding(
 	if (!remove)
 	{
 		HouseClass* designated =
-			//pBuilding->Type->CanBeOccupied && pBuilding->Occupants.Count != 0 ? HouseExtData::FindCivilianSide() :
+			//pBuilding->Type->CanBeOccupied && pBuilding->Occupants.Count != 0 ? HouseExtData::FindFirstCivilianHouse() :
 			pBuilding->Owner;
 
 		auto pOwner = HouseExtData::GetHouseKind(owner, true, designated);
@@ -3125,31 +3156,47 @@ void TechnoExt_ExtData::ApplyKillDriver(TechnoClass* pTarget, TechnoClass* pKill
 	}
 }
 
-std::pair<TechnoTypeClass**, AbstractType> NOINLINE GetOriginalType(TechnoClass* pThis, TechnoTypeClass* pToType)
+std::pair<TechnoTypeClass*, AbstractType> NOINLINE GetOriginalType(TechnoClass* pThis, TechnoTypeClass* pToType)
 {
 	switch (pThis->WhatAmI())
 	{
 	case AbstractType::Infantry:
-		return { (TechnoTypeClass**)(&((InfantryClass*)pThis)->Type) , AbstractType::InfantryType };
+		return { (TechnoTypeClass*)(((InfantryClass*)pThis)->Type) , AbstractType::InfantryType };
 	case AbstractType::Unit:
-		return { (TechnoTypeClass**)(&((UnitClass*)pThis)->Type), AbstractType::UnitType };
+		return { (TechnoTypeClass*)(((UnitClass*)pThis)->Type), AbstractType::UnitType };
 	case AbstractType::Aircraft:
-		return { (TechnoTypeClass**)(&((AircraftClass*)pThis)->Type), AbstractType::AircraftType };
+		return { (TechnoTypeClass*)(((AircraftClass*)pThis)->Type), AbstractType::AircraftType };
 	default:
 		Debug::FatalErrorAndExit("%s is not FootClass, conversion not allowed\n", pToType->ID);
 		return { nullptr, AbstractType::None };
 	}
 }
 
-void NOINLINE SetType(TechnoClass* pThis, AbstractType rtti, TechnoTypeClass* pToType, TechnoTypeClass** CurType)
+void NOINLINE SetType(TechnoClass* pThis, AbstractType rtti, TechnoTypeClass* pToType)
 {
-	*CurType = pToType;
+	switch (rtti)
+	{
+	case AbstractType::Infantry:
+	case AbstractType::InfantryType:
+		((InfantryClass*)pThis)->Type = (InfantryTypeClass*)pToType;
+		break;
+	case AbstractType::Unit:
+	case AbstractType::UnitType:
+		((UnitClass*)pThis)->Type = (UnitTypeClass*)pToType;
+		break;
+	case AbstractType::Aircraft:
+	case AbstractType::AircraftType:
+		((AircraftClass*)pThis)->Type = (AircraftTypeClass*)pToType;
+		break;
+	default:
+		break;
+	}
 }
 
 bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeClass* pToType, bool AdjustHealth, bool IsChangeOwnership)
 {
 	const auto& [prevType, rtti] = GetOriginalType(pThis, pToType);
-	const auto pOldType = (*prevType);
+	const auto pOldType = prevType;
 	Debug::Log("Attempt to convert TechnoType[%s] to [%s]\n", pOldType->ID, pToType->ID);
 
 	if (pToType->WhatAmI() != rtti || pOldType->Spawned != pToType->Spawned || pOldType->MissileSpawn != pToType->MissileSpawn)
@@ -3157,6 +3204,9 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		Debug::Log("Incompatible types between %s and %s\n", pOldType->ID, pToType->ID);
 		return false;
 	}
+
+	const auto pToTypeExt = TechnoTypeExtContainer::Instance.Find(pToType);
+	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	// Detach CLEG targeting
 	if (pThis->TemporalImUsing && pThis->TemporalImUsing->Target)
@@ -3177,7 +3227,7 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 
 	const int oldHealth = pThis->Health;
 
-	SetType(pThis, rtti, pToType, prevType);
+	SetType(pThis, rtti, pToType);
 
 	if (AdjustHealth)
 	{
@@ -3227,6 +3277,65 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		pThis->LineTrailer->Owner = pThis;
 	}
 
+	TechnoExtData::InitializeLaserTrail(pThis, true);
+	pExt->LaserTrails.clear();
+
+	for (auto const& entry : pToTypeExt->LaserTrailData)
+	{
+		pExt->LaserTrails.emplace_back(
+			LaserTrailTypeClass::Array[entry.idxType].get(),
+			pOwner->LaserColor,
+			entry.FLH,
+			entry.IsOnTurret
+		);
+	}
+
+	// Reset AutoDeath Timer
+	if (pExt->Death_Countdown.HasStarted())
+	{
+		pExt->Death_Countdown.Stop();
+
+		if (pThis->Owner)
+		{
+			HouseExtContainer::Instance.Find(pThis->Owner)->AutoDeathObjects.erase(pThis);
+		}
+	}
+
+	if (pExt->PassengerDeletionTimer.IsTicking()
+	&& !pToTypeExt->PassengerDeletionType.Enabled)
+		pExt->PassengerDeletionTimer.Stop();
+
+	TrailsManager::Construct(static_cast<TechnoClass*>(pThis), true);
+
+	// Update open topped state of potential passengers if transport's OpenTopped value changes.
+	bool toOpenTopped = pToType->OpenTopped && !pOldType->OpenTopped;
+
+	if ((toOpenTopped || (!pToType->OpenTopped && pOldType->OpenTopped)) && pThis->Passengers.NumPassengers > 0)
+	{
+		auto pPassenger = pThis->Passengers.FirstPassenger;
+
+		while (pPassenger)
+		{
+			if (toOpenTopped)
+			{
+				pThis->EnteredOpenTopped(pPassenger);
+			}
+			else
+			{
+				pThis->ExitedOpenTopped(pPassenger);
+
+				// Lose target & destination
+				pPassenger->Guard();
+
+				// OpenTopped adds passengers to logic layer when enabled. Under normal conditions this does not need to be removed since
+				// OpenTopped state does not change while passengers are still in transport but in case of type conversion that can happen.
+				MapClass::Logics.get().RemoveObject(pPassenger);
+			}
+
+			pPassenger = abstract_cast<FootClass*>(pPassenger->NextObject);
+		}
+	}
+
 	// replace spawner type and some properties
 	if (auto pSpawnManager = pThis->SpawnManager)
 	{
@@ -3254,24 +3363,52 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		pThis->ClearDisguise();
 
 	// Adjust ammo
-	pThis->Ammo = MinImpl(pThis->Ammo, pToType->Ammo);
+	int ammoLeft = MinImpl(pThis->Ammo, pToType->Ammo);
+	pThis->Ammo = ammoLeft;
+	if (ammoLeft < 0 || ammoLeft >= pToType->Ammo)
+	{
+		pThis->ReloadTimer.Stop();
+	}
+	else
+	{
+		int reloadLeft = pThis->ReloadTimer.GetTimeLeft();
+		int reloadPrev = 0;
+		int reloadNew = 0;
+		if (ammoLeft == 0)
+		{
+			reloadPrev = pOldType->EmptyReload;
+			reloadNew = pToType->EmptyReload;
+		}
+		else if (pThis->Ammo)
+		{
+			reloadPrev = pOldType->Reload;
+			reloadNew = pToType->Reload;
+		}
+		int pass = reloadPrev - reloadLeft;
+		if (pass <= 0 || pass >= reloadNew)
+		{
+			pThis->ReloadTimer.Stop();
+		}
+		else
+		{
+			int reload = reloadNew - pass;
+			pThis->ReloadTimer.Start(reload);
+		}
+	}
 
 	BuildingLightClass* pSpot = nullptr;
 
-	if (TechnoTypeExtContainer::Instance.Find(pToType)->HasSpotlight)
+	if (pToTypeExt->HasSpotlight)
 	{
 		pSpot = GameCreate<BuildingLightClass>(pThis);
 	}
 
-	auto SetRotRaw = [](FacingClass* pFacing, int rate)
-		{
-			const int value = MinImpl(rate, 127);
-			pFacing->ROT.Raw = value << 8;
-		};
-
 	TechnoExt_ExtData::SetSpotlight(pThis, pSpot);
-	SetRotRaw(&pThis->PrimaryFacing, pToType->ROT);
-	SetRotRaw(&pThis->SecondaryFacing, TechnoTypeExtContainer::Instance.Find(pToType)->TurretRot.Get(pToType->ROT));
+	const int value = MinImpl(pToType->ROT, 127);
+	(&pThis->PrimaryFacing)->ROT.Raw = value << 8;
+
+	const int valuesec = MinImpl(pToTypeExt->TurretRot.Get(pToType->ROT), 127);
+	(&pThis->SecondaryFacing)->ROT.Raw = valuesec << 8;
 
 	// // because we are throwing away the locomotor in a split second, piggybacking
 	// // has to be stopped. otherwise the object might remain in a weird state.
@@ -3279,9 +3416,14 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 	// while (LocomotionClass::End_Piggyback(((FootClass*)pThis)->Locomotor));
 
 	//fucker
-	const int WeaponCount = (pToType->WeaponCount > 0 ? pToType->WeaponCount : 2) - 1;
-	if (pThis->CurrentWeaponNumber > WeaponCount)
+	const int WeaponCount = (pToType->WeaponCount > 0 ? pToType->WeaponCount : 2);
+	if (pThis->CurrentWeaponNumber >= WeaponCount)
 		pThis->CurrentWeaponNumber = 0;
+
+	const int TurretCount = (pToType->TurretCount > 0 ? pToType->TurretCount : 2);
+
+	if (pThis->CurrentTurretNumber >= TurretCount)
+		pThis->CurrentTurretNumber = 0;
 
 	// replace the original locomotor to new one
 	if (pOldType->Locomotor != pToType->Locomotor)
@@ -3304,43 +3446,6 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		((FootClass*)pThis)->Locomotor.GetInterfacePtr()->Move_To(pThis->Location);
 
 	return true;
-}
-
-void TechnoExt_ExtData::RecalculateStat(TechnoClass* pThis)
-{
-#ifdef New_funcs
-	double ROF_Mult = 1.0;
-	double FP_Mult = pThis->align_154->AE_FirePowerMult;
-	double Armor_Mult = pThis->align_154->AE_ArmorMult;
-	double Speed_Mult = pThis->align_154->AE_SpeedMult;
-	BYTE Cloak = (BYTE)pThis->CanICloakByDefault() | pThis->align_154->AE_Cloak;
-
-	for (auto begin = pThis->align_154->AEDatas.first; begin != pThis->align_154->AEDatas.last; ++begin)
-	{
-		//the class aligment is different , so it probably broke something
-		ROF_Mult *= begin->Type->ROFMultiplier;
-		FP_Mult *= begin->Type->FirepowerMultiplier;
-		Speed_Mult *= begin->Type->SpeedMultiplier;
-		Armor_Mult *= begin->Type->ArmorMultiplier;
-		Cloak |= begin->Type->Cloakable;
-	}
-
-	pThis->FirepowerMultiplier = FP_Mult;
-	pThis->ArmorMultiplier = Armor_Mult;
-	pThis->align_154->AE_ROF = ROF_Mult;
-	pThis->Cloakable = Cloak;
-
-	if (pThis->AbstractFlags & AbstractFlags::Foot)
-	{
-		//if (Speed_Mult < 1.0 && TechnoExtData::IsInWarfactory(pThis))
-		//	Speed_Mult = 1.0; //negate all speed bonusses when it is still in warfactory
-
-		((FootClass*)pThis)->SpeedMultiplier = Speed_Mult;
-	}
-#else
-	//AresData::RecalculateStat(pThis);
-	AresAE::RecalculateStat(&TechnoExtContainer::Instance.Find(pThis)->AeData, pThis);
-#endif
 }
 
 int TechnoExt_ExtData::GetSelfHealAmount(TechnoClass* pThis)
@@ -3839,7 +3944,7 @@ void TechnoExperienceData::PromoteImmedietely(TechnoClass* pExpReceiver, bool bS
 					pAnim->ZAdjust = -1024;
 			}
 
-			TechnoExt_ExtData::RecalculateStat(pExpReceiver);
+			AresAE::RecalculateStat(&TechnoExtContainer::Instance.Find(pExpReceiver)->AeData, pExpReceiver);
 		}
 
 		pExpReceiver->CurrentRanking = newRank;
@@ -4686,7 +4791,8 @@ void AresEMPulse::deliverEMPDamage(TechnoClass* const pTechno, TechnoClass* cons
 	if (AresEMPulse::isEligibleEMPTarget(pTechno, pHouse, pWarhead))
 	{
 		auto const pType = pTechno->GetTechnoType();
-		auto const& Verses = pWHExt->GetVerses(TechnoExtData::GetArmor(pTechno)).Verses;
+		auto const& Verses = pWHExt->GetVerses(TechnoExtData::GetTechnoArmor(pTechno, pWarhead)).Verses;
+
 		if (std::abs(Verses) < 0.001)
 		{
 			return;
@@ -5464,7 +5570,7 @@ bool AresScriptExt::Handle(TeamClass* pTeam, ScriptActionNode* pTeamMission, boo
 			}
 
 			pTeam->StepCompleted = true;
-			return true;
+			break;
 		}
 		case AresScripts::SonarReveal:
 		{
@@ -5740,7 +5846,7 @@ bool AresWPWHExt::applyOccupantDamage(BulletClass* pThis)
 	{
 		pPoorBastard->Destroyed(pThis->Owner);
 		pPoorBastard->UnInit();
-		pBuilding->Occupants.RemoveAt(idxPoorBastard);
+		pBuilding->Occupants.RemoveAt<true>(idxPoorBastard);
 		pBuilding->UpdateThreatInCell(pBuilding->GetCell());
 	}
 	else
@@ -6019,7 +6125,7 @@ bool AresTActionExt::MeteorStrike(TActionClass* pAction, HouseClass* pHouse, Obj
 	{
 		auto nRandX = ScenarioClass::Instance->Random.Random() % nTotal;
 		auto nRandY = ScenarioClass::Instance->Random.Random() % nTotal;
-		CoordStruct nLoc { nRandX + nCoord.X ,nRandY + nCoord.Y ,nCoord.Z };
+		CoordStruct nAnimLoc { nRandX + nCoord.X ,nRandY + nCoord.Y ,nCoord.Z };
 
 		AnimTypeClass* pSelected = pBig;
 		int nRandHere = abs(ScenarioClass::Instance->Random.Random()) & 0x80000001;
@@ -6036,7 +6142,7 @@ bool AresTActionExt::MeteorStrike(TActionClass* pAction, HouseClass* pHouse, Obj
 
 		if (pSelected)
 		{
-			auto pAnim = GameCreate<AnimClass>(pSelected, nLoc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+			auto pAnim = GameCreate<AnimClass>(pSelected, nAnimLoc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
 			pAnim->Owner = pHouse;
 		}
 	}
@@ -6054,10 +6160,51 @@ bool AresTActionExt::PlayAnimAt(TActionClass* pAction, HouseClass* pHouse, Objec
 
 		if (MapClass::Instance->GetCellAt(nCoord)->ContainsBridge())
 			nCoord.Z += Unsorted::BridgeHeight;
+		//Debug::Log("Trigger %s - Tag %s PlayAnimAt at(%d %d %d) Anim[%s - %d]\n",
+		//	pAction->TriggerType ? pAction->TriggerType->get_ID() : NONE_STR,
+		//	pAction->TagType ? pAction->TagType->get_ID() : NONE_STR,
+		//	nCoord.X, nCoord.Y, nCoord.Z,
+		//	pAnimType->ID,
+		//	pAction->Value
+		//);
 
 		auto pAnim = GameCreate<AnimClass>(pAnimType, nCoord, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
 		pAnim->IsPlaying = true;
 		pAnim->Owner = pHouse;
+	}
+
+	return true;
+}
+
+bool AresTActionExt::DoExplosionAt(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
+{
+	if (const auto pWeaponType = WeaponTypeClass::Array->GetItemOrDefault(pAction->Value))
+	{
+		auto nLoc = ScenarioClass::Instance->GetWaypointCoords(pAction->Waypoint);
+		CoordStruct nCoord = CellClass::Cell2Coord(nLoc);
+		nCoord.Z = MapClass::Instance->GetCellFloorHeight(nCoord);
+		const auto pCell = MapClass::Instance->GetCellAt(nCoord);
+
+		if (pCell->ContainsBridge())
+			nCoord.Z += Unsorted::BridgeHeight;
+
+		//Debug::Log("Trigger %s - Tag %s DoExplosion at(%d %d %d) Weapon[%s] Warhead[%s]\n",
+		//	pAction->TriggerType ? pAction->TriggerType->get_ID() : NONE_STR ,
+		//	pAction->TagType ? pAction->TagType->get_ID() : NONE_STR,
+		//	nCoord.X, nCoord.Y , nCoord.Z,
+		//	pWeaponType->ID,
+		//	pWeaponType->Warhead->ID
+		//);
+
+		if (auto pAnimType = MapClass::SelectDamageAnimation(pWeaponType->Damage, pWeaponType->Warhead, pCell->LandType, nCoord))
+		{
+			auto pAnim = GameCreate<AnimClass>(pAnimType, nCoord, 0, 1, AnimFlag::AnimFlag_2000 | AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, -15, 0);
+			pAnim->IsPlaying = true;
+			pAnim->Owner = pHouse;
+		}
+
+		MapClass::FlashbangWarheadAt(pWeaponType->Damage, pWeaponType->Warhead, nCoord);
+		MapClass::DamageArea(&nCoord, pWeaponType->Damage, nullptr, pWeaponType->Warhead, true, pHouse);
 	}
 
 	return true;
@@ -6111,6 +6258,9 @@ bool AresTActionExt::Execute(TActionClass* pAction, HouseClass* pHouse, ObjectCl
 			return true;
 		case TriggerAction::ChemMissileStrike:
 			ret = LauchhChemMissile(pAction, pHouse, pObject, pTrigger, location);
+			return true;
+		case TriggerAction::DoExplosionAt:
+			ret = DoExplosionAt(pAction, pHouse, pObject, pTrigger, location);
 			return true;
 		default:
 			break;

@@ -28,7 +28,7 @@ struct dllData
 	//std::vector<std::string> Patches;
 
 	dllData() = default;
-	dllData() : BaseAddr(0) { }
+
 	dllData(const char* name, HMODULE handle, uintptr_t baseaddr) : ModuleName { name }
 		, Handle { handle }
 		, BaseAddr { baseaddr }
@@ -77,7 +77,6 @@ struct __declspec(novtable)
 		if (VirtualProtect((LPVOID)addrFrom, size, ReadFlag, &protect_flag) == TRUE)
 		{
 			std::memcpy((void*)addrFrom, toImpl, size);
-			*reinterpret_cast<TFrom*>(addrFrom) = *reinterpret_cast<To*>(toImpl);
 			VirtualProtect((LPVOID)addrFrom, size, protect_flag, NULL);
 		}
 	}

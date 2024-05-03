@@ -29,10 +29,36 @@ void ScenarioExtData::SaveVariablesToFile(bool isGlobal)
 	const auto variables = ScenarioExtData::GetVariables(isGlobal);
 	std::for_each(variables->begin(), variables->end(), [&](const auto& variable)
  {
-	 ini.WriteInteger(ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value, false);
+	 ini.WriteInteger(isGlobal ? "GlobalVariables" : ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value, false);
 	});
 
 	ini.WriteCCFile(&file);
+}
+
+void ScenarioExtData::LoadVariablesToFile(bool isGlobal)
+{
+	const auto fileName = isGlobal ? "globals.ini" : "locals.ini";
+	CCFileClass file { fileName };
+
+	if (!file.Exists())
+	{
+		return;
+	}
+
+	if (!file.Open(FileAccessMode::ReadWrite))
+	{
+		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, fileName);
+		return;
+	}
+
+	CCINIClass ini {};
+	ini.ReadCCFile(&file);
+
+	const auto variables = ScenarioExtData::GetVariables(isGlobal);
+	std::for_each(variables->begin(), variables->end(), [&](const auto& variable)
+ {
+	 ini.ReadInteger(isGlobal ? "GlobalVariables" : ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value);
+	});
 }
 
 PhobosMap<int, ExtendedVariable>* ScenarioExtData::GetVariables(bool IsGlobal)
@@ -52,6 +78,7 @@ void ScenarioExtData::SetVariableToByID(const bool IsGlobal, int nIndex, char bS
 
 	if (itr && itr->Value != bState)
 	{
+		//Debug::Log("[%d]SetVariableToByID %s - %d from [%d] to [%d]\n", (int)IsGlobal ,itr->Name , nIndex, itr->Value , bState);
 		itr->Value = bState;
 		ScenarioClass::Instance->VariablesChanged = true;
 		if (!IsGlobal)
@@ -103,6 +130,17 @@ void ScenarioExtData::ReadVariables(const bool IsGlobal, CCINIClass* pINI)
 				var.Value = 0;
 
 			//Debug::Log("ReadVariables [%s] result %s ! \n", var.Name, var.Value ? "True" : "False");
+		}
+	}
+
+	if (IsGlobal)
+	{
+		ScenarioExtData::Instance()->LoadVariablesToFile(true);
+
+		if (!Phobos::Config::SaveVariablesOnScenarioEnd)
+		{
+			// Is it better not to delete the file?
+			DeleteFileA("globals.ini");
 		}
 	}
 }
@@ -204,7 +242,7 @@ void ScenarioExtData::Serialize(T& Stm)
 		.Process(this->Waypoints)
 		.Process(this->Local_Variables)
 		.Process(this->Global_Variables)
-
+		.Process(this->DefinedAudioWaypoints)
 		.Process(this->ParTitle)
 		.Process(this->ParMessage)
 		.Process(this->ScoreCampaignTheme)
