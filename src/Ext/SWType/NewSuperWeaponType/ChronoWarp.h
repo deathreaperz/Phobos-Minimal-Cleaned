@@ -14,8 +14,9 @@ public:
 	virtual void Initialize(SWTypeExtData* pData) override;
 	virtual bool IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const override;
 
+protected:
 	void newStateMachine(int Duration, const CellStruct& XY, SuperClass* pSuper, NewSWType* pSWType,
-	std::vector<ChronoWarpStateMachine::ChronoWarpContainer> Buildings)
+	HelperedVector<ChronoWarpStateMachine::ChronoWarpContainer> Buildings)
 	{
 		SWStateMachine::Register(std::make_unique<ChronoWarpStateMachine>(Duration, XY, pSuper, this, std::move(Buildings)));
 	}

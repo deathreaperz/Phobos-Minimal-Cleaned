@@ -7,24 +7,12 @@
 
 #include <Utilities/Macro.h>
 
-const Leptons BulletTypeExtData::DefaultBulletScatterMin = Leptons { 256 };
-const Leptons BulletTypeExtData::DefaultBulletScatterMax = Leptons { 512 };
-
-BulletTypeClass* BulletTypeExtData::GetDefaultBulletType(const char* pBullet)
+BulletTypeClass* BulletTypeExtData::GetDefaultBulletType()
 {
-	BulletTypeClass* pType = nullptr;
+	if (!RulesExtData::Instance()->DefautBulletType)
+		RulesExtData::Instance()->DefautBulletType = BulletTypeClass::Find(DEFAULT_STR2);
 
-	if (pBullet)
-	{
-		pType = BulletTypeClass::Find(pBullet);
-	}
-	else
-	{
-		pType = BulletTypeClass::Find(DEFAULT_STR2);
-	}
-
-	//an dummy bullet , huh
-	return pType;
+	return RulesExtData::Instance()->DefautBulletType;
 }
 
 CoordStruct BulletTypeExtData::CalculateInaccurate(BulletTypeClass* pBulletType)
@@ -124,6 +112,7 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	const char* pArtSection = (!pThis->ImageFile || !pThis->ImageFile[0]) ? pSection : pThis->ImageFile;
 
 	this->ImageConvert.clear();
+	bool trailReaded = false;
 
 	if (!parseFailAddr)
 	{
@@ -138,6 +127,7 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Shrapnel_AffectsGround.Read(exINI, pSection, "Shrapnel.AffectsGround");
 		this->Shrapnel_AffectsBuildings.Read(exINI, pSection, "Shrapnel.AffectsBuildings");
 		this->Shrapnel_Chance.Read(exINI, pSection, "Shrapnel.Chance");
+		this->Shrapnel_UseWeaponTargeting.Read(exINI, pSection, "Shrapnel.UseWeaponTargeting");
 
 		// Code Disabled , #816 , Bullet/Hooks.obstacles.cpp
 		this->SubjectToLand.Read(exINI, pSection, "SubjectToLand");
@@ -157,11 +147,20 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->AirburstSpread.Read(exINI, pSection, "AirburstSpread");
 		this->RetargetAccuracy.Read(exINI, pSection, "RetargetAccuracy");
 		this->RetargetOwner.Read(exINI, pSection, "RetargetSelf");
+		this->RetargetSelf_Probability.Read(exINI, pSection, "RetargetSelf.Probability");
 		this->Splits.Read(exINI, pSection, "Splits");
 		this->AroundTarget.Read(exINI, pSection, "AroundTarget");
 		this->AirburstWeapons.Read(exINI, pSection, "AirburstWeapons");
+		this->Airburst_RandomClusters.Read(exINI, pSection, "Airburst.RandomClusters");
+		this->Airburst_UseCluster.Read(exINI, pSection, "Airburst.UseCluster");
 
 		this->Splits_Range.Read(exINI, pSection, "Splits.TechnoRange");
+		this->Splits_Range.Read(exINI, pSection, "Splits.TargetingDistance");
+
+		this->Splits_TargetCellRange.Read(exINI, pSection, "Splits.TargetCellRange");
+		this->Splits_UseWeaponTargeting.Read(exINI, pSection, "Splits.UseWeaponTargeting");
+		this->AirburstWeapon_ApplyFirepowerMult.Read(exINI, pSection, "AirburstWeapon.ApplyFirepowerMult");
+
 		this->Splits_RandomCellUseHarcodedRange.Read(exINI, pSection, "Splits.RandomCellUseHardcodedRange");
 		this->Splits_TargetingUseVerses.Read(exINI, pSection, "Splits.TargetingUseVerses");
 		this->Splits_FillRemainingClusterWithRandomcells.Read(exINI, pSection, "Splits.FillRemainingClusterWihRandomCells");
@@ -195,19 +194,26 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Arcing_AllowElevationInaccuracy.Read(exINI, pSection, "Arcing.AllowElevationInaccuracy");
 		this->AttachedSystem.Read(exINI, pSection, "AttachedSystem");
 		this->ReturnWeapon.Read(exINI, pSection, "ReturnWeapon", true);
+
+		if (pThis->Inviso)
+		{
+			trailReaded = true;
+			this->LaserTrail_Types.Read(exINI, pSection, "LaserTrail.Types");
+			this->Trails.Read(exINI, pSection, false);
+		}
 	}
 
 	if (pArtInI && pArtInI->GetSection(pArtSection))
 	{
 		INI_EX exArtINI(pArtInI);
 
-		this->LaserTrail_Types.Read(exArtINI, pArtSection, "LaserTrail.Types");
 		//LineTrailData::LoadFromINI(this->LineTrailData, exArtINI, pArtSection);
-#pragma region Otamaa
-
 		this->Parachute.Read(exArtINI, pArtSection, GameStrings::Parachute());
-		this->Trails.Read(exArtINI, pArtSection, false);
-#pragma endregion
+		if (!trailReaded)
+		{
+			this->LaserTrail_Types.Read(exArtINI, pArtSection, "LaserTrail.Types");
+			this->Trails.Read(exArtINI, pArtSection, false);
+		}
 	}
 }
 
@@ -225,6 +231,7 @@ void BulletTypeExtData::Serialize(T& Stm)
 		.Process(this->Shrapnel_AffectsGround)
 		.Process(this->Shrapnel_AffectsBuildings)
 		.Process(this->Shrapnel_Chance)
+		.Process(this->Shrapnel_UseWeaponTargeting)
 		.Process(this->SubjectToLand)
 		.Process(this->SubjectToLand_Detonate)
 		.Process(this->SubjectToWater)
@@ -244,11 +251,17 @@ void BulletTypeExtData::Serialize(T& Stm)
 		.Process(this->Splits)
 		.Process(this->RetargetAccuracy)
 		.Process(this->RetargetOwner)
+		.Process(this->RetargetSelf_Probability)
 		.Process(this->AirburstSpread)
 		.Process(this->AroundTarget)
 		.Process(this->AirburstWeapons)
+		.Process(this->Airburst_UseCluster)
+		.Process(this->Airburst_RandomClusters)
 		.Process(this->Splits_Range)
 		.Process(this->Splits_RandomCellUseHarcodedRange)
+		.Process(this->Splits_TargetCellRange)
+		.Process(this->Splits_UseWeaponTargeting)
+		.Process(this->AirburstWeapon_ApplyFirepowerMult)
 		.Process(this->Splits_TargetingUseVerses)
 		.Process(this->Splits_FillRemainingClusterWithRandomcells)
 		.Process(this->BounceAmount)
@@ -296,7 +309,7 @@ bool BulletTypeExtContainer::Load(BulletTypeClass* key, IStream* pStm)
 
 	if (Iter == BulletTypeExtContainer::Instance.Map.end())
 	{
-		auto ptr = this->AllocateUnlchecked(key);
+		auto ptr = this->AllocateUnchecked(key);
 		Iter = BulletTypeExtContainer::Instance.Map.emplace(key, ptr).first;
 	}
 
@@ -330,7 +343,7 @@ DEFINE_HOOK(0x46BDD9, BulletTypeClass_CTOR, 0x5)
 
 	if (Iter == BulletTypeExtContainer::Instance.Map.end())
 	{
-		auto ptr = BulletTypeExtContainer::Instance.AllocateUnlchecked(pItem);
+		auto ptr = BulletTypeExtContainer::Instance.AllocateUnchecked(pItem);
 		Iter = BulletTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
 	}
 

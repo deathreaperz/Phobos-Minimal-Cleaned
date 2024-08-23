@@ -22,11 +22,15 @@ public:
 
 	static constexpr reference<GroundType, 0x89EA40u, 12u> const Array {};
 
-	static __forceinline GroundType* Get(LandType land) {
+	static constexpr FORCEINLINE GroundType* Get(LandType land) {
 		return &Array[(int)land];
 	}
 
-	static __forceinline float GetCost(LandType land, SpeedType speed) {
+	static LandType __fastcall GetLandTypeFromName(const char* name) {
+		JMP_STD(0x48DF80);
+	}
+
+	static constexpr FORCEINLINE float GetCost(LandType land, SpeedType speed) {
 		return Get(land)->Cost[(int)speed];
 	}
 };
@@ -237,36 +241,40 @@ public:
 	virtual void SetVisibleRect(const RectangleStruct& mapRect) JMP_THIS(0x567230);
 
 	//GetCellAt
-	CellClass* operator[] (const CoordStruct&  cell)
-	{ JMP_THIS(0x565730); }
+	//CellClass* operator[] (const CoordStruct&  cell)
+	//{ JMP_THIS(0x565730); }
 
-	CellClass* GetCellAt(CoordStruct* pCoord)
-	{ JMP_THIS(0x565730); }
+	// Get cellclasspointer with cellstruct but it will return to instance pointer if invalid !
+	constexpr FORCEINLINE CellClass* GetCellAt(CoordStruct* pCoord) {
+		CellStruct cell = CellClass::Coord2Cell(*pCoord);
+		return GetCellAt(cell);
+	}
+
+	// Get cellclasspointer with cellstruct but it will return to instance pointer if invalid !
+	constexpr FORCEINLINE CellClass* GetCellAt(CellStruct* pCellStruct) const {
+		return GetCellAt(*pCellStruct);
+	}
 
 	//GetCellAt
-	CellClass* GetCellAt(CellStruct* pCellStruct)
-	{ JMP_THIS(0x5657A0); }
-
-	//GetCellAt
-	CellClass* operator[] (const CellStruct&  cell)
-	{ JMP_THIS(0x5657A0); }
+	//CellClass* operator[] (const CellStruct&  cell)
+	//{ JMP_THIS(0x5657A0); }
 
 	//Non-virtuals
 
 	// Get cellclasspointe with cellstruct Pointer but it will return nullptr if invalid !
-	CellClass* TryGetCellAt(const CellStruct& MapCoords) const {
+	constexpr CellClass* TryGetCellAt(const CellStruct& MapCoords) const {
 		int idx = GetCellIndex(MapCoords);
-		return (idx >= 0 && idx < MaxCells) ? Cells[idx] : nullptr;
+		return (idx >= 0 && idx < MaxCells) ? Cells.Items[idx] : nullptr;
 	}
 
 	// Get cellclasspointer with coords but it will return nullptr if invalid !
-	CellClass* TryGetCellAt(const CoordStruct& Crd) const {
+	constexpr CellClass* TryGetCellAt(const CoordStruct& Crd) const {
 		CellStruct cell = CellClass::Coord2Cell(Crd);
 		return TryGetCellAt(cell);
 	}
 
 	// Get cellclasspointer with cellstruct but it will return to instance pointer if invalid !
-	CellClass* GetCellAt(const CellStruct &MapCoords) const {
+	constexpr CellClass* GetCellAt(const CellStruct &MapCoords) const {
 		auto pCell = TryGetCellAt(MapCoords);
 
 		if(!pCell) {
@@ -278,17 +286,23 @@ public:
 	}
 
 	// Get cellclasspointer with coords but it will return to instance pointer if invalid !
-	CellClass* GetCellAt(const CoordStruct &Crd) const {
+	constexpr FORCEINLINE CellClass* GetCellAt(const CoordStruct &Crd) const {
 		CellStruct cell = CellClass::Coord2Cell(Crd);
 		return GetCellAt(cell);
 	}
 
 	// Get cellclasspointer with pointe2d location but it will return to instance pointer if invalid !
-	CellClass* GetTargetCell(Point2D& location)
-		{ JMP_THIS(0x565730); }
+	constexpr CellClass* GetTargetCell(Point2D& location) {
+		CellStruct cell = {
+			static_cast<short>(location.X / 256),
+			static_cast<short>(location.Y / 256)
+		};
+
+		return GetCellAt(cell);
+	}
 
 	// Is cellclass pointer is valid after using `TryGetCellAt` !
-	bool CellExists(const CellStruct &MapCoords) const {
+	constexpr FORCEINLINE bool CellExists(const CellStruct &MapCoords) const {
 		return TryGetCellAt(MapCoords) != nullptr;
 	}
 
@@ -298,7 +312,7 @@ public:
 	bool IsLocationShrouded(const CoordStruct &crd) const
 		{ JMP_THIS(0x586360); }
 
-	static int GetCellIndex(const CellStruct &MapCoords) {
+	static constexpr FORCEINLINE int GetCellIndex(const CellStruct &MapCoords) {
 		return (MapCoords.Y << 9) + MapCoords.X;
 	}
 
@@ -312,7 +326,7 @@ public:
 	}
 
 	// gets a coordinate in a random direction a fixed distance in leptons away from coords
-	static CoordStruct GetRandomCoordsNear(const CoordStruct &coords, int distance, bool center) {
+	static FORCEINLINE CoordStruct GetRandomCoordsNear(const CoordStruct &coords, int distance, bool center) {
 		CoordStruct outBuffer;
 		GetRandomCoordsNear(outBuffer, coords, distance, center);
 		return outBuffer;
@@ -321,7 +335,7 @@ public:
 	static CoordStruct* __stdcall PickInfantrySublocation(CoordStruct &outBuffer, const CoordStruct &coords, bool ignoreContents = false)
 		{ JMP_STD(0x4ACA10); }
 
-	static CoordStruct PickInfantrySublocation(const CoordStruct &coords, bool ignoreContents = false) {
+	static FORCEINLINE CoordStruct PickInfantrySublocation(const CoordStruct &coords, bool ignoreContents = false) {
 		CoordStruct outBuffer;
 		PickInfantrySublocation(outBuffer, coords, ignoreContents);
 		return outBuffer;
@@ -388,8 +402,8 @@ public:
 		(int Damage, WarheadTypeClass *WH, CoordStruct coords, bool Force = 0, SpotlightFlags CLDisableFlags = SpotlightFlags::None)
 			{JMP_STD(0x48A620); }
 
-	static void __fastcall FlashbangWarheadAt
-	(int Damage, WarheadTypeClass* WH, CoordStruct* pCoord, bool Force, SpotlightFlags CLDisableFlags)
+	static FORCEINLINE void FlashbangWarheadAt
+		(int Damage, WarheadTypeClass* WH, CoordStruct* pCoord, bool Force, SpotlightFlags CLDisableFlags)
 	{
 		auto nCoord = *pCoord;
 		FlashbangWarheadAt(Damage, WH, nCoord, Force, CLDisableFlags);
@@ -402,11 +416,11 @@ public:
 	static int __fastcall ModifyDamage(int damage, const WarheadTypeClass* pWarhead, Armor armor, int distance)
 		{ JMP_STD(0x489180); }
 
-	static void ModifyDamage(args_ReceiveDamage* const args , Armor armor) {
+	static FORCEINLINE void ModifyDamage(args_ReceiveDamage* const args , Armor armor) {
 		*args->Damage = ModifyDamage(*args->Damage, args->WH, armor, args->DistanceToEpicenter);
 	}
 
-	static void GetTotalDamage(args_ReceiveDamage* const args, Armor armor) {
+	static FORCEINLINE void GetTotalDamage(args_ReceiveDamage* const args, Armor armor) {
 		*args->Damage = ModifyDamage(*args->Damage, args->WH, armor, args->DistanceToEpicenter);
 	}
 
@@ -419,11 +433,11 @@ public:
 	int GetCellFloorHeight(CoordStruct* pCrd) const
 		{ JMP_THIS(0x578080); }
 
-	CellStruct * PickCellOnEdge(CellStruct &buffer, Edge Edge, const CellStruct &CurrentLocation, const CellStruct &Fallback,
+	CellStruct* PickCellOnEdge(CellStruct &buffer, Edge Edge, const CellStruct &CurrentLocation, const CellStruct &Fallback,
 		SpeedType SpeedType, bool ValidateReachability, MovementZone MovZone) const
 			{ JMP_THIS(0x4AA440); }
 
-	CellStruct PickCellOnEdge(Edge Edge, const CellStruct &CurrentLocation, const CellStruct &Fallback,
+	CellStruct FORCEINLINE PickCellOnEdge(Edge Edge, const CellStruct &CurrentLocation, const CellStruct &Fallback,
 		SpeedType SpeedType, bool ValidateReachability, MovementZone MovZone) const
 	{
 		CellStruct buffer;
@@ -444,7 +458,7 @@ public:
 	CellStruct* NearByLocation(CellStruct &outBuffer, const CellStruct &position, SpeedType SpeedType, int a5, MovementZone MovementZone, bool alt, int SpaceSizeX, int SpaceSizeY, bool disallowOverlay, bool a11, bool requireBurrowable, bool allowBridge, const CellStruct &closeTo, bool a15, bool buildable)
 		{ JMP_THIS(0x56DC20); }
 
-	CellStruct NearByLocation(const CellStruct &position, SpeedType SpeedType, int a5, MovementZone MovementZone, bool alt, int SpaceSizeX, int SpaceSizeY, bool disallowOverlay, bool a11, bool requireBurrowable, bool allowBridge, const CellStruct &closeTo, bool a15, bool buildable) {
+	CellStruct FORCEINLINE NearByLocation(const CellStruct &position, SpeedType SpeedType, int a5, MovementZone MovementZone, bool alt, int SpaceSizeX, int SpaceSizeY, bool disallowOverlay, bool a11, bool requireBurrowable, bool allowBridge, const CellStruct &closeTo, bool a15, bool buildable) {
 		CellStruct outBuffer;
 		NearByLocation(outBuffer, position, SpeedType, a5, MovementZone, alt, SpaceSizeX, SpaceSizeY, disallowOverlay, a11, requireBurrowable, allowBridge, closeTo, a15, buildable);
 		return outBuffer;
@@ -453,7 +467,7 @@ public:
 	void  AddContentAt(CellStruct *coords, TechnoClass *Content)
 		{ JMP_THIS(0x5683C0); }
 
-	void  RemoveContentAt(CellStruct *coords, TechnoClass *Content)
+	void RemoveContentAt(CellStruct *coords, TechnoClass *Content)
 		{ JMP_THIS(0x5687F0); }
 
 
@@ -496,7 +510,7 @@ public:
 		const CoordStruct& end, HouseClass const* pHouse = nullptr) const
 	{ JMP_THIS(0x5880A0); }
 
-	CoordStruct FindFirstFirestorm(
+	CoordStruct FORCEINLINE FindFirstFirestorm(
 		const CoordStruct& start, const CoordStruct& end,
 		HouseClass const* pHouse = nullptr) const
 	{

@@ -69,13 +69,15 @@ public:
 	bool AE_DisableWeapons { false };
 	bool AE_DisableSelfHeal { false };
 	bool AE_Untrackable { false };
+	bool AE_HasTint { false };
+	bool AE_ReflectDamage { false };
 
 	BYTE idxSlot_Wave { 0 }; //5
 	BYTE idxSlot_Beam { 0 }; //6
 	BYTE idxSlot_Warp { 0 }; //7
 	BYTE idxSlot_Parasite { 0 }; //8
 	BuildingClass* GarrisonedIn { 0 }; //C
-	Handle<AnimClass*, UninitAnim> EMPSparkleAnim { };
+	Handle<AnimClass*, UninitAnim> EMPSparkleAnim { nullptr };
 	Mission EMPLastMission { 0 }; //
 
 	std::unique_ptr<AresPoweredUnit> PoweredUnit {};
@@ -96,7 +98,7 @@ public:
 	int TechnoValueAmount { 0 };
 	int Pos { };
 	std::unique_ptr<ShieldClass> Shield {};
-	std::vector<LaserTrailClass> LaserTrails {};
+	HelperedVector<LaserTrailClass> LaserTrails {};
 	bool ReceiveDamage { false };
 	bool LastKillWasTeamTarget { false };
 	CDTimerClass PassengerDeletionTimer {};
@@ -116,7 +118,7 @@ public:
 	CDTimerClass DeployFireTimer {};
 	CDTimerClass DisableWeaponTimer {};
 
-	std::vector<TimedWarheadValue<WeaponTypeClass*>> RevengeWeapons {};
+	HelperedVector<TimedWarheadValue<WeaponTypeClass*>> RevengeWeapons {};
 
 	int GattlingDmageDelay { -1 };
 	bool GattlingDmageSound { false };
@@ -134,7 +136,7 @@ public:
 
 	PhobosMap<WeaponTypeClass*, CDTimerClass> ExtraWeaponTimers {};
 
-	std::vector<UniversalTrail> Trails {};
+	HelperedVector<UniversalTrail> Trails {};
 	std::unique_ptr<GiftBox> MyGiftBox {};
 	PhobosMap<WarheadTypeClass*, PaintBall> PaintBallStates {};
 	std::unique_ptr<DamageSelfState> DamageSelfState {};
@@ -169,7 +171,7 @@ public:
 
 	//====
 	bool IsWebbed { false };
-	Handle<AnimClass*, UninitAnim> WebbedAnim { };
+	Handle<AnimClass*, UninitAnim> WebbedAnim { nullptr };
 	AbstractClass* WebbyLastTarget { nullptr };
 	Mission WebbyLastMission { Mission::Sleep };
 
@@ -189,6 +191,8 @@ public:
 		{
 			double rangeMult { 1.0 };
 			double extraRange { 0.0 };
+			std::set<WeaponTypeClass*> allow {};
+			std::set<WeaponTypeClass*> disallow {};
 
 			bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
@@ -200,6 +204,40 @@ public:
 				return const_cast<RangeData*>(this)->Serialize(Stm);
 			}
 
+			bool Eligible(WeaponTypeClass* who)
+			{
+				bool allowed = false;
+
+				if (allow.begin() != allow.end())
+				{
+					for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
+					{
+						if (*iter_allow == who)
+						{
+							allowed = true;
+							break;
+						}
+					}
+				}
+				else
+				{
+					allowed = true;
+				}
+
+				if (allowed && disallow.begin() != disallow.end())
+				{
+					for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
+					{
+						if (*iter_disallow == who)
+						{
+							allowed = false;
+							break;
+						}
+					}
+				}
+
+				return allowed;
+			}
 		private:
 
 			template <typename T>
@@ -213,9 +251,13 @@ public:
 			}
 		};
 
+		struct RangeDataOut
+		{
+			double rangeMult { 1.0 };
+			double extraRange { 0.0 };
+		};
+
 		HelperedVector<RangeData> ranges { };
-		HelperedVector<WeaponTypeClass*> allow {};
-		HelperedVector<WeaponTypeClass*> disallow {};
 
 		bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 		{
@@ -230,8 +272,6 @@ public:
 		constexpr void Clear()
 		{
 			ranges.clear();
-			allow.clear();
-			disallow.clear();
 		}
 
 		constexpr bool Enabled()
@@ -239,45 +279,36 @@ public:
 			return !ranges.empty();
 		}
 
-		constexpr bool Eligible(WeaponTypeClass* who)
-		{
-			bool allowed = false;
-
-			if (allow.begin() != allow.end())
-			{
-				for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
-				{
-					if (*iter_allow == who)
-					{
-						allowed = true;
-						break;
-					}
-				}
-			}
-			else
-			{
-				allowed = true;
-			}
-
-			if (allowed && disallow.begin() != disallow.end())
-			{
-				for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
-				{
-					if (*iter_disallow == who)
-					{
-						allowed = false;
-						break;
-					}
-				}
-			}
-
-			return allowed;
-		}
-
-		constexpr int Get(int initial)
+		constexpr int Get(int initial, WeaponTypeClass* who)
 		{
 			int add = 0;
 			for (auto& ex_range : ranges)
+			{
+				if (!ex_range.Eligible(who))
+					continue;
+
+				initial = static_cast<int>(initial * MaxImpl(ex_range.rangeMult, 0.0));
+				add += static_cast<int>(ex_range.extraRange);
+			}
+
+			return initial + add;
+		}
+
+		constexpr void FillEligible(WeaponTypeClass* who, std::vector<RangeDataOut>& eligible)
+		{
+			for (auto& ex_range : this->ranges)
+			{
+				if (ex_range.Eligible(who))
+				{
+					eligible.emplace_back(ex_range.rangeMult, ex_range.extraRange);
+				}
+			}
+		}
+
+		static constexpr int Count(int initial, std::vector<RangeDataOut>& eligible)
+		{
+			int add = 0;
+			for (auto& ex_range : eligible)
 			{
 				initial = static_cast<int>(initial * MaxImpl(ex_range.rangeMult, 0.0));
 				add += static_cast<int>(ex_range.extraRange);
@@ -293,8 +324,6 @@ public:
 		{
 			return Stm
 				.Process(this->ranges)
-				.Process(this->allow)
-				.Process(this->disallow)
 				.Success()
 				;
 		}
@@ -306,6 +335,8 @@ public:
 		{
 			double Mult { 1.0 };
 			double extra { 0.0 };
+			std::set<WarheadTypeClass*> allow {};
+			std::set<WarheadTypeClass*> disallow {};
 
 			bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
@@ -317,6 +348,40 @@ public:
 				return const_cast<CritData*>(this)->Serialize(Stm);
 			}
 
+			bool Eligible(WarheadTypeClass* who)
+			{
+				bool allowed = false;
+
+				if (allow.begin() != allow.end())
+				{
+					for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
+					{
+						if (*iter_allow == who)
+						{
+							allowed = true;
+							break;
+						}
+					}
+				}
+				else
+				{
+					allowed = true;
+				}
+
+				if (allowed && disallow.begin() != disallow.end())
+				{
+					for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
+					{
+						if (*iter_disallow == who)
+						{
+							allowed = false;
+							break;
+						}
+					}
+				}
+
+				return allowed;
+			}
 		private:
 
 			template <typename T>
@@ -325,14 +390,20 @@ public:
 				return Stm
 					.Process(this->Mult)
 					.Process(this->extra)
+					.Process(this->allow)
+					.Process(this->disallow)
 					.Success()
 					;
 			}
 		};
 
+		struct CritDataOut
+		{
+			double Mult { 1.0 };
+			double extra { 0.0 };
+		};
+
 		HelperedVector<CritData> ranges { };
-		HelperedVector<WarheadTypeClass*> allow {};
-		HelperedVector<WarheadTypeClass*> disallow {};
 
 		bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 		{
@@ -347,8 +418,6 @@ public:
 		constexpr void Clear()
 		{
 			ranges.clear();
-			allow.clear();
-			disallow.clear();
 		}
 
 		constexpr bool Enabled()
@@ -356,47 +425,38 @@ public:
 			return !ranges.empty();
 		}
 
-		constexpr bool Eligible(WarheadTypeClass* who)
+		constexpr double Get(double initial, WarheadTypeClass* who)
 		{
-			bool allowed = false;
-
-			if (allow.begin() != allow.end())
-			{
-				for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
-				{
-					if (*iter_allow == who)
-					{
-						allowed = true;
-						break;
-					}
-				}
-			}
-			else
-			{
-				allowed = true;
-			}
-
-			if (allowed && disallow.begin() != disallow.end())
-			{
-				for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
-				{
-					if (*iter_disallow == who)
-					{
-						allowed = false;
-						break;
-					}
-				}
-			}
-
-			return allowed;
-		}
-
-		constexpr double Get(double initial)
-		{
-			double add = 0;
+			double add = 0.0;
 			for (auto& ex_range : ranges)
 			{
+				if (!ex_range.Eligible(who))
+					continue;
+
 				initial = initial * ex_range.Mult;
+				add += ex_range.extra;
+			}
+
+			return initial + add;
+		}
+
+		constexpr void FillEligible(WarheadTypeClass* who, std::vector<CritDataOut>& eligible)
+		{
+			for (auto& ex_range : this->ranges)
+			{
+				if (ex_range.Eligible(who))
+				{
+					eligible.emplace_back(ex_range.Mult, ex_range.extra);
+				}
+			}
+		}
+
+		static constexpr double Count(double initial, std::vector<CritDataOut>& eligible)
+		{
+			double add = 0.0;
+			for (auto& ex_range : eligible)
+			{
+				initial *= MaxImpl(ex_range.Mult, 0.0);
 				add += ex_range.extra;
 			}
 
@@ -410,19 +470,38 @@ public:
 		{
 			return Stm
 				.Process(this->ranges)
-				.Process(this->allow)
-				.Process(this->disallow)
 				.Success()
 				;
 		}
 	} AE_ExtraCrit {};
 
-	std::vector<std::unique_ptr<PhobosAttachEffectClass>> PhobosAE {};
+	HelperedVector<PhobosAttachEffectClass> PhobosAE {};
+
+	int ShootCount { 0 };
+	int CurrentAircraftWeaponIndex { 0 };
+
+	CellClass* FiringObstacleCell { nullptr }; // Set on firing if there is an obstacle cell between target and techno, used for updating WaveClass target etc.
+	OptionalStruct<int, true> AdditionalRange {};
+	bool IsAboutToStartCloaking { false }; // After TechnoClass::Cloak() has been called but before detaching everything from the object & before CloakState has been updated.
+
+	bool HasCarryoverWarpInDelay { false }; // Converted from object with Teleport Locomotor to one with a different Locomotor while still phasing in.
+	int LastWarpInDelay { 0 };          // Last-warp in delay for this unit, used by HasCarryoverWarpInDelay
+
+	CDTimerClass UnitAutoDeployTimer {};
 
 	TechnoExtData() noexcept = default;
 	~TechnoExtData() noexcept
 	{
-		GameDelete<true, true>(MyOriginalTemporal);
+		if (!Phobos::Otamaa::ExeTerminated)
+		{
+			if (auto pTemp = std::exchange(this->MyOriginalTemporal, nullptr))
+			{
+				GameDelete<true, false>(pTemp);
+			}
+		}
+
+		this->WebbedAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+		this->EMPSparkleAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
 	}
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
@@ -473,6 +552,32 @@ public:
 			+ 4u //DamageNumberOffset
 			+ sizeof(bool) //CanCurrentlyDeployIntoBuilding
 			 );
+	}
+
+	static bool FORCEINLINE IsOnBridge(FootClass* pUnit)
+	{
+		auto const pCell = MapClass::Instance->GetCellAt(pUnit->GetCoords());
+		auto const pCellAjd = pCell->GetNeighbourCell(FacingType::North);
+		bool containsBridge = pCell->ContainsBridge();
+		bool containsBridgeDir = static_cast<bool>(pCell->Flags & CellFlags::BridgeDir);
+
+		if ((containsBridge || containsBridgeDir || pCellAjd->ContainsBridge()) && (!containsBridge || pCell->GetNeighbourCell(FacingType::West)->ContainsBridge()))
+			return true;
+
+		return false;
+	}
+
+	static FORCEINLINE void GetLevelIntensity(TechnoClass* pThis, int level, int& levelIntensity, int& cellIntensity, double levelMult, double cellMult, bool applyBridgeBonus = false)
+	{
+		double currentLevel = pThis->GetHeight() / static_cast<double>(Unsorted::LevelHeight);
+		levelIntensity = static_cast<int>(level * currentLevel * levelMult);
+		int bridgeBonus = applyBridgeBonus ? 4 * level : 0;
+		cellIntensity = MapClass::Instance()->GetCellAt(pThis->GetMapCoords())->Intensity_Normal + bridgeBonus;
+
+		if (cellMult > 0.0)
+			cellIntensity = std::clamp(cellIntensity + static_cast<int>((1000 - cellIntensity) * currentLevel * cellMult), 0, 1000);
+		else if (cellMult < 0.0)
+			cellIntensity = 1000;
 	}
 
 private:
@@ -540,7 +645,7 @@ public:
 
 	static void DrawInsignia(TechnoClass* pThis, Point2D* pLocation, RectangleStruct* pBounds);
 	static void DrawSelectBrd(const TechnoClass* pThis, TechnoTypeClass* pType, int iLength, Point2D* pLocation, RectangleStruct* pBound, bool isInfantry, bool IsDisguised);
-	static void SyncIronCurtainStatus(TechnoClass* pFrom, TechnoClass* pTo);
+	static void SyncInvulnerability(TechnoClass* pFrom, TechnoClass* pTo);
 	static void PlayAnim(AnimTypeClass* const pAnim, TechnoClass* pInvoker);
 	static void HandleRemove(TechnoClass* pThis, TechnoClass* pSource = nullptr, bool SkipTrackingRemove = false, bool Delete = true);
 	static void PutPassengersInCoords(TechnoClass* pTransporter, const CoordStruct& nCoord, AnimTypeClass* pAnimToPlay, int nSound, bool bForce);
@@ -551,6 +656,7 @@ public:
 	static int GetInitialStrength(TechnoTypeClass* pType, int nHP);
 
 	static std::pair<TechnoTypeClass*, HouseClass*> GetDisguiseType(TechnoClass* pTarget, bool CheckHouse, bool CheckVisibility, bool bVisibleResult = false);
+	static TechnoTypeClass* GetSimpleDisguiseType(TechnoClass* pTarget, bool CheckVisibility, bool bVisibleResult = false);
 
 	static CoordStruct PassengerKickOutLocation(TechnoClass* pThis, FootClass* pPassenger, int maxAttempts = 1);
 	static void EjectPassengers(FootClass* pThis, int howMany);
@@ -669,7 +775,73 @@ public:
 class TechnoExtContainer final : public Container<TechnoExtData>
 {
 public:
+	static std::vector<TechnoExtData*> Pool;
 	static TechnoExtContainer Instance;
+
+	TechnoExtData* AllocateUnchecked(TechnoClass* key)
+	{
+		TechnoExtData* val = nullptr;
+		if (!Pool.empty())
+		{
+			val = Pool.front();
+			Pool.erase(Pool.begin());
+			//re-init
+			val->TechnoExtData::TechnoExtData();
+		}
+		else
+		{
+			val = new TechnoExtData();
+		}
+
+		if (val)
+		{
+			val->AttachedToObject = key;
+			val->InitializeConstant();
+			return val;
+		}
+
+		return nullptr;
+	}
+
+	TechnoExtData* Allocate(TechnoClass* key)
+	{
+		if (!key || Phobos::Otamaa::DoingLoadGame)
+			return nullptr;
+
+		this->ClearExtAttribute(key);
+
+		if (TechnoExtData* val = AllocateUnchecked(key))
+		{
+			this->SetExtAttribute(key, val);
+			return val;
+		}
+
+		return nullptr;
+	}
+
+	void Remove(TechnoClass* key)
+	{
+		if (TechnoExtData* Item = TryFind(key))
+		{
+			Item->~TechnoExtData();
+			Item->AttachedToObject = nullptr;
+			Pool.push_back(Item);
+			this->ClearExtAttribute(key);
+		}
+	}
+
+	void Clear()
+	{
+		if (!Pool.empty())
+		{
+			auto ptr = Pool.front();
+			Pool.erase(Pool.begin());
+			if (ptr)
+			{
+				delete ptr;
+			}
+		}
+	}
 
 	CONSTEXPR_NOCOPY_CLASSB(TechnoExtContainer, TechnoExtData, "TechnoClass");
 };

@@ -64,13 +64,7 @@
 #include <iostream>
 #include <string_view>
 
-std::string __forceinline trim(const char* source)
-{
-	std::string s(source);
-	s.erase(0, s.find_first_not_of(" \n\r\t"));
-	s.erase(s.find_last_not_of(" \n\r\t") + 1);
-	return s;
-}
+#include "Enumparser.h"
 
 template<typename T>
 struct IndexFinder
@@ -1387,7 +1381,9 @@ namespace detail
 					case 1: resultData |= ExpireWeaponCondition::Expire; break;
 					case 2: resultData |= ExpireWeaponCondition::Remove; break;
 					case 3: resultData |= ExpireWeaponCondition::Death; break;
-					case 4: resultData |= ExpireWeaponCondition::All; break;
+					case 4: resultData = ExpireWeaponCondition::All;
+						break;//switch break
+						break;//loop break
 					}
 				}
 			}
@@ -1547,6 +1543,39 @@ namespace detail
 	{
 		return parser.ReadString(pSection, pKey)
 			&& getresult<TileType>(value, parser.value(), pSection, pKey, allocate);
+	}
+
+	template <>
+	inline bool read<LandTypeFlags>(LandTypeFlags& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
+	{
+		if (parser.ReadString(pSection, pKey))
+		{
+			auto parsed = LandTypeFlags::None;
+			auto str = parser.value();
+			char* context = nullptr;
+
+			for (auto cur = strtok_s(str, Phobos::readDelims, &context);
+				cur;
+				cur = strtok_s(nullptr, Phobos::readDelims, &context))
+			{
+				auto const landType = GroundType::GetLandTypeFromName(parser.value());
+
+				if (landType >= LandType::Clear && landType <= LandType::Weeds)
+				{
+					parsed |= (LandTypeFlags)(1 << (char)landType);
+				}
+				else
+				{
+					Debug::INIParseFailed(pSection, pKey, cur, "Expected a land type name");
+					return false;
+				}
+			}
+
+			value = parsed;
+			return true;
+		}
+
+		return false;
 	}
 
 #pragma endregion
@@ -1987,7 +2016,7 @@ void NOINLINE ValueableVector<std::string>::Read(INI_EX& parser, const char* pSe
 				pCur;
 				pCur = strtok_s(nullptr, Phobos::readDelims, &context))
 		{
-			this->push_back(trim(pCur));
+			this->push_back(PhobosCRT::trim(pCur));
 		}
 	}
 }
@@ -2281,6 +2310,7 @@ bool DamageableVector<T>::Save(PhobosStreamWriter& Stm) const
 		&& Savegame::WritePhobosStream(Stm, this->MaxValue);
 }
 
+/*
 // PromotableVector
 template <typename T>
 void NOINLINE PromotableVector<T>::Read(INI_EX& parser, const char* const pSection, const char* const pBaseFlag, const char* const pSingleFlag)
@@ -2417,6 +2447,7 @@ bool PromotableVector<T>::Save(PhobosStreamWriter& stm) const
 		&& Savegame::WritePhobosStream(stm, this->Veteran)
 		&& Savegame::WritePhobosStream(stm, this->Elite);
 }
+*/
 
 // TimedWarheadEffect
 template <typename T>

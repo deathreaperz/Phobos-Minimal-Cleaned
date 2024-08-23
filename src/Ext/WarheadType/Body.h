@@ -59,33 +59,38 @@ public:
 	Valueable<bool> SplashList_PickRandom { false };
 	Valueable<bool> SplashList_CreateAll { false };
 	Valueable<int> SplashList_CreationInterval { 0 };
+	Valueable<Leptons> SplashList_ScatterMin {};
+	Valueable<Leptons> SplashList_ScatterMax {};
 
 	Valueable<bool> RemoveDisguise { false };
 	Valueable<bool> RemoveMindControl { false };
 	Nullable<bool> AnimList_PickRandom { };
 	Valueable<bool> AnimList_CreateAll { false };
 	Valueable<int> AnimList_CreationInterval { 0 };
+	Valueable<Leptons> AnimList_ScatterMin { };
+	Valueable<Leptons> AnimList_ScatterMax { };
+
 	Valueable<bool> AnimList_ShowOnZeroDamage { false };
 	Valueable<bool> DecloakDamagedTargets { true };
 	Valueable<bool> ShakeIsLocal { false };
 	Valueable<bool> Shake_UseAlternativeCalculation { false };
 
-	Valueable<double> Crit_Chance { 0.0 };
+	ValueableVector<double> Crit_Chance { };
 	Valueable<bool> Crit_ApplyChancePerTarget { false };
-	Valueable<int> Crit_ExtraDamage { 0 };
-	Nullable<WarheadTypeClass*> Crit_Warhead {};
+	ValueableVector<int> Crit_ExtraDamage { };
+	Valueable<WarheadTypeClass*> Crit_Warhead { nullptr };
 	Valueable<AffectedTarget> Crit_Affects { AffectedTarget::All };
 	Valueable<AffectedHouse> Crit_AffectsHouses { AffectedHouse::All };
 	ValueableVector<AnimTypeClass*> Crit_AnimList {};
 	Nullable<bool> Crit_AnimList_PickRandom {};
 	Valueable<bool> Crit_AnimOnAffectedTargets { false };
-	Valueable<double> Crit_AffectBelowPercent { 1.0 };
+	ValueableVector<double> Crit_AffectBelowPercent { };
 	Valueable<bool> Crit_SuppressOnIntercept { false };
 	NullablePromotable<double> Crit_GuaranteeAfterHealthTreshold {};
 
 	double RandomBuffer { 0.0 };
 	bool HasCrit { false };
-	double Crit_CurrentChance { 0.0 };
+	std::vector<double> Crit_CurrentChance { };
 	Nullable<AnimTypeClass*> MindControl_Anim {};
 
 	// Ares tags
@@ -98,8 +103,8 @@ public:
 
 	Valueable<bool> Shield_Penetrate { false };
 	Valueable<bool> Shield_Break { false };
-	Nullable<AnimTypeClass*> Shield_BreakAnim {};
-	Nullable<AnimTypeClass*> Shield_HitAnim {};
+	Valueable<AnimTypeClass*> Shield_BreakAnim { nullptr };
+	Valueable<AnimTypeClass*> Shield_HitAnim { nullptr };
 	Nullable<WeaponTypeClass*> Shield_BreakWeapon {};
 
 	Nullable<double> Shield_AbsorbPercent {};
@@ -108,7 +113,7 @@ public:
 	Nullable<int> Shield_ReceivedDamage_Maximum {};
 
 	Valueable<int> Shield_Respawn_Duration { 0 };
-	Valueable<double> Shield_Respawn_Amount { 0.0 };
+	Nullable<double> Shield_Respawn_Amount { 0.0 };
 	Valueable<int> Shield_Respawn_Rate { -1 };
 
 private:
@@ -171,7 +176,7 @@ public:
 	ValueableVector<TechnoTypeClass*> DetonateOnAllMapObjects_AffectTypes {};
 	ValueableVector<TechnoTypeClass*> DetonateOnAllMapObjects_IgnoreTypes {};
 
-	Nullable<WeaponTypeClass*> RevengeWeapon {};
+	Valueable<WeaponTypeClass*> RevengeWeapon { nullptr };
 	Valueable<int> RevengeWeapon_GrantDuration { 0 };
 	Valueable<AffectedHouse> RevengeWeapon_AffectsHouses { AffectedHouse::All };
 	Valueable<bool> RevengeWeapon_Cumulative { false };
@@ -221,6 +226,10 @@ public:
 	Nullable<double> AffectEnemies_Damage_Mod {};
 	Nullable<double> AffectOwner_Damage_Mod {};
 	Nullable<double> AffectAlly_Damage_Mod {};
+
+	Nullable<double> DamageOwnerMultiplier {};
+	Nullable<double> DamageAlliesMultiplier {};
+	Nullable<double> DamageEnemiesMultiplier {};
 
 	PhobosFixedString<32U> AttachTag {};
 	Valueable<bool> AttachTag_Imposed { false };
@@ -294,7 +303,8 @@ public:
 	Valueable<bool> InflictLocomotor { false };
 	Valueable<bool> RemoveInflictedLocomotor { false };
 
-	Nullable<int> Rocker_Damage {};
+	Nullable<int> Rocker_AmplitudeOverride {};
+	Nullable<double> Rocker_AmplitudeMultiplier { };
 
 	Nullable<int> PaintBallDuration { };
 	PaintballType PaintBallData { };
@@ -354,14 +364,31 @@ public:
 	std::vector<int> SpawnsCrate_Types {};
 	std::vector<int> SpawnsCrate_Weights {};
 
-	Valueable<bool> IgnoreRevenge { false };
-
 	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_AttachTypes {};
 	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_RemoveTypes {};
-	std::vector<std::string> AttachEffect_RemoveGroups {};
+	ValueableVector<std::string> AttachEffect_RemoveGroups {};
 	ValueableVector<int> AttachEffect_CumulativeRemoveMinCounts {};
 	ValueableVector<int> AttachEffect_CumulativeRemoveMaxCounts {};
 	ValueableVector<int> AttachEffect_DurationOverrides {};
+
+	Valueable<bool> Shield_HitFlash { true };
+	Nullable<bool> CombatAlert_Suppress { };
+
+	Valueable<bool> AffectsOnFloor { true };
+	Valueable<bool> AffectsInAir { true };
+	Valueable<bool> CellSpread_Cylinder { false };
+
+	Valueable<bool> PenetratesIronCurtain { false };
+	Nullable<bool> PenetratesForceShield { };
+	Valueable<bool> Shield_RemoveAll { false };
+	Valueable<bool> SuppressRevengeWeapons { false };
+	ValueableVector<WeaponTypeClass*> SuppressRevengeWeapons_Types { };
+	Valueable<bool> SuppressReflectDamage { false };
+	ValueableVector<PhobosAttachEffectTypeClass*> SuppressReflectDamage_Types { };
+
+	ValueableVector<std::string> SuppressReflectDamage_Groups {};
+
+	bool Reflected { false };
 public:
 
 	WarheadTypeExtData() noexcept = default;
@@ -415,6 +442,7 @@ public:
 	bool CanAffectHouse(HouseClass* pOwnerHouse, HouseClass* pTargetHouse) const;
 	bool CanDealDamage(TechnoClass* pTechno, int damageIn, int distanceFromEpicenter, int& DamageResult, bool effectsRequireDamage = false) const;
 	bool CanDealDamage(TechnoClass* pTechno, bool Bypass = false, bool SkipVerses = false) const;
+	bool CanAffectInvulnerable(TechnoClass* pTarget) const;
 	FullMapDetonateResult EligibleForFullMapDetonation(TechnoClass* pTechno, HouseClass* pOwner) const;
 	void ApplyDamageMult(TechnoClass* pVictim, args_ReceiveDamage* pArgs) const;
 	void ApplyRecalculateDistanceDamage(ObjectClass* pVictim, args_ReceiveDamage* pArgs) const;
@@ -425,14 +453,14 @@ public:
 	bool ApplySuppressDeathWeapon(TechnoClass* pVictim) const;
 
 	void ApplyAttachEffects(TechnoClass* pTarget, HouseClass* pInvokerHouse, TechnoClass* pInvoker);
-	double GetCritChance(TechnoClass* pFirer) const;
+	void GetCritChance(TechnoClass* pFirer, std::vector<double>& chances) const;
 
-	VersesData& GetVerses(Armor armor)
+	constexpr VersesData& GetVerses(Armor armor)
 	{
 		return this->Verses[static_cast<int>(armor)];
 	}
 
-	const VersesData& GetVerses(Armor armor) const
+	constexpr const VersesData& GetVerses(Armor armor) const
 	{
 		return this->Verses[static_cast<int>(armor)];
 	}
@@ -467,7 +495,7 @@ public:
 
 	static void DetonateAt(
 		WarheadTypeClass* pThis,
-		const CoordStruct& coords,
+		const CoordStruct coords, //do make copy
 		TechnoClass* pOwner,
 		int damage,
 		bool targetCell = false,
@@ -477,7 +505,7 @@ public:
 	static void DetonateAt(
 		WarheadTypeClass* pThis,
 		AbstractClass* pTarget,
-		const CoordStruct& coords,
+		const CoordStruct coords,//do make copy
 		TechnoClass* pOwner,
 		int damage,
 		HouseClass* pFiringHouse = nullptr

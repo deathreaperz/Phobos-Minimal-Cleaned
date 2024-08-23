@@ -12,12 +12,12 @@ struct type_cast_impl
 {
 	using Base = std::remove_const_t<std::remove_pointer_t<T>>;
 
-	static bool IsTechnoType(const AbstractType key) noexcept
+	static constexpr bool IsTechnoType(const AbstractType key) noexcept
 	{
 		return ((type_cast_data::BytesData[(int)key] & 4) != 0);
 	}
 
-	static bool IsObjectType(const AbstractType key) noexcept
+	static constexpr bool IsObjectType(const AbstractType key) noexcept
 	{
 		return ((type_cast_data::BytesData[(int)key] & 2) != 0);
 	}
@@ -56,7 +56,7 @@ inline T type_cast(ObjectTypeClass* pAbstract)
 };
 
 template <typename T, bool Check = true>
-NOINLINE T type_cast(const ObjectTypeClass* pAbstract)
+inline T type_cast(const ObjectTypeClass* pAbstract)
 {
 	using Base = std::remove_const_t<std::remove_pointer_t<T>>;
 

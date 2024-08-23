@@ -18,6 +18,11 @@ enum class SWStateMachineIdentifier : int
 	IonCannon = 5,
 	LaserStrike = 6,
 	GenericWarhead = 7,
+	SonarPulse = 8,
+	SpyPlane = 9,
+	Reveal = 10,
+	GeneticMutator = 11,
+	ParaDrop = 12,
 	count
 };
 
@@ -46,7 +51,7 @@ public:
 	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 	virtual bool Save(PhobosStreamWriter& Stm) const;
 
-	inline int TimePassed() const
+	constexpr inline int TimePassed() const
 	{
 		return Unsorted::CurrentFrame - Clock.StartTime;
 	}
@@ -56,15 +61,18 @@ public:
 #if _HAS_CXX23 == 1
 		constexpr
 #endif
-		void Register(std::unique_ptr<SWStateMachine> Machine)
+		SWStateMachine* Register(std::unique_ptr<SWStateMachine> Machine)
 	{
 		if (Machine)
 		{
 			Array.push_back(std::move(Machine));
+			return Array.back().get();
 		}
+
+		return nullptr;
 	}
 
-	inline SWTypeExtData* GetTypeExtData() const
+	constexpr inline SWTypeExtData* GetTypeExtData() const
 	{
 		return SWTypeExtContainer::Instance.Find(Super->Type);
 	}
@@ -143,8 +151,79 @@ public:
 	}
 
 	static void SendDroppods(SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, const CellStruct& loc);
-
 	static void PlaceUnits(SuperClass* pSuper, double veterancy, Iterator<TechnoTypeClass*> const Types, int cMin, int cMax, const CellStruct& Coords, bool retries);
+};
+
+class SonarPulseStateMachine : public SWStateMachine
+{
+public:
+	SonarPulseStateMachine()
+		: SWStateMachine()
+	{
+	}
+
+	SonarPulseStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, NewSWType* pSWType)
+		: SWStateMachine(Deferment, XY, pSuper, pSWType)
+	{
+	}
+
+	virtual void Update() override;
+
+	virtual SWStateMachineIdentifier GetIdentifier() const override
+	{
+		return SWStateMachineIdentifier::SonarPulse;
+	}
+
+	virtual const char* GetIdentifierStrings() const override
+	{
+		return "SWStateMachine::SonarPulse";
+	}
+
+	static void SendSonarPulse(SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, const CellStruct& loc);
+	static void ApplySonarPulse(SuperClass* pSuper, const CellStruct& Coords, const SWRange& range);
+};
+
+class SpyPlaneStateMachine : public SWStateMachine
+{
+public:
+	SpyPlaneStateMachine()
+		: SWStateMachine(), target { nullptr }
+	{
+	}
+
+	SpyPlaneStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, NewSWType* pSWType, CellClass* pTarget)
+		: SWStateMachine(Deferment, XY, pSuper, pSWType), target { pTarget }
+	{
+	}
+
+	virtual void Update() override;
+
+	virtual SWStateMachineIdentifier GetIdentifier() const override
+	{
+		return SWStateMachineIdentifier::SpyPlane;
+	}
+
+	virtual const char* GetIdentifierStrings() const override
+	{
+		return "SWStateMachine::SpyPlane";
+	}
+
+	static void SendSpyPlane(SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, CellClass* target);
+
+	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange) override
+	{
+		return SWStateMachine::Load(Stm, RegisterForChange) &&
+			Stm.Process(target);
+	}
+
+	virtual bool Save(PhobosStreamWriter& Stm) const override
+	{
+		return SWStateMachine::Save(Stm) &&
+			Stm.Process(target);
+	}
+
+protected:
+	CellClass* target;
 };
 
 class ChronoWarpStateMachine : public SWStateMachine
@@ -158,7 +237,7 @@ public:
 		CoordStruct origin {};
 		bool isVehicle { false };
 
-		ChronoWarpContainer(BuildingClass* pBld, const CellStruct& target, const CoordStruct& origin, bool isVehicle) :
+		constexpr ChronoWarpContainer(BuildingClass* pBld, const CellStruct& target, const CoordStruct& origin, bool isVehicle) :
 			building(pBld),
 			target(target),
 			origin(origin),
@@ -166,14 +245,14 @@ public:
 		{
 		}
 
-		ChronoWarpContainer() = default;
+		constexpr ChronoWarpContainer() = default;
 
-		bool operator == (const ChronoWarpContainer& other) const
+		constexpr bool operator == (const ChronoWarpContainer& other) const
 		{
 			return this->building == other.building;
 		}
 
-		~ChronoWarpContainer() = default;
+		constexpr ~ChronoWarpContainer() = default;
 	};
 
 	ChronoWarpStateMachine()
@@ -181,7 +260,7 @@ public:
 	{
 	}
 
-	ChronoWarpStateMachine(int Duration, const CellStruct& XY, SuperClass* pSuper, NewSWType* pSWType, std::vector<ChronoWarpContainer> Buildings)
+	ChronoWarpStateMachine(int Duration, const CellStruct& XY, SuperClass* pSuper, NewSWType* pSWType, HelperedVector<ChronoWarpContainer> Buildings)
 		: SWStateMachine(Duration, XY, pSuper, pSWType), Buildings(std::move(Buildings)), Duration(Duration)
 	{
 	}
@@ -205,7 +284,7 @@ public:
 	virtual bool Save(PhobosStreamWriter& Stm) const override;
 
 protected:
-	std::vector<ChronoWarpContainer> Buildings;
+	HelperedVector<ChronoWarpContainer> Buildings;
 	int Duration;
 };
 
@@ -317,6 +396,7 @@ public:
 		{
 			this->Anim->TimeToDie = true;
 			this->Anim->UnInit();
+			this->Anim = nullptr;
 		}
 	}
 
@@ -411,9 +491,9 @@ public:
 	void Stop() { TimeToEnd = true; }
 
 public:
-	std::vector<AnimClass*> CloudsPresent;
-	std::vector<AnimClass*> CloudsManifest;
-	std::vector<AnimClass*> BoltsPresent;
+	HelperedVector<AnimClass*> CloudsPresent;
+	HelperedVector<AnimClass*> CloudsManifest;
+	HelperedVector<AnimClass*> BoltsPresent;
 
 	int ActualDuration;
 	int StartTime; //storing current frame
@@ -541,6 +621,144 @@ protected:
 	TechnoClass* Firer;
 };
 
+class GeneticMutatorStateMachine : public SWStateMachine
+{
+public:
+	GeneticMutatorStateMachine()
+		: SWStateMachine(), Firer { nullptr }, CoordsWithBridge {}
+	{
+	}
+
+	GeneticMutatorStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer, NewSWType* pSWType)
+		: SWStateMachine(Deferment, XY, pSuper, pSWType), Firer { pfirer }, CoordsWithBridge {}
+	{
+		this->CoordsWithBridge = MapClass::Instance->GetCellAt(XY)->GetCoordsWithBridge();
+	}
+
+	virtual void Update() override;
+
+	virtual SWStateMachineIdentifier GetIdentifier() const override
+	{
+		return SWStateMachineIdentifier::GeneticMutator;
+	}
+
+	virtual const char* GetIdentifierStrings() const override
+	{
+		return "SWStateMachine::GeneticMutator";
+	}
+
+	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
+		return SWStateMachine::Load(Stm, RegisterForChange)
+			&& Stm
+			.Process(Firer)
+			.Process(CoordsWithBridge)
+			.Success();
+	}
+
+	virtual bool Save(PhobosStreamWriter& Stm) const
+	{
+		return SWStateMachine::Save(Stm)
+			&& Stm
+			.Process(Firer)
+			.Process(CoordsWithBridge)
+			.Success();
+	}
+
+	virtual void InvalidatePointer(AbstractClass* ptr, bool remove)
+	{
+		AnnounceInvalidPointer(Firer, ptr, remove);
+	}
+
+	static void ApplyGeneticMutator(TechnoClass* pFirer, SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, CoordStruct& coord, const CellStruct& loc, WarheadTypeClass* pWarhead, SWRange& range, int damage);
+
+protected:
+	TechnoClass* Firer;
+	CoordStruct CoordsWithBridge;
+};
+
+class RevealStateMachine : public SWStateMachine
+{
+public:
+	RevealStateMachine()
+		: SWStateMachine()
+	{
+	}
+
+	RevealStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, NewSWType* pSWType)
+		: SWStateMachine(Deferment, XY, pSuper, pSWType)
+	{
+	}
+
+	virtual void Update() override;
+
+	virtual SWStateMachineIdentifier GetIdentifier() const override
+	{
+		return SWStateMachineIdentifier::Reveal;
+	}
+
+	virtual const char* GetIdentifierStrings() const override
+	{
+		return "SWStateMachine::Reveal";
+	}
+};
+
+class ParaDropStateMachine : public SWStateMachine
+{
+public:
+	ParaDropStateMachine()
+		: SWStateMachine(), Target { nullptr }, PlaneType { nullptr }, Types {}, Nums {}
+	{
+	}
+
+	ParaDropStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, NewSWType* pSWType, CellClass* pTarget)
+		: SWStateMachine(Deferment, XY, pSuper, pSWType), Target { pTarget }, PlaneType { nullptr }, Types {}, Nums {}
+	{
+		this->UpdateProperties();
+	}
+
+	virtual void Update() override;
+	void UpdateProperties();
+
+	virtual SWStateMachineIdentifier GetIdentifier() const override
+	{
+		return SWStateMachineIdentifier::ParaDrop;
+	}
+
+	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
+		return SWStateMachine::Load(Stm, RegisterForChange)
+			&& Stm
+			.Process(Target)
+			.Process(PlaneType)
+			.Process(Types)
+			.Process(Nums)
+			.Success();
+	}
+
+	virtual bool Save(PhobosStreamWriter& Stm) const
+	{
+		return SWStateMachine::Save(Stm)
+			&& Stm
+			.Process(Target)
+			.Process(PlaneType)
+			.Process(Types)
+			.Process(Nums)
+			.Success();
+	}
+
+	virtual const char* GetIdentifierStrings() const override
+	{
+		return "SWStateMachine::ParaDrop";
+	}
+
+protected:
+	CellClass* Target;
+	std::vector<AircraftTypeClass*> PlaneType;
+	std::vector<Iterator<TechnoTypeClass*>> Types;
+	std::vector<Iterator<int>> Nums;
+};
+
 template <>
 struct Savegame::ObjectFactory<SWStateMachine>
 {
@@ -567,6 +785,16 @@ struct Savegame::ObjectFactory<SWStateMachine>
 				return std::make_unique<LaserStrikeStateMachine>();
 			case SWStateMachineIdentifier::GenericWarhead:
 				return std::make_unique<GenericWarheadStateMachine>();
+			case SWStateMachineIdentifier::SonarPulse:
+				return std::make_unique<SonarPulseStateMachine>();
+			case SWStateMachineIdentifier::SpyPlane:
+				return std::make_unique<SpyPlaneStateMachine>();
+			case SWStateMachineIdentifier::Reveal:
+				return std::make_unique<RevealStateMachine>();
+			case SWStateMachineIdentifier::GeneticMutator:
+				return std::make_unique<GeneticMutatorStateMachine>();
+			case SWStateMachineIdentifier::ParaDrop:
+				return std::make_unique<ParaDropStateMachine>();
 			default:
 				Debug::FatalErrorAndExit("SWStateMachineType %d not recognized.",
 					static_cast<unsigned int>(type));

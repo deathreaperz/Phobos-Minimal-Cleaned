@@ -1,6 +1,6 @@
 #include "PhobosAttachEffectTypeClass.h"
 
-std::unordered_map<std::string, std::set<PhobosAttachEffectTypeClass*>> PhobosAttachEffectTypeClass::GroupsMap;
+PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> PhobosAttachEffectTypeClass::GroupsMap;
 Enumerable<PhobosAttachEffectTypeClass>::container_t Enumerable<PhobosAttachEffectTypeClass>::Array;
 template<>
 const char* Enumerable<PhobosAttachEffectTypeClass>::GetMainSection()
@@ -15,14 +15,14 @@ std::vector<PhobosAttachEffectTypeClass*> PhobosAttachEffectTypeClass::GetTypesF
 
 	for (const auto& group : groupIDs)
 	{
-		auto iter = map->find(group);
+		auto iter = map->get_key_iterator(group);
 		if (iter != map->end())
 		{
 			types.insert(iter->second.begin(), iter->second.end());
 		}
 	}
 
-	return std::vector<PhobosAttachEffectTypeClass*>(types.begin(), types.end());
+	return { types.begin(), types.end() };
 }
 
 void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
@@ -39,14 +39,16 @@ void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->Cumulative_MaxCount.Read(exINI, pSection, "Cumulative.MaxCount");
 	this->Powered.Read(exINI, pSection, "Powered");
 	this->DiscardOn.Read(exINI, pSection, "DiscardOn");
+	this->DiscardOn_RangeOverride.Read(exINI, pSection, "DiscardOn.RangeOverride");
 	this->PenetratesIronCurtain.Read(exINI, pSection, "PenetratesIronCurtain");
-
+	this->PenetratesForceShield.Read(exINI, pSection, "PenetratesForceShield");
 	this->Animation.Read(exINI, pSection, "Animation");
 	this->CumulativeAnimations.Read(exINI, pSection, "CumulativeAnimations");
 	this->Animation_ResetOnReapply.Read(exINI, pSection, "Animation.ResetOnReapply");
 	this->Animation_OfflineAction.Read(exINI, pSection, "Animation.OfflineAction");
 	this->Animation_TemporalAction.Read(exINI, pSection, "Animation.TemporalAction");
 	this->Animation_UseInvokerAsOwner.Read(exINI, pSection, "Animation.UseInvokerAsOwner");
+	this->Animation_HideIfAttachedWith.Read(exINI, pSection, "Animation.HideIfAttachedWith");
 
 	this->ExpireWeapon.Read(exINI, pSection, "ExpireWeapon", true);
 	this->ExpireWeapon_TriggerOn.Read(exINI, pSection, "ExpireWeapon.TriggerOn");
@@ -81,20 +83,35 @@ void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->DisableWeapons.Read(exINI, pSection, "DisableWeapons");
 
 	// Groups
-	exINI.ParseStringList(this->Groups, pSection, "Groups");
+	this->Groups.Read(exINI, pSection, "Groups");
 	auto const map = &PhobosAttachEffectTypeClass::GroupsMap;
 
 	for (const auto& group : this->Groups)
 	{
-		auto iter_ = map->find(group);
+		auto iter_ = map->get_key_iterator(group);
 		if (iter_ == map->end())
-			map->insert(std::make_pair(group, std::set<PhobosAttachEffectTypeClass*>{this}));
+			map->emplace_unchecked(group.c_str(), std::set<PhobosAttachEffectTypeClass*>{this});
 		else
 			iter_->second.insert(this);
 	}
 
 	this->DisableSelfHeal.Read(exINI, pSection, "DisableSelfHeal");
 	this->Untrackable.Read(exINI, pSection, "Untrackable");
+	this->AnimRandomPick.Read(exINI, pSection, "Anim.RandomPick");
+
+	this->ReflectDamage.Read(exINI, pSection, "ReflectDamage");
+	this->ReflectDamage_Warhead.Read(exINI, pSection, "ReflectDamage.Warhead");
+	this->ReflectDamage_Warhead_Detonate.Read(exINI, pSection, "ReflectDamage.Warhead.Detonate");
+	this->ReflectDamage_Multiplier.Read(exINI, pSection, "ReflectDamage.Multiplier");
+	this->ReflectDamage_AffectsHouses.Read(exINI, pSection, "ReflectDamage.AffectsHouses");
+
+	this->ReflectDamage_Chance.Read(exINI, pSection, "ReflectDamage.Chance");
+	this->ReflectDamage_Override.Read(exINI, pSection, "ReflectDamage.Override");
+
+	this->DiscardOn_AbovePercent.Read(exINI, pSection, "DiscardOn.AbovePercent");
+	this->DiscardOn_BelowPercent.Read(exINI, pSection, "DiscardOn.BelowPercent");
+	this->AffectAbovePercent.Read(exINI, pSection, "AffectAbovePercent");
+	this->AffectBelowPercent.Read(exINI, pSection, "AffectBelowPercent");
 }
 
 template <typename T>
@@ -106,13 +123,16 @@ void PhobosAttachEffectTypeClass::Serialize(T& Stm)
 		.Process(this->Cumulative_MaxCount)
 		.Process(this->Powered)
 		.Process(this->DiscardOn)
+		.Process(this->DiscardOn_RangeOverride)
 		.Process(this->PenetratesIronCurtain)
+		.Process(this->PenetratesForceShield)
 		.Process(this->Animation)
 		.Process(this->CumulativeAnimations)
 		.Process(this->Animation_ResetOnReapply)
 		.Process(this->Animation_OfflineAction)
 		.Process(this->Animation_TemporalAction)
 		.Process(this->Animation_UseInvokerAsOwner)
+		.Process(this->Animation_HideIfAttachedWith)
 		.Process(this->ExpireWeapon)
 		.Process(this->ExpireWeapon_TriggerOn)
 		.Process(this->ExpireWeapon_CumulativeOnlyOnce)
@@ -141,6 +161,21 @@ void PhobosAttachEffectTypeClass::Serialize(T& Stm)
 		.Process(this->Groups)
 		.Process(this->DisableSelfHeal)
 		.Process(this->Untrackable)
+		.Process(this->AnimRandomPick)
+
+		.Process(this->ReflectDamage)
+		.Process(this->ReflectDamage_Warhead)
+		.Process(this->ReflectDamage_Warhead_Detonate)
+		.Process(this->ReflectDamage_Multiplier)
+		.Process(this->ReflectDamage_AffectsHouses)
+
+		.Process(this->ReflectDamage_Chance)
+		.Process(this->ReflectDamage_Override)
+
+		.Process(this->DiscardOn_AbovePercent)
+		.Process(this->DiscardOn_BelowPercent)
+		.Process(this->AffectAbovePercent)
+		.Process(this->AffectBelowPercent)
 		;
 }
 

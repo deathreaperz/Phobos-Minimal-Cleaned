@@ -116,6 +116,43 @@ DEFINE_HOOK(0x7413DD, UnitClass_Fire_RecoilForce, 0x6)
 // 	return 0;
 // }
 
+// Skips bridge-related coord checks to allow AA to target air units on bridges over water.
+DEFINE_HOOK(0x6FCBE6, TechnoClass_CanFire_BridgeAAFix, 0x6)
+{
+	enum { SkipChecks = 0x6FCCBD };
+
+	GET(TechnoClass*, pTarget, EBP);
+
+	if (pTarget->IsInAir())
+		return SkipChecks;
+
+	return 0;
+}
+
+DEFINE_HOOK(0x6FC3FE, TechnoClass_CanFire_Immunities, 0x6)
+{
+	enum { FireIllegal = 0x6FC86A, ContinueCheck = 0x6FC425 };
+
+	GET(TechnoClass*, pThis, ESI);
+	GET(WarheadTypeClass*, pWarhead, EAX);
+	GET(TechnoClass*, pTarget, EBP);
+
+	if (pTarget)
+	{
+		//const auto nRank = pTarget->Veterancy.GetRemainingLevel();
+
+		//const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
+		//if(pWHExt->ImmunityType.isset() &&
+		//	 TechnoExtData::HasImmunity(nRank, pTarget , pWHExt->ImmunityType.Get()))
+		//	return FireIllegal;
+
+		if (pWarhead->Psychedelic && TechnoExtData::IsPsionicsImmune(pTarget))
+			return FireIllegal;
+	}
+
+	return ContinueCheck;
+}
+
 // Pre-Firing Checks
 DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 {
@@ -246,25 +283,22 @@ DEFINE_HOOK(0x6FE19A, TechnoClass_FireAt_AreaFire, 0x6) //7
 	}
 }
 
-DEFINE_HOOK(0x6FC587, TechnoClass_CanFire_OpenTopped, 0x6)
+DEFINE_HOOK(0x6FC5C7, TechnoClass_CanFire_OpenTopped, 0x6)
 {
-	enum { DisallowFiring = 0x6FC86A };
+	enum { Illegal = 0x6FC86A, OutOfRange = 0x6FC0DF, Continue = 0x6FC5D5 };
 
-	GET(TechnoClass*, pThis, ESI);
+	//GET(TechnoClass*, pThis, ESI);
+	GET(TechnoClass*, pTransport, EAX);
 
-	if (auto const pTransport = pThis->Transporter)
-	{
-		auto const  pExt = TechnoTypeExtContainer::Instance.Find(pTransport->GetTechnoType());
-		if (pTransport->Deactivated && !pExt->OpenTopped_AllowFiringIfDeactivated)
-			return DisallowFiring;
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pTransport->GetTechnoType());
 
-		//if(IS_SAME_STR_("LYNXBUFF" , pThis->get_ID()))
-		// if(pTransport->IsBeingWarpedOut()){
-		 //	return DisallowFiring;
-		//}
-	}
+	if (pTransport->Transporter || (pTransport->Deactivated && !pTypeExt->OpenTopped_AllowFiringIfDeactivated))
+		return Illegal;
 
-	return 0;
+	if (pTypeExt->OpenTopped_CheckTransportDisableWeapons && TechnoExtContainer::Instance.Find(pTransport)->AE_DisableWeapons)
+		return OutOfRange;
+
+	return Continue;
 }
 
 // Reimplements the game function with few changes / optimizations

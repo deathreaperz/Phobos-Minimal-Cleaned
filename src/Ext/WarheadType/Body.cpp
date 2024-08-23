@@ -93,11 +93,16 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SplashList_PickRandom.Read(exINI, pSection, "SplashList.PickRandom");
 	this->SplashList_CreateAll.Read(exINI, pSection, "SplashList.CreateAll");
 	this->SplashList_CreationInterval.Read(exINI, pSection, "SplashList.CreationInterval");
+	this->SplashList_ScatterMin.Read(exINI, pSection, "SplashList.ScatterMin");
+	this->SplashList_ScatterMax.Read(exINI, pSection, "SplashList.ScatterMax");
+
 	this->RemoveDisguise.Read(exINI, pSection, "RemoveDisguise");
 	this->RemoveMindControl.Read(exINI, pSection, "RemoveMindControl");
 	this->AnimList_PickRandom.Read(exINI, pSection, "AnimList.PickRandom");
 	this->AnimList_CreateAll.Read(exINI, pSection, "AnimList.CreateAll");
 	this->AnimList_CreationInterval.Read(exINI, pSection, "AnimList.CreationInterval");
+	this->AnimList_ScatterMin.Read(exINI, pSection, "AnimList.ScatterMin");
+	this->AnimList_ScatterMax.Read(exINI, pSection, "AnimList.ScatterMax");
 	this->AnimList_ShowOnZeroDamage.Read(exINI, pSection, "AnimList.ShowOnZeroDamage");
 	this->DecloakDamagedTargets.Read(exINI, pSection, "DecloakDamagedTargets");
 	this->ShakeIsLocal.Read(exINI, pSection, "ShakeIsLocal");
@@ -129,7 +134,7 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	// Shields
 	this->Shield_Penetrate.Read(exINI, pSection, "Shield.Penetrate");
-
+	this->Shield_RemoveAll.Read(exINI, pSection, "Shield.RemoveAll");
 	this->Shield_Break.Read(exINI, pSection, "Shield.Break");
 	this->Shield_BreakAnim.Read(exINI, pSection, "Shield.BreakAnim");
 	this->Shield_HitAnim.Read(exINI, pSection, "Shield.HitAnim");
@@ -270,7 +275,7 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	{
 		if (hitAnim[a])
 		{
-			this->ArmorHitAnim.empalace_unchecked(ArmorTypeClass::Array[a].get(), hitAnim[a]);
+			this->ArmorHitAnim.emplace_unchecked(ArmorTypeClass::Array[a].get(), hitAnim[a]);
 		}
 	}
 
@@ -290,6 +295,10 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->AffectEnemies_Damage_Mod.Read(exINI, pSection, "AffectEnemies.DamageModifier");
 	this->AffectOwner_Damage_Mod.Read(exINI, pSection, "AffectOwner.DamageModifier");
 	this->AffectAlly_Damage_Mod.Read(exINI, pSection, "AffectAlly.DamageModifier");
+
+	this->DamageOwnerMultiplier.Read(exINI, pSection, "DamageOwnerMultiplier");
+	this->DamageAlliesMultiplier.Read(exINI, pSection, "DamageAlliesMultiplier");
+	this->DamageEnemiesMultiplier.Read(exINI, pSection, "DamageEnemiesMultiplier");
 
 	this->AttachTag.Read(pINI, pSection, "AttachTag");
 	this->AttachTag_Imposed.Read(exINI, pSection, "AttachTag.Imposed");
@@ -334,7 +343,50 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->PaintBallData.Read(exINI, pSection);
 #pragma endregion
 
+#ifndef _Handle_Old_
 	this->AttachedEffect.Read(exINI);
+#else
+	int _AE_Dur { 0 };
+	this->AttachEffect_AttachTypes.clear();
+	if (detail::read(_AE_Dur, exINI, pSection, "AttachEffect.Duration") && _AE_Dur != 0)
+	{
+		auto& back = this->AttachEffect_AttachTypes.emplace_back(PhobosAttachEffectTypeClass::FindOrAllocate(pSection));
+		back->Duration = _AE_Dur;
+		back->Cumulative.Read(exINI, pSection, "AttachEffect.Cumulative");
+		back->Animation.Read(exINI, pSection, "AttachEffect.Animation", true);
+		back->Animation_ResetOnReapply.Read(exINI, pSection, "AttachEffect.AnimResetOnReapply");
+
+		bool AE_TemporalHidesAnim {};
+		if (detail::read(AE_TemporalHidesAnim, exINI, pSection, "AttachEffect.TemporalHidesAnim") && AE_TemporalHidesAnim)
+			back->Animation_TemporalAction = AttachedAnimFlag::Hides;
+
+		back->ForceDecloak.Read(exINI, pSection, "AttachEffect.ForceDecloak");
+
+		bool AE_DiscardOnEntry {};
+		if (detail::read(AE_DiscardOnEntry, exINI, pSection, "AttachEffect.DiscardOnEntry") && AE_DiscardOnEntry)
+			back->DiscardOn = DiscardCondition::Entry;
+
+		back->FirepowerMultiplier.Read(exINI, pSection, "AttachEffect.FirepowerMultiplier");
+		back->ArmorMultiplier.Read(exINI, pSection, "AttachEffect.ArmorMultiplier");
+		back->SpeedMultiplier.Read(exINI, pSection, "AttachEffect.SpeedMultiplier");
+		back->ROFMultiplier.Read(exINI, pSection, "AttachEffect.ROFMultiplier");
+		back->ReceiveRelativeDamageMult.Read(exINI, pSection, "AttachEffect.ReceiveRelativeDamageMultiplier");
+		back->Cloakable.Read(exINI, pSection, "AttachEffect.Cloakable");
+
+		back->PenetratesIronCurtain.Read(exINI, pSection, "AttachEffect.PenetratesIronCurtain");
+		back->DisableSelfHeal.Read(exINI, pSection, "AttachEffect.DisableSelfHeal");
+		back->DisableWeapons.Read(exINI, pSection, "AttachEffect.DisableWeapons");
+		back->Untrackable.Read(exINI, pSection, "AttachEffect.Untrackable");
+
+		back->WeaponRange_Multiplier.Read(exINI, pSection, "AttachEffect.WeaponRange.Multiplier");
+		back->WeaponRange_ExtraRange.Read(exINI, pSection, "AttachEffect.WeaponRange.ExtraRange");
+		back->WeaponRange_AllowWeapons.Read(exINI, pSection, "AttachEffect.WeaponRange.AllowWeapons");
+		back->WeaponRange_DisallowWeapons.Read(exINI, pSection, "AttachEffect.WeaponRange.DisallowWeapons");
+
+		back->ROFMultiplier_ApplyOnCurrentTimer.Read(exINI, pSection, "AttachEffect.ROFMultiplier.ApplyOnCurrentTimer");
+	}
+#endif
+
 	this->DetonatesWeapons.Read(exINI, pSection, "DetonatesWeapons");
 	this->LimboKill_IDs.Read(exINI, pSection, "LimboKill.IDs");
 	this->LimboKill_Affected.Read(exINI, pSection, "LimboKill.Affected");
@@ -373,7 +425,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->InflictLocomotor.Read(exINI, pSection, "InflictLocomotor");
 	this->RemoveInflictedLocomotor.Read(exINI, pSection, "RemoveInflictedLocomotor");
-	this->Rocker_Damage.Read(exINI, pSection, "Rocker.Damage");
+	this->Rocker_AmplitudeMultiplier.Read(exINI, pSection, "Rocker.AmplitudeMultiplier");
+	this->Rocker_AmplitudeOverride.Read(exINI, pSection, "Rocker.AmplitudeOverride");
 	this->NukePayload_LinkedSW.Read(exINI, pSection, "NukeMaker.LinkedSW");
 	this->IC_Duration.Read(exINI, pSection, "IronCurtain.Duration");
 	this->IC_Cap.Read(exINI, pSection, "IronCurtain.Cap");
@@ -432,10 +485,16 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->AttachEffect_AttachTypes.Read(exINI, pSection, "AttachEffect.AttachTypes");
 	this->AttachEffect_RemoveTypes.Read(exINI, pSection, "AttachEffect.RemoveTypes");
-	exINI.ParseStringList(this->AttachEffect_RemoveGroups, pSection, "AttachEffect.RemoveGroups");
+	this->AttachEffect_RemoveGroups.Read(exINI, pSection, "AttachEffect.RemoveGroups");
 	this->AttachEffect_CumulativeRemoveMinCounts.Read(exINI, pSection, "AttachEffect.CumulativeRemoveMinCounts");
 	this->AttachEffect_CumulativeRemoveMaxCounts.Read(exINI, pSection, "AttachEffect.CumulativeRemoveMaxCounts");
 	this->AttachEffect_DurationOverrides.Read(exINI, pSection, "AttachEffect.DurationOverrides");
+	this->Shield_HitFlash.Read(exINI, pSection, "Shield.HitFlash");
+	this->CombatAlert_Suppress.Read(exINI, pSection, "CombatAlert.Suppress");
+
+	this->AffectsOnFloor.Read(exINI, pSection, "AffectsOnFloor");
+	this->AffectsInAir.Read(exINI, pSection, "AffectsInAir");
+	this->CellSpread_Cylinder.Read(exINI, pSection, "CellSpread.Cylinder");
 
 	ValueableVector<InfantryTypeClass*> InfDeathAnims_List {};
 
@@ -499,7 +558,14 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->SpawnsCrate_Weights.emplace_back(weight);
 	}
 
-	this->IgnoreRevenge.Read(exINI, pSection, "IgnoreRevenge");
+	this->PenetratesIronCurtain.Read(exINI, pSection, "PenetratesIronCurtain");
+	this->PenetratesForceShield.Read(exINI, pSection, "PenetratesForceShield");
+
+	this->SuppressRevengeWeapons.Read(exINI, pSection, "SuppressRevengeWeapons");
+	this->SuppressRevengeWeapons_Types.Read(exINI, pSection, "SuppressRevengeWeapons.Types");
+	this->SuppressReflectDamage.Read(exINI, pSection, "SuppressReflectDamage");
+	this->SuppressReflectDamage_Types.Read(exINI, pSection, "SuppressReflectDamage.Types");
+	this->SuppressReflectDamage_Groups.Read(exINI, pSection, "SuppressReflectDamage.Groups");
 }
 
 //https://github.com/Phobos-developers/Phobos/issues/629
@@ -519,33 +585,58 @@ void WarheadTypeExtData::ApplyDamageMult(TechnoClass* pVictim, args_ReceiveDamag
 	auto const& nAllyMod = AffectAlly_Damage_Mod;
 	auto const& nOwnerMod = AffectOwner_Damage_Mod;
 	auto const& nEnemyMod = AffectEnemies_Damage_Mod;
-
-	if ((!nAllyMod.isset() && !nOwnerMod.isset() && !nEnemyMod.isset()))
-		return;
-
-	auto const pHouse = pArgs->SourceHouse ? pArgs->SourceHouse : pArgs->Attacker ? pArgs->Attacker->GetOwningHouse() : HouseExtData::FindFirstCivilianHouse();
 	auto const pVictimHouse = pVictim->GetOwningHouse();
 
-	if (pHouse && pVictimHouse)
+	if ((nAllyMod.isset() && nOwnerMod.isset() && nEnemyMod.isset()))
 	{
-		auto const pWH = this->AttachedToObject;
-		const int nDamage = *pArgs->Damage;
+		auto const pHouse = pArgs->SourceHouse ? pArgs->SourceHouse : pArgs->Attacker ? pArgs->Attacker->GetOwningHouse() : HouseExtData::FindFirstCivilianHouse();
 
-		if (pVictimHouse != pHouse)
+		if (pHouse && pVictimHouse)
 		{
-			if (pVictimHouse->IsAlliedWith(pHouse) && pWH->AffectsAllies && nAllyMod.isset())
+			auto const pWH = this->AttachedToObject;
+			const int nDamage = *pArgs->Damage;
+
+			if (pVictimHouse != pHouse)
 			{
-				*pArgs->Damage = static_cast<int>(nDamage * nAllyMod.Get());
+				if (pVictimHouse->IsAlliedWith(pHouse) && pWH->AffectsAllies && nAllyMod.isset())
+				{
+					*pArgs->Damage = static_cast<int>(nDamage * nAllyMod.Get());
+				}
+				else if (AffectsEnemies.Get() && nEnemyMod.isset())
+				{
+					*pArgs->Damage = static_cast<int>(nDamage * nEnemyMod.Get());
+				}
 			}
-			else if (AffectsEnemies.Get() && nEnemyMod.isset())
+			else if (AffectsOwner.Get() && nOwnerMod.isset())
 			{
-				*pArgs->Damage = static_cast<int>(nDamage * nEnemyMod.Get());
+				*pArgs->Damage = static_cast<int>(nDamage * nOwnerMod.Get());
 			}
 		}
-		else if (AffectsOwner.Get() && nOwnerMod.isset())
+	}
+
+	//Calculate Damage Multiplier
+	if (pVictimHouse && (this->DamageOwnerMultiplier != 1.0 || this->DamageAlliesMultiplier != 1.0 || this->DamageEnemiesMultiplier != 1.0))
+	{
+		const int sgnDamage = *pArgs->Damage > 0 ? 1 : -1;
+		int calculateDamage = *pArgs->Damage;
+
+		if (pVictimHouse == pArgs->SourceHouse)
 		{
-			*pArgs->Damage = static_cast<int>(nDamage * nOwnerMod.Get());
+			if (this->DamageOwnerMultiplier != 1.0)
+				calculateDamage = static_cast<int>(*pArgs->Damage * this->DamageOwnerMultiplier.Get(RulesExtData::Instance()->DamageOwnerMultiplier));
 		}
+		else if (pVictimHouse->IsAlliedWith(pArgs->SourceHouse))
+		{
+			if (this->DamageAlliesMultiplier != 1.0)
+				calculateDamage = static_cast<int>(*pArgs->Damage * this->DamageAlliesMultiplier.Get(RulesExtData::Instance()->DamageAlliesMultiplier));
+		}
+		else
+		{
+			if (this->DamageEnemiesMultiplier != 1.0)
+				calculateDamage = static_cast<int>(*pArgs->Damage * this->DamageEnemiesMultiplier.Get(RulesExtData::Instance()->DamageEnemiesMultiplier));
+		}
+
+		*pArgs->Damage = calculateDamage ? calculateDamage : sgnDamage;
 	}
 }
 
@@ -689,6 +780,15 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool S
 	}
 
 	return Bypass;
+}
+
+bool WarheadTypeExtData::CanAffectInvulnerable(TechnoClass* pTarget) const
+{
+	if (!pTarget || !pTarget->IsIronCurtained())
+		return true;
+
+	return pTarget->ProtectType == ProtectTypes::ForceShield ?
+		this->PenetratesForceShield.Get(this->PenetratesIronCurtain) : this->PenetratesIronCurtain;
 }
 
 bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, int damageIn, int distanceFromEpicenter, int& DamageResult, bool effectsRequireDamage) const
@@ -875,7 +975,7 @@ bool WarheadTypeExtData::applyCulling(TechnoClass* pSource, ObjectClass* pTarget
 	return  nChance < 0 || ScenarioClass::Instance->Random.RandomFromMax(99) < nChance;
 }
 
-int NOINLINE GetRelativeValue(ObjectClass* pTarget, WarheadTypeExtData* pWHExt)
+static constexpr int GetRelativeValue(ObjectClass* pTarget, WarheadTypeExtData* pWHExt)
 {
 	auto const pWhat = pTarget->WhatAmI();
 	bool IsTechno = false;
@@ -1039,7 +1139,7 @@ void WarheadTypeExtData::DetonateAt(
 
 void WarheadTypeExtData::DetonateAt(
 	WarheadTypeClass* pThis,
-	const CoordStruct& coords,
+	const CoordStruct coords,
 	TechnoClass* pOwner,
 	int damage,
 	bool targetCell,
@@ -1059,7 +1159,7 @@ void WarheadTypeExtData::DetonateAt(
 void WarheadTypeExtData::DetonateAt(
 	WarheadTypeClass* pThis,
 	AbstractClass* pTarget,
-	const CoordStruct& coords,
+	const CoordStruct coords,
 	TechnoClass* pOwner,
 	int damage,
 	HouseClass* pFiringHouse
@@ -1070,14 +1170,14 @@ void WarheadTypeExtData::DetonateAt(
 
 	BulletTypeClass* pType = BulletTypeExtData::GetDefaultBulletType();
 
-	if (pThis->NukeMaker)
-	{
-		if (!pTarget)
-		{
-			Debug::Log("WarheadTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
-			return;
-		}
-	}
+	//if (pThis->NukeMaker)
+	//{
+	//	if (!pTarget)
+	//	{
+	//		Debug::Log("WarheadTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
+	//		return;
+	//	}
+	//}
 
 	if (!pOwner)
 	{
@@ -1146,11 +1246,15 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->SplashList_PickRandom)
 		.Process(this->SplashList_CreateAll)
 		.Process(this->SplashList_CreationInterval)
+		.Process(this->SplashList_ScatterMin)
+		.Process(this->SplashList_ScatterMax)
 		.Process(this->RemoveDisguise)
 		.Process(this->RemoveMindControl)
 		.Process(this->AnimList_PickRandom)
 		.Process(this->AnimList_CreateAll)
 		.Process(this->AnimList_CreationInterval)
+		.Process(this->AnimList_ScatterMin)
+		.Process(this->AnimList_ScatterMax)
 		.Process(this->AnimList_ShowOnZeroDamage)
 		.Process(this->DecloakDamagedTargets)
 		.Process(this->ShakeIsLocal)
@@ -1285,6 +1389,11 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->AffectEnemies_Damage_Mod)
 		.Process(this->AffectOwner_Damage_Mod)
 		.Process(this->AffectAlly_Damage_Mod)
+
+		.Process(this->DamageOwnerMultiplier)
+		.Process(this->DamageAlliesMultiplier)
+		.Process(this->DamageEnemiesMultiplier)
+
 		.Process(this->AttachTag)
 		.Process(this->AttachTag_Types)
 		.Process(this->AttachTag_Ignore)
@@ -1350,7 +1459,8 @@ void WarheadTypeExtData::Serialize(T& Stm)
 
 		.Process(this->InflictLocomotor)
 		.Process(this->RemoveInflictedLocomotor)
-		.Process(this->Rocker_Damage)
+		.Process(this->Rocker_AmplitudeMultiplier)
+		.Process(this->Rocker_AmplitudeOverride)
 		.Process(this->NukePayload_LinkedSW)
 		.Process(this->IC_Duration)
 		.Process(this->IC_Cap)
@@ -1408,34 +1518,58 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->SpawnsCrate_Types)
 		.Process(this->SpawnsCrate_Weights)
 
-		.Process(this->IgnoreRevenge)
-
 		.Process(this->AttachEffect_AttachTypes)
 		.Process(this->AttachEffect_RemoveTypes)
 		.Process(this->AttachEffect_RemoveGroups)
 		.Process(this->AttachEffect_CumulativeRemoveMinCounts)
 		.Process(this->AttachEffect_CumulativeRemoveMaxCounts)
 		.Process(this->AttachEffect_DurationOverrides)
+		.Process(this->Shield_HitFlash)
+		.Process(this->CombatAlert_Suppress)
+
+		.Process(this->AffectsOnFloor)
+		.Process(this->AffectsInAir)
+		.Process(this->CellSpread_Cylinder)
+
+		.Process(this->PenetratesIronCurtain)
+		.Process(this->PenetratesForceShield)
+		.Process(this->Shield_RemoveAll)
+
+		.Process(this->SuppressRevengeWeapons)
+		.Process(this->SuppressRevengeWeapons_Types)
+		.Process(this->SuppressReflectDamage)
+		.Process(this->SuppressReflectDamage_Types)
+		.Process(this->SuppressReflectDamage_Groups)
+		.Process(this->Reflected)
 		;
 
 	PaintBallData.Serialize(Stm);
 }
 
-double WarheadTypeExtData::GetCritChance(TechnoClass* pFirer) const
+void WarheadTypeExtData::GetCritChance(TechnoClass* pFirer, std::vector<double>& chances) const
 {
-	double critChance = this->Crit_Chance;
+	chances = this->Crit_Chance;
 
 	if (!pFirer)
-		return critChance;
-
-	auto const pExt = TechnoExtContainer::Instance.Find(pFirer);
-
-	if (pExt->AE_ExtraCrit.Enabled() && pExt->AE_ExtraCrit.Eligible(this->AttachedToObject))
 	{
-		critChance = pExt->AE_ExtraCrit.Get(critChance);
+		return;
 	}
 
-	return critChance;
+	if (chances.empty())
+		chances.push_back(0.0);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pFirer);
+
+	if (pExt->AE_ExtraCrit.Enabled())
+	{
+		std::vector<TechnoExtData::ExtraCrit::CritDataOut> valids;
+		pExt->AE_ExtraCrit.FillEligible(this->AttachedToObject, valids);
+
+		for (auto& curChances : chances)
+		{
+			curChances = TechnoExtData::ExtraCrit::Count(curChances, valids);
+		}
+	}
 }
 
 void WarheadTypeExtData::ApplyAttachEffects(TechnoClass* pTarget, HouseClass* pInvokerHouse, TechnoClass* pInvoker)

@@ -33,14 +33,14 @@ PhobosToolTip PhobosToolTip::Instance;
 
 inline const wchar_t* GetUIDescription(TechnoTypeExtData* pData)
 {
-	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription.Get().empty()
+	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription->empty()
 		? pData->UIDescription.Get().Text
 		: nullptr;
 }
 
 inline const wchar_t* GetUIDescription(SWTypeExtData* pData)
 {
-	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription.Get().empty()
+	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription->empty()
 		? pData->UIDescription.Get().Text
 		: nullptr;
 }
@@ -84,28 +84,27 @@ inline int PhobosToolTip::GetBuildTime(TechnoTypeClass* pType) const
 
 	const int nTimeToBuild = pTrick->TimeToBuild();
 	// 54 frames at least
-	return nTimeToBuild < 54 ? 54 : nTimeToBuild;
+	return MaxImpl(54, nTimeToBuild);
 }
 
 inline int PhobosToolTip::GetPower(TechnoTypeClass* pType) const
 {
-	if (const auto pBldType = type_cast<BuildingTypeClass*>(pType))
+	if (const auto pBldType = specific_cast<BuildingTypeClass*>(pType))
 		return pBldType->PowerBonus - pBldType->PowerDrain;
 
 	return 0;
 }
 
-inline const wchar_t* PhobosToolTip::GetBuffer() const
-{
-	return this->TextBuffer.c_str();
-}
-
 void PhobosToolTip::HelpText(const BuildType& cameo)
 {
 	if (cameo.ItemType == AbstractType::Special)
-		this->HelpText(SuperWeaponTypeClass::Array->Items[cameo.ItemIndex]);
+	{
+		this->HelpText(HouseClass::CurrentPlayer->Supers.Items[cameo.ItemIndex]);
+	}
 	else
+	{
 		this->HelpText(ObjectTypeClass::FetchTechnoType(cameo.ItemType, cameo.ItemIndex));
+	}
 }
 
 struct TimerDatas
@@ -124,9 +123,10 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 
 	const auto pData = TechnoTypeExtContainer::Instance.Find(pType);
 
-	const int nBuildTime = this->GetBuildTime(pType);
-	const int nSec = TickTimeToSeconds(nBuildTime) % 60;
-	const int nMin = TickTimeToSeconds(nBuildTime) / 60 /* % 60*/;
+	const int nBuildTime = TickTimeToSeconds(this->GetBuildTime(pType));
+
+	const int nSec = nBuildTime % 60;
+	const int nMin = nBuildTime / 60 /* % 60*/;
 	// int nHour = TickTimeToSeconds(nBuildTime) / 60 / 60;
 
 #ifdef debug_timer
@@ -188,12 +188,12 @@ int PhobosToolTip::TickTimeToSeconds(int tickTime)
 	//return tickTime / (60 / GameOptionsClass::Instance->GameSpeed);
 }
 
-void PhobosToolTip::HelpText(SuperWeaponTypeClass* pType)
+void PhobosToolTip::HelpText(SuperClass* pSuper)
 {
-	const auto pData = SWTypeExtContainer::Instance.Find(pType);
+	const auto pData = SWTypeExtContainer::Instance.Find(pSuper->Type);
 
 	std::wostringstream oss;
-	oss << pType->UIName;
+	oss << pSuper->Type->UIName;
 	bool showCost = false;
 
 	if (const int nCost = std::abs(pData->Money_Amount))
@@ -207,13 +207,15 @@ void PhobosToolTip::HelpText(SuperWeaponTypeClass* pType)
 		showCost = true;
 	}
 
-	if (pType->RechargeTime > 0)
+	const int rechargeTime = TickTimeToSeconds(pSuper->GetRechargeTime());
+
+	if (rechargeTime > 0)
 	{
 		if (!showCost)
 			oss << L"\n";
 
-		const int nSec = TickTimeToSeconds(pType->RechargeTime) % 60;
-		const int nMin = TickTimeToSeconds(pType->RechargeTime) / 60 /* % 60*/;
+		const int nSec = rechargeTime % 60;
+		const int nMin = rechargeTime / 60 /* % 60*/;
 		// int nHour = TickTimeToSeconds(pType->RechargeTime) / 60 / 60;
 
 		oss << (showCost ? L" " : L"") << Phobos::UI::TimeLabel
@@ -222,16 +224,18 @@ void PhobosToolTip::HelpText(SuperWeaponTypeClass* pType)
 			<< std::setw(2) << std::setfill(L'0') << nSec;
 	}
 
-	const auto pExt = SWTypeExtContainer::Instance.Find(pType);
-	const auto nPower = pExt->SW_Power;
-
-	if (nPower != 0)
+	if (pData->SW_Power.isset())
 	{
-		oss << L" " << Phobos::UI::PowerLabel;
-		if (nPower > 0)
-			oss << L"+";
+		const auto nPower = pData->SW_Power;
 
-		oss << std::setw(1) << nPower;
+		if (nPower != 0)
+		{
+			oss << L" " << Phobos::UI::PowerLabel;
+			if (nPower > 0)
+				oss << L"+";
+
+			oss << std::setw(1) << nPower;
+		}
 	}
 
 	if (auto pDesc = GetUIDescription(pData))
@@ -428,6 +432,20 @@ DEFINE_HOOK(0x478FDC, CCToolTip_Draw2_FillRect, 0x5)
 		GET(SurfaceExt*, pThis, ESI);
 		//GET(int, color, EDI);
 		LEA_STACK(RectangleStruct*, pRect, STACK_OFFS(0x44, 0x10));
+
+		if (Phobos::UI::AnchoredToolTips &&
+			PhobosToolTip::Instance.IsEnabled() &&
+			Phobos::Config::ToolTipDescriptions
+		)
+		{
+			LEA_STACK(LTRBStruct*, a2, STACK_OFFSET(0x44, -0x20));
+			const auto x = DSurface::SidebarBounds->X - pRect->Width - 2;
+
+			pRect->X = x;
+			a2->Left = x;
+			pRect->Y -= 40;
+			a2->Top -= 40;
+		}
 
 		// Should we make some SideExt items as static to improve the effeciency?
 		// Though it might not be a big improvement... - secsome

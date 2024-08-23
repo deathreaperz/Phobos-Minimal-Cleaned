@@ -1,13 +1,15 @@
 #include "Header.h"
 
-#include "Classes/Dialogs.h"
-
 #include <Utilities/Patch.h>
 
 #include <EventClass.h>
 #include <FPSCounter.h>
 
 #include <stdnoreturn.h>
+
+#include <Utilities/Macro.h>
+
+#include <Misc/PhobosGlobal.h>
 
 DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 {
@@ -19,18 +21,18 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 		L"Would you like to create a full error report for the developers?\n"
 		L"Be advised that reports from at least two players are needed.", L"Reconnection Error!", MB_YESNO | MB_ICONERROR) == IDYES)
 	{
+		Debug::DumpStack(R, 8084);
+
 		HCURSOR loadCursor = LoadCursor(nullptr, IDC_WAIT);
 		SetClassLong(Game::hWnd, GCL_HCURSOR, reinterpret_cast<LONG>(loadCursor));
 		SetCursor(loadCursor);
 
-		Debug::DumpStack(R, 8084);
-
-		std::wstring path = Dialogs::PrepareSnapshotDirectory();
+		std::wstring path = Debug::PrepareSnapshotDirectory();
 
 		if (Debug::LogEnabled)
 		{
 			Debug::Log("Copying debug log\n");
-			std::wstring logCopy = path + L"\\debug.log";
+			const std::wstring logCopy = path + Debug::LogFileMainName + Debug::LogFileExt;
 			CopyFileW(Debug::LogFileTempName.c_str(), logCopy.c_str(), FALSE);
 		}
 
@@ -58,11 +60,73 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 #define EXCEPTION_STACK_COLUMNS 8 // Number of columns in stack dump.
 #define EXCEPTION_STACK_DEPTH_MAX 1024
 
-[[noreturn]] LONG CALLBACK ExceptionHandler(PEXCEPTION_POINTERS const pExs)
+LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 {
+	DWORD* eip_pointer = reinterpret_cast<DWORD*>(&pExs->ContextRecord->Eip);
+
+	switch (*eip_pointer)
+	{
+	case 0x7BC806:
+	{
+		*eip_pointer = 0x7BC80F;
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+	case 0x5D6C21:
+	{
+		// This bug most likely happens when a map Doesn't have Waypoint 90
+		*eip_pointer = 0x5D6C36;
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+	case 0x7BAEA1:
+	{
+		// A common crash in DSurface::GetPixel
+		*eip_pointer = 0x7BAEA8;
+		pExs->ContextRecord->Ebx = 0;
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+	case 0x535DBC:
+	{
+		// Common crash in keyboard command class
+		*eip_pointer = 0x535DCE;
+		pExs->ContextRecord->Esp += 12;
+		return EXCEPTION_CONTINUE_EXECUTION;
+	}
+	case 0x42C554:
+	case 0x42C53E:
+	case 0x42C507:
+	{
+		//FootClass* pFoot = (FootClass*)(ExceptionInfo->ContextRecord->Ebp + 0x14);
+		//CellStruct* pFrom = (CellStruct*)(ExceptionInfo->ContextRecord->Ebp + 0x8);
+		//CellStruct* pTo = (CellStruct*)(ExceptionInfo->ContextRecord->Ebp + 0xC);
+		//MovementZone movementZone = (MovementZone)(ExceptionInfo->ContextRecord->Ebp + 0x10);
+
+		//AstarClass , broken ptr
+		Debug::Log("PathfindingCrash\n");
+		break;
+	}
+	//case 0x755C7F:
+	//{
+	//	Debug::Log("BounceAnimError \n");
+	//	return PrintException(exception_id, ExceptionInfo);
+	//}
+	case 0x000000:
+		if (pExs->ContextRecord->Esp && *(DWORD*)pExs->ContextRecord->Esp == 0x55E018)
+		{
+			// A common crash that seems to happen when yuri prime mind controls a building and then dies while the user is pressing hotkeys
+			*eip_pointer = 0x55E018;
+			pExs->ContextRecord->Esp += 8;
+			return EXCEPTION_CONTINUE_EXECUTION;
+		}
+		break;
+	default:
+		break;
+	}
+
 	Debug::FreeMouse();
 	Debug::Log("Exception handler fired!\n");
 	Debug::Log("Exception %X at %p\n", pExs->ExceptionRecord->ExceptionCode, pExs->ExceptionRecord->ExceptionAddress);
+	Game::StreamerThreadFlush();
+
 	//the value of `reference<HWND> Game::hWnd` is stored on the stack instead of inlined as memory value, using `.get()` doesnot seems fixed it
 	//so using these oogly
 	SetWindowTextW(*reinterpret_cast<HWND*>(0xB73550), L"Fatal Error - Yuri's Revenge");
@@ -91,15 +155,15 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 	case EXCEPTION_STACK_OVERFLOW:
 	case 0xE06D7363: // exception thrown and not caught
 	{
-		std::wstring path = Dialogs::PrepareSnapshotDirectory();
+		std::wstring path = Debug::PrepareSnapshotDirectory();
 
 		if (Debug::LogEnabled)
 		{
-			std::wstring logCopy = path + L"\\debug.log";
+			const std::wstring logCopy = path + Debug::LogFileMainName + Debug::LogFileExt;
 			CopyFileW(Debug::LogFileTempName.c_str(), logCopy.c_str(), FALSE);
 		}
 
-		std::wstring except_file = path + L"\\except.txt";
+		const std::wstring except_file = path + L"\\except.txt";
 
 		if (FILE* except = _wfsopen(except_file.c_str(), L"w", _SH_DENYNO))
 		{
@@ -160,19 +224,19 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 
 			PCONTEXT pCtxt = pExs->ContextRecord;
 			fprintf(except, "Bytes at CS:EIP (0x%08X)  : ", pCtxt->Eip);
-			uint8_t* eip_pointer = reinterpret_cast<uint8_t*>(pCtxt->Eip);
+			uint8_t* _eip_pointer = reinterpret_cast<uint8_t*>(pCtxt->Eip);
 
 			for (int e = 32; e > 0; --e)
 			{
-				if (IsBadReadPtr(eip_pointer, sizeof(uint8_t)))
+				if (IsBadReadPtr(_eip_pointer, sizeof(uint8_t)))
 				{
 					fprintf(except, "?? ");
 				}
 				else
 				{
-					fprintf(except, "%02X ", (uintptr_t)*eip_pointer);
+					fprintf(except, "%02X ", (uintptr_t)*_eip_pointer);
 				}
-				++eip_pointer;
+				++_eip_pointer;
 			}
 
 			fprintf(except, "\n\nRegisters:\n");
@@ -248,6 +312,17 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 				pCtxt->Dr7
 			);
 
+			{
+				auto& pp = PhobosGlobal::Instance()->PathfindTechno;
+				if (pp.IsValid())
+				{
+					Debug::Log("LastPathfind [%s] - [%s] from (%d - %d) to (%d - %d)\n", pp.Finder->get_ID(), pp.Finder->GetThisClassName(),
+						pp.From.X, pp.From.Y,
+						pp.To.X, pp.To.Y
+					);
+				}
+			}
+
 			fprintf(except, "\nStack dump (depth : %d):\n", EXCEPTION_STACK_DEPTH_MAX);
 			DWORD* ptr = reinterpret_cast<DWORD*>(pCtxt->Esp);
 			for (int c = 0; c < EXCEPTION_STACK_DEPTH_MAX; ++c)
@@ -255,6 +330,17 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 				const char* suffix = "";
 				if (*ptr >= 0x401000 && *ptr <= 0xB79BE4)
 					suffix = "GameMemory!";
+				else
+				{
+					for (auto begin = Patch::ModuleDatas.begin() + 1; begin != Patch::ModuleDatas.end(); ++begin)
+					{
+						if (*ptr >= begin->BaseAddr && *ptr <= (begin->BaseAddr + begin->Size))
+						{
+							suffix = (begin->ModuleName + " Memory!").c_str();
+							break;
+						}
+					}
+				}
 
 				fprintf(except, "%08p: %08X %s\n", ptr, *ptr, suffix);
 				++ptr;
@@ -280,7 +366,7 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 			expParam.ExceptionPointers = pExs;
 			expParam.ClientPointers = FALSE;
 
-			Dialogs::FullDump(std::move(path), &expParam);
+			Debug::FullDump(std::move(path), &expParam);
 
 			loadCursor = LoadCursor(nullptr, IDC_ARROW);
 			//the value of `reference<HWND> Game::hWnd` is stored on the stack instead of inlined as memory value, using `.get()` doesnot seems fixed it
@@ -309,20 +395,23 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 
 	Debug::Log("Exiting...\n");
 	Debug::ExitGame(pExs->ExceptionRecord->ExceptionCode);
+	return 0u;
 };
 
-DEFINE_STRONG_HOOK(0x4C8FE0, Exception_Handler, 9)
-{
-	//GET(int, code, ECX);
-	GET(LPEXCEPTION_POINTERS, pExs, EDX);
-	if (!Phobos::Otamaa::ExeTerminated)
-	{
-		//dont fire exception twices ,..
-	   //i dont know how handle recursive exception
-		ExceptionHandler(pExs);
-		__debugbreak();
-	}
-}
+DEFINE_JUMP(LJMP, 0x4C8FE0, GET_OFFSET(ExceptionHandler))
+
+//DEFINE_STRONG_HOOK(0x4C8FE0, Exception_Handler, 9)
+//{
+//	//GET(int, code, ECX);
+//	GET(LPEXCEPTION_POINTERS, pExs, EDX);
+//	if (!Phobos::Otamaa::ExeTerminated)
+//	{
+//		//dont fire exception multiple times ,..
+//	   //i dont know how handle recursive exception
+//		ExceptionHandler(pExs);
+//		__debugbreak();
+//	}
+//}
 
 #pragma warning(pop)
 template<typename T>

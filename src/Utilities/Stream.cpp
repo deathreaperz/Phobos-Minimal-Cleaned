@@ -5,13 +5,6 @@
 
 #include <Objidl.h>
 
-PhobosByteStream::PhobosByteStream(size_t Reserve) : Data(), CurrentOffset(0)
-{
-	this->Data.reserve(Reserve);
-}
-
-PhobosByteStream::~PhobosByteStream() = default;
-
 bool PhobosByteStream::ReadFromStream(IStream* pStm, const size_t Length)
 {
 	auto size = this->Data.size();
@@ -98,9 +91,4 @@ bool PhobosStreamReader::RegisterChange(void* newPtr)
 	}
 
 	return false;
-}
-
-void PhobosStreamReader::EmitSwizzleWarning(long id, void* pointer, std::true_type) const
-{
-	//Debug::Log("[PhobosStreamReader] Could not register change from %X to %p\n", id, pointer);
 }

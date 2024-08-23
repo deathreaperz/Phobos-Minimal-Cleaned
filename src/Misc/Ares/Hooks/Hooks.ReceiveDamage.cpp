@@ -21,6 +21,7 @@
 
 #include <Conversions.h>
 #include <New/Type/ArmorTypeClass.h>
+#include <New/PhobosAttachedAffect/Functions.h>
 
 #include "Header.h"
 
@@ -107,16 +108,16 @@ DEFINE_HOOK(0x701A3B, TechnoClass_ReceiveDamage_Flash, 0xA)
 	GET(int*, pDamage, EBX);
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	const auto pShield = pExt->GetShield();
+	//const auto pShield = pExt->GetShield();
 
 	if (forced || third)
 		return ContinueChecks;
 
-	if (pShield && pShield->IsActive() && pShield->GetType()->HitBright.isset())
-	{
-		MapClass::FlashbangWarheadAt(2 * (*pDamage), pWh, pThis->Location, true, pShield->GetType()->HitBright);
-	}
-	else if (pThis->IsIronCurtained())
+	//if (pShield && pShield->IsActive() && pShield->GetType()->HitBright.isset())
+	//{
+	//	MapClass::FlashbangWarheadAt(2 * (*pDamage), pWh, pThis->Location, true, pShield->GetType()->HitBright);
+	//} else
+	if (!WarheadTypeExtContainer::Instance.Find(pWh)->CanAffectInvulnerable(pThis))
 	{
 		if (pThis->ProtectType == ProtectTypes::ForceShield)
 			MapClass::FlashbangWarheadAt(2 * (*pDamage), pWh, pThis->Location, true, SpotlightFlags::NoRed | SpotlightFlags::NoGreen);
@@ -127,6 +128,18 @@ DEFINE_HOOK(0x701A3B, TechnoClass_ReceiveDamage_Flash, 0xA)
 	}
 
 	return ContinueChecks;
+}
+
+DEFINE_HOOK(0x489968, Explosion_Damage_PenetratesIronCurtain, 0x5)
+{
+	enum { BypassInvulnerability = 0x48996D };
+
+	GET_BASE(WarheadTypeClass*, pWarhead, 0xC);
+
+	if (WarheadTypeExtContainer::Instance.Find(pWarhead)->PenetratesIronCurtain)
+		return BypassInvulnerability;
+
+	return 0;
 }
 
 DEFINE_HOOK(0x7021F5, TechnoClass_ReceiveDamage_OverrideDieSound, 0x6)
@@ -250,29 +263,29 @@ DEFINE_HOOK(0x702050, TechnoClass_ReceiveDamage_ResultDestroyed, 6)
 	const auto pType = pThis->GetTechnoType();
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
+	auto coords = pThis->GetCoords();
+	auto const pOwner = pThis->Owner;
+
 	if (pWarheadExt->Supress_LostEva.Get())
 		pTechExt->SupressEVALost = true;
 
 	GiftBoxFunctional::Destroy(pTechExt, pTypeExt);
 
-	std::set<PhobosAttachEffectTypeClass*> cumulativeTypes;
-
-	for (auto const& attachEffect : pTechExt->PhobosAE)
+	if (pThis->IsAlive)
 	{
-		auto const pType = attachEffect->GetType();
+		std::set<PhobosAttachEffectTypeClass*> cumulativeTypes {};
+		std::vector<WeaponTypeClass*> expireWeapons {};
+		PhobosAEFunctions::ApplyExpireWeapon(expireWeapons, cumulativeTypes, pThis);
 
-		if (pType->ExpireWeapon.isset() && (pType->ExpireWeapon_TriggerOn & ExpireWeaponCondition::Death) != ExpireWeaponCondition::None)
+		for (auto const& pWeapon : expireWeapons)
 		{
-			if (!pType->Cumulative || !pType->ExpireWeapon_CumulativeOnlyOnce || !cumulativeTypes.contains(pType))
-			{
-				if (pType->Cumulative && pType->ExpireWeapon_CumulativeOnlyOnce)
-					cumulativeTypes.insert(pType);
+			TechnoClass* pTarget = pThis;
+			if (!pThis->IsAlive)
+				pTarget = nullptr;
 
-				attachEffect->ExpireWeapon();
-			}
+			WeaponTypeExtData::DetonateAt(pWeapon, coords, pTarget, false, pOwner);
 		}
 	}
-
 	return 0x0;
 }
 
@@ -424,6 +437,7 @@ DEFINE_HOOK(0x701BFE, TechnoClass_ReceiveDamage_Abilities, 0x6)
 	GET(int*, pDamage, EBX);
 
 	const auto nRank = pThis->Veterancy.GetRemainingLevel();
+	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
 	if (pWHExt->ImmunityType.isset() && TechnoExtData::HasImmunity(nRank, pThis, pWHExt->ImmunityType))
@@ -478,6 +492,8 @@ DEFINE_HOOK(0x701BFE, TechnoClass_ReceiveDamage_Abilities, 0x6)
 			}
 		}
 	}
+
+	PhobosAEFunctions::ApplyReflectDamage(pThis, pDamage, pAttacker, pAttacker_House, pWH);
 
 	return RetObjectClassRcvDamage;
 }
@@ -693,7 +709,7 @@ DEFINE_HOOK(0x51849A, InfantryClass_ReceiveDamage_DeathAnim, 5)
 		: Arguments->SourceHouse
 		;
 
-	AnimExtData::SetAnimOwnerHouseKind(Anim, Invoker, I->Owner, Arguments->Attacker, false);
+	AnimExtData::SetAnimOwnerHouseKind(Anim, Invoker, I->Owner, Arguments->Attacker, false, true);
 
 	R->EAX<AnimClass*>(Anim);
 	return 0x5184F2;
@@ -712,7 +728,7 @@ DEFINE_HOOK(0x5183DE, InfantryClass_ReceiveDamage_InfantryVirus1, 6)
 		? Arguments.Attacker->Owner
 		: Arguments.SourceHouse;
 
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker);
+	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, true);
 
 	// bonus: don't require SpawnsParticle to be present
 
@@ -740,7 +756,7 @@ DEFINE_HOOK(0x518698, InfantryClass_ReceiveDamage_Anims, 5) // InfantryExplode
 		? Arguments.Attacker->Owner
 		: Arguments.SourceHouse;
 
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false);
+	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
 
 	return 0x5185F1;
 }
@@ -757,7 +773,7 @@ DEFINE_HOOK(0x51887B, InfantryClass_ReceiveDamage_InfantryVirus2, 0xA)
 		: Arguments.SourceHouse;
 
 	const auto& [bChanged, result] =
-		AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false);
+		AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
 
 	// reset the color for default (invoker).
 	if (bChanged && result != OwnerHouseKind::Default)
@@ -779,7 +795,7 @@ DEFINE_HOOK(0x518A96, InfantryClass_ReceiveDamage_InfantryMutate, 7)
 		? Arguments.Attacker->Owner
 		: Arguments.SourceHouse;
 
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false);
+	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
 
 	return 0x518AFF;
 }

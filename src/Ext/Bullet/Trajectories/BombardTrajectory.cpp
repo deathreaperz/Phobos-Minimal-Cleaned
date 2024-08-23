@@ -15,6 +15,7 @@ bool BombardTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange
 		.Process(this->TargetSnapDistance, false)
 		.Process(this->FreeFallOnTarget, false)
 		.Process(this->NoLaunch, false)
+		.Process(this->TurningPointAnim, false)
 		;
 }
 
@@ -30,6 +31,7 @@ bool BombardTrajectoryType::Save(PhobosStreamWriter& Stm) const
 		.Process(this->TargetSnapDistance, false)
 		.Process(this->FreeFallOnTarget, false)
 		.Process(this->NoLaunch, false)
+		.Process(this->TurningPointAnim, false)
 		;
 }
 
@@ -48,8 +50,25 @@ bool BombardTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 	this->TargetSnapDistance.Read(exINI, pSection, "Trajectory.Bombard.TargetSnapDistance");
 	this->FreeFallOnTarget.Read(exINI, pSection, "Trajectory.Bombard.FreeFallOnTarget");
 	this->NoLaunch.Read(exINI, pSection, "Trajectory.Bombard.NoLaunch");
-
+	this->TurningPointAnim.Read(exINI, pSection, "Trajectory.Bombard.TurningPointAnim");
 	return true;
+}
+
+void BombardTrajectory::ApplyTurningPointAnim(CoordStruct& Position)
+{
+	auto const pType = this->GetTrajectoryType();
+
+	if (pType->TurningPointAnim)
+	{
+		if (auto const pAnim = GameCreate<AnimClass>(pType->TurningPointAnim, Position))
+		{
+			auto pExt = BulletExtContainer::Instance.Find(this->AttachedTo);
+			auto pTechno = this->AttachedTo->Owner ? this->AttachedTo->Owner : nullptr;
+			auto pOwner = pTechno && pTechno->Owner ? pTechno->Owner : pExt->Owner;
+			pAnim->SetOwnerObject(pTechno);
+			pAnim->Owner = pOwner;
+		}
+	}
 }
 
 bool BombardTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
@@ -80,6 +99,7 @@ void BombardTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
 	// use scaling since RandomRanged only support int
 	double fallPercentShift = ScenarioClass::Instance()->Random.RandomRanged(0, int(200 * pType->FallPercentShift)) / 100.0;
 	double fallPercent = pType->FallPercent - pType->FallPercentShift + fallPercentShift;
+	this->Height = pType->Height + pBullet->TargetCoords.Z;
 
 	if (!pType->NoLaunch)
 	{
@@ -91,7 +111,7 @@ void BombardTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
 	else
 	{
 		this->IsFalling = true;
-		CoordStruct SourceLocation;
+		CoordStruct SourceLocation {};
 		SourceLocation.Z = (int)this->Height - pBullet->SourceCoords.Z;
 		int scatterRange = static_cast<int>(pType->FallScatterRange.Get());
 		double angel = ScenarioClass::Instance()->Random.RandomDouble() * Math::TwoPi;
@@ -120,6 +140,8 @@ void BombardTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
 			pBullet->Velocity.Y = 0.0;
 			pBullet->Velocity.Z = 0.0;
 		}
+
+		this->ApplyTurningPointAnim(SourceLocation);
 	}
 }
 
@@ -198,6 +220,14 @@ void BombardTrajectory::OnAIVelocity(VelocityClass* pSpeed, VelocityClass* pPosi
 					pPosition->Y = pBullet->TargetCoords.Y;
 				}
 			}
+
+			CoordStruct BulletLocation {
+				static_cast<int>(pPosition->X),
+				static_cast<int>(pPosition->Y),
+				static_cast<int>(pPosition->Z)
+			};
+
+			this->ApplyTurningPointAnim(BulletLocation);
 		}
 	}
 	else if (!pType->FreeFallOnTarget)

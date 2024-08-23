@@ -23,7 +23,12 @@ bool FlyingStrings::DrawAllowed(CoordStruct const& nCoords, Point2D& outPoint)
 
 	if (auto const pCell = MapClass::Instance->TryGetCellAt(nCoords))
 	{
-		return (!pCell->IsFogged() && !pCell->IsShrouded()) && TacticalClass::Instance->CoordsToClient(nCoords, &outPoint);
+		if (!pCell->IsFogged() && !pCell->IsShrouded())
+		{
+			auto& [_ret, _cond] = TacticalClass::Instance->GetCoordsToClientSituation(nCoords);
+			outPoint = _ret;
+			return _cond;
+		}
 	}
 
 	return false;
@@ -208,12 +213,9 @@ void FlyingStrings::UpdateAll()
 				 if (Unsorted::CurrentFrame > item.CreationFrame + Duration - 70)
 				 {
 					 pos.Y -= (Unsorted::CurrentFrame - item.CreationFrame);
-					 Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
 				 }
-				 else
-				 {
-					 Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
-				 }
+
+				 Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
 			 }
 		 }
 	 }

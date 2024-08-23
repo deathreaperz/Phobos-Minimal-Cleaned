@@ -27,6 +27,7 @@ class GeneralUtils final
 public:
 
 	static bool IsValidString(const char* str);
+	static bool IsValidString(const wchar_t* str);
 	static void IntValidCheck(int* source, const char* section, const char* tag, int defaultValue, int min = MIN_VAL(int), int max = MAX_VAL(int));
 	static void DoubleValidCheck(double* source, const char* section, const char* tag, double defaultValue, double min = MIN_VAL(double), double max = MAX_VAL(double));
 	static const wchar_t* LoadStringOrDefault(const char* key, const wchar_t* defaultValue);
@@ -34,7 +35,7 @@ public:
 	static void AdjacentCellsInRange(std::vector<CellStruct>& nCells, size_t range);
 	static const bool ProduceBuilding(HouseClass* pOwner, int idxBuilding);
 
-	static bool is_number(const std::string& s)
+	static constexpr bool is_number(const std::string& s)
 	{
 		return !s.empty() && std::find_if(s.begin(),
 			s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
@@ -53,7 +54,7 @@ public:
 		return GetColorFromColorAdd(colorAdd[colorIndex]);
 	}
 
-	static inline void GetRandomAnimVal(int& Idx, int count, int facing, bool bRandom)
+	static constexpr inline void GetRandomAnimVal(int& Idx, int count, int facing, bool bRandom)
 	{
 		if (bRandom)
 			Idx = ScenarioClass::Instance->Random.RandomFromMax(count - 1);
@@ -124,7 +125,7 @@ public:
 		return result;
 	}
 
-	static void CalculateShakeVal(int& pShakeVal, int nInput, bool Alternate = true)
+	static constexpr void CalculateShakeVal(int& pShakeVal, int nInput, bool Alternate = true)
 	{
 		if (!Alternate)
 		{
@@ -173,14 +174,14 @@ public:
 		return sDigits;
 	}
 
-	static inline const int GetRangedRandomOrSingleValue(const Point2D& range)
+	static constexpr inline const int GetRangedRandomOrSingleValue(const Point2D& range)
 	{
 		return range.X >= range.Y ?
 			range.X : ScenarioClass::Instance->Random.RandomRanged(range.X, range.Y);
 	}
 
 	template<typename T>
-	static inline int GetRandomValue(Vector2D<T> range, int defVal)
+	static constexpr inline int GetRandomValue(Vector2D<T> range, int defVal)
 	{
 		int min = static_cast<int>(range.X);
 		int max = static_cast<int>(range.Y);
@@ -197,7 +198,7 @@ public:
 		return defVal;
 	}
 
-	static inline CoordStruct GetRandomOffset(int min, int max)
+	static constexpr inline CoordStruct GetRandomOffset(int min, int max)
 	{
 		double r = ScenarioClass::Instance->Random.RandomRanged(min, max);
 		if (r > 0)
@@ -209,14 +210,14 @@ public:
 		return CoordStruct::Empty;
 	}
 
-	static inline CoordStruct GetRandomOffset(double maxSpread, double minSpread)
+	static constexpr inline CoordStruct GetRandomOffset(double maxSpread, double minSpread)
 	{
 		int min = static_cast<int>((minSpread <= 0 ? 0 : minSpread) * 256);
 		int max = static_cast<int>((maxSpread > 0 ? maxSpread : 1) * 256);
 		return GetRandomOffset(min, max);
 	}
 
-	static inline double GetRangedRandomOrSingleValue(const PartialVector2D<double>& range)
+	static constexpr inline double GetRangedRandomOrSingleValue(const PartialVector2D<double>& range)
 	{
 		int min = static_cast<int>(range.X * 100);
 		int max = static_cast<int>(range.Y * 100);
@@ -224,7 +225,7 @@ public:
 		return range.X >= range.Y || range.ValueCount < 2 ? range.X : (ScenarioClass::Instance->Random.RandomRanged(min, max) / 100.0);
 	}
 
-	static inline int GetRangedRandomOrSingleValue(const PartialVector2D<int>& range)
+	static constexpr inline int GetRangedRandomOrSingleValue(const PartialVector2D<int>& range)
 	{
 		return range.X >= range.Y || range.ValueCount < 2 ? range.X : ScenarioClass::Instance->Random.RandomRanged(range.X, range.Y);
 	}
@@ -251,10 +252,10 @@ public:
 		return -1;
 	}
 
-	static inline std::map<Point2D, int> MakeTargetPad(std::vector<int>& weights, int count, int& maxValue)
+	static inline PhobosMap<Point2D, int> MakeTargetPad(std::vector<int>& weights, int count, int& maxValue)
 	{
 		const int weightCount = weights.size();
-		std::map<Point2D, int> targetPad {};
+		PhobosMap<Point2D, int> targetPad {};
 		maxValue = 0;
 
 		for (int index = 0; index < count; index++)
@@ -277,7 +278,7 @@ public:
 		return targetPad;
 	}
 
-	static inline int Hit(std::map<Point2D, int>& targetPad, int maxValue)
+	static constexpr inline int Hit(PhobosMap<Point2D, int>& targetPad, int maxValue)
 	{
 		int index = 0;
 		int p = ScenarioClass::Instance->Random.RandomFromMax(maxValue);
@@ -293,7 +294,7 @@ public:
 		return index;
 	}
 
-	static inline bool Bingo(double chance)
+	static constexpr inline bool Bingo(double chance)
 	{
 		if (chance > 0)
 		{
@@ -302,7 +303,7 @@ public:
 		return false;
 	}
 
-	static inline  bool Bingo(std::vector<double>& chances, int index)
+	static constexpr inline bool Bingo(std::vector<double>& chances, int index)
 	{
 		int size = chances.size();
 		if (size < index + 1)
@@ -326,8 +327,9 @@ public:
 
 		return r;
 	}
+
 	// 2nd order Pade approximant just in case someone complains about performance
-	static constexpr double Pade2_2(double in)
+	static constexpr inline double Pade2_2(double in)
 	{
 		const double s = in - static_cast<int>(in);
 		return GeneralUtils::FastPow(0.36787944117144233, static_cast<int>(in))
@@ -375,48 +377,6 @@ public:
 	static bool ApplyTheaterSuffixToString(char* str);
 	static bool ApplyTheaterExtToString(std::string& flag);
 	static std::string ApplyTheaterSuffixToString(const std::string& str);
-
-	template <size_t size>
-	static inline void lowercase(char(&nBuff)[size], char const (&nData)[size])
-	{
-		for (size_t i = 0; i < size; ++i)
-		{
-			nBuff[i] = (char)std::tolower(nData[i]);
-		}
-	}
-
-	template <size_t size>
-	static inline void uppercase(char(&nBuff)[size], char(&nData)[size])
-	{
-		for (size_t i = 0; i < size; ++i)
-		{
-			nBuff[i] = (char)std::toupper(nData[i]);
-		}
-	}
-
-	//
-	//  Lowercases string
-	//
-	template <typename T>
-	static inline std::basic_string<T> lowercase(const std::basic_string<T>& s)
-	{
-		std::basic_string<T> s2 = s;
-		std::transform(s2.begin(), s2.end(), s2.begin(),
-			[](const T v) { return static_cast<T>(std::tolower(v)); });
-		return s2;
-	}
-
-	//
-	// Uppercases string
-	//
-	template <typename T>
-	static std::basic_string<T> uppercase(const std::basic_string<T>& s)
-	{
-		std::basic_string<T> s2 = s;
-		std::transform(s2.begin(), s2.end(), s2.begin(),
-			[](const T v) { return static_cast<T>(std::toupper(v)); });
-		return s2;
-	}
 
 	static CellClass* GetCell(CellClass* pIn, CoordStruct& InOut, size_t nSpread, bool EmptyCell)
 	{
@@ -512,7 +472,7 @@ public:
 	}
 
 	template <typename T>
-	static void shuffleVector(std::vector<T>& items)
+	static constexpr void shuffleVector(std::vector<T>& items)
 	{
 		std::shuffle(items.begin(), items.end(), ScenarioClass::Instance->Random.Random());
 	}
@@ -556,13 +516,28 @@ public:
 	{ return Leptons(distance * 256); }
 
 	//https://noobtuts.com/cpp/compare-float-values
-	static __forceinline bool cmpf(float A, float B, float epsilon = 0.005f)
+	static FORCEINLINE bool cmpf(float A, float B, float epsilon = 0.005f)
 	{
 		return (fabs(A - B) < epsilon);
 	}
 
+	template <typename T>
+	static constexpr void Shuffle(std::vector<T>& items)
+	{
+		if (items.size() <= 1)
+			return;
+
+		size_t size = items.size();
+
+		for (size_t i = 0; i < size; i++)
+		{
+			size_t idx = ScenarioClass::Instance->Random.RandomRanged(i, size - 1);
+			std::swap(items[i], items[idx]);
+		}
+	}
+
 	template<bool UseCriticalRandomNumber = true>
-	static int GetRandomValue(const Point2D point, int defVal)
+	static constexpr int GetRandomValue(const Point2D point, int defVal)
 	{
 		int min = point.X;
 		int max = point.Y;
@@ -593,6 +568,22 @@ public:
 			return yellow;
 
 		return green;
+	}
+
+	static constexpr CoordStruct CoordinatesFromCell(const CellStruct& cell, bool snap = false, int zValue = 0)
+	{
+		CoordStruct tmp { cell.X * 256, cell.Y * 256, zValue };
+		if (snap)
+		{
+			tmp.X += 256 / 2;
+			tmp.Y += 256 / 2;
+		}
+		return tmp;
+	}
+
+	static constexpr CellStruct CellFromCoordinates(const CoordStruct& coord)
+	{
+		return { short(coord.X / 256) , short(coord.Y / 256) };
 	}
 
 	// Zero out a non-array pointer.
@@ -628,18 +619,4 @@ public:
 
 	static int GetLSAnimHeightFactor(AnimTypeClass* pType, CellClass* pCell, bool checklevel = false);
 #pragma endregion
-};
-
-struct StopwatchLogger
-{
-	Stopwatch watch;
-	const char* func;
-	const char* name;
-
-	StopwatchLogger(const char* pFunc = nullptr, const char* pName = nullptr) : func(pFunc), name(pName) { }
-
-	~StopwatchLogger()
-	{
-		Debug::Log("STOPWATCH %s (%s): %lld\n", func, name, watch.get_nano().QuadPart);
-	}
 };

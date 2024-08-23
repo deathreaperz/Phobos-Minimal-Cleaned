@@ -6,6 +6,22 @@
 
 namespace detail
 {
+	template <>
+	inline bool read<Vector3D<float>>(Vector3D<float>& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
+	{
+		if (!parser.Read3Float(pSection, pKey, (float*)&value))
+		{
+			if (!parser.empty())
+			{
+				Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a valid 3 float Values");
+			}
+
+			return false;
+		}
+
+		return true;
+	}
+
 	template<>
 	inline bool read<Foundation>(Foundation& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
 	{
@@ -508,7 +524,7 @@ namespace detail
 			for (char* cur = strtok_s(IniEx.value(), Delims, &context);
 				cur; cur = strtok_s(nullptr, Delims, &context))
 			{
-				auto res = trim(cur);
+				auto res = PhobosCRT::trim(cur);
 
 				T buffer = nullptr;
 				if constexpr (!Alloc)
@@ -554,7 +570,7 @@ namespace detail
 				cur;
 				cur = strtok_s(nullptr, Delims, &context))
 			{
-				auto res = trim(cur);
+				auto res = PhobosCRT::trim(cur);
 
 				if (!res.empty())
 					nVecDest[i].push_back(res.c_str());
@@ -596,7 +612,7 @@ namespace detail
 						{
 							List.AddItem(buffer);
 						}
-						else if (!GameStrings::IsBlank(cur))
+						else
 						{
 							List.AddUnique(buffer);
 						}

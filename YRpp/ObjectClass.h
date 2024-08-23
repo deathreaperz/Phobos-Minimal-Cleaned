@@ -63,7 +63,7 @@ public:
 	virtual ~ObjectClass() JMP_THIS(0x5F6DC0);
 
 	//AbstractClass
-	virtual void PointerExpired(AbstractClass* pAbstract, bool removed) override JMP_THIS(0x5F5230);
+	virtual void PointerExpired(AbstractClass* pAbstract, bool bremoved) override JMP_THIS(0x5F5230);
 	virtual bool IsDead() const override JMP_THIS(0x5F6690);
 	virtual void Update() override JMP_THIS(0x5F3E70);
 
@@ -135,7 +135,7 @@ public:
 	virtual bool Limbo() R0;
 
 	// place the object on the map
-	virtual bool Unlimbo(const CoordStruct& Crd, DirType dFaceDir) R0;
+	virtual bool Unlimbo(const CoordStruct& Crd, DirType dFaceDir) JMP_THIS(0x5F4EC0);
 
 	// cleanup things (lose line trail, deselect, etc). Permanently: destroyed/removed/gone opposed to just going out of sight.
 	virtual void Disappear(bool permanently) RX;
@@ -340,6 +340,10 @@ public:
 	//only accept BuildingClass it seems
 	void RemoveSidebarObject() const
 		{ JMP_THIS(0x734270); }
+
+	void MarkDownSetZ(int Z) const {
+		JMP_THIS(0x5F6060);
+	}
 
 	DamageState TakeDamage(int damage, WarheadTypeClass* pWH, bool crewed, bool ignoreDefenses = true, ObjectClass* pAttacker = nullptr, HouseClass* pAttackingHouse = nullptr) {
 		return ReceiveDamage(&damage, 0, pWH, pAttacker, ignoreDefenses, !crewed, pAttackingHouse);

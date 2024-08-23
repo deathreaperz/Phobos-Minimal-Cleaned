@@ -188,13 +188,13 @@ void BuildingTypeExtData::Initialize()
 bool BuildingTypeExtData::CanBeOccupiedBy(InfantryClass* whom) const
 {
 	// if CanBeOccupiedBy isn't empty, we have to check if this soldier is allowed in
-	return this->AllowedOccupiers.empty() || this->AllowedOccupiers.Contains(whom->Type);
-}
+	if (!this->DisallowedOccupiers.empty() && this->DisallowedOccupiers.Contains(whom->Type))
+		return false;
 
-Point2D* BuildingTypeExtData::GetOccupyMuzzleFlash(BuildingClass* pThis, int nOccupyIdx)
-{
-	return BuildingTypeExtContainer::Instance.Find(pThis->Type)
-		->OccupierMuzzleFlashes.data() + nOccupyIdx;
+	if (!this->AllowedOccupiers.empty() && !this->AllowedOccupiers.Contains(whom->Type))
+		return false;
+
+	return true;
 }
 
 void BuildingTypeExtData::DisplayPlacementPreview()
@@ -243,9 +243,10 @@ void BuildingTypeExtData::DisplayPlacementPreview()
 
 	const auto& [nOffsetX, nOffsetY, nOffsetZ] = pTypeExt->PlacementPreview_Offset.Get();
 	const auto nHeight = pCell->GetFloorHeight({ 0,0 });
-	Point2D nPoint { 0,0 };
 
-	if (!TacticalClass::Instance->CoordsToClient(CellClass::Cell2Coord(pCell->MapCoords, nHeight + nOffsetZ), &nPoint))
+	auto& [nPoint, _result] = TacticalClass::Instance->GetCoordsToClientSituation(CellClass::Cell2Coord(pCell->MapCoords, nHeight + nOffsetZ));
+
+	if (!_result)
 		return;
 
 	const auto nFrame = std::clamp(pTypeExt->PlacementPreview_ShapeFrame.Get(nDecidedFrame), 0, static_cast<int>(Selected->Frames));
@@ -427,8 +428,8 @@ int BuildingTypeExtData::GetEnhancedPower(BuildingClass* pBuilding, HouseClass* 
 		if (pExt->PowerPlantEnhancer_Buildings.empty() || !pExt->PowerPlantEnhancer_Buildings.Contains(pBuilding->Type))
 			continue;
 
-		fFactor *= std::powf(pExt->PowerPlantEnhancer_Factor.Get(1.0f), static_cast<float>(nCount));
-		nAmount += pExt->PowerPlantEnhancer_Amount.Get(0) * nCount;
+		fFactor *= std::powf(pExt->PowerPlantEnhancer_Factor, static_cast<float>(nCount));
+		nAmount += pExt->PowerPlantEnhancer_Amount * nCount;
 	}
 
 	return static_cast<int>(std::round(pBuilding->GetPowerOutput() * fFactor)) + nAmount;
@@ -822,6 +823,10 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->SpyEffect_Anim_Duration.Read(exINI, pSection, "SpyEffect.Anim.Duration");
 		this->SpyEffect_Anim_DisplayHouses.Read(exINI, pSection, "SpyEffect.Anim.DisplayHouses");
 
+		this->SpyEffect_SWTargetCenter.Read(exINI, pSection, "SpyEffect.SWTargetCenter");
+		this->ShowPower.Read(exINI, pSection, "ShowPower");
+		this->EMPulseCannon_UseWeaponSelection.Read(exINI, pSection, "EMPulseCannon.UseWeaponSelection");
+
 		this->CanC4_AllowZeroDamage.Read(exINI, pSection, "CanC4.AllowZeroDamage");
 		this->C4_Modifier.Read(exINI, pSection, "C4Modifier");
 
@@ -882,6 +887,7 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			pThis->CanBeOccupied = true;
 		}
 
+		this->DisallowedOccupiers.Read(exINI, pSection, "CannotBeOccupiedBy");
 		this->BunkerRaidable.Read(exINI, pSection, "Bunker.Raidable");
 		this->Firestorm_Wall.Read(exINI, pSection, "Firestorm.Wall");
 
@@ -934,6 +940,9 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->EVA_Offline.Read(exINI, pSection, "EVA.Offline");
 
 		this->Explodes_DuringBuildup.Read(exINI, pSection, "Explodes.DuringBuildup");
+
+		this->FactoryPlant_AllowTypes.Read(exINI, pSection, "FactoryPlant.AllowTypes");
+		this->FactoryPlant_DisallowTypes.Read(exINI, pSection, "FactoryPlant.DisallowTypes");
 
 		if (Phobos::Otamaa::CompatibilityMode)
 		{
@@ -1187,6 +1196,7 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		//.Process(this->LaserFencePostLinks)
 		//.Process(this->LaserFenceDirection)
 		.Process(this->AllowedOccupiers)
+		.Process(this->DisallowedOccupiers)
 		.Process(this->BunkerRaidable)
 		.Process(this->Firestorm_Wall)
 
@@ -1242,6 +1252,13 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->SpyEffect_Anim)
 		.Process(this->SpyEffect_Anim_Duration)
 		.Process(this->SpyEffect_Anim_DisplayHouses)
+
+		.Process(this->SpyEffect_SWTargetCenter)
+		.Process(this->ShowPower)
+		.Process(this->EMPulseCannon_UseWeaponSelection)
+
+		.Process(this->FactoryPlant_AllowTypes)
+		.Process(this->FactoryPlant_DisallowTypes)
 		;
 }
 
@@ -1258,7 +1275,7 @@ bool BuildingTypeExtContainer::Load(BuildingTypeClass* key, IStream* pStm)
 
 	if (Iter == BuildingTypeExtContainer::Instance.Map.end())
 	{
-		auto ptr = this->AllocateUnlchecked(key);
+		auto ptr = this->AllocateUnchecked(key);
 		Iter = BuildingTypeExtContainer::Instance.Map.emplace(key, ptr).first;
 	}
 
@@ -1296,7 +1313,7 @@ DEFINE_HOOK(0x45E50C, BuildingTypeClass_CTOR, 0x6)
 
 	if (Iter == BuildingTypeExtContainer::Instance.Map.end())
 	{
-		auto ptr = BuildingTypeExtContainer::Instance.AllocateUnlchecked(pItem);
+		auto ptr = BuildingTypeExtContainer::Instance.AllocateUnchecked(pItem);
 		Iter = BuildingTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
 	}
 

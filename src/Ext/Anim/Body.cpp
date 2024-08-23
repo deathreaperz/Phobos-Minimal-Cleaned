@@ -204,7 +204,7 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	const auto nCoord = pExt && pExt->BackupCoords.has_value() ? pExt->BackupCoords.get() : pThis->GetCoords();
 	const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->Owner : nullptr;
 
-	if (auto const pWeapon = pTypeExt->Weapon.Get(nullptr))
+	if (auto const pWeapon = pTypeExt->Weapon)
 	{
 		AbstractClass* pTarget = AnimExtData::GetTarget(pThis);
 		// use target loc instead of anim loc , it doesnt work well with bridges
@@ -354,6 +354,16 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 				Helpers::Otamaa::LauchSW(nLauch, pHouse, nCoord, pObject);
 			}
 		}
+
+		if (auto pWeapon = pTypeExt->WeaponToCarry)
+		{
+			AbstractClass* pTarget = AnimExtData::GetTarget(pThis);
+			TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis);
+			const auto nDamageResult = static_cast<int>(pWeapon->Damage * TechnoExtData::GetDamageMult(pInvoker, !pTypeExt->Damage_ConsiderOwnerVeterancy.Get()));
+			const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->Owner : nullptr;
+
+			WeaponTypeExtData::DetonateAt(pWeapon, pTarget, pInvoker, pTypeExt->Damage_ConsiderOwnerVeterancy, pOwner);
+		}
 	}
 
 	return true;
@@ -469,14 +479,14 @@ const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimCla
 	return { false , OwnerHouseKind::Default }; //yes return true
 }
 
-const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimClass* pAnim, HouseClass* pInvoker, HouseClass* pVictim, TechnoClass* pTechnoInvoker, bool defaultToVictimOwner)
+const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimClass* pAnim, HouseClass* pInvoker, HouseClass* pVictim, TechnoClass* pTechnoInvoker, bool defaultToVictimOwner, bool forceOwnership)
 {
 	if (!pAnim || !pAnim->Type)
 		return { false ,OwnerHouseKind::Default };
 
 	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pAnim->Type);
 
-	if (!pTypeExt->NoOwner)
+	if (forceOwnership || !pTypeExt->NoOwner)
 	{
 		if (auto const pAnimExt = AnimExtContainer::Instance.Find(pAnim))
 			pAnimExt->Invoker = pTechnoInvoker;
@@ -555,6 +565,104 @@ Layer __fastcall AnimExtData::GetLayer_patch(AnimClass* pThis, void* _)
 	return pThis->Type ? pThis->Type->Layer : Layer::Air;
 }
 
+void AnimExtData::SpawnFireAnims(AnimClass* pThis)
+{
+	auto const pType = pThis->Type;
+	auto const pExt = AnimExtContainer::Instance.Find(pThis);
+	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pType);
+	auto const coords = pThis->GetCoords();
+
+	auto SpawnAnim = [&coords, pThis, pExt](AnimTypeClass* pType, int distance, bool constrainToCellSpots, bool attach)
+		{
+			if (!pType)
+				return;
+
+			CoordStruct newCoords = coords;
+
+			if (distance > 0)
+			{
+				newCoords = MapClass::GetRandomCoordsNear(coords, distance, false);
+
+				if (constrainToCellSpots)
+					newCoords = MapClass::PickInfantrySublocation(newCoords, true);
+			}
+
+			auto const loopCount = ScenarioClass::Instance->Random.RandomRanged(1, 2);
+			auto const pAnim = GameCreate<AnimClass>(pType, newCoords, 0, loopCount, 0x600u, 0, false);
+			pAnim->Owner = pThis->Owner;
+
+			if (attach && pThis->OwnerObject)
+				pAnim->SetOwnerObject(pThis->OwnerObject);
+
+			auto const pExtNew = AnimExtContainer::Instance.Find(pAnim);
+			pExtNew->Invoker = pExt->Invoker ? pExt->Invoker : pExtNew->Invoker;
+		};
+
+	auto LoopAnims = [&coords, SpawnAnim](std::vector<AnimTypeClass*>* const anims, std::vector<double>* const chances, std::vector<double>* const distances,
+		int count, AnimTypeClass* defaultAnimType, double defaultChance0, double defaultChanceRest, int defaultDistance0, int defaultDistanceRest, bool constrainToCellSpots, bool attach)
+		{
+			double chance = 0.0;
+			int distance = 0;
+			AnimTypeClass* pAnimType = nullptr;
+
+			for (size_t i = 0; i < static_cast<unsigned int>(count); i++)
+			{
+				if (chances->size() > 0 && chances->size() > i)
+					chance = (*chances)[i];
+				else if (chances->size() > 0)
+					chance = (*chances)[chances->size() - 1];
+				else
+					chance = i == 0 ? defaultChance0 : defaultChanceRest;
+
+				if (chance < ScenarioClass::Instance->Random.RandomDouble())
+					continue;
+
+				if (anims->size() > 1)
+					pAnimType = (*anims)[ScenarioClass::Instance->Random.RandomRanged(0, anims->size() - 1)];
+				else if (anims->size() > 0)
+					pAnimType = (*anims)[0];
+				else
+					pAnimType = defaultAnimType;
+
+				if (distances->size() > 0 && distances->size() < i)
+					distance = static_cast<int>((*distances)[i] * Unsorted::LeptonsPerCell);
+				else if (distances->size() > 0)
+					distance = static_cast<int>((*distances)[distances->size() - 1] * Unsorted::LeptonsPerCell);
+				else
+					distance = i == 0 ? defaultDistance0 : defaultDistanceRest;
+
+				SpawnAnim(pAnimType, distance, constrainToCellSpots, attach);
+			}
+		};
+
+	auto const disallowedLandTypes = pTypeExt->FireAnimDisallowedLandTypes.Get(pType->Scorch ? LandTypeFlags::Default : LandTypeFlags::None);
+
+	if (IsLandTypeInFlags(disallowedLandTypes, pThis->GetCell()->LandType))
+		return;
+
+	std::vector<AnimTypeClass*>* anims = &pTypeExt->SmallFireAnims;
+	std::vector<double>* chances = &pTypeExt->SmallFireChances;
+	std::vector<double>* distances = &pTypeExt->SmallFireDistances;
+	bool constrainToCellSpots = pTypeExt->ConstrainFireAnimsToCellSpots;
+	bool attach = pTypeExt->AttachFireAnimsToParent.Get(pType->Scorch);
+	int smallCount = pTypeExt->SmallFireCount.Get(1 + pType->Flamer);
+
+	if (pType->Flamer)
+	{
+		LoopAnims(anims, chances, distances, smallCount, RulesClass::Instance->SmallFire, 0.5, 1.0, 64, 160, constrainToCellSpots, attach);
+
+		anims = &pTypeExt->LargeFireAnims;
+		chances = &pTypeExt->LargeFireChances;
+		distances = &pTypeExt->LargeFireDistances;
+
+		LoopAnims(anims, chances, distances, pTypeExt->LargeFireCount, RulesClass::Instance->LargeFire, 0.5, 0.5, 112, 112, constrainToCellSpots, attach);
+	}
+	else if (pType->Scorch)
+	{
+		LoopAnims(anims, chances, distances, smallCount, RulesClass::Instance->SmallFire, 1.0, 1.0, 0, 0, constrainToCellSpots, attach);
+	}
+}
+
 // =============================
 // load / save
 
@@ -581,6 +689,7 @@ void AnimExtData::Serialize(T& Stm)
 // container
 
 AnimExtContainer AnimExtContainer::Instance;
+std::vector<AnimExtData*> AnimExtContainer::Pool;
 
 // =============================
 // hooks

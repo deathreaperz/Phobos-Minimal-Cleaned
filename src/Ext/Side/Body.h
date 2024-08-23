@@ -34,6 +34,9 @@ public:
 	Valueable<ColorStruct> Sidebar_PowerDelta_Red { Drawing::DefaultColors[(int)DefaultColorList::Red] };
 	Valueable<TextAlign> Sidebar_PowerDelta_Align { TextAlign::Left };
 
+	Valueable<Point2D> Sidebar_WeedsCounter_Offset { { 0, 0 } };
+	Nullable<ColorStruct> Sidebar_WeedsCounter_Color {};
+
 	Nullable<ColorStruct> ToolTip_Background_Color { };
 	Nullable<int> ToolTip_Background_Opacity { };
 	Nullable<float> ToolTip_Background_BlurSize { };
@@ -47,7 +50,7 @@ public:
 	Nullable<InfantryTypeClass*> Engineer { };
 	Nullable<InfantryTypeClass*> Technician { };
 	ValueableIdx<AircraftTypeClass> ParaDropPlane { -1 };
-	Nullable<AircraftTypeClass*> SpyPlane { };
+	Valueable<AircraftTypeClass*> SpyPlane { };
 	Valueable<UnitTypeClass*> HunterSeeker;
 
 	NullableVector<TechnoTypeClass*> ParaDropTypes { };
@@ -135,18 +138,25 @@ public:
 	static int CurrentLoadTextColor;
 
 	static UniqueGamePtrB<SHPStruct> s_GraphicalTextImage;
-	static UniqueGamePtr<BytePalette> s_GraphicalTextPalette;
-	static UniqueGamePtrB<ConvertClass> s_GraphicalTextConvert;
+	static ConvertClass* s_GraphicalTextConvert;
 
 	static UniqueGamePtrB<SHPStruct> s_DialogBackgroundImage;
-	static UniqueGamePtr<BytePalette> s_DialogBackgroundPalette;
-	static UniqueGamePtrB<ConvertClass> s_DialogBackgroundConvert;
+	static ConvertClass* s_DialogBackgroundConvert;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
 
-	static SHPStruct* GetGraphicalTextImage();
-	static ConvertClass* GetGraphicalTextConvert();
+	static constexpr SHPStruct* GetGraphicalTextImage()
+	{
+		return SideExtData::s_GraphicalTextImage ?
+			SideExtData::s_GraphicalTextImage.get() : FileSystem::GRFXTXT_SHP;
+	}
+
+	static constexpr ConvertClass* GetGraphicalTextConvert()
+	{
+		return SideExtData::s_GraphicalTextConvert ?
+			SideExtData::s_GraphicalTextConvert : FileSystem::GRFXTXT_Convert;
+	}
 
 	constexpr FORCEINLINE static size_t size_Of()
 	{

@@ -124,6 +124,7 @@ DEFINE_HOOK(0x4242CA, AnimClass_Update_FixIE_TrailerSeperation, 0x6)
 		? PlayTrail : StopTrail;
 }
 
+/*
 DEFINE_HOOK_AGAIN(0x42511B, AnimClass_Expired_ScorchFlamer, 0x7)
 DEFINE_HOOK_AGAIN(0x4250C9, AnimClass_Expired_ScorchFlamer, 0x7)
 DEFINE_HOOK(0x42513F, AnimClass_Expired_ScorchFlamer, 0x7)
@@ -179,4 +180,4 @@ DEFINE_HOOK(0x42513F, AnimClass_Expired_ScorchFlamer, 0x7)
 	}
 
 	return 0;
-}
+}*/

@@ -10,7 +10,9 @@ std::array<const char*, (size_t)DiscardCondition::count>  EnumFunctions::Discard
 	{ "entry" } ,
 	{ "move" } ,
 	{ "stationary" } ,
-	{ "drain" }
+	{ "drain" } ,
+	{ "inrange" } ,
+	{ "outofrange" }
  }
 };
 
@@ -82,7 +84,9 @@ std::array<const char* const, (size_t)DefaultColorList::count> EnumFunctions::De
 	{ "Green" } ,
 	{ "Blue" } ,
 	{ "Yellow" } ,
-	{ "White" }
+	{ "White" } ,
+	{ "AresPCXTransparent" } ,
+	{ "Black" } ,
 }
 };
 
@@ -123,6 +127,7 @@ std::array<const char* const, 21u> EnumFunctions::TileType_ToStrings
 	{"Tunnel"} ,
 	{"Water"} ,
 	{"Ramp"} ,
+	{"Cliff"},
 	{"Blank"} ,
 	{"Shore"} ,
 	{"Wet"} ,
@@ -207,7 +212,7 @@ std::array<std::pair<const char* const, SpotlightFlags>, 5u> EnumFunctions::Spot
 }
 };
 
-std::array<std::pair<const char* const, HorizontalPosition>, 4u> EnumFunctions::HorizontalPosition_ToStrings
+std::array<std::pair<const char* const, HorizontalPosition>, 3u> EnumFunctions::HorizontalPosition_ToStrings
 {
 {
 	{ "left", HorizontalPosition::Left },
@@ -216,9 +221,28 @@ std::array<std::pair<const char* const, HorizontalPosition>, 4u> EnumFunctions::
 }
 };
 
+std::array<std::pair<const char* const, MouseHotSpotX>, 3u> EnumFunctions::MouseHotSpotX_ToStrings
+{
+{
+	{ "left", MouseHotSpotX::Left },
+	{ "center", MouseHotSpotX::Center },
+	{ "right", MouseHotSpotX::Right }
+}
+};
+
+std::array<std::pair<const char* const, MouseHotSpotY>, 3u> EnumFunctions::MouseHotSpotY_ToStrings
+{
+{
+	{ "top", MouseHotSpotY::Top },
+	{ "bottom", MouseHotSpotY::Bottom },
+	{ "middle", MouseHotSpotY::Middle }
+}
+};
+
 std::array<std::pair<const char* const, TextAlign>, 4u> EnumFunctions::TextAlign_ToStrings
 {
 {
+	{"none" , TextAlign::None} ,
 	{"left" , TextAlign::Left} ,
 	{"center", TextAlign::Center } ,
 	{"right", TextAlign::Right }
@@ -442,6 +466,8 @@ std::array<const char*, (size_t)BountyValueOption::count> EnumFunctions::BountyV
 {
 {
 	{ "value" },
+	{ "valuepercentofcost" },
+	{ "valuepercentofsoylent" },
 	{ "cost" },
 	{ "soylent" }
 }
@@ -474,7 +500,15 @@ std::array<const char*, (size_t)DisplayInfoType::count> EnumFunctions::DisplayIn
 	{ "ironcurtain" } ,
 	{ "disableweapon" },
 	{ "cloakdisable" } ,
-	{ "gattlingcount" }
+	{ "gattlingcount" },
+	{ "rof" },
+	{ "reload" },
+	{ "spawntimer" },
+	{ "gattlingtimer" },
+	{ "producecash" },
+	{ "passengerkill" },
+	{ "autodeath" },
+	{ "superweapon" },
 }
 };
 
@@ -558,7 +592,10 @@ bool EnumFunctions::IsTechnoEligible(TechnoClass* const pTechno, AffectedTarget 
 				else
 					return (allowed & AffectedTarget::Aircraft) != AffectedTarget::None;
 			case BuildingClass::AbsID:
-				return (allowed & AffectedTarget::Building) != AffectedTarget::None;
+				if (pTechno->IsStrange())
+					return (allowed & AffectedTarget::Unit) != AffectedTarget::None;
+				else
+					return (allowed & AffectedTarget::Building) != AffectedTarget::None;
 			}
 		}
 		else

@@ -51,7 +51,7 @@ DEFINE_HOOK(0x6622E0, RocketLocomotionClass_ILocomotion_Process_CustomMissile, 6
 
 	if (pExt->IsCustomMissile)
 	{
-		R->EAX(pExt->CustomMissileData.GetEx());
+		R->EAX(pExt->CustomMissileData.operator->());
 		return 0x66230A;
 	}
 
@@ -168,7 +168,7 @@ DEFINE_HOOK(0x66305A, RocketLocomotionClass_Explode_CustomMissile, 6)
 
 	if (pExt->IsCustomMissile)
 	{
-		*ppRocketData = pExt->CustomMissileData.GetEx();
+		*ppRocketData = pExt->CustomMissileData.operator->();
 
 		const bool isElite = pLocomotor->SpawnerIsElite;
 		*ppWarhead = (isElite ? pExt->CustomMissileEliteWarhead : pExt->CustomMissileWarhead);
@@ -193,9 +193,7 @@ DEFINE_HOOK(0x663218, RocketLocomotionClass_Explode_CustomMissile2, 5)
 			? pExt->CustomMissileEliteWeapon : pExt->CustomMissileWeapon)
 		{
 			WeaponTypeExtData::DetonateAt(pWeapon, coords, pOwner, true, pOwner ? pOwner->Owner : nullptr);
-			pOwner->Limbo();
-			pOwner->UnInit();
-			return 0x6632D9;
+			return 0x6632CC;
 		}
 	}
 
@@ -214,18 +212,9 @@ DEFINE_HOOK(0x663218, RocketLocomotionClass_Explode_CustomMissile2, 5)
 		);
 	}
 
-	MapClass::FlashbangWarheadAt(nDamage, pWH, coords, false);
-	MapClass::DamageArea(coords, nDamage, pOwner, pWH, pWH->Tiberium, pOwner->Owner);
-
-	if (pOwner->IsAlive)
-	{
-		//int damage = pOwner->Type->Strength;
-		//if (pOwner->ReceiveDamage(&damage, 0, RulesClass::Instance->C4Warhead, nullptr, true, true, nullptr) != DamageState::NowDead) {
-		pOwner->Limbo();
-		TechnoExtData::HandleRemove(pOwner, nullptr);
-		//}
-	}
-	return 0x6632D9;
+	//modifyng code below will cause missile to alive even after detonated
+	//this need to be fixed in a different way ,..
+	return 0x66328C;
 }
 
 DEFINE_HOOK(0x6632F2, RocketLocomotionClass_ILocomotion_MoveTo_CustomMissile, 6)
@@ -235,7 +224,7 @@ DEFINE_HOOK(0x6632F2, RocketLocomotionClass_ILocomotion_MoveTo_CustomMissile, 6)
 
 	if (pExt->IsCustomMissile)
 	{
-		R->EDX(pExt->CustomMissileData.GetEx());
+		R->EDX(pExt->CustomMissileData.operator->());
 		return 0x66331E;
 	}
 
@@ -249,7 +238,7 @@ DEFINE_HOOK(0x6634F6, RocketLocomotionClass_ILocomotion_DrawMatrix_CustomMissile
 
 	if (pExt->IsCustomMissile)
 	{
-		R->EAX(pExt->CustomMissileData.GetEx());
+		R->EAX(pExt->CustomMissileData.operator->());
 		return 0x66351B;
 	}
 

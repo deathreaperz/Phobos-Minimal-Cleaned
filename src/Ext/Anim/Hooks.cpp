@@ -222,10 +222,13 @@ DEFINE_HOOK(0x424AEC, AnimClass_AI_SetMission, 0x6)
 	GET(InfantryClass*, pInf, EDI);
 
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
+	const auto Is_AI = !pInf->Owner->IsControlledByHuman();
 
-	const Mission nMission = pTypeExt->MakeInfantry_Mission.Get(Mission::Hunt);
-	//Debug::Log("Anim[%s] with MakeInf , setting Mission[%s] ! \n", pThis->Type->ID , MissionClass::MissionToString(nMission));
-	pInf->QueueMission(nMission, false);
+	if (!pTypeExt->ScatterAnimToInfantry(Is_AI))
+		pInf->QueueMission(pTypeExt->GetAnimToInfantryMission(Is_AI), false);
+	else
+		pInf->Scatter(CoordStruct::Empty, true, false);
+
 	return 0x0;
 }
 
@@ -249,4 +252,18 @@ DEFINE_HOOK(0x423365, AnimClass_DrawIt_ExtraShadow, 0x8)
 
 	return hasExtra && pTypeExt->ExtraShadow ?
 		DrawShadow : SkipDrawShadow;
+}
+
+DEFINE_HOOK(0x425060, AnimClass_Expire_ScorchFlamer, 0x6)
+{
+	GET(AnimClass*, pThis, ESI);
+
+	auto const pType = pThis->Type;
+
+	if (!pType->Flamer && !pType->Scorch)
+		return 0;
+
+	AnimExtData::SpawnFireAnims(pThis);
+
+	return 0;
 }

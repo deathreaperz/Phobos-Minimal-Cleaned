@@ -13,6 +13,7 @@ void OverlayTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	auto pArtSection = pThis->ImageFile;
 
 	this->Palette.Read(exINI, pArtSection, "Palette");
+	this->ZAdjust.Read(exINI, pArtSection, "ZAdjust");
 }
 
 // =============================
@@ -24,6 +25,7 @@ void OverlayTypeExtData::Serialize(T& Stm)
 	Stm
 		.Process(this->Initialized)
 		.Process(this->Palette)
+		.Process(this->ZAdjust)
 		;
 }
 
@@ -40,7 +42,7 @@ bool OverlayTypeExtContainer::Load(OverlayTypeClass* key, IStream* pStm)
 
 	if (Iter == OverlayTypeExtContainer::Instance.Map.end())
 	{
-		auto ptr = this->AllocateUnlchecked(key);
+		auto ptr = this->AllocateUnchecked(key);
 		Iter = OverlayTypeExtContainer::Instance.Map.emplace(key, ptr).first;
 	}
 
@@ -76,7 +78,7 @@ DEFINE_HOOK(0x5FE3A2, OverlayTypeClass_CTOR, 0x5)
 
 	if (Iter == OverlayTypeExtContainer::Instance.Map.end())
 	{
-		auto ptr = OverlayTypeExtContainer::Instance.AllocateUnlchecked(pItem);
+		auto ptr = OverlayTypeExtContainer::Instance.AllocateUnchecked(pItem);
 		Iter = OverlayTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
 	}
 

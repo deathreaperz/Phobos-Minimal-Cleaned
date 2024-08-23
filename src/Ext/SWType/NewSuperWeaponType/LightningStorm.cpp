@@ -127,7 +127,7 @@ void SW_LightningStorm::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	pData->Weather_Debris.Read(exINI, section, "Lightning.Debris");
 	pData->Weather_Sounds.Read(exINI, section, "Lightning.Sounds");
 	pData->Weather_UseSeparateState.Read(exINI, section, "Lightning.UseSeparateState");
-	pData->Weather_LightningRodTypes.Read(exINI, section, "Lightning.LightningRodTypes");
+	pData->Weather_LightningRodTypes.Read(exINI, section, "Lightning.LighningRodTypes");
 }
 
 WarheadTypeClass* SW_LightningStorm::GetWarhead(const SWTypeExtData* pData) const
@@ -143,6 +143,61 @@ int SW_LightningStorm::GetDamage(const SWTypeExtData* pData) const
 SWRange SW_LightningStorm::GetRange(const SWTypeExtData* pData) const
 {
 	return pData->SW_Range->empty() ? SWRange(RulesClass::Instance->LightningCellSpread) : pData->SW_Range;
+}
+
+void SW_LightningStorm::ValidateData(SWTypeExtData* pData) const
+{
+	Debug::Log("%s - %s SW Validating Data ---------------------------:\n", pData->AttachedToObject->ID, this->GetTypeString()[0]);
+
+	if (pData->Weather_BoltExplosion.isset())
+	{
+		if (pData->Weather_BoltExplosion)
+		{
+			if (!pData->Weather_BoltExplosion->GetImage())
+			{
+				Debug::Log("Anim[%s] Has no proper Image!\n", pData->Weather_BoltExplosion->ID);
+				Debug::RegisterParserError();
+			}
+		}
+	}
+
+	if (pData->Weather_Clouds.HasValue())
+	{
+		for (auto& explo : pData->Weather_Clouds)
+		{
+			if (explo && !explo->GetImage())
+			{
+				Debug::Log("Anim[%s] Has no proper Image!\n", explo->ID);
+				Debug::RegisterParserError();
+			}
+		}
+	}
+
+	if (pData->Weather_Bolts.HasValue())
+	{
+		for (auto& explo : pData->Weather_Bolts)
+		{
+			if (explo && !explo->GetImage())
+			{
+				Debug::Log("Anim[%s] Has no proper Image!\n", explo->ID);
+				Debug::RegisterParserError();
+			}
+		}
+	}
+
+	if (pData->Weather_Debris.HasValue())
+	{
+		for (auto& explo : pData->Weather_Debris)
+		{
+			if (explo && !explo->GetImage())
+			{
+				Debug::Log("Anim[%s] Has no proper Image!\n", explo->ID);
+				Debug::RegisterParserError();
+			}
+		}
+	}
+
+	Debug::Log("-----------------------------------------------------\n");
 }
 
 bool CloneableLighningStormStateMachine::Load(PhobosStreamReader& Stm, bool RegisterForChange)
@@ -180,29 +235,25 @@ bool CloneableLighningStormStateMachine::Save(PhobosStreamWriter& Stm) const
 void CloneableLighningStormStateMachine::Update()
 {
 	// remove all bolts from the list that are halfway done
-	auto iter_bolt_present = std::remove_if(this->BoltsPresent.begin(), this->BoltsPresent.end(), [](AnimClass* pAnim)
-{
-	return !pAnim || pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2;
+	this->BoltsPresent.remove_if([](AnimClass* pAnim)
+ {
+	 return !pAnim || pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2;
 	});
-
-	this->BoltsPresent.erase(iter_bolt_present, this->BoltsPresent.end());
 
 	// find the clouds that should strike right now
-	auto iter_cloud_manifest = std::remove_if(this->CloudsManifest.begin(), this->CloudsManifest.end(), [&](AnimClass* pAnim)
-{
-	if (!pAnim)
-		return true;
+	this->CloudsManifest.remove_if([&](AnimClass* pAnim)
+ {
+	 if (!pAnim)
+		 return true;
 
-	if (pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2)
-	{
-		auto const crdStrike = pAnim->GetCoords();
-		this->Strike2(crdStrike);
-	}
+	 if (pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2)
+	 {
+		 auto const crdStrike = pAnim->GetCoords();
+		 this->Strike2(crdStrike);
+	 }
 
-	return false;
+	 return false;
 	});
-
-	this->CloudsManifest.erase(iter_cloud_manifest, this->CloudsManifest.end());
 
 	// all currently present clouds have to disappear first
 	if (CloudsPresent.empty())
@@ -220,12 +271,10 @@ void CloneableLighningStormStateMachine::Update()
 	}
 	else
 	{
-		auto iter_cloud_present = std::remove_if(this->CloudsPresent.begin(), this->CloudsPresent.end(), [&](AnimClass* pAnim)
-{
-	return !pAnim || pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames - 1;
+		this->CloudsPresent.remove_if([&](AnimClass* pAnim)
+ {
+	 return !pAnim || pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames - 1;
 		});
-
-		this->CloudsPresent.erase(iter_cloud_present, this->CloudsPresent.end());
 	}
 
 	auto const pExt = this->GetTypeExtData();
@@ -284,6 +333,7 @@ void CloneableLighningStormStateMachine::Update()
 	// random damage. somewhere in range.
 	auto const scatterDelay = pExt->Weather_ScatterDelay.Get(
 		RulesClass::Instance->LightningScatterDelay);
+
 	if (scatterDelay > 0 && (Unsorted::CurrentFrame % scatterDelay == 0))
 	{
 		auto const range = Type->GetRange(pExt);
@@ -396,9 +446,12 @@ void CloneableLighningStormStateMachine::Strike2(CoordStruct const& nCoord)
 		{
 			if (auto const pAnimType = it.at(ScenarioClass::Instance->Random.RandomFromMax(it.size() - 1)))
 			{
-				auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
-				AnimExtData::SetAnimOwnerHouseKind(pAnim, Super->Owner, nullptr, Invoker, false);
-				BoltsPresent.push_back(pAnim);
+				if (pAnimType->GetImage())
+				{
+					auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
+					AnimExtData::SetAnimOwnerHouseKind(pAnim, Super->Owner, nullptr, Invoker, false);
+					BoltsPresent.push_back(pAnim);
+				}
 			}
 		}
 
@@ -524,11 +577,14 @@ bool CloneableLighningStormStateMachine::Strike(CellStruct const& nCell)
 
 		if (auto const pAnimType = itClouds.at(ScenarioClass::Instance->Random.RandomFromMax(itClouds.size() - 1)))
 		{
-			// create the cloud and do some book keeping.
-			auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
-			AnimExtData::SetAnimOwnerHouseKind(pAnim, Super->Owner, nullptr, Invoker, false);
-			CloudsManifest.push_back(pAnim);
-			CloudsPresent.push_back(pAnim);
+			if (pAnimType->GetImage())
+			{
+				// create the cloud and do some book keeping.
+				auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
+				AnimExtData::SetAnimOwnerHouseKind(pAnim, Super->Owner, nullptr, Invoker, false);
+				CloudsManifest.push_back(pAnim);
+				CloudsPresent.push_back(pAnim);
+			}
 		}
 	}
 
@@ -629,7 +685,7 @@ bool CloneableLighningStormStateMachine::Start(CellStruct& cell, int nDuration, 
 void CloneableLighningStormStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
 {
 	AnnounceInvalidPointer(Invoker, ptr, remove);
-	AnnounceInvalidPointer(CloudsPresent, ptr);
-	AnnounceInvalidPointer(CloudsManifest, ptr);
-	AnnounceInvalidPointer(BoltsPresent, ptr);
+	AnnounceInvalidPointer<AnimClass*>(CloudsPresent, ptr);
+	AnnounceInvalidPointer<AnimClass*>(CloudsManifest, ptr);
+	AnnounceInvalidPointer<AnimClass*>(BoltsPresent, ptr);
 }

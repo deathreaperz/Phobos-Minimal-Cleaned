@@ -111,4 +111,5 @@ public:
 	static void LoadVariablesToFile(bool isGlobal);
 
 	static PhobosMap<int, ExtendedVariable>* GetVariables(bool IsGlobal);
+	static bool UpdateLightSources;
 };

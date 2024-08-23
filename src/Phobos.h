@@ -128,6 +128,10 @@ struct Phobos final
 
 	static bool EnableConsole;
 
+	static bool ShouldQuickSave;
+	static std::wstring CustomGameSaveDescription;
+	static void PassiveSaveGame();
+
 	struct UI
 	{
 		static bool DisableEmptySpawnPositions;
@@ -141,8 +145,9 @@ struct Phobos final
 		static double PowerDelta_ConditionYellow;
 		static double PowerDelta_ConditionRed;
 		static bool CenterPauseMenuBackground;
-
+		static bool WeedsCounter_Show;
 		static bool UnlimitedColor;
+		static bool AnchoredToolTips;
 
 		static const wchar_t* CostLabel;
 		static const wchar_t* PowerLabel;
@@ -152,9 +157,15 @@ struct Phobos final
 		static const wchar_t* PercentLabel;
 
 		static const wchar_t* BuidingRadarJammedLabel;
-
+		static const wchar_t* BuidingFakeLabel;
 		static const wchar_t* ShowBriefingResumeButtonLabel;
 		static char ShowBriefingResumeButtonStatusLabel[0x20];
+
+		static const wchar_t* Power_Label;
+		static const wchar_t* Drain_Label;
+		static const wchar_t* Storage_Label;
+		static const wchar_t* Radar_Label;
+		static const wchar_t* Spysat_Label;
 	};
 
 	struct Config
@@ -190,6 +201,13 @@ struct Phobos final
 
 		static bool DebugFatalerrorGenerateDump;
 		static bool SaveGameOnScenarioStart;
+
+		static bool ShowPowerDelta;
+		static bool ShowHarvesterCounter;
+		static bool ShowWeedsCounter;
+
+		static bool UseNewInheritance;
+		static bool UseNewIncludes;
 	};
 
 	struct Misc
@@ -216,6 +234,7 @@ struct Phobos final
 		static bool NoLogo;
 		static bool NoCD;
 		static bool CompatibilityMode;
+		static bool ReplaceGameMemoryAllocator;
 	};
 
 	struct Defines

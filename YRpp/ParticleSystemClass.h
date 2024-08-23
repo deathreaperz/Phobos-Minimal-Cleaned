@@ -35,7 +35,7 @@ public:
 	virtual ~ParticleSystemClass() override JMP_THIS(0x630230);
 
 	//AbstractClass
-	virtual void PointerExpired(AbstractClass* pAbstract, bool removed) override JMP_THIS(0x62FE90);
+	virtual void PointerExpired(AbstractClass* pAbstract, bool bremoved) override JMP_THIS(0x62FE90);
 	virtual AbstractType WhatAmI() const override RT(AbstractType);
 	virtual int Size() const override R0;
 	virtual void Update() override JMP_THIS(0x62FD60);
@@ -112,10 +112,8 @@ struct UninitAttachedSystem
 {
 	void operator() (ParticleSystemClass* pAnim) const
 	{
-		if (pAnim && pAnim->IsAlive)
-		{
-			pAnim->Owner = nullptr;
-			pAnim->UnInit();
+		if (pAnim) {
+			GameDelete<true,false>(pAnim);
 		}
 
 		pAnim = nullptr;

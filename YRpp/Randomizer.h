@@ -37,28 +37,125 @@ public:
 	static constexpr reference<Random2Class, 0x886B88u> const Global{}; // For backward compatibility
 	static constexpr reference<double, 0x7E3570u> const INT_MAX_GAME {};
 	static constexpr reference<DWORD, 0xA8ED94u> const Seed {};
+	static constexpr reference<DWORD, 0x839644u, 19u> FirstTable {};
+	static constexpr reference<DWORD, 0x839690u, 22u> SecondTable {};
 
 protected:
-	explicit Random2Class(DWORD seed) noexcept
-	{ JMP_THIS(0x65C6D0); }
+	constexpr explicit Random2Class(DWORD seed) noexcept
+	//{ JMP_THIS(0x65C6D0); }
+	{
+		this->Index1 = 0;
+		this->Index2 = 103;
+
+		for (size_t i = 0; i < 250u; ++i) {
+			int v8 = 0;
+			for (int a = 0; a < 4; a++) {
+				const int v7 = i ^ FirstTable[a];
+
+				v8 = seed ^ ((unsigned __int16)v7 * (v7 >> 16)
+				 + (SecondTable[a] ^ ((((unsigned __int16)v7 * (unsigned __int16)v7 + ~((v7 >> 16) * (v7 >> 16))) << 16) | (((unsigned __int16)v7
+				 * (unsigned __int16)v7
+				 + ~((v7 >> 16) * (v7 >> 16))) >> 16))));
+			}
+
+			this->Table[i] = v8;
+		}
+
+		this->unknownBool_00 = 0;
+	}
 
 public:
-	int Random()
-	{ JMP_THIS(0x65C780); }
+	constexpr int Random()
+	//{ JMP_THIS(0x65C780); }
+	{
+		if (this->unknownBool_00) {
+			return 0;
+		}
 
-	int RandomRanged(int nMin, int nMax)
-	{ JMP_THIS(0x65C7E0); }
+		this->Table[this->Index1] ^= this->Table[this->Index2];
+		int Index1 = this->Index1;
+		int result = this->Table[Index1++];
+		int v3 = this->Index2 + 1;
+		this->Index1 = Index1;
+		this->Index2 = v3;
+		if ( Index1 >= 250 ) {
+			this->Index1 = 0;
+		}
 
-	int RandomRanged(const Point2D& nMinMax)
+		if ( v3 >= 250 ) {
+			this->Index2 = 0;
+		}
+		return result;
+	}
+
+	constexpr int RandomRanged(int nMin, int nMax)
+	//{ JMP_THIS(0x65C7E0); }
+	{
+		int result = nMin;
+		int v5 = nMax;
+		int v6 = nMin;
+		if ( nMin != nMax ) {
+			if ( nMin > nMax ) {
+				v6 = nMax;
+				v5 = nMin;
+			}
+
+			int v7 = v5 - v6;
+			int v9 = 31;
+			if (v5 - v6 >= 0 ) {
+				do {
+					if ( v9 <= 0 ) {
+						break;
+					}
+					--v9;
+				}
+				while ( ((1 << v9) & v7) == 0 );
+			}
+
+			int v10 = v7 + 1;
+			int v11 = ~(-1 << (v9 + 1));
+			if ( v7 + 1 > v7 && v7 + 1 != v7 ) {
+				do {
+					int v12 = 0;
+
+					if(!this->unknownBool_00) {
+						this->Table[this->Index1] ^= this->Table[this->Index2];
+						int Index1 = this->Index1;
+						int v14 = this->Table[Index1++];
+						int v15 = this->Index2 + 1;
+						this->Index1 = Index1;
+						this->Index2 = v15;
+						if ( Index1 >= 250 ) {
+							this->Index1 = 0;
+						}
+
+						if ( v15 >= 250 ) {
+							this->Index2 = 0;
+						}
+
+						v12 = v14;
+					}
+					v10 = v11 & v12;
+				}
+				while ( v10 > v7 );
+			}
+
+			return v6 + v10;
+		}
+
+		return result;
+	}
+
+	constexpr FORCEINLINE int RandomRanged(const Point2D& nMinMax)
 	{ return RandomRanged(nMinMax.X, nMinMax.Y); }
 
-	int operator()(const Point2D& nMinMax)
+	constexpr FORCEINLINE int operator()(const Point2D& nMinMax)
 	{ return RandomRanged(nMinMax); }
 
-	int operator()()
+	constexpr FORCEINLINE int operator()()
 	{ return Random(); }
 
-	int operator()(int nMin, int nMax)
+	constexpr FORCEINLINE int operator()(int nMin, int nMax)
 	{ return RandomRanged(nMin, nMax); }
 
 	/*
@@ -68,7 +165,7 @@ public:
 	*	True = if percent less than random 0 - 99
 	*	False = if percent more than random 0 - 99
 	*/
-	bool PercentChance(int percent)
+	constexpr FORCEINLINE bool PercentChance(int percent)
 	{ return RandomRanged(0,99) < percent; }
 
 	/*
@@ -78,34 +175,34 @@ public:
 	*	True = if chanche less than RandomDouble() result
 	*	False = if chance more than RandomDouble() result
 	*/
-	bool PercentChance(double dChance)
+	constexpr FORCEINLINE bool PercentChance(double dChance)
 	{ return RandomDouble() < dChance; }
 
-	double RandomDouble()
+	constexpr FORCEINLINE double RandomDouble()
 	{ return RandomRanged(1, INT_MAX) * 4.656612873077393e-10; }
 
-	double RandomDouble_Closest()
+	constexpr FORCEINLINE double RandomDouble_Closest()
 	{ return RandomRanged(1, INT_MAX) * 4.656612873077393e-10 - 0.5; }
 
-	double GameRandomDouble()
+	constexpr FORCEINLINE double GameRandomDouble()
 	{ return RandomRanged(1, INT_MAX) * INT_MAX_GAME(); }
 
-	double GameRandomDouble_Closest()
+	constexpr FORCEINLINE double GameRandomDouble_Closest()
 	{ return RandomRanged(1, INT_MAX) * INT_MAX_GAME() - 0.5; }
 
-	bool RandomBool()
+	constexpr FORCEINLINE bool RandomBool()
 	{ return static_cast<bool>(RandomRanged(0, 1)); }
 
 	template<typename T> requires std::is_integral<std::underlying_type_t<T>>::value
-	T RandomRangedSpecific(T nMin, T nMax) {
+	constexpr FORCEINLINE T RandomRangedSpecific(T nMin, T nMax) {
 		return static_cast<T>(RandomRanged(static_cast<int>(nMin), static_cast<int>(nMax)));
 	}
 
 	template<typename T> requires std::is_integral<T>::value
-		T RandomRangedSpecific(T nMin, T nMax) {
+	constexpr FORCEINLINE T RandomRangedSpecific(T nMin, T nMax) {
 		return static_cast<T>(RandomRanged(static_cast<int>(nMin), static_cast<int>(nMax)));
 	}
-	int RandomFromMax(int nMax) {
+	constexpr FORCEINLINE int RandomFromMax(int nMax) {
 		return RandomRanged(0, nMax);
 	}
 

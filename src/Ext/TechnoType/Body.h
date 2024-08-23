@@ -164,6 +164,16 @@ public:
 	Valueable<int> Death_Countdown { 0 };
 	Valueable<KillMethod> Death_Method { KillMethod::Explode };
 	Valueable<bool> Death_WithMaster { false };
+	Valueable<int> AutoDeath_MoneyExceed { -1 };
+	Valueable<int> AutoDeath_MoneyBelow { -1 };
+	Valueable<bool> AutoDeath_LowPower { false };
+	Valueable<bool> AutoDeath_FullPower { false };
+	Valueable<int> AutoDeath_PassengerExceed { -1 };
+	Valueable<int> AutoDeath_PassengerBelow { -1 };
+	Valueable<bool> AutoDeath_ContentIfAnyMatch { true };
+	Valueable<bool> AutoDeath_OwnedByPlayer { false };
+	Valueable<bool> AutoDeath_OwnedByAI { false };
+
 	Valueable<bool> Death_IfChangeOwnership { false };
 
 	ValueableVector<TechnoTypeClass*> AutoDeath_Nonexist {};
@@ -174,8 +184,8 @@ public:
 	Valueable<AffectedHouse> AutoDeath_Exist_House { AffectedHouse::Owner };
 	Valueable<bool> AutoDeath_Exist_Any { false };
 	Valueable<bool> AutoDeath_Exist_AllowLimboed { true };
-	Nullable<AnimTypeClass*> AutoDeath_VanishAnimation {};
-
+	Valueable<AnimTypeClass*> AutoDeath_VanishAnimation { nullptr };
+	Valueable<TechnoTypeClass*> Convert_AutoDeath {};
 	Valueable<SlaveReturnTo> Slaved_ReturnTo { SlaveReturnTo::Killer };
 	Valueable<ShieldTypeClass*> ShieldType { nullptr };
 
@@ -201,7 +211,7 @@ public:
 	PhobosMap<WarheadTypeClass*, std::vector<AnimTypeClass*>> DestroyAnimSpecific {};
 	Valueable<bool> NotHuman_RandomDeathSequence { false };
 
-	Nullable<InfantryTypeClass*> DefaultDisguise {};
+	Valueable<InfantryTypeClass*> DefaultDisguise { nullptr };
 
 	Nullable<int> OpenTopped_RangeBonus {};
 	Nullable<float> OpenTopped_DamageMultiplier {};
@@ -210,6 +220,7 @@ public:
 	Valueable<bool> OpenTopped_AllowFiringIfDeactivated { true };
 	Valueable<bool> OpenTopped_ShareTransportTarget { true };
 	Valueable<bool> OpenTopped_UseTransportRangeModifiers { false };
+	Valueable<bool> OpenTopped_CheckTransportDisableWeapons { false };
 	Valueable<bool> AutoFire { false };
 	Valueable<bool> AutoFire_TargetSelf { false };
 
@@ -278,10 +289,12 @@ public:
 	std::vector<BurstFLHBundle> DeployedWeaponBurstFLHs {};
 	std::vector<CoordStruct> AlternateFLHs {};
 
-	Nullable<bool> IronCurtain_SyncDeploysInto {};
-	Valueable<IronCurtainFlag> IronCurtain_Effect { IronCurtainFlag::Default };
+	Nullable<bool> IronCurtain_KeptOnDeploy {};
+	Nullable<bool> ForceShield_KeptOnDeploy {};
+	Nullable<IronCurtainFlag> IronCurtain_Effect {};
 	Nullable<WarheadTypeClass*> IronCurtain_KillWarhead {};
-
+	Nullable<IronCurtainFlag> ForceShield_Effect {};
+	Nullable<WarheadTypeClass*> ForceShield_KillWarhead {};
 	ValueableIdx<VoxClass> EVA_Sold { -1 };
 	ValueableIdx<VocClass> SellSound { -1 };
 
@@ -298,7 +311,7 @@ public:
 	Valueable<bool> Explodes_KillPassengers { true };
 
 	Nullable<int> DeployFireWeapon {};
-	Nullable<WeaponTypeClass*> RevengeWeapon {};
+	Valueable<WeaponTypeClass*> RevengeWeapon { nullptr };
 	Valueable<AffectedHouse> RevengeWeapon_AffectsHouses { AffectedHouse::All };
 
 	Valueable<TargetZoneScanType> TargetZoneScanType { TargetZoneScanType::Same };
@@ -430,7 +443,6 @@ public:
 
 	Nullable<ColorStruct> CommandLine_Move_Color { };
 	Nullable<ColorStruct> CommandLine_Attack_Color { };
-	Nullable<bool> CloakMove { };
 	Nullable<bool> PassiveAcquire_AI { };
 	Nullable<bool> CanPassiveAquire_Naval { };
 	Valueable<bool> TankDisguiseAsTank { false };
@@ -466,12 +478,12 @@ public:
 
 	Nullable<bool> AI_LegalTarget { };
 	Valueable<bool> DeployFire_UpdateFacing { true };
-	Nullable<TechnoTypeClass*> Fake_Of { };
+	Valueable<TechnoTypeClass*> Fake_Of { nullptr };
 	Valueable<bool> CivilianEnemy { false };
 	Valueable<bool> ImmuneToBerserk { false };
 	Valueable<double> Berzerk_Modifier { 1.0 };
 
-	Valueable<bool> IgnoreToProtect { false };
+	//Valueable<bool> IgnoreToProtect { false };
 	Valueable<int> TargetLaser_Time { 15 };
 	ValueableVector<int> TargetLaser_WeaponIdx { };
 
@@ -643,6 +655,8 @@ public:
 
 	Valueable<AnimTypeClass*> NoAmmoEffectAnim { nullptr };
 	Valueable<int> AttackFriendlies_WeaponIdx { -1 };
+	Valueable<bool> AttackFriendlies_AutoAttack { false };
+
 	Nullable<WORD> PipScaleIndex { };
 
 	Nullable<SHPStruct*> AmmoPip_shape { };
@@ -825,8 +839,8 @@ public:
 	Valueable<bool> IsBomb { false };
 	Valueable<AnimTypeClass*> ParachuteAnim { nullptr };
 
-	Nullable<TechnoTypeClass*> ClonedAs {};
-	Nullable<TechnoTypeClass*> AI_ClonedAs {};
+	Valueable<TechnoTypeClass*> ClonedAs {};
+	Valueable<TechnoTypeClass*> AI_ClonedAs {};
 	Valueable<bool> Cloneable { true };
 	ValueableVector<BuildingTypeClass*> ClonedAt {};
 	ValueableVector<BuildingTypeClass const*> BuiltAt {};
@@ -905,7 +919,7 @@ public:
 
 	Nullable<bool> TurretShadow {};
 	Valueable<int> ShadowIndex_Frame { 0 };
-	std::map<int, int> ShadowIndices {};
+	PhobosMap<int, int> ShadowIndices {};
 	Nullable<int> ShadowSizeCharacteristicHeight {};
 
 	std::vector<ValueableIdxVector<VocClass>> TalkbubbleVoices {};
@@ -915,10 +929,15 @@ public:
 
 	//add this just in case the implementation chages
 #pragma region BuildLimitGroup
-	ValueableVector<TechnoTypeClass*> BuildLimit_Group_Types { };
-	Valueable<bool> BuildLimit_Group_Any { false };
-	ValueableVector<int> BuildLimit_Group_Limits { };
-	Valueable<bool> BuildLimit_Group_Stop { false };
+	ValueableVector<TechnoTypeClass*> BuildLimitGroup_Types {};
+	ValueableVector<int> BuildLimitGroup_Nums {};
+	Valueable<int> BuildLimitGroup_Factor { 1 };
+	Valueable<bool> BuildLimitGroup_ContentIfAnyMatch { false };
+	Valueable<bool> BuildLimitGroup_NotBuildableIfQueueMatch { false };
+	ValueableVector<TechnoTypeClass*> BuildLimitGroup_ExtraLimit_Types {};
+	ValueableVector<int> BuildLimitGroup_ExtraLimit_Nums {};
+	ValueableVector<int> BuildLimitGroup_ExtraLimit_MaxCount {};
+	Valueable<int> BuildLimitGroup_ExtraLimit_MaxNum { 0 };
 #pragma endregion
 
 	NullableVector<int> Tiberium_PipIdx {};
@@ -935,6 +954,37 @@ public:
 	ValueableVector<int> AttachEffect_Delays {};
 	ValueableVector<int> AttachEffect_InitialDelays {};
 	NullableVector<int> AttachEffect_RecreationDelays {};
+
+	Valueable<bool> KeepTargetOnMove {};
+	Nullable<Leptons> KeepTargetOnMove_ExtraDistance {};
+
+	Nullable<bool> ForbidParallelAIQueues {};
+	Nullable<AnimTypeClass*> Wake {};
+	Valueable<bool> Spawner_AttackImmediately { false };
+
+	ValueableIdx<VoxClass> EVA_Combat { -1 };
+	Nullable<bool> CombatAlert {};
+	Nullable<bool> CombatAlert_NotBuilding {};
+	Nullable<int> SubterraneanHeight {};
+
+	Valueable<int> Spawner_RecycleRange { -1 };
+	Valueable<CoordStruct> Spawner_RecycleFLH { {0,0,0} };
+	Valueable<bool> Spawner_RecycleOnTurret { false };
+	Valueable<AnimTypeClass*> Spawner_RecycleAnim { nullptr };
+
+	Valueable<bool> HugeBar { false };
+	Valueable<int> HugeBar_Priority { -1 };
+
+	std::vector<Valueable<CoordStruct>> SprayOffsets {};
+
+	Nullable<int> AINormalTargetingDelay {};
+	Nullable<int> PlayerNormalTargetingDelay {};
+	Nullable<int> AIGuardAreaTargetingDelay {};
+	Nullable<int> PlayerGuardAreaTargetingDelay {};
+
+	Valueable<bool> CanBeBuiltOn { false };
+	Valueable<bool> UnitBaseNormal { false };
+	Valueable<bool> UnitBaseForAllyBuilding { false };
 
 	TechnoTypeExtData() noexcept = default;
 	~TechnoTypeExtData() noexcept = default;
@@ -968,8 +1018,8 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	static double TurretMultiOffsetDefaultMult;
-	static double TurretMultiOffsetOneByEightMult;
+	static constexpr double TurretMultiOffsetDefaultMult { 1.0 };
+	static constexpr double TurretMultiOffsetOneByEightMult { 0.125 };
 
 	// Ares 0.A
 	static const char* GetSelectionGroupID(ObjectTypeClass* pType);

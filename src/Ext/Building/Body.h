@@ -63,11 +63,17 @@ public:
 	int GrindingWeapon_AccumulatedCredits { 0 };
 	int LastFlameSpawnFrame { 0 };
 
-	Handle<AnimClass*, UninitAnim> SpyEffectAnim {};
+	Handle<AnimClass*, UninitAnim> SpyEffectAnim { nullptr };
 	int SpyEffectAnimDuration {};
+	int PoweredUpToLevel { 0 }; // Distinct from UpgradeLevel,
+	//and set to highest PowersUpToLevel out of
+	//applied upgrades regardless of how many are currently applied to this building.
 
 	BuildingExtData() noexcept = default;
-	~BuildingExtData() noexcept = default;
+	~BuildingExtData() noexcept
+	{
+		this->SpyEffectAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+	}
 
 	void InitializeConstant();
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
@@ -108,6 +114,9 @@ public:
 	static bool ReverseEngineer(BuildingClass* pBuilding, TechnoClass* Victim);
 
 	static const std::vector<CellStruct> GetFoundationCells(BuildingClass* pThis, CellStruct baseCoords, bool includeOccupyHeight = false);
+
+	static bool CheckOccupierCanLeave(HouseClass* pBuildingHouse, HouseClass* pOccupierHouse);
+	static bool CleanUpBuildingSpace(BuildingTypeClass* pBuildingType, CellStruct topLeftCell, HouseClass* pHouse, TechnoClass* pExceptTechno = nullptr);
 
 private:
 	template <typename T>

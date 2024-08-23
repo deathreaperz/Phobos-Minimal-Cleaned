@@ -34,13 +34,41 @@
 
 #include <GeneralDefinitions.h>
 
+enum class LandTypeFlags : unsigned short
+{
+	None = 0,
+	Clear = 1 << (char)LandType::Clear,
+	Road = 1 << (char)LandType::Road,
+	Water = 1 << (char)LandType::Water,
+	Rock = 1 << (char)LandType::Rock,
+	Wall = 1 << (char)LandType::Wall,
+	Tiberium = 1 << (char)LandType::Tiberium,
+	Beach = 1 << (char)LandType::Beach,
+	Rough = 1 << (char)LandType::Rough,
+	Ice = 1 << (char)LandType::Ice,
+	Railroad = 1 << (char)LandType::Railroad,
+	Tunnel = 1 << (char)LandType::Tunnel,
+	Weeds = 1 << (char)LandType::Weeds,
+
+	All = 0xFFFF,
+	Default = Water | Rock | Ice | Beach
+};
+
+MAKE_ENUM_FLAGS(LandTypeFlags);
+inline bool IsLandTypeInFlags(LandTypeFlags flags, LandType type)
+{
+	return (bool)((LandTypeFlags)(1 << (char)type) & flags);
+}
+
 enum class DiscardCondition : unsigned char
 {
 	None = 0x0,
-	Entry = 0x1,
-	Move = 0x2,
-	Stationary = 0x3,
-	Drain = 0x4,
+	Entry,
+	Move,
+	Stationary,
+	Drain,
+	InRange,
+	OutOfRange,
 
 	count
 };
@@ -562,6 +590,14 @@ enum class DisplayInfoType : BYTE
 	DisableWeapon = 11,
 	CloakDisable = 12,
 	GattlingCount = 13,
+	ROF = 14,
+	Reload = 15,
+	SpawnTimer = 16,
+	GattlingTimer = 17,
+	ProduceCash = 18,
+	PassengerKill = 19,
+	AutoDeath = 20,
+	SuperWeapon = 21,
 	count
 };
 
@@ -582,7 +618,8 @@ enum class KillMethod : int
 	Explode = 0,     //default death option
 	Vanish = 1,
 	Sell = 2,     // buildings only
-	Random = 3
+	Convert = 3, // units only
+	Random = 4
 };
 
 enum class BannerNumberType : int

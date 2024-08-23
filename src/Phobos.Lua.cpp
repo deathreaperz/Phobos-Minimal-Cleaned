@@ -39,7 +39,7 @@ void Phobos::ExecuteLua()
 				if (IS_SAME_STR_(PCName, adminName.c_str()))
 				{
 					Phobos::EnableConsole = true;
-					Phobos::Config::MultiThreadSinglePlayer = true;
+					//Phobos::Config::MultiThreadSinglePlayer = true;
 					Phobos::Config::DebugFatalerrorGenerateDump = true;
 					Phobos::Otamaa::IsAdmin = true;
 				}
@@ -78,7 +78,7 @@ void Phobos::ExecuteLua()
 						DWORD protectFlag;
 						if (Phobos::Otamaa::IsAdmin)
 						{
-							std::string copy = trim(result.c_str());
+							std::string copy = PhobosCRT::trim(result.c_str());
 							Debug::LogDeferred("Patching string [%d] [0x%x - %s (%d) - max %d]\n", i, addr, copy.c_str(), result.size(), maxlen);
 						}
 
@@ -113,7 +113,14 @@ void Phobos::ExecuteLua()
 
 		if (lua_isboolean(L, -1) == 1)
 		{
-			StaticVars::MovieMDINI = lua_toboolean(L, -1);
+			Phobos::Otamaa::CompatibilityMode = lua_toboolean(L, -1);
+		}
+
+		lua_getglobal(L, "ReplaceGameMemoryAllocator");
+
+		if (lua_isboolean(L, -1) == 1)
+		{
+			Phobos::Otamaa::ReplaceGameMemoryAllocator = lua_toboolean(L, -1);
 		}
 	}
 

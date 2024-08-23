@@ -25,6 +25,11 @@ bool GeneralUtils::IsValidString(const char* str)
 	return true;
 }
 
+bool GeneralUtils::IsValidString(const wchar_t* str)
+{
+	return str != nullptr && wcslen(str) != 0 && !wcsstr(str, L"MISSING:");
+}
+
 void GeneralUtils::IntValidCheck(int* source, const char* section, const char* tag, int defaultValue, int min, int max)
 {
 	if (*source < min || *source>max)
@@ -43,6 +48,8 @@ void GeneralUtils::DoubleValidCheck(double* source, const char* section, const c
 	}
 }
 
+#include <Misc/Ares/CSF.h>
+
 const wchar_t* GeneralUtils::LoadStringOrDefault(const char* key, const wchar_t* defaultValue)
 {
 	if (GeneralUtils::IsValidString(key))
@@ -53,7 +60,8 @@ const wchar_t* GeneralUtils::LoadStringOrDefault(const char* key, const wchar_t*
 
 const wchar_t* GeneralUtils::LoadStringUnlessMissing(const char* key, const wchar_t* defaultValue)
 {
-	return wcsstr(LoadStringOrDefault(key, defaultValue), L"MISSING:") ? defaultValue : LoadStringOrDefault(key, defaultValue);
+	const auto get_result = LoadStringOrDefault(key, defaultValue);
+	return wcsstr(get_result, L"MISSING:") ? defaultValue : get_result;
 }
 
 void GeneralUtils::AdjacentCellsInRange(std::vector<CellStruct>& nCells, size_t range)
@@ -79,7 +87,7 @@ const bool GeneralUtils::ProduceBuilding(HouseClass* pOwner, int idxBuilding)
 		{
 			if (pItem->FindFactory(true, true, true, pOwner))
 			{
-				const auto pBuilding = type_cast<BuildingTypeClass*>(pItem);
+				const auto pBuilding = static_cast<BuildingTypeClass*>(pItem);
 
 				if (pOwner->GetPrimaryFactory(AbstractType::Building, false, pBuilding->BuildCat))
 					return false;
@@ -155,7 +163,8 @@ bool GeneralUtils::ApplyTheaterSuffixToString(char* str)
 	{
 		std::string pTheater = TheaterTypeClass::Array.empty() ? Theater::Get(ScenarioClass::Instance->Theater)->Extension :
 			TheaterTypeClass::FindFromTheaterType(ScenarioClass::Instance->Theater)->Extension.c_str();
-		pTheater = GeneralUtils::lowercase(pTheater);
+		PhobosCRT::lowercase(pTheater);
+
 		pSuffix[0] = pTheater[0];
 		pSuffix[1] = pTheater[1];
 		pSuffix[2] = pTheater[2];
@@ -173,7 +182,8 @@ bool GeneralUtils::ApplyTheaterExtToString(std::string& flag)
 	{
 		std::string pTheater = TheaterTypeClass::Array.empty() ? Theater::Get(ScenarioClass::Instance->Theater)->Letter :
 			TheaterTypeClass::FindFromTheaterType(ScenarioClass::Instance->Theater)->Letter.c_str();
-		pTheater = GeneralUtils::lowercase(pTheater);
+
+		PhobosCRT::lowercase(pTheater);
 
 		flag.replace(nPos, 1, pTheater);
 		return true;
@@ -192,7 +202,8 @@ std::string GeneralUtils::ApplyTheaterSuffixToString(const std::string& str)
 		std::string pTheater = TheaterTypeClass::Array.empty() ? Theater::Get(ScenarioClass::Instance->Theater)->Extension
 			: TheaterTypeClass::FindFromTheaterType(ScenarioClass::Instance->Theater)->Extension.c_str()
 			;
-		pTheater = GeneralUtils::lowercase(pTheater);
+
+		PhobosCRT::lowercase(pTheater);
 
 		//only set the 3 characters without the terminator string
 		buffer.replace(nPos, 3, pTheater);

@@ -56,7 +56,7 @@ public:
 		return -1;
 	}
 
-	static void AllocateNoCheck(const char* Title)
+	static constexpr void AllocateNoCheck(const char* Title)
 	{
 		Array.emplace_back(Title);
 	}
@@ -119,7 +119,7 @@ public:
 		WavName += ".wav";
 	}
 
-	~LooseAudioCache() = default;
+	constexpr ~LooseAudioCache() = default;
 private:
 	std::string Name;
 	std::string WavName;
@@ -139,12 +139,12 @@ public:
 
 	class AudioBag
 	{
-		AudioBag(const AudioBag&) = delete;
-		AudioBag& operator=(const AudioBag& other) = delete;
+		constexpr AudioBag(const AudioBag&) = delete;
+		constexpr AudioBag& operator=(const AudioBag& other) = delete;
 	public:
 
-		AudioBag() = default;
-		~AudioBag() = default;
+		constexpr AudioBag() = default;
+		constexpr ~AudioBag() = default;
 
 		explicit AudioBag(const char* pFilename) : AudioBag()
 		{
@@ -297,12 +297,12 @@ public:
 		return Indexes;
 	}
 
-	void Append(const char* pFileBase)
+	constexpr void Append(const char* pFileBase)
 	{
 		this->Bags.emplace_back(pFileBase);
 	}
 
-	bool GetFileStruct(FileStruct& file, int idx, AudioIDXEntry*& sample)
+	constexpr bool GetFileStruct(FileStruct& file, int idx, AudioIDXEntry*& sample)
 	{
 		if (size_t(idx) < this->Files.size())
 		{
@@ -314,13 +314,13 @@ public:
 		return false;
 	}
 
-	CCFileClass* GetFileFromIndex(int idx)
+	constexpr CCFileClass* GetFileFromIndex(int idx)
 	{
 		return size_t(idx) < Files.size() ?
 			this->Files[idx].second : nullptr;
 	}
 
-	size_t TotalSampleSizes() const
+	constexpr size_t TotalSampleSizes() const
 	{
 		return this->Files.size();
 	}
@@ -365,13 +365,15 @@ bool PlayWavWrapper(int HouseTypeIdx, size_t SampleIdx)
 		HouseTypeClass::Array->Items[HouseTypeIdx]
 	);
 
-	if (pExt->TauntFile.empty() || pExt->TauntFile[SampleIdx - 1].empty())
+	const auto& vec = pExt->TauntFile;
+
+	if (vec.empty() || vec[SampleIdx - 1].empty())
 	{
 		Debug::FatalErrorAndExit("Country [%s] Have Invalid Taunt Name Format [%s]\n",
-		pExt->AttachedToObject->ID, pExt->TauntFile[SampleIdx - 1].c_str());
+		pExt->AttachedToObject->ID, vec[SampleIdx - 1].c_str());
 	}
 
-	return pAudioStream->PlayWAV(pExt->TauntFile[SampleIdx - 1].c_str(), false);
+	return pAudioStream->PlayWAV(vec[SampleIdx - 1].c_str(), false);
 }
 
 #ifndef aaa

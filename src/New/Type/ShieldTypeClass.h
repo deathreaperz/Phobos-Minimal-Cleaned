@@ -33,9 +33,9 @@ public:
 	Valueable<AttachedAnimFlag> IdleAnim_TemporalAction;
 	Damageable<AnimTypeClass*> IdleAnim;
 	Damageable<AnimTypeClass*> IdleAnimDamaged;
-	Nullable<AnimTypeClass*> BreakAnim;
-	Nullable<AnimTypeClass*> HitAnim;
-	Nullable<WeaponTypeClass*> BreakWeapon;
+	Valueable<AnimTypeClass*> BreakAnim;
+	Valueable<AnimTypeClass*> HitAnim;
+	Valueable<WeaponTypeClass*> BreakWeapon;
 	Valueable<double> AbsorbPercent;
 	Valueable<double> PassPercent;
 	Valueable<int> ReceivedDamage_Minimum;
@@ -58,7 +58,13 @@ public:
 	Valueable<bool> PassthruNegativeDamage;
 	Valueable<bool> CanBeHealed;
 	NullableIdx<CursorTypeClass> HealCursorType;
-	Nullable<SpotlightFlags> HitBright;
+
+	Valueable<bool> HitFlash;
+	Nullable<int> HitFlash_FixedSize;
+	Valueable<bool> HitFlash_Red;
+	Valueable<bool> HitFlash_Green;
+	Valueable<bool> HitFlash_Blue;
+	Valueable<bool> HitFlash_Black;
 
 	Nullable<ColorStruct> Tint_Color;
 	Valueable<double> Tint_Intensity;
@@ -78,15 +84,27 @@ public:
 	virtual void LoadFromStream(PhobosStreamReader& Stm);
 	virtual void SaveToStream(PhobosStreamWriter& Stm);
 
-	static void AddDefaults()
+	static constexpr void AddDefaults()
 	{
 		FindOrAllocate(DEFAULT_STR2);
 	}
 
 	AnimTypeClass* GetIdleAnimType(bool isDamaged, double healthRatio);
 
-	double GetConditionYellow();
-	double GetConditionRed();
+	constexpr inline double GetConditionYellow()
+	{
+		return this->ConditionYellow.Get(RulesExtData::Instance()->Shield_ConditionYellow);
+	}
+
+	constexpr inline double GetConditionRed()
+	{
+		return this->ConditionRed.Get(RulesExtData::Instance()->Shield_ConditionRed);
+	}
+
+	constexpr inline bool HasTint() const
+	{
+		return this->Tint_Color.isset() || this->Tint_Intensity != 0.0;
+	}
 
 private:
 	template <typename T>

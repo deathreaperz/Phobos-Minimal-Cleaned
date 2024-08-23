@@ -14,6 +14,7 @@
 #include <Misc/DynamicPatcher/Techno/AircraftPut/AircraftPutDataRules.h>
 
 #include <New/AnonymousType/MultipleFactoryCaps.h>
+#include <New/HugeBar.h>
 
 class AnimTypeClass;
 class MouseCursor;
@@ -38,6 +39,8 @@ public:
 	Valueable<Point3D> Pips_Shield { { -1, -1, -1 } };
 	Valueable<Point3D> Pips_Shield_Buildings { { -1, -1, -1 } };
 	Valueable<int> RadApplicationDelay_Building { 0 };
+	Valueable<int> RadBuildingDamageMaxCount { -1 };
+
 	PhobosFixedString<32u> MissingCameo { GameStrings::XXICON_SHP() };
 
 	std::vector<std::vector<TechnoTypeClass*>> AITargetTypesLists { };
@@ -52,6 +55,8 @@ public:
 	Valueable<bool> JumpjetAllowLayerDeviation { true };
 	Valueable<bool> JumpjetTurnToTarget { false };
 	Valueable<bool> JumpjetCrash_Rotate { true };
+	Valueable<bool> JumpjetClimbPredictHeight { false };
+	Valueable<bool> JumpjetClimbWithoutCutOut { false };
 
 	Valueable<int> Storage_TiberiumIndex { -1 };
 	Valueable<int> PlacementGrid_TranslucentLevel { 0 };
@@ -100,7 +105,12 @@ public:
 	Valueable<bool> RadHasOwner { false };
 	Valueable<bool> RadHasInvoker { false };
 	Valueable<bool> UseGlobalRadApplicationDelay { true };
-	Valueable<bool> IronCurtain_SyncDeploysInto { false };
+	Valueable<bool> IronCurtain_KeptOnDeploy { true };
+	Valueable<bool> ForceShield_KeptOnDeploy { false };
+	Valueable<IronCurtainFlag> IronCurtain_EffectOnOrganics { IronCurtainFlag::Kill };
+	Valueable<WarheadTypeClass*> IronCurtain_KillOrganicsWarhead { nullptr };
+	Valueable<IronCurtainFlag> ForceShield_EffectOnOrganics { IronCurtainFlag::Ignore };
+	Valueable<WarheadTypeClass*> ForceShield_KillOrganicsWarhead { nullptr };
 
 	Valueable<PartialVector2D<int>> ROF_RandomDelay { { 0, 2 } };
 
@@ -288,6 +298,10 @@ public:
 
 	bool FPSCounter { false };
 	Valueable<bool> DrawInsigniaOnlyOnSelected {};
+	Valueable<Point2D> DrawInsignia_AdjustPos_Infantry { { 5, 2 } };
+	Valueable<Point2D> DrawInsignia_AdjustPos_Buildings { { 10, 6 } };
+	Nullable<BuildingSelectBracketPosition> DrawInsignia_AdjustPos_BuildingsAnchor {};
+	Valueable<Point2D> DrawInsignia_AdjustPos_Units { { 10, 6 } };
 
 	Valueable<int> SelectFlashTimer { 0 };
 
@@ -315,16 +329,78 @@ public:
 	Valueable<int> BuildingFlameSpawnBlockFrames { 0 };
 	AircraftPutDataRules MyPutData { };
 
+	Nullable<SHPStruct*> PrimaryFactoryIndicator { };
+	Valueable<PaletteManager*> PrimaryFactoryIndicator_Palette { };
+
+	BulletTypeClass* DefautBulletType { nullptr };
+
+	ValueableIdx<SuperWeaponTypeClass> AIChronoSphereSW {};
+	ValueableIdx<SuperWeaponTypeClass> AIChronoWarpSW {};
+
+	Valueable<double> DamageOwnerMultiplier { 1.0 };
+	Valueable<double> DamageAlliesMultiplier { 1.0 };
+	Valueable<double> DamageEnemiesMultiplier { 1.0 };
+
+	Valueable<bool> FactoryProgressDisplay { false };
+	Valueable<bool> MainSWProgressDisplay { false };
+
+	Valueable<bool> CombatAlert { false };
+	Valueable<bool> CombatAlert_IgnoreBuilding { true };
+	Valueable<bool> CombatAlert_EVA { true };
+	Valueable<bool> CombatAlert_SuppressIfInScreen { true };
+	Valueable<int> CombatAlert_Interval { 150 };
+	Valueable<bool> CombatAlert_SuppressIfAllyDamage { true };
+	Valueable<int> SubterraneanHeight { -256 };
+
+	Nullable<Vector3D<float>> VoxelLightSource {};
+	Nullable<Vector3D<float>> VoxelShadowLightSource {};
+	Valueable<bool> UseFixedVoxelLighting { false };
+
+	std::vector<HugeBar> HugeBar_Config {};
+
+	Valueable<bool> RegroupWhenMCVDeploy { true };
+	Valueable<bool> AISellAllOnLastLegs { true };
+	Valueable<int> AISellAllDelay { 0 };
+	Valueable<bool> AIAllInOnLastLegs { true };
+	ValueableVector<bool> RepairBaseNodes { };
+
+	Valueable<double> AircraftLevelLightMultiplier { 1.0 };
+	Valueable<double> AircraftCellLightLevelMultiplier { 0.0 };
+	Valueable<double> JumpjetLevelLightMultiplier { 0.0 };
+	Valueable<double> JumpjetCellLightLevelMultiplier { 0.0 };
+	Valueable<bool> JumpjetCellLightApplyBridgeHeight { true };
+
+	Nullable<int> AINormalTargetingDelay { };
+	Nullable<int> PlayerNormalTargetingDelay { };
+	Nullable<int> AIGuardAreaTargetingDelay { };
+	Nullable<int> PlayerGuardAreaTargetingDelay { };
+
+	Valueable<bool> CheckUnitBaseNormal { false };
+	Valueable<bool> ExpandBuildingPlace { true };
+	Valueable<bool> CheckExpandPlaceGrid { false };
+	Valueable<CoordStruct> ExpandLandGridFrames { { 1, 0, 0 } };
+	Valueable<CoordStruct> ExpandWaterGridFrames { { 1, 0, 0 } };
+
 	RulesExtData() noexcept = default;
 	~RulesExtData() noexcept = default;
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);
+	void ReplaceVoxelLightSources();
 
 	void Initialize();
 
-	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
-	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
+	void LoadFromStream(PhobosStreamReader& Stm)
+	{
+		this->Serialize(Stm);
+		this->ReplaceVoxelLightSources();
+	}
+
+	void SaveToStream(PhobosStreamWriter& Stm)
+	{
+		this->Serialize(Stm);
+		this->ReplaceVoxelLightSources();
+	}
 
 private:
 	template <typename T>

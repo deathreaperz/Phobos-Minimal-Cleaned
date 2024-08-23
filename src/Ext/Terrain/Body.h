@@ -22,11 +22,16 @@ public:
 	InitState Initialized { InitState::Blank };
 public:
 
-	Handle<LightSourceClass*, UninitLightSource> LighSource {};
-	Handle<AnimClass*, UninitAnim> AttachedAnim {};
+	Handle<LightSourceClass*, UninitLightSource> LighSource { nullptr };
+	Handle<AnimClass*, UninitAnim> AttachedAnim { nullptr };
+	std::vector<CellStruct> Adjencentcells {};
 
 	TerrainExtData()  noexcept = default;
-	~TerrainExtData() noexcept = default;
+	~TerrainExtData() noexcept
+	{
+		LighSource.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+		AttachedAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+	}
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
 	static bool InvalidateIgnorable(AbstractClass* ptr)

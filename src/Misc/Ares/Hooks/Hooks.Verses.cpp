@@ -97,7 +97,10 @@ DEFINE_HOOK(0x489180, MapClass_GetTotalDamage, 0x6)
 		}
 
 		//Debug::Log("[%s]ResultDamage1 for armor[%s] %d Caller [%x]\n", pWH->ID, ArmorTypeClass::Array[armorIdx]->Name.data(), res, R->Stack<DWORD>(0x0));
-		res = int(double(res <= 0 ? 0 : res) * vsData->Verses);
+		if (!pExt->ApplyModifiersOnNegativeDamage)
+			res = int(double(res <= 0 ? 0 : res) * vsData->Verses);
+		else
+			res = int(res * vsData->Verses);
 		//Debug::Log("[%s]ResultDamage2 for armor[%s] %d Caller [%x]\n", pWH->ID , ArmorTypeClass::Array[armorIdx]->Name.data(), res, R->Stack<DWORD>(0x0));
 
 		if (res > RulesClass::Instance->MaxDamage)
@@ -146,9 +149,10 @@ DEFINE_HOOK(0x6FCB6A, TechnoClass_CanFire_Verses, 0x7)
 	const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
 	Armor armor = TechnoExtData::GetTechnoArmor(pTarget, pWH);
 	const auto vsData = &pData->Verses[(int)armor];
+	auto& armorType = ArmorTypeClass::Array[(int)armor];
 
-	//if ((size_t)nArmor > ArmorTypeClass::Array.size())
-	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
+	//if (IS_SAME_STR_("CAOILD" , pTarget->get_ID()) && !IS_SAME_STR_(armorType->Name.data(), "CiTechAr"))
+	//	Debug::Log(__FUNCTION__" Oil Derric With Armor[%s] !\n", armorType->Name.data());
 
 	// i think there is no way for the techno know if it attack using force fire or not
 	if (vsData->Flags.ForceFire || vsData->Verses != 0.0)

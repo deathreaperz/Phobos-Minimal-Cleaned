@@ -8,8 +8,14 @@ class Fixed;
 class VelocityClass final : public Vector3D<double>
 {
 public:
+	//operator overloads
+	//addition
+	constexpr VelocityClass operator+(const VelocityClass& a) const {
+		return { X + a.X, Y + a.Y, Z + a.Z };
+	}
+
 	//scalar multiplication
-	VelocityClass operator*(double r) const {
+	constexpr FORCEINLINE VelocityClass operator*(double r) const {
 		return {
 			X * r,
 			Y * r,
@@ -17,11 +23,11 @@ public:
 		};
 	}
 
-	VelocityClass operator-(const VelocityClass& a) const {
+	constexpr FORCEINLINE VelocityClass operator-(const VelocityClass& a) const {
 		return { X - a.X, Y - a.Y, Z - a.Z };
 	}
 
-	Vector3D<double> asVec3D() const {
+	constexpr FORCEINLINE Vector3D<double> asVec3D() const {
 		return { this->X , this->Y , this->Z };
 	}
 

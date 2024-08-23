@@ -79,16 +79,13 @@ public:
 		return this->Get();
 	}
 
-	// only allow this when explict works, otherwise
-	// the always-non-null pointer will be used in conditionals.
-	//explicit operator T* () noexcept {
-	//	return this->GetEx();
-	//}
-
-	//T operator -> () const
-	//{
-	//	return this->Get();
-	//}
+	constexpr FORCEINLINE auto operator->() noexcept
+	{
+		if constexpr (std::is_pointer<T>::type())
+			return this->Value;
+		else
+			return &this->Value;
+	}
 
 	constexpr FORCEINLINE auto operator->() const noexcept
 	{
@@ -98,32 +95,22 @@ public:
 			return &this->Value;
 	}
 
-	//value_type* operator& () noexcept
+	//constexpr FORCEINLINE bool operator!() const
 	//{
-	//	return this->GetEx();
+	//	if constexpr (std::is_pointer<T>::type()
+	//			|| std::is_integral<T>::type()
+	//			|| std::is_same<T, bool>::value
+	//	)
+	//		return !this->Value;
+	//	else {
+	//		static_assert(true, "operator! not suitable!");
+	//		return false;
+	//	}
 	//}
-
-	constexpr FORCEINLINE bool operator!() const
-	{
-		if constexpr (std::is_pointer<T>::type())
-			return !this->Value;
-		else
-			return  this->Get() == 0;
-	}
 
 	constexpr FORCEINLINE const T& Get() const noexcept
 	{
 		return this->Value;
-	}
-
-	constexpr FORCEINLINE T* GetEx() noexcept
-	{
-		return &this->Value;
-	}
-
-	constexpr FORCEINLINE const T* GetEx() const noexcept
-	{
-		return &this->Value;
 	}
 
 	inline void Read(INI_EX& parser, const char* pSection, const char* pKey, bool Allocate = false);
@@ -226,16 +213,6 @@ public:
 		return this->Value;
 	}
 
-	constexpr FORCEINLINE T* GetEx() noexcept
-	{
-		return &this->Value;
-	}
-
-	constexpr FORCEINLINE const T* GetEx() const noexcept
-	{
-		return &this->Value;
-	}
-
 	constexpr FORCEINLINE T Get(const T& ndefault) const
 	{
 		return this->HasValue ? this->Get() : ndefault;
@@ -268,12 +245,20 @@ public:
 
 	constexpr FORCEINLINE T* GetEx(Valueable<T>& ndefault) noexcept
 	{
-		return this->isset() ? this->GetEx() : ndefault.GetEx();
+		const bool Isset = this->isset();
+		if constexpr (std::is_pointer<T>::type())
+			return Isset ? this->Value : ndefault.Value;
+		else
+			return Isset ? &this->Value : &ndefault.Value;
 	}
 
 	constexpr FORCEINLINE const T* GetEx(const Valueable<T>& ndefault) const noexcept
 	{
-		return this->isset() ? this->GetEx() : ndefault.GetEx();
+		const bool Isset = this->isset();
+		if constexpr (std::is_pointer<T>::type())
+			return Isset ? this->Value : ndefault.Value;
+		else
+			return Isset ? &this->Value : &ndefault.Value;
 	}
 
 	FORCEINLINE void Reset()
@@ -294,6 +279,24 @@ public:
 	inline bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 
 	inline bool Save(PhobosStreamWriter& Stm) const;
+
+private:
+
+	constexpr FORCEINLINE T* GetEx() noexcept
+	{
+		if constexpr (std::is_pointer<T>::type())
+			return this->Value;
+		else
+			return &this->Value;
+	}
+
+	constexpr FORCEINLINE const T* GetEx() const noexcept
+	{
+		if constexpr (std::is_pointer<T>::type())
+			return this->Value;
+		else
+			return &this->Value;
+	}
 };
 
 template<typename Lookuper>
@@ -361,9 +364,10 @@ public:
 
 	inline void Read(INI_EX& parser, const char* pSection, const char* pBaseFlag, const char* pSingleFlag = nullptr, bool allocate = false);
 
-	FORCEINLINE const T* GetEx(TechnoClass* pTechno) const noexcept
+	constexpr FORCEINLINE const T* GetEx(TechnoClass* pTechno) const noexcept
 	{
-		return &this->Get(pTechno);
+		const auto rank = pTechno->Veterancy.GetRemainingLevel();
+		return this->GetValue(rank);
 	}
 
 	constexpr FORCEINLINE const T& GetFromSpecificRank(Rank rank)const noexcept
@@ -408,15 +412,42 @@ public:
 		return this->Rookie;
 	}
 
-	constexpr FORCEINLINE const T& GetOrDefault(TechnoClass* pTechno, const T& nDefault) const noexcept
-	{
-		auto nRes = Get(pTechno);
-		return nRes ? nRes : nDefault;
-	}
+	// this mean 0 values will treat as false and alwas using default
+	// and floating point value will suffer from accuracy problem with these
+	// not sure how to fix it without breaking all shit
+	//constexpr FORCEINLINE const T& GetOrDefault(TechnoClass* pTechno, const T& nDefault) const noexcept {
+	//	auto nRes = Get(pTechno);
+	//	return nRes ? nRes : nDefault;
+	//}
 
 	inline bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 
 	inline bool Save(PhobosStreamWriter& Stm) const;
+
+private:
+	constexpr FORCEINLINE T* GetValue(Rank rank)
+	{
+		if (rank == Rank::Elite)
+		{
+			if constexpr (std::is_pointer<T>::type())
+				return &this->Elite;
+			else
+				return this->Elite;
+		}
+
+		if (rank == Rank::Veteran)
+		{
+			if constexpr (std::is_pointer<T>::type())
+				return &this->Veteran;
+			else
+				return this->Veteran;
+		}
+
+		if constexpr (std::is_pointer<T>::type())
+			return &this->Rookie;
+		else
+			return this->Rookie;
+	}
 };
 
 template<class T>
@@ -509,10 +540,10 @@ public:
 		else { this->push_back(other); }
 	}
 
-	constexpr FORCEINLINE void EmpalacebackUnique(const T& other)
+	constexpr FORCEINLINE void EmplacebackUnique(const T& other)
 	{
 		if (this->Contains(other)) return;
-		else { this->empalace_back(other); }
+		else { this->emplace_back(other); }
 	}
 
 	template <typename Func>
@@ -742,22 +773,12 @@ public:
 
 	inline void Read(INI_EX& parser, const char* pSection, const char* pBaseFlag, const char* pSingleFlag = nullptr, bool Alloc = false);
 
-	const T* GetEx(TechnoClass* pTechno) const noexcept
-	{
-		return &this->Get(pTechno);
-	}
-
 	const T& Get(TechnoClass* pTechno) const noexcept
 	{
 		return Get(pTechno->GetHealthPercentage());
 	}
 
-	const T* GetEx(double ratio) const noexcept
-	{
-		return &this->Get(ratio);
-	}
-
-	const T& Get(double ratio, double conditionYellow, double conditionRed) const noexcept
+	constexpr const T& Get(double ratio, double conditionYellow, double conditionRed) const noexcept
 	{
 		if (this->ConditionRed.isset() && ratio <= conditionRed)
 			return this->ConditionRed;
@@ -767,7 +788,7 @@ public:
 		return this->BaseValue;
 	}
 
-	const T& Get(HealthState const& nState) const noexcept
+	constexpr const T& Get(HealthState const& nState) const noexcept
 	{
 		if (this->ConditionRed.isset() && (nState == HealthState::Red))
 			return this->ConditionRed;
@@ -790,28 +811,28 @@ protected:
 	bool YellowOnFire;
 
 public:
-	HealthOnFireData() noexcept :
+	constexpr HealthOnFireData() noexcept :
 		RedOnFire { true }, GreenOnFire { false }, YellowOnFire { true }
 	{
 	}
 
-	HealthOnFireData(bool All) noexcept :
+	constexpr HealthOnFireData(bool All) noexcept :
 		RedOnFire { All }, GreenOnFire { All }, YellowOnFire { All }
 	{
 	}
 
-	HealthOnFireData(bool R, bool G, bool Y) noexcept :
+	constexpr HealthOnFireData(bool R, bool G, bool Y) noexcept :
 		RedOnFire { R }, GreenOnFire { G }, YellowOnFire { Y }
 	{
 	}
 
-	~HealthOnFireData() = default;
+	constexpr ~HealthOnFireData() = default;
 
-	HealthOnFireData(const HealthOnFireData&) = default;
-	HealthOnFireData(HealthOnFireData&&) = default;
-	HealthOnFireData& operator=(const HealthOnFireData& other) = default;
+	constexpr HealthOnFireData(const HealthOnFireData&) = default;
+	constexpr HealthOnFireData(HealthOnFireData&&) = default;
+	constexpr HealthOnFireData& operator=(const HealthOnFireData& other) = default;
 
-	inline bool Get(HealthState const& nState) const noexcept
+	constexpr inline bool Get(HealthState const& nState) const noexcept
 	{
 		return (nState == HealthState::Green && GreenOnFire)
 			|| (nState == HealthState::Yellow && YellowOnFire)
@@ -902,7 +923,7 @@ PromotableVector
 
 Read: use ValueableVector<T>::Read, like promotable
 ReadList: like gattling, remove last char if it is '.'
-*/
+
 template <typename T>
 class PromotableVector
 {
@@ -916,7 +937,7 @@ public:
 	std::unordered_map<int, T> Veteran {};
 	std::unordered_map<int, T> Elite {};
 
-	PromotableVector() noexcept = default;
+	PromotableVector() noexcept  = default;
 
 	explicit PromotableVector(ValueableVector<T> const& all)
 		noexcept(noexcept(ValueableVector<T> { all }))
@@ -936,8 +957,8 @@ public:
 	{
 		if (2.0 <= veterancy)
 		{
-			if (this->Elite.count(index))
-				return this->Elite.at(index);
+			if (this->Elite.contains(index))
+				return this->Elite[index];
 		}
 
 		if (1.0 <= veterancy)
@@ -964,6 +985,7 @@ public:
 
 template <typename T>
 T PromotableVector<T>::Default = T();
+*/
 
 // Template to use for timed Warhead-applied values.
 template<typename T>
@@ -1034,7 +1056,7 @@ public:
 
 	inline void Read(INI_EX& parser, const char* pSection, const char* pBaseFlag, const char* pSingleFlag = nullptr);
 
-	const Nullable<T>* GetFromSpecificRank(Rank rank)const noexcept
+	constexpr const Nullable<T>* GetFromSpecificRank(Rank rank)const noexcept
 	{
 		if (rank == Rank::Elite)
 		{
@@ -1049,7 +1071,7 @@ public:
 		return &this->Rookie;
 	}
 
-	const Nullable<T>* Get(TechnoClass* pTechno) const noexcept
+	constexpr const Nullable<T>* Get(TechnoClass* pTechno) const noexcept
 	{
 		auto const rank = pTechno->Veterancy.GetRemainingLevel();
 		if (rank == Rank::Elite)
@@ -1063,7 +1085,7 @@ public:
 		return &this->Rookie;
 	}
 
-	const Nullable<T>* GetFromCurrentRank(TechnoClass* pTechno) const noexcept
+	constexpr const Nullable<T>* GetFromCurrentRank(TechnoClass* pTechno) const noexcept
 	{
 		if (pTechno->CurrentRanking == Rank::Elite)
 		{
@@ -1076,10 +1098,9 @@ public:
 		return &this->Rookie;
 	}
 
-	const T& GetOrDefault(TechnoClass* pTechno, const T& nDefault) const noexcept
+	constexpr const T& GetOrDefault(TechnoClass* pTechno, const T& nDefault) const noexcept
 	{
-		const auto nRes = Get(pTechno);
-		return nRes->isset() ? nRes->Get() : nDefault;
+		return Get(pTechno)->GetB(nDefault);
 	}
 
 	inline bool Load(PhobosStreamReader& Stm, bool RegisterForChange);

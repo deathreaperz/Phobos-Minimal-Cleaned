@@ -3,7 +3,6 @@
 #include <MessageListClass.h>
 
 #include <string>
-#include <Misc/Ares/Hooks/Classes/Dialogs.h>
 
 #include <Utilities/Debug.h>
 #include <Utilities/GeneralUtils.h>
@@ -35,7 +34,7 @@ void MemoryDumperCommandClass::Execute(WWKey dwUnk) const
 		return;
 	}
 
-	Dialogs::TakeMouse();
+	Debug::TakeMouse();
 
 	HCURSOR loadCursor = LoadCursor(nullptr, IDC_WAIT);
 	SetClassLong(Game::hWnd, GCL_HCURSOR, reinterpret_cast<LONG>(loadCursor));
@@ -43,7 +42,7 @@ void MemoryDumperCommandClass::Execute(WWKey dwUnk) const
 
 	MessageListClass::Instance->PrintMessage(L"Dumping process memory...");
 
-	std::wstring filename = Dialogs::FullDump();
+	std::wstring filename = Debug::FullDump();
 
 	Debug::Log("Process memory dumped to %ls\n", filename.c_str());
 
@@ -55,5 +54,5 @@ void MemoryDumperCommandClass::Execute(WWKey dwUnk) const
 	SetClassLong(Game::hWnd, GCL_HCURSOR, reinterpret_cast<LONG>(loadCursor));
 	SetCursor(loadCursor);
 
-	Dialogs::ReturnMouse();
+	Debug::ReturnMouse();
 }

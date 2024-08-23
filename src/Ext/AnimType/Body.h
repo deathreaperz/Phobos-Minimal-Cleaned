@@ -20,6 +20,10 @@ public:
 	InitState Initialized { InitState::Blank };
 public:
 	Valueable<PaletteManager*> Palette {}; //CustomPalette::PaletteMode::Temperate
+	bool CreateUnit_Scatter { false };
+	bool CreateUnit_AI_Scatter { false };
+	bool MakeInfantry_Scatter { false };
+	bool MakeInfantry_AI_Scatter { false };
 
 #pragma region CreateUnit
 	Valueable<UnitTypeClass*> CreateUnit {};
@@ -29,11 +33,14 @@ public:
 	Nullable<bool> CreateUnit_RemapAnim { };
 	Valueable<bool> CreateUnit_RandomFacing { true };
 	Valueable<Mission> CreateUnit_Mission { Mission::Guard };
+	Nullable<Mission> CreateUnit_AI_Mission { };
+
 	Nullable<OwnerHouseKind> CreateUnit_Owner {};
 	Valueable<bool> CreateUnit_ConsiderPathfinding { false };
-	Nullable<AnimTypeClass*> CreateUnit_SpawnAnim { };
+	Valueable<AnimTypeClass*> CreateUnit_SpawnAnim { nullptr };
 	Valueable<bool> CreateUnit_AlwaysSpawnOnGround { true };
 	Valueable<bool> CreateUnit_KeepOwnerIfDefeated { true };
+	Valueable<bool> CreateUnit_SpawnParachutedInAir { false };
 #pragma endregion
 
 	Valueable<int> XDrawOffset { 0 };
@@ -41,7 +48,8 @@ public:
 	Nullable<bool> Layer_UseObjectLayer {};
 	Valueable<bool> UseCenterCoordsIfAttached { false };
 
-	Nullable<WeaponTypeClass*> Weapon {};
+	Valueable<WeaponTypeClass*> Weapon { nullptr };
+	Valueable<WeaponTypeClass*> WeaponToCarry {};
 	Valueable<bool> Warhead_Detonate { false };
 
 	Valueable<int> Damage_Delay { 0 };
@@ -51,6 +59,7 @@ public:
 	Nullable<DamageDelayTargetFlag> Damage_TargetFlag {};
 
 	Nullable<Mission> MakeInfantry_Mission {};
+	Nullable<Mission> MakeInfantry_AI_Mission {};
 
 	NullableVector <AnimTypeClass*> SplashList {};
 	Valueable<bool> SplashIndexRandom { false };
@@ -98,6 +107,36 @@ public:
 
 	Spawns SpawnsData {};
 
+	Valueable<AffectedHouse> VisibleTo { AffectedHouse::All };
+	Valueable<bool> VisibleTo_ConsiderInvokerAsOwner { false };
+	Valueable<bool> RestrictVisibilityIfCloaked { false };
+	Valueable<bool> DetachOnCloak { true };
+	Nullable<int> Translucency_Cloaked {};
+
+	Valueable<double> Translucent_Stage1_Percent { 0.2 };
+	Nullable<int> Translucent_Stage1_Frame {};
+	Valueable<TranslucencyLevel> Translucent_Stage1_Translucency { 25 };
+	Valueable<double> Translucent_Stage2_Percent { 0.4 };
+	Nullable<int> Translucent_Stage2_Frame {};
+	Valueable<TranslucencyLevel> Translucent_Stage2_Translucency { 50 };
+	Valueable<double> Translucent_Stage3_Percent { 0.6 };
+	Nullable<int> Translucent_Stage3_Frame {};
+	Valueable<TranslucencyLevel> Translucent_Stage3_Translucency { 75 };
+
+	Nullable<int> CreateUnit_SpawnHeight {};
+
+	Valueable<bool> ConstrainFireAnimsToCellSpots { true };
+	Nullable<LandTypeFlags> FireAnimDisallowedLandTypes {};
+	Nullable<bool> AttachFireAnimsToParent { false };
+	Nullable<int> SmallFireCount {};
+	ValueableVector<AnimTypeClass*> SmallFireAnims {};
+	ValueableVector<double> SmallFireChances {};
+	ValueableVector<double> SmallFireDistances {};
+	Valueable<int> LargeFireCount { 1 };
+	ValueableVector<AnimTypeClass*> LargeFireAnims {};
+	ValueableVector<double> LargeFireChances {};
+	ValueableVector<double> LargeFireDistances {};
+
 	AnimTypeExtData() noexcept = default;
 	~AnimTypeExtData() noexcept = default;
 
@@ -109,7 +148,7 @@ public:
 
 	void ValidateSpalshAnims();
 
-	OwnerHouseKind GetAnimOwnerHouseKind()
+	constexpr OwnerHouseKind GetAnimOwnerHouseKind()
 	{
 		if (this->CreateUnit && !this->CreateUnit_Owner.isset())
 			return OwnerHouseKind::Victim;
@@ -137,6 +176,36 @@ public:
 	static void CreateUnit_MarkCell(AnimClass* pThis);
 	static void CreateUnit_Spawn(AnimClass* pThis);
 
+	constexpr bool ScatterCreateUnit(bool IsAi)
+	{
+		return IsAi ? this->CreateUnit_AI_Scatter : this->CreateUnit_Scatter;
+	}
+
+	constexpr bool ScatterAnimToInfantry(bool IsAi)
+	{
+		return !IsAi ? this->MakeInfantry_Scatter : this->MakeInfantry_AI_Scatter;
+	}
+
+	constexpr  Mission GetCreateUnitMission(bool IsAi)
+	{
+		auto result = this->CreateUnit_Mission;
+
+		if (IsAi && this->CreateUnit_AI_Mission.isset())
+			result = this->CreateUnit_AI_Mission;
+
+		return result;
+	}
+
+	constexpr Mission GetAnimToInfantryMission(bool IsAi)
+	{
+		auto result = this->MakeInfantry_Mission.Get(Mission::Hunt);
+
+		if (IsAi && this->MakeInfantry_AI_Mission.isset())
+			result = this->MakeInfantry_AI_Mission;
+
+		return result;
+	}
+
 	void ValidateData();
 private:
 	template <typename T>
@@ -153,9 +222,6 @@ class AnimTypeExtContainer final : public Container<AnimTypeExtData>
 {
 public:
 	static AnimTypeExtContainer Instance;
-
-	AnimTypeExtData* Find(AnimClass* key);
-	AnimTypeExtData* Find(AnimTypeClass* key);
 
 	CONSTEXPR_NOCOPY_CLASSB(AnimTypeExtContainer, AnimTypeExtData, "AnimTypeClass");
 };

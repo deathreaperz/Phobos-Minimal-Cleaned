@@ -74,7 +74,7 @@ void PaletteManager::LoadFromName(const char* PaletteName)
 	}
 	else
 	{
-		//Debug::Log("[%s] Palette FailedToLoad ! \n", this->Name.data());
+		Debug::Log("[%s] Palette FailedToLoad ! \n", this->Name.data());
 		return;
 	}
 }

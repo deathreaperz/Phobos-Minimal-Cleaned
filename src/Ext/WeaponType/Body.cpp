@@ -68,10 +68,12 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Rad_NoOwner.Read(exINI, pSection, "Rad.NoOwner");
 	}
 
+	this->Strafing.Read(exINI, pSection, "Strafing");
 	this->Strafing_Shots.Read(exINI, pSection, "Strafing.Shots");
 	this->Strafing_SimulateBurst.Read(exINI, pSection, "Strafing.SimulateBurst");
-	this->CanTarget.Read(exINI, pSection, "CanTarget");
+	this->Strafing_UseAmmoPerShot.Read(exINI, pSection, "Strafing.UseAmmoPerShot");
 
+	this->CanTarget.Read(exINI, pSection, "CanTarget");
 	this->CanTargetHouses.Read(exINI, pSection, "CanTargetHouses");
 
 	this->Burst_Delays.Read(exINI, pSection, "Burst.Delays");
@@ -203,8 +205,8 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->AttachEffect_RequiredTypes.Read(exINI, pSection, "AttachEffect.RequiredTypes");
 	this->AttachEffect_DisallowedTypes.Read(exINI, pSection, "AttachEffect.DisallowedTypes");
-	exINI.ParseStringList(this->AttachEffect_RequiredGroups, pSection, "AttachEffect.RequiredGroups");
-	exINI.ParseStringList(this->AttachEffect_DisallowedGroups, pSection, "AttachEffect.DisallowedGroups");
+	exINI.ParseList(this->AttachEffect_RequiredGroups, pSection, "AttachEffect.RequiredGroups");
+	exINI.ParseList(this->AttachEffect_DisallowedGroups, pSection, "AttachEffect.DisallowedGroups");
 	this->AttachEffect_RequiredMinCounts.Read(exINI, pSection, "AttachEffect.RequiredMinCounts");
 	this->AttachEffect_RequiredMaxCounts.Read(exINI, pSection, "AttachEffect.RequiredMaxCounts");
 	this->AttachEffect_DisallowedMinCounts.Read(exINI, pSection, "AttachEffect.DisallowedMinCounts");
@@ -221,7 +223,15 @@ int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass
 	else if (pFirer && pFirer->CanOccupyFire())
 		range = RulesClass::Instance->OccupyWeaponRange * Unsorted::LeptonsPerCell;
 	else if (pThis && pFirer)
-		range = pThis->Range;
+	{
+		auto pFirerExt = TechnoExtContainer::Instance.Find(pFirer);
+		int range_ = pThis->Range;
+
+		if (pFirerExt->AdditionalRange.isset())
+			range_ += pFirerExt->AdditionalRange;
+
+		range = range_;
+	}
 	else
 		return range;
 
@@ -240,8 +250,10 @@ int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass
 
 	{
 		auto pExt = TechnoExtContainer::Instance.Find(pTechno);
-		if (pExt->AE_ExtraRange.Enabled() && pExt->AE_ExtraRange.Eligible(pThis))
-			range = pExt->AE_ExtraRange.Get(range);
+		if (pExt->AE_ExtraRange.Enabled())
+		{
+			range = pExt->AE_ExtraRange.Get(range, pThis);
+		}
 	}
 	return MaxImpl(range, 0);
 }
@@ -259,17 +271,17 @@ bool WeaponTypeExtData::HasRequiredAttachedEffects(TechnoClass* pTechno, TechnoC
 	{
 		auto const pTechnoExt = TechnoExtContainer::Instance.Find(pTechno);
 
-		if (hasDisallowedTypes && PhobosAEFunctions::HasAttachedEffects(pTechno, this->AttachEffect_DisallowedTypes, false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, this->AttachEffect_DisallowedMinCounts, this->AttachEffect_DisallowedMaxCounts))
+		if (hasDisallowedTypes && PhobosAEFunctions::HasAttachedEffects(pTechno, this->AttachEffect_DisallowedTypes, false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_DisallowedMinCounts, &this->AttachEffect_DisallowedMaxCounts))
 			return false;
 
-		if (hasDisallowedGroups && PhobosAEFunctions::HasAttachedEffects(pTechno, PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_DisallowedGroups), false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, this->AttachEffect_DisallowedMinCounts, this->AttachEffect_DisallowedMaxCounts))
+		if (hasDisallowedGroups && PhobosAEFunctions::HasAttachedEffects(pTechno, PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_DisallowedGroups), false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_DisallowedMinCounts, &this->AttachEffect_DisallowedMaxCounts))
 			return false;
 
-		if (hasRequiredTypes && !PhobosAEFunctions::HasAttachedEffects(pTechno, this->AttachEffect_RequiredTypes, true, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, this->AttachEffect_RequiredMinCounts, this->AttachEffect_RequiredMaxCounts))
+		if (hasRequiredTypes && !PhobosAEFunctions::HasAttachedEffects(pTechno, this->AttachEffect_RequiredTypes, true, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_RequiredMinCounts, &this->AttachEffect_RequiredMaxCounts))
 			return false;
 
 		if (hasRequiredGroups &&
-			!PhobosAEFunctions::HasAttachedEffects(pTechno, PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_RequiredGroups), true, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, this->AttachEffect_RequiredMinCounts, this->AttachEffect_RequiredMaxCounts))
+			!PhobosAEFunctions::HasAttachedEffects(pTechno, PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_RequiredGroups), true, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_RequiredMinCounts, &this->AttachEffect_RequiredMaxCounts))
 			return false;
 	}
 
@@ -304,8 +316,10 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->Bolt_Disable2)
 		.Process(this->Bolt_Disable3)
 		.Process(this->Bolt_Arcs)
+		.Process(this->Strafing)
 		.Process(this->Strafing_Shots)
 		.Process(this->Strafing_SimulateBurst)
+		.Process(this->Strafing_UseAmmoPerShot)
 		.Process(this->CanTarget)
 		.Process(this->CanTargetHouses)
 		.Process(this->RadType)
@@ -441,14 +455,14 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarge
 
 void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarget, TechnoClass* pOwner, int damage, bool AddDamage, HouseClass* HouseInveoker)
 {
-	if (pThis->Warhead->NukeMaker)
-	{
-		if (!pTarget)
-		{
-			Debug::Log("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
-			return;
-		}
-	}
+	// if (pThis->Warhead->NukeMaker)
+	// {
+	// 	if (!pTarget)
+	// 	{
+	// 		Debug::Log("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
+	// 		return;
+	// 	}
+	// }
 
 	auto pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pThis->Projectile);
 	auto pExt = WeaponTypeExtContainer::Instance.Find(pThis);
@@ -479,14 +493,14 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& co
 
 void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& coords, AbstractClass* pTarget, TechnoClass* pOwner, int damage, bool AddDamage, HouseClass* HouseInveoker)
 {
-	if (pThis->Warhead->NukeMaker)
-	{
-		if (!pTarget)
-		{
-			Debug::Log("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
-			return;
-		}
-	}
+	// if (pThis->Warhead->NukeMaker)
+	// {
+	// 	if (!pTarget)
+	// 	{
+	// 		Debug::Log("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
+	// 		return;
+	// 	}
+	// }
 
 	auto pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pThis->Projectile);
 	auto pExt = WeaponTypeExtContainer::Instance.Find(pThis);

@@ -22,7 +22,19 @@
 ShieldClass::ShieldClass() : Techno { nullptr }
 , HP { 0 }
 , Timers { }
+, IdleAnim { nullptr }
+, Cloak { false }
+, Online { true }
+, Temporal { false }
+, Available { true }
+, Attached { false }
 , AreAnimsHidden { false }
+, SelfHealing_Warhead { 0.0 }
+, SelfHealing_Rate_Warhead { -1 }
+, Respawn_Warhead { 0.0 }
+, Respawn_Rate_Warhead { -1 }
+, LastBreakFrame { -1 }
+, Type { nullptr }
 {
 }
 
@@ -30,7 +42,7 @@ ShieldClass::ShieldClass(TechnoClass* pTechno, bool isAttached) : Techno { pTech
 , CurTechnoType { nullptr }
 , HP { 0 }
 , Timers { }
-, IdleAnim { }
+, IdleAnim { nullptr }
 , Cloak { false }
 , Online { true }
 , Temporal { false }
@@ -142,16 +154,16 @@ bool ShieldClass::TEventIsShieldBroken(ObjectClass* pAttached)
 	return false;
 }
 
-void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
+int ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 {
 	if (!IsActive())
-		return;
+		return *args->Damage;
 
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(args->WH);
 
 	if (!pWHExt || !this->HP || this->Temporal || *args->Damage == 0)
 	{
-		return;
+		return *args->Damage;
 	}
 
 	if (*args->Damage < 0)
@@ -167,8 +179,10 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 		}
 	}
 
-	if (this->Techno->IsIronCurtained() || CanBePenetrated(args->WH) || TechnoExtData::IsTypeImmune(this->Techno, args->Attacker))
-		return;
+	const bool IC = pWHExt->CanAffectInvulnerable(this->Techno);
+
+	if (!IC || CanBePenetrated(args->WH) || TechnoExtData::IsTypeImmune(this->Techno, args->Attacker))
+		return *args->Damage;
 
 	const auto pSource = args->Attacker ? args->Attacker->Owner : args->SourceHouse;
 	int nDamage = 0;
@@ -228,7 +242,7 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 			}
 		}
 
-		if (pWHExt->Malicious)
+		if (pWHExt->Malicious && !pWHExt->Nonprovocative)
 			this->ResponseAttack();
 
 		if (pWHExt->DecloakDamagedTargets)
@@ -249,7 +263,7 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 			if (Phobos::Debug_DisplayDamageNumbers && (nHPCopy) != 0)
 				FlyingStrings::DisplayDamageNumberString(nHPCopy, DamageDisplayType::Shield, this->Techno->GetRenderCoords(), TechnoExtContainer::Instance.Find(this->Techno)->DamageNumberOffset);
 
-			this->BreakShield(pWHExt->Shield_BreakAnim.Get(nullptr), pWHExt->Shield_BreakWeapon.Get(nullptr));
+			this->BreakShield(pWHExt->Shield_BreakAnim, pWHExt->Shield_BreakWeapon.Get(nullptr));
 
 			//rest of the damage will be passed to the techno
 			nDamageResult = this->Type->AbsorbOverDamage ? PassableDamageAnount : residueDamage + PassableDamageAnount;
@@ -260,7 +274,29 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 			if (Phobos::Debug_DisplayDamageNumbers && (-DamageToShield) != 0)
 				FlyingStrings::DisplayDamageNumberString((-DamageToShield), DamageDisplayType::Shield, this->Techno->GetRenderCoords(), TechnoExtContainer::Instance.Find(this->Techno)->DamageNumberOffset);
 
-			this->WeaponNullifyAnim(pWHExt->Shield_HitAnim.Get(nullptr));
+			if (this->Type->HitFlash && pWHExt->Shield_HitFlash)
+			{
+				int size = this->Type->HitFlash_FixedSize.Get((DamageToShield * 2));
+				SpotlightFlags flags = SpotlightFlags::NoColor;
+
+				if (this->Type->HitFlash_Black)
+				{
+					flags = SpotlightFlags::NoColor;
+				}
+				else
+				{
+					if (!this->Type->HitFlash_Red)
+						flags = SpotlightFlags::NoRed;
+					if (!this->Type->HitFlash_Green)
+						flags |= SpotlightFlags::NoGreen;
+					if (!this->Type->HitFlash_Blue)
+						flags |= SpotlightFlags::NoBlue;
+				}
+
+				MapClass::FlashbangWarheadAt(size, args->WH, this->Techno->Location, true, flags);
+			}
+
+			this->WeaponNullifyAnim(pWHExt->Shield_HitAnim);
 			this->HP -= DamageToShield; //set the HP remaining after get hit
 			UpdateIdleAnim();
 			//absorb all the damage
@@ -310,6 +346,8 @@ void ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 		*args->Damage = nDamageResult;
 		TechnoExtContainer::Instance.Find(this->Techno)->SkipLowDamageCheck = true;
 	}
+
+	return nDamageResult;
 }
 
 void ShieldClass::ResponseAttack() const
@@ -343,7 +381,7 @@ void ShieldClass::WeaponNullifyAnim(AnimTypeClass* pHitAnim)
 	if (this->AreAnimsHidden)
 		return;
 
-	const auto pAnimType = pHitAnim ? pHitAnim : this->Type->HitAnim.Get(nullptr);
+	const auto pAnimType = pHitAnim ? pHitAnim : this->Type->HitAnim;
 
 	if (pAnimType)
 	{
@@ -482,7 +520,7 @@ void ShieldClass::OnUpdate()
 		if (GeneralUtils::HasHealthRatioThresholdChanged(LastTechnoHealthRatio, ratio))
 			this->UpdateIdleAnim();
 
-		if (!this->Cloak && !this->Temporal && this->Online && (this->HP > 0 && this->Techno->Health > 0))
+		if (!this->Temporal && this->Online && (this->HP > 0 && this->Techno->Health > 0))
 			this->CreateAnim();
 	}
 
@@ -495,14 +533,15 @@ void ShieldClass::OnUpdate()
 	this->LastTechnoHealthRatio = ratio;
 }
 
+#include <Ext/AnimType/Body.h>
+
 // The animation is automatically destroyed when the associated unit receives the isCloak statute.
 // Therefore, we must zero out the invalid pointer
 void ShieldClass::CloakCheck()
 {
-	const auto cloakState = this->Techno->CloakState;
-	this->Cloak = cloakState == CloakState::Cloaked || cloakState == CloakState::Cloaking;
+	this->Cloak = this->Techno->IsInCloakState();
 
-	if (this->Cloak)
+	if (this->Cloak && this->IdleAnim && AnimTypeExtContainer::Instance.Find(this->IdleAnim->Type)->DetachOnCloak)
 		KillAnim();
 }
 
@@ -749,7 +788,7 @@ void ShieldClass::BreakShield(AnimTypeClass* pBreakAnim, WeaponTypeClass* pBreak
 
 	if (!this->AreAnimsHidden)
 	{
-		const auto pAnimType = pBreakAnim ? pBreakAnim : this->Type->BreakAnim.Get(nullptr);
+		const auto pAnimType = pBreakAnim ? pBreakAnim : this->Type->BreakAnim;
 
 		if (pAnimType)
 		{
@@ -762,7 +801,7 @@ void ShieldClass::BreakShield(AnimTypeClass* pBreakAnim, WeaponTypeClass* pBreak
 	this->LastBreakFrame = Unsorted::CurrentFrame;
 	this->UpdateTint();
 
-	if (const auto pWeaponType = pBreakWeapon ? pBreakWeapon : this->Type->BreakWeapon.Get(nullptr))
+	if (const auto pWeaponType = pBreakWeapon ? pBreakWeapon : this->Type->BreakWeapon)
 	{
 		AbstractClass* const pTarget = this->Type->BreakWeapon_TargetSelf.Get() ? static_cast<AbstractClass*>(this->Techno) : this->Techno->GetCell();
 		WeaponTypeExtData::DetonateAt(pWeaponType, pTarget, this->Techno, true, nullptr);
@@ -794,7 +833,7 @@ void ShieldClass::SetRespawn(int duration, double amount, int rate, bool resetTi
 	auto timerWH = &this->Timers.Respawn_Warhead;
 	const bool modifierTimerInProgress = timerWH->InProgress();
 
-	this->Respawn_Warhead = amount > 0 ? amount : Type->Respawn;
+	this->Respawn_Warhead = amount;
 	this->Respawn_Rate_Warhead = rate >= 0 ? rate : Type->Respawn_Rate;
 
 	timerWH->Start(duration);
@@ -840,6 +879,9 @@ void ShieldClass::CreateAnim()
 
 	if (!this->IdleAnim && idleAnimType)
 	{
+		if (this->Cloak && (!idleAnimType || AnimTypeExtContainer::Instance.Find(idleAnimType)->DetachOnCloak))
+			return;
+
 		auto const pAnim = GameCreate<AnimClass>(idleAnimType, this->Techno->Location);
 		pAnim->RemainingIterations = 0xFFu;
 		AnimExtData::SetAnimOwnerHouseKind(pAnim, this->Techno->Owner, nullptr, this->Techno, false);

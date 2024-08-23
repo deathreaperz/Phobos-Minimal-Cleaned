@@ -4,68 +4,6 @@
 
 #include "Enum.h"
 
-class MouseCursorHotSpotX
-{
-public:
-	typedef MouseHotSpotX Value;
-
-	static inline bool Parse(char* key, Value* value)
-	{
-		if (key && value)
-		{
-			if (IS_SAME_STR_(key, "left"))
-			{
-				*value = MouseHotSpotX::Left;
-			}
-			else if (IS_SAME_STR_(key, "right"))
-			{
-				*value = MouseHotSpotX::Right;
-			}
-			else if (IS_SAME_STR_(key, "center"))
-			{
-				*value = MouseHotSpotX::Center;
-			}
-			else
-			{
-				return false;
-			}
-			return true;
-		}
-		return false;
-	}
-};
-
-class MouseCursorHotSpotY
-{
-public:
-	typedef MouseHotSpotY Value;
-
-	static inline bool Parse(char* key, Value* value)
-	{
-		if (key && value)
-		{
-			if (IS_SAME_STR_(key, "top"))
-			{
-				*value = MouseHotSpotY::Top;
-			}
-			else if (IS_SAME_STR_(key, "bottom"))
-			{
-				*value = MouseHotSpotY::Bottom;
-			}
-			else if (IS_SAME_STR_(key, "middle"))
-			{
-				*value = MouseHotSpotY::Middle;
-			}
-			else
-			{
-				return false;
-			}
-			return true;
-		}
-		return false;
-	}
-};
-
 class HouseClass;
 class CellClass;
 class LocomotionClass;
@@ -85,7 +23,7 @@ public:
 	static std::array<const char* const, 21u> TileType_ToStrings;
 	static std::array<std::pair<const char*, const char*>, 11u> LocomotorPairs_ToStrings;
 	static std::array<std::pair<wchar_t*, wchar_t*>, 11u> LocomotorPairs_ToWideStrings;
-	static std::array<std::pair<const char* const, HorizontalPosition>, 4u> HorizontalPosition_ToStrings;
+	static std::array<std::pair<const char* const, HorizontalPosition>, 3u> HorizontalPosition_ToStrings;
 	static std::array<std::pair<const char* const, TextAlign>, 4u> TextAlign_ToStrings;
 
 	static std::array<const char* const, 3u> AreaFireTarget_ToStrings;
@@ -121,6 +59,9 @@ public:
 	static std::array<const char*, (size_t)DiscardCondition::count> DiscardCondition_to_strings;
 	static std::array<const char*, 5u> ExpireWeaponCondition_to_strings;
 
+	static std::array<std::pair<const char* const, MouseHotSpotX>, 3u> MouseHotSpotX_ToStrings;
+	static std::array<std::pair<const char* const, MouseHotSpotY>, 3u> MouseHotSpotY_ToStrings;
+
 	static bool CanTargetHouse(AffectedHouse const& flags, HouseClass* ownerHouse, HouseClass* targetHouse);
 	static bool IsCellEligible(CellClass* const pCell, AffectedTarget const& allowed, bool explicitEmptyCells = false, bool considerBridgesLand = false);
 	static bool IsTechnoEligible(TechnoClass* const pTechno, AffectedTarget  const& allowed, bool considerAircraftSeparately = false);
@@ -131,4 +72,50 @@ public:
 	static IronCurtainFlag GetICFlagResult(IronCurtainFlag const& Input);
 	static std::pair<const char*, const char*>* locomotion_toSring(LocomotionClass* ptr);
 	static bool IsPlayerTypeEligible(AffectPlayerType flags, HouseClass* pFor);
+
+	constexpr inline bool IsLandTypeInFlags(LandTypeFlags flags, LandType type)
+	{
+		return (bool)((LandTypeFlags)(1 << (char)type) & flags);
+	}
+};
+
+class MouseCursorHotSpotX
+{
+public:
+	static inline bool Parse(char* key, MouseHotSpotX* value)
+	{
+		if (key && value)
+		{
+			for (const auto& arr : EnumFunctions::MouseHotSpotX_ToStrings)
+			{
+				if (IS_SAME_STR_(key, arr.first))
+				{
+					*value = arr.second;
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+};
+
+class MouseCursorHotSpotY
+{
+public:
+	static inline bool Parse(char* key, MouseHotSpotY* value)
+	{
+		if (key && value)
+		{
+			for (const auto& arr : EnumFunctions::MouseHotSpotY_ToStrings)
+			{
+				if (IS_SAME_STR_(key, arr.first))
+				{
+					*value = arr.second;
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
 };

@@ -5,7 +5,6 @@
 #pragma once
 #include <ArrayClasses.h>
 #include <AbstractTypeClass.h>
-#include <HeapClass.h>
 #include <PriorityQueueClass.h>
 
 struct MapSurfaceData
@@ -25,18 +24,30 @@ struct MapSurfaceData
 	{
 		return Score < another.Score;
 	}
+
+	bool operator>(const MapSurfaceData& another) const
+	{
+		return Score > another.Score;
+	}
+
+	bool operator<=(const MapSurfaceData& another) const
+	{
+		return Score <= another.Score;
+	}
 };
 static_assert(sizeof(MapSurfaceData) == 0x8);
 
 class TiberiumLogic
 {
 public:
+	using TPQueue = TPriorityQueueClass<MapSurfaceData>;
+
 	void Construct(int nCount = MapSurfaceData::SurfaceDataCount())
 	{
 		Datas = (MapSurfaceData*)YRMemory::Allocate(sizeof(MapSurfaceData) * nCount);
 		States = (bool*)YRMemory::Allocate(sizeof(bool) * nCount);
 		std::memset(States, 0, sizeof(bool) * nCount);
-		Heap = GameCreate<TPriorityQueueClass<MapSurfaceData>>(nCount);
+		Heap = GameCreate<TPQueue>(nCount);
 	}
 
 	void Decontruct()
@@ -59,7 +70,7 @@ public:
 	}
 
 	int Count;
-	TPriorityQueueClass<MapSurfaceData>* Heap;
+	TPQueue* Heap;
 	bool* States;
 	MapSurfaceData* Datas;
 	CDTimerClass Timer;
@@ -101,7 +112,7 @@ public:
 	virtual ~TiberiumClass() override JMP_THIS(0x723710);
 
 	//AbstractClass
-	virtual void PointerExpired(AbstractClass* pAbstract, bool removed) override JMP_THIS(0x722140);
+	virtual void PointerExpired(AbstractClass* pAbstract, bool bremoved) override JMP_THIS(0x722140);
 	virtual AbstractType WhatAmI() const override RT(AbstractType);
 	virtual int Size() const override R0;
 	virtual int GetArrayIndex() const override { return this->ArrayIndex; }

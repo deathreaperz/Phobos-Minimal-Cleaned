@@ -7,9 +7,8 @@
 
 struct EntityClass : public IEntity
 {
-	static void SetUP(EntityClass* ett, EntityType type, AbstractClass* Owner, const char* name)
-	{
-		IEntity::SetUP(ett, type, Owner);
+	static void SetUP(EntityClass* ett , EntityType type, AbstractClass* Owner, const char* name) {
+		IEntity::SetUP(ett ,type, Owner);
 		ett->m_Name = name;
 	}
 

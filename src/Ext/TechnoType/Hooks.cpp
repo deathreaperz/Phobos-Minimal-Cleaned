@@ -15,6 +15,34 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/House/Body.h>
 
+DEFINE_HOOK(0x711F39, TechnoTypeClass_CostOf_FactoryPlant, 0x8)
+{
+	GET(TechnoTypeClass*, pThis, ESI);
+	GET(HouseClass*, pHouse, EDI);
+	REF_STACK(float, mult, STACK_OFFSET(0x10, -0x8));
+
+	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
+
+	if (!pHouseExt->RestrictedFactoryPlants.empty())
+		mult *= pHouseExt->GetRestrictedFactoryPlantMult(pThis);
+
+	return 0;
+}
+
+DEFINE_HOOK(0x711FDF, TechnoTypeClass_RefundAmount_FactoryPlant, 0x8)
+{
+	GET(TechnoTypeClass*, pThis, ESI);
+	GET(HouseClass*, pHouse, EDI);
+	REF_STACK(float, mult, STACK_OFFSET(0x10, -0x4));
+
+	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
+
+	if (!pHouseExt->RestrictedFactoryPlants.empty())
+		mult *= pHouseExt->GetRestrictedFactoryPlantMult(pThis);
+
+	return 0;
+}
+
 DEFINE_HOOK(0x707319, TechnoClass_CalcVoxelShadow_ShadowScale, 0x6)
 {
 	GET(TechnoTypeClass*, pType, EAX);
@@ -178,8 +206,8 @@ DEFINE_HOOK(0x73CCE1, UnitClass_DrawSHP_TurretOffest, 0x6)
 	mtx.RotateZ(angle);
 	auto res = mtx.GetTranslation();
 	CoordStruct location { static_cast<int>(res.X), static_cast<int>(-res.Y), static_cast<int>(res.Z) };
-	Point2D temp;
-	pos += *TacticalClass::Instance()->CoordsToScreen(&temp, &location);
+	Point2D temp = TacticalClass::Instance()->CoordsToScreen(location);
+	pos += temp;
 
 	return 0;
 }
@@ -266,24 +294,24 @@ DEFINE_HOOK(0x73CF46, UnitClass_Draw_It_KeepUnitVisible, 0x6)
 }
 
 // Ares hooks in at 739B8A, this goes before it and skips it if needed.
-DEFINE_HOOK(0x739B7C, UnitClass_Deploy_DeployDir, 0x6)
-{
-	enum { SkipAnim = 0x739C70, PlayAnim = 0x739B9E };
-
-	GET(UnitClass*, pThis, ESI);
-
-	if (!pThis->InAir)
-	{
-		if (pThis->Type->DeployingAnim)
-		{
-			return (TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->DeployingAnim_AllowAnyDirection.Get()) ? PlayAnim : 0;
-		}
-
-		pThis->Deployed = true;
-	}
-
-	return SkipAnim;
-}
+// DEFINE_HOOK(0x739B7C, UnitClass_Deploy_DeployDir, 0x6)
+// {
+// 	enum { SkipAnim = 0x739C70, PlayAnim = 0x739B9E };
+//
+// 	GET(UnitClass*, pThis, ESI);
+//
+// 	if (!pThis->InAir)
+// 	{
+// 		if (pThis->Type->DeployingAnim)
+// 		{
+// 			return (TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->DeployingAnim_AllowAnyDirection.Get()) ? PlayAnim : 0;
+// 		}
+//
+// 		pThis->Deployed = true;
+// 	}
+//
+// 	return SkipAnim;
+// }
 
 AnimTypeClass* GetDeployAnim(UnitClass* pThis)
 {
@@ -373,23 +401,18 @@ DEFINE_HOOK(0x739D73, UnitClass_UnDeploy_DeployAnim, 0x6)
 // 	bool isDeploying = R->Origin() == 0x739BA8;
 // 	auto const pExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
 //
-// 	{
-// 		if(auto pAnimType = GetDeployAnim(pThis)) {
-// 			if (auto const pAnim = GameCreate<AnimClass>(pAnimType,
-// 				pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0,
-// 				!isDeploying ? pExt->DeployingAnim_ReverseForUndeploy.Get() : false))
-// 			{
-// 				pThis->DeployAnim = pAnim;
-// 				pAnim->SetOwnerObject(pThis);
 //
-// 				if (pExt->DeployingAnim_UseUnitDrawer)
-// 					return isDeploying ? DeployUseUnitDrawer : UndeployUseUnitDrawer;
-// 			}
-// 			else
-// 			{
-// 				pThis->DeployAnim = nullptr;
-// 			}
-// 		}
+// 	if (auto const pAnim = GameCreate<AnimClass>(pThis->Type->DeployingAnim,
+// 			pThis->Location, 0, 1, 0x600, 0,
+// 			!isDeploying ? pExt->DeployingAnim_ReverseForUndeploy : false))
+// 	{
+// 			pThis->DeployAnim = pAnim;
+// 			pAnim->SetOwnerObject(pThis);
+//
+// 			if (pExt->DeployingAnim_UseUnitDrawer)
+// 				return isDeploying ? DeployUseUnitDrawer : UndeployUseUnitDrawer;
+// 	} else {
+// 			pThis->DeployAnim = nullptr;
 // 	}
 //
 // 	return isDeploying ? Deploy : Undeploy;
@@ -409,6 +432,57 @@ DEFINE_HOOK(0x739C86, UnitClass_DeployUndeploy_DeploySound, 0x6)
 		return 0; // Only play sound when done with deploying or undeploying.
 
 	return isDeploying ? DeployReturn : UndeployReturn;
+}
+
+#include <Locomotor/HoverLocomotionClass.h>
+
+namespace SimpleDeployerTemp
+{
+	bool HoverDeployedToLand = false;
+}
+
+DEFINE_HOOK(0x739CBF, UnitClass_Deploy_DeployToLandHover, 0x5)
+{
+	GET(UnitClass*, pThis, ESI);
+
+	if (pThis->Deployed && pThis->Type->DeployToLand && pThis->Type->Locomotor == HoverLocomotionClass::ClassGUID())
+		SimpleDeployerTemp::HoverDeployedToLand = true;
+
+	return 0;
+}
+
+DEFINE_HOOK_AGAIN(0x73DED8, UnitClass_Unload_DeployToLandHover, 0x7)
+DEFINE_HOOK(0x73E5B1, UnitClass_Unload_DeployToLandHover, 0x8)
+{
+	if (SimpleDeployerTemp::HoverDeployedToLand)
+	{
+		GET(UnitClass*, pThis, ESI);
+
+		// Ares' DeployToLand 'fix' for Hover IsSimpleDeployer vehicles does not set/reset certain values
+		// and has a chance to get stuck in Unload mission as a result, following should remedy that.
+		pThis->SetHeight(0);
+		pThis->InAir = false;
+		pThis->ForceMission(Mission::Guard);
+	}
+
+	SimpleDeployerTemp::HoverDeployedToLand = false;
+	return 0;
+}
+
+// Do not display hover bobbing when landed during deploying.
+DEFINE_HOOK(0x513D2C, HoverLocomotionClass_ProcessBobbing_DeployToLand, 0x6)
+{
+	enum { SkipBobbing = 0x513F2A };
+
+	GET(LocomotionClass*, pThis, ECX);
+
+	if (auto const pUnit = specific_cast<UnitClass*>(pThis->Owner))
+	{
+		if (pUnit->Deploying && pUnit->Type->DeployToLand)
+			return SkipBobbing;
+	}
+
+	return 0;
 }
 
 // Issue #503
@@ -445,4 +519,31 @@ DEFINE_HOOK(0x4AE670, DisplayClass_GetToolTip_EnemyUIName, 0x8)
 
 	R->EAX(pObject->GetUIName());
 	return SetUIName;
+}
+
+DEFINE_HOOK(0x6FDFA8, TechnoClass_FireAt_SprayOffsets, 0x5)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(WeaponTypeClass*, pWeapon, EBX);
+	auto pType = pThis->GetTechnoType();
+	auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+	if (pType->SprayAttack)
+	{
+		if (pThis->CurrentBurstIndex)
+		{
+			pThis->SprayOffsetIndex = (pExt->SprayOffsets.size() / pWeapon->Burst + pThis->SprayOffsetIndex) % pExt->SprayOffsets.size();
+		}
+		else
+		{
+			pThis->SprayOffsetIndex = ScenarioClass::Instance->Random.RandomRanged(0, pExt->SprayOffsets.size() - 1);
+		}
+
+		auto& Coord = pExt->SprayOffsets[pThis->SprayOffsetIndex];
+		R->Stack(0x88, pThis->Location.X + Coord->X);//X
+		R->Stack(0x8C, pThis->Location.Y + Coord->Y);//Y
+		R->EAX(pThis->Location.Z + Coord->Z); //Z
+	}
+
+	return 0x6FE218;
 }

@@ -136,6 +136,32 @@ public:
 	ISTILE(DestroyableCliff, 0x486900);
 
 	#undef ISTILE
+
+	TileType GetTileType() const
+	{
+		if (Tile_Is_Tunnel()) return TileType::Tunnel;
+		if (Tile_Is_Water()) return TileType::Water;
+		if (Tile_Is_Blank()) return TileType::Blank;
+		if (Tile_Is_Ramp()) return TileType::Ramp;
+		if (Tile_Is_Cliff()) return TileType::Cliff;
+		if (Tile_Is_Shore()) return TileType::Shore;
+		if (Tile_Is_Wet()) return TileType::Wet;
+		if (Tile_Is_MiscPave()) return TileType::MiscPave;
+		if (Tile_Is_Pave()) return TileType::Pave;
+		if (Tile_Is_DirtRoad()) return TileType::DirtRoad;
+		if (Tile_Is_PavedRoad()) return TileType::PavedRoad;
+		if (Tile_Is_PavedRoadEnd()) return TileType::PavedRoadEnd;
+		if (Tile_Is_PavedRoadSlope()) return TileType::PavedRoadSlope;
+		if (Tile_Is_Median()) return TileType::Median;
+		if (Tile_Is_Bridge()) return TileType::Bridge;
+		if (Tile_Is_WoodBridge()) return TileType::WoodBridge;
+		if (Tile_Is_ClearToSandLAT()) return TileType::ClearToSandLAT;
+		if (Tile_Is_Green()) return TileType::Green;
+		if (Tile_Is_NotWater()) return TileType::NotWater;
+		if (Tile_Is_DestroyableCliff()) return TileType::DestroyableCliff;
+		return TileType::Unk;
+	}
+
 	// get content objects
 	TechnoClass* FindTechnoNearestTo(Point2D const& offsetPixel, bool alt, TechnoClass const* pExcludeThis = nullptr) const
 		{ JMP_THIS(0x47C3D0); }
@@ -185,7 +211,7 @@ public:
 	RectangleStruct* OverlayShapeRect(RectangleStruct* pRet)
 		{ JMP_THIS(0x47FDE0); }
 
-	RectangleStruct GetOverlayShapeRect()
+	FORCEINLINE RectangleStruct GetOverlayShapeRect()
 	{
 		RectangleStruct nBuffer;
 		this->OverlayShapeRect(&nBuffer);
@@ -276,7 +302,7 @@ public:
 	int GetContainedTiberiumValue() const
 		{ JMP_THIS(0x485020); }
 
-	bool SpreadTiberium(bool forced) const
+	[[deprecated]] bool SpreadTiberium(bool forced) const
 		{ JMP_THIS(0x483780); }
 
 	// add or create tiberium of the specified type
@@ -289,6 +315,15 @@ public:
 
 	bool CanTiberiumGerminate(TiberiumClass* tib) const
 		{ JMP_THIS(0x4838E0); }
+
+	bool CanTiberiumGrowth() const
+		{ JMP_THIS(0x483620);}
+
+	bool CanTiberiumSpread() const
+		{ JMP_THIS(0x483690);}
+
+	bool GrowTiberium() const
+		{ JMP_THIS(0x483710); }
 
 	void SetMapCoords(const CoordStruct& coords) const
 		{ JMP_THIS(0x485240); }
@@ -333,13 +368,13 @@ public:
 		{ JMP_THIS(0x485460); }
 	//
 	// cloak generators
-	bool CloakGen_InclHouse(unsigned int idx) const
+	constexpr FORCEINLINE bool CloakGen_InclHouse(unsigned int idx) const
 		{ return ((1 << idx) & this->CloakedByHouses) != 0; }
 
-	void CloakGen_AddHouse(unsigned int idx)
+	constexpr FORCEINLINE void CloakGen_AddHouse(unsigned int idx)
 		{ this->CloakedByHouses |= 1 << idx; }
 
-	void CloakGen_RemHouse(unsigned int idx)
+	constexpr FORCEINLINE void CloakGen_RemHouse(unsigned int idx)
 		{ this->CloakedByHouses &= ~(1 << idx); }
 
 	// unused, returns 0 if that house doesn't have cloakgens covering this cell or Player has sensors over this cell
@@ -351,27 +386,27 @@ public:
 		{ JMP_THIS(0x4870D0); }
 		//{ return this->SensorsOfHouses[idx] > 0; }
 
-	void Sensors_AddOfHouse(unsigned int idx)
+	constexpr FORCEINLINE void Sensors_AddOfHouse(unsigned int idx)
 		{ ++this->SensorsOfHouses[idx]; }
 
-	void Sensors_RemOfHouse(unsigned int idx)
+	constexpr FORCEINLINE void Sensors_RemOfHouse(unsigned int idx)
 		{ --this->SensorsOfHouses[idx]; }
 
 	// disguise sensors
-	bool DisguiseSensors_InclHouse(unsigned int idx) const
+	constexpr FORCEINLINE bool DisguiseSensors_InclHouse(unsigned int idx) const
 		{ return this->DisguiseSensorsOfHouses[idx] > 0; }
 
-	void DisguiseSensors_AddOfHouse(unsigned int idx)
+	constexpr FORCEINLINE void DisguiseSensors_AddOfHouse(unsigned int idx)
 		{ ++this->DisguiseSensorsOfHouses[idx]; }
 
-	void DisguiseSensors_RemOfHouse(unsigned int idx)
+	constexpr FORCEINLINE void DisguiseSensors_RemOfHouse(unsigned int idx)
 		{ --this->DisguiseSensorsOfHouses[idx]; }
 
 	// Rad Sites
-	void SetRadSite(RadSiteClass* pRad)
+	constexpr FORCEINLINE void SetRadSite(RadSiteClass* pRad)
 		{ this->RadSite = pRad; }
 
-	RadSiteClass* GetRadSite() const
+	constexpr FORCEINLINE RadSiteClass* GetRadSite() const
 		{ return this->RadSite; }
 
 	bool IsRadiated() const
@@ -387,10 +422,10 @@ public:
 		{ JMP_THIS(0x487D00); }
 
 	// helper
-	FORCEINLINE bool ContainsBridge() const
+	constexpr FORCEINLINE bool ContainsBridge() const
 		{ return (this->Flags & CellFlags::Bridge) != CellFlags::Empty; }
 
-	FORCEINLINE bool ContainsBridgeEx() const
+	constexpr FORCEINLINE bool ContainsBridgeEx() const
 		{ return (this->Flags & CellFlags::BridgeWithBody) != CellFlags::Empty; }
 
 	FORCEINLINE bool ContainsBridgeBody() const
@@ -406,21 +441,21 @@ public:
 	FORCEINLINE ObjectClass* GetContent(int z) const
 	{ return this->ContainsBridge() || z >= (Unsorted::LevelHeight * (this->Level + 4)) ? this->AltObject : this->FirstObject; }
 
-	FORCEINLINE int GetLevelFrom(CellClass const* const	pSource) const
+	constexpr FORCEINLINE int GetLevelFrom(CellClass const* const	pSource) const
 	{ return (this->Level + (((unsigned int)this->Flags >> 6) & 4) - (((unsigned int)pSource->Flags >> 6) & 4) - pSource->Level); }
 
-	FORCEINLINE int GetLevel() const
+	constexpr FORCEINLINE int GetLevel() const
 	{ return this->Level + (this->ContainsBridge() ? Unsorted::BridgeLevels : 0); }
 
-	static FORCEINLINE CoordStruct Cell2Coord(const CellStruct &cell, int z = 0) {
+	static constexpr FORCEINLINE CoordStruct Cell2Coord(const CellStruct &cell, int z = 0) {
 		return { (cell.X * 256) + 128  , cell.Y * 256 + 128 ,z };
 	}
 
-	static FORCEINLINE CellStruct Coord2Cell(const CoordStruct &crd) {
+	static constexpr FORCEINLINE CellStruct Coord2Cell(const CoordStruct &crd) {
 		return { static_cast<short>(crd.X / 256)  , static_cast<short>(crd.Y / 256) };
 	}
 
-	CoordStruct FixHeight(CoordStruct crd) const
+    constexpr CoordStruct FixHeight(CoordStruct crd) const
 	{
 		if(this->ContainsBridge()) {
 			crd.Z += Unsorted::BridgeHeight;
@@ -428,7 +463,7 @@ public:
 		return crd;
 	}
 
-	void FixHeight(CoordStruct* pCrd) const {
+	constexpr void FixHeight(CoordStruct* pCrd) const {
 		if (this->ContainsBridge()) {
 			pCrd->Z += Unsorted::BridgeHeight;
 		}
@@ -459,7 +494,7 @@ public:
 	CoordStruct* FindInfantrySubposition(CoordStruct* pOutBuffer, const CoordStruct& coords, bool ignoreContents, bool alt, bool useCellCoords)
 		{ JMP_THIS(0x481180); }
 
-	CoordStruct FindInfantrySubposition(const CoordStruct& coords, bool ignoreContents, bool alt, bool useCellCoords , int Zcoords) {
+	CoordStruct FORCEINLINE FindInfantrySubposition(const CoordStruct& coords, bool ignoreContents, bool alt, bool useCellCoords , int Zcoords) {
 		CoordStruct outBuffer;
 		this->FindInfantrySubposition(&outBuffer, coords, ignoreContents, alt, useCellCoords);
 		outBuffer.Z = Zcoords;
@@ -516,7 +551,7 @@ public:
 	unsigned int MinimapCellColor(void* a1, bool a2 = false) const
 		{ JMP_THIS(0x47BDB0); }
 
-	ObjectClass* Cell_Occupier(bool alt = false) const
+	constexpr FORCEINLINE ObjectClass* Cell_Occupier(bool alt = false) const
 		{ return alt ? AltObject : FirstObject; }
 
 	unsigned int ReduceWall(int nDamage = -1) const { JMP_THIS(0x480CB0); }
@@ -537,12 +572,12 @@ public:
 	bool HasTiberium() const
 		{ JMP_THIS(0x487DF0); }
 
-	bool HasWeed() const
+	constexpr FORCEINLINE bool HasWeed() const
 		{ return LandType == LandType::Weeds; }
 
-	bool operator != (const CellClass & cell) const { return cell.MapCoords.DifferTo(MapCoords); }
-	bool operator == (const CellClass & cell) const { return cell.MapCoords.SimilarTo(MapCoords); }
-	bool IsValidMapCoords() const  { return MapCoords.IsValid(); }
+	constexpr FORCEINLINE bool operator != (const CellClass & cell) const { return cell.MapCoords.DifferTo(MapCoords); }
+	constexpr FORCEINLINE bool operator == (const CellClass & cell) const { return cell.MapCoords.SimilarTo(MapCoords); }
+	constexpr FORCEINLINE bool IsValidMapCoords() const  { return MapCoords.IsValid(); }
 	int GetCliffIndex_() const { JMP_THIS(0x487D50); }
 	CellClass* GetBulletObstacleCell(CellClass* cell, CoordStruct coord, BulletTypeClass* bullet, HouseClass* house) const { JMP_THIS(0x4CC360); }
 

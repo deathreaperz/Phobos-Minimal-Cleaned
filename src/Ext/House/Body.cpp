@@ -66,6 +66,50 @@ bool HouseExtData::IsMutualAllies(HouseClass const* pThis, HouseClass const* pHo
 			&& pHouse->Allies.Contains(pThis->ArrayIndex));
 }
 
+float HouseExtData::GetRestrictedFactoryPlantMult(TechnoTypeClass* pTechnoType) const
+{
+	float mult = 1.0;
+	auto const pTechnoTypeExt = TechnoTypeExtContainer::Instance.Find(pTechnoType);
+
+	for (auto const pBuilding : this->RestrictedFactoryPlants)
+	{
+		auto const pTypeExt = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
+
+		if (pTypeExt->FactoryPlant_AllowTypes.size() > 0 && !pTypeExt->FactoryPlant_AllowTypes.Contains(pTechnoType))
+			continue;
+
+		if (pTypeExt->FactoryPlant_DisallowTypes.size() > 0 && pTypeExt->FactoryPlant_DisallowTypes.Contains(pTechnoType))
+			continue;
+
+		float currentMult = 1.0f;
+
+		switch (pTechnoType->WhatAmI())
+		{
+		case AbstractType::BuildingType:
+			if (((BuildingTypeClass*)pTechnoType)->BuildCat == BuildCat::Combat)
+				currentMult -= pBuilding->Type->DefensesCostBonus;
+			else
+				currentMult -= pBuilding->Type->BuildingsCostBonus;
+			break;
+		case AbstractType::AircraftType:
+			currentMult -= pBuilding->Type->AircraftCostBonus;
+			break;
+		case AbstractType::InfantryType:
+			currentMult -= pBuilding->Type->InfantryCostBonus;
+			break;
+		case AbstractType::UnitType:
+			currentMult -= pBuilding->Type->UnitsCostBonus;
+			break;
+		default:
+			break;
+		}
+
+		mult *= float(1.0f - currentMult * pTechnoTypeExt->FactoryPlant_Multiplier);
+	}
+
+	return mult;
+}
+
 RequirementStatus HouseExtData::RequirementsMet(
 	HouseClass* pHouse, TechnoTypeClass* pItem)
 {
@@ -236,6 +280,29 @@ std::pair<NewFactoryState, BuildingClass*> HouseExtData::HasFactory(
 	return { NewFactoryState::NotFound , nullptr };
 }
 
+int HouseExtData::BuildBuildingLimitRemaining(HouseClass* pHouse, BuildingTypeClass* pItem)
+{
+	auto const BuildLimit = pItem->BuildLimit;
+
+	if (BuildLimit >= 0)
+		return BuildLimit - BuildingTypeExtData::GetUpgradesAmount(const_cast<BuildingTypeClass*>(pItem), const_cast<HouseClass*>(pHouse));
+	else
+		return -BuildLimit - pHouse->CountOwnedEver(pItem);
+}
+
+int HouseExtData::CheckBuildingBuildLimit(HouseClass* pHouse, BuildingTypeClass* pItem, bool const includeQueued)
+{
+	enum { NotReached = 1, ReachedPermanently = -1, ReachedTemporarily = 0 };
+
+	int BuildLimit = pItem->BuildLimit;
+	int Remaining = HouseExtData::BuildBuildingLimitRemaining(pHouse, pItem);
+
+	if (BuildLimit >= 0 && Remaining <= 0)
+		return (includeQueued && FactoryClass::FindByOwnerAndProduct(pHouse, pItem)) ? NotReached : ReachedPermanently;
+
+	return Remaining > 0 ? NotReached : ReachedTemporarily;
+}
+
 CanBuildResult HouseExtData::PrereqValidate(
 	HouseClass* pHouse, TechnoTypeClass* pItem,
 	bool buildLimitOnly, bool includeQueued)
@@ -294,7 +361,7 @@ CanBuildResult HouseExtData::PrereqValidate(
 
 	if (builtLimitResult == CanBuildResult::Buildable && pItem->WhatAmI() == BuildingTypeClass::AbsID && !BuildingTypeExtContainer::Instance.Find((BuildingTypeClass*)pItem)->PowersUp_Buildings.empty())
 	{
-		return static_cast<CanBuildResult>(HouseExtData::CheckBuildLimit(pHouse, (BuildingTypeClass*)pItem, includeQueued));
+		return static_cast<CanBuildResult>(HouseExtData::CheckBuildingBuildLimit(pHouse, (BuildingTypeClass*)pItem, includeQueued));
 	}
 
 	return builtLimitResult;
@@ -383,7 +450,8 @@ void HouseExtData::UpdateAcademy(BuildingClass* pAcademy, bool added)
 	// now this can be unconditional
 	if (added)
 	{
-		this->Academies.push_back(pAcademy);
+		//using `emplace` because it already check above,..
+		this->Academies.emplace(pAcademy);
 	}
 	else
 	{
@@ -432,6 +500,9 @@ void HouseExtData::ApplyAcademy(
 		// aggregate the bonuses
 		for (auto const& pBld : this->Academies)
 		{
+			if (!pBld)
+				continue;
+
 			auto const pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
 
 			auto const isWhitelisted = pExt->AcademyWhitelist.empty()
@@ -466,7 +537,7 @@ void HouseExtData::UpdateFactoryPlans(BuildingClass* pBld)
 	}
 
 	HouseExtContainer::Instance.Find(pBld->Owner)->FactoryOwners_GatheredPlansOf
-		.push_back_unique(TechnoExtContainer::Instance.Find(pBld)->OriginalHouseType);
+		.insert(TechnoExtContainer::Instance.Find(pBld)->OriginalHouseType);
 }
 
 bool HouseExtData::PrerequisitesMet(HouseClass* const pThis, TechnoTypeClass* const pItem)
@@ -536,14 +607,6 @@ void HouseExtData::UpdateShotCountB(SuperWeaponTypeClass* pFor)
 		nData.LastFrame = Unsorted::CurrentFrame();
 }
 
-LauchData HouseExtData::GetShotCount(SuperWeaponTypeClass* pFor)
-{
-	if ((size_t)pFor->ArrayIndex < this->LaunchDatas.size())
-		return this->LaunchDatas[pFor->ArrayIndex];
-
-	return {};
-}
-
 SuperClass* HouseExtData::IsSuperAvail(int nIdx, HouseClass* pHouse)
 {
 	if (const auto pSW = pHouse->Supers.GetItemOrDefault(nIdx))
@@ -561,7 +624,7 @@ int HouseExtData::GetSurvivorDivisor(HouseClass* pHouse)
 {
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
 
-	if (pTypeExt && (pTypeExt->SurvivorDivisor.Get(-1) > 0))
+	if (pTypeExt && (pTypeExt->SurvivorDivisor.Get() > 0))
 		return pTypeExt->SurvivorDivisor;
 
 	if (const auto pSide = HouseExtData::GetSide(pHouse))
@@ -576,7 +639,7 @@ InfantryTypeClass* HouseExtData::GetCrew(HouseClass* pHouse)
 {
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
 
-	if (pTypeExt && pTypeExt->Crew.Get(nullptr))
+	if (pTypeExt && pTypeExt->Crew)
 		return pTypeExt->Crew;
 
 	if (const auto pSide = HouseExtData::GetSide(pHouse))
@@ -591,7 +654,7 @@ InfantryTypeClass* HouseExtData::GetEngineer(HouseClass* pHouse)
 {
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
 
-	if (pTypeExt && pTypeExt->Engineer.Get(nullptr))
+	if (pTypeExt && pTypeExt->Engineer)
 		return pTypeExt->Engineer;
 
 	if (const auto pSide = HouseExtData::GetSide(pHouse))
@@ -606,7 +669,7 @@ InfantryTypeClass* HouseExtData::GetTechnician(HouseClass* pHouse)
 {
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
 
-	if (pTypeExt && pTypeExt->Technician.Get(nullptr))
+	if (pTypeExt && pTypeExt->Technician)
 		return pTypeExt->Technician;
 
 	if (const auto pSide = HouseExtData::GetSide(pHouse))
@@ -621,7 +684,7 @@ InfantryTypeClass* HouseExtData::GetDisguise(HouseClass* pHouse)
 {
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
 
-	if (pTypeExt && pTypeExt->Disguise.Get(nullptr))
+	if (pTypeExt && pTypeExt->Disguise)
 		return pTypeExt->Disguise;
 
 	if (const auto pSide = HouseExtData::GetSide(pHouse))
@@ -639,7 +702,7 @@ AircraftTypeClass* HouseExtData::GetParadropPlane(HouseClass* pHouse)
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
 	AircraftTypeClass* pRest = nullptr;
 
-	if (pTypeExt && pTypeExt->ParaDropPlane.Get(nullptr))
+	if (pTypeExt && pTypeExt->ParaDropPlane)
 	{
 		pRest = pTypeExt->ParaDropPlane;
 	}
@@ -658,9 +721,7 @@ AircraftTypeClass* HouseExtData::GetParadropPlane(HouseClass* pHouse)
 			AircraftTypeClass::Array->GetItemOrDefault(iPlane, RulesExtData::Instance()->DefaultParaPlane);
 	}
 
-	if (pRest && pRest->Strength == 0)
-		Debug::FatalError("Invalid Paradrop Plane[%s]", pRest->ID);
-	else if (!pRest)
+	if (!pRest)
 		Debug::FatalError("Invalid Paradrop Plane");
 
 	return pRest;
@@ -671,7 +732,7 @@ AircraftTypeClass* HouseExtData::GetSpyPlane(HouseClass* pHouse)
 	AircraftTypeClass* pRest = nullptr;
 
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
-	if (pTypeExt && pTypeExt->SpyPlane.Get(nullptr))
+	if (pTypeExt && pTypeExt->SpyPlane)
 	{
 		pRest = pTypeExt->SpyPlane;
 	}
@@ -680,10 +741,7 @@ AircraftTypeClass* HouseExtData::GetSpyPlane(HouseClass* pHouse)
 	{
 		if (const auto pSide = HouseExtData::GetSide(pHouse))
 		{
-			const auto pSideExt = SideExtContainer::Instance.Find(pSide);
-
-			if (pSideExt->SpyPlane.Get(nullptr))
-				pRest = pSideExt->SpyPlane;
+			pRest = SideExtContainer::Instance.Find(pSide)->SpyPlane;
 		}
 	}
 
@@ -701,7 +759,7 @@ AircraftTypeClass* HouseExtData::GetSpyPlane(HouseClass* pHouse)
 UnitTypeClass* HouseExtData::GetHunterSeeker(HouseClass* pHouse)
 {
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
-	if (pTypeExt && pTypeExt->HunterSeeker.Get(nullptr))
+	if (pTypeExt && pTypeExt->HunterSeeker)
 	{
 		return pTypeExt->HunterSeeker;
 	}
@@ -717,7 +775,7 @@ UnitTypeClass* HouseExtData::GetHunterSeeker(HouseClass* pHouse)
 AnimTypeClass* HouseExtData::GetParachuteAnim(HouseClass* pHouse)
 {
 	const auto pTypeExt = HouseTypeExtContainer::Instance.TryFind(pHouse->Type);
-	if (pTypeExt && pTypeExt->ParachuteAnim.Get(nullptr))
+	if (pTypeExt && pTypeExt->ParachuteAnim)
 	{
 		return pTypeExt->ParachuteAnim;
 	}
@@ -778,6 +836,33 @@ bool HouseExtData::InvalidateIgnorable(AbstractClass* ptr)
 	return true;
 }
 
+TechTreeTypeClass* HouseExtData::GetTechTreeType()
+{
+	if (!this->SideTechTree.isset())
+	{
+		TechTreeTypeClass* ret = nullptr;
+
+		for (const auto& pType : TechTreeTypeClass::Array)
+		{
+			if (pType->SideIndex == this->AttachedToObject->SideIndex)
+			{
+				ret = pType.get();
+			}
+		}
+
+		if (!ret)
+		{
+			Debug::Log("TechTreeTypeClass::GetForSide: Could not find tech tree for side %d, returning tech tree 0: %s",
+				this->AttachedToObject->SideIndex, TechTreeTypeClass::Array[0]->Name.data());
+			ret = TechTreeTypeClass::Array[0].get();
+		}
+
+		this->SideTechTree = ret;
+	}
+
+	return this->SideTechTree.get();
+}
+
 void HouseExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
 	if (ptr == nullptr)
@@ -789,9 +874,9 @@ void HouseExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 	AnnounceInvalidPointer(Factory_VehicleType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_NavyType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_AircraftType, ptr, bRemoved);
-	AnnounceInvalidPointer(ActiveTeams, ptr);
 	AnnounceInvalidPointer<TechnoClass*>(LimboTechno, ptr, bRemoved);
 	AnnounceInvalidPointer<BuildingClass*>(Academies, ptr, bRemoved);
+	AnnounceInvalidPointer<BuildingClass*>(RestrictedFactoryPlants, ptr, bRemoved);
 
 	if (bRemoved)
 		AutoDeathObjects.erase((TechnoClass*)ptr);
@@ -1232,70 +1317,379 @@ void HouseExtData::UpdateAutoDeathObjects()
 	}
 }
 
-BuildLimitStatus HouseExtData::BuildLimitGroupCheck(HouseClass const* const pThis, TechnoTypeClass* pItem, bool includeQueued)
+int HouseExtData::CountOwnedIncludeDeploy(const HouseClass* pThis, const TechnoTypeClass* pItem)
 {
-	auto pItemExt = TechnoTypeExtContainer::Instance.Find(pItem);
-	if (pItemExt->BuildLimit_Group_Types.empty())
-		return BuildLimitStatus::NotReached;
+	int count = pThis->CountOwnedNow(pItem);
+	count += pItem->DeploysInto ? pThis->CountOwnedNow(pItem->DeploysInto) : 0;
+	count += pItem->UndeploysInto ? pThis->CountOwnedNow(pItem->UndeploysInto) : 0;
+	return count;
+}
 
-	if (pItemExt->BuildLimit_Group_Any.Get())
+std::vector<int> HouseExtData::GetBuildLimitGroupLimits(HouseClass* pHouse, TechnoTypeClass* pType)
+{
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	std::vector<int> limits = pTypeExt->BuildLimitGroup_Nums;
+
+	if (!pTypeExt->BuildLimitGroup_ExtraLimit_Types.empty() && !pTypeExt->BuildLimitGroup_ExtraLimit_Nums.empty())
 	{
-		bool reachedLimit = false;
-		for (size_t i = 0;
-			i < MinImpl(
-				pItemExt->BuildLimit_Group_Types.size(),
-				pItemExt->BuildLimit_Group_Limits.size())
-			; i++)
+		for (size_t i = 0; i < pTypeExt->BuildLimitGroup_ExtraLimit_Types.size(); i++)
 		{
-			TechnoTypeClass* pType = pItemExt->BuildLimit_Group_Types[i];
-			int ownedNow = HouseExtData::CountOwnedNowTotal(pThis, pType);
-			if (ownedNow >= pItemExt->BuildLimit_Group_Limits[i])
+			int count = 0;
+			auto pTmpType = pTypeExt->BuildLimitGroup_ExtraLimit_Types[i];
+			auto const pBuildingType = specific_cast<BuildingTypeClass*>(pTmpType);
+
+			if (pBuildingType &&
+				(BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+				count = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pHouse));
+			else
+				count = pHouse->CountOwnedNow(pTmpType);
+
+			if (i < pTypeExt->BuildLimitGroup_ExtraLimit_MaxCount.size() && pTypeExt->BuildLimitGroup_ExtraLimit_MaxCount[i] > 0)
+				count = MinImpl(count, pTypeExt->BuildLimitGroup_ExtraLimit_MaxCount[i]);
+
+			for (auto& limit : limits)
 			{
-				reachedLimit |= (includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
-					? false : true;
+				if (i < pTypeExt->BuildLimitGroup_ExtraLimit_Nums.size() && pTypeExt->BuildLimitGroup_ExtraLimit_Nums[i] > 0)
+					limit += count * pTypeExt->BuildLimitGroup_ExtraLimit_Nums[i];
+
+				if (pTypeExt->BuildLimitGroup_ExtraLimit_MaxNum > 0)
+					limit = MinImpl(limit, pTypeExt->BuildLimitGroup_ExtraLimit_MaxNum);
 			}
 		}
-		return reachedLimit ?
-			BuildLimitStatus::ReachedPermanently :
-			BuildLimitStatus::NotReached;
+	}
+
+	return limits;
+}
+
+int HouseExtData::QueuedNum(const HouseClass* pHouse, const TechnoTypeClass* pType)
+{
+	const AbstractType absType = pType->WhatAmI();
+
+	int queued = 0;
+
+	if (const FactoryClass* pFactory = pHouse->GetPrimaryFactory(absType, pType->Naval, BuildCat::DontCare))
+	{
+		queued = pFactory->CountTotal(pType);
+
+		if (const auto pObject = pFactory->Object)
+		{
+			if (pObject->GetType() == pType)
+				--queued;
+		}
+	}
+
+	return queued;
+}
+
+void HouseExtData::RemoveProduction(const HouseClass* pHouse, const TechnoTypeClass* pType, int num)
+{
+	const AbstractType absType = pType->WhatAmI();
+
+	if (FactoryClass* pFactory = pHouse->GetPrimaryFactory(absType, pType->Naval, BuildCat::DontCare))
+	{
+		int queued = pFactory->CountTotal(pType);
+		if (num >= 0)
+			queued = MinImpl(num, queued);
+
+		for (int i = 0; i < queued; i++)
+		{
+			pFactory->RemoveOneFromQueue(pType);
+		}
+	}
+}
+
+bool HouseExtData::ReachedBuildLimit(HouseClass* pHouse, TechnoTypeClass* pType, bool ignoreQueued)
+{
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+	if (pTypeExt->BuildLimitGroup_Types.empty() || pTypeExt->BuildLimitGroup_Nums.empty())
+		return false;
+
+	const std::vector<int> limits = HouseExtData::GetBuildLimitGroupLimits(pHouse, pType);
+
+	if (limits.size() == 1)
+	{
+		int count = 0;
+		int queued = 0;
+		bool inside = false;
+
+		for (auto& pTmpType : pTypeExt->BuildLimitGroup_Types)
+		{
+			const auto pTmpTypeExt = TechnoTypeExtContainer::Instance.Find(pTmpType);
+
+			if (!ignoreQueued)
+				queued += QueuedNum(pHouse, pTmpType) * pTmpTypeExt->BuildLimitGroup_Factor;
+
+			int owned = 0;
+			const auto pBuildingType = specific_cast<BuildingTypeClass*>(pTmpType);
+
+			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+				owned = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pHouse));
+			else
+				owned = pHouse->CountOwnedNow(pTmpType);
+
+			count += owned * pTmpTypeExt->BuildLimitGroup_Factor;
+
+			if (pTmpType == pType)
+				inside = true;
+		}
+
+		int num = count - limits.back();
+
+		if (num + queued >= 1 - pTypeExt->BuildLimitGroup_Factor)
+		{
+			if (inside)
+				RemoveProduction(pHouse, pType, (num + queued + pTypeExt->BuildLimitGroup_Factor - 1) / pTypeExt->BuildLimitGroup_Factor);
+			else if (num >= 1 - pTypeExt->BuildLimitGroup_Factor || pTypeExt->BuildLimitGroup_NotBuildableIfQueueMatch)
+				RemoveProduction(pHouse, pType, -1);
+
+			return true;
+		}
 	}
 	else
 	{
-		if (pItemExt->BuildLimit_Group_Limits.size() == 1U)
+		bool reached = true;
+		bool realReached = true;
+
+		for (size_t i = 0; i < limits.size(); i++)
+		{
+			TechnoTypeClass* pTmpType = pTypeExt->BuildLimitGroup_Types[i];
+			const auto pTmpTypeExt = TechnoTypeExtContainer::Instance.Find(pTmpType);
+			int queued = ignoreQueued ? 0 : QueuedNum(pHouse, pTmpType) * pTmpTypeExt->BuildLimitGroup_Factor;
+			int num = 0;
+			const auto pBuildingType = specific_cast<BuildingTypeClass*>(pTmpType);
+
+			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+				num = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pHouse));
+			else
+				num = pHouse->CountOwnedNow(pTmpType);
+
+			num *= pTmpTypeExt->BuildLimitGroup_Factor - limits[i];
+
+			if (pType == pTmpType && num + queued >= 1 - pTypeExt->BuildLimitGroup_Factor)
+			{
+				if (pTypeExt->BuildLimitGroup_ContentIfAnyMatch)
+				{
+					if (num >= 1 - pTypeExt->BuildLimitGroup_Factor || pTypeExt->BuildLimitGroup_NotBuildableIfQueueMatch)
+						RemoveProduction(pHouse, pType, (num + queued + pTypeExt->BuildLimitGroup_Factor - 1) / pTypeExt->BuildLimitGroup_Factor);
+
+					return true;
+				}
+				else if (num < 1 - pTypeExt->BuildLimitGroup_Factor)
+				{
+					realReached = false;
+				}
+			}
+			else if (pType != pTmpType && num + queued >= 0)
+			{
+				if (pTypeExt->BuildLimitGroup_ContentIfAnyMatch)
+				{
+					if (num >= 0 || pTypeExt->BuildLimitGroup_NotBuildableIfQueueMatch)
+						RemoveProduction(pHouse, pType, -1);
+
+					return true;
+				}
+				else if (num < 0)
+				{
+					realReached = false;
+				}
+			}
+			else
+			{
+				reached = false;
+			}
+		}
+
+		if (reached)
+		{
+			if (realReached || pTypeExt->BuildLimitGroup_NotBuildableIfQueueMatch)
+				RemoveProduction(pHouse, pType, -1);
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool HouseExtData::ShouldDisableCameo(HouseClass* pThis, TechnoTypeClass* pType)
+{
+	auto ret = false;
+	if (pType)
+	{
+		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+		// there is some another stupid bug
+		// where if the building already queueed and paused
+		// then you remove the prereq thing , the timer wont restart
+		// it make it odd
+		// also doing this check every frame is kind a weird ,..
+		//if(!pTypeExt->Prerequisite_Display.empty()
+		//	&& HouseExtData::PrereqValidate(pThis, pType , false , false ) == CanBuildResult::TemporarilyUnbuildable)
+		//{
+		//	R->EAX(true);
+		//	return 0x50B669;
+		//}
+
+		auto const abs = pType->WhatAmI();
+		auto const pFactory = pThis->GetPrimaryFactory(
+			abs, pType->Naval, BuildCat::DontCare);
+
+		// special logic for AirportBound
+		if (abs == AbstractType::AircraftType)
+		{
+			auto const pAType = static_cast<AircraftTypeClass const*>(pType);
+			if (pAType->AirportBound)
+			{
+				auto ownedAircraft = 0;
+				auto queuedAircraft = 0;
+
+				for (auto const& pAircraft : RulesClass::Instance->PadAircraft)
+				{
+					ownedAircraft += pThis->CountOwnedAndPresent(pAircraft);
+					if (pFactory)
+					{
+						queuedAircraft += pFactory->CountTotal(pAircraft);
+					}
+				}
+
+				// #896082: also check BuildLimit, and not always return the
+				// result of this comparison directly. originally, it would
+				// return false here, too, allowing more units than the
+				// BuildLimit permitted.
+				if (ownedAircraft + queuedAircraft >= pThis->AirportDocks)
+				{
+					return true;
+				}
+			}
+		}
+
+		auto queued = 0;
+		if (pFactory)
+		{
+			queued = pFactory->CountTotal(pType);
+
+			// #1286800: build limit > 1 and queues
+			// the object in production is counted twice: it appears in this
+			// factory queue, and it is already counted in the house's counters.
+			// this only affects positive build limits, for negative ones
+			// players could queue up one more than BuildLimit.
+			if (auto const pObject = pFactory->Object)
+			{
+				if (pObject->GetType() == pType && pType->BuildLimit > 0)
+				{
+					--queued;
+				}
+			}
+		}
+
+		// #1521738: to stay consistent, use the new method to calculate this
+		if (HouseExtData::BuildLimitRemaining(pThis, pType) - queued <= 0)
+		{ ret = true; }
+		else
+		{
+			const auto state = HouseExtData::HasFactory(pThis, pType, true, true, false, true);
+			ret = (state.first < NewFactoryState::Available_Alternative);
+		}
+	}
+
+	return ret;
+}
+
+CanBuildResult HouseExtData::BuildLimitGroupCheck(HouseClass* pThis, TechnoTypeClass* pItem, bool buildLimitOnly, bool includeQueued)
+{
+	auto pItemExt = TechnoTypeExtContainer::Instance.Find(pItem);
+
+	if (pItemExt->BuildLimitGroup_Types.empty())
+	{
+		return CanBuildResult::Buildable;
+	}
+
+	const std::vector<int> limits = HouseExtData::GetBuildLimitGroupLimits(pThis, pItem);
+
+	if (pItemExt->BuildLimitGroup_ContentIfAnyMatch.Get())
+	{
+		bool reachedLimit = false;
+
+		for (size_t i = 0; i < MinImpl(pItemExt->BuildLimitGroup_Types.size(), pItemExt->BuildLimitGroup_Nums.size()); i++)
+		{
+			TechnoTypeClass* pType = pItemExt->BuildLimitGroup_Types[i];
+			const auto pBuildingType = specific_cast<BuildingTypeClass*>(pType);
+			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+			int ownedNow = 0;
+
+			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+				ownedNow = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pThis));
+			else
+				ownedNow = CountOwnedIncludeDeploy(pThis, pType);
+
+			if (ownedNow >= limits[i] + 1 - pItemExt->BuildLimitGroup_Factor)
+				reachedLimit |= !(includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType));
+		}
+
+		return reachedLimit ? CanBuildResult::TemporarilyUnbuildable : CanBuildResult::Buildable;
+	}
+	else
+	{
+		if (limits.size() == 1U)
 		{
 			int sum = 0;
 			bool reachedLimit = false;
-			for (auto& pType : pItemExt->BuildLimit_Group_Types)
+
+			for (auto& pType : pItemExt->BuildLimitGroup_Types)
 			{
-				sum += HouseExtData::CountOwnedNowTotal(pThis, pType);
+				const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+				const auto pBuildingType = specific_cast<BuildingTypeClass*>(pType);
+				int owned = 0;
+
+				if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+					owned = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pThis));
+				else
+					owned = CountOwnedIncludeDeploy(pThis, pType);
+
+				sum += owned * pTypeExt->BuildLimitGroup_Factor;
 			}
-			if (sum >= pItemExt->BuildLimit_Group_Limits[0])
+
+			if (sum >= limits[0] + 1 - pItemExt->BuildLimitGroup_Factor)
 			{
-				for (auto& pType : pItemExt->BuildLimit_Group_Types)
+				for (auto& pType : pItemExt->BuildLimitGroup_Types)
 				{
-					reachedLimit |= (includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
-						? false : true;
+					reachedLimit |= !(includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType));
 				}
 			}
-			return reachedLimit ?
-				BuildLimitStatus::ReachedPermanently :
-				BuildLimitStatus::NotReached;
+
+			return reachedLimit ? CanBuildResult::TemporarilyUnbuildable : CanBuildResult::Buildable;
 		}
 		else
 		{
-			for (size_t i = 0;
-			i < MinImpl(
-				pItemExt->BuildLimit_Group_Types.size(),
-				pItemExt->BuildLimit_Group_Limits.size())
-			; i++)
+			for (size_t i = 0; i < MinImpl(pItemExt->BuildLimitGroup_Types.size(), limits.size()); i++)
 			{
-				TechnoTypeClass* pType = pItemExt->BuildLimit_Group_Types[i];
-				int ownedNow = HouseExtData::CountOwnedNowTotal(pThis, pType);
-				if (ownedNow < pItemExt->BuildLimit_Group_Limits[i]
-				|| includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
-					return BuildLimitStatus::NotReached;
+				TechnoTypeClass* pType = pItemExt->BuildLimitGroup_Types[i];
+				const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+				const auto pBuildingType = specific_cast<BuildingTypeClass*>(pType);
+				int ownedNow = 0;
+
+				if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+					ownedNow = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pThis));
+				else
+					ownedNow = CountOwnedIncludeDeploy(pThis, pType);
+
+				ownedNow *= pTypeExt->BuildLimitGroup_Factor;
+
+				if ((pItem == pType && ownedNow < limits[i] + 1 - pItemExt->BuildLimitGroup_Factor) || includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
+					return CanBuildResult::Buildable;
+
+				if ((pItem != pType && ownedNow < limits[i]) || includeQueued && FactoryClass::FindByOwnerAndProduct(pThis, pType))
+					return CanBuildResult::Buildable;
 			}
-			return BuildLimitStatus::ReachedPermanently;
+
+			return CanBuildResult::TemporarilyUnbuildable;
 		}
 	}
 }
@@ -1548,7 +1942,6 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->AllRepairEventTriggered)
 		.Process(this->LastBuildingTypeArrayIdx)
 		.Process(this->RepairBaseNodes)
-		.Process(this->ActiveTeams)
 		.Process(this->LastBuiltNavalVehicleType)
 		.Process(this->ProducingNavalUnitTypeIndex)
 
@@ -1562,14 +1955,13 @@ void HouseExtData::Serialize(T& Stm)
 
 		.Process(this->SWLastIndex)
 		.Process(this->Batteries)
-		.Process(this->Factories_HouseTypes)
 		.Process(this->LimboTechno)
 		.Process(this->AvaibleDocks)
 
 		.Process(this->StolenTech)
 		.Process(this->RadarPersist)
 		.Process(this->FactoryOwners_GatheredPlansOf)
-		.Process(this->Academies)
+		.Process(this->Academies, true)
 		.Process(this->Reversed)
 
 		.Process(this->Is_NavalYardSpied)
@@ -1580,6 +1972,11 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->KeepAliveBuildingCount)
 		.Process(this->TiberiumStorage)
 
+		.Process(this->SideTechTree)
+		.Process(this->CombatAlertTimer)
+		.Process(this->EMPulseWeaponIndex)
+		.Process(this->RestrictedFactoryPlants)
+		.Process(this->AISellAllDelayTimer)
 		//.Process(this->BuiltAircraftTypes)
 		//.Process(this->BuiltInfantryTypes)
 		//.Process(this->BuiltUnitTypes)
@@ -1590,6 +1987,13 @@ void HouseExtData::Serialize(T& Stm)
 		//.Process(this->KilledBuildingTypes)
 		//.Process(this->CapturedBuildings)
 		//.Process(this->CollectedCrates)
+
+		.Process(this->OwnedDeployingUnits)
+		.Process(this->BaseNormalCells)
+		.Process(this->CurrentBuildingType)
+		.Process(this->CurrentBuildingTopLeft)
+		.Process(this->CurrentBuildingTimer)
+		.Process(this->CurrentBuildingTimes)
 		;
 }
 

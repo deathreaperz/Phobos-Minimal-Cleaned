@@ -22,7 +22,63 @@ DEFINE_HOOK(0x7193F6, TeleportLocomotionClass_ILocomotion_Process_WarpoutAnim, 0
 	if (const auto pWeapon = pExt->WarpOutWeapon.Get(pOwner))
 		WeaponTypeExtData::DetonateAt(pWeapon, pOwner, pOwner, true, nullptr);
 
-	return 0x719447;
+	const int distance = (int)Math::sqrt(pOwner->Location.DistanceFromSquared(pLocomotor->LastCoords));
+	TechnoExtContainer::Instance.Find(pOwner)->LastWarpDistance = distance;
+
+	if (auto pImage = pType->AlphaImage)
+	{
+		auto xy = TacticalClass::Instance->CoordsToClient(pOwner->Location);
+		RectangleStruct Dirty = { xy.X - (pImage->Width / 2) , xy.Y - (pImage->Height / 2),
+		  pImage->Width, pImage->Height };
+		TacticalClass::Instance->RegisterDirtyArea(Dirty, true);
+	}
+
+	int duree = pExt->ChronoMinimumDelay.GetOrDefault(pOwner, RulesClass::Instance->ChronoMinimumDelay);
+	const auto factor = pExt->ChronoRangeMinimum.GetOrDefault(pOwner, RulesClass::Instance->ChronoRangeMinimum);
+
+	if (distance >= factor
+		&& pExt->ChronoTrigger.GetOrDefault(pOwner, RulesClass::Instance->ChronoTrigger))
+	{
+		const auto f_factor = pExt->ChronoDistanceFactor.GetOrDefault(pOwner, RulesClass::Instance->ChronoDistanceFactor);
+		duree = MaxImpl(distance / MaxImpl(f_factor, 1), duree);
+	}
+
+	pLocomotor->Timer.Start(duree);
+	pOwner->WarpingOut = true;
+
+	if (auto pUnit = specific_cast<UnitClass*>(pOwner))
+	{
+		if (pUnit->Type->Harvester || pUnit->Type->Weeder)
+		{
+			pLocomotor->Timer.Start(0);
+			pUnit->WarpingOut = false;
+		}
+	}
+
+	TechnoExtContainer::Instance.Find(pOwner)->LastWarpInDelay = pLocomotor->Timer.GetTimeLeft();
+	return 0x7195BC;
+}
+
+DEFINE_HOOK(0x4DA53E, FootClass_AI_WarpInDelay, 0x6)
+{
+	GET(FootClass*, pThis, ESI);
+
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (pExt->HasCarryoverWarpInDelay)
+	{
+		if (pExt->LastWarpInDelay)
+		{
+			pExt->LastWarpInDelay--;
+		}
+		else
+		{
+			pExt->HasCarryoverWarpInDelay = false;
+			pThis->WarpingOut = false;
+		}
+	}
+
+	return 0;
 }
 
 DEFINE_HOOK(0x719742, TeleportLocomotionClass_ILocomotion_Process_WarpInAnim, 0x6)
@@ -59,57 +115,6 @@ DEFINE_HOOK(0x719827, TeleportLocomotionClass_ILocomotion_Process_WarpAway, 0x6)
 	return 0x719878;
 }
 
-DEFINE_HOOK(0x7194D0, TeleportLocomotionClass_ILocomotion_Process_ChronoTrigger, 0x6)
-{
-	GET_LOCO(ESI);
-	GET(RulesClass*, pRules, EBX);
-	GET(int, val, EDX);
-	enum { SetTimer = 0x7194E9, CheckTheTimer = 0x7194FD };
-
-	if (pExt->ChronoTrigger.GetOrDefault(pOwner, pRules->ChronoTrigger))
-	{
-		R->ECX(Unsorted::CurrentFrame());
-
-		const auto nDecided = pExt->ChronoDistanceFactor.GetOrDefault(pOwner, pRules->ChronoDistanceFactor);
-		// fix factor 0 crash by force it to 1 (Vanilla bug)
-		R->EAX(val / MaxImpl(nDecided, 1));
-		return SetTimer;
-	}
-
-	return CheckTheTimer;
-}
-
-DEFINE_HOOK(0x719519, TeleportLocomotionClass_ILocomotion_Process_ChronoMinimumDelay, 0x6)
-{
-	GET_LOCO(ESI);
-	GET(RulesClass*, pRules, EBX);
-
-	R->EBX(pExt->ChronoMinimumDelay.GetOrDefault(pOwner, pRules->ChronoMinimumDelay));
-
-	return 0x71951F;
-}
-
-DEFINE_HOOK(0x719555, TeleportLocomotionClass_ILocomotion_Process_ChronoRangeMinimum, 0x6)
-{
-	enum { SetTimer = 0x719568, SetWarpingOut = 0x719576 };
-
-	GET_LOCO(ESI);
-	GET(RulesClass*, pRules, ECX);
-	GET(int, comparator, EDX);
-
-	TechnoExtContainer::Instance.Find(pOwner)->LastWarpDistance = comparator;
-	const auto factor = pExt->ChronoRangeMinimum.GetOrDefault(pOwner, pRules->ChronoRangeMinimum);
-
-	if (comparator < factor)
-	{
-		R->EAX(Unsorted::CurrentFrame());
-		R->ECX(pExt->ChronoMinimumDelay.GetOrDefault(pOwner, pRules->ChronoMinimumDelay));
-		return SetTimer;
-	}
-
-	return SetWarpingOut;
-}
-
 DEFINE_HOOK(0x71997B, TeleportLocomotionClass_ILocomotion_Process_ChronoDelay, 0x6)
 {
 	GET_LOCO(ESI);
@@ -137,7 +142,7 @@ DEFINE_HOOK(0x71997B, TeleportLocomotionClass_ILocomotion_Process_ChronoDelay, 0
 //	return { pre,post };
 //}
 
-#ifdef FUCKTHESE
+#ifndef FUCKTHESE
 
 // Author : chaserli
 Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* ret, VoxelIndexKey* pIndex)
@@ -148,15 +153,8 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 	if (pIndex && pIndex->Is_Valid_Key())
 		*(int*)(pIndex) = slope_idx + (*(int*)(pIndex) << 6);
 
-	if (slope_idx && pIndex && pIndex->Is_Valid_Key())
-	{
-		loco->LocomotionClass::Draw_Matrix(ret, pIndex);
-		*ret = Game::VoxelRampMatrix[slope_idx] * (*ret);
-	}
-	else
-	{
-		loco->LocomotionClass::Draw_Matrix(ret, pIndex);
-	}
+	loco->LocomotionClass::Draw_Matrix(ret, pIndex);
+	*ret = Game::VoxelRampMatrix[slope_idx] * (*ret);
 
 	float arf = loco->Owner->AngleRotatedForwards;
 	float ars = loco->Owner->AngleRotatedSideways;
@@ -184,7 +182,7 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 	return ret;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F5028, 0x5142A0);//TeleportLocomotionClass_Shadow_Matrix : just use hover's to save my ass
+//DEFINE_JUMP(VTABLE, 0x7F5028, 0x5142A0);//TeleportLocomotionClass_Shadow_Matrix : just use hover's to save my ass
 
 DEFINE_JUMP(VTABLE, 0x7F5024, GET_OFFSET(LocomotionClass_Draw_Matrix))
 
@@ -196,6 +194,6 @@ DEFINE_HOOK(0x729B5D, TunnelLocomotionClass_DrawMatrix_Tilt, 0x8)
 	R->EAX(LocomotionClass_Draw_Matrix(iloco, ret, pIndex));
 	return 0x729C09;
 }
-DEFINE_JUMP(VTABLE, 0x7F5A4C, 0x5142A0);//TunnelLocomotionClass_Shadow_Matrix : just use hover's to save my ass
+//DEFINE_JUMP(VTABLE, 0x7F5A4C, 0x5142A0);//TunnelLocomotionClass_Shadow_Matrix : just use hover's to save my ass
 #endif
 #undef GET_LOCO

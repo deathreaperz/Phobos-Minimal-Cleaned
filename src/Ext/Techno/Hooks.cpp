@@ -24,6 +24,7 @@
 
 #include <Misc/DynamicPatcher/Trails/TrailsManager.h>
 #include <Misc/DynamicPatcher/Techno/GiftBox/GiftBoxFunctional.h>
+#include <New/PhobosAttachedAffect/Functions.h>
 #include <New/Entity/FlyingStrings.h>
 
 // DEFINE_HOOK(0x448277 , BuildingClass_SetOwningHouse_Additionals , 5)
@@ -103,20 +104,6 @@ DEFINE_HOOK(0x6FD05E, TechnoClass_RearmDelay_BurstDelays, 0x7)
 	return idxCurrentBurst <= 0 || idxCurrentBurst > 4 ? 0x6FD084 : 0x6FD067;
 }
 
-DEFINE_HOOK(0x6F72D2, TechnoClass_IsCloseEnoughToTarget_OpenTopped_RangeBonus, 0x6) //C
-{
-	GET(TechnoClass* const, pThis, ESI);
-
-	if (auto const pTransport = pThis->Transporter)
-	{
-		R->EAX(TechnoTypeExtContainer::Instance.Find(pTransport->GetTechnoType())
-			->OpenTopped_RangeBonus.Get(RulesClass::Instance->OpenToppedRangeBonus));
-		return 0x6F72DE;
-	}
-
-	return 0;
-}
-
 DEFINE_HOOK(0x71A82C, TemporalClass_AI_Opentopped_WarpDistance, 0x6) //C
 {
 	GET(TemporalClass* const, pThis, ESI);
@@ -129,25 +116,6 @@ DEFINE_HOOK(0x71A82C, TemporalClass_AI_Opentopped_WarpDistance, 0x6) //C
 	}
 
 	return 0;
-}
-
-DEFINE_HOOK(0x7098B9, TechnoClass_TargetSomethingNearby_AutoFire, 0x6)
-{
-	enum { Skip = 0x7099B8, Continue = 0x0 };
-
-	GET(TechnoClass* const, pThis, ESI);
-
-	const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-
-	if (pExt->AutoFire)
-	{
-		pThis->SetTarget(pExt->AutoFire_TargetSelf ? pThis :
-		static_cast<AbstractClass*>(pThis->GetCell()));
-
-		return Skip;
-	}
-
-	return Continue;
 }
 
 #include <Ext/Super/Body.h>
@@ -219,7 +187,7 @@ DEFINE_HOOK(0x70EFE0, TechnoClass_GetMaxSpeed, 0x8) //6
 		auto pType = pThis->GetTechnoType();
 
 		if (TechnoTypeExtContainer::Instance.Find(pType)->UseDisguiseMovementSpeed)
-			pType = TechnoExtData::GetDisguiseType(pThis, false, false).first;
+			pType = TechnoExtData::GetSimpleDisguiseType(pThis, false, false);
 
 		maxSpeed = pType->Speed;
 	}
@@ -278,6 +246,20 @@ DEFINE_HOOK(0x6FD054, TechnoClass_RearmDelay_ForceFullDelay, 0x6)
 	return 0;
 }
 
+namespace FiringAITemp
+{
+	int weaponIndex;
+}
+
+DEFINE_HOOK(0x5206D2, InfantryClass_FiringAI_SetContext, 0x6)
+{
+	GET(int, weaponIndex, EDI);
+
+	FiringAITemp::weaponIndex = weaponIndex;
+
+	return 0;
+}
+
 DEFINE_HOOK(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 {
 	enum { Continue = 0x5209CD, ReturnFromFunction = 0x520AD9 };
@@ -285,8 +267,7 @@ DEFINE_HOOK(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 	GET(InfantryClass*, pThis, EBP);
 	GET(int, firingFrame, EDX);
 
-	const int weaponIndex = pThis->SelectWeapon(pThis->Target);
-	const auto pWeaponstruct = pThis->GetWeapon(weaponIndex);
+	const auto pWeaponstruct = pThis->GetWeapon(FiringAITemp::weaponIndex);
 
 	if (!pWeaponstruct)
 		return ReturnFromFunction;
@@ -338,7 +319,7 @@ DEFINE_HOOK(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 			}
 		}
 
-		R->EAX(weaponIndex); // Reuse the weapon index to save some time.
+		R->EAX(FiringAITemp::weaponIndex); // Reuse the weapon index to save some time.
 		return Continue;
 	}
 
@@ -355,43 +336,26 @@ DEFINE_HOOK(0x702672, TechnoClass_ReceiveDamage_RevengeWeapon, 0x5)
 	{
 		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-		bool AllowRevenge = true;
-
-		if (pWH)
-		{
-			auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
-			AllowRevenge = !pWHExt->IgnoreRevenge;
-		}
+		auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
 		auto SourCoords = pSource->GetCoords();
 
-		if (AllowRevenge)
+		if (!pWHExt->SuppressRevengeWeapons)
 		{
-			if (pTypeExt && pTypeExt->RevengeWeapon.isset() &&
-				EnumFunctions::CanTargetHouse(pTypeExt->RevengeWeapon_AffectsHouses, pThis->Owner, pSource->Owner))
+			if (pTypeExt->RevengeWeapon &&
+				EnumFunctions::CanTargetHouse(pTypeExt->RevengeWeapon_AffectsHouses, pThis->Owner, pSource->Owner) &&
+				!pWHExt->SuppressRevengeWeapons_Types.empty() && !pWHExt->SuppressRevengeWeapons_Types.Contains(pTypeExt->RevengeWeapon))
 			{
 				WeaponTypeExtData::DetonateAt(pTypeExt->RevengeWeapon.Get(), pSource, pThis, true, nullptr);
 			}
 
 			for (const auto& weapon : pExt->RevengeWeapons)
 			{
-				if (EnumFunctions::CanTargetHouse(weapon.ApplyToHouses, pThis->Owner, pSource->Owner))
+				if (EnumFunctions::CanTargetHouse(weapon.ApplyToHouses, pThis->Owner, pSource->Owner) && !pWHExt->SuppressRevengeWeapons_Types.empty() && !pWHExt->SuppressRevengeWeapons_Types.Contains(weapon.Value))
 					WeaponTypeExtData::DetonateAt(weapon.Value, pSource, pThis, true, nullptr);
 			}
 		}
 
-		for (auto& attachEffect : pExt->PhobosAE)
-		{
-			if (!attachEffect->IsActive())
-				continue;
-
-			auto const pType = attachEffect->GetType();
-
-			if (!pType->RevengeWeapon.isset())
-				continue;
-
-			if (EnumFunctions::CanTargetHouse(pType->RevengeWeapon_AffectsHouses, pThis->Owner, pSource->Owner))
-				WeaponTypeExtData::DetonateAt(pType->RevengeWeapon, pSource->IsAlive ? pSource : nullptr, pThis, true, nullptr);
-		}
+		PhobosAEFunctions::ApplyRevengeWeapon(pThis, pSource, pWH);
 	}
 
 	if (pThis->AttachedBomb)
@@ -415,11 +379,77 @@ DEFINE_HOOK(0x702603, TechnoClass_ReceiveDamage_Explodes, 0x6)
 	return !TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->Explodes_KillPassengers ? SkipKillingPassengers : 0x0;
 }
 
+// TODO :
+// yeah , fuckers !!
+  //struct VampireState {
+	// struct Data {
+	//   bool Enabled;
+	//   bool AffectAir;
+	//   AffectedHouse Affected_House;
+	//   AbstractType Affected_abs;
+	//   HelperedVector<TechnoTypeClass*> Affected_Types;
+	//   HelperedVector<TechnoTypeClass*> Exclude_Types;
+	//   Vector2D<double> Chances;
+	//   double Percent;
+	//   int TriggeredTimes;
+	// };
+
+	// HelperedVector<Data> Packed {};
+
+	// consteval void Clear() {
+	//	 Packed.clear();
+	// }
+
+	// constexpr bool Enabled() {
+	//	 return !Packed.empty();
+	// }
+
+	// //only add the data that can affect this current techno
+	// void Init()
+	// {
+	// }
+
+	// //update trigger count
+	// void Trigger() {
+	//	 for (auto& data : Packed) {
+	//		 if (data.Enabled && data.TriggeredTimes > 0) {
+	//			 --data.TriggeredTimes;
+
+	//			 if (data.TriggeredTimes <= 0)
+	//				 data.Enabled = false;
+	//		 }
+	//	 }
+	// }
+
+	// // apply the multiplier to the attacker ??
+	// void Apply() {
+	// }
+	// constexpr bool Eligible(TechnoClass* attacker, HouseClass* attackerOwner , bool isInAir) {
+	//	 return true;
+	// }
+ //};
+
+// void NOINLINE ApplyVampire(int* pRealDamage, WarheadTypeClass* pWH, DamageState damageState, TechnoClass* pAttacker, HouseClass* pAttackingHouse)
+// {
+// 	if(!pAttacker || !pAttacker->IsAlive || pAttacker->IsCrashing || pAttacker->IsSinking || pAttacker->TemporalTargetingMe)
+// 		return;
+
+// 	bool inAir = pTechno->IsInAir();
+
+// 	vampireEffect->Trigger();
+// 	int damage = -(int)(*pRealDamage * ae->AEData.Vampire.Percent);
+// 	if (damage != 0) {
+// 		pAttacker->TakeDamage(damage, pAttacker->GetTechnoType()->Crewed, true, pAttacker, pAttackingHouse);
+// 	}
+// }
+
 DEFINE_HOOK(0x701DFF, TechnoClass_ReceiveDamage_AfterObjectClassCall, 0x7)
 {
 	GET(TechnoClass* const, pThis, ESI);
 	GET(int* const, pDamage, EBX);
 	GET(WarheadTypeClass*, pWH, EBP);
+	//GET_STACK(TechnoClass*, pAttacker, 0xD4);
+	//GET_STACK(HouseClass*, pAttackingHouse, 0xE0);
 
 	const bool Show = Phobos::Otamaa::IsAdmin || *pDamage;
 
@@ -585,3 +615,263 @@ DEFINE_HOOK(0x5F46AE, ObjectClass_Select, 0x7)
 
 	return 0x0;
 }
+
+#include <EventClass.h>
+
+// Do not explicitly reset target for KeepTargetOnMove vehicles when issued move command.
+DEFINE_HOOK(0x4C7462, EventClass_Execute_KeepTargetOnMove, 0x5)
+{
+	enum { SkipGameCode = 0x4C74C0 };
+
+	GET(EventClass*, pThis, ESI);
+	GET(TechnoClass*, pTechno, EDI);
+	GET(AbstractClass*, pTarget, EBX);
+
+	if (pTechno->WhatAmI() != AbstractType::Unit)
+		return 0;
+
+	auto const mission = static_cast<Mission>(pThis->Data.MegaMission.Mission);
+
+	if ((mission == Mission::Move)
+		&& TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType())->KeepTargetOnMove
+		&& pTechno->Target && !pTarget)
+	{
+		pTechno->SetDestination(pThis->Data.MegaMission.Destination.As_Abstract(), true);
+		return SkipGameCode;
+	}
+
+	return 0;
+}
+
+// Reset the target if beyond weapon range.
+// This was originally in UnitClass::Mission_Move() but because that
+// is only checked every ~15 frames, it can cause responsiveness issues.
+DEFINE_HOOK(0x736480, UnitClass_AI_KeepTargetOnMove, 0x6)
+{
+	GET(UnitClass*, pThis, ESI);
+
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+
+	if (pTypeExt->KeepTargetOnMove && pThis->Target && pThis->CurrentMission == Mission::Move)
+	{
+		if (pTypeExt->KeepTargetOnMove_ExtraDistance.isset())
+		{
+			int weaponIndex = pThis->SelectWeapon(pThis->Target);
+
+			if (auto const pWeapon = pThis->GetWeapon(weaponIndex)->WeaponType)
+			{
+				auto pExt = TechnoExtContainer::Instance.Find(pThis);
+				pExt->AdditionalRange = static_cast<int>(pTypeExt->KeepTargetOnMove_ExtraDistance.Get());
+
+				if (!pThis->IsCloseEnough(pThis->Target, weaponIndex))
+					pThis->SetTarget(nullptr);
+
+				pExt->AdditionalRange.clear();
+			}
+		}
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK_AGAIN(0x6B769F, SpawnManagerClass_AI_InitDestination, 0x7)
+DEFINE_HOOK(0x6B7600, SpawnManagerClass_AI_InitDestination, 0x6)
+{
+	enum { SkipGameCode1 = 0x6B760E, SkipGameCode2 = 0x6B76DE };
+
+	GET(SpawnManagerClass* const, pThis, ESI);
+	GET(AircraftClass* const, pSpawnee, EDI);
+
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Owner->GetTechnoType());
+
+	if (pTypeExt->Spawner_AttackImmediately)
+	{
+		pSpawnee->SetTarget(pThis->Target);
+		pSpawnee->QueueMission(Mission::Attack, true);
+		pSpawnee->IsReturningFromAttackRun = false;
+	}
+	else
+	{
+		auto const mapCoords = pThis->Owner->GetMapCoords();
+		auto const pCell = MapClass::Instance->GetCellAt(mapCoords);
+		pSpawnee->SetDestination(pCell->GetNeighbourCell(FacingType::North), true);
+		pSpawnee->QueueMission(Mission::Move, false);
+	}
+
+	return R->Origin() == 0x6B7600 ? SkipGameCode1 : SkipGameCode2;
+}
+
+void DrawFactoryProgress(TechnoClass* pThis, RectangleStruct* pBounds)
+{
+	if (pThis->WhatAmI() != AbstractType::Building)
+		return;
+
+	const bool display = RulesExtData::Instance()->FactoryProgressDisplay;
+	const bool obs = HouseClass::IsCurrentPlayerObserver();
+	if (!display && !obs)
+		return;
+
+	BuildingClass* const pBuilding = specific_cast<BuildingClass*>(pThis);
+	CellClass* pCell = pBuilding->GetCell();
+
+	if (!obs && (pBuilding->IsFogged || pBuilding->Type->Invisible || pBuilding->Type->InvisibleInGame || (pCell && pCell->IsShrouded())))
+		return;
+
+	BuildingTypeClass* const pBuildingType = pBuilding->Type;
+	HouseClass* const pHouse = pBuilding->Owner;
+	FactoryClass* pPrimaryFactory = nullptr;
+	FactoryClass* pSecondaryFactory = nullptr;
+
+	if (pHouse->IsControlledByHuman())
+	{
+		if (!pBuilding->IsPrimaryFactory)
+			return;
+
+		switch (pBuilding->Type->Factory)
+		{
+		case AbstractType::BuildingType:
+			pPrimaryFactory = pHouse->GetPrimaryFactory(AbstractType::BuildingType, false, BuildCat::DontCare);
+			pSecondaryFactory = pHouse->GetPrimaryFactory(AbstractType::BuildingType, false, BuildCat::Combat);
+			break;
+		case AbstractType::InfantryType:
+			pPrimaryFactory = pHouse->GetPrimaryFactory(AbstractType::InfantryType, false, BuildCat::Combat);
+			break;
+		case AbstractType::UnitType:
+			pPrimaryFactory = pHouse->GetPrimaryFactory(AbstractType::UnitType, pBuildingType->Naval, BuildCat::Combat);
+			break;
+		case AbstractType::AircraftType:
+			pPrimaryFactory = pHouse->GetPrimaryFactory(AbstractType::AircraftType, false, BuildCat::Combat);
+			break;
+		default:
+			return;
+		}
+	}
+	else // AIs have no Primary factories
+	{
+		pPrimaryFactory = pBuilding->Factory;
+
+		if (!pPrimaryFactory)
+			return;
+	}
+
+	const bool havePrimary = pPrimaryFactory && pPrimaryFactory->Object;
+	const bool haveSecondary = pSecondaryFactory && pSecondaryFactory->Object;
+
+	if (!havePrimary && !haveSecondary)
+		return;
+
+	const int maxLength = pBuildingType->GetFoundationHeight(false) * 15 >> 1;
+	const Point2D location = TechnoExtData::GetBuildingSelectBracketPosition(pBuilding, BuildingSelectBracketPosition::Top) + Point2D { 5, 3 };
+
+	if (havePrimary)
+	{
+		const int curLength = std::clamp(static_cast<int>((static_cast<double>(pPrimaryFactory->GetProgress()) / 54) * maxLength), 0, maxLength);
+		Point2D position = location;
+
+		for (int frameIdx = curLength; frameIdx; --frameIdx, position.X -= 4, position.Y += 2)
+			DSurface::Temp->DrawSHP(FileSystem::PALETTE_PAL, FileSystem::PIPS_SHP, 3, &position, pBounds, BlitterFlags(0x600), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
+
+		for (int frameIdx = maxLength - curLength; frameIdx; --frameIdx, position.X -= 4, position.Y += 2)
+			DSurface::Temp->DrawSHP(FileSystem::PALETTE_PAL, FileSystem::PIPS_SHP, 0, &position, pBounds, BlitterFlags(0x600), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
+	}
+
+	if (haveSecondary)
+	{
+		const int curLength = std::clamp(static_cast<int>((static_cast<double>(pSecondaryFactory->GetProgress()) / 54) * maxLength), 0, maxLength);
+		Point2D position = havePrimary ? location + Point2D { 6, 3 } : location;
+
+		for (int frameIdx = curLength; frameIdx; --frameIdx, position.X -= 4, position.Y += 2)
+			DSurface::Temp->DrawSHP(FileSystem::PALETTE_PAL, FileSystem::PIPS_SHP, 3, &position, pBounds, BlitterFlags(0x600), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
+
+		for (int frameIdx = maxLength - curLength; frameIdx; --frameIdx, position.X -= 4, position.Y += 2)
+			DSurface::Temp->DrawSHP(FileSystem::PALETTE_PAL, FileSystem::PIPS_SHP, 0, &position, pBounds, BlitterFlags(0x600), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
+	}
+}
+
+void DrawSuperProgress(TechnoClass* pThis, RectangleStruct* pBounds)
+{
+	if (pThis->WhatAmI() != AbstractType::Building)
+		return;
+
+	const bool display = RulesExtData::Instance()->FactoryProgressDisplay;
+	const bool obs = HouseClass::IsCurrentPlayerObserver();
+	if (!display && !obs)
+		return;
+
+	BuildingClass* const pBuilding = specific_cast<BuildingClass*>(pThis);
+	CellClass* pCell = pBuilding->GetCell();
+
+	if (!obs && (pBuilding->IsFogged || pBuilding->Type->Invisible || pBuilding->Type->InvisibleInGame || (pCell && pCell->IsShrouded())))
+		return;
+
+	BuildingTypeClass* const pBuildingType = pBuilding->Type;
+
+	if (pBuildingType->SuperWeapon == -1)
+		return;
+
+	SuperClass* const pSuper = pThis->Owner->Supers.Items[pBuildingType->SuperWeapon];
+
+	if (!pSuper || pSuper->RechargeTimer.TimeLeft <= 1)
+		return;
+
+	const int maxLength = pBuildingType->GetFoundationHeight(false) * 15 >> 1;
+	const int curLength = std::clamp(static_cast<int>((static_cast<double>(pSuper->RechargeTimer.TimeLeft - pSuper->RechargeTimer.GetTimeLeft()) / pSuper->RechargeTimer.TimeLeft) * maxLength), 0, maxLength);
+	Point2D position = TechnoExtData::GetBuildingSelectBracketPosition(pBuilding, BuildingSelectBracketPosition::Top) + Point2D { 5, 3 };
+
+	for (int frameIdx = curLength; frameIdx; --frameIdx, position.X -= 4, position.Y += 2)
+		DSurface::Temp->DrawSHP(FileSystem::PALETTE_PAL, FileSystem::PIPS_SHP, 5, &position, pBounds, BlitterFlags(0x600), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
+
+	for (int frameIdx = maxLength - curLength; frameIdx; --frameIdx, position.X -= 4, position.Y += 2)
+		DSurface::Temp->DrawSHP(FileSystem::PALETTE_PAL, FileSystem::PIPS_SHP, 0, &position, pBounds, BlitterFlags(0x600), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
+}
+
+DEFINE_HOOK(0x6F5EE3, TechnoClass_DrawExtras_DrawAboveHealth, 0x9)
+{
+	GET(TechnoClass*, pThis, EBP);
+	GET_STACK(RectangleStruct*, pBounds, STACK_OFFSET(0x98, 0x8));
+
+	DrawFactoryProgress(pThis, pBounds);
+	DrawSuperProgress(pThis, pBounds);
+
+	return 0;
+}
+
+// DEFINE_HOOK(0x6B77B4, SpawnManagerClass_Update_RecycleSpawned, 0x7)
+// {
+// 	//enum { RecycleIsOk = 0x6B77FF, RecycleIsNotOk = 0x6B7838 };
+//
+// 	GET(SpawnManagerClass* const, pThis, ESI);
+// 	GET(TechnoClass* const, pSpawned, EDI);
+// 	GET(CellStruct* const, pSpawnerMapCrd, EBP);
+// 	GET(CellStruct* const , pSpawnedMapCrd, EAX);
+//
+// 	const auto pSpawner = pThis->Owner;
+// 	const auto pSpawnerType = pSpawner->GetTechnoType();
+// 	const auto pSpawnerExt = TechnoTypeExtContainer::Instance.Find(pSpawnerType);
+// 	const auto SpawnerCrd = pSpawner->Location;
+// 	const auto SpawnedCrd = pSpawned->Location;
+// 	const auto DeltaCrd = SpawnedCrd - SpawnerCrd;
+// 	const int RecycleRange = pSpawnerExt->Spawner_RecycleRange;
+//
+// 	const auto what = pSpawner->WhatAmI();
+// 	const bool bShouldRecycleSpawned = (RecycleRange == -1 && (what == AbstractType::Building && DeltaCrd.X <= 182 && DeltaCrd.Y <= 182 && DeltaCrd.Z < 20 ||
+// 			what != AbstractType::Building && pSpawnedMapCrd->X == pSpawnerMapCrd->X && pSpawnedMapCrd->Y == pSpawnerMapCrd->Y && DeltaCrd.Z < 20)) ||
+// 			Math::sqrt(DeltaCrd.X * DeltaCrd.X + DeltaCrd.Y * DeltaCrd.Y + DeltaCrd.Z * DeltaCrd.Z) <= RecycleRange;
+//
+// 	if (bShouldRecycleSpawned) {
+//
+// 		if (auto pAnim = pSpawnerExt->Spawner_RecycleAnim) {
+// 			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnim, SpawnedCrd),
+// 				pSpawner->GetOwningHouse(),
+// 				nullptr,
+// 				pSpawner,
+// 				false
+// 			);
+// 		}
+//
+// 		pSpawned->SetLocation(SpawnerCrd);
+// 		R->EAX(pSpawnerMapCrd);
+// 	}
+//
+// 	return 0;
+// }

@@ -45,12 +45,35 @@ DEFINE_HOOK(0x7461C5, UnitClass_BallooonHoverExplode_OverrideCheck, 0x6)
 	return 0x7461CB;
 }
 
+#include <TeamClass.h>
+
 DEFINE_HOOK(0x73F7DD, UnitClass_IsCellOccupied_Bib, 0x8)
 {
 	GET(BuildingClass*, pBuilding, ESI);
 	GET(UnitClass*, pThis, EBX);
 
-	return pThis && pBuilding->Owner->IsAlliedWith(pThis) ? 0x0 : 0x73F823;
+	if (pThis && pBuilding->Owner->IsAlliedWith(pThis))
+	{
+		if (pThis->Type->Passengers > 0)
+		{
+			if (auto pTeam = pThis->Team)
+			{
+				if (auto pScript = pTeam->CurrentScript)
+				{
+					auto mission = pScript->GetCurrentAction();
+					if (mission.Action == TeamMissionType::Gather_at_base && TeamMissionType((int)mission.Action + 1) == TeamMissionType::Load)
+					{
+						//dont fucking load the passenger here
+						return 0x73F823;
+					}
+				}
+			}
+		}
+
+		return 0x0;
+	}
+
+	return 0x73F823;
 }
 
 // #1171643: keep the last passenger if this is a gunner, not just
@@ -158,35 +181,45 @@ DEFINE_HOOK(0x7440BD, UnitClass_Remove, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x739B8A, UnitClass_SimpleDeploy_Facing, 0x6)
+DEFINE_HOOK(0x739B7C, UnitClass_SimpleDeploy_Facing, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 	auto const pType = pThis->Type;
+	enum { SkipAnim = 0x739C70, PlayAnim = 0x739B9E };
 
-	if (pType->DeployingAnim)
+	if (!pThis->InAir)
 	{
-		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-		// not sure what is the bitfrom or bitto so it generate this result
-		// yes iam dum , iam sorry - otamaa
-		const auto nRulesDeployDir = ((((RulesClass::Instance->DeployDir) >> 4) + 1) >> 1) & 7;
-		const FacingType nRaw = pTypeExt->DeployDir.isset() ? pTypeExt->DeployDir.Get() : (FacingType)nRulesDeployDir;
-		const auto nCurrent = (((((pThis->PrimaryFacing.Current().Raw) >> 12) + 1) >> 1) & 7);
-
-		if (nCurrent != (int)nRaw)
+		if (pType->DeployingAnim)
 		{
-			if (const auto pLoco = pThis->Locomotor.GetInterfacePtr())
-			{
-				if (!pLoco->Is_Moving_Now())
-				{
-					pLoco->Do_Turn(DirStruct { nRaw });
-				}
+			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-				return 0x739C70;
+			if (pTypeExt->DeployingAnim_AllowAnyDirection)
+				return PlayAnim;
+
+			// not sure what is the bitfrom or bitto so it generate this result
+			// yes iam dum , iam sorry - otamaa
+			const auto nRulesDeployDir = ((((RulesClass::Instance->DeployDir) >> 4) + 1) >> 1) & 7;
+			const FacingType nRaw = pTypeExt->DeployDir.isset() ? pTypeExt->DeployDir.Get() : (FacingType)nRulesDeployDir;
+			const auto nCurrent = (((((pThis->PrimaryFacing.Current().Raw) >> 12) + 1) >> 1) & 7);
+
+			if (nCurrent != (int)nRaw)
+			{
+				if (const auto pLoco = pThis->Locomotor.GetInterfacePtr())
+				{
+					if (!pLoco->Is_Moving_Now())
+					{
+						pLoco->Do_Turn(DirStruct { nRaw });
+					}
+
+					return 0x739C70;
+				}
 			}
 		}
+
+		pThis->Deployed = true;
 	}
 
-	return 0x0;
+	return SkipAnim;
 }
 
 DEFINE_HOOK(0x74642C, UnitClass_ReceiveGunner, 6)
@@ -198,7 +231,7 @@ DEFINE_HOOK(0x74642C, UnitClass_ReceiveGunner, 6)
 	if (pTemp)
 		pTemp->LetGo();
 
-	TechnoExtContainer::Instance.Find(Unit)->MyOriginalTemporal = pTemp;
+	TechnoExtContainer::Instance.Find(Unit)->MyOriginalTemporal = (pTemp);
 	return 0;
 }
 
@@ -274,10 +307,9 @@ DEFINE_HOOK(0x73769E, UnitClass_ReceivedRadioCommand_SpecificPassengers, 8)
 	GET(UnitClass* const, pThis, ESI);
 	GET(TechnoClass const* const, pSender, EDI);
 
-	auto const pType = pThis->GetTechnoType();
 	auto const pSenderType = pSender->GetTechnoType();
 
-	return TechnoTypeExtData::PassangersAllowed(pType, pSenderType) ? 0u : 0x73780Fu;
+	return TechnoTypeExtData::PassangersAllowed(pThis->Type, pSenderType) ? 0u : 0x73780Fu;
 }
 
 DEFINE_HOOK(0x73762B, UnitClass_ReceivedRadioCommand_BySize1, 6)
@@ -371,14 +403,6 @@ DEFINE_HOOK(0x7091D6, TechnoClass_CanPassiveAquire_KillDriver, 6)
 	// prevent units with killed drivers from looking for victims.
 	GET(TechnoClass*, pThis, ESI);
 	return (TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled ? 0x70927Du : 0u);
-}
-
-DEFINE_HOOK(0x6F6A58, TechnoClass_DrawHealthBar_HidePips_KillDriver, 6)
-{
-	// prevent player from seeing pips on transports with killed drivers.
-	GET(TechnoClass*, pThis, ESI);
-	return HouseClass::IsCurrentPlayerObserver() ||
-		TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled ? 0x6F6AB6u : 0u;
 }
 
 DEFINE_HOOK(0x7087EB, TechnoClass_ShouldRetaliate_KillDriver, 6)
@@ -1145,7 +1169,7 @@ DEFINE_HOOK(0x739956, DeploysInto_UndeploysInto_SyncStatuses, 0x6) //UnitClass_D
 	//AresData::TechnoTransferAffects(pFrom, pTo);
 	TechnoExtData::TransferMindControlOnDeploy(pFrom, pTo);
 	ShieldClass::SyncShieldToAnother(pFrom, pTo);
-	TechnoExtData::SyncIronCurtainStatus(pFrom, pTo);
+	TechnoExtData::SyncInvulnerability(pFrom, pTo);
 
 	if (pFrom->AttachedTag)
 		pTo->AttachTrigger(pFrom->AttachedTag);
@@ -1346,13 +1370,17 @@ DEFINE_HOOK(0x728EF0, TunnelLocomotionClass_ILocomotion_Process_Dig, 5)
 	return 0x728F74;
 }
 
-DEFINE_HOOK(0x7292CF, TunnelLocomotionClass_sub_7291F0_Dig, 8)
+DEFINE_HOOK(0x72929A, TunnelLocomotionClass_sub_7291F0_Dig, 6)
 {
-	GET(RepeatableTimerStruct*, pTimer, EDX);
 	GET(TunnelLocomotionClass*, pThis, ESI);
-	GET(int, nTimeLeft, EAX);
 
-	pTimer->Start(nTimeLeft);
+	auto const pType = pThis->LinkedTo->GetTechnoType();
+	int time_left = (int(64.0 / pType->ROT /
+		TechnoTypeExtContainer::Instance.Find(pType)->Tunnel_Speed.Get(RulesClass::Instance->TunnelSpeed)
+		));
+
+	pThis->State = TunnelLocomotionClass::State::DIGGING_IN;
+	pThis->Timer.Start(time_left);
 	TechnoExt_ExtData::HandleTunnelLocoStuffs(pThis->LinkedTo, true, true);
 	return 0x729365;
 }

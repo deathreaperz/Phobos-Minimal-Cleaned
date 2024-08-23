@@ -65,6 +65,7 @@ struct GameStrings
 	// mix file names
 	GAMEMD_STR(LOCALMD_MIX, 0x826644u);
 	GAMEMD_STR(RA2MD_MIX, 0x82667Cu);
+	GAMEMD_STR(EXPANDMD02d, 0x82668C);
 	//..
 
 	// ini file names
@@ -311,6 +312,12 @@ struct GameStrings
 	GAMEMD_STR(_s_TUR, 0x832ABC);
 	GAMEMD_STR(_s_TUR_d_, 0x832AB4);
 	GAMEMD_STR(_s_WO, 0x832AD8);
+
+	GAMEMD_STR(FACTORY, 0x81C028);
+	GAMEMD_STR(BARRACKS, 0x81C01C);
+	GAMEMD_STR(RADAR, 0x81C014);
+	GAMEMD_STR(POWER, 0x81C030);
+
 	//..
 
 	// EVA entry names

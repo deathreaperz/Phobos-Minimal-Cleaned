@@ -5,6 +5,7 @@
 #pragma once
 
 #include <GeneralDefinitions.h>
+#include <ArrayClasses.h>
 
 class TechnoClass;
 class EBolt
@@ -34,7 +35,7 @@ public:
 		return buffer;
 	}
 
-	void SetOwnerAndWeaponType(TechnoClass* pOwner, int WeaponSlot) {
+	void SetOwnerAndWeaponType(TechnoClass* pOwner, int weaponslot) {
 		JMP_THIS(0x4C2BD0);
 	}
 

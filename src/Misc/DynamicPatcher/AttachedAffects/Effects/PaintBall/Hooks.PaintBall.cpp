@@ -5,18 +5,33 @@
 #include <Ext/Building/Body.h>
 
 #include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
+#include <Misc/PhobosGlobal.h>
 
 // Gets tint colors for invulnerability, airstrike laser target and berserk, depending on parameters.
+constexpr void InitializeColors()
+{
+	if (!PhobosGlobal::ColorDatas.Initialized)
+	{
+		PhobosGlobal::ColorDatas.Initialized = true;
+		PhobosGlobal::ColorDatas.Forceshield_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->ForceShieldColor);
+		PhobosGlobal::ColorDatas.IronCurtain_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->IronCurtainColor);
+		PhobosGlobal::ColorDatas.LaserTarget_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->LaserTargetColor);
+		PhobosGlobal::ColorDatas.Berserk_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->BerserkColor);
+	}
+}
+
 int ApplyTintColor(TechnoClass* pThis, bool invulnerability, bool airstrike, bool berserk)
 {
 	int tintColor = 0;
 
+	InitializeColors();
+
 	if (invulnerability && pThis->IsIronCurtained())
-		tintColor |= GeneralUtils::GetColorFromColorAdd(pThis->ProtectType == ProtectTypes::ForceShield ? RulesClass::Instance->ForceShieldColor : RulesClass::Instance->IronCurtainColor);
+		tintColor |= pThis->ProtectType == ProtectTypes::ForceShield ? PhobosGlobal::ColorDatas.Forceshield_Color : PhobosGlobal::ColorDatas.IronCurtain_Color;
 	if (airstrike && pThis->Airstrike && pThis->Airstrike->Target == pThis)
-		tintColor |= GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->LaserTargetColor);
+		tintColor |= PhobosGlobal::ColorDatas.LaserTarget_Color;
 	if (berserk && pThis->Berzerk)
-		tintColor |= GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->BerserkColor);
+		tintColor |= PhobosGlobal::ColorDatas.Berserk_Color;
 
 	return tintColor;
 }
@@ -83,27 +98,30 @@ void ApplyCustomTint(TechnoClass* pThis, int* tintColor, int* intensity)
 	if ((pTypeExt->Tint_Color.isset() || pTypeExt->Tint_Intensity != 0.0) && EnumFunctions::CanTargetHouse(pTypeExt->Tint_VisibleToHouses, pThis->Owner, HouseClass::CurrentPlayer))
 	{
 		if (calculateTintColor)
-			*tintColor |= Drawing::RGB_To_Int(pTypeExt->Tint_Color.Get(ColorStruct { 0,0,0 }));
+			*tintColor |= Drawing::RGB_To_Int(pTypeExt->Tint_Color);
 
 		if (calculateIntensity)
 			*intensity += static_cast<int>(pTypeExt->Tint_Intensity * 1000);
 	}
 
-	for (auto const& attachEffect : pExt->PhobosAE)
+	if (pExt->AE_HasTint)
 	{
-		auto const type = attachEffect->GetType();
+		for (auto const& attachEffect : pExt->PhobosAE)
+		{
+			auto const type = attachEffect.GetType();
 
-		if (!attachEffect->IsActive() || !type->HasTint())
-			continue;
+			if (!attachEffect.IsActive() || !type->HasTint())
+				continue;
 
-		if (!EnumFunctions::CanTargetHouse(type->Tint_VisibleToHouses, pThis->Owner, HouseClass::CurrentPlayer))
-			continue;
+			if (!EnumFunctions::CanTargetHouse(type->Tint_VisibleToHouses, pThis->Owner, HouseClass::CurrentPlayer))
+				continue;
 
-		if (calculateTintColor)
-			*tintColor |= Drawing::RGB_To_Int(type->Tint_Color.Get(ColorStruct { 0,0,0 }));
+			if (calculateTintColor && type->Tint_Color.isset())
+				*tintColor |= Drawing::RGB_To_Int(type->Tint_Color);
 
-		if (calculateIntensity)
-			*intensity += static_cast<int>(type->Tint_Intensity * 1000);
+			if (calculateIntensity)
+				*intensity += static_cast<int>(type->Tint_Intensity * 1000);
+		}
 	}
 
 	if (pExt->Shield && pExt->Shield->IsActive())
@@ -267,7 +285,7 @@ DEFINE_HOOK(0x73C083, UnitClass_DrawAsVoxel_TintColor, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x423519, AnimClass_Draw_ForceShieldICColor, 0x6)
+DEFINE_HOOK(0x42350C, AnimClass_Draw_ForceShieldICColor, 0x7)
 {
 	enum { SkipGameCode = 0x423525 };
 
@@ -282,7 +300,7 @@ DEFINE_HOOK(0x423519, AnimClass_Draw_ForceShieldICColor, 0x6)
 	return SkipGameCode;
 }
 
-DEFINE_HOOK(0x0423420, AnimClass_Draw_ParentBuildingCheck, 0x6)
+DEFINE_HOOK(0x423420, AnimClass_Draw_ParentBuildingCheck, 0x6)
 {
 	GET(AnimClass*, pThis, ESI);
 	GET(BuildingClass*, pBuilding, EAX);
@@ -301,7 +319,7 @@ DEFINE_HOOK(0x4235D3, AnimClass_Draw_TintColor, 0x6)
 
 	auto const pBuilding = AnimExtContainer::Instance.Find(pThis)->ParentBuilding;
 
-	if (!pBuilding)
+	if (!pBuilding || !pBuilding->IsAlive || pBuilding->InLimbo)
 		return 0;
 
 	ApplyCustomTint(pBuilding, &color, pThis->Type->UseNormalLight ? &intensity : nullptr);

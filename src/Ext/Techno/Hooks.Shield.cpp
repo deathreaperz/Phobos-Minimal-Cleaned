@@ -102,7 +102,44 @@ DEFINE_HOOK(0x701900, TechnoClass_ReceiveDamage_Early, 0x6)
 
 	if (!args.IgnoreDefenses)
 	{
-		if (auto pShieldData = TechnoExtContainer::Instance.Find(pThis)->GetShield())
+		const auto pHouse = pThis->Owner;
+		const auto pWH = args.WH;
+		const auto pSourceHouse = args.SourceHouse;
+		const auto pType = pThis->GetTechnoType();
+		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+		if (pTypeExt->CombatAlert.Get(RulesExtData::Instance()->CombatAlert) && pThis->IsOwnedByCurrentPlayer &&
+			*args.Damage > 1 && pThis->IsInPlayfield && !pWHExt->CombatAlert_Suppress.Get(!pWHExt->Malicious))
+		{
+			if (const auto pHouseExt = HouseExtContainer::Instance.TryFind(pHouse))
+			{
+				if (pHouse->IsControlledByHuman() && !pHouseExt->CombatAlertTimer.HasTimeLeft())
+				{
+					if (!RulesExtData::Instance()->CombatAlert_SuppressIfAllyDamage || !pHouse->IsAlliedWith(pSourceHouse))
+					{
+						if (((pThis->WhatAmI() != AbstractType::Building ||
+							pTypeExt->CombatAlert_NotBuilding) ||
+							!RulesExtData::Instance()->CombatAlert_IgnoreBuilding)
+						)
+						{
+							if (!RulesExtData::Instance()->CombatAlert_SuppressIfInScreen || pThis->IsOnMyView())
+							{
+								pHouseExt->CombatAlertTimer.Start(RulesExtData::Instance()->CombatAlert_Interval);
+								RadarEventClass::Create(RadarEventType::Combat, CellClass::Coord2Cell(pThis->GetCoords()));
+								if (RulesExtData::Instance()->CombatAlert_EVA)
+								{
+									VoxClass::PlayIndex(pTypeExt->EVA_Combat);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+		if (auto pShieldData = pExt->GetShield())
 		{
 			pShieldData->OnReceiveDamage(&args);
 		}
@@ -162,7 +199,6 @@ DEFINE_HOOK(0x6F6AC4, TechnoClass_Remove_AfterRadioClassRemove, 0x5)
 
 	bool markForRedraw = false;
 	bool altered = false;
-	std::vector<std::unique_ptr<PhobosAttachEffectClass>>::iterator it;
 
 	// Do not remove attached effects from undeploying buildings.
 	if (auto const pBuilding = specific_cast<BuildingClass*>(pThis))
@@ -173,30 +209,25 @@ DEFINE_HOOK(0x6F6AC4, TechnoClass_Remove_AfterRadioClassRemove, 0x5)
 		}
 	}
 
-	for (it = pExt->PhobosAE.begin(); it != pExt->PhobosAE.end(); )
+	pExt->PhobosAE.remove_if([&](auto& it)
+{
+	if ((it.GetType()->DiscardOn & DiscardCondition::Entry) != DiscardCondition::None)
 	{
-		auto const attachEffect = it->get();
+		altered = true;
 
-		if ((attachEffect->GetType()->DiscardOn & DiscardCondition::Entry) != DiscardCondition::None)
+		if (it.GetType()->HasTint())
+			markForRedraw = true;
+
+		if (it.ResetIfRecreatable())
 		{
-			altered = true;
-
-			if (attachEffect->GetType()->HasTint())
-				markForRedraw = true;
-
-			if (attachEffect->ResetIfRecreatable())
-			{
-				++it;
-				continue;
-			}
-
-			it = pExt->PhobosAE.erase(it);
+			return false;
 		}
-		else
-		{
-			++it;
-		}
+
+		return true;
 	}
+
+	return false;
+	});
 
 	if (altered)
 		AresAE::RecalculateStat(&TechnoExtContainer::Instance.Find(pThis)->AeData, pThis);

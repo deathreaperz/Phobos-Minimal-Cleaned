@@ -16,6 +16,7 @@
 #include <Ext/WarheadType/Body.h>
 
 #include <Misc/Ares/Hooks/Header.h>
+#include <Misc/Ares/Hooks/AresTrajectoryHelper.h>
 
 #ifndef PARTONE
 // Contains hooks that fix weapon graphical effects like lasers, railguns, electric bolts, beams and waves not interacting
@@ -169,12 +170,13 @@ DEFINE_HOOK(0x62D685, ParticleSystemClass_FireAt_Coords, 0x5)
 }
 #endif
 
-#ifdef PERFORMANCE_HEAVY
+#ifndef PERFORMANCE_HEAVY
 namespace FireAtTemp
 {
 	CoordStruct originalTargetCoords;
 	CellClass* pObstacleCell = nullptr;
 	AbstractClass* pOriginalTarget = nullptr;
+	AbstractClass* pWaveOwnerTarget = nullptr;
 }
 
 // https://github.com/Phobos-developers/Phobos/pull/825
@@ -187,13 +189,10 @@ DEFINE_HOOK(0x6FD38D, TechnoClass_LaserZap_Obstacles, 0x7)
 {
 	GET(CoordStruct*, pTargetCoords, EAX);
 
-	auto coords = *pTargetCoords;
-	auto pObstacleCell = FireAtTemp::pObstacleCell;
+	if (FireAtTemp::pObstacleCell)
+		*pTargetCoords = FireAtTemp::pObstacleCell->GetCoordsWithBridge();
 
-	if (pObstacleCell)
-		coords = pObstacleCell->GetCoordsWithBridge();
-
-	R->EAX(&coords);
+	R->EAX(pTargetCoords);
 	return 0;
 }
 
@@ -210,8 +209,9 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_ObstacleCellSet, 0x6)
 	if (const auto pBuilding = specific_cast<BuildingClass*>(pTarget))
 		coords = pBuilding->GetTargetCoords();
 
-	FireAtTemp::pObstacleCell = TrajectoryHelper::FindFirstObstacle(*pSourceCoords, coords, pWeapon->Projectile, pThis->Owner);
-
+	// This is set to a temp variable as well, as accessing it everywhere needed from TechnoExt would be more complicated.
+	FireAtTemp::pObstacleCell = AresTrajectoryHelper::FindFirstObstacle(*pSourceCoords, coords, pWeapon->Projectile, pThis->Owner);
+	TechnoExtContainer::Instance.Find(pThis)->FiringObstacleCell = FireAtTemp::pObstacleCell;
 	return 0;
 }
 
@@ -243,6 +243,40 @@ DEFINE_HOOK(0x70CA64, TechnoClass_Railgun_Obstacles, 0x5)
 	return Continue;
 }
 
+// WaveClass requires the firer's target and wave's target to match so it needs bit of extra handling here for obstacle cell targets.
+DEFINE_HOOK(0x762AFF, WaveClass_AI_TargetSet, 0x6)
+{
+	GET(WaveClass*, pThis, ESI);
+
+	if (pThis->Target && pThis->Owner)
+	{
+		auto const pObstacleCell = TechnoExtContainer::Instance.Find(pThis->Owner)->FiringObstacleCell;
+
+		if (pObstacleCell == pThis->Target && pThis->Owner->Target)
+		{
+			FireAtTemp::pWaveOwnerTarget = pThis->Owner->Target;
+			pThis->Owner->Target = pThis->Target;
+		}
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x762D57, WaveClass_AI_TargetUnset, 0x6)
+{
+	GET(WaveClass*, pThis, ESI);
+
+	if (FireAtTemp::pWaveOwnerTarget)
+	{
+		if (pThis->Owner->Target)
+			pThis->Owner->Target = FireAtTemp::pWaveOwnerTarget;
+
+		FireAtTemp::pWaveOwnerTarget = nullptr;
+	}
+
+	return 0;
+}
+
 #endif
 
 // Adjust target for bolt / beam / wave drawing.
@@ -252,43 +286,35 @@ DEFINE_HOOK(0x6FF43F, TechnoClass_FireAt_Additional, 0x6)
 	GET(TechnoClass*, pThis, ESI);
 	GET(WeaponTypeClass*, pWeapon, EBX);
 	LEA_STACK(CoordStruct*, pTargetCoords, STACK_OFFSET(0xB0, -0x28));
-	GET(AbstractClass*, pTarget, EDI);
+	GET_BASE(AbstractClass*, pOriginalTarget, 0x8);
 
-#ifdef PERFORMANCE_HEAVY
+#ifndef PERFORMANCE_HEAVY
 	//TargetSet
 	FireAtTemp::originalTargetCoords = *pTargetCoords;
-	FireAtTemp::pOriginalTarget = pTarget;
+	FireAtTemp::pOriginalTarget = pOriginalTarget;
 
 	if (FireAtTemp::pObstacleCell)
 	{
-		const auto coords = FireAtTemp::pObstacleCell->GetCoordsWithBridge();
-
-		pTargetCoords->X = coords.X;
-		pTargetCoords->Y = coords.Y;
-		pTargetCoords->Z = coords.Z;
-		//Sonic wave using base stack
-		R->EDI(FireAtTemp::pObstacleCell);
+		*pTargetCoords = FireAtTemp::pObstacleCell->GetCoordsWithBridge();
+		R->Base(8, FireAtTemp::pObstacleCell); // Replace original target so it gets used by Ares sonic wave stuff etc. as well.
 	}
 #endif
 
 	//FeedbackWeapon
 	auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
 
-	if (pWeaponExt->FeedbackWeapon.isset())
+	if (auto fbWeapon = pWeaponExt->FeedbackWeapon.Get())
 	{
-		if (auto fbWeapon = pWeaponExt->FeedbackWeapon.Get())
+		if (pThis->InOpenToppedTransport && !fbWeapon->FireInTransport)
+			return 0;
+
+		WeaponTypeExtData::DetonateAt(fbWeapon, pThis, pThis, true, nullptr);
+
+		//pThis techno was die after after getting affect of FeedbackWeapon
+		//if the function not bail out , it will crash the game because the vtable is already invalid
+		if (!pThis->IsAlive)
 		{
-			if (pThis->InOpenToppedTransport && !fbWeapon->FireInTransport)
-				return 0;
-
-			WeaponTypeExtData::DetonateAt(fbWeapon, pThis, pThis, true, nullptr);
-
-			//pThis techno was die after after getting affect of FeedbackWeapon
-			//if the function not bail out , it will crash the game because the vtable is already invalid
-			if (!pThis->IsAlive)
-			{
-				return 0x6FF92F;
-			}
+			return 0x6FF92F;
 		}
 	}
 
@@ -348,12 +374,16 @@ DEFINE_HOOK(0x6FF656, TechnoClass_FireAt_Additionals, 0xA)
 	//remove ammo rounds depending on weapon
 	TechnoExt_ExtData::DecreaseAmmo(pThis, pWeaponType);
 
-#ifdef PERFORMANCE_HEAVY
-	// Restore original target values and unset obstacle cell.
-	* pTargetCoords = std::exchange(FireAtTemp::originalTargetCoords, CoordStruct::Empty);
-	std::exchange(FireAtTemp::pOriginalTarget, nullptr);
-	std::exchange(FireAtTemp::pObstacleCell, nullptr);
-	R->EDI(pTarget);
+#ifndef PERFORMANCE_HEAVY
+	// Restore original target & coords
+	* pTargetCoords = FireAtTemp::originalTargetCoords;
+	R->Base(8, FireAtTemp::pOriginalTarget);
+	R->EDI(FireAtTemp::pOriginalTarget);
+
+	// Reset temp values
+	FireAtTemp::originalTargetCoords = CoordStruct::Empty;
+	FireAtTemp::pObstacleCell = nullptr;
+	FireAtTemp::pOriginalTarget = nullptr;
 #endif
 
 	//TechnoClass_FireAt_ToggleLaserWeaponIndex

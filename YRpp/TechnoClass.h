@@ -41,7 +41,8 @@ class TemporalClass;
 class TeamClass;
 struct VeterancyStruct
 {
-	VeterancyStruct() = default;
+	constexpr VeterancyStruct() = default;
+	constexpr ~VeterancyStruct() = default;
 
 	explicit VeterancyStruct(double value) noexcept {
 		this->Add(value);
@@ -226,7 +227,7 @@ public:
 
 	//AbstractClass
 	virtual void Init() override { JMP_THIS(0x6F3F40); }
-	virtual void PointerExpired(AbstractClass* pAbstract, bool removed) override JMP_THIS(0x7077C0);
+	virtual void PointerExpired(AbstractClass* pAbstract, bool bremoved) override JMP_THIS(0x7077C0);
 	virtual int GetOwningHouseIndex() const override JMP_THIS(0x6F9DB0);//{ return this->Owner->ArrayIndex; }
 	virtual HouseClass* GetOwningHouse() const override { return this->Owner; }
 	virtual void Update() override JMP_THIS(0x6F9E50);
@@ -333,7 +334,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	virtual FireError GetFireErrorWithoutRange(AbstractClass *pTarget, int nWeaponIndex) const RT(FireError);
 	virtual FireError GetFireError(AbstractClass *pTarget, int nWeaponIndex, bool ignoreRange) const JMP_THIS(0x6FC0B0); //CanFire
 	virtual AbstractClass* SelectAutoTarget(TargetFlags TargetFlags, int CurrentThreat, bool OnlyTargetHouseEnemy) R0; //Greatest_Threat
-	virtual void SetTarget(AbstractClass *pTarget) RX;
+	virtual void SetTarget(AbstractClass *pTarget) JMP_THIS(0x6FCDB0);
 	virtual BulletClass* Fire(AbstractClass* pTarget, int nWeaponIndex) JMP_THIS(0x6FDD50);
 	virtual void Guard() RX; // clears target and destination and puts in guard mission
 	virtual bool SetOwningHouse(HouseClass* pHouse, bool announce = true)JMP_THIS(0x7014A0);
@@ -345,7 +346,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	virtual int IsNotSprayAttack2() const R0;
 	virtual WeaponStruct* GetDeployWeapon() const R0;
 	virtual WeaponStruct* GetPrimaryWeapon() const JMP_THIS(0x70E1A0); //Get_Primary_Weapon
-	virtual WeaponStruct* GetWeapon(int nWeaponIndex) const R0;
+	virtual WeaponStruct* GetWeapon(int nWeaponIndex) const JMP_THIS(0x70E140);
 	virtual bool HasTurret() const R0;
 	virtual bool CanOccupyFire() const R0;
 	virtual int GetOccupyRangeBonus() const R0;
@@ -506,8 +507,9 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	void SetCurrentWeaponStage(int idx)
 		{ JMP_THIS(0x70DDD0); }
 
-	void SetFocus(AbstractClass* pFocus)
-		{ JMP_THIS(0x70C610); }
+	constexpr FORCEINLINE void SetFocus(AbstractClass* pFocus) { //JMP_THIS(0x70C610);
+		this->Focus = pFocus;
+	}
 
 	void DrawVoxelShadow(VoxelStruct* vxl,
 			int shadow_index,
@@ -760,6 +762,10 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 		JMP_THIS(0x43B150);
 	}
 
+	constexpr bool IsInCloakState() const {
+		return this->CloakState == CloakState::Cloaked || this->CloakState == CloakState::Cloaking;
+	}
+
 	// Invokes AI response on their 'base' being attacked. Used by buildings, ToProtect=true technos and Whiner=true team members.
 	void BaseIsAttacked(TechnoClass* pEnemy) const
 	{ JMP_THIS(0x708080); }
@@ -936,11 +942,11 @@ public:
 	BYTE             IsUseless; //3D0
 	BYTE			 IsTickedOff; //HasBeenAttacked //3D1
 	BYTE			 Cloakable; //3D2
-	BYTE			 IsPrimaryFactory; //3D3 IsLoaner
-	//BYTE			 IsALoaner; // 3D4
-	//BYTE			 IsLocked; // 3D5
-	BYTE			 Spawned; // 3D6
-	BYTE             IsInPlayfield; // 3D7
+	BYTE			 IsPrimaryFactory; //3D3
+//	BYTE			 IsALoaner; // 3D4
+//	BYTE			 IsLocked; // 3D5
+	BYTE			 Spawned; // 3D6 //IsALoaner
+	BYTE             IsInPlayfield; // 3D7 // Is_Locked
 	DECLARE_PROPERTY(RecoilData, TurretRecoil);
 	DECLARE_PROPERTY(RecoilData, BarrelRecoil);
 	BYTE             IsTethered; //418

@@ -3,6 +3,7 @@
 #include <CRT.h>
 #include <sstream>
 #include <WarheadFlags.h>
+#include <Helpers/Macro.h>
 
 // converters
 struct Conversions
@@ -10,10 +11,10 @@ struct Conversions
 	static double Str2Armor(const char *buf, WarheadFlags *whFlags) {
 
 		double val = 0.0;
-		if(CRT::strchr(buf, '%')) { // convert to double
-			val = CRT::atoi(buf) * 0.01;
+		if(strchr(buf, '%')) { // convert to double
+			val = atoi(buf) * 0.01;
 		} else {
-			val = CRT::atof(buf);
+			val = atof(buf);
 		}
 
 		const double nValCopy = std::abs(val);
@@ -87,14 +88,14 @@ struct Conversions
 
 	// narrow_cast(): a searchable way to do narrowing casts of values
 	template <class T, class U>
-	static inline T narrow_cast(U&& u) noexcept
+	static FORCEINLINE T narrow_cast(U&& u) noexcept
 	{
 		return static_cast<T>(std::forward<U>(u));
 	}
 
 	// OMG OPTIMIZED:
 	// http://graphics.stanford.edu/~seander/bithacks.html#IntegerLog
-	static inline unsigned int Int2Highest(DWORD v) {
+	static constexpr FORCEINLINE unsigned int Int2Highest(DWORD v) {
 		unsigned int r; // result of log2(v) will go here
 		unsigned int shift;
 
@@ -106,11 +107,11 @@ struct Conversions
 		return r;
 	}
 
-	static inline unsigned int Int2Highest(int v) {
+	static constexpr FORCEINLINE unsigned int Int2Highest(int v) {
 		return Int2Highest(static_cast<DWORD>(v));
 	}
 
-	static inline int Distance(int x1, int y1, int x2, int y2)
+	static FORCEINLINE int Distance(int x1, int y1, int x2, int y2)
 	{
 		int diff1 = y1 - y2;
 		if (diff1 < 0) diff1 = -diff1;

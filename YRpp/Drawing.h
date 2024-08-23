@@ -16,7 +16,7 @@ struct DirtyAreaStruct
 	RectangleStruct Rect;
 	bool alphabool10;
 
-	bool operator==(const DirtyAreaStruct& another) const
+	constexpr FORCEINLINE bool operator==(const DirtyAreaStruct& another) const
 	{
 		return
 			Rect.X == another.Rect.X &&
@@ -53,7 +53,7 @@ struct Drawing
 
 	//TextBox dimensions for tooltip-style boxes
 	static RectangleStruct* __fastcall GetTextBox(
-		RectangleStruct* pOutBuffer, const wchar_t* pText, 
+		RectangleStruct* pOutBuffer, const wchar_t* pText,
 		int nX, int nY, DWORD flags, int nMarginX, int nMarginY) {
 		JMP_STD(0x4A59E0);
 	}
@@ -106,17 +106,17 @@ struct Drawing
 	}
 
 	// Rectangles
-	static RectangleStruct* __fastcall Intersect(RectangleStruct* pOutBuffer, RectangleStruct* rect1, RectangleStruct* rect2, int* delta_left, int* delta_top)
-	{ JMP_STD(0x421B60); }
+	//[[deprecated]] static RectangleStruct* __fastcall Intersect(RectangleStruct* pOutBuffer, RectangleStruct* rect1, RectangleStruct* rect2, int* delta_left, int* delta_top)
+	//{ JMP_STD(0x421B60); }
 
-	static RectangleStruct Intersect(
-		RectangleStruct const& rect1, RectangleStruct const& rect2,
-		int* delta_left = nullptr, int* delta_top = nullptr)
-	{
-		RectangleStruct buffer;
-		Intersect(&buffer, const_cast<RectangleStruct*>(&rect1), const_cast<RectangleStruct*>(&rect2), delta_left, delta_top);
-		return buffer;
-	}
+	//[[deprecated]] static RectangleStruct Intersect(
+	//	RectangleStruct const& rect1, RectangleStruct const& rect2,
+	//	int* delta_left = nullptr, int* delta_top = nullptr)
+	//{
+	//	RectangleStruct buffer;
+	//	Intersect(&buffer, const_cast<RectangleStruct*>(&rect1), const_cast<RectangleStruct*>(&rect2), delta_left, delta_top);
+	//	return buffer;
+	//}
 
 	// Rect1 will be changed, notice that - secsome
 	static RectangleStruct* __fastcall Union(
@@ -136,7 +136,7 @@ struct Drawing
 	}
 
 	// Converts an RGB color to a 16bit color value.
-	static WORD Color16bit(const ColorStruct& color)
+	static constexpr WORD Color16bit(const ColorStruct& color)
 	{
 		return static_cast<WORD>(
 			(color.B >> BlueShiftRight) |
@@ -144,42 +144,42 @@ struct Drawing
 			((color.R >> RedShiftRight) << 11));
 	}
 
-	static int __fastcall RGB_To_Int(BYTE red, BYTE green, BYTE blue)
+	static constexpr int __fastcall RGB_To_Int(BYTE red, BYTE green, BYTE blue)
 	{
 		// JMP_STD(0x4355D0);
 		return (red >> RedShiftRight << RedShiftLeft) |
 			(green >> GreenShiftRight << GreenShiftLeft) |
 			(blue >> BlueShiftRight << BlueShiftLeft);
 	}
-	
-	static int RGB_To_Int(int red, int green, int blue)
+
+	static int constexpr  RGB_To_Int(int red, int green, int blue)
 	{
 		return (red >> RedShiftRight << RedShiftLeft) | (green >> GreenShiftRight << GreenShiftLeft) | (blue >> BlueShiftRight << BlueShiftLeft);
 	}
 
-	static int RGB_To_Int(const ColorStruct& Color)
+	static int constexpr  RGB_To_Int(const ColorStruct& Color)
 	{
 		return RGB_To_Int(Color.R, Color.G, Color.B);
 	}
 
-	static int RGB_To_Int(ColorStruct&& Color)
+	static int constexpr  RGB_To_Int(ColorStruct&& Color)
 	{
 		return RGB_To_Int(Color.R, Color.G, Color.B);
 	}
 
-	static void Int_To_RGB(int color, BYTE& red, BYTE& green, BYTE& blue)
+	static void constexpr  Int_To_RGB(int color, BYTE& red, BYTE& green, BYTE& blue)
 	{
 		red = static_cast<BYTE>(color >> RedShiftLeft << RedShiftRight);
 		green = static_cast<BYTE>(color >> GreenShiftLeft << GreenShiftRight);
 		blue = static_cast<BYTE>(color >> BlueShiftLeft << BlueShiftRight);
 	}
 
-	static void Int_To_RGB(int color, ColorStruct& buffer)
+	static void constexpr Int_To_RGB(int color, ColorStruct& buffer)
 	{
 		Int_To_RGB(color, buffer.R, buffer.G, buffer.B);
 	}
 
-	static ColorStruct Int_To_RGB(int color)
+	static constexpr  ColorStruct Int_To_RGB(int color)
 	{
 		ColorStruct ret;
 		Int_To_RGB(color, ret);
@@ -197,8 +197,8 @@ struct Drawing
 	}
 
 	// Converts a 16bit color to an RGB color.
-	static ColorStruct WordColor(WORD bits) {
-		return { 
+	static constexpr ColorStruct WordColor(WORD bits) {
+		return {
 			static_cast<BYTE>(((bits & 0xF800) >> 11) << 3),
 			static_cast<BYTE>(((bits & 0x07E0) >> 5) << 2),
 			static_cast<BYTE>((bits & 0x001F) << 3)
@@ -337,7 +337,7 @@ public:
 		if (ptr >= BufferTail)
 			reinterpret_cast<char*&>(ptr) -= BufferSize;
 	}
-	
+
 	BSurface* GetSurface() const { return Surface; }
 	const RectangleStruct& GetArea() const { return Area; }
 	unsigned int GetBufferWidth() const { return Width; }
@@ -377,7 +377,7 @@ public:
 		if (ptr >= BufferTail)
 			reinterpret_cast<char*&>(ptr) -= BufferSize;
 	}
-	
+
 	BSurface* GetSurface() const { return Surface; }
 	const RectangleStruct& GetArea() const { return Area; }
 	unsigned int GetBuffer_Width() const { return Width; }

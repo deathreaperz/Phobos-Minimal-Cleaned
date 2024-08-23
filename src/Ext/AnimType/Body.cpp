@@ -40,13 +40,42 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->CreateUnit_InheritDeathFacings.Read(exINI, pID, "CreateUnit.InheritFacings");
 	this->CreateUnit_InheritTurretFacings.Read(exINI, pID, "CreateUnit.InheritTurretFacings");
 	this->CreateUnit_RemapAnim.Read(exINI, pID, "CreateUnit.RemapAnim");
-	this->CreateUnit_Mission.Read(exINI, pID, "CreateUnit.Mission");
+
+	if (exINI.ReadString(pID, "CreateUnit.Mission"))
+	{
+		auto result = MissionClass::GetMissionById(exINI.value());
+		if (result == Mission::None && IS_SAME_STR_(exINI.c_str(), "scatter"))
+		{
+			this->CreateUnit_Scatter = true;
+		}
+		else if (result != Mission::None)
+		{
+			this->CreateUnit_Scatter = false;
+			this->CreateUnit_Mission = result;
+		}
+	}
+
+	if (exINI.ReadString(pID, "CreateUnit.Mission.AI"))
+	{
+		auto result = MissionClass::GetMissionById(exINI.value());
+		if (result == Mission::None && IS_SAME_STR_(exINI.c_str(), "scatter"))
+		{
+			this->CreateUnit_AI_Scatter = true;
+		}
+		else if (result != Mission::None)
+		{
+			this->CreateUnit_AI_Scatter = false;
+			this->CreateUnit_AI_Mission = result;
+		}
+	}
+
 	this->CreateUnit_Owner.Read(exINI, pID, "CreateUnit.Owner");
 	this->CreateUnit_RandomFacing.Read(exINI, pID, "CreateUnit.RandomFacing");
 	this->CreateUnit_ConsiderPathfinding.Read(exINI, pID, "CreateUnit.ConsiderPathfinding");
 	this->CreateUnit_SpawnAnim.Read(exINI, pID, "CreateUnit.SpawnAnim");
 	this->CreateUnit_AlwaysSpawnOnGround.Read(exINI, pID, "CreateUnit.AlwaysSpawnOnGround");
 	this->CreateUnit_KeepOwnerIfDefeated.Read(exINI, pID, "CreateUnit.KeepOwnerIfDefeated");
+	this->CreateUnit_SpawnParachutedInAir.Read(exINI, pID, "CreateUnit.SpawnParachutedInAir");
 
 	this->XDrawOffset.Read(exINI, pID, "XDrawOffset");
 	this->HideIfNoOre_Threshold.Read(exINI, pID, "HideIfNoOre.Threshold");
@@ -54,6 +83,7 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->UseCenterCoordsIfAttached.Read(exINI, pID, "UseCenterCoordsIfAttached");
 
 	this->Weapon.Read(exINI, pID, "Weapon", true);
+	this->WeaponToCarry.Read(exINI, pID, "WeaponToCarry", true);
 	this->Damage_Delay.Read(exINI, pID, "Damage.Delay");
 	this->Damage_DealtByInvoker.Read(exINI, pID, "Damage.DealtByInvoker");
 	this->Damage_ApplyOnce.Read(exINI, pID, "Damage.ApplyOnce");
@@ -66,7 +96,35 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Damage_TargetFlag = DamageDelayTargetFlag::Invoker;
 
 	this->MakeInfantryOwner.Read(exINI, pID, "MakeInfantryOwner");
-	this->MakeInfantry_Mission.Read(exINI, pID, "MakeInfantry.Mission");
+
+	if (exINI.ReadString(pID, "MakeInfantry.Mission"))
+	{
+		auto result = MissionClass::GetMissionById(exINI.value());
+		if (result == Mission::None && IS_SAME_STR_(exINI.c_str(), "scatter"))
+		{
+			this->MakeInfantry_Scatter = true;
+		}
+		else if (result != Mission::None)
+		{
+			this->MakeInfantry_Scatter = false;
+			this->MakeInfantry_Mission = result;
+		}
+	}
+
+	if (exINI.ReadString(pID, "MakeInfantry.Mission.AI"))
+	{
+		auto result = MissionClass::GetMissionById(exINI.value());
+		if (result == Mission::None && IS_SAME_STR_(exINI.c_str(), "scatter"))
+		{
+			this->MakeInfantry_AI_Scatter = true;
+		}
+		else if (result != Mission::None)
+		{
+			this->MakeInfantry_AI_Scatter = false;
+			this->MakeInfantry_AI_Mission = result;
+		}
+	}
+
 	this->DetachedReport.Read(exINI, pID, "DetachedReport");
 #pragma region Otamaa
 
@@ -147,7 +205,37 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->AltReport.Read(exINI, pID, "AltReport");
 
 	this->SpawnsData.Read(exINI, pID);
+
+	this->VisibleTo.Read(exINI, pID, "VisibleTo");
+	this->VisibleTo_ConsiderInvokerAsOwner.Read(exINI, pID, "VisibleTo.ConsiderInvokerAsOwner");
+	this->RestrictVisibilityIfCloaked.Read(exINI, pID, "RestrictVisibilityIfCloaked");
+	this->DetachOnCloak.Read(exINI, pID, "DetachOnCloak");
+	this->Translucency_Cloaked.Read(exINI, pID, "Translucency.Cloaked");
+
+	this->Translucent_Stage1_Percent.Read(exINI, pID, "Translucent.Stage1.Percent");
+	this->Translucent_Stage1_Frame.Read(exINI, pID, "Translucent.Stage1.Frame");
+	this->Translucent_Stage1_Translucency.Read(exINI, pID, "Translucent.Stage1.Translucency");
+	this->Translucent_Stage2_Percent.Read(exINI, pID, "Translucent.Stage2.Percent");
+	this->Translucent_Stage2_Frame.Read(exINI, pID, "Translucent.Stage2.Frame");
+	this->Translucent_Stage2_Translucency.Read(exINI, pID, "Translucent.Stage2.Translucency");
+	this->Translucent_Stage3_Percent.Read(exINI, pID, "Translucent.Stage3.Percent");
+	this->Translucent_Stage3_Frame.Read(exINI, pID, "Translucent.Stage3.Frame");
+	this->Translucent_Stage3_Translucency.Read(exINI, pID, "Translucent.Stage3.Translucency");
+
+	this->CreateUnit_SpawnHeight.Read(exINI, pID, "CreateUnit.SpawnHeight");
 #pragma endregion
+
+	this->ConstrainFireAnimsToCellSpots.Read(exINI, pID, "ConstrainFireAnimsToCellSpots");
+	this->FireAnimDisallowedLandTypes.Read(exINI, pID, "FireAnimDisallowedLandTypes");
+	this->AttachFireAnimsToParent.Read(exINI, pID, "AttachFireAnimsToParent");
+	this->SmallFireCount.Read(exINI, pID, "SmallFireCount");
+	this->SmallFireAnims.Read(exINI, pID, "SmallFireAnims");
+	this->SmallFireChances.Read(exINI, pID, "SmallFireChances");
+	this->SmallFireDistances.Read(exINI, pID, "SmallFireDistances");
+	this->LargeFireCount.Read(exINI, pID, "LargeFireCount");
+	this->LargeFireAnims.Read(exINI, pID, "LargeFireAnims");
+	this->LargeFireChances.Read(exINI, pID, "LargeFireChances");
+	this->LargeFireDistances.Read(exINI, pID, "LargeFireDistances");
 }
 
 void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
@@ -194,6 +282,10 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 		const int z = pTypeExt->CreateUnit_AlwaysSpawnOnGround ? INT32_MIN : Location.Z;
 		const auto nCellHeight = MapClass::Instance->GetCellFloorHeight(Location);
 		Location.Z = MaxImpl(nCellHeight + bridgeZ, z);
+
+		const int baseHeight = pTypeExt->CreateUnit_SpawnHeight.isset() ? pTypeExt->CreateUnit_SpawnHeight : Location.Z;
+		const int zCoord = pTypeExt->CreateUnit_AlwaysSpawnOnGround ? INT32_MIN : baseHeight;
+		Location.Z = MaxImpl(MapClass::Instance->GetCellFloorHeight(Location) + bridgeZ, zCoord);
 
 		const auto pCellAfter = MapClass::Instance->GetCellAt(Location);
 
@@ -246,8 +338,15 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 
 		auto pCell = MapClass::Instance->GetCellAt(pAnimExt->CreateUnitLocation);
 		const bool IsBridge = pCell->ContainsBridge();
+		bool inAir = pThis->IsOnMap && pAnimExt->CreateUnitLocation.Z >= Unsorted::CellHeight * 2;
+		bool parachuted = false;
 
-		if (!pTypeExt->CreateUnit_ConsiderPathfinding.Get() || !pCell->GetBuilding() || !IsBridge)
+		if (pTypeExt->CreateUnit_SpawnParachutedInAir && !pTypeExt->CreateUnit_AlwaysSpawnOnGround && inAir)
+		{
+			parachuted = true;
+			pTechno->SpawnParachuted(pAnimExt->CreateUnitLocation);
+		}
+		else if (!pTypeExt->CreateUnit_ConsiderPathfinding.Get() || !pCell->GetBuilding() || !IsBridge)
 		{
 			++Unsorted::ScenarioInit;
 			pTechno->Unlimbo(pAnimExt->CreateUnitLocation, resultingFacing);
@@ -260,7 +359,9 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 
 		if (!pTechno->InLimbo)
 		{
-			if (const auto pCreateUnitAnimType = pTypeExt->CreateUnit_SpawnAnim.Get(nullptr))
+			const auto Is_AI = !decidedOwner->IsControlledByHuman();
+
+			if (const auto pCreateUnitAnimType = pTypeExt->CreateUnit_SpawnAnim)
 			{
 				auto pCreateUnitAnim = GameCreate<AnimClass>(pCreateUnitAnimType, pAnimExt->CreateUnitLocation);
 				pCreateUnitAnim->Owner = decidedOwner;
@@ -272,8 +373,10 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 				pTechno->SecondaryFacing.Set_Current(pAnimExt->DeathUnitTurretFacing.get());
 			}
 
-			if (pThis->IsInAir() && !pTypeExt->CreateUnit_AlwaysSpawnOnGround)
+			if (!pTypeExt->CreateUnit_AlwaysSpawnOnGround)
 			{
+				bool inAir = pThis->IsOnMap && pAnimExt->CreateUnitLocation.Z >= Unsorted::CellHeight * 2;
+
 				if (auto const pJJLoco = locomotion_cast<JumpjetLocomotionClass*>(pTechno->Locomotor))
 				{
 					pJJLoco->Facing.Set_Current(DirStruct(static_cast<DirType>(resultingFacing)));
@@ -284,15 +387,18 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 						pJJLoco->NextState = JumpjetLocomotionClass::State::Hovering;
 						pJJLoco->IsMoving = true;
 						pJJLoco->HeadToCoord = pAnimExt->CreateUnitLocation;
-						pJJLoco->Height = pTechno->Type->JumpjetHeight;
+						pJJLoco->Height = pTechno->Type->JumpjetData.JumpjetHeight;
+
+						if (!inAir)
+							AircraftTrackerClass::Instance->Add(pTechno);
 					}
-					else
+					else if (inAir)
 					{
 						// Order non-BalloonHover jumpjets to land.
 						pJJLoco->Move_To(pAnimExt->CreateUnitLocation);
 					}
 				}
-				else
+				else if (inAir && !parachuted)
 				{
 					pTechno->IsFallingDown = true;
 				}
@@ -305,7 +411,10 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 				pTechno->UpdatePlacement(PlacementType::Put);
 			}
 
-			pTechno->QueueMission(pTypeExt->CreateUnit_Mission.Get(), false);
+			if (!pTypeExt->ScatterCreateUnit(Is_AI))
+				pTechno->QueueMission(pTypeExt->GetCreateUnitMission(Is_AI), false);
+			else
+				pTechno->Scatter(CoordStruct::Empty, true, false);
 		}
 		else
 		{
@@ -390,10 +499,8 @@ void AnimTypeExtData::ProcessDestroyAnims(FootClass* pThis, TechnoClass* pKiller
 void AnimTypeExtData::ValidateSpalshAnims()
 {
 	AnimTypeClass* pWake = nullptr;
-	if (WakeAnim.isset() && this->AttachedToObject->IsMeteor)
-		pWake = WakeAnim.Get();
-	else
-		pWake = RulesClass::Instance->Wake;
+	if (this->AttachedToObject->IsMeteor)
+		pWake = WakeAnim.Get(RulesClass::Instance->Wake);
 
 	//what if the anim type loaded twice ?
 	if (SplashList.empty())
@@ -416,22 +523,26 @@ void AnimTypeExtData::Serialize(T& Stm)
 		.Process(this->CreateUnit_RemapAnim)
 		.Process(this->CreateUnit_RandomFacing)
 		.Process(this->CreateUnit_Mission)
+		.Process(this->CreateUnit_AI_Mission)
 		.Process(this->CreateUnit_Owner)
 		.Process(this->CreateUnit_ConsiderPathfinding)
 		.Process(this->CreateUnit_SpawnAnim)
 		.Process(this->CreateUnit_AlwaysSpawnOnGround)
 		.Process(this->CreateUnit_KeepOwnerIfDefeated)
+		.Process(this->CreateUnit_SpawnParachutedInAir)
 		.Process(this->XDrawOffset)
 		.Process(this->HideIfNoOre_Threshold)
 		.Process(this->Layer_UseObjectLayer)
 		.Process(this->UseCenterCoordsIfAttached)
 		.Process(this->Weapon)
+		.Process(this->WeaponToCarry)
 		.Process(this->Damage_Delay)
 		.Process(this->Damage_DealtByInvoker)
 		.Process(this->Damage_ApplyOnce)
 		.Process(this->Damage_ConsiderOwnerVeterancy)
 		.Process(this->Damage_TargetFlag)
 		.Process(this->MakeInfantry_Mission)
+		.Process(this->MakeInfantry_AI_Mission)
 		.Process(this->Warhead_Detonate)
 
 		.Process(this->SplashList)
@@ -472,20 +583,44 @@ void AnimTypeExtData::Serialize(T& Stm)
 		.Process(this->AdditionalHeight)
 		.Process(this->AltReport)
 		.Process(this->SpawnsData)
+
+		.Process(this->CreateUnit_Scatter)
+		.Process(this->CreateUnit_AI_Scatter)
+		.Process(this->MakeInfantry_Scatter)
+		.Process(this->MakeInfantry_AI_Scatter)
+
+		.Process(this->VisibleTo)
+		.Process(this->VisibleTo_ConsiderInvokerAsOwner)
+		.Process(this->RestrictVisibilityIfCloaked)
+		.Process(this->DetachOnCloak)
+		.Process(this->Translucency_Cloaked)
+		.Process(this->Translucent_Stage1_Percent)
+		.Process(this->Translucent_Stage1_Frame)
+		.Process(this->Translucent_Stage1_Translucency)
+		.Process(this->Translucent_Stage2_Percent)
+		.Process(this->Translucent_Stage2_Frame)
+		.Process(this->Translucent_Stage2_Translucency)
+		.Process(this->Translucent_Stage3_Percent)
+		.Process(this->Translucent_Stage3_Frame)
+		.Process(this->Translucent_Stage3_Translucency)
+
+		.Process(this->CreateUnit_SpawnHeight)
+
+		.Process(this->ConstrainFireAnimsToCellSpots)
+		.Process(this->FireAnimDisallowedLandTypes)
+		.Process(this->AttachFireAnimsToParent)
+		.Process(this->SmallFireCount)
+		.Process(this->SmallFireAnims)
+		.Process(this->SmallFireChances)
+		.Process(this->SmallFireDistances)
+		.Process(this->LargeFireCount)
+		.Process(this->LargeFireAnims)
+		.Process(this->LargeFireChances)
+		.Process(this->LargeFireDistances)
 		;
 }
 
 AnimTypeExtContainer AnimTypeExtContainer::Instance;
-
-AnimTypeExtData* AnimTypeExtContainer::Find(AnimClass* key)
-{
-	return this->GetExtAttribute(key->Type);
-}
-
-AnimTypeExtData* AnimTypeExtContainer::Find(AnimTypeClass* key)
-{
-	return this->GetExtAttribute(key);
-}
 
 DEFINE_HOOK(0x42784B, AnimTypeClass_CTOR, 0x5)
 {

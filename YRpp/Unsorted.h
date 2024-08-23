@@ -48,8 +48,8 @@ struct Game
 	//"01AF9993-3492-11d3-8F6F-0060089C05B1"
 	static constexpr reference<HANDLE, 0xB0BCE8u> const AutoPlayMutex {};
 
-	static constexpr reference<CDTimerClass, 0x887348> const FrameTimer {};
-	static constexpr reference<CDTimerClass, 0x887328> const NFTTimer {};
+	static constexpr reference<SystemTimerClass, 0x887348> const FrameTimer {};
+	static constexpr reference<SystemTimerClass, 0x887328> const NFTTimer {};
 	static constexpr reference<int, 0x8A00A8u> const ScreenHeight {};
 	static constexpr reference<int, 0x8A00A4u> const ScreenWidth {};
 	static constexpr reference<bool, 0xA8EDDCu> const SpeedControl {};
@@ -124,12 +124,6 @@ struct Game
 
 	static constexpr reference<CoordStruct, 0x89C870u> const RelativeCoordCenter {};
 
-	static constexpr reference<int, 0x8650BCu, 16384u> const FastMath_sqrt_Table {};
-	static constexpr reference<float, 0x8610B4u, 4096u> const FastMath_atan_Table {};
-	static constexpr reference<float, 0x85D0A4u, 4096u> const FastMath_tan_Table {};
-	static constexpr reference<float, 0x859094u, 4096u> const FastMath_asin_Table {};
-	static constexpr reference<float, 0x84F084u, 4096u> const FastMath_sin_Table {};
-
 	static constexpr reference<wchar_t, 0xB730ECu, 256u> const IMEBuffer {};
 	static constexpr reference<HIMC, 0xB7355Cu> const IMEContext {};
 	static constexpr reference<wchar_t, 0xB73318u, 257u> const IMECompositionString {};
@@ -138,6 +132,9 @@ struct Game
 	static constexpr reference<bool, 0xA8B8B4u> const EnableMPDebug{};
 	static constexpr reference<bool, 0xA8B8B5u> const DrawMPDebugStats{};
 	static constexpr reference<bool, 0xB04880u> const EnableMPSyncDebug{};
+
+	static constexpr reference<Vector3D<float>, 0x887470> const VoxelLightSource { };
+	static constexpr reference<Vector3D<float>, 0x887420> const VoxelShadowLightSource { };
 
 	struct Network
 	{
@@ -177,6 +174,10 @@ struct Game
 		JMP_STD(0x4790A0);
 	}
 
+	static void __fastcall DestroyVoxelCaches() {
+		JMP_STD(0x755C50);
+	}
+
 	// the game's own rounding function
 	// infamous for true'ing (F2I(-5.00) == -4.00)
 	static uint64_t F2I64(double val)
@@ -186,8 +187,8 @@ struct Game
 		CALL(0x7C5F00);
 	}
 
-	static int __forceinline AdjustHeight(int height)  {
-		return F2I((double)height * Unsorted::GameMagicNumbr_ + ((double)(height >= Unsorted::HeightMax)) + 0.5);
+	static constexpr int FORCEINLINE AdjustHeight(int height)  {
+		return int((double)height * Unsorted::GameMagicNumbr_ + ((double)(height >= Unsorted::HeightMax)) + 0.5);
 	}
 
 	// the game's own rounding function
@@ -818,12 +819,16 @@ struct MovieUnlockableInfo
 	static constexpr reference<MovieUnlockableInfo, 0x832C30u, 8u> const Allied {};
 	static constexpr reference<MovieUnlockableInfo, 0x832CA0u, 8u> const Soviet {};
 
-	MovieUnlockableInfo() = default;
+	constexpr MovieUnlockableInfo() = default;
 
-	explicit MovieUnlockableInfo(const char* pFilename, const char* pDescription = nullptr, int disk = 2)
+	constexpr explicit MovieUnlockableInfo(const char* pFilename, const char* pDescription = nullptr, int disk = 2)
 		: Filename(pFilename), Description(pDescription), DiskRequired(disk)
 	{
 	}
+
+	// the destructor doesnt delete the string data
+	// please manage them
+	~MovieUnlockableInfo() = default;
 
 	const char* Filename { nullptr };
 	const char* Description { nullptr };
@@ -891,7 +896,7 @@ namespace Unsorted
 	constexpr constant_ptr<char, 0x8A3A08> const except_txt_content {};
 
 	// Note: SomeMutex has been renamed to this because it reflects the usage better
-	reference<int, 0xA8E7AC> const ScenarioInit {}; // h2ik
+	constexpr reference<int, 0xA8E7AC> const ScenarioInit {}; // h2ik
 	constexpr reference<int , 0xB1D480> const ScenarioInit_Audio {};
 	constexpr reference<int, 0xA8DAB4> const SystemResponseMessages {};
 
@@ -914,6 +919,6 @@ struct CheatData
 	DWORD unknown2;
 
 	// this holds four original cheats, keep that limit in mind
-	static constexpr constant_ptr<CheatData, 0x825C28> OriginalCheats {};
+	static constexpr reference<CheatData, 0x825C28 , 4u> OriginalCheats {};
 };
 

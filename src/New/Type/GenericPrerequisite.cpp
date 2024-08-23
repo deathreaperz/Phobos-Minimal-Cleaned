@@ -120,10 +120,10 @@ void GenericPrerequisite::SaveToStream(PhobosStreamWriter& Stm)
 
 void GenericPrerequisite::AddDefaults()
 {
-	FindOrAllocate("POWER");
-	FindOrAllocate("FACTORY");
-	FindOrAllocate("BARRACKS");
-	FindOrAllocate("RADAR");
+	FindOrAllocate(GameStrings::POWER());
+	FindOrAllocate(GameStrings::FACTORY());
+	FindOrAllocate(GameStrings::BARRACKS());
+	FindOrAllocate(GameStrings::RADAR());
 	FindOrAllocate("TECH");
 	FindOrAllocate("PROC");
 }
@@ -164,15 +164,15 @@ bool Prereqs::HouseOwnsGeneric(HouseClass const* const pHouse, int const Index)
 
 	if (idxPrereq < GenericPrerequisite::Array.size())
 	{
-		auto const& Prereq = GenericPrerequisite::Array[idxPrereq];
-		for (const auto& index : Prereq->Prereqs)
+		for (const auto& index : GenericPrerequisite::Array[idxPrereq]->Prereqs)
 		{
 			if (Prereqs::HouseOwnsSpecific(pHouse, index))
 			{
 				return true;
 			}
 		}
-		for (const auto& pType : Prereq->Alternates)
+
+		for (const auto& pType : GenericPrerequisite::Array[idxPrereq]->Alternates)
 		{
 			if (pHouse->CountOwnedNow(pType))
 			{
@@ -180,6 +180,7 @@ bool Prereqs::HouseOwnsGeneric(HouseClass const* const pHouse, int const Index)
 			}
 		}
 	}
+
 	return false;
 }
 
@@ -216,7 +217,9 @@ bool Prereqs::HouseOwnsSpecific(HouseClass const* const pHouse, int const Index)
 	}
 	else
 	{
-		return pHouse->ActiveBuildingTypes.GetItemCount(Index) > 0;
+		const int count = pHouse->ActiveBuildingTypes.GetItemCount(Index);
+		//Debug::Log(__FUNCTION__" [0x%x - %s]Trying to find [(%d)%s] count %d\n" , pHouse , pHouse->get_ID(), Index , pType->ID , count);
+		return  count > 0;
 	}
 }
 

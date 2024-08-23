@@ -228,15 +228,15 @@ void ScriptExtData::Mission_Attack(TeamClass* pTeam, bool repeatAction, Distance
 
 		if (selectedTarget)
 		{
-			ScriptExtData::Log("AI Scripts - Attack: [%s] [%s] (line: %d = %d,%d) Leader [%s] (UID: %lu) selected [%s] (UID: %lu) as target.\n",
-				pTeam->Type->ID,
-				pScript->Type->ID,
-				pScript->CurrentMission,
-				curAct,
-				scriptArgument,
-				pTeamData->TeamLeader->get_ID(), pTeamData->TeamLeader->UniqueID,
-				selectedTarget->get_ID(),
-				selectedTarget->UniqueID);
+			/*		ScriptExtData::Log("AI Scripts - Attack: [%s] [%s] (line: %d = %d,%d) Leader [%s] (UID: %lu) selected [%s] (UID: %lu) as target.\n",
+						pTeam->Type->ID,
+						pScript->Type->ID,
+						pScript->CurrentMission,
+						curAct,
+						scriptArgument,
+						pTeamData->TeamLeader->get_ID(), pTeamData->TeamLeader->UniqueID,
+						selectedTarget->get_ID(),
+						selectedTarget->UniqueID);*/
 
 			pTeam->Focus = selectedTarget;
 			pFocus = selectedTarget;
@@ -490,11 +490,14 @@ TechnoClass* ScriptExtData::GreatestThreat(TechnoClass* pTechno, int method, Dis
 
 		if (!agentMode)
 		{
-			if (weaponType && GeneralUtils::GetWarheadVersusArmor(
-				weaponType->Warhead,
-				TechnoExtData::GetTechnoArmor(object, weaponType->Warhead)) == 0.0)
+			if (weaponType)
 			{
-				continue;
+				if (GeneralUtils::GetWarheadVersusArmor(
+					weaponType->Warhead,
+					TechnoExtData::GetTechnoArmor(object, weaponType->Warhead))
+					== 0.0
+				)
+					continue;
 			}
 
 			if (object->IsInAir() && !unitWeaponsHaveAA)
@@ -1074,9 +1077,9 @@ bool ScriptExtData::EvaluateObjectWithMask(TechnoClass* pTechno, int mask, int a
 		{
 			if (auto pTypeBuilding = specific_cast<BuildingTypeClass*>(pTechnoType))
 			{
-				if (const auto pFake = TechnoTypeExtContainer::Instance.Find(pTypeBuilding)->Fake_Of.Get(nullptr))
+				if (const auto pFake = TechnoTypeExtContainer::Instance.Find(pTypeBuilding)->Fake_Of)
 				{
-					return ((BuildingTypeClass*)pFake)->Factory == AbstractType::BuildingType && ((BuildingTypeClass*)pFake)->ConstructionYard;
+					return ((BuildingTypeClass*)pFake.Get())->Factory == AbstractType::BuildingType && ((BuildingTypeClass*)pFake.Get())->ConstructionYard;
 				}
 
 				return (pTypeBuilding && pTypeBuilding->Factory == AbstractType::BuildingType && pTypeBuilding->ConstructionYard);
@@ -1303,8 +1306,7 @@ bool ScriptExtData::EvaluateObjectWithMask(TechnoClass* pTechno, int mask, int a
 
 void ScriptExtData::Mission_Attack_List(TeamClass* pTeam, bool repeatAction, DistanceMode calcThreatMode, int attackAITargetType)
 {
-	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
-	pTeamData->IdxSelectedObjectFromAIList = -1;
+	TeamExtContainer::Instance.Find(pTeam)->IdxSelectedObjectFromAIList = -1;
 	const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 
 	if (attackAITargetType < 0)
@@ -1431,7 +1433,7 @@ bool ScriptExtData::IsUnitArmed(TechnoClass* pTechno)
 		return false;
 
 	const auto pWeapons = ScriptExtData::GetWeapon(pTechno);
-	return pWeapons.first != nullptr || pWeapons.second != nullptr;
+	return pWeapons.first || pWeapons.second;
 }
 
 bool ScriptExtData::IsUnitMindControlledFriendly(HouseClass* pHouse, TechnoClass* pTechno)

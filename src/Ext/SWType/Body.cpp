@@ -1055,16 +1055,6 @@ TargetResult SWTypeExtData::PickSuperWeaponTarget(NewSWType* pNewType, const Tar
 	return{ CellStruct::Empty, SWTargetFlags::DisallowEmpty };
 }
 
-double SWTypeExtData::GetChargeToDrainRatio() const
-{
-	return this->SW_ChargeToDrainRatio.Get(RulesClass::Instance->ChargeToDrainRatio);
-}
-
-const char* SWTypeExtData::get_ID()
-{
-	return this->AttachedToObject->ID;
-}
-
 bool SWTypeExtData::CanFire(HouseClass* pOwner) const
 {
 	const int nAmount = this->SW_Shots;
@@ -1472,7 +1462,6 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SW_AITargetingPreference.Read(exINI, pSection, "SW.AITargeting.Preference");
 	this->SW_FireToShroud.Read(exINI, pSection, "SW.FireIntoShroud");
 	this->SW_UseAITargeting.Read(exINI, pSection, "SW.UseAITargeting");
-	this->Message_CannotFire.Read(exINI, pSection, "Message.CannotFire");
 	this->SW_RequiresTarget.Read(exINI, pSection, "SW.RequiresTarget");
 	this->SW_RequiresHouse.Read(exINI, pSection, "SW.RequiresHouse");
 
@@ -1778,7 +1767,7 @@ void SWTypeExtData::ApplyLimboKill(HouseClass* pHouse)
 
 void SWTypeExtData::ApplyDetonation(SuperClass* pSW, HouseClass* pHouse, const CellStruct& cell)
 {
-	if (!this->Detonate_Weapon.isset() && !this->Detonate_Warhead.isset())
+	if (!this->Detonate_Weapon && !this->Detonate_Warhead)
 		return;
 
 	const auto pCell = MapClass::Instance->GetCellAt(cell);
@@ -1848,7 +1837,7 @@ void SWTypeExtData::FireSuperWeapon(SuperClass* pSW, HouseClass* pHouse, const C
 	if (!this->LimboKill_IDs.empty())
 		ApplyLimboKill(pHouse);
 
-	if (this->Detonate_Warhead.isset() || this->Detonate_Weapon.isset())
+	if (this->Detonate_Warhead || this->Detonate_Weapon)
 		this->ApplyDetonation(pSW, pSW->Owner, *pCell);
 
 	if (!this->SW_Next.empty())
@@ -2149,9 +2138,17 @@ void SWTypeExtData::Launch(SuperClass* pFired, HouseClass* pHouse, SWTypeExtData
 		if (pLauncherTypeExt->SW_Next_IgnoreInhibitors || !pSuperTypeExt->HasInhibitor(pHouse, cell)
 			&& (pLauncherTypeExt->SW_Next_IgnoreDesignators || pSuperTypeExt->HasDesignator(pHouse, cell)))
 		{
+			int oldstart = pSuper->RechargeTimer.StartTime;
+			int oldleft = pSuper->RechargeTimer.TimeLeft;
+			pSuper->SetReadiness(true);
 			pSuper->Launch(cell, IsPlayer);
-			if (pLauncherTypeExt->SW_Next_RealLaunch)
-				pSuper->Reset();
+			pSuper->Reset();
+
+			if (!pLauncherTypeExt->SW_Next_RealLaunch)
+			{
+				pSuper->RechargeTimer.StartTime = oldstart;
+				pSuper->RechargeTimer.TimeLeft = oldleft;
+			}
 		}
 	}
 }
@@ -2699,7 +2696,7 @@ void SuperWeaponSidebar::DrawToolTip(SuperClass* pSuper, Point2D* pLoc)
 {
 	const auto pSWExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
 
-	PhobosToolTip::Instance.HelpText(pSuper->Type);
+	PhobosToolTip::Instance.HelpText(pSuper);
 
 	if (const wchar_t* pDesc = PhobosToolTip::Instance.TextBuffer.c_str())
 	{

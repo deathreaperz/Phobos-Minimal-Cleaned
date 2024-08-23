@@ -146,50 +146,60 @@ DEFINE_HOOK(0x468C86, BulletClass_ShouldExplode_Obstacles, 0xA)
 
 DEFINE_HOOK(0x6F7248, TechnoClass_InRange_Additionals, 0x6)
 {
-	enum { SkipGameCode = 0x6F724E };
+	enum { ContinueCheck = 0x6F72E3, RetTrue = 0x6F7256, RetFalse = 0x6F7655 };
 
 	GET(TechnoClass*, pThis, ESI);
 	GET(AbstractClass*, pTarget, ECX);
 	GET(WeaponTypeClass*, pWeapon, EBX);
 
+	if (!pTarget || !pWeapon)
+		return RetFalse;
+
 	int range = WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis);
-	if (auto const pFoot = abstract_cast<FootClass* const>(pTarget))
+
+	if (range == -512)
+		return RetTrue;
+
+	const auto pThisTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pThisTypeExt->NavalRangeBonus.isset())
 	{
-		const auto pThisTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-		if (pFoot->GetTechnoType()->Naval && pThisTypeExt->NavalRangeBonus.isset())
+		if (auto const pFoot = abstract_cast<FootClass* const>(pTarget))
 		{
-			const auto pFootCell = pFoot->GetCell();
-			if (pFootCell->LandType == LandType::Water && !pFootCell->ContainsBridge())
-				range += pThisTypeExt->NavalRangeBonus.Get();
+			if (pFoot->GetTechnoType()->Naval)
+			{
+				const auto pFootCell = pFoot->GetCell();
+				if (pFootCell->LandType == LandType::Water && !pFootCell->ContainsBridge())
+					range += pThisTypeExt->NavalRangeBonus.Get();
+			}
 		}
 	}
 
+	if (pTarget->IsInAir())
+		range += pThisTypeExt->AttachedToObject->AirRangeBonus;
+
+	if (pThis->BunkerLinkedItem && pThis->BunkerLinkedItem->WhatAmI() != AbstractType::Building)
+		range += RulesClass::Instance->BunkerWeaponRangeBonus * Unsorted::LeptonsPerCell;
+
+	if (pThis->Transporter)
+	{
+		range += TechnoTypeExtContainer::Instance.Find(pThis->Transporter->GetTechnoType())
+			->OpenTopped_RangeBonus.Get(RulesClass::Instance->OpenToppedRangeBonus) * Unsorted::LeptonsPerCell;
+	}
+
 	R->EDI(range);
-
-	return SkipGameCode;
-}
-
-DEFINE_HOOK(0x6F7294, TechnoClass_InRange_OccupyRange, 0x5)
-{
-	enum { SkipGameCode = 0x6F729F };
-
-	GET(TechnoClass*, pThis, ESI);
-	GET(int, range, EDI);
-
-	const int occupyRange = WeaponTypeExtData::GetRangeWithModifiers(nullptr, pThis) / Unsorted::LeptonsPerCell;
-	R->EDI(range + occupyRange);
-
-	return SkipGameCode;
+	return ContinueCheck;
 }
 
 DEFINE_HOOK(0x6FC3A1, TechnoClass_CanFire_InBunkerRangeCheck, 0x5)
 {
 	enum { ContinueChecks = 0x6FC3C5, CannotFire = 0x6FC86A };
 
-	GET(TechnoClass*, pThis, EBP);
+	GET(TechnoClass*, pTarget, EBP);
+	GET(TechnoClass*, pThis, ESI);
 	GET(WeaponTypeClass*, pWeapon, EDI);
 
-	if (pThis->WhatAmI() == AbstractType::Unit && WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis) < 384.0)
+	if (pTarget->WhatAmI() == AbstractType::Unit && WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis) < 384.0)
 		return CannotFire;
 
 	return ContinueChecks;

@@ -141,17 +141,17 @@ public:
 
 	virtual ~Container() = default;
 
-	inline auto GetName() const
+	constexpr inline auto GetName() const
 	{
 		return this->Name.data();
 	}
 
-	inline base_type_ptr GetSavingObject() const
+	constexpr inline base_type_ptr GetSavingObject() const
 	{
 		return SavingObject;
 	}
 
-	inline IStream* GetStream() const
+	constexpr inline IStream* GetStream() const
 	{
 		return this->SavingStream;
 	}
@@ -202,7 +202,7 @@ public:
 	//}
 
 	// Allocate extensionptr without any checking
-	extension_type_ptr AllocateUnlchecked(base_type_ptr key)
+	constexpr extension_type_ptr AllocateUnchecked(base_type_ptr key)
 	{
 		if (extension_type_ptr val = new extension_type())
 		{
@@ -219,14 +219,14 @@ public:
 		return nullptr;
 	}
 
-	extension_type_ptr Allocate(base_type_ptr key)
+	constexpr extension_type_ptr Allocate(base_type_ptr key)
 	{
 		if (!key || Phobos::Otamaa::DoingLoadGame)
 			return nullptr;
 
 		this->ClearExtAttribute(key);
 
-		if (extension_type_ptr val = AllocateUnlchecked(key))
+		if (extension_type_ptr val = AllocateUnchecked(key))
 		{
 			this->SetExtAttribute(key, val);
 			return val;
@@ -235,7 +235,7 @@ public:
 		return nullptr;
 	}
 
-	void JustAllocate(base_type_ptr key, bool bCond, const std::string_view& nMessage)
+	constexpr void JustAllocate(base_type_ptr key, bool bCond, const std::string_view& nMessage)
 	{
 		if (!key || (!bCond && !nMessage.empty()))
 		{
@@ -246,7 +246,7 @@ public:
 		this->Allocate(key);
 	}
 
-	extension_type_ptr FindOrAllocate(base_type_ptr key)
+	constexpr extension_type_ptr FindOrAllocate(base_type_ptr key)
 	{
 		// Find Always check for nullptr here
 		if (extension_type_ptr const ptr = TryFind(key))
@@ -255,12 +255,12 @@ public:
 		return this->Allocate(key);
 	}
 
-	extension_type_ptr Find(base_type_ptr key)
+	constexpr extension_type_ptr Find(base_type_ptr key)
 	{
 		return this->GetExtAttribute(key);
 	}
 
-	extension_type_ptr TryFind(base_type_ptr key)
+	constexpr extension_type_ptr TryFind(base_type_ptr key)
 	{
 		if (!key)
 			return nullptr;
@@ -273,7 +273,7 @@ public:
 	//	return this->GetExtAttributeSafe(key);
 	//}
 
-	void Remove(base_type_ptr key)
+	constexpr void Remove(base_type_ptr key)
 	{
 		if (extension_type_ptr Item = TryFind(key))
 		{
@@ -334,7 +334,7 @@ public:
 		}
 	}
 
-	void Clear()
+	constexpr void Clear()
 	{
 		//if (this->Map.size()) {
 		//	this->Map.clear();
@@ -390,31 +390,35 @@ public:
 
 	void SaveStatic()
 	{
-		Debug::Log("[SaveStatic] For object %p as '%s\n", this->SavingObject, this->Name.data());
-		if (this->SavingObject && this->SavingStream)
+		auto obj = this->SavingObject;
+		Debug::Log("[SaveStatic] For object %p as '%s Start\n", obj, this->Name.data());
+		if (obj && this->SavingStream)
 		{
-			if (!this->Save(this->SavingObject, this->SavingStream))
+			if (!this->Save(obj, this->SavingStream))
 				Debug::FatalErrorAndExit("[SaveStatic] Saving failed!\n");
 		}
 
 		this->SavingObject = nullptr;
 		this->SavingStream = nullptr;
+		Debug::Log("[SaveStatic] For object %p as '%s Done\n", obj, this->Name.data());
 	}
 
 	bool LoadStatic()
 	{
-		Debug::Log("[LoadStatic] For object %p as '%s\n", this->SavingObject, this->Name.data());
+		auto obj = this->SavingObject;
+		Debug::Log("[LoadStatic] For object %p as '%s Start\n", obj, this->Name.data());
 		if (this->SavingObject && this->SavingStream)
 		{
-			if (!this->Load(this->SavingObject, this->SavingStream))
+			if (!this->Load(obj, this->SavingStream))
 			{
-				Debug::FatalErrorAndExit("[LoadStatic] Loading object %p as '%s failed!\n", this->SavingObject, this->Name.data());
+				Debug::FatalErrorAndExit("[LoadStatic] Loading object %p as '%s failed!\n", obj, this->Name.data());
 				return false;
 			}
 		}
 
 		this->SavingObject = nullptr;
 		this->SavingStream = nullptr;
+		Debug::Log("[LoadStatic] For object %p as '%s Done\n", obj, this->Name.data());
 		return true;
 	}
 
@@ -476,7 +480,7 @@ protected:
 			}
 
 			this->ClearExtAttribute(key);
-			auto buffer = this->AllocateUnlchecked(key);
+			auto buffer = this->AllocateUnchecked(key);
 			this->SetExtAttribute(key, buffer);
 
 			PhobosByteStream loader { 0 };

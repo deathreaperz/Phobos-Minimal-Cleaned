@@ -29,14 +29,17 @@ public:
 	ShieldClass();
 	ShieldClass(TechnoClass* pTechno, bool isAttached);
 	ShieldClass(TechnoClass* pTechno) : ShieldClass(pTechno, false) { };
-	~ShieldClass() noexcept = default;
+	~ShieldClass() noexcept
+	{
+		this->IdleAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+	}
 
 	//void OnInit() { }
 	//void OnUnInit() { }
 	//void OnDetonate(CoordStruct* location) { }
 	//void OnPut(CoordStruct pCoord, short faceDirValue8) { }
 	void OnRemove();
-	void OnReceiveDamage(args_ReceiveDamage* args);
+	int OnReceiveDamage(args_ReceiveDamage* args);
 	//void OnFire(AbstractClass* pTarget, int weaponIndex) { }
 
 	//void OnSelect(bool& selectable) { }

@@ -55,7 +55,7 @@ void GiftBoxFunctional::AI(TechnoExtData* pExt, TechnoTypeExtData* pTypeExt)
 	if (!pExt->MyGiftBox || OpenDisallowed(pExt->AttachedToObject))
 		return;
 
-	if (pTypeExt->MyGiftBoxData.Enable)
+	if (!pTypeExt->MyGiftBoxData.Enable)
 	{
 		pExt->MyGiftBox.reset(nullptr);
 		return;

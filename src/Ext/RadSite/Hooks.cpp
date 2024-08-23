@@ -181,7 +181,7 @@ DEFINE_HOOK(0x521478, InfantryClass_AIDeployment_FireNotOKCloakFix, 0x6) // 4
 
 		if (pWeapon
 			&& pWeapon->DecloakToFire
-			&& (pThis->CloakState == CloakState::Cloaked || pThis->CloakState == CloakState::Cloaking))
+			&& pThis->IsInCloakState())
 		{
 			// FYI this are hack to immediately stop the Cloaking
 			// since this function is always failing to decloak and set target when cell is occupied
@@ -221,14 +221,15 @@ DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
 		if (pExt->LimboID != -1)
 			return Continue;
 
-		if (pBuilding->IsIronCurtained() ||
-			pBuilding->BeingWarpedOut ||
+		if (pBuilding->BeingWarpedOut ||
 			pBuilding->TemporalTargetingMe ||
 			pBuilding->Type->Immune
 			)
 		{
 			return Continue;
 		}
+
+		PhobosMap<RadSiteClass*, int> damageCounts;
 
 		const auto nCurCoord = pBuilding->InlineMapCoords();
 		for (auto pFoundation = pBuilding->GetFoundationData(false);
@@ -247,6 +248,11 @@ DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
 
 				const auto pRadExt = RadSiteExtContainer::Instance.Find(pRadSite);
 
+				int maxDamageCount = pRadExt->Type->GetBuildingDamageMaxCount();
+
+				if (maxDamageCount > 0 && damageCounts[pRadSite] >= maxDamageCount)
+					continue;
+
 				// Check the distance, if not in range, just skip this one
 				const double orDistance = pRadSite->BaseCell.DistanceFrom(nLoc);
 				if (static_cast<int>(orDistance) > pRadSite->Spread)
@@ -263,6 +269,9 @@ DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
 					continue;
 
 				const auto damage = static_cast<int>((nRadLevel)*pType->GetLevelFactor());
+
+				if (maxDamageCount > 0)
+					damageCounts[pRadSite]++;
 
 				if (damage == 0)
 					continue;
@@ -351,7 +360,7 @@ DEFINE_HOOK(0x4DA554, FootClass_AI_ReplaceRadiationDamageProcessing, 0x5)
 	if (pThis->IsInAir())
 		return (CheckOtherState);
 
-	if (pThis->GetTechnoType()->Immune || pThis->IsIronCurtained())
+	if (pThis->GetTechnoType()->Immune)
 		return (CheckOtherState);
 
 	if (pThis->IsBeingWarpedOut() || TechnoExtData::IsChronoDelayDamageImmune(pThis))

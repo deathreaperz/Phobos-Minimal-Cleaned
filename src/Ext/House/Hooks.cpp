@@ -8,6 +8,72 @@
 #include <Ext/BuildingType/Body.h>
 #include <Ares_TechnoExt.h>
 #include <Misc/Ares/Hooks/Header.h>
+#include <Ext/SWType/Body.h>
+
+// Gets the superweapons used by AI for Chronoshift script actions.
+void GetAIChronoshiftSupers(HouseClass* pThis, SuperClass*& pSuperCSphere, SuperClass*& pSuperCWarp)
+{
+	int idxCS = RulesExtData::Instance()->AIChronoSphereSW;
+	int idxCW = RulesExtData::Instance()->AIChronoWarpSW;
+
+	if (idxCS >= 0)
+	{
+		pSuperCSphere = pThis->Supers[idxCS];
+
+		if (idxCW < 0)
+		{
+			auto const pSWTypeExt = SWTypeExtContainer::Instance.Find(pSuperCSphere->Type);
+			int idxWarp = SuperWeaponTypeClass::FindIndexById(pSWTypeExt->SW_PostDependent);
+
+			if (idxWarp >= 0)
+				pSuperCWarp = pThis->Supers.Items[idxWarp];
+		}
+	}
+
+	if (idxCW >= 0)
+		pSuperCWarp = pThis->Supers[idxCW];
+
+	if (pSuperCSphere && pSuperCWarp)
+		return;
+
+	for (auto const pSuper : pThis->Supers)
+	{
+		if (pSuper->Type->Type == SuperWeaponType::ChronoSphere)
+			pSuperCSphere = pSuper;
+
+		if (pSuper->Type->Type == SuperWeaponType::ChronoWarp)
+			pSuperCWarp = pSuper;
+	}
+}
+
+DEFINE_HOOK(0x6EFEFB, TMission_ChronoShiftToBuilding_SuperWeapons, 0x6)
+{
+	enum { SkipGameCode = 0x6EFF22 };
+
+	GET(HouseClass*, pHouse, EBP);
+
+	SuperClass* pSuperCSphere = nullptr;
+	SuperClass* pSuperCWarp = nullptr;
+	GetAIChronoshiftSupers(pHouse, pSuperCSphere, pSuperCWarp);
+	R->ESI(pSuperCSphere);
+	R->EBX(pSuperCWarp);
+
+	return SkipGameCode;
+}
+
+DEFINE_HOOK(0x6F01B0, TMission_ChronoShiftToTarget_SuperWeapons, 0x6)
+{
+	enum { SkipGameCode = 0x6F01D9 };
+
+	GET(HouseClass*, pHouse, EDI);
+	REF_STACK(SuperClass*, pSuperCWarp, STACK_OFFSET(0x30, -0x1C));
+
+	SuperClass* pSuperCSphere = nullptr;
+	GetAIChronoshiftSupers(pHouse, pSuperCSphere, pSuperCWarp);
+	R->EBX(pSuperCSphere);
+
+	return SkipGameCode;
+}
 
 DEFINE_HOOK(0x65EB8D, HouseClass_SendSpyPlanes_PlaceAircraft, 0x6)
 {
@@ -138,7 +204,7 @@ DEFINE_HOOK(0x6F6BC9, TechnoClass_Limbo_AddTracking, 0x6)
 
 	if (pThis->IsAlive)
 	{
-		HouseExtContainer::Instance.Find(pThis->Owner)->LimboTechno.push_back_unique(pThis);
+		HouseExtContainer::Instance.Find(pThis->Owner)->LimboTechno.insert(pThis);
 	}
 
 	return 0;
@@ -147,11 +213,38 @@ DEFINE_HOOK(0x6F6BC9, TechnoClass_Limbo_AddTracking, 0x6)
 DEFINE_HOOK(0x6F6D85, TechnoClass_Unlimbo_RemoveTracking, 0x6)
 {
 	GET(TechnoClass* const, pThis, ESI);
-	HouseExtContainer::Instance.Find(pThis->Owner)->LimboTechno.remove(pThis);
+	HouseExtContainer::Instance.Find(pThis->Owner)->LimboTechno.erase(pThis);
 	return 0;
 }
 
 #include <Misc/Ares/Hooks/Header.h>
+
+HouseClass* OldOwner = nullptr;
+
+DEFINE_HOOK(0x70173B, TechnoClass_ChangeOwnership_AfterHouseWasSet, 0x5)
+{
+	GET(TechnoClass* const, pThis, ESI);
+	auto pNewOwner = pThis->Owner;
+
+	if (OldOwner)
+	{
+		if (auto pMe = generic_cast<FootClass*>(pThis))
+		{
+			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pMe->GetTechnoType());
+			bool I_am_human = OldOwner->IsControlledByHuman();
+			bool You_are_human = pNewOwner->IsControlledByHuman();
+			TechnoTypeClass* const pConvertTo = (I_am_human && !You_are_human) ? pTypeExt->Convert_HumanToComputer.Get() :
+				(!I_am_human && You_are_human) ? pTypeExt->Convert_ComputerToHuman.Get() : nullptr;
+
+			if (pConvertTo)
+				TechnoExt_ExtData::ConvertToType(pMe, pConvertTo, true, false);
+		}
+
+		OldOwner = nullptr;
+	}
+
+	return 0x0;
+}
 
 DEFINE_HOOK(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 {
@@ -169,17 +262,6 @@ DEFINE_HOOK(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 		pNewOwner->RecheckTechTree = true;
 	}
 
-	if (auto pMe = generic_cast<FootClass*>(pThis))
-	{
-		bool I_am_human = pThis->Owner->IsControlledByHuman();
-		bool You_are_human = pNewOwner->IsControlledByHuman();
-		TechnoTypeClass* const pConvertTo = (I_am_human && !You_are_human) ? pTypeExt->Convert_HumanToComputer.Get() :
-			(!I_am_human && You_are_human) ? pTypeExt->Convert_ComputerToHuman.Get() : nullptr;
-
-		if (pConvertTo)
-			TechnoExt_ExtData::ConvertToType(pMe, pConvertTo, true, false);
-	}
-
 	//this kind a dangerous
 	//const KillMethod nMethod = pTypeExt->Death_Method.Get();
 	//if (pTypeExt->Death_IfChangeOwnership && nMethod != KillMethod::None) {
@@ -188,10 +270,10 @@ DEFINE_HOOK(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 
 	if (pThis->InLimbo)
 	{
-		pOldOwnerExt->LimboTechno.remove(pThis);
+		pOldOwnerExt->LimboTechno.erase(pThis);
 
 		if (pThis->IsAlive)
-			pNewOwnerExt->LimboTechno.push_back(pThis);
+			pNewOwnerExt->LimboTechno.insert(pThis);
 	}
 
 	const auto Item = pOldOwnerExt->AutoDeathObjects.get_key_iterator(pThis);
@@ -203,6 +285,7 @@ DEFINE_HOOK(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 			pNewOwnerExt->AutoDeathObjects.insert(pThis, Item->second);
 	}
 
+	OldOwner = pThis->Owner;
 	return 0;
 }
 
@@ -227,3 +310,43 @@ DEFINE_HOOK(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 //	return 0;
 //}
 #pragma endregion
+
+// Sell all and all in.
+DEFINE_HOOK(0x4FD8F7, HouseClass_UpdateAI_OnLastLegs, 0x10)
+{
+	enum { ret = 0x4FD907 };
+
+	GET(HouseClass*, pThis, EBX);
+
+	auto const pRules = RulesExtData::Instance();
+	auto const pExt = HouseExtContainer::Instance.Find(pThis);
+
+	if (pRules->AISellAllOnLastLegs)
+	{
+		if (pRules->AISellAllDelay <= 0 || !pExt ||
+			pExt->AISellAllDelayTimer.Completed())
+		{
+			pThis->Fire_Sale();
+		}
+		else if (!pExt->AISellAllDelayTimer.HasStarted())
+		{
+			pExt->AISellAllDelayTimer.Start(pRules->AISellAllDelay);
+		}
+	}
+
+	if (pRules->AIAllInOnLastLegs)
+		pThis->All_To_Hunt();
+
+	return ret;
+}
+
+// I must not regroup my forces.
+DEFINE_HOOK(0x739920, UnitClass_TryToDeploy_DisableRegroupAtNewConYard, 0x6)
+{
+	enum { SkipRegroup = 0x73992B, DoNotSkipRegroup = 0 };
+
+	if (!RulesExtData::Instance()->RegroupWhenMCVDeploy)
+		return SkipRegroup;
+	else
+		return DoNotSkipRegroup;
+}

@@ -117,7 +117,7 @@ public:
 	bool     Aggressive;
 	bool     LooseRecruit;
 	bool     Suicide;
-	bool     DropPod;
+	bool     Droppod;
 	bool     UseTransportOrigin;
 	bool     DropshipLoadout;
 	bool     OnTransOnly;

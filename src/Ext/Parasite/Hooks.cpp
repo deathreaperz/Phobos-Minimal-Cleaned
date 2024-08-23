@@ -41,7 +41,7 @@ DEFINE_HOOK(0x62AB88, ParasiteClass_PassableTerrain, 0x5)
 			return nullptr;
 		}(pThis->Victim->GetCell());
 
-		return pTerrain ? ReturnZero : SkipGameCode;
+	return pTerrain ? ReturnZero : SkipGameCode;
 }
 
 DEFINE_HOOK(0x62ABB6, ParasiteClass_LandCost, 0x5)
@@ -267,6 +267,19 @@ DEFINE_HOOK(0x629E90, FootClass_WakeAnim_OnlyWater, 0x6)
 
 	return pThis->GetCell()->Tile_Is_Water() ? 0x0 : 0x629FC6;
 }
+
+//this allow MC to work with parasite
+//but this will crash other code atm
+//the better approach is using `flag` instead of booloeans
+//with this can be better to include or exclude affect
+//DEFINE_HOOK(0x46933E, BulletClass_Detnotane_SecondAffect_Parasite, 0x6)
+//{
+//	GET(BulletClass*, pBullet, ESI);
+//
+//	Debug::Log("WH[%s]\n", pBullet->WH->ID);
+//	R->EAX(pBullet->WH);
+//	return 0x4693D3;
+//}
 
 //#include <DriveLocomotionClass.h>
 //

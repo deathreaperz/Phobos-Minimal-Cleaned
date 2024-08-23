@@ -75,7 +75,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 
 			for (int i = divisor - 1; i > 0; --i)
 			{
-				finalSpeed = static_cast<int>(finalSpeed * nFactorySpeed);
+				finalSpeed = int(finalSpeed * nFactorySpeed);
 			}
 		}
 
@@ -499,6 +499,9 @@ DEFINE_HOOK(0x6F6F20, TechnoClass_Put_BuildingLight, 6)
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
+	if (R->Origin() == 0x6F6F20)
+		HugeBar::InitializeHugeBar(pThis);
+
 	//only update the SW if really needed it
 	if (pThis->Owner && pThis->WhatAmI() != BuildingClass::AbsID && !pTypeExt->Linked_SW.empty())
 		pThis->Owner->UpdateSuperWeaponsUnavailable();
@@ -699,9 +702,7 @@ DEFINE_HOOK(0x6f526c, TechnoClass_DrawExtras_PowerOff, 5)
 			if (!MapClass::Instance->GetCellAt(cell)->IsShrouded())
 			{
 				CoordStruct crd = pBld->GetCenterCoords();
-
-				Point2D point {};
-				TacticalClass::Instance->CoordsToClient(&crd, &point);
+				Point2D point = TacticalClass::Instance->CoordsToClient(crd);
 
 				// offset the markers
 				Point2D ptRepair = point;
@@ -769,7 +770,7 @@ DEFINE_HOOK(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 				//DrawingPart
 				RectangleStruct nTextDimension;
 				Drawing::GetTextDimensions(&nTextDimension, pFormat, DrawLoca, TextPrintType::Center | TextPrintType::FullShadow | TextPrintType::Efnt, 4, 2);
-				auto nIntersect = Drawing::Intersect(nTextDimension, *pRect);
+				auto nIntersect = RectangleStruct::Intersect(nTextDimension, *pRect, nullptr, nullptr);
 				auto nColorInt = pOwner->Color.ToInit();//0x63DAD0
 
 				DSurface::Temp->Fill_Rect(nIntersect, (COLORREF)0);
@@ -779,43 +780,98 @@ DEFINE_HOOK(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 				DrawLoca.Y += (nTextDimension.Height) + 2; //extra number for the background
 			};
 
-		const bool IsAlly = pOwner->IsAlliedWith(HouseClass::CurrentPlayer);
-		const bool IsObserver = HouseClass::CurrentPlayer->IsObserver();
-		const bool isFake = pTypeExt->Fake_Of.Get();
-		const bool bReveal = pThis->DisplayProductionTo.Contains(HouseClass::CurrentPlayer);
-
-		if (IsAlly || IsObserver || bReveal)
+		if (pOwner->IsAlliedWith(HouseClass::CurrentPlayer)
+			|| HouseClass::CurrentPlayer->IsObserver()
+			|| pThis->DisplayProductionTo.Contains(HouseClass::CurrentPlayer)
+		)
 		{
-			if (isFake)
-				DrawTheStuff(GeneralUtils::LoadStringOrDefault("TXT_FAKE", L"FAKE"));
+			if (pTypeExt->Fake_Of)
+				DrawTheStuff(Phobos::UI::BuidingFakeLabel);
 
-			if (pType->PowerBonus > 0)
+			if (pType->PowerBonus > 0 && BuildingTypeExtContainer::Instance.Find(pType)->ShowPower)
 			{
-				auto pDrainFormat = StringTable::LoadString(GameStrings::TXT_POWER_DRAIN2());
-				wchar_t pOutDraimFormat[0x80];
+				wchar_t pOutDrainFormat[0x80];
 				auto pDrain = (int)pOwner->Power_Drain();
 				auto pOutput = (int)pOwner->Power_Output();
-				swprintf_s(pOutDraimFormat, pDrainFormat, pOutput, pDrain);
-				DrawTheStuff(pOutDraimFormat);
+				//foundating check ,...
+				//can be optimized using stored bool instead checking them each frames
+				if (pType->GetFoundationWidth() > 2 && pType->GetFoundationHeight(false) > 2)
+				{
+					swprintf_s(pOutDrainFormat, StringTable::LoadString(GameStrings::TXT_POWER_DRAIN2()), pOutput, pDrain);
+				}
+				else
+				{
+					swprintf_s(pOutDrainFormat, Phobos::UI::Power_Label, pOutput);
+					DrawTheStuff(pOutDrainFormat);
+					swprintf_s(pOutDrainFormat, Phobos::UI::Drain_Label, pDrain);
+				}
+
+				DrawTheStuff(pOutDrainFormat);
 			}
 
-			if (pType->Storage > 0)
+			const bool hasStorage = pType->Storage > 0;
+			bool HasSpySat = false;
+			for (auto& _pType : pBuilding->GetTypes())
 			{
-				auto pMoneyFormat = StringTable::LoadString(GameStrings::TXT_MONEY_FORMAT_1());
+				if (_pType && _pType->SpySat)
+				{
+					HasSpySat = true;
+					break;
+				}
+			}
+
+			if (hasStorage)
+			{
 				wchar_t pOutMoneyFormat[0x80];
 				auto nMoney = pOwner->Available_Money();
-				swprintf_s(pOutMoneyFormat, pMoneyFormat, nMoney);
+				swprintf_s(pOutMoneyFormat, StringTable::LoadString(GameStrings::TXT_MONEY_FORMAT_1()), nMoney);
 				DrawTheStuff(pOutMoneyFormat);
+
+				if (BuildingTypeExtContainer::Instance.Find(pType)->Refinery_UseStorage)
+				{
+					wchar_t pOutStorageFormat[0x80];
+					auto nStorage = pBuilding->GetStoragePercentage();
+					swprintf_s(pOutStorageFormat, Phobos::UI::Storage_Label, nStorage);
+					DrawTheStuff(pOutStorageFormat);
+				}
 			}
 
 			if (pThis->IsPrimaryFactory)
 			{
-				DrawTheStuff(StringTable::LoadString((pType->GetFoundationWidth() != 1) ?
-					GameStrings::TXT_PRIMARY() : GameStrings::TXT_PRI()));
+				if (SHPStruct* pImage = RulesExtData::Instance()->PrimaryFactoryIndicator)
+				{
+					ConvertClass* pPalette = FileSystem::PALETTE_PAL();
+					if (RulesExtData::Instance()->PrimaryFactoryIndicator_Palette)
+						pPalette = RulesExtData::Instance()->PrimaryFactoryIndicator_Palette->GetConvert<PaletteManager::Mode::Default>();
+
+					int const cellsToAdjust = pType->GetFoundationHeight(false) - 1;
+					Point2D pPosition = TacticalClass::Instance->CoordsToClient(pThis->GetCell()->GetCoords());
+					pPosition.X -= Unsorted::CellWidthInPixels / 2 * cellsToAdjust;
+					pPosition.Y += Unsorted::CellHeightInPixels / 2 * cellsToAdjust - 4;
+					DSurface::Temp->DrawSHP(pPalette, pImage, 0, &pPosition, pRect, BlitterFlags(0x600), 0, -2, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
+				}
+				else
+				{
+					DrawTheStuff(StringTable::LoadString((pType->GetFoundationWidth() != 1) ?
+						GameStrings::TXT_PRIMARY() : GameStrings::TXT_PRI()));
+				}
 			}
 
-			if (!BuildingExtContainer::Instance.Find(pBuilding)->RegisteredJammers.empty())
-				DrawTheStuff(Phobos::UI::BuidingRadarJammedLabel);
+			if (pType->Radar || HasSpySat)
+			{
+				if (pType->Radar)
+				{
+					DrawTheStuff(Phobos::UI::Radar_Label);
+				}
+
+				if (HasSpySat)
+				{
+					DrawTheStuff(Phobos::UI::Spysat_Label);
+				}
+
+				if (!BuildingExtContainer::Instance.Find(pBuilding)->RegisteredJammers.empty())
+					DrawTheStuff(Phobos::UI::BuidingRadarJammedLabel);
+			}
 		}
 	}
 
@@ -1026,13 +1082,14 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 // westwood does firingUnit->WhatAmI() == abs_AircraftType
 // which naturally never works
 // let's see what this change does
-DEFINE_HOOK(0x6F7561, TechnoClass_Targeting_Arcing_Aircraft, 0x5)
-{
-	GET(AbstractType, pTarget, EAX);
-	GET(CoordStruct*, pCoord, ESI);
-	R->EAX(pCoord->X);
-	return pTarget == AbstractType::Aircraft ? 0x6F75B2 : 0x6F7568;
-}
+// DEFINE_HOOK(0x6F7561, TechnoClass_Targeting_Arcing_Aircraft, 0x5)
+// {
+// 	GET(AbstractType, pTarget, EAX);
+// 	GET(CoordStruct*, pCoord, ESI);
+// 	R->EAX(pCoord->X);
+// 	return pTarget == AbstractType::Aircraft ? 0x6F75B2 : 0x6F7568;
+// }
+DEFINE_PATCH(0x6F7563, 0x2);
 
 // No data found on .inj for this
 //DEFINE_HOOK(0x5F7933, TechnoTypeClass_FindFactory_ExcludeDisabled, 0x6)
@@ -1297,29 +1354,6 @@ DEFINE_HOOK(0x7162B0, TechnoTypeClass_GetPipMax_MindControl, 0x6)
 	return 0x7162BC;
 }
 
-DEFINE_HOOK(0x6FC3FE, TechnoClass_CanFire_Immunities, 0x6)
-{
-	enum { FireIllegal = 0x6FC86A, ContinueCheck = 0x6FC425 };
-
-	GET(WarheadTypeClass*, pWarhead, EAX);
-	GET(TechnoClass*, pTarget, EBP);
-
-	if (pTarget)
-	{
-		//const auto nRank = pTarget->Veterancy.GetRemainingLevel();
-
-		//const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
-		//if(pWHExt->ImmunityType.isset() &&
-		//	 TechnoExtData::HasImmunity(nRank, pTarget , pWHExt->ImmunityType.Get()))
-		//	return FireIllegal;
-
-		if (pWarhead->Psychedelic && TechnoExtData::IsPsionicsImmune(pTarget))
-			return FireIllegal;
-	}
-
-	return ContinueCheck;
-}
-
 // issue #895788: cells' high occupation flags are marked only if they
 // actually contains a bridge while unmarking depends solely on object
 // height above ground. this mismatch causes the cell to become blocked.
@@ -1445,6 +1479,8 @@ DEFINE_HOOK(0x6FA361, TechnoClass_Update_LoseTarget, 5)
 	GET(TechnoClass* const, pThis, ESI);
 	GET(HouseClass* const, pHouse, EDI);
 
+	enum { ForceAttack = 0x6FA472, ContinueCheck = 0x6FA39D };
+
 	const bool BLRes = R->BL();
 	const HouseClass* pOwner = !BLRes ? pThis->Owner : pHouse;
 
@@ -1461,8 +1497,14 @@ DEFINE_HOOK(0x6FA361, TechnoClass_Update_LoseTarget, 5)
 		}
 	}
 
-	enum { RetNotAlly = 0x6FA472, RetAlly = 0x6FA39D };
+	auto pType = pThis->GetTechnoType();
+
+	if (pType->AttackFriendlies && IsAlly && TechnoTypeExtContainer::Instance.Find(pType)->AttackFriendlies_AutoAttack)
+	{
+		return ForceAttack;
+	}
+
 	const bool IsNegDamage = (pThis->CombatDamage() < 0);
 
-	return IsAlly == IsNegDamage ? RetNotAlly : RetAlly;
+	return IsAlly == IsNegDamage ? ForceAttack : ContinueCheck;
 }

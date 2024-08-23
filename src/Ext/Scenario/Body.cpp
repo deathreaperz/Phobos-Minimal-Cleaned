@@ -3,36 +3,46 @@
 IStream* ScenarioExtData::g_pStm = nullptr;
 bool ScenarioExtData::CellParsed = false;
 std::unique_ptr<ScenarioExtData>  ScenarioExtData::Data = nullptr;
+bool ScenarioExtData::UpdateLightSources = false;
 
 void ScenarioExtData::SaveVariablesToFile(bool isGlobal)
 {
 	const auto fileName = isGlobal ? "globals.ini" : "locals.ini";
-	CCFileClass file { fileName };
+	UniqueGamePtr<CCFileClass> pFile { GameCreate<CCFileClass>(fileName) };
 
-	if (!file.Exists())
+	bool is_newFile = false;
+
+	if (!pFile->Exists())
 	{
-		if (!file.CreateFileA())
+		if (!pFile->CreateFileA())
 		{
 			return;
 		}
+
+		is_newFile = true;
+		if (!pFile->Exists())
+			return;
 	}
 
-	if (!file.Open(FileAccessMode::Write))
+	if (!pFile->Open(FileAccessMode::Write))
 	{
 		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, fileName);
 		return;
 	}
 
-	CCINIClass ini {};
-	ini.ReadCCFile(&file);
+	UniqueGamePtr<CCINIClass> pINI { GameCreate<CCINIClass>() };
+
+	if (!is_newFile)
+		pINI->ReadCCFile(pFile.get());
 
 	const auto variables = ScenarioExtData::GetVariables(isGlobal);
-	std::for_each(variables->begin(), variables->end(), [&](const auto& variable)
- {
-	 ini.WriteInteger(isGlobal ? "GlobalVariables" : ScenarioClass::Instance()->FileName, variable.second.Name, variable.second.Value, false);
-	});
+	for (auto& [idx, var] : *variables)
+	{
+		pINI->WriteInteger(isGlobal ? "GlobalVariables" : ScenarioClass::Instance()->FileName, var.Name, var.Value, false);
+	}
 
-	ini.WriteCCFile(&file);
+	pINI->WriteCCFile(pFile.get());
+	pFile->Close();
 }
 
 void ScenarioExtData::LoadVariablesToFile(bool isGlobal)
@@ -295,8 +305,14 @@ DEFINE_HOOK(0x689310, ScenarioClass_SaveLoad_Prefix, 0x5)
 	return 0;
 }
 
+#include <Misc/Spawner/Main.h>
+
 DEFINE_HOOK(0x689669, ScenarioClass_Load_Suffix, 0x6)
 {
+	// Clear UIGameMode on game load
+	if (SpawnerMain::Configs::Enabled)
+		SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0] = 0;
+
 	auto buffer = ScenarioExtData::Instance();
 
 	PhobosByteStream Stm(0);

@@ -141,14 +141,11 @@ DEFINE_HOOK(0x5F452E, TechnoClass_Selectable_DeathCounter, 0x6) // 8
 
 DEFINE_HOOK(0x737CBB, UnitClass_ReceiveDamage_DeathCounter, 0x6)
 {
-	GET(FootClass*, pThis, ESI);
+	GET(UnitClass*, pThis, ESI);
 
-	if (auto pUnit = specific_cast<UnitClass*>(pThis))
+	if (pThis->DeathFrameCounter > 0)
 	{
-		if (pUnit->DeathFrameCounter > 0)
-		{
-			return 0x737D26;
-		}
+		return 0x737D26;
 	}
 
 	return 0x0;
@@ -367,10 +364,9 @@ DEFINE_HOOK(0x480552, CellClass_AttachesToNeighbourOverlay_Gate, 0x7)
 	GET(int const, idxOverlay, EBX);
 	GET_STACK(int const, state, STACK_OFFS(0x10, -0x8));
 
-	const bool isWall = idxOverlay != -1 && OverlayTypeClass::Array->Items[idxOverlay]->Wall;
-	enum { Attachable = 0x480549 };
+	enum { Continue = 0x0, Attachable = 0x480549 };
 
-	if (isWall)
+	if (const bool isWall = idxOverlay != -1 && OverlayTypeClass::Array->Items[idxOverlay]->Wall)
 	{
 		for (auto pObject = pThis->FirstObject; pObject; pObject = pObject->NextObject)
 		{
@@ -391,7 +387,7 @@ DEFINE_HOOK(0x480552, CellClass_AttachesToNeighbourOverlay_Gate, 0x7)
 		}
 	}
 
-	return 0;
+	return Continue;
 }
 
 // WW take 1 second as 960 milliseconds, this will fix that back to the actual time.
@@ -704,8 +700,21 @@ DEFINE_HOOK(0x4FD1CD, HouseClass_RecalcCenter_LimboDelivery, 0x6)
 
 	GET(BuildingClass* const, pBuilding, ESI);
 
-	if (BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
+	if (BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1
+	 || !MapClass::Instance->CoordinatesLegal(pBuilding->GetMapCoords()))
 		return R->Origin() == 0x4FD1CD ? SkipBuilding1 : SkipBuilding2;
+
+	return 0;
+}
+
+DEFINE_HOOK(0x4AC534, DisplayClass_ComputeStartPosition_IllegalCoords, 0x6)
+{
+	enum { SkipTechno = 0x4AC55B };
+
+	GET(TechnoClass* const, pTechno, ECX);
+
+	if (!MapClass::Instance->CoordinatesLegal(pTechno->GetMapCoords()))
+		return SkipTechno;
 
 	return 0;
 }
@@ -819,11 +828,31 @@ DEFINE_HOOK(0x4438B4, BuildingClass_SetRallyPoint_Naval, 0x6)
 	enum { IsNaval = 0x4438BC, NotNaval = 0x4438C9 };
 
 	GET(BuildingTypeClass* const, pBuildingType, EAX);
+	GET_STACK(bool, playEVA, STACK_OFFSET(0xA4, 0x8));
+	REF_STACK(SpeedType, spdtp, STACK_OFFSET(0xA4, -0x84));
+
+	if (!playEVA)// assuming the hook above is the only place where it's set to false when UndeploysInto
+	{
+		if (auto pInto = pBuildingType->UndeploysInto)// r u sure this is not too OP?
+		{
+			R->ESI(pInto->MovementZone);
+			spdtp = pInto->SpeedType;
+			return NotNaval;
+		}
+	}
 
 	if (pBuildingType->Naval || pBuildingType->SpeedType == SpeedType::Float)
 		return IsNaval;
 
 	return NotNaval;
+}
+
+DEFINE_HOOK(0x6DAAB2, TacticalClass_DrawRallyPointLines_NoUndeployBlyat, 0x6)
+{
+	GET(BuildingClass*, pBld, EDI);
+	if (pBld->Focus && pBld->CurrentMission != Mission::Selling)
+		return 0x6DAAC0;
+	return 0x6DAD45;
 }
 
 FireError __stdcall JumpjetLocomotionClass_Can_Fire(ILocomotion* pThis)
@@ -1171,26 +1200,33 @@ DEFINE_HOOK(0x689EB0, ScenarioClass_ReadMap_SkipHeaderInCampaign, 0x6)
 DEFINE_HOOK(0x4D4B43, FootClass_Mission_Capture_ForbidUnintended, 0x6)
 {
 	GET(InfantryClass*, pThis, EDI);
-
-	if (!pThis)
-		return 0x0;
+	enum { LosesDestination = 0x4D4BD1 };
 
 	const auto pBld = specific_cast<BuildingClass*>(pThis->Destination);
 
-	if (!pBld || pThis->Target)//try less agressive first, only when no target, see if it doesn't fix something
+	if (!pBld || pThis->Target)
 		return 0;
 
-	if (!(pBld->Type->Capturable && pThis->Type->Engineer)   // can't capture
-	&& !(pBld->Type->Spyable && pThis->Type->Infiltrate)     // can't infiltrate
-	&& !(pBld->Type->CanBeOccupied && (pThis->Type->Occupier || TechnoExtData::IsAssaulter(pThis))) // can't occupy
-	&& !(TechnoExtData::ISC4Holder(pThis)) // can't C4, what else?
-	)// If you can't do any of these why are you here?
-	{
-		pThis->SetDestination(nullptr, false);
-		return 0x4D4BD1;
-	}
+	if (pThis->Type->Engineer)
+		return 0;
 
-	return 0;
+	// interaction issues with Ares,
+	// no more further checking to make life easier.
+	// If someone still try to abuse the bug I won't try to stop them
+	if (pThis->Type->Infiltrate && !pThis->Owner->IsAlliedWith(pBld->Owner))
+		return 0;
+
+	if (pBld->IsStrange())
+		return 0;
+
+	if (pBld->Type->CanBeOccupied && (pThis->Type->Occupier || TechnoExtData::IsAssaulter(pThis)))
+		return 0;
+
+	if (TechnoExtData::ISC4Holder(pThis))
+		return 0;
+
+	pThis->SetDestination(nullptr, false);
+	return 0x4D4BD1;
 }
 
 void SetSkirmishHouseName(HouseClass* pHouse, bool IsHuman)
@@ -1290,6 +1326,8 @@ DEFINE_HOOK(0x73FEC1, UnitClass_WhatAction_DeploysIntoDesyncFix, 0x6)
 	return SkipGameCode;
 }
 
+#pragma endregion
+
 #include <Pipes.h>
 #include <Straws.h>
 
@@ -1341,12 +1379,12 @@ struct OverlayReader
 {
 	size_t Get()
 	{
-		unsigned char ret[4];
-
-		ret[0] = ByteReaders[0].Get();
-		ret[1] = ByteReaders[1].Get();
-		ret[2] = ByteReaders[2].Get();
-		ret[3] = ByteReaders[3].Get();
+		const unsigned char ret[4] {
+			ByteReaders[0].Get(),
+			ByteReaders[1].Get(),
+			ByteReaders[2].Get(),
+			ByteReaders[3].Get()
+		};
 
 		return ret[0] == 0xFF ? 0xFFFFFFFF : (ret[0] | (ret[1] << 8) | (ret[2] << 16) | (ret[3] << 24));
 	}
@@ -1542,7 +1580,80 @@ DEFINE_HOOK(0x5FD6A0, OverlayClass_WriteINI, 0x6)
 	return 0x5FD8EB;
 }
 
-#pragma endregion
+// Ares InitialPayload fix: Man, what can I say
+// Otamaa : this can cause deadlock , or crashes , better write proper fix
+// DEFINE_HOOK(0x65DE21, TeamTypeClass_CreateMembers_MutexOut, 0x6)
+// {
+// 	GET(TeamClass*, pTeam, EBP);
+// 	GET(TechnoTypeClass*, pType, EDI);
+// 	R->ESI(pType->CreateObject(pTeam->Owner));
+// 	return 0x65DE53;
+// }
+
+DEFINE_HOOK(0x74691D, UnitClass_UpdateDisguise_EMP, 0x6)
+{
+	GET(UnitClass*, pThis, ESI);
+	// Remove mirage disguise if under emp or being flipped, approximately 15 deg
+	if (pThis->IsUnderEMP() || TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled || std::abs(pThis->AngleRotatedForwards) > 0.25 || std::abs(pThis->AngleRotatedSideways) > 0.25)
+	{
+		pThis->ClearDisguise();
+		R->EAX(pThis->MindControlRingAnim);
+		return 0x746AA5;
+	}
+
+	return 0x746931;
+}
+
+bool __fastcall Fake_HouseIsAlliedWith(HouseClass* pThis, void*, HouseClass* CurrentPlayer)
+{
+	return Phobos::Config::DevelopmentCommands
+		|| pThis->ControlledByCurrentPlayer()
+		|| pThis->IsAlliedWith(CurrentPlayer);
+}
+
+DEFINE_JUMP(CALL, 0x63B136, GET_OFFSET(Fake_HouseIsAlliedWith));
+DEFINE_JUMP(CALL, 0x63B100, GET_OFFSET(Fake_HouseIsAlliedWith));
+DEFINE_JUMP(CALL, 0x63B17F, GET_OFFSET(Fake_HouseIsAlliedWith));
+DEFINE_JUMP(CALL, 0x63B1BA, GET_OFFSET(Fake_HouseIsAlliedWith));
+DEFINE_JUMP(CALL, 0x63B2CE, GET_OFFSET(Fake_HouseIsAlliedWith));
+
+// An attempt to fix an issue where the ATC->CurrentVector does not contain every air Techno in given range that increases in frequency as the range goes up.
+// Real talk: I have absolutely no clue how the original function works besides doing vector looping and manipulation, as far as I can tell it never even explicitly
+// clears CurrentVector but somehow it only contains applicable items afterwards anyway. It is possible this one does not achieve everything the original does functionality and/or
+// performance-wise but it does work and produces results with greater accuracy than the original for large ranges. - Starkku
+DEFINE_HOOK(0x412B40, AircraftTrackerClass_FillCurrentVector, 0x5)
+{
+	enum { SkipGameCode = 0x413482 };
+
+	GET(AircraftTrackerClass*, pThis, ECX);
+	GET_STACK(CellClass*, pCell, 0x4);
+	GET_STACK(int, range, 0x8);
+
+	pThis->CurrentVector.Reset();
+
+	if (range < 1)
+		range = 1;
+
+	auto const mapCoords = pCell->MapCoords;
+	int sectorWidth = MapClass::MapCellDimension->Width / 20;
+	int sectorHeight = MapClass::MapCellDimension->Height / 20;
+	int sectorIndexXStart = std::clamp((mapCoords.X - range) / sectorWidth, 0, 19);
+	int sectorIndexYStart = std::clamp((mapCoords.Y - range) / sectorHeight, 0, 19);
+	int sectorIndexXEnd = std::clamp((mapCoords.X + range) / sectorWidth, 0, 19);
+	int sectorIndexYEnd = std::clamp((mapCoords.Y + range) / sectorHeight, 0, 19);
+
+	for (int y = sectorIndexYStart; y <= sectorIndexYEnd; y++)
+	{
+		for (int x = sectorIndexXStart; x <= sectorIndexXEnd; x++)
+		{
+			for (auto const pTechno : pThis->TrackerVectors[y][x])
+				pThis->CurrentVector.AddItem(pTechno);
+		}
+	}
+
+	return SkipGameCode;
+}
+
 #ifdef aaaaa___
 #pragma region BlitterFix_
 #include <Helpers/Macro.h>
@@ -1611,3 +1722,105 @@ DEFINE_HOOK(492776, BlitTransLucent75_Fix, 0)
 }
 #pragma endregion
 #endif
+
+DEFINE_HOOK(0x51C9B8, InfantryClass_CanFire_HitAndRun1, 0x17)
+{
+	enum { CheckPass = 0x51C9CF, CheckNotPass = 0x51CAFA };
+
+	GET(InfantryClass*, pThis, EBX);
+
+	const auto pType = pThis->GetTechnoType();
+	if ((pThis->CanAttackOnTheMove() && pType && pType->OpportunityFire)
+		|| pThis->SpeedPercentage <= 0.1) // vanilla check
+	{
+		return CheckPass;
+	}
+	else
+	{
+		return CheckNotPass;
+	}
+}
+
+DEFINE_HOOK(0x51CAAC, InfantryClass_CanFire_HitAndRun2, 0x13)
+{
+	enum { CheckPass = 0x51CACD, CheckNotPass = 0x51CABF };
+
+	GET(InfantryClass*, pThis, EBX);
+
+	const auto pType = pThis->GetTechnoType();
+	if ((pThis->CanAttackOnTheMove() && pType && pType->OpportunityFire)
+		|| !pThis->Locomotor.GetInterfacePtr()->Is_Moving_Now()) // vanilla check
+	{
+		return CheckPass;
+	}
+	else
+	{
+		return CheckNotPass;
+	}
+}
+
+//Fix the bug that parasite will vanish if it missed its target when its previous cell is occupied.
+DEFINE_HOOK(0x62AA32, ParasiteClass_TryInfect_MissBehaviorFix, 0x5)
+{
+	GET(DWORD, dwdIsReturnSuccess, EAX);
+	bool bIsReturnSuccess = (BYTE)((WORD)(dwdIsReturnSuccess));
+	GET(ParasiteClass*, pParasite, ESI);
+
+	auto pParasiteTechno = pParasite->Owner;
+	if (bIsReturnSuccess || !pParasiteTechno)
+	{
+		return 0;
+	}
+	auto pType = pParasiteTechno->GetTechnoType();
+	auto cell = MapClass::Instance->NearByLocation(pParasiteTechno->LastMapCoords,
+				pType->SpeedType, -1, pType->MovementZone, false, 1, 1, false,
+				false, false, true, CellStruct::Empty, false, false);
+	auto crd = MapClass::Instance->GetCellAt(cell)->GetCoords();
+	bIsReturnSuccess = pParasiteTechno->Unlimbo(crd, DirType::North);
+	R->AL(bIsReturnSuccess);
+
+	return 0;
+}
+
+// this fella was { 0, 0, 1 } before and somehow it also breaks both the light position a bit and how the lighting is applied when voxels rotate - Kerbiter
+DEFINE_HOOK(0x753D86, VoxelCalcNormals_NullAdditionalVector, 0x0)
+{
+	REF_STACK(Vector3D<float>, secondaryLightVector, STACK_OFFSET(0xD8, -0xC0))
+
+		if (RulesExtData::Instance()->UseFixedVoxelLighting)
+			secondaryLightVector = { 0, 0, 0 };
+		else
+			secondaryLightVector = { 0, 0, 1 };
+
+	return 0x753D9E;
+}
+
+//DEFINE_PATCH(0x753D96, 0xC7, 0x44, 0x24, 0x20, 0x00, 0x00, 0x00, 0x00);
+
+#include <Misc/Ares/Hooks/Header.h>
+
+DEFINE_HOOK(0x705D74, TechnoClass_GetRemapColour_DisguisePalette, 0x8)
+{
+	enum { SkipGameCode = 0x705D7C };
+
+	GET(TechnoClass* const, pThis, ESI);
+
+	R->EAX(TechnoExtData::GetSimpleDisguiseType(pThis, true, false));
+
+	return SkipGameCode;
+}
+
+DEFINE_HOOK(0x467C1C, BulletClass_AI_UnknownTimer, 0x6)
+{
+	GET(BulletTypeClass*, projectile, EAX);
+	return projectile->Inviso ? 0x467C2A : 0;
+}
+
+DEFINE_HOOK(0x51A67E, InfantryClass_UpdatePosition_DamageBridgeFix, 0x6)
+{
+	enum { SkipDamageArea = 0x51A7F8 };
+
+	GET(CellClass*, pCell, EAX);
+
+	return pCell->ContainsBridge() ? 0 : SkipDamageArea;
+}

@@ -14,6 +14,11 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 	{
 		currFactory = &pData->Factory_BuildingType;
 		block = pRules->ForbidParallelAIQueues_Building.Get(!pRules->AllowParallelAIQueues);
+		if (pData->AttachedToObject->ProducingBuildingTypeIndex >= 0)
+		{
+			block = TechnoTypeExtContainer::Instance.Find(BuildingTypeClass::Array->Items
+				[pData->AttachedToObject->ProducingBuildingTypeIndex])->ForbidParallelAIQueues.Get(block);
+		}
 		break;
 	}
 	case AbstractType::UnitType:
@@ -21,11 +26,21 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 		if (!naval)
 		{
 			block = pRules->ForbidParallelAIQueues_Vehicle.Get(!pRules->AllowParallelAIQueues);
+			if (pData->AttachedToObject->ProducingUnitTypeIndex >= 0)
+			{
+				block = TechnoTypeExtContainer::Instance.Find(UnitTypeClass::Array->Items
+				[pData->AttachedToObject->ProducingUnitTypeIndex])->ForbidParallelAIQueues.Get(block);
+			}
 			currFactory = &pData->Factory_VehicleType;
 		}
 		else
 		{
 			block = pRules->ForbidParallelAIQueues_Navy.Get(!pRules->AllowParallelAIQueues);
+			if (pData->ProducingNavalUnitTypeIndex >= 0)
+			{
+				block = TechnoTypeExtContainer::Instance.Find(UnitTypeClass::Array->Items
+				[pData->ProducingNavalUnitTypeIndex])->ForbidParallelAIQueues.Get(block);
+			}
 			currFactory = &pData->Factory_NavyType;
 		}
 
@@ -34,6 +49,11 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 	case AbstractType::InfantryType:
 	{
 		block = pRules->ForbidParallelAIQueues_Infantry.Get(!pRules->AllowParallelAIQueues);
+		if (pData->AttachedToObject->ProducingInfantryTypeIndex >= 0)
+		{
+			block = TechnoTypeExtContainer::Instance.Find(InfantryTypeClass::Array->Items
+			[pData->AttachedToObject->ProducingInfantryTypeIndex])->ForbidParallelAIQueues.Get(block);
+		}
 		currFactory = &pData->Factory_InfantryType;
 		break;
 	}
@@ -41,6 +61,12 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 	{
 		currFactory = &pData->Factory_AircraftType;
 		block = pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues);
+		if (pData->AttachedToObject->ProducingAircraftTypeIndex >= 0)
+		{
+			block = TechnoTypeExtContainer::Instance.Find(AircraftTypeClass::Array->Items
+				[pData->AttachedToObject->ProducingAircraftTypeIndex])->ForbidParallelAIQueues.Get(block);
+		}
+
 		break;
 	}
 	default:
@@ -288,13 +314,23 @@ DEFINE_HOOK(0x4401BB, BuildingClass_AI_PickWithFreeDocks, 0x6) //was C
 {
 	GET(BuildingClass*, pBuilding, ESI);
 
+	if (!pBuilding->Owner || pBuilding->Owner->IsControlledByHuman() || pBuilding->Owner->IsNeutral())
+		return 0x0;
+
 	auto pRules = RulesExtData::Instance();
 
-	if (!pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues))
-		return 0;
+	bool ForbidParallelAIQueues_ = pRules->ForbidParallelAIQueues_Aircraft.Get(!pRules->AllowParallelAIQueues);
 
-	if (!pBuilding->Owner || pBuilding->Owner->IsNeutral() || pBuilding->Owner->IsControlledByHuman())
+	if (auto const pType = pBuilding->Owner->ProducingAircraftTypeIndex >= 0 ?
+		AircraftTypeClass::Array()->Items[pBuilding->Owner->ProducingAircraftTypeIndex] : nullptr)
+	{
+		ForbidParallelAIQueues_ = TechnoTypeExtContainer::Instance.Find(pType)->ForbidParallelAIQueues.Get(ForbidParallelAIQueues_);
+	}
+
+	if (!ForbidParallelAIQueues_)
+	{
 		return 0;
+	}
 
 	if (pBuilding->Type->Factory == AbstractType::AircraftType)
 	{
@@ -324,21 +360,33 @@ DEFINE_HOOK(0x4401BB, BuildingClass_AI_PickWithFreeDocks, 0x6) //was C
 DEFINE_HOOK(0x443CCA, BuildingClass_KickOutUnit_AircraftType_Phobos, 0xA)
 {
 	GET(HouseClass*, pHouse, EDX);
-	HouseExtContainer::Instance.Find(pHouse)->Factory_AircraftType = nullptr;
+	GET(BuildingClass*, pThis, ESI);
+
+	if (pThis == HouseExtContainer::Instance.Find(pHouse)->Factory_AircraftType)
+		HouseExtContainer::Instance.Find(pHouse)->Factory_AircraftType = nullptr;
+
 	return 0;
 }
 
 DEFINE_HOOK(0x44531F, BuildingClass_KickOutUnit_BuildingType_Phobos, 0xA)
 {
 	GET(HouseClass*, pHouse, EAX);
-	HouseExtContainer::Instance.Find(pHouse)->Factory_BuildingType = nullptr;
+	GET(BuildingClass*, pThis, ESI);
+
+	if (pThis == HouseExtContainer::Instance.Find(pHouse)->Factory_BuildingType)
+		HouseExtContainer::Instance.Find(pHouse)->Factory_BuildingType = nullptr;
+
 	return 0;
 }
 
 DEFINE_HOOK(0x444131, BuildingClass_KickOutUnit_InfantryType_Phobos, 0x6)
 {
 	GET(HouseClass*, pHouse, EAX);
-	HouseExtContainer::Instance.Find(pHouse)->Factory_InfantryType = nullptr;
+	GET(BuildingClass*, pThis, ESI);
+
+	if (pThis == HouseExtContainer::Instance.Find(pHouse)->Factory_InfantryType)
+		HouseExtContainer::Instance.Find(pHouse)->Factory_InfantryType = nullptr;
+
 	return 0;
 }
 
@@ -349,9 +397,9 @@ DEFINE_HOOK(0x444119, BuildingClass_KickOutUnit_UnitType_Phobos, 0x6)
 
 	auto pHouseExt = HouseExtContainer::Instance.Find(pFactory->Owner);
 
-	if (pUnit->Type->Naval)
+	if (pUnit->Type->Naval && pHouseExt->Factory_NavyType == pFactory)
 		pHouseExt->Factory_NavyType = nullptr;
-	else
+	else if (!pUnit->Type->Naval && pHouseExt->Factory_VehicleType == pFactory)
 		pHouseExt->Factory_VehicleType = nullptr;
 
 	return 0;
@@ -405,7 +453,7 @@ DEFINE_HOOK(0x4502F4, BuildingClass_Update_Factory, 0x6)
 
 	if (!curFactory)
 	{
-		Game::RaiseError(E_POINTER);
+		_com_issue_error(E_POINTER);
 	}
 	else if (!*curFactory)
 	{
@@ -420,6 +468,62 @@ DEFINE_HOOK(0x4502F4, BuildingClass_Update_Factory, 0x6)
 	}
 	else if (*curFactory != pThis)
 	{
+		switch (type)
+		{
+		case AircraftTypeClass::AbsID:
+		{
+			if (pOwner->ProducingAircraftTypeIndex >= 0)
+			{
+				if (TechnoTypeExtContainer::Instance.Find(AircraftTypeClass::Array->Items
+					[pOwner->ProducingAircraftTypeIndex])->ForbidParallelAIQueues)
+				{
+					return Skip;
+				}
+			}
+			break;
+		}
+		case InfantryTypeClass::AbsID:
+		{
+			if (pOwner->ProducingInfantryTypeIndex >= 0)
+			{
+				if (TechnoTypeExtContainer::Instance.Find(InfantryTypeClass::Array->Items
+					[pOwner->ProducingInfantryTypeIndex])->ForbidParallelAIQueues)
+				{
+					return Skip;
+				}
+			}
+			break;
+		}
+		case BuildingTypeClass::AbsID:
+		{
+			if (pOwner->ProducingBuildingTypeIndex >= 0)
+			{
+				if (TechnoTypeExtContainer::Instance.Find(BuildingTypeClass::Array->Items
+					[pOwner->ProducingBuildingTypeIndex])->ForbidParallelAIQueues)
+				{
+					return Skip;
+				}
+			}
+			break;
+		}
+		case UnitTypeClass::AbsID:
+		{
+			const int idx = pThis->Type->Naval ? pData->ProducingNavalUnitTypeIndex : pOwner->ProducingUnitTypeIndex;
+			if (idx >= 0)
+			{
+				if (TechnoTypeExtContainer::Instance.Find(UnitTypeClass::Array->Items
+					[idx])->ForbidParallelAIQueues)
+				{
+					return Skip;
+				}
+			}
+
+			break;
+		}
+		default:
+			break;
+		}
+
 		return block ? Skip : 0x0;
 	}
 
@@ -563,10 +667,31 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 
 		const auto buildableResult = pHouse->CanBuild(TT, false, false);
 
-		if (buildableResult == CanBuildResult::Unbuildable
-			|| TT->GetActualCost(pHouse) > pHouse->Available_Money())
+		// Aircraft has it own handling
+		if constexpr (Ttype::AbsID == AbstractType::AircraftType)
 		{
-			continue;
+			//Debug::Log("Aircraft [%s][%s] return result [%d] for can build");
+
+			if (buildableResult != CanBuildResult::Buildable || TT->GetActualCost(pHouse) > pHouse->Available_Money())
+			{
+				continue;
+			}
+
+			//yes , we checked this fucking twice just to make sure
+			const auto factoryresult = HouseExtData::HasFactory(pHouse, TT, false, true, false, true).first;
+
+			if (factoryresult == NewFactoryState::NotFound || factoryresult == NewFactoryState::NoFactory)
+			{
+				continue;
+			}
+		}
+		else
+		{
+			if (buildableResult == CanBuildResult::Unbuildable
+				|| TT->GetActualCost(pHouse) > pHouse->Available_Money())
+			{
+				continue;
+			}
 		}
 
 		if (BestValue < CurrentValue || BestValue == -1)

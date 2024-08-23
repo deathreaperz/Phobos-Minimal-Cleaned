@@ -739,7 +739,7 @@ int __fastcall SidebarClass_6AC430(SidebarClass*)
 // so lets just dump the assembly code instead , lmao
 // -otamaa
 declhook(0x6A8220, StripClass_Initialize, 0x7)
-extern "C" __declspec(naked, dllexport) DWORD __cdecl StripClass_Initialize(REGISTERS * R)
+extern "C" __declspec(naked, dllexport) DWORD __cdecl StripClass_Initialize(REGISTERS* R)
 {
 	__asm
 	{

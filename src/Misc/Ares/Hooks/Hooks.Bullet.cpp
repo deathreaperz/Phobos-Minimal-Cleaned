@@ -118,6 +118,10 @@ DEFINE_HOOK(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
 		pWarheadExt->SplashList_CreationInterval : pWarheadExt->AnimList_CreationInterval;
 
 	int* remainingInterval = &pWarheadExt->RemainingAnimCreationInterval;
+	int scatterMin = pWarheadExt->Splashed ? pWarheadExt->SplashList_ScatterMin.Get() : pWarheadExt->AnimList_ScatterMin.Get();
+	int scatterMax = pWarheadExt->Splashed ? pWarheadExt->SplashList_ScatterMax.Get() : pWarheadExt->AnimList_ScatterMax.Get();
+	bool allowScatter = scatterMax != 0 || scatterMin != 0;
+
 	if (creationInterval > 0 && pThis->Owner)
 		remainingInterval = &TechnoExtContainer::Instance.Find(pThis->Owner)->WHAnimRemainingCreationInterval;
 
@@ -153,8 +157,16 @@ DEFINE_HOOK(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
 			if (!pType)
 				continue;
 
+			auto animCoords = *XYZ;
+
+			if (allowScatter)
 			{
-				auto const pAnim = GameCreate<AnimClass>(pType, XYZ, 0, 1, (AnimFlag)0x2600, -15, false);
+				int distance = ScenarioClass::Instance->Random.RandomRanged(scatterMin, scatterMax);
+				animCoords = MapClass::GetRandomCoordsNear(animCoords, distance, false);
+			}
+
+			{
+				auto const pAnim = GameCreate<AnimClass>(pType, animCoords, 0, 1, (AnimFlag)0x2600, -15, false);
 				createdAnim = true;
 
 				if (const auto pTech = pThis->Owner)
@@ -208,6 +220,13 @@ DEFINE_HOOK(0x46867F, BulletClass_SetMovement_Parachute, 5)
 	//	GET_BASE(VelocityClass *, Trajectory, 0xC);
 
 	R->EBX<BulletClass*>(Bullet);
+	if (!Bullet->Target)
+	{
+		Debug::Log("Bullet [%s - %x] Missing Target Pointer when Unlimbo! , Fallback To CreationCoord to Prevent Crash\n",
+			Bullet->get_ID(), Bullet);
+
+		Bullet->Target = MapClass::Instance->GetCellAt(XYZ);
+	}
 
 	const auto pBulletData = BulletTypeExtContainer::Instance.Find(Bullet->Type);
 
@@ -219,7 +238,7 @@ DEFINE_HOOK(0x46867F, BulletClass_SetMovement_Parachute, 5)
 	}
 	else
 	{
-		result = Bullet->Unlimbo(*XYZ, DirType::North);
+		result = Bullet->ObjectClass::Unlimbo(*XYZ, DirType::North);
 	}
 
 	R->EAX(result);

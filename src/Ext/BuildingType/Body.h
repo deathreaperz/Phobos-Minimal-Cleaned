@@ -50,8 +50,8 @@ public:
 	ValueableIdxVector<SuperWeaponTypeClass> SuperWeapons {};
 
 	ValueableVector<BuildingTypeClass*> PowerPlantEnhancer_Buildings {};
-	Nullable<int> PowerPlantEnhancer_Amount {};
-	Nullable<float> PowerPlantEnhancer_Factor {};
+	Valueable<int> PowerPlantEnhancer_Amount { 0 };
+	Valueable<float> PowerPlantEnhancer_Factor { 1.0f };
 
 	std::vector<Point2D> OccupierMuzzleFlashes {};
 
@@ -64,7 +64,7 @@ public:
 	ValueableVector<TechnoTypeClass*> Grinding_AllowTypes {};
 	ValueableVector<TechnoTypeClass*> Grinding_DisallowTypes {};
 	NullableIdx<VocClass> Grinding_Sound {};
-	Nullable<WeaponTypeClass*> Grinding_Weapon {};
+	Valueable<WeaponTypeClass*> Grinding_Weapon { nullptr };
 
 	Valueable<bool> Grinding_PlayDieSound { false };
 	Valueable<int> Grinding_Weapon_RequiredCredits { 0 };
@@ -225,6 +225,7 @@ public:
 
 	// #218 Specific Occupiers
 	ValueableVector<InfantryTypeClass*> AllowedOccupiers {};
+	ValueableVector<InfantryTypeClass*> DisallowedOccupiers {};
 
 	Valueable<bool> BunkerRaidable { false };
 	Valueable<bool> Firestorm_Wall { false };
@@ -301,6 +302,14 @@ public:
 	Valueable<int> SpyEffect_Anim_Duration { -1 };
 	Valueable<AffectedHouse> SpyEffect_Anim_DisplayHouses { AffectedHouse::All };
 
+	Valueable<bool> SpyEffect_SWTargetCenter { false };
+
+	Valueable<bool> ShowPower { true };
+	Valueable<bool> EMPulseCannon_UseWeaponSelection { false };
+
+	ValueableVector<TechnoTypeClass*> FactoryPlant_AllowTypes {};
+	ValueableVector<TechnoTypeClass*> FactoryPlant_DisallowTypes {};
+
 	BuildingTypeExtData() noexcept = default;
 	~BuildingTypeExtData() noexcept = default;
 
@@ -312,7 +321,7 @@ public:
 	void CompleteInitialization() const;
 
 	// Assuming SuperWeapon & SuperWeapon2 are used (for the moment)
-	int __forceinline GetSuperWeaponCount() const
+	constexpr int FORCEINLINE GetSuperWeaponCount() const
 	{
 		// The user should only use SuperWeapon and SuperWeapon2 if the attached sw count isn't bigger than 2
 		return 2 + this->SuperWeapons.size();
@@ -365,7 +374,6 @@ public:
 	};
 
 	static void DisplayPlacementPreview();
-	static Point2D* GetOccupyMuzzleFlash(BuildingClass* pThis, int nOccupyIdx);
 	static int GetBuildingAnimTypeIndex(BuildingClass* pThis, const BuildingAnimSlot& nSlot, const char* pDefault);
 
 	static void UpdateBuildupFrames(BuildingTypeClass* pThis);

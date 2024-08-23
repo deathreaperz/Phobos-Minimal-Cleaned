@@ -28,15 +28,18 @@ DEFINE_HOOK(0x6DD8B0, TActionClass_Execute, 0x6)
 
 	enum { return_value = 0x6DD910, continue_func = 0x0 };
 
-	if (lastAction == (int)pThis->ActionKind)
-		++StaticVars::TriggerCounts[pThis];
-	else
-		StaticVars::TriggerCounts[pThis] = 0;
+	if (((int)pThis->ActionKind == 14 || (int)pThis->ActionKind == 32))
+	{
+		if (lastAction == (int)pThis->ActionKind)
+			++StaticVars::TriggerCounts[pThis];
+		else
+			StaticVars::TriggerCounts[pThis] = 0;
 
-	//Debug::Log("TAction[%x] triggering [%d] caller[%x]\n" , pThis , (int)pThis->ActionKind , caller);
+		//Debug::Log("TAction[%x] triggering [%d] caller[%x]\n" , pThis , (int)pThis->ActionKind , caller);
 
-	if (((int)pThis->ActionKind == 14 || (int)pThis->ActionKind == 32) && StaticVars::TriggerCounts[pThis] > 1000)
-		Debug::FatalErrorAndExit("Possible Deadlock Detected From TAction[%x] with Kind[%d] !\n", pThis, (int)pThis->ActionKind);
+		if (StaticVars::TriggerCounts[pThis] > 1000)
+			Debug::FatalErrorAndExit("Possible Deadlock Detected From TAction[%x] with Kind[%d] !\n", pThis, (int)pThis->ActionKind);
+	}
 
 	lastAction = (int)pThis->ActionKind;
 
@@ -118,55 +121,21 @@ namespace RetintTemp
 	bool UpdateLightSources = false;
 }
 
-// Bugfix, #issue 429: Retint map script disables RGB settings on light source
-// Author: secsome, Starkku
-DEFINE_HOOK_AGAIN(0x6E2F47, TActionClass_Retint_LightSourceFix, 0x3) // Blue
-DEFINE_HOOK_AGAIN(0x6E2EF7, TActionClass_Retint_LightSourceFix, 0x3) // Green
-DEFINE_HOOK(0x6E2EA7, TActionClass_Retint_LightSourceFix, 0x3) // Red
-{
-	// Flag the light sources to update, actually do it later and only once to prevent redundancy.
-	RetintTemp::UpdateLightSources = true;
-
-	return 0;
-}
-
-#include <Ext/Terrain/Body.h>
-
 // Update light sources if they have been flagged to be updated.
 DEFINE_HOOK(0x6D4455, Tactical_Render_UpdateLightSources, 0x8)
 {
-	if (RetintTemp::UpdateLightSources)
+	if (ScenarioExtData::UpdateLightSources)
 	{
-		for (auto pBld : *BuildingClass::Array)
+		for (auto light : LightSourceClass::Array())
 		{
-			if (pBld->LightSource && pBld->LightSource->Activated)
+			if (light->Activated)
 			{
-				pBld->LightSource->Activated = false;
-				pBld->LightSource->Activate();
+				light->Activated = false;
+				light->Activate();
 			}
 		}
 
-		for (auto pRadSite : *RadSiteClass::Array)
-		{
-			if (pRadSite->LightSource && pRadSite->LightSource->Activated)
-			{
-				pRadSite->LightSource->Activated = false;
-				pRadSite->LightSource->Activate();
-			}
-		}
-
-		for (auto pTerrain : *TerrainClass::Array)
-		{
-			auto pExt = TerrainExtContainer::Instance.Find(pTerrain);
-
-			if (pExt->LighSource && pExt->LighSource->Activated)
-			{
-				pExt->LighSource->Activated = false;
-				pExt->LighSource->Activate();
-			}
-		}
-
-		RetintTemp::UpdateLightSources = false;
+		ScenarioExtData::UpdateLightSources = false;
 	}
 
 	return 0;

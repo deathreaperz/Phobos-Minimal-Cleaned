@@ -150,7 +150,7 @@ DEFINE_HOOK(0x4CA0B1, FactoryClass_Abandon_NavalProductionFix, 0x6)
 		pThis->Owner->ProducingUnitTypeIndex = -1;
 	}
 
-	return SkipUnitTypeCheck;
+	return 0x4CA0B7;
 }
 
 DEFINE_HOOK(0x4F91A4, HouseClass_AI_BuildingProductionCheck, 0x6)

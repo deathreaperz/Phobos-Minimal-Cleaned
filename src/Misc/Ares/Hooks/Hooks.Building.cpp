@@ -103,6 +103,8 @@ DEFINE_HOOK(0x44EB10, BuildingClass_GetCrew, 9)
 	return 0x44EB5B;
 }
 
+#include <Ext/SWType/Body.h>
+
 DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
 {
 	GET(BuildingClass*, pThis, ECX);
@@ -136,7 +138,7 @@ DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
 
 			if (pFactory && pFactory->Object)
 			{
-				auto pProdType = pFactory->Object->GetTechnoType();
+				auto pProdType = TechnoExtContainer::Instance.Find(pFactory->Object)->Type;
 				const int nTotal = pFactory->CountTotal(pProdType);
 				Point2D DrawCameoLoc = { pLocation->X , pLocation->Y + 45 };
 				const auto pProdTypeExt = TechnoTypeExtContainer::Instance.Find(pProdType);
@@ -188,6 +190,48 @@ DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
 
 				//Point2D nRet;
 				//Simple_Text_Print_Wide(&nRet, pFormat.c_str(), DSurface::Temp.get(), &cameoRect, &DrawTextLoc, (COLORREF)nColorInt, (COLORREF)0, TextPrintType::Center | TextPrintType::FullShadow | TextPrintType::Efnt, true);
+			}
+			else if (pType->SuperWeapon != -1)
+			{
+				SuperClass* const pSuper = pThis->Owner->Supers.Items[pType->SuperWeapon];
+
+				if (pSuper->RechargeTimer.TimeLeft > 0 && SWTypeExtContainer::Instance.Find(pSuper->Type)->SW_ShowCameo)
+				{
+					RectangleStruct cameoRect {};
+					Point2D DrawCameoLoc = { pLocation->X , pLocation->Y + 45 };
+
+					// support for pcx cameos
+					if (auto pPCX = SWTypeExtContainer::Instance.Find(pSuper->Type)->SidebarPCX.GetSurface())
+					{
+						const int cameoWidth = 60;
+						const int cameoHeight = 48;
+
+						RectangleStruct cameoBounds = { 0, 0, pPCX->Width, pPCX->Height };
+						RectangleStruct DefcameoBounds = { 0, 0, cameoWidth, cameoHeight };
+						RectangleStruct destRect = { DrawCameoLoc.X - cameoWidth / 2, DrawCameoLoc.Y - cameoHeight / 2, cameoWidth , cameoHeight };
+
+						if (Game::func_007BBE20(&destRect, pBounds, &DefcameoBounds, &cameoBounds))
+						{
+							cameoRect = destRect;
+							AresPcxBlit<WORD> blithere((0xFFu >> ColorStruct::BlueShiftRight << ColorStruct::BlueShiftLeft) | (0xFFu >> ColorStruct::RedShiftRight << ColorStruct::RedShiftLeft));
+							Buffer_To_Surface_wrapper(DSurface::Temp, &destRect, pPCX, &DefcameoBounds, &blithere, 0, 3, 1000, 0);
+						}
+					}
+					else
+					{
+						// old shp cameos, fixed palette
+						if (auto pCameo = pSuper->Type->SidebarImage)
+						{
+							cameoRect = { DrawCameoLoc.X, DrawCameoLoc.Y, pCameo->Width, pCameo->Height };
+
+							ConvertClass* pPal = FileSystem::CAMEO_PAL();
+							if (auto pManager = SWTypeExtContainer::Instance.Find(pSuper->Type)->SidebarPalette)
+								pPal = pManager->GetConvert<PaletteManager::Mode::Default>();
+
+							DSurface::Temp->DrawSHP(pPal, pCameo, 0, &DrawCameoLoc, pBounds, BlitterFlags(0xE00), 0, 0, 0, 1000, 0, nullptr, 0, 0, 0);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -608,7 +652,7 @@ DEFINE_HOOK(0x459ed0, BuildingClass_GetUIName, 6)
 	}
 
 	auto Type = pBld->Type;
-	if (TechnoTypeExtContainer::Instance.Find(pBld->Type)->Fake_Of.isset())
+	if (TechnoTypeExtContainer::Instance.Find(pBld->Type)->Fake_Of)
 		Type = (BuildingTypeClass*)TechnoTypeExtContainer::Instance.Find(pBld->Type)->Fake_Of.Get();
 
 	R->EAX(Type->UIName);
@@ -651,10 +695,26 @@ DEFINE_HOOK(0x4566d5, BuildingClass_GetRangeOfRadial_LargeGap, 6)
 bool Bld_ChangeOwnerAnnounce;
 DEFINE_HOOK(0x448260, BuildingClass_SetOwningHouse_ContextSet, 0x8)
 {
+	GET(BuildingClass*, pThis, ECX);
 	GET_STACK(bool, announce, 0x8);
+	// Fix : Suppress capture EVA event if ConsideredVehicle=yes
+	announce = announce && !pThis->Type->IsVehicle();
 	Bld_ChangeOwnerAnnounce = announce;
 	return 0x0;
 }
+
+bool __fastcall BuildingClass_SetOwningHouse_Wrapper(BuildingClass* pThis, void*, HouseClass* pHouse, bool announce)
+{
+	const bool res = pThis->BuildingClass::SetOwningHouse(pHouse, announce);
+
+	// Fix : update powered anims
+	if (res && (pThis->Type->Powered || pThis->Type->PoweredSpecial))
+		pThis->UpdatePowerDown();
+
+	return res;
+}
+
+DEFINE_JUMP(VTABLE, 0x7E4290, GET_OFFSET(BuildingClass_SetOwningHouse_Wrapper));
 
 DEFINE_HOOK(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
 {
@@ -1244,12 +1304,12 @@ DEFINE_HOOK(0x44D755, BuildingClass_GetPipFillLevel_Tiberium, 0x6)
 }
 
 // #814: force sidebar repaint for standard spy effects
-DEFINE_HOOK_AGAIN(0x4574D2, BuildingClass_Infiltrate_Standard, 0x6)
-DEFINE_HOOK(0x457533, BuildingClass_Infiltrate_Standard, 0x6)
-{
-	MouseClass::Instance->SidebarNeedsRepaint();
-	return R->Origin() + 6;
-}
+// DEFINE_HOOK_AGAIN(0x4574D2, BuildingClass_Infiltrate_Standard, 0x6)
+// DEFINE_HOOK(0x457533, BuildingClass_Infiltrate_Standard, 0x6)
+// {
+// 	MouseClass::Instance->SidebarNeedsRepaint();
+// 	return R->Origin() + 6;
+// }
 
 // infantry exiting hospital get their focus reset, but not for armory
 DEFINE_HOOK(0x444D26, BuildingClass_KickOutUnit_ArmoryExitBug, 0x6)
@@ -1814,10 +1874,8 @@ DEFINE_HOOK(0x4571E0, BuildingClass_Infiltrate, 5)
 	GET(BuildingClass*, EnteredBuilding, ECX);
 	GET_STACK(HouseClass*, Enterer, 0x4);
 
-	return (TechnoExt_ExtData::InfiltratedBy(EnteredBuilding, Enterer))
-		? 0x4575A2
-		: 0
-		;
+	TechnoExt_ExtData::InfiltratedBy(EnteredBuilding, Enterer);
+	return 0x4575A2;
 }
 
 DEFINE_HOOK(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
@@ -2390,6 +2448,20 @@ DEFINE_HOOK(0x43FE69, BuildingClass_Update_SensorArray, 0xA)
 	pExt->UpdatePoweredKillSpawns();
 	pExt->UpdateAutoSellTimer();
 	pExt->UpdateSpyEffecAnimDisplay();
+
+	//const auto pFactory = pThis->Factory;
+
+	//if (pFactory && pFactory->Object)
+	//{
+	//	const auto pTimer = &pFactory->Production.Timer;
+	//
+	//	if (pTimer->InProgress() &&
+	//		(pThis->IsUnderEMP() ||
+	//			pThis->Deactivated ||
+	//			(!pThis->IsPowerOnline() && pThis->GetPowerDrain() == 0 && pThis->GetPowerOutput() == 0)))
+	//		pTimer->TimeLeft++;
+	//}
+
 	return 0;
 }
 

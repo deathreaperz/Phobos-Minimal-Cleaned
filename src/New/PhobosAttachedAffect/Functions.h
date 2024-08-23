@@ -2,10 +2,15 @@
 
 #include <Base/Always.h>
 #include <vector>
+#include <set>
 
 class PhobosAttachEffectTypeClass;
 class AbstractClass;
 class TechnoClass;
+class TechnoTypeClass;
+class WarheadTypeClass;
+class WeaponTypeClass;
+class HouseClass;
 struct PhobosAEFunctions
 {
 	/// <summary>
@@ -17,7 +22,6 @@ struct PhobosAEFunctions
 /// <param name="pSource">Source AbstractClass instance used for same source check.</param>
 /// <returns>Number of active cumulative AttachEffect type instances on the techno. 0 if the AttachEffect type is not cumulative.</returns>
 	static int GetAttachedEffectCumulativeCount(TechnoClass* pTechno, PhobosAttachEffectTypeClass* pAttachEffectType, bool ignoreSameSource = false, TechnoClass* pInvoker = nullptr, AbstractClass* pSource = nullptr);
-	static void RecalculateStatMultipliers(TechnoClass* pTechno);
 	static void UpdateCumulativeAttachEffects(TechnoClass* pTechno, PhobosAttachEffectTypeClass* pAttachEffectType);
 
 	// Updates state of all AttachEffects on techno.
@@ -33,5 +37,11 @@ struct PhobosAEFunctions
 /// <param name="pSource">Source AbstractClass instance used for same source check.</param>
 /// <returns>True if techno has active AttachEffects that satisfy the source, false if not.</returns>
 	static bool HasAttachedEffects(TechnoClass* pTechno, std::vector<PhobosAttachEffectTypeClass*>& attachEffectTypes, bool requireAll, bool ignoreSameSource,
-		TechnoClass* pInvoker, AbstractClass* pSource, std::vector<int> const& minCounts, std::vector<int> const& maxCounts);
+		TechnoClass* pInvoker, AbstractClass* pSource, std::vector<int> const* minCounts, std::vector<int> const* maxCounts);
+
+	static void UpdateSelfOwnedAttachEffects(TechnoClass* pTechno, TechnoTypeClass* pNewType);
+
+	static void ApplyRevengeWeapon(TechnoClass* pThis, TechnoClass* pSource, WarheadTypeClass* pWH);
+	static void ApplyExpireWeapon(std::vector<WeaponTypeClass*>& expireWeapons, std::set<PhobosAttachEffectTypeClass*>& cumulativeTypes, TechnoClass* pThis);
+	static void ApplyReflectDamage(TechnoClass* pThis, int* pDamage, TechnoClass* pAttacker, HouseClass* pAttacker_House, WarheadTypeClass* pWH);
 };

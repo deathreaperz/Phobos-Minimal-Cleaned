@@ -183,9 +183,14 @@ struct DroppodProperties_
 			pLoco->AddRef();
 			pLoco->End_Piggyback(&pLinked->Locomotor);
 			CoordStruct coord_place = pLinked->Location;
+			auto pAnimType = DroppodProperties_::GetPuff(tType, pLinked, condition);
+			const auto nDroppod = DroppodProperties_::GetGroundAnim(tType, pLinked, pLoco->OutOfMap, condition);
+
+			pLoco->Release();
+
 			if (pLinked->Unlimbo(coord_place, DirType::North))
 			{
-				if (auto pAnimType = DroppodProperties_::GetPuff(tType, pLinked, condition))
+				if (pAnimType)
 				{
 					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, coord_place, 0, 1, AnimFlag(0x600), 0, 0),
 						pLinked->Owner,
@@ -195,7 +200,7 @@ struct DroppodProperties_
 					);
 				}
 
-				if (const auto nDroppod = DroppodProperties_::GetGroundAnim(tType, pLinked, pLoco->OutOfMap, condition))
+				if (nDroppod)
 				{
 					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(nDroppod, coord_place, 0, 1, AnimFlag(0x600), 0, 0),
 						pLinked->Owner,
@@ -224,8 +229,6 @@ struct DroppodProperties_
 					);
 				}
 			}
-
-			pLoco->Release();
 		}
 
 		return true;

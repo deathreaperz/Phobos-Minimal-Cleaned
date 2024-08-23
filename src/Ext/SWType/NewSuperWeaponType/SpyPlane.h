@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NewSWType.h"
+#include "SWStateMachine.h"
 
 class SW_SpyPlane : public NewSWType
 {
@@ -13,4 +14,12 @@ public:
 	virtual void Initialize(SWTypeExtData* pData) override;
 	virtual void LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI) override;
 	virtual bool IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const override;
+
+	using TStateMachine = SpyPlaneStateMachine;
+
+protected:
+	void newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, CellClass* pTarget)
+	{
+		SWStateMachine::Register(std::make_unique<TStateMachine>(Deferment, XY, pSuper, this, pTarget));
+	}
 };

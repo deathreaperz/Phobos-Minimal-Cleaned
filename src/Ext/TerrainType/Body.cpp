@@ -29,6 +29,10 @@ void TerrainTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	INI_EX exINI(pINI);
 	this->SpawnsTiberium_Type.Read(exINI, pSection, "SpawnsTiberium.Type");
+
+	if (this->SpawnsTiberium_Type >= TiberiumClass::Array->Count)
+		this->SpawnsTiberium_Type = TiberiumClass::Array->Count - 1;
+
 	this->SpawnsTiberium_Range.Read(exINI, pSection, "SpawnsTiberium.Range");
 	this->SpawnsTiberium_GrowthStage.Read(exINI, pSection, "SpawnsTiberium.GrowthStage");
 	this->SpawnsTiberium_CellsPerAnim.Read(exINI, pSection, "SpawnsTiberium.CellsPerAnim");
@@ -68,9 +72,9 @@ void TerrainTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 void TerrainTypeExtData::PlayDestroyEffects(CoordStruct coords)
 {
-	VocClass::PlayIndexAtPos(this->DestroySound.Get(-1), coords);
+	VocClass::PlayIndexAtPos(this->DestroySound, coords);
 
-	if (auto const pAnimType = this->DestroyAnim.Get(nullptr))
+	if (auto const pAnimType = this->DestroyAnim)
 		GameCreate<AnimClass>(pAnimType, coords);
 }
 

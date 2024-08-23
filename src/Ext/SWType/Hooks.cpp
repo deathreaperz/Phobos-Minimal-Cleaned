@@ -23,7 +23,9 @@ DEFINE_HOOK(0x55AFB3, LogicClass_Update_Early, 0x6)
 	SWStateMachine::UpdateAll();
 	for (auto pHouse : *HouseClass::Array)
 	{
-		HouseExtContainer::Instance.Find(pHouse)->UpdateAutoDeathObjects();
+		auto pExt = HouseExtContainer::Instance.Find(pHouse);
+		pExt->UpdateAutoDeathObjects();
+		pExt->UpdateTransportReloaders();
 	}
 
 	//auto pCellbegin = MapClass::Instance->Cells.Items;
@@ -1728,6 +1730,11 @@ DEFINE_HOOK(0x467E59, BulletClass_Update_NukeBall, 5)
 //	return ret;
 //}
 
+namespace EMPulseCannonTemp
+{
+	int weaponIndex = 0;
+}
+
 DEFINE_HOOK(0x44D455, BuildingClass_Mi_Missile_EMPPulseBulletWeapon, 0x8)
 {
 	GET(BuildingClass* const, pThis, ESI);
@@ -1740,7 +1747,7 @@ DEFINE_HOOK(0x44D455, BuildingClass_Mi_Missile_EMPPulseBulletWeapon, 0x8)
 		pBullet->SetWeaponType(pWeapon);
 
 		CoordStruct src;
-		pThis->GetFLH(&src, 0, pThis->GetRenderCoords());
+		pThis->GetFLH(&src, EMPulseCannonTemp::weaponIndex, pThis->GetRenderCoords());
 		CoordStruct dest = *pCoord;
 		auto const pTarget = pBullet->Target ? pBullet->Target : MapClass::Instance->GetCellAt(dest);
 
@@ -1757,21 +1764,23 @@ DEFINE_HOOK(0x44D455, BuildingClass_Mi_Missile_EMPPulseBulletWeapon, 0x8)
 	return 0;
 }
 
+#include <Ext/Anim/Body.h>
+
 DEFINE_HOOK(0x44CE46, BuildingClass_Mi_Missile_EMPulse_Pulsball, 5)
 {
 	GET(BuildingClass*, pThis, ESI);
 
-	auto pSWExt = SWTypeExtContainer::Instance.Find(TechnoExtContainer::Instance.Find(pThis)->LinkedSW->Type);
-	auto pPulseBall = pSWExt->EMPulse_PulseBall.Get(AnimTypeClass::Find(GameStrings::PULSBALL));
-	auto delay = pSWExt->EMPulse_PulseDelay;
+	const auto pSWExt = SWTypeExtContainer::Instance.Find(TechnoExtContainer::Instance.Find(pThis)->LinkedSW->Type);
+	const auto delay = pSWExt->EMPulse_PulseDelay;
 
 	// also support no pulse ball
-	if (pPulseBall)
+	if (auto pPulseBall = pSWExt->EMPulse_PulseBall)
 	{
 		CoordStruct flh;
 		pThis->GetFLH(&flh, 0, CoordStruct::Empty);
 		auto pAnim = GameCreate<AnimClass>(pPulseBall, flh);
 		pAnim->Owner = pThis->GetOwningHouse();
+		AnimExtContainer::Instance.Find(pAnim)->Invoker = pThis;
 	}
 
 	pThis->MissionStatus = 2;
@@ -1808,6 +1817,46 @@ DEFINE_HOOK(0x44CCE7, BuildingClass_Mi_Missile_GenericSW, 6)
 
 	return ProcessEMPulse;
 }
+
+DEFINE_HOOK(0x44CEEC, BuildingClass_Mission_Missile_EMPulseSelectWeapon, 0x6)
+{
+	enum { SkipGameCode = 0x44CEF8 };
+
+	GET(BuildingClass*, pThis, ESI);
+
+	int weaponIndex = 0;
+	auto const pHouseExt = HouseExtContainer::Instance.Find(pThis->Owner);
+
+	if (pHouseExt->EMPulseWeaponIndex >= 0)
+	{
+		weaponIndex = pHouseExt->EMPulseWeaponIndex;
+	}
+	else if (BuildingTypeExtContainer::Instance.Find(pThis->Type)->EMPulseCannon_UseWeaponSelection)
+	{
+		if (auto const pCell = MapClass::Instance->TryGetCellAt(pThis->Owner->EMPTarget))
+		{
+			AbstractClass* pTarget = pCell;
+
+			if (auto const pObject = pCell->GetContent())
+				pTarget = pObject;
+
+			weaponIndex = pThis->SelectWeapon(pTarget);
+		}
+	}
+
+	EMPulseCannonTemp::weaponIndex = weaponIndex;
+	R->EAX(pThis->GetWeapon(weaponIndex));
+	return SkipGameCode;
+}
+
+CoordStruct* __fastcall BuildingClass_MI_Missile_EMPUlse_GetFireCoords_Wrapper(BuildingClass* pThis, void* _, CoordStruct* pCrd, int weaponIndex)
+{
+	CoordStruct coords {};
+	MapClass::Instance->GetCellAt(pThis->Owner->EMPTarget)->GetCellCoords(&coords);
+	pCrd = pThis->GetFLH(&coords, EMPulseCannonTemp::weaponIndex, *pCrd);
+	return pCrd;
+}
+DEFINE_JUMP(CALL6, 0x44D1F9, GET_OFFSET(BuildingClass_MI_Missile_EMPUlse_GetFireCoords_Wrapper));
 
 DEFINE_HOOK(0x44C9F3, BuildingClass_Mi_Missile_PsiWarn, 0x5)
 {
@@ -1899,6 +1948,7 @@ DEFINE_HOOK(0x44CA97, BuildingClass_MI_Missile_CreateBullet, 0x6)
 					pAnim->ZAdjust = -100;
 
 				pAnim->SetHouse(pThis->GetOwningHouse());
+				AnimExtContainer::Instance.Find(pAnim)->Invoker = pThis;
 			}
 
 			return SetUpNext;
@@ -2342,11 +2392,14 @@ DEFINE_HOOK(0x53A140, LightningStorm_Strike, 7)
 
 			if (auto const pAnimType = itClouds.at(ScenarioClass::Instance->Random.RandomFromMax(itClouds.size() - 1)))
 			{
-				// create the cloud and do some book keeping.
-				auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
-				pAnim->SetHouse(pSuper->Owner);
-				LightningStorm::CloudsManifesting->AddItem(pAnim);
-				LightningStorm::CloudsPresent->AddItem(pAnim);
+				if (pAnimType->GetImage())
+				{
+					// create the cloud and do some book keeping.
+					auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
+					pAnim->SetHouse(pSuper->Owner);
+					LightningStorm::CloudsManifesting->AddItem(pAnim);
+					LightningStorm::CloudsPresent->AddItem(pAnim);
+				}
 			}
 		}
 
@@ -2387,9 +2440,12 @@ DEFINE_HOOK(0x53A300, LightningStorm_Strike2, 5)
 		{
 			if (auto const pAnimType = it.at(ScenarioClass::Instance->Random.RandomFromMax(it.size() - 1)))
 			{
-				auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
-				pAnim->SetHouse(pSuper->Owner);
-				LightningStorm::BoltsPresent->AddItem(pAnim);
+				if (pAnimType->GetImage())
+				{
+					auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
+					pAnim->SetHouse(pSuper->Owner);
+					LightningStorm::BoltsPresent->AddItem(pAnim);
+				}
 			}
 		}
 
@@ -2536,115 +2592,113 @@ DEFINE_HOOK(0x53B080, PsyDom_Fire, 5)
 		// capture
 		if (pData->Dominator_Capture)
 		{
-			auto Dominate = [pData, pFirer](TechnoClass* pTechno) -> bool
-				{
-					TechnoTypeClass* pType = pTechno->GetTechnoType();
-
-					// don't even try.
-					if (pTechno->IsIronCurtained())
-					{
-						return true;
-					}
-
-					// ignore BalloonHover and inair units.
-					if (pType->BalloonHover || pTechno->IsInAir())
-					{
-						return true;
-					}
-
-					// ignore units with no drivers
-					if (TechnoExtContainer::Instance.Find(pTechno)->Is_DriverKilled)
-					{
-						return true;
-					}
-
-					// SW dependent stuff
-					if (!pData->IsHouseAffected(pFirer, pTechno->Owner))
-					{
-						return true;
-					}
-
-					if (!pData->IsTechnoAffected(pTechno))
-					{
-						return true;
-					}
-
-					// ignore mind-controlled
-					if (pTechno->MindControlledBy && !pData->Dominator_CaptureMindControlled)
-					{
-						return true;
-					}
-
-					// ignore permanently mind-controlled
-					if (pTechno->MindControlledByAUnit && !pTechno->MindControlledBy
-						&& !pData->Dominator_CapturePermaMindControlled)
-					{
-						return true;
-					}
-
-					// ignore ImmuneToPsionics, if wished
-					if (TechnoExtData::IsPsionicsImmune(pTechno) && !pData->Dominator_CaptureImmuneToPsionics)
-					{
-						return true;
-					}
-
-					// free this unit
-					if (pTechno->MindControlledBy)
-					{
-						pTechno->MindControlledBy->CaptureManager->FreeUnit(pTechno);
-					}
-
-					// capture this unit, maybe permanently
-					pTechno->SetOwningHouse(pFirer);
-					pTechno->MindControlledByAUnit = pData->Dominator_PermanentCapture;
-
-					// remove old permanent mind control anim
-					if (pTechno->MindControlRingAnim)
-					{
-						pTechno->MindControlRingAnim->TimeToDie = true;
-						pTechno->MindControlRingAnim->UnInit();
-						pTechno->MindControlRingAnim = nullptr;
-					}
-
-					// create a permanent capture anim
-					if (AnimTypeClass* pAnimType = pData->Dominator_ControlAnim.Get(RulesClass::Instance->PermaControlledAnimationType))
-					{
-						CoordStruct animCoords = pTechno->GetCoords();
-						bool Isbuilding = false;
-
-						if (pTechno->WhatAmI() != BuildingClass::AbsID)
-							animCoords.Z += pType->MindControlRingOffset;
-						else
-						{
-							Isbuilding = true;
-							animCoords.Z += ((BuildingClass*)pTechno)->Type->Height;
-						}
-
-						pTechno->MindControlRingAnim = GameCreate<AnimClass>(pAnimType, animCoords);
-						pTechno->MindControlRingAnim->SetOwnerObject(pTechno);
-
-						if (Isbuilding)
-							pTechno->MindControlRingAnim->ZAdjust = -1024;
-					}
-
-					// add to the other newly captured minions.
-					if (FootClass* pFoot = generic_cast<FootClass*>(pTechno))
-					{
-						// the AI sends all new minions to hunt
-						const auto nMission = pFoot->GetTechnoType()->ResourceGatherer ? Mission::Harvest :
-							!PsyDom::Owner->IsControlledByHuman() ? Mission::Hunt : Mission::Guard;
-
-						pFoot->QueueMission(nMission, false);
-					}
-
-					return true;
-				};
-
 			// every techno in this area shall be one with Yuri.
 			auto const [widthORange, Height] = pNewData->GetRange(pData);
 			Helpers::Alex::DistinctCollector<TechnoClass*> items;
 			Helpers::Alex::for_each_in_rect_or_spread<TechnoClass>(cell, widthORange, Height, items);
-			items.apply_function_for_each(Dominate);
+			items.apply_function_for_each([pData, pFirer](TechnoClass* pTechno)
+			{
+				TechnoTypeClass* pType = pTechno->GetTechnoType();
+
+				// don't even try.
+				if (pTechno->IsIronCurtained())
+				{
+					return true;
+				}
+
+				// ignore BalloonHover and inair units.
+				if (pType->BalloonHover || pTechno->IsInAir())
+				{
+					return true;
+				}
+
+				// ignore units with no drivers
+				if (TechnoExtContainer::Instance.Find(pTechno)->Is_DriverKilled)
+				{
+					return true;
+				}
+
+				// SW dependent stuff
+				if (!pData->IsHouseAffected(pFirer, pTechno->Owner))
+				{
+					return true;
+				}
+
+				if (!pData->IsTechnoAffected(pTechno))
+				{
+					return true;
+				}
+
+				// ignore mind-controlled
+				if (pTechno->MindControlledBy && !pData->Dominator_CaptureMindControlled)
+				{
+					return true;
+				}
+
+				// ignore permanently mind-controlled
+				if (pTechno->MindControlledByAUnit && !pTechno->MindControlledBy
+					&& !pData->Dominator_CapturePermaMindControlled)
+				{
+					return true;
+				}
+
+				// ignore ImmuneToPsionics, if wished
+				if (TechnoExtData::IsPsionicsImmune(pTechno) && !pData->Dominator_CaptureImmuneToPsionics)
+				{
+					return true;
+				}
+
+				// free this unit
+				if (pTechno->MindControlledBy)
+				{
+					pTechno->MindControlledBy->CaptureManager->FreeUnit(pTechno);
+				}
+
+				// capture this unit, maybe permanently
+				pTechno->SetOwningHouse(pFirer);
+				pTechno->MindControlledByAUnit = pData->Dominator_PermanentCapture;
+
+				// remove old permanent mind control anim
+				if (pTechno->MindControlRingAnim)
+				{
+					pTechno->MindControlRingAnim->TimeToDie = true;
+					pTechno->MindControlRingAnim->UnInit();
+					pTechno->MindControlRingAnim = nullptr;
+				}
+
+				// create a permanent capture anim
+				if (AnimTypeClass* pAnimType = pData->Dominator_ControlAnim.Get(RulesClass::Instance->PermaControlledAnimationType))
+				{
+					CoordStruct animCoords = pTechno->GetCoords();
+					bool Isbuilding = false;
+
+					if (pTechno->WhatAmI() != BuildingClass::AbsID)
+						animCoords.Z += pType->MindControlRingOffset;
+					else
+					{
+						Isbuilding = true;
+						animCoords.Z += ((BuildingClass*)pTechno)->Type->Height;
+					}
+
+					pTechno->MindControlRingAnim = GameCreate<AnimClass>(pAnimType, animCoords);
+					pTechno->MindControlRingAnim->SetOwnerObject(pTechno);
+
+					if (Isbuilding)
+						pTechno->MindControlRingAnim->ZAdjust = -1024;
+				}
+
+				// add to the other newly captured minions.
+				if (FootClass* pFoot = generic_cast<FootClass*>(pTechno))
+				{
+					// the AI sends all new minions to hunt
+					const auto nMission = pFoot->GetTechnoType()->ResourceGatherer ? Mission::Harvest :
+						!PsyDom::Owner->IsControlledByHuman() ? Mission::Hunt : Mission::Guard;
+
+					pFoot->QueueMission(nMission, false);
+				}
+
+				return true;
+			});
 		}
 
 		// skip everything

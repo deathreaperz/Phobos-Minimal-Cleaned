@@ -9,14 +9,42 @@ class WarheadTypeClass;
 struct AresAE
 {
 public:
-	AresAttachEffectTypeClass* Type;
-	Handle<AnimClass*, UninitAnim> Anim;
-	int Duration;
-	HouseClass* Invoker;
+	AresAttachEffectTypeClass* Type { nullptr };
+	Handle<AnimClass*, UninitAnim> Anim { nullptr };
+	int Duration { 0 };
+	HouseClass* Invoker { nullptr };
 
-	void InvalidatePointer(AnimClass* ptr, bool bDetach)
+	AresAE::AresAE() noexcept = default;
+
+	AresAE::AresAE(const AresAE& that) : Type(that.Type)
+		, Anim { nullptr }
+		, Duration { that.Duration }
+		, Invoker { that.Invoker }
 	{
-		if (ptr == this->Anim.get())
+		//oogly
+		auto c_remove = const_cast<AresAE*>(&that);
+		this->Anim.swap(c_remove->Anim);
+	}
+
+	AresAE& operator=(const AresAE& other)
+	{
+		this->Type = other.Type;
+		this->Duration = other.Duration;
+		this->Invoker = other.Invoker;
+		//oogly
+		auto c_remove = const_cast<AresAE*>(&other);
+		this->Anim.swap(c_remove->Anim);
+		return *this;
+	}
+
+	~AresAE()
+	{
+		Anim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+	}
+
+	constexpr void InvalidatePointer(AnimClass* ptr, bool bDetach)
+	{
+		if (this->Anim && ptr == this->Anim.get())
 		{
 			this->Anim.release();
 		}
@@ -64,7 +92,7 @@ private:
 
 struct AresAEData
 {
-	std::vector<AresAE> Data {};
+	HelperedVector<AresAE> Data {};
 	int InitialDelay { 0 };
 	BYTE NeedToRecreateAnim {};
 	BYTE Isset {};

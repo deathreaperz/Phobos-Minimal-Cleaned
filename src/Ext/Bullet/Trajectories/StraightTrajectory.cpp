@@ -3,14 +3,17 @@
 #include <Ext/BulletType/Body.h>
 #include <Ext/Bullet/Body.h>
 
+#include <Ext/WeaponType/Body.h>
+
 bool StraightTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectoryType::Load(Stm, RegisterForChange) &&
 		Stm
-		.Process(this->SnapOnTarget, false)
-		.Process(this->SnapThreshold, false)
-		.Process(TargetSnapDistance, false)
-		.Process(this->PassThrough, false)
+		.Process(this->SnapOnTarget)
+		.Process(this->SnapThreshold)
+		.Process(this->TargetSnapDistance)
+		.Process(this->PassThrough)
+		.Process(this->DetonationDistance_ApplyRangeModifiers)
 		;
 }
 
@@ -18,10 +21,11 @@ bool StraightTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return PhobosTrajectoryType::Save(Stm) &&
 		Stm
-		.Process(this->SnapOnTarget, false)
-		.Process(this->SnapThreshold, false)
-		.Process(TargetSnapDistance, false)
-		.Process(this->PassThrough, false)
+		.Process(this->SnapOnTarget)
+		.Process(this->SnapThreshold)
+		.Process(this->TargetSnapDistance)
+		.Process(this->PassThrough)
+		.Process(this->DetonationDistance_ApplyRangeModifiers)
 		;
 }
 
@@ -106,6 +110,7 @@ bool StraightTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 	this->DetonationDistance.Read(exINI, pSection, "Trajectory.Straight.DetonationDistance");
 	this->TargetSnapDistance.Read(exINI, pSection, "Trajectory.Straight.TargetSnapDistance");
 	this->PassThrough.Read(exINI, pSection, "Trajectory.Straight.PassThrough");
+	this->DetonationDistance_ApplyRangeModifiers.Read(exINI, pSection, "Trajectory.Straight.ApplyRangeModifiers");
 	return true;
 }
 
@@ -113,8 +118,8 @@ bool StraightTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return PhobosTrajectory::Load(Stm, RegisterForChange) &&
 		Stm
-		.Process(this->FirerZPosition, RegisterForChange)
-		.Process(this->TargetZPosition, RegisterForChange)
+		.Process(this->FirerZPosition)
+		.Process(this->TargetZPosition)
 		;
 }
 
@@ -132,6 +137,9 @@ void StraightTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity
 	auto const type = this->GetTrajectoryType();
 	auto const pBullet = this->AttachedTo;
 	this->DetonationDistance = type->DetonationDistance.Get(Leptons(102));
+
+	if (type->DetonationDistance_ApplyRangeModifiers)
+		this->DetonationDistance = Leptons(WeaponTypeExtData::GetRangeWithModifiers(pBullet->WeaponType, pBullet->Owner, this->DetonationDistance));
 
 	this->FirerZPosition = this->GetFirerZPosition();
 	this->TargetZPosition = this->GetTargetPosition().Z;
@@ -169,12 +177,12 @@ void StraightTrajectory::OnAIPreDetonate()
 		return;
 
 	const auto pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
-	const auto pCoords = &(pTarget ? pTarget->GetCoords() : pBullet->Data.Location);
+	CoordStruct coords = (pTarget ? pTarget->GetCoords() : pBullet->Data.Location);
 
-	if (pCoords->DistanceFrom(pBullet->Location) <= type->SnapThreshold.Get(type->TargetSnapDistance.Get()))
+	if (coords.DistanceFrom(pBullet->Location) <= type->SnapThreshold.Get(type->TargetSnapDistance.Get()))
 	{
 		BulletExtContainer::Instance.Find(pBullet)->SnappedToTarget = true;
-		pBullet->SetLocation(*pCoords);
+		pBullet->SetLocation(coords);
 	}
 }
 

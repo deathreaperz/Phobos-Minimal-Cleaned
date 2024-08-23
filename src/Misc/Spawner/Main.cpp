@@ -10,6 +10,8 @@
 #include <IPXManagerClass.h>
 
 #include <Misc/Ares/Hooks/Header.h>
+#include <Misc/Ares/Hooks/AresNetEvent.h>
+
 #include <Ext/House/Body.h>
 
 #include "DumpTypeDataArrayToFile.h"
@@ -428,26 +430,12 @@ void SpawnerMain::GameConfigs::Init()
 
 	SpawnerMain::GameConfigs::m_Ptr = std::make_unique<SpawnerMain::GameConfigs>();
 
-	CCFileClass file { "SPAWN.INI" };
-
-	if (!file.Exists())
-	{
-		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, file.FileName);
-	}
-	else
-	{
-		if (!file.Open(FileAccessMode::ReadWrite))
-		{
-			Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, file.FileName);
-		}
-		else
-		{
-			Debug::Log(" %s Reading file %s\n", __FUNCTION__, file.FileName);
-			CCINIClass ini {};
-			ini.ReadCCFile(&file);
-			SpawnerMain::GameConfigs::m_Ptr->LoadFromINIFile(&ini);
-		}
-	}
+	GameConfig file { "SPAWN.INI" };
+	file.OpenINIAction([&file](CCINIClass* pFile)
+ {
+	 Debug::Log("SpawnerMain::GameConfigs::Init Reading file %s\n", file.filename());
+	 SpawnerMain::GameConfigs::m_Ptr->LoadFromINIFile(pFile);
+	});
 
 	Patch::Apply_CALL(0x48CDD3, SpawnerMain::GameConfigs::StartGame); // Main_Game
 	Patch::Apply_CALL(0x48CFAA, SpawnerMain::GameConfigs::StartGame); // Main_Game
@@ -845,12 +833,12 @@ void SpawnerMain::GameConfigs::InitNetwork()
 	Game::Network::PlanetWestwoodStartTime = time(NULL);
 	Game::Network::GameStockKeepingUnit = 0x2901;
 
-	ProtocolZero::Enable = (SpawnerMain::GameConfigs::m_Ptr->Protocol == 0);
-	if (ProtocolZero::Enable)
+	EventExt::ProtocolZero::Enable = (SpawnerMain::GameConfigs::m_Ptr->Protocol == 0);
+	if (EventExt::ProtocolZero::Enable)
 	{
 		Game::Network::FrameSendRate = 2;
 		Game::Network::PreCalcMaxAhead = SpawnerMain::GameConfigs::m_Ptr->PreCalcMaxAhead;
-		ProtocolZero::MaxLatencyLevel = std::clamp(
+		EventExt::ProtocolZero::MaxLatencyLevel = std::clamp(
 			SpawnerMain::GameConfigs::m_Ptr->MaxLatencyLevel,
 			(byte)LatencyLevelEnum::LATENCY_LEVEL_1,
 			(byte)LatencyLevelEnum::LATENCY_LEVEL_MAX
@@ -920,14 +908,12 @@ DEFINE_HOOK(0x65812E, RadarClass_DiplomacyDialog_UIGameMode, 0x6)
 	return 0;
 }
 
-// Clear UIGameMode on game load
-DEFINE_HOOK(0x689669, ScenarioClass_Load_Suffix_Spawner, 0x6)
-{
-	if (SpawnerMain::Configs::Enabled)
-		SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0] = 0;
-
-	return 0;
-}
+// DEFINE_HOOK(0x689669, ScenarioClass_Load_Suffix_Spawner, 0x6) {
+// 	if (SpawnerMain::Configs::Enabled)
+// 		SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0] = 0;
+//
+// 	return 0;
+// }
 
 #pragma region MPlayerDefeated
 namespace MPlayerDefeated

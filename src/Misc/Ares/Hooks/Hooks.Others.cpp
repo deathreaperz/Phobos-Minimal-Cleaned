@@ -54,7 +54,6 @@
 #include <strsafe.h>
 
 #include "AresChecksummer.h"
-#include "Classes/Dialogs.h"
 
 #include "Header.h"
 
@@ -103,7 +102,7 @@ DEFINE_HOOK(0x4CA0E3, FactoryClass_AbandonProduction_Invalidate, 0x6)
 
 DEFINE_JUMP(LJMP, 0x565215, 0x56522D);
 
-int cell_Distance_Squared(CoordStruct& our_coord, CoordStruct& their_coord)
+constexpr int cell_Distance_Squared(CoordStruct& our_coord, CoordStruct& their_coord)
 {
 	int our_cell_x = our_coord.X / Unsorted::LeptonsPerCell;
 	int their_cell_x = their_coord.X / Unsorted::LeptonsPerCell;
@@ -570,8 +569,8 @@ DEFINE_HOOK(0x731E08, Select_By_Units_Text_FakeOf, 0x6)
 			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType());
 
 			TechnoTypeClass* pType = pTypeExt->AttachedToObject;
-			if (pTypeExt->Fake_Of.isset())
-				pType = pTypeExt->Fake_Of.Get();
+			if (pTypeExt->Fake_Of)
+				pType = pTypeExt->Fake_Of;
 
 			nCost += pType->GetActualCost(pTechno->Owner);
 		}
@@ -1109,7 +1108,11 @@ DEFINE_HOOK(0x5f5add, ObjectClass_SpawnParachuted_Animation, 6)
 DEFINE_STRONG_HOOK(0x6BD7D5, Expand_MIX_Reorg, 7)
 {
 	StaticVars::aresMIX.reset(GameCreate<MixFileClass>("ares.mix"));
-	SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>("cncnet.mix"));
+	if (SpawnerMain::Configs::Enabled)
+	{
+		SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>("cncnet.mix"));
+	}
+
 	MixFileClass::Bootstrap();
 	R->EAX(YRMemory::Allocate(sizeof(MixFileClass)));
 	return 0x6BD7DF;
@@ -1119,10 +1122,13 @@ DEFINE_JUMP(LJMP, 0x52BB64, 0x52BB95) //Expand_MIX_Deorg
 
 DEFINE_HOOK(0x5301AC, InitBootstrapMixfiles_CustomMixes_Preload, 0x5)
 {
-	for (auto& preloadMix : SpawnerMain::GetGameConfigs()->PreloadMixes)
+	if (SpawnerMain::Configs::Enabled)
 	{
-		SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(preloadMix.c_str()));
-		Debug::Log("Loading Preloaded Mix Name : %s \n", preloadMix.c_str());
+		for (auto& preloadMix : SpawnerMain::GetGameConfigs()->PreloadMixes)
+		{
+			SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(preloadMix.c_str()));
+			Debug::Log("Loading Preloaded Mix Name : %s \n", preloadMix.c_str());
+		}
 	}
 
 	return 0x0;
@@ -1130,10 +1136,13 @@ DEFINE_HOOK(0x5301AC, InitBootstrapMixfiles_CustomMixes_Preload, 0x5)
 
 DEFINE_HOOK(0x53044A, InitBootstrapMixfiles_CustomMixes_Postload, 0x6)
 {
-	for (auto& postloadMix : SpawnerMain::GetGameConfigs()->PostloadMixes)
+	if (SpawnerMain::Configs::Enabled)
 	{
-		SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(postloadMix.c_str()));
-		Debug::Log("Loading Postload Mix Name : %s \n", postloadMix.c_str());
+		for (auto& postloadMix : SpawnerMain::GetGameConfigs()->PostloadMixes)
+		{
+			SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(postloadMix.c_str()));
+			Debug::Log("Loading Postload Mix Name : %s \n", postloadMix.c_str());
+		}
 	}
 
 	return 0x0;
@@ -1151,10 +1160,11 @@ DEFINE_HOOK(0x7cd819, ExeRun, 5)
 DEFINE_HOOK(0x6BE9BD, Game_ProgramEnd_ClearResource, 6)
 {
 	StaticVars::aresMIX.reset(nullptr);
-
-	for (auto& Spawner_Mix : SpawnerMain::LoadedMixFiles)
-		GameDelete<true>(std::exchange(Spawner_Mix, nullptr));
-
+	if (SpawnerMain::Configs::Enabled)
+	{
+		for (auto& Spawner_Mix : SpawnerMain::LoadedMixFiles)
+			GameDelete<true>(std::exchange(Spawner_Mix, nullptr));
+	}
 	return 0;
 }
 

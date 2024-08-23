@@ -14,14 +14,17 @@ public:
 	Valueable<int> Cumulative_MaxCount;
 	Valueable<bool> Powered;
 	Valueable<DiscardCondition> DiscardOn;
+	Nullable<Leptons> DiscardOn_RangeOverride;
 	Valueable<bool> PenetratesIronCurtain;
-	Nullable<AnimTypeClass*> Animation;
+	Nullable<bool> PenetratesForceShield;
+	Valueable<AnimTypeClass*> Animation;
 	NullableVector<AnimTypeClass*> CumulativeAnimations;
 	Valueable<bool> Animation_ResetOnReapply;
 	Valueable<AttachedAnimFlag> Animation_OfflineAction;
 	Valueable<AttachedAnimFlag> Animation_TemporalAction;
 	Valueable<bool> Animation_UseInvokerAsOwner;
-	Nullable<WeaponTypeClass*> ExpireWeapon;
+	ValueableVector<PhobosAttachEffectTypeClass*> Animation_HideIfAttachedWith;
+	Valueable<WeaponTypeClass*> ExpireWeapon;
 	Valueable<ExpireWeaponCondition> ExpireWeapon_TriggerOn;
 	Valueable<bool> ExpireWeapon_CumulativeOnlyOnce;
 	Nullable<ColorStruct> Tint_Color;
@@ -42,15 +45,30 @@ public:
 	Valueable<double> Crit_ExtraChance;
 	ValueableVector<WarheadTypeClass*> Crit_AllowWarheads;
 	ValueableVector<WarheadTypeClass*> Crit_DisallowWarheads;
-	Nullable<WeaponTypeClass*> RevengeWeapon;
+	Valueable<WeaponTypeClass*> RevengeWeapon;
 	Valueable<AffectedHouse> RevengeWeapon_AffectsHouses;
 	Valueable<bool> DisableWeapons;
 
-	std::vector<std::string> Groups;
+	ValueableVector<std::string> Groups;
 
 	Valueable<bool> DisableSelfHeal;
 	Valueable<bool> Untrackable;
 	Valueable<double> ReceiveRelativeDamageMult;
+	Valueable<bool> AnimRandomPick;
+
+	Valueable<bool> ReflectDamage;
+	Nullable<WarheadTypeClass*> ReflectDamage_Warhead;
+	Valueable<bool> ReflectDamage_Warhead_Detonate;
+	Valueable<double> ReflectDamage_Multiplier;
+	Valueable<AffectedHouse> ReflectDamage_AffectsHouses;
+
+	Nullable<double> ReflectDamage_Chance;
+	Nullable<int> ReflectDamage_Override;
+
+	Nullable<double> DiscardOn_AbovePercent;
+	Nullable<double> DiscardOn_BelowPercent;
+	Nullable<double> AffectAbovePercent;
+	Nullable<double> AffectBelowPercent;
 
 	PhobosAttachEffectTypeClass(const char* const pTitle) : Enumerable<PhobosAttachEffectTypeClass>(pTitle)
 		, Duration { 0 }
@@ -58,14 +76,17 @@ public:
 		, Cumulative_MaxCount { -1 }
 		, Powered { false }
 		, DiscardOn { DiscardCondition::None }
+		, DiscardOn_RangeOverride {}
 		, PenetratesIronCurtain { false }
+		, PenetratesForceShield {}
 		, Animation {}
 		, CumulativeAnimations {}
 		, Animation_ResetOnReapply { false }
 		, Animation_OfflineAction { AttachedAnimFlag::Hides }
 		, Animation_TemporalAction { AttachedAnimFlag::None }
 		, Animation_UseInvokerAsOwner { false }
-		, ExpireWeapon {}
+		, Animation_HideIfAttachedWith {}
+		, ExpireWeapon { nullptr }
 		, ExpireWeapon_TriggerOn { ExpireWeaponCondition::Expire }
 		, ExpireWeapon_CumulativeOnlyOnce { false }
 		, Tint_Color {}
@@ -86,13 +107,28 @@ public:
 		, Crit_ExtraChance { 0.0 }
 		, Crit_AllowWarheads {}
 		, Crit_DisallowWarheads {}
-		, RevengeWeapon {}
+		, RevengeWeapon { nullptr }
 		, RevengeWeapon_AffectsHouses { AffectedHouse::All }
 		, DisableWeapons { false }
 		, Groups {}
 		, DisableSelfHeal { false }
 		, Untrackable { false }
 		, ReceiveRelativeDamageMult { 1.0 }
+		, AnimRandomPick { false }
+
+		, ReflectDamage { false }
+		, ReflectDamage_Warhead {}
+		, ReflectDamage_Warhead_Detonate { false }
+		, ReflectDamage_Multiplier { 1.0 }
+		, ReflectDamage_AffectsHouses { AffectedHouse::All }
+
+		, ReflectDamage_Chance {}
+		, ReflectDamage_Override {}
+
+		, DiscardOn_AbovePercent {}
+		, DiscardOn_BelowPercent {}
+		, AffectAbovePercent {}
+		, AffectBelowPercent {}
 	{};
 
 	constexpr FORCEINLINE bool HasTint()
@@ -136,7 +172,7 @@ public:
 
 	constexpr FORCEINLINE AnimTypeClass* GetCumulativeAnimation(int cumulativeCount)
 	{
-		if (cumulativeCount < 0 || !this->CumulativeAnimations.HasValue())
+		if (cumulativeCount < 0 || !this->CumulativeAnimations.HasValue() || this->CumulativeAnimations.empty())
 			return nullptr;
 
 		const int index = static_cast<size_t>(cumulativeCount) >= this->CumulativeAnimations.size() ? this->CumulativeAnimations.size() - 1 : cumulativeCount - 1;
@@ -151,7 +187,7 @@ public:
 	virtual void SaveToStream(PhobosStreamWriter& Stm);
 
 	static std::vector<PhobosAttachEffectTypeClass*> GetTypesFromGroups(std::vector<std::string>& groupIDs);
-	static std::unordered_map<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
+	static PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);

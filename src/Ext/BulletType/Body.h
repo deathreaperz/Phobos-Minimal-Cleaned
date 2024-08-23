@@ -31,12 +31,14 @@ public:
 	Valueable<bool> Shrapnel_AffectsGround { false };
 	Valueable<bool> Shrapnel_AffectsBuildings { false };
 	Nullable<double> Shrapnel_Chance { };
-	Nullable<Leptons> Cluster_Scatter_Min { };
-	Nullable<Leptons> Cluster_Scatter_Max { };
+	Valueable<bool> Shrapnel_UseWeaponTargeting { false };
+
+	Valueable<Leptons> Cluster_Scatter_Min { BulletTypeExtData::DefaultBulletScatterMin };
+	Valueable<Leptons> Cluster_Scatter_Max { BulletTypeExtData::DefaultBulletScatterMax };
 
 	// Ares 0.7
 	Valueable<bool> Interceptable_DeleteOnIntercept { false };
-	Nullable<WeaponTypeClass*> Interceptable_WeaponOverride { };
+	Valueable<WeaponTypeClass*> Interceptable_WeaponOverride { nullptr };
 
 	Nullable<bool> SubjectToLand { };
 	Valueable<bool> SubjectToLand_Detonate { true };
@@ -56,10 +58,19 @@ public:
 	Valueable<bool> Splits { false };
 	Valueable<double> RetargetAccuracy { 0.0 };
 	Valueable<bool> RetargetOwner { true };
+	Valueable<double> RetargetSelf_Probability { 0.5 };
+
 	Valueable<double> AirburstSpread { 1.5 };
 	Nullable<bool> AroundTarget { }; // aptly named, for both Splits and Airburst, defaulting to Splits
 
 	ValueableVector<WeaponTypeClass*> AirburstWeapons { };
+
+	Valueable<bool> Airburst_UseCluster { false };
+	Valueable<bool> Airburst_RandomClusters { false };
+
+	Valueable<int> Splits_TargetCellRange { 3 };
+	Valueable<bool> Splits_UseWeaponTargeting { false };
+	Valueable<bool> AirburstWeapon_ApplyFirepowerMult { false };
 
 	Valueable<double> Splits_Range { 1280.0 };
 	Valueable<bool> Splits_RandomCellUseHarcodedRange { true };
@@ -109,13 +120,13 @@ public:
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
-	bool FORCEINLINE HasSplitBehavior() const
+	constexpr bool FORCEINLINE HasSplitBehavior() const
 	{
 		// behavior in FS: Splits defaults to Airburst.
 		return this->AttachedToObject->Airburst || this->Splits;
 	}
 
-	double FORCEINLINE GetMissileROTVar(const RulesClass* const pRules) const
+	constexpr double FORCEINLINE GetMissileROTVar(const RulesClass* const pRules) const
 	{
 		if (MissileROTVar.isset())
 			return MissileROTVar.Get();
@@ -123,7 +134,7 @@ public:
 		return pRules->MissileROTVar;
 	}
 
-	double FORCEINLINE GetMissileSaveAltitude(const RulesClass* const pRules) const
+	constexpr double FORCEINLINE GetMissileSaveAltitude(const RulesClass* const pRules) const
 	{
 		if (MissileSafetyAltitude.isset())
 			return MissileSafetyAltitude.Get();
@@ -135,7 +146,7 @@ public:
 	BulletClass* CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, WeaponTypeClass* pWeapon) const;
 	BulletClass* CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, int damage, WarheadTypeClass* pWarhead, int speed, int range, bool bright, bool addDamage) const;
 
-	double FORCEINLINE GetAdjustedGravity() const
+	constexpr double FORCEINLINE GetAdjustedGravity() const
 	{
 		const auto nGravity = this->Gravity.Get(RulesClass::Instance->Gravity);
 		return this->AttachedToObject->Floater ? nGravity * 0.5 : nGravity;
@@ -152,15 +163,15 @@ public:
 
 	static FORCEINLINE double GetAdjustedGravity(BulletTypeClass* pType);
 
-	static BulletTypeClass* GetDefaultBulletType(const char* pBullet = nullptr);
+	static BulletTypeClass* GetDefaultBulletType();
 	static CoordStruct CalculateInaccurate(BulletTypeClass* pBulletType);
 
 private:
 	template <typename T>
 	void Serialize(T& Stm);
 public:
-	static const Leptons DefaultBulletScatterMin;
-	static const Leptons DefaultBulletScatterMax;
+	static constexpr Leptons DefaultBulletScatterMin { 256 };
+	static constexpr Leptons DefaultBulletScatterMax { 512 };
 };
 
 class BulletTypeExtContainer final : public Container<BulletTypeExtData>

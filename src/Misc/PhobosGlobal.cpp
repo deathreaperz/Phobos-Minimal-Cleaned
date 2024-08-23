@@ -3,6 +3,7 @@
 #include <AbstractClass.h>
 
 std::unique_ptr<PhobosGlobal> PhobosGlobal::GlobalObject;
+PhobosGlobal::ColorsData PhobosGlobal::ColorDatas;
 
 void PhobosGlobal::Clear()
 {
@@ -16,10 +17,18 @@ void PhobosGlobal::Clear()
 	pInstance->TempFoundationData1.clear();
 	pInstance->TempFoundationData2.clear();
 	pInstance->TempCoveredCellsData.clear();
+	PhobosGlobal::ColorDatas.reset();
+	pInstance->PathfindTechno.Clear();
 }
 
 void PhobosGlobal::PointerGotInvalid(AbstractClass* ptr, bool removed)
 {
+	auto pInstance = PhobosGlobal::Instance();
+
+	if (!pInstance)
+		return;
+
+	pInstance->PathfindTechno.InvalidatePointer(ptr, removed);
 }
 
 bool PhobosGlobal::SaveGlobals(PhobosStreamWriter& stm) { return PhobosGlobal::Instance()->Serialize(stm); }

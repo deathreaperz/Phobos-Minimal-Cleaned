@@ -45,17 +45,17 @@ void CSFLoader::LoadAdditionalCSF(const char* pFileName, bool ignoreLanguage)
 
 const wchar_t* CSFLoader::GetDynamicString(const char* pLabelName, const wchar_t* pPattern, const char* pDefault)
 {
-	if (IS_SAME_STR_(pLabelName, "NOSTR:"))
+	if (!pLabelName || IS_SAME_STR_(pLabelName, "NOSTR:"))
 		return L"";
 
-	auto pData = &DynamicStrings[pLabelName];
+	auto pData = FindOrAllocateDynamicStrings(pLabelName);
 
 	if ((!pData->Text || !pData->Text[0]))
 	{
 		swprintf_s(pData->Text, 101u, pPattern, pDefault);
 		if (Phobos::Otamaa::OutputMissingStrings)
 		{
-			Debug::Log("[CSFLoader] Added label \"%s\" with value \"%ls\".\n", pLabelName, pData->Text);
+			Debug::Log("[CSFLoader] ***NO_STRING*** label \"%s\" with value \"%ls\".\n", pLabelName, pData->Text);
 		}
 	}
 

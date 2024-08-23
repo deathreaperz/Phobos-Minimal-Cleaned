@@ -178,8 +178,7 @@ namespace DrawHeathData
 				auto const nLocTemp = nLocation;
 				pBldType->Dimension2(&nDimension);
 				CoordStruct nDimension2 { -nDimension.X / 2,nDimension.Y / 2,nDimension.Z / 2 };
-				Point2D nDest {};
-				TacticalClass::Instance->CoordsToScreen(&nDest, &nDimension2);
+				Point2D nDest = TacticalClass::Instance->CoordsToScreen(nDimension2);
 
 				XOffset = nDest.X + nLocTemp.X + pTypeExt->Healnumber_Offset.Get().X + 2;
 				YOffset = nDest.Y + nLocTemp.Y + pTypeExt->Healnumber_Offset.Get().Y + pType->PixelSelectionBracketDelta;
@@ -300,9 +299,8 @@ namespace DrawHeathData
 	{
 		CoordStruct vCoords = { 0, 0, 0 };
 		pThis->GetTechnoType()->Dimension2(&vCoords);
-		Point2D vPos2 = { 0, 0 };
 		CoordStruct vCoords2 = { -vCoords.X / 2, vCoords.Y / 2,vCoords.Z };
-		TacticalClass::Instance->CoordsToScreen(&vPos2, &vCoords2);
+		Point2D vPos2 = TacticalClass::Instance->CoordsToScreen(vCoords2);
 
 		Point2D vLoc = *pLocation;
 		vLoc.X -= 5;
@@ -434,6 +432,9 @@ DEFINE_HOOK(0x6F683C, TechnoClass_DrawBar_Foot, 0x7)
 	GET_STACK(Point2D*, pLocation, STACK_OFFS(0x4C, -0x4));
 	GET_STACK(RectangleStruct*, pBound, STACK_OFFS(0x4C, -0x8));
 
+	if (TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled)
+		return 0x6F6AB6u;
+
 	const int iLength = pThis->WhatAmI() == InfantryClass::AbsID ? 8 : 17;
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
@@ -450,5 +451,89 @@ DEFINE_HOOK(0x6F683C, TechnoClass_DrawBar_Foot, 0x7)
 	//DrawHeathData::DrawIronCurtaindBar(pThis, iLength, pLocation, pBound);
 	TechnoExtData::ProcessDigitalDisplays(pThis);
 
-	return 0x6F6A58;
+	if (HouseClass::IsCurrentPlayerObserver())
+		return 0x6F6A8E;
+
+	return 0x6F6AB6u;
 }
+
+//TODO :Draw all the pip
+//TODO : handle Healthdrawing
+
+#ifdef _aaa
+void DrawHealthbar(TechnoClass* pTechno, Point2D* pLocation, RectangleStruct* pBounds)
+{
+	const auto what = pTechno->WhatAmI();
+	auto pType = pTechno->GetTechnoType();
+
+	if (what == BuildingClass::AbsID)
+	{
+		//TODO : draw on different position instead of fixed place
+		auto pBld = static_cast<BuildingClass*>(pTechno);
+		int heihgt = pBld->GetHeight();
+		CoordStruct leptonDimension;
+		pType->Dimension2(&leptonDimension);
+		CoordStruct halfDim = leptonDimension / 2;
+		CoordStruct difference = halfDim - leptonDimension;
+		Point2D screen = TacticalClass::Instance->CoordsToScreen(difference);
+		difference.Y = -difference.Y;
+		Point2D screen2 = TacticalClass::Instance->CoordsToScreen(difference);
+		difference.Z = 0;
+		difference.Y = -difference.Y;
+		Point2D screen3 = TacticalClass::Instance->CoordsToScreen(difference);
+		difference.Y = -difference.Y;
+
+		int length = (screen.Y - screen2.Y) / 2;
+		int ratio_length = int(pTechno->GetHealthPercentage_() * length);
+		int drawLength = std::clamp(ratio_length, 1, length);
+		int frame = 1;
+		if (pTechno->IsYellowHP())
+			frame = 2;
+		else if (pTechno->IsRedHP())
+			frame = 4;
+
+		//DrawMain health
+		CoordStruct coord { 0 , 0 , 2 - 2 * length };
+		if (drawLength)
+		{
+			int v19 = 0;
+			int a3 = 0;
+			int drawLength_Copy = drawLength;
+			bool drawLength_Copy_isOne = false;
+
+			do
+			{
+				Point2D pint { screen.X + pLocation->X + 4 * length + 3 - v19 , screen.Y + pLocation->Y };
+
+				coord.X = coord.Z + pint.Y + 2 - a3;
+				CC_Draw_Shape(
+					DSurface::Temp(),
+					FileSystem::PALETTE_PAL(),
+					FileSystem::PIPS_SHP(),
+					frame,
+					&pint,
+					pBounds,
+					0x600,
+					0,
+					0,
+					0,
+					1000,
+					0,
+					0,
+					0,
+					0,
+					0);
+				v19 += 4;
+				drawLength_Copy_isOne = drawLength_Copy == 1;
+				a3 = (a3 - 2);
+				--drawLength_Copy;
+			}
+			while (!drawLength_Copy_isOne);
+		}
+	}
+	else
+	{
+	}
+}
+
+#endif

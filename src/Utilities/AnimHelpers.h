@@ -14,7 +14,7 @@ namespace Helper
 			{
 				if (nSplash.size() > 0)
 				{
-					return nSplash[Random ? ScenarioClass::Instance->Random.RandomFromMax((nSplash.size() - 1)) : 0];
+					return nSplash[Random ? ScenarioClass::Instance->Random.RandomFromMax((nSplash.size() - 1)) : IsMeteor ? nSplash.size() - 1 : 0];
 				}
 			}
 

@@ -130,7 +130,7 @@ void TrailsManager::Construct(BulletClass* pOwner, bool IsConverted)
 	if (!pOwner || TrailType::Array.empty())
 		return;
 
-	if (!pOwner->Type || pOwner->Type->Inviso)
+	if (!pOwner->Type)
 		return;
 
 	const auto pClassType = pOwner->Type;
@@ -259,11 +259,9 @@ void TrailsManager::AI(TechnoClass* pOwner)
 
 	for (auto& pTrails : pExt->Trails)
 	{
-		if (((TechnoClass*)pOwner)->CloakState == CloakState::Cloaking ||
-				((TechnoClass*)pOwner)->CloakState == CloakState::Cloaked)
+		if (((TechnoClass*)pOwner)->IsInCloakState() && pTrails.Type->HideWhenCloak.Get())
 		{
-			if (pTrails.Type->HideWhenCloak.Get())
-				continue;
+			continue;
 		}
 
 		if (!pExt->IsInTunnel)
