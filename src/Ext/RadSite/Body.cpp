@@ -27,7 +27,7 @@ void RadSiteExtData::CreateInstance(CoordStruct const& nCoord, int spread, int a
 	}
 	else
 	{
-		pRadExt->Type = RadTypeClass::Array[0].get();
+		pRadExt->Type = RadTypeClass::Array.begin()->get();
 	}
 
 	if (pTech && pRadExt->Type->GetHasInvoker() && !pRadExt->NoOwner && pRadExt->Type->GetHasOwner())
@@ -129,14 +129,30 @@ const double RadSiteExtData::GetRadLevelAt(double distance)
 	const auto nMax = static_cast<double>(pThis->Spread);
 	double radLevel = pThis->RadLevel;
 
+	//  will produce `-nan(ind)` result if both dist and max is zero
+	// and used on formula below this check
+	// ,.. -Otamaa
 	if (distance && nMax)
-		radLevel = (distance > nMax) ? 0.0 : (nMax - distance) / nMax * pThis->RadLevel;
+	{
+		//distance is too far
+		if (distance > nMax)
+		{
+			return 0.0;
+		}
+		else
+		{
+			radLevel = (nMax - distance) / nMax * pThis->RadLevel;
+		}
+	}
 
 	// Vanilla YR stores & updates the decremented RadLevel on CellClass.
 	// Because we're not storing multiple radiation site data on CellClass (yet?)
 	// we need to fully recalculate this stuff every time we need the radiation level for a cell coord - Starkku
-	int stepCount = (Unsorted::CurrentFrame - this->CreationFrame) / this->Type->GetLevelDelay();
-	radLevel -= (radLevel / pThis->LevelSteps) * stepCount;
+	const auto frame_Step = (Unsorted::CurrentFrame - this->CreationFrame);
+	const int stepCount = frame_Step ? frame_Step / this->Type->GetLevelDelay() : 0;
+
+	if (radLevel && pThis->LevelSteps)
+		radLevel -= (radLevel / pThis->LevelSteps) * stepCount;
 
 	return radLevel;
 }
@@ -148,7 +164,7 @@ const RadSiteExtData::DamagingState RadSiteExtData::ApplyRadiationDamage(TechnoC
 	if (!pTarget->IsAlive || pTarget->InLimbo || !pTarget->Health || pTarget->IsSinking || pTarget->IsCrashing)
 		return RadSiteExtData::DamagingState::Dead;
 
-	auto const pUnit = specific_cast<UnitClass*>(pTarget);
+	auto const pUnit = cast_to<UnitClass*, false>(pTarget);
 
 	if ((pUnit && pUnit->DeathFrameCounter > 0))
 		return RadSiteExtData::DamagingState::Ignore;
@@ -188,10 +204,10 @@ void RadSiteExtData::Serialize(T& Stm)
 {
 	Stm
 		.Process(this->Initialized)
-		.Process(this->Weapon)
-		.Process(this->Type)
-		.Process(this->TechOwner)
-		.Process(this->HouseOwner)
+		.Process(this->Weapon, true)
+		.Process(this->Type, true)
+		.Process(this->TechOwner, true)
+		.Process(this->HouseOwner, true)
 		.Process(this->NoOwner)
 		.Process(this->CreationFrame)
 		;
@@ -210,7 +226,7 @@ DEFINE_HOOK(0x65B243, RadSiteClass_CTOR, 0x6)
 	{
 		GET(RadSiteClass*, pThis, ESI);
 		RadSiteExtContainer::Instance.Allocate(pThis);
-		PointerExpiredNotification::NotifyInvalidObject->Add(pThis);
+		//PointerExpiredNotification::NotifyInvalidObject->Add(pThis);
 	}
 
 	return 0;
@@ -221,56 +237,39 @@ DEFINE_HOOK(0x65B344, RadSiteClass_DTOR, 0x6)
 	if (!Phobos::Otamaa::DisableCustomRadSite)
 	{
 		GET(RadSiteClass*, pThis, ESI);
-		PointerExpiredNotification::NotifyInvalidObject->Remove(pThis);
+		//PointerExpiredNotification::NotifyInvalidObject->Remove(pThis);
 		RadSiteExtContainer::Instance.Remove(pThis);
 	}
 
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x65B3D0, RadSiteClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x65B450, RadSiteClass_SaveLoad_Prefix, 0x8)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeRadSiteClass::_Load(IStream* pStm)
 {
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		GET_STACK(RadSiteClass*, pItem, 0x4);
-		GET_STACK(IStream*, pStm, 0x8);
+	RadSiteExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->RadSiteClass::Load(pStm);
 
-		RadSiteExtContainer::Instance.PrepareStream(pItem, pStm);
-	}
-
-	return 0;
-}
-
-// Before :
- // DEFINE_HOOK(0x65B43F, RadSiteClass_Load_Suffix, 0x7)
-DEFINE_HOOK(0x65B431, RadSiteClass_Load_Suffix, 0x9)
-{
-	GET(RadSiteClass*, pThis, ESI);
-
-	SwizzleManagerClass::Instance->Swizzle((void**)&pThis->LightSource);
-
-	if (!Phobos::Otamaa::DisableCustomRadSite)
+	if (SUCCEEDED(res) && Phobos::Otamaa::DisableCustomRadSite)
 		RadSiteExtContainer::Instance.LoadStatic();
 
-	//return 0;
-	return 0x65B43F;
+	return res;
 }
 
-DEFINE_HOOK(0x65B464, RadSiteClass_Save_Suffix, 0x5)
+HRESULT __stdcall FakeRadSiteClass::_Save(IStream* pStm, bool clearDirty)
 {
-	GET(const HRESULT, nRes, EAX);
+	RadSiteExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->RadSiteClass::Save(pStm, clearDirty);
 
-	if (SUCCEEDED(nRes))
-	{
-		if (!Phobos::Otamaa::DisableCustomRadSite)
-		{
-			RadSiteExtContainer::Instance.SaveStatic();
-		}
-	}
+	if (SUCCEEDED(res) && Phobos::Otamaa::DisableCustomRadSite)
+		RadSiteExtContainer::Instance.SaveStatic();
 
-	return 0;
+	return res;
 }
+
+DEFINE_JUMP(VTABLE, 0x7F0824, MiscTools::to_DWORD(&FakeRadSiteClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F0828, MiscTools::to_DWORD(&FakeRadSiteClass::_Save))
 
 //#ifdef AAENABLE_NEWHOOKS
 //DEFINE_HOOK(0x65B4B0, RadSiteClass_GetSpread_Replace, 0x4)
@@ -313,27 +312,24 @@ DEFINE_HOOK(0x65B464, RadSiteClass_Save_Suffix, 0x5)
 //}
 //#endif
 
-static void __fastcall RadSiteClass_Detach(RadSiteClass* pThis, void* _, AbstractClass* pTarget, bool bRemove)
+void FakeRadSiteClass::_Detach(AbstractClass* pTarget, bool bRemove)
 {
 	if (!Phobos::Otamaa::DisableCustomRadSite)
 	{
-		RadSiteExtContainer::Instance.InvalidatePointerFor(pThis, pTarget, bRemove);
+		RadSiteExtContainer::Instance.InvalidatePointerFor(this, pTarget, bRemove);
 	}
 }
 
-DEFINE_JUMP(VTABLE, 0x7F0838, GET_OFFSET(RadSiteClass_Detach));
+DEFINE_JUMP(VTABLE, 0x7F0838, MiscTools::to_DWORD(&FakeRadSiteClass::_Detach));
 
-static HouseClass* __fastcall RadSiteClass_OwningHouse(RadSiteClass* pThis, void* _)
+HouseClass* FakeRadSiteClass::_GetOwningHouse()
 {
 	if (!Phobos::Otamaa::DisableCustomRadSite)
 	{
-		if (const auto pExt = RadSiteExtContainer::Instance.Find(pThis))
-		{
-			return pExt->HouseOwner;
-		}
+		return RadSiteExtContainer::Instance.Find(this)->HouseOwner;
 	}
 
 	return nullptr;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F084C, GET_OFFSET(RadSiteClass_OwningHouse));
+DEFINE_JUMP(VTABLE, 0x7F084C, MiscTools::to_DWORD(&FakeRadSiteClass::_GetOwningHouse));

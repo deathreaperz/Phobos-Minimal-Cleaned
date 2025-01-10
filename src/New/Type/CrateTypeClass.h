@@ -1,10 +1,7 @@
 #pragma once
-#include <SuperWeaponTypeClass.h>
 
 #include <Utilities/Enumerable.h>
-#include <Utilities/Template.h>
 #include <Utilities/TemplateDefB.h>
-#include <Utilities/GeneralUtils.h>
 
 class AnimTypeClass;
 class VocClass;
@@ -15,28 +12,42 @@ class CrateTypeClass final : public Enumerable<CrateTypeClass>
 {
 public:
 
-	Valueable<int> Weight { 0 };
-	Valueable<AnimTypeClass*> Anim { nullptr };
-	Valueable<double> Argument { 0.0 };
-	Valueable<bool> Naval { false };
-	ValueableIdx<VocClass> Sound { -1 };
+	Valueable<int> Weight;
+	Valueable<AnimTypeClass*> Anim;
+	Valueable<double> Argument;
+	Valueable<bool> Naval;
+	ValueableIdx<VocClass> Sound;
+	SpeedType Speed;
 
 	CrateTypeClass(const char* const pTitle) : Enumerable<CrateTypeClass>(pTitle)
 		, Weight { }
 		, Anim { nullptr }
 		, Argument { 0.0 }
 		, Naval { false }
-		, Sound {}
+		, Sound { -1 }
+		, Speed { SpeedType::Track }
 	{ }
 
 	static void ReadListFromINI(CCINIClass* pINI);
-	static void AddDefaults();
+	static void inline AddDefaults()
+	{
+		if (Array.empty())
+		{
+			Array.reserve(Powerups::Effects.size());
+
+			for (auto crate : Powerups::Effects)
+			{
+				Debug::Log("Creating default Crate of [%s]\n", crate);
+				Allocate(crate);
+			}
+		}
+	}
+
 	static void ReadFromINIList(CCINIClass* pINI);
 
-	virtual ~CrateTypeClass() override = default;
-	virtual void LoadFromINI(CCINIClass* pINI) override;
-	virtual void LoadFromStream(PhobosStreamReader& Stm) override;
-	virtual void SaveToStream(PhobosStreamWriter& Stm) override;
+	void LoadFromINI(CCINIClass* pINI);
+	void LoadFromStream(PhobosStreamReader& Stm);
+	void SaveToStream(PhobosStreamWriter& Stm);
 
 private:
 	template <typename T>

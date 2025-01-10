@@ -3,7 +3,7 @@
 #include <Utilities/TemplateDef.h>
 #include <Utilities/GeneralUtils.h>
 
-Enumerable<BannerTypeClass>::container_t Enumerable<BannerTypeClass>::Array;
+#include <PCX.h>
 
 const char* Enumerable<BannerTypeClass>::GetMainSection()
 {
@@ -12,7 +12,7 @@ const char* Enumerable<BannerTypeClass>::GetMainSection()
 
 void BannerTypeClass::LoadFromINI(CCINIClass* pINI)
 {
-	const char* section = this->Name;
+	const char* section = this->Name.c_str();
 
 	INI_EX exINI(pINI);
 

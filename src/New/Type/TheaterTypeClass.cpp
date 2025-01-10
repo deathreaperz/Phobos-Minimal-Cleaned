@@ -6,7 +6,7 @@
 
 #include <MixFileClass.h>
 
-Enumerable<TheaterTypeClass>::container_t Enumerable<TheaterTypeClass>::Array;
+#include <Utilities/Macro.h>
 
 const char* Enumerable<TheaterTypeClass>::GetMainSection()
 {
@@ -30,6 +30,7 @@ void TheaterTypeClass::LoadFromINI(CCINIClass* pINI)
 	MMExtension.Read(pINI, pSection, "MMExtension");
 	Letter.Read(pINI, pSection, "ImageLetter");
 	IsArctic.Read(exIni, pSection, "IsArtic");
+	IsLunar.Read(exIni, pSection, "IsLunar");
 	IsAllowedInMapGenerator.Read(exIni, pSection, "IsAllowedInMapGenerator");
 	LowRadarBrightness1.Read(exIni, pSection, "LowRadarBrightness");
 
@@ -68,40 +69,34 @@ CCINIClass* TheaterTypeClass::GetConfigINI()
 	return nullptr;
 }
 
+#include <Utilities/GameConfig.h>
+
 void TheaterTypeClass::LoadAllTheatersToArray()
 {
-	TheaterTypeClass::AddDefaults();
+	GameConfig _conf { "Theaters.ini" };
 
-	const auto filename = "Theaters.ini";
-	CCFileClass file { filename };
+	_conf.OpenINIAction([](CCINIClass* pINI)
+ {
+	 const char* pSection = TheaterTypeClass::GetMainSection();
 
-	if (file.Exists() && file.Open(FileAccessMode::Read))
-	{
-		CCINIClass ini {};
-		ini.ReadCCFile(&file);
-		const char* pSection = TheaterTypeClass::GetMainSection();
-		if (ini.GetSection(pSection))
-		{
-			for (int i = 0; i < ini.GetKeyCount(pSection); ++i)
-			{
-				if (ini.ReadString(pSection,
-					ini.GetKeyName(pSection, i),
-					Phobos::readDefval,
-					Phobos::readBuffer) > 0
-					)
-				{
-					if (auto pTheater = FindOrAllocate(Phobos::readBuffer))
-						pTheater->LoadFromINI(&ini);
-					else
-						Debug::Log("Error Reading %s \"%s\".\n", pSection, Phobos::readBuffer);
-				}
-			}
-		}
-	}
-	else
-	{
-		Debug::Log("Theaters.ini not found!\n");
-	}
+	 if (pINI->GetSection(pSection))
+	 {
+		 for (int i = 0; i < pINI->GetKeyCount(pSection); ++i)
+		 {
+			 if (pINI->ReadString(pSection,
+				 pINI->GetKeyName(pSection, i),
+				 Phobos::readDefval,
+				 Phobos::readBuffer) > 0
+				 )
+			 {
+				 if (auto pTheater = FindOrAllocate(Phobos::readBuffer))
+					 pTheater->LoadFromINI(pINI);
+				 else
+					 Debug::Log("Error Reading %s \"%s\".\n", pSection, Phobos::readBuffer);
+			 }
+		 }
+	 }
+	});
 }
 
 void TheaterTypeClass::AddDefaults()
@@ -112,12 +107,12 @@ void TheaterTypeClass::AddDefaults()
 
 		for (size_t i = 0; i < Theater::Array.size(); ++i)
 		{
-			Debug::Log("Allocating Default Theater [%s] ! \n", Theater::Array[i].Identifier);
 			AllocateWithDefault(
 				Theater::Array[i].Identifier,
 				Theater::Array[i],
 				i == (size_t)TheaterType::Snow,
-				!(i == (size_t)TheaterType::NewUrban || i == (size_t)TheaterType::Lunar)
+				!(i == (size_t)TheaterType::NewUrban || i == (size_t)TheaterType::Lunar),
+				 i == (size_t)TheaterType::Lunar
 			);
 		}
 	}
@@ -743,6 +738,12 @@ DEFINE_HOOK(0x534BEE, ScenarioClass_initTheater_TheaterType_OverlayPalette, 0x5)
 	}
 
 	return 0x0;
+}
+
+DEFINE_HOOK(0x546C8B, IsometricTileTypeClass_ReadData_LunarLimitation, 0x8)
+{
+	GET_STACK(TheaterType, theater, 0xB4);
+	return TheaterTypeClass::FindFromTheaterType_NoCheck(theater)->IsLunar ? 0x546C95 : 0x546CBF;
 }
 
 #undef CURRENT_THEATER

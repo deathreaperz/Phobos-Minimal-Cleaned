@@ -29,6 +29,37 @@ DEFINE_HOOK(0x465201, BuildingTypeClass_LoadFromStream_Foundation, 0x6)
 	return 0x465239;
 }
 
+//DEFINE_HOOK(0x44FBE9, BuildingClass_ReadINI_UnlimboSomething, 0x8)
+//{
+//	GET(BuildingClass*, pBld, ESI);
+//	Debug::Log("Currently Unlimbo For building [%x - %s]\n", pBld, pBld->Type->ID);
+//	return 0x0;
+//}
+
+//DEFINE_HOOK(0x4FD203, HouseClass_RecalcCenter_test, 0x6)
+//{
+//	GET(BuildingClass*, pBld, ESI);
+//	LEA_STACK(CoordStruct*, pBuffer, 0x2C);
+//	if (!pBld || VTable::Get(pBld) != BuildingClass::vtable) {
+//		Debug::FatalError(__FUNCTION__ " called without this ptr");
+//	}
+//	*pBuffer = pBld->Location;
+//	R->EAX(pBuffer);
+//	return 0x4FD20F;
+//}
+
+//DEFINE_HOOK(0x447AD1 , BuildingClass_Center_Coord_ThisPtr , 0x6)
+//{
+//	GET(BuildingClass*, pThis, ECX);
+//	if (!pThis || VTable::Get(pThis) != BuildingClass::vtable){
+//		GET_STACK(DWORD, caller, 0x0);
+//		Debug::DumpStack(R, 0x50);
+//		Debug::FatalError(__FUNCTION__ " called without this ptr caller [0x%x]", caller);
+//	}
+//
+//	return 0x0;
+//}
+
 DEFINE_STRONG_HOOK(0x45eca0, BuildingTypeClass_GetFoundationHeight, 6)
 {
 	GET(BuildingTypeClass*, pThis, ECX);
@@ -38,6 +69,19 @@ DEFINE_STRONG_HOOK(0x45eca0, BuildingTypeClass_GetFoundationHeight, 6)
 		const bool bIncludeBib = (R->Stack8(0x4) != 0);
 		R->EAX(BuildingTypeExtContainer::Instance.Find(pThis)->CustomHeight + (bIncludeBib && pThis->Bib));
 		return 0x45ECDA;
+	}
+
+	return 0;
+}
+
+DEFINE_STRONG_HOOK(0x45ec90, BuildingTypeClass_GetFoundationWidth, 6)
+{
+	GET(BuildingTypeClass*, pThis, ECX);
+
+	if (pThis->Foundation == BuildingTypeExtData::CustomFoundation)
+	{
+		R->EAX(BuildingTypeExtContainer::Instance.Find(pThis)->CustomWidth);
+		return 0x45EC9D;
 	}
 
 	return 0;
@@ -100,9 +144,19 @@ DEFINE_HOOK(0x568565, MapClass_AddContentAt_Foundation_OccupyHeight, 5)
 	return 0x568697;
 }
 
+#include <TerrainClass.h>
+#include <TerrainTypeClass.h>
+
 DEFINE_HOOK(0x568411, MapClass_AddContentAt_Foundation_P1, 6)
 {
-	GET(BuildingClass*, pThis, EDI);
+	GET(ObjectClass*, pThis, EDI);
+
+	if (auto pTerrain = cast_to<TerrainClass*, false>(pThis))
+	{
+		if (pTerrain->Type->Foundation == 21)
+			return 0x5687DF;
+	}
+
 	R->EBP(pThis->GetFoundationData(false));
 	return 0x568432;
 }
@@ -173,19 +227,6 @@ DEFINE_HOOK(0x4A8DD7, DisplayClass_ProcessFoundation2_UnlimitBuffer, 5)
 	R->EAX<CellStruct*>(R->lea_Stack<CellStruct*>(0x18));
 
 	return 0x4A8DFE;
-}
-
-DEFINE_STRONG_HOOK(0x45ec90, BuildingTypeClass_GetFoundationWidth, 6)
-{
-	GET(BuildingTypeClass*, pThis, ECX);
-
-	if (pThis->Foundation == BuildingTypeExtData::CustomFoundation)
-	{
-		R->EAX(BuildingTypeExtContainer::Instance.Find(pThis)->CustomWidth);
-		return 0x45EC9D;
-	}
-
-	return 0;
 }
 
 DEFINE_HOOK(0x45ECE0, BuildingTypeClass_GetMaxPips, 6)

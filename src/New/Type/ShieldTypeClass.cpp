@@ -1,58 +1,5 @@
 #include "ShieldTypeClass.h"
 
-Enumerable<ShieldTypeClass>::container_t Enumerable<ShieldTypeClass>::Array;
-
-ShieldTypeClass::ShieldTypeClass(const char* const pTitle) : Enumerable<ShieldTypeClass> { pTitle }
-, Strength { 0 }
-, InitialStrength {}
-, ConditionYellow {}
-, ConditionRed {}
-, Armor { Armor::None }
-, Powered { false }
-, Respawn { 0.0 }
-, Respawn_Rate { 0 }
-, SelfHealing { 0.0 }
-, SelfHealing_Rate { 0 }
-, SelfHealing_RestartInCombat { true }
-, SelfHealing_RestartInCombatDelay { 0 }
-, SelfHealing_EnabledBy {}
-, AbsorbOverDamage { false }
-, BracketDelta { 0 }
-, IdleAnim_OfflineAction { AttachedAnimFlag::Hides }
-, IdleAnim_TemporalAction { AttachedAnimFlag::Hides }
-, IdleAnim {}
-, IdleAnimDamaged {}
-, BreakAnim {}
-, HitAnim {}
-, BreakWeapon {}
-, AbsorbPercent { 1.0 }
-, PassPercent { 0.0 }
-, ReceivedDamage_Minimum { INT32_MIN }
-, ReceivedDamage_Maximum { INT32_MAX }
-, AllowTransfer {}
-, Pips { { -1,-1,-1 } }
-, Pips_Background_SHP {}
-, Pips_Building { { -1,-1,-1 } }
-, Pips_Building_Empty {}
-, Pips_HideIfNoStrength { false }
-, ImmuneToPsychedelic { false }
-, ThreadPosed { }
-, ImmuneToCrit { false }
-, BreakWeapon_TargetSelf { true }
-, PassthruNegativeDamage { false }
-, CanBeHealed { false }
-, HealCursorType { }
-, HitFlash { false }
-, HitFlash_FixedSize {}
-, HitFlash_Red { true }
-, HitFlash_Green { true }
-, HitFlash_Blue { true }
-, HitFlash_Black { false }
-, Tint_Color {}
-, Tint_Intensity { 0.0 }
-, Tint_VisibleToHouses { AffectedHouse::All }
-{};
-
 const char* Enumerable<ShieldTypeClass>::GetMainSection()
 {
 	return "ShieldTypes";
@@ -73,7 +20,7 @@ AnimTypeClass* ShieldTypeClass::GetIdleAnimType(bool isDamaged, double healthRat
 
 void ShieldTypeClass::LoadFromINI(CCINIClass* pINI)
 {
-	const char* pSection = this->Name;
+	const char* pSection = this->Name.c_str();
 	if (IS_SAME_STR_(pSection, DEFAULT_STR2))
 		return;
 
@@ -151,6 +98,9 @@ void ShieldTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->Tint_Color.Read(exINI, pSection, "Tint.Color");
 	this->Tint_Intensity.Read(exINI, pSection, "Tint.Intensity");
 	this->Tint_VisibleToHouses.Read(exINI, pSection, "Tint.VisibleToHouses");
+	this->InheritArmor_Allowed.Read(exINI, pSection, "InheritArmor.Allowed");
+	this->InheritArmor_Disallowed.Read(exINI, pSection, "InheritArmor.Disallowed");
+	this->InheritArmorFromTechno.Read(exINI, pSection, "InheritArmorFromTechno");
 }
 
 template <typename T>
@@ -204,6 +154,9 @@ void ShieldTypeClass::Serialize(T& Stm)
 		.Process(this->Tint_Color)
 		.Process(this->Tint_Intensity)
 		.Process(this->Tint_VisibleToHouses)
+		.Process(this->InheritArmor_Allowed)
+		.Process(this->InheritArmor_Disallowed)
+		.Process(this->InheritArmorFromTechno)
 		;
 }
 

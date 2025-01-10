@@ -1,17 +1,12 @@
 #pragma once
 
-#include <Utilities/Debug.h>
-#include <Utilities/Macro.h>
-#include <ScenarioClass.h>
-#include <Utilities/Constructs.h>
-#include <CCINIClass.h>
 #include <Theater.h>
-#include <string>
+
 #include <Utilities/Enumerable.h>
 #include <Utilities/TemplateDef.h>
+#include <Utilities/PhobosFixedString.h>
 
-#include <Phobos.CRT.h>
-
+class CCINIClass;
 class TheaterTypeClass final : public Enumerable<TheaterTypeClass>
 {
 public:
@@ -26,6 +21,7 @@ public:
 		Letter("X"),
 		IsArctic(false),
 		IsAllowedInMapGenerator(false),
+		IsLunar(false),
 		LowRadarBrightness1(0.0f),
 		HighRadarBrightness(1.0f),
 		unknown_float_60(0.0f),
@@ -51,22 +47,23 @@ public:
 	{
 	}
 
-	TheaterTypeClass(const char* const pTitle, const Theater& theater, bool IsArtic, bool AllowMapGen) : Enumerable<TheaterTypeClass>(pTitle),
+	TheaterTypeClass(const char* const pTitle, const Theater* theater, bool IsArtic, bool AllowMapGen, bool islunar) : Enumerable<TheaterTypeClass>(pTitle),
 		UIName(),
-		ControlFileName(theater.ControlFileName),
-		ArtFileName(theater.ArtFileName),
-		PaletteFileName(theater.PaletteFileName),
-		Extension(theater.Extension),
-		MMExtension(theater.MMExtension),
-		Letter(theater.Letter),
+		ControlFileName(theater->ControlFileName),
+		ArtFileName(theater->ArtFileName),
+		PaletteFileName(theater->PaletteFileName),
+		Extension(theater->Extension),
+		MMExtension(theater->MMExtension),
+		Letter(theater->Letter),
 		IsArctic(IsArtic),
 		IsAllowedInMapGenerator(AllowMapGen),
-		LowRadarBrightness1(theater.RadarTerrainBrightness),
-		HighRadarBrightness(theater.RadarTerrainBrightnessAtMaxLevel),
-		unknown_float_60(theater.unknown_float_60),
-		unknown_float_64(theater.unknown_float_64),
-		unknown_int_68(theater.unknown_int_68),
-		unknown_int_6C(theater.unknown_int_6C),
+		IsLunar(islunar),
+		LowRadarBrightness1(theater->RadarTerrainBrightness),
+		HighRadarBrightness(theater->RadarTerrainBrightnessAtMaxLevel),
+		unknown_float_60(theater->unknown_float_60),
+		unknown_float_64(theater->unknown_float_64),
+		unknown_int_68(theater->unknown_int_68),
+		unknown_int_6C(theater->unknown_int_6C),
 		PaletteUnit(),
 		PaletteISO(),
 		TerrainControl(),
@@ -84,31 +81,29 @@ public:
 		BuildingTypeExtension(),
 		FallbackTheaterExtension(Theater::Array[0].Extension)
 	{
-		UIName = theater.UIName;
+		UIName = theater->UIName;
 	}
-	virtual ~TheaterTypeClass() override = default;
-	virtual void LoadFromStream(PhobosStreamReader& Stm);
 
-	virtual void SaveToStream(PhobosStreamWriter& Stm);
-
-	virtual void LoadFromINI(CCINIClass* pINI) override;
+	void LoadFromStream(PhobosStreamReader& Stm);
+	void SaveToStream(PhobosStreamWriter& Stm);
+	void LoadFromINI(CCINIClass* pINI);
 
 	static void AddDefaults();
 	static void LoadAllTheatersToArray();
-	static constexpr TheaterTypeClass* FindFromTheaterType(TheaterType nType)
+	static TheaterTypeClass* FindFromTheaterType(TheaterType nType)
 	{
-		return nType != TheaterType::None && (size_t)nType < Array.size() ?
-			Array[(int)nType].get() : Array[0].get();
+		return (nType != TheaterType::None && (size_t)nType < Array.size() ?
+			 Array[(int)nType] : Array[0]).get();
 	}
 
-	static inline constexpr TheaterTypeClass* FindFromTheaterType_NoCheck(TheaterType nType)
+	static FORCEINLINE constexpr TheaterTypeClass* FindFromTheaterType_NoCheck(TheaterType nType)
 	{
 		return Array[(int)nType].get();
 	}
 
-	static inline constexpr void AllocateWithDefault(const char* Title, const Theater& theater, bool IsArtic, bool AllowMapGen)
+	static inline constexpr void AllocateWithDefault(const char* Title, const Theater& theater, bool IsArtic, bool AllowMapGen, bool islunar)
 	{
-		Array.emplace_back(std::make_unique<TheaterTypeClass>(Title, theater, IsArtic, AllowMapGen));
+		Array.emplace_back(std::move(std::make_unique<TheaterTypeClass>(Title, &theater, IsArtic, AllowMapGen, islunar)));
 	}
 
 	// no !
@@ -129,6 +124,7 @@ private:
 			.Process(Letter)
 			.Process(IsArctic)
 			.Process(IsAllowedInMapGenerator)
+			.Process(IsLunar)
 			.Process(LowRadarBrightness1)
 			.Process(HighRadarBrightness)
 			.Process(unknown_float_60)
@@ -175,6 +171,7 @@ public:
 	PhobosFixedString<2>Letter;
 	Valueable<bool> IsArctic;
 	Valueable<bool> IsAllowedInMapGenerator;
+	Valueable<bool> IsLunar;
 	Valueable<float> LowRadarBrightness1;
 	Valueable<float> HighRadarBrightness;
 	Valueable<float> unknown_float_60;

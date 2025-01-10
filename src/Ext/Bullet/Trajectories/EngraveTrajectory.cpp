@@ -5,6 +5,11 @@
 #include <Ext/TechnoType/Body.h>
 #include <LaserDrawClass.h>
 
+#include <InfantryClass.h>
+
+// https://github.com/Phobos-developers/Phobos/pull/1293
+// TODO : update
+
 bool EngraveTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	this->PhobosTrajectoryType::Load(Stm, RegisterForChange);
@@ -128,7 +133,7 @@ void EngraveTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
 
 				if (!FLHFound)
 				{
-					if (auto pInfantry = abstract_cast<InfantryClass*>(pBullet->Owner))
+					if (auto pInfantry = cast_to<InfantryClass*>(pBullet->Owner))
 					{
 						auto& [FLHFound_b, FLH_b] = TechnoExtData::GetInfantryFLH(pInfantry, WeaponIndex);
 						FLHFound = FLHFound_b;
@@ -147,14 +152,14 @@ void EngraveTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
 			if (TechnoClass* pTransporter = pBullet->Owner->Transporter)
 			{
 				FootClass* pCurrentPassenger = pTransporter->Passengers.GetFirstPassenger();
-				FootClass* pBulletOwnerFoot = abstract_cast<FootClass*>(pBullet->Owner);
+				FootClass* pBulletOwnerFoot = flag_cast_to<FootClass*>(pBullet->Owner);
 
 				while (pCurrentPassenger)
 				{
 					if (pBulletOwnerFoot != pCurrentPassenger)
 					{
 						WeaponIndex += 1;
-						pCurrentPassenger = abstract_cast<FootClass*>(pCurrentPassenger->NextObject);
+						pCurrentPassenger = flag_cast_to<FootClass*>(pCurrentPassenger->NextObject);
 					}
 					else
 					{
@@ -261,7 +266,7 @@ bool EngraveTrajectory::OnAI()
 
 		int CheckDifference = GetFloorCoordHeight(FutureCoords) - FutureCoords.Z;
 
-		if (abs(CheckDifference) >= 384)
+		if (Math::abs(CheckDifference) >= 384)
 		{
 			if (CheckDifference > 0)
 			{
@@ -387,7 +392,7 @@ int EngraveTrajectory::GetFloorCoordHeight(CoordStruct Coord) const
 		CoordStruct CellCoords = pCell->GetCoordsWithBridge();
 		int OnBridge = CellCoords.Z - this->SourceHeight;
 
-		if (OnBridge < 0 && abs(OnBridge - Difference) > 384)
+		if (OnBridge < 0 && Math::abs(OnBridge - Difference) > 384)
 			Difference = OnBridge;
 	}
 

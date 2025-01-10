@@ -1,7 +1,10 @@
 #include "Body.h"
 
 #include <Ext/House/Body.h>
-#ifndef aaa
+
+#include <TeamTypeClass.h>
+#include <InfantryClass.h>
+
 std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType, bool naval, HouseExtData* pData)
 {
 	BuildingClass** currFactory = nullptr;
@@ -94,7 +97,7 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 //	GET_STACK(int, size, 0x4);
 //	GET_STACK(DWORD, caller, 0x0);
 //
-//	const auto pTr = YRMemory::__mh_malloc(size , 1);
+//	const auto pTr = __mh_malloc(size , 1);
 //	MappedCaller[pTr] = std::to_string(caller);
 //	R->EAX(pTr);
 //	return 0x7C8E24;
@@ -105,7 +108,7 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 //	GET_STACK(int, size, 0x4);
 //	GET_STACK(DWORD, caller, 0x0);
 //
-//	const auto pTr = YRMemory::__mh_malloc(size, CRT::AllocatorMode());
+//	const auto pTr = __mh_malloc(size, CRT::AllocatorMode());
 //	MappedCaller[pTr] = std::to_string(caller);
 //	R->EAX(pTr);
 //	return 0x7C9441;
@@ -115,7 +118,7 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 //{
 //	GET_STACK(void*, ptr, 0x4);
 //	MappedCaller.erase(ptr);
-//	YRMemory::__free(ptr);
+//	__free(ptr);
 //	return 0x7C8B47;
 //}
 
@@ -359,33 +362,39 @@ DEFINE_HOOK(0x4401BB, BuildingClass_AI_PickWithFreeDocks, 0x6) //was C
 
 DEFINE_HOOK(0x443CCA, BuildingClass_KickOutUnit_AircraftType_Phobos, 0xA)
 {
-	GET(HouseClass*, pHouse, EDX);
+	GET(FakeHouseClass*, pHouse, EDX);
 	GET(BuildingClass*, pThis, ESI);
 
-	if (pThis == HouseExtContainer::Instance.Find(pHouse)->Factory_AircraftType)
-		HouseExtContainer::Instance.Find(pHouse)->Factory_AircraftType = nullptr;
+	auto pExt = pHouse->_GetExtData();
+
+	if (pThis == pExt->Factory_AircraftType)
+		pExt->Factory_AircraftType = nullptr;
 
 	return 0;
 }
 
 DEFINE_HOOK(0x44531F, BuildingClass_KickOutUnit_BuildingType_Phobos, 0xA)
 {
-	GET(HouseClass*, pHouse, EAX);
+	GET(FakeHouseClass*, pHouse, EAX);
 	GET(BuildingClass*, pThis, ESI);
 
-	if (pThis == HouseExtContainer::Instance.Find(pHouse)->Factory_BuildingType)
-		HouseExtContainer::Instance.Find(pHouse)->Factory_BuildingType = nullptr;
+	auto pExt = pHouse->_GetExtData();
+
+	if (pThis == pExt->Factory_BuildingType)
+		pExt->Factory_BuildingType = nullptr;
 
 	return 0;
 }
 
 DEFINE_HOOK(0x444131, BuildingClass_KickOutUnit_InfantryType_Phobos, 0x6)
 {
-	GET(HouseClass*, pHouse, EAX);
+	GET(FakeHouseClass*, pHouse, EAX);
 	GET(BuildingClass*, pThis, ESI);
 
-	if (pThis == HouseExtContainer::Instance.Find(pHouse)->Factory_InfantryType)
-		HouseExtContainer::Instance.Find(pHouse)->Factory_InfantryType = nullptr;
+	auto pExt = pHouse->_GetExtData();
+
+	if (pThis == pExt->Factory_InfantryType)
+		pExt->Factory_InfantryType = nullptr;
 
 	return 0;
 }
@@ -789,4 +798,3 @@ DEFINE_HOOK(0x4FF210, HouseClass_AI_AircraftProduction, 6)
 	R->EAX(15);
 	return 0x4FF534;
 }
-#endif

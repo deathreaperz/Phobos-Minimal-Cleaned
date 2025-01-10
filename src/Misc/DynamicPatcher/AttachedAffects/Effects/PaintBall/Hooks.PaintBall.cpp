@@ -7,31 +7,36 @@
 #include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
 #include <Misc/PhobosGlobal.h>
 
+#include <AirstrikeClass.h>
+#include <InfantryClass.h>
+
 // Gets tint colors for invulnerability, airstrike laser target and berserk, depending on parameters.
 constexpr void InitializeColors()
 {
-	if (!PhobosGlobal::ColorDatas.Initialized)
+	auto g_instance = PhobosGlobal::Instance();
+
+	if (!g_instance->ColorDatas.Initialized)
 	{
-		PhobosGlobal::ColorDatas.Initialized = true;
-		PhobosGlobal::ColorDatas.Forceshield_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->ForceShieldColor);
-		PhobosGlobal::ColorDatas.IronCurtain_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->IronCurtainColor);
-		PhobosGlobal::ColorDatas.LaserTarget_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->LaserTargetColor);
-		PhobosGlobal::ColorDatas.Berserk_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->BerserkColor);
+		g_instance->ColorDatas.Initialized = true;
+		g_instance->ColorDatas.Forceshield_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->ForceShieldColor);
+		g_instance->ColorDatas.IronCurtain_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->IronCurtainColor);
+		g_instance->ColorDatas.LaserTarget_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->LaserTargetColor);
+		g_instance->ColorDatas.Berserk_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->BerserkColor);
 	}
 }
 
 int ApplyTintColor(TechnoClass* pThis, bool invulnerability, bool airstrike, bool berserk)
 {
 	int tintColor = 0;
-
+	auto g_instance = PhobosGlobal::Instance();
 	InitializeColors();
 
 	if (invulnerability && pThis->IsIronCurtained())
-		tintColor |= pThis->ProtectType == ProtectTypes::ForceShield ? PhobosGlobal::ColorDatas.Forceshield_Color : PhobosGlobal::ColorDatas.IronCurtain_Color;
+		tintColor |= pThis->ProtectType == ProtectTypes::ForceShield ? g_instance->ColorDatas.Forceshield_Color : g_instance->ColorDatas.IronCurtain_Color;
 	if (airstrike && pThis->Airstrike && pThis->Airstrike->Target == pThis)
-		tintColor |= PhobosGlobal::ColorDatas.LaserTarget_Color;
+		tintColor |= g_instance->ColorDatas.LaserTarget_Color;
 	if (berserk && pThis->Berzerk)
-		tintColor |= PhobosGlobal::ColorDatas.Berserk_Color;
+		tintColor |= g_instance->ColorDatas.Berserk_Color;
 
 	return tintColor;
 }
@@ -56,7 +61,7 @@ void ApplyCustomTint(TechnoClass* pThis, int* tintColor, int* intensity)
 
 	if (calculateIntensity)
 	{
-		BuildingClass* pBld = specific_cast<BuildingClass*>(pThis);
+		BuildingClass* pBld = cast_to<BuildingClass*, false>(pThis);
 
 		if (pBld)
 		{
@@ -104,13 +109,16 @@ void ApplyCustomTint(TechnoClass* pThis, int* tintColor, int* intensity)
 			*intensity += static_cast<int>(pTypeExt->Tint_Intensity * 1000);
 	}
 
-	if (pExt->AE_HasTint)
+	if (pExt->AE.HasTint)
 	{
 		for (auto const& attachEffect : pExt->PhobosAE)
 		{
-			auto const type = attachEffect.GetType();
+			if (!attachEffect)
+				continue;
 
-			if (!attachEffect.IsActive() || !type->HasTint())
+			auto const type = attachEffect->GetType();
+
+			if (!attachEffect->IsActive() || !type->HasTint())
 				continue;
 
 			if (!EnumFunctions::CanTargetHouse(type->Tint_VisibleToHouses, pThis->Owner, HouseClass::CurrentPlayer))
@@ -158,16 +166,27 @@ DEFINE_HOOK(0x706389, TechnoClass_DrawObject_TintColor, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x7067E4, TechnoClass_DrawVoxel_TintColor, 0x8)
+DEFINE_HOOK(0x706786, TechnoClass_DrawVoxel_TintColor, 0x5)
 {
+	enum { SkipTint = 0x7067E4 };
+
 	GET(TechnoClass*, pThis, EBP);
-	GET(int, intensity, EDI);
+
+	auto const rtti = pThis->WhatAmI();
+
+	// Vehicles already have had tint intensity as well as custom tints applied, no need to do it twice.
+	if (rtti == AbstractType::Unit)
+		return SkipTint;
+
+	GET(int, intensity, EAX);
 	REF_STACK(int, color, STACK_OFFSET(0x50, 0x24));
 
-	color |= ApplyTintColor(pThis, true, false, true);
-	ApplyCustomTint(pThis, &color, nullptr);
+	if (rtti == AbstractType::Aircraft)
+		color = ApplyTintColor(pThis, true, false, false);
 
-	R->EDI(intensity);
+	// Non-aircraft voxels do not need custom tint color applied again, discard that component for them.
+	ApplyCustomTint(pThis, rtti == AbstractType::Aircraft ? &color : nullptr, &intensity);
+	R->EAX(intensity);
 
 	return 0;
 }
@@ -302,22 +321,22 @@ DEFINE_HOOK(0x42350C, AnimClass_Draw_ForceShieldICColor, 0x7)
 
 DEFINE_HOOK(0x423420, AnimClass_Draw_ParentBuildingCheck, 0x6)
 {
-	GET(AnimClass*, pThis, ESI);
+	GET(FakeAnimClass*, pThis, ESI);
 	GET(BuildingClass*, pBuilding, EAX);
 
 	if (!pBuilding)
-		R->EAX(AnimExtContainer::Instance.Find(pThis)->ParentBuilding);
+		R->EAX(pThis->_GetExtData()->ParentBuilding);
 
 	return 0;
 }
 
 DEFINE_HOOK(0x4235D3, AnimClass_Draw_TintColor, 0x6)
 {
-	GET(AnimClass*, pThis, ESI);
+	GET(FakeAnimClass*, pThis, ESI);
 	GET(int, color, EBP);
 	REF_STACK(int, intensity, STACK_OFFSET(0x110, -0xD8));
 
-	auto const pBuilding = AnimExtContainer::Instance.Find(pThis)->ParentBuilding;
+	auto const pBuilding = pThis->_GetExtData()->ParentBuilding;
 
 	if (!pBuilding || !pBuilding->IsAlive || pBuilding->InLimbo)
 		return 0;

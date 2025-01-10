@@ -72,13 +72,13 @@ public:
 	CoordStruct MovingDestination;
 	RepeatableTimerStruct MissionTimer;
 	CDTimerClass TrailerTimer; //timer34
-	int MissionState;
-	DWORD unknown_44;
+	RocketMissionState MissionState;
 	double CurrentSpeed;
-	bool unknown_bool_4C;
-	bool SpawnerIsElite;
+	BYTE NeedToSubmit;
+	BYTE SpawnerIsElite;
+	BYTE Padding[2];
 	float CurrentPitch;
-	DWORD unknown_58;
-	DWORD unknown_5C;
+	double ApogeeDistance;
 };
-//static_assert(sizeof(RocketLocomotionClass) == 0x60);
+
+static_assert(sizeof(RocketLocomotionClass) == 0x60);

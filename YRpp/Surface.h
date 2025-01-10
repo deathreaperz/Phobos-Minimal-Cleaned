@@ -118,7 +118,7 @@ public:
 		PUSH_VAR32(this);
 		PUSH_VAR32(pText);
 		PUSH_PTR(tmp);
-		CALL(0x4A60E0);
+		ASM_CALL(0x4A60E0);
 
 		ADD_ESP(0x20);
 	}
@@ -332,24 +332,28 @@ static void __fastcall CC_Draw_Shape(Surface* Surface, ConvertClass* Palette, SH
 	JMP_STD(0x4AED70);
 }
 
+// this text drawing can accept vargs , so just put the thing here , dont need to do it twice
 static Point2D* Fancy_Text_Print_Wide(Point2D* RetVal, const wchar_t* Text, Surface* Surface, RectangleStruct* Bounds,
 	Point2D* Location, unsigned int ForeColor, unsigned int BackColor, TextPrintType Flag, ...)
 {
 	JMP_STD(0x4A60E0);
 }
 
+// this text drawing can accept vargs , so just put the thing here , dont need to do it twice
 static Point2D* Fancy_Text_Print_Wide_REF(Point2D* RetVal, const wchar_t* Text, Surface* Surface, RectangleStruct* Bounds,
 	Point2D* Location, COLORREF ForeColor, COLORREF BackColor, TextPrintType Flag, ...)
 {
 	JMP_STD(0x4A60E0);
 }
 
+// this text drawing can accept vargs , so just put the thing here , dont need to do it twice
 static Point2D* Fancy_Text_Print_Wide(const Point2D& retBuffer, const wchar_t* Text, Surface* Surface, const RectangleStruct& Bounds,
 	const Point2D& Location, ColorScheme* ForeScheme, ColorScheme* BackScheme, TextPrintType Flag, ...)
 {
 	JMP_STD(0x4A61C0);
 }
 
+// this text drawing can accept vargs , so just put the thing here , dont need to do it twice
 static Point2D* Fancy_Text_Print_Wide(Point2D* RetVal, const wchar_t* Text, Surface* Surface, RectangleStruct* Bounds,
 	Point2D* Location, ColorScheme* fore, unsigned int BackColor, TextPrintType Flag, ...)
 {

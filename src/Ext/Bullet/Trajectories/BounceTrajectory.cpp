@@ -12,7 +12,7 @@ namespace Utils
 		CoordStruct coords = nCoord;
 		auto payback = pFrom->Owner;
 
-		if (!generic_cast<TechnoClass*>(pFrom->Owner))
+		if (!flag_cast_to<TechnoClass*>(pFrom->Owner))
 		{
 			payback = nullptr;
 		}
@@ -56,7 +56,7 @@ bool BounceTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 	Valueable<int> nBounceAmount { 0 };
 	nBounceAmount.Read(exINI, pSection, "Trajectory.Bounce.Amount");
 
-	this->BounceAmount = abs(nBounceAmount.Get());
+	this->BounceAmount = Math::abs(nBounceAmount.Get());
 	this->BounceWeapon.Read(exINI, pSection, "Trajectory.Bounce.Weapon");
 	return true;
 }

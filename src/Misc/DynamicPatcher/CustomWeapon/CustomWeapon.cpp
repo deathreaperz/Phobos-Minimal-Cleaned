@@ -36,7 +36,7 @@ void CustomWeaponManager::Update(TechnoClass* pAttacker)
 					AbstractClass* pTarget = burst.Target;
 					WeaponTypeClass* pWeaponType = burst.WeaponType;
 
-					auto const pTargetTech = generic_cast<TechnoClass*>(pTarget);
+					auto const pTargetTech = flag_cast_to<TechnoClass*>(pTarget);
 
 					if (pWeaponType
 						&& pShooter && pShooter->IsAlive
@@ -167,12 +167,10 @@ TechnoClass* CustomWeaponManager::WhoIsShooter(TechnoClass* pAttacker) const
 
 void  CustomWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	auto iter_sibulateBursts = std::remove_if(this->simulateBurstQueue.begin(), this->simulateBurstQueue.end(), [ptr, bRemoved](const auto& queue)
+	this->simulateBurstQueue.remove_if([ptr, bRemoved](const auto& queue)
  {
 	 return (queue.Target == ptr || queue.Shooter == ptr) && bRemoved;
 	});
-
-	this->simulateBurstQueue.erase(iter_sibulateBursts, this->simulateBurstQueue.end());
 }
 
 void FireWeaponManager::Clear()
@@ -204,12 +202,10 @@ bool FireWeaponManager::FireCustomWeapon(TechnoClass* pShooter, TechnoClass* pAt
 
 void FireWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	auto iter_delayfires = std::remove_if(this->DelayFires.begin(), this->DelayFires.end(), [ptr, bRemoved](const auto& queue)
+	this->DelayFires.remove_if([ptr, bRemoved](const auto& queue)
  {
 	 return queue.Target == ptr && bRemoved;
 	});
-
-	this->DelayFires.erase(iter_delayfires, this->DelayFires.end());
 
 	CWeaponManager.InvalidatePointer(ptr, bRemoved);
 }

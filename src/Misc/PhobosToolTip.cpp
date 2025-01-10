@@ -19,8 +19,8 @@
 #include <CCToolTip.h>
 #include <BitFont.h>
 #include <BitText.h>
-#include <Phobos.h>
 #include <FPSCounter.h>
+#include <SidebarClass.h>
 
 #include <sstream>
 #include <iomanip>
@@ -29,25 +29,25 @@
 #include <Ext/SWType/Body.h>
 #include <Misc/PhobosGlobal.h>
 
+#include <New/SuperWeaponSidebar/SWSidebarClass.h>
+#include <New/SuperWeaponSidebar/SWButtonClass.h>
+
+#include <YRMath.h>
+
 PhobosToolTip PhobosToolTip::Instance;
 
 inline const wchar_t* GetUIDescription(TechnoTypeExtData* pData)
 {
 	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription->empty()
-		? pData->UIDescription.Get().Text
+		? pData->UIDescription->Text
 		: nullptr;
 }
 
 inline const wchar_t* GetUIDescription(SWTypeExtData* pData)
 {
 	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription->empty()
-		? pData->UIDescription.Get().Text
+		? pData->UIDescription->Text
 		: nullptr;
-}
-
-inline bool PhobosToolTip::IsEnabled() const
-{
-	return Phobos::UI::ExtendedToolTips;
 }
 
 inline int PhobosToolTip::GetBuildTime(TechnoTypeClass* pType) const
@@ -89,21 +89,21 @@ inline int PhobosToolTip::GetBuildTime(TechnoTypeClass* pType) const
 
 inline int PhobosToolTip::GetPower(TechnoTypeClass* pType) const
 {
-	if (const auto pBldType = specific_cast<BuildingTypeClass*>(pType))
+	if (const auto pBldType = type_cast<BuildingTypeClass*>(pType))
 		return pBldType->PowerBonus - pBldType->PowerDrain;
 
 	return 0;
 }
 
-void PhobosToolTip::HelpText(const BuildType& cameo)
+void PhobosToolTip::HelpText(const BuildType* cameo)
 {
-	if (cameo.ItemType == AbstractType::Special)
+	if (cameo->ItemType == AbstractType::Special)
 	{
-		this->HelpText(HouseClass::CurrentPlayer->Supers.Items[cameo.ItemIndex]);
+		this->HelpText(HouseClass::CurrentPlayer->Supers.Items[cameo->ItemIndex]);
 	}
 	else
 	{
-		this->HelpText(ObjectTypeClass::FetchTechnoType(cameo.ItemType, cameo.ItemIndex));
+		this->HelpText(ObjectTypeClass::FetchTechnoType(cameo->ItemType, cameo->ItemIndex));
 	}
 }
 
@@ -151,7 +151,7 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 	std::wostringstream oss;
 	oss << pType->UIName << L"\n"
 		<< (cost < 0 ? L"+" : L"")
-		<< Phobos::UI::CostLabel << std::abs(cost) << L" "
+		<< Phobos::UI::CostLabel << Math::abs(cost) << L" "
 		<< Phobos::UI::TimeLabel
 		// << std::setw(2) << std::setfill(L'0') << nHour << L":"
 		<< std::setw(2) << std::setfill(L'0') << nMin << L":"
@@ -194,9 +194,9 @@ void PhobosToolTip::HelpText(SuperClass* pSuper)
 
 	std::wostringstream oss;
 	oss << pSuper->Type->UIName;
-	bool showCost = false;
+	bool showSth = false;
 
-	if (const int nCost = std::abs(pData->Money_Amount))
+	if (const int nCost = Math::abs(pData->Money_Amount.Get()))
 	{
 		oss << L"\n";
 
@@ -204,24 +204,39 @@ void PhobosToolTip::HelpText(SuperClass* pSuper)
 			oss << '+';
 
 		oss << Phobos::UI::CostLabel << nCost;
-		showCost = true;
+		showSth = true;
 	}
 
 	const int rechargeTime = TickTimeToSeconds(pSuper->GetRechargeTime());
 
 	if (rechargeTime > 0)
 	{
-		if (!showCost)
+		if (!showSth)
 			oss << L"\n";
 
 		const int nSec = rechargeTime % 60;
 		const int nMin = rechargeTime / 60 /* % 60*/;
 		// int nHour = TickTimeToSeconds(pType->RechargeTime) / 60 / 60;
 
-		oss << (showCost ? L" " : L"") << Phobos::UI::TimeLabel
+		oss << (showSth ? L" " : L"") << Phobos::UI::TimeLabel
 			// << std::setw(2) << std::setfill(L'0') << nHour << L":"
 			<< std::setw(2) << std::setfill(L'0') << nMin << L":"
 			<< std::setw(2) << std::setfill(L'0') << nSec;
+
+		showSth = true;
+	}
+
+	auto const& sw_ext = HouseExtContainer::Instance.Find(pSuper->Owner)->GetShotCount(pSuper->Type);
+	int sw_shots = pData->SW_Shots;
+	int remain_shots = pData->SW_Shots - sw_ext.Count;
+	if (sw_shots > 0)
+	{
+		if (!showSth)
+			oss << L"\n";
+
+		wchar_t buffer[64];
+		swprintf_s(buffer, Phobos::UI::SWShotsFormat, remain_shots, sw_shots);
+		oss << (showSth ? L" " : L"") << buffer;
 	}
 
 	if (pData->SW_Power.isset())
@@ -230,7 +245,7 @@ void PhobosToolTip::HelpText(SuperClass* pSuper)
 
 		if (nPower != 0)
 		{
-			oss << L" " << Phobos::UI::PowerLabel;
+			oss << (L" ") << Phobos::UI::PowerLabel;
 			if (nPower > 0)
 				oss << L"+";
 
@@ -244,28 +259,65 @@ void PhobosToolTip::HelpText(SuperClass* pSuper)
 	this->TextBuffer = oss.str();
 }
 
-#ifndef aaa
-
 // Hooks
-DEFINE_HOOK(0x6A9316, SidebarClass_StripClass_HelpText, 0x6)
+DEFINE_HOOK(0x4AE51E, DisplayClass_GetToolTip_TacticalButton, 0x6)
 {
-	PhobosToolTip::Instance.IsCameo = true;
+	if (SWSidebarClass::IsEnabled())
+	{
+		if (auto button = SWSidebarClass::Global()->CurrentButton)
+		{
+			const auto pSuper = HouseClass::CurrentPlayer->Supers[button->SuperIndex];
 
-	if (!PhobosToolTip::Instance.IsEnabled())
-		return 0;
+			if (PhobosToolTip::Instance.IsEnabled())
+			{
+				PhobosToolTip::Instance.HelpText(pSuper);
+				R->EAX(PhobosToolTip::Instance.GetBuffer());
+			}
+			else
+			{
+				R->EAX(pSuper->Type->UIName);
+			}
 
-	GET(StripClass*, pThis, EAX);
-	PhobosToolTip::Instance.HelpText(pThis->Cameos[0]); // pStrip->Cameos[nID] in fact
-	R->EAX(L"X");
-	return 0x6A93DE;
+			return 0x4AE69D;
+		}
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x72426F, ToolTipManager_ProcessMessage_TacticalButton, 0x5)
+{
+	if (SWSidebarClass::IsEnabled() && SWSidebarClass::Global()->CurrentButton)
+		R->EDX(0);
+
+	return 0;
+}
+
+DEFINE_HOOK(0x72428C, ToolTipManager_ProcessMessage_TacticalButton2, 0x5)
+{
+	return SWSidebarClass::IsEnabled() && SWSidebarClass::Global()->CurrentButton ? 0x724297 : 0;
+}
+
+DEFINE_HOOK(0x724B2E, ToolTipManager_SetX_TacticalButtons, 0x6)
+{
+	if (SWSidebarClass::IsEnabled())
+	{
+		if (const auto button = SWSidebarClass::Global()->CurrentButton)
+		{
+			R->EDX(button->Rect.X + button->Rect.Width);
+			R->EAX(button->Rect.Y + 27);
+		}
+	}
+
+	return 0;
 }
 
 // TODO: reimplement CCToolTip::Draw2 completely
-
 DEFINE_HOOK(0x478EE1, CCToolTip_Draw2_SetBuffer, 0x6)
 {
 	if (PhobosToolTip::Instance.IsEnabled() && PhobosToolTip::Instance.IsCameo)
 		R->EDI(PhobosToolTip::Instance.GetBuffer());
+
 	return 0;
 }
 
@@ -427,64 +479,46 @@ void NAKED _CCToolTip_Draw2_FillRect_RET()
 
 DEFINE_HOOK(0x478FDC, CCToolTip_Draw2_FillRect, 0x5)
 {
-	if (PhobosToolTip::Instance.IsCameo)
+	GET(SurfaceExt*, pThis, ESI);
+	//GET(int, color, EDI);
+	LEA_STACK(RectangleStruct*, pRect, STACK_OFFS(0x44, 0x10));
+
+	if (PhobosToolTip::Instance.IsCameo &&
+		Phobos::UI::AnchoredToolTips &&
+		PhobosToolTip::Instance.IsEnabled() &&
+		Phobos::Config::ToolTipDescriptions
+	)
 	{
-		GET(SurfaceExt*, pThis, ESI);
-		//GET(int, color, EDI);
-		LEA_STACK(RectangleStruct*, pRect, STACK_OFFS(0x44, 0x10));
+		LEA_STACK(LTRBStruct*, a2, STACK_OFFSET(0x44, -0x20));
+		const auto x = DSurface::SidebarBounds->X - pRect->Width - 2;
 
-		if (Phobos::UI::AnchoredToolTips &&
-			PhobosToolTip::Instance.IsEnabled() &&
-			Phobos::Config::ToolTipDescriptions
-		)
+		pRect->X = x;
+		a2->Left = x;
+		pRect->Y -= 40;
+		a2->Top -= 40;
+	}
+
+	// Should we make some SideExt items as static to improve the effeciency?
+	// Though it might not be a big improvement... - secsome
+	const int nPlayerSideIndex = ScenarioClass::Instance->PlayerSideIndex;
+	if (const auto pSide = SideClass::Array->GetItemOrDefault(nPlayerSideIndex))
+	{
+		if (const auto pData = SideExtContainer::Instance.Find(pSide))
 		{
-			LEA_STACK(LTRBStruct*, a2, STACK_OFFSET(0x44, -0x20));
-			const auto x = DSurface::SidebarBounds->X - pRect->Width - 2;
-
-			pRect->X = x;
-			a2->Left = x;
-			pRect->Y -= 40;
-			a2->Top -= 40;
-		}
-
-		// Should we make some SideExt items as static to improve the effeciency?
-		// Though it might not be a big improvement... - secsome
-		const int nPlayerSideIndex = ScenarioClass::Instance->PlayerSideIndex;
-		if (const auto pSide = SideClass::Array->GetItemOrDefault(nPlayerSideIndex))
-		{
-			if (const auto pData = SideExtContainer::Instance.Find(pSide))
-			{
+			if (PhobosToolTip::Instance.IsCameo)
 				SidebarClass::Instance->SidebarBackgroundNeedsRedraw = true;
 
-				pThis->Fill_Rect_Trans(pRect
-					, pData->ToolTip_Background_Color.GetEx(RulesExtData::Instance()->ToolTip_Background_Color)
-					, pData->ToolTip_Background_Opacity.Get(RulesExtData::Instance()->ToolTip_Background_Opacity)
-				);
-				//ColorStruct colorEdi = Drawing::Int_To_RGB(color);
-				//int color_int = Drawing::RGB_To_Int(CCToolTip::ToolTipTextColor());
+			pThis->Fill_Rect_Trans(pRect
+				, pData->ToolTip_Background_Color.GetEx(RulesExtData::Instance()->ToolTip_Background_Color)
+				, pData->ToolTip_Background_Opacity.Get(RulesExtData::Instance()->ToolTip_Background_Opacity)
+			);
 
-				//Debug::Log(__FUNCTION__" Caller [%x] idx [%d - %s] resultafter[%d][%d %d %d]  EDI[%d][%d %d %d]\n",
-				//	R->Stack<DWORD>(0x0),
-				//	nPlayerSideIndex,
-				//	pSide->ID,
-				//	color_int,
-				//	CCToolTip::ToolTipTextColor->R,
-				//	CCToolTip::ToolTipTextColor->G,
-				//	CCToolTip::ToolTipTextColor->B,
-				//	color,
-				//	colorEdi.R,
-				//	colorEdi.G,
-				//	colorEdi.B
-				//);
+			if (Phobos::Config::ToolTipBlur)
+				pThis->BlurRect(*pRect, pData->ToolTip_Background_BlurSize.Get(RulesExtData::Instance()->ToolTip_Background_BlurSize));
 
-				//if (Phobos::Config::ToolTipBlur)
-				//	pThis->BlurRect(*pRect, pData->ToolTip_Background_BlurSize.Get(RulesExtData::Instance()->ToolTip_Background_BlurSize));
-
-				return (int)_CCToolTip_Draw2_FillRect_RET;
-			}
+			return (int)_CCToolTip_Draw2_FillRect_RET;
 		}
 	}
 
 	return 0;
 }
-#endif

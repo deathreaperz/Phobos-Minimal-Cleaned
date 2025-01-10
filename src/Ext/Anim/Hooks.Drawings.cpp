@@ -15,11 +15,11 @@
 
 DEFINE_HOOK(0x4236F0, AnimClass_DrawIt_Tiled_Palette, 0x6)
 {
-	GET(AnimClass* const, pThis, ESI);
+	GET(FakeAnimClass* const, pThis, ESI);
 
-	if (auto pCustom = AnimTypeExtContainer::Instance.Find(pThis->Type)->Palette)
+	if (auto pCustom = pThis->_GetTypeExtData()->Palette)
 	{
-		R->EDX(pCustom->GetConvert<PaletteManager::Mode::Temperate>());
+		R->EDX(pCustom->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(FileSystem::ANIM_PAL()));
 		return 0x4236F6;
 	}
 
@@ -316,13 +316,13 @@ DEFINE_HOOK(0x423061, AnimClass_Draw_Visibility, 0x6)
 {
 	enum { SkipDrawing = 0x4238A3 };
 
-	GET(AnimClass* const, pThis, ESI);
+	GET(FakeAnimClass* const, pThis, ESI);
 
-	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
+	auto const pTypeExt = pThis->_GetTypeExtData();
 
 	if (!HouseClass::IsCurrentPlayerObserver())
 	{
-		const auto pTechno = generic_cast<TechnoClass*>(pThis->OwnerObject);
+		const auto pTechno = flag_cast_to<TechnoClass*, true>(pThis->OwnerObject);
 		HouseClass* const pCurrentHouse = HouseClass::CurrentPlayer;
 
 		if (pTypeExt->RestrictVisibilityIfCloaked
@@ -341,7 +341,7 @@ DEFINE_HOOK(0x423061, AnimClass_Draw_Visibility, 0x6)
 
 			if (pTypeExt->VisibleTo_ConsiderInvokerAsOwner)
 			{
-				auto const pExt = AnimExtContainer::Instance.Find(pThis);
+				auto const pExt = ((FakeAnimClass*)pThis)->_GetExtData();
 
 				if (pExt->Invoker)
 					pOwner = pExt->Invoker->Owner;
@@ -383,20 +383,21 @@ DEFINE_HOOK(0x42308D, AnimClass_DrawIt_Transparency, 0x6)
 {
 	enum { SkipGameCode = 0x4230FE, ReturnFromFunction = 0x4238A3 };
 
-	GET(AnimClass*, pThis, ESI);
+	GET(FakeAnimClass*, pThis, ESI);
 	GET(BlitterFlags, flags, EBX);
 
 	auto const pType = pThis->Type;
 	int translucencyLevel = pThis->TranslucencyLevel; // Used by building animations when building needs to be drawn partially transparent.
 
+	auto const pTypeExt = pThis->_GetTypeExtData();
+
 	if (!pType->Translucent)
 	{
 		auto translucency = pThis->Type->Translucency;
-		auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pType);
 
 		if (pTypeExt->Translucency_Cloaked.isset())
 		{
-			if (auto const pTechno = generic_cast<TechnoClass*>(pThis->OwnerObject))
+			if (auto const pTechno = flag_cast_to<TechnoClass*, true>(pThis->OwnerObject))
 			{
 				if (pTechno->IsInCloakState())
 					translucency = pTypeExt->Translucency_Cloaked.Get();
@@ -431,24 +432,21 @@ DEFINE_HOOK(0x42308D, AnimClass_DrawIt_Transparency, 0x6)
 		if (translucencyLevel >= 15)
 			return ReturnFromFunction;
 
-		auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pType);
 		int currentFrame = pThis->Animation.Value;
 		int frames = pType->End;
-
-		if ((pTypeExt->Translucent_Stage3_Frame.isset() && currentFrame >= pTypeExt->Translucent_Stage3_Frame)
-			|| (!pTypeExt->Translucent_Stage3_Frame.isset() && currentFrame >= frames * pTypeExt->Translucent_Stage3_Percent))
+		if (pTypeExt->Translucent_Keyframes.KeyframeData.size() > 0)
 		{
-			flags |= pTypeExt->Translucent_Stage3_Translucency.Get();
+			flags |= pTypeExt->Translucent_Keyframes.Get(static_cast<double>(currentFrame) / frames);
 		}
-		else if ((pTypeExt->Translucent_Stage2_Frame.isset() && currentFrame >= pTypeExt->Translucent_Stage2_Frame)
-			|| (!pTypeExt->Translucent_Stage2_Frame.isset() && currentFrame >= frames * pTypeExt->Translucent_Stage2_Percent))
+		else
 		{
-			flags |= pTypeExt->Translucent_Stage2_Translucency.Get();
-		}
-		else if ((pTypeExt->Translucent_Stage1_Frame.isset() && currentFrame >= pTypeExt->Translucent_Stage1_Frame)
-			|| (!pTypeExt->Translucent_Stage1_Frame.isset() && currentFrame >= frames * pTypeExt->Translucent_Stage1_Percent))
-		{
-			flags |= pTypeExt->Translucent_Stage1_Translucency.Get();
+			// No keyframes -> default behaviour.
+			if (currentFrame > frames * 0.6)
+				flags |= BlitterFlags::TransLucent75;
+			else if (currentFrame > frames * 0.4)
+				flags |= BlitterFlags::TransLucent50;
+			else if (currentFrame > frames * 0.2)
+				flags |= BlitterFlags::TransLucent25;
 		}
 	}
 
@@ -456,25 +454,21 @@ DEFINE_HOOK(0x42308D, AnimClass_DrawIt_Transparency, 0x6)
 	return SkipGameCode;
 }
 
-DEFINE_HOOK(0x425174, AnimClass_Detach_Cloak, 0x6)
+DEFINE_HOOK(0x4255B6, AnimClass_Remove_DetachOnCloak, 0x6)
 {
-	enum { SkipDetaching = 0x4251A3 };
-
 	GET(AnimClass*, pThis, ESI);
 	GET(AbstractClass*, pTarget, EDI);
 
 	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 
-	if (!pTypeExt->DetachOnCloak)
+	if (pTypeExt && !pTypeExt->DetachOnCloak)
 	{
-		if (auto const pTechno = generic_cast<TechnoClass*>(pTarget))
+		if (auto const pTechno = flag_cast_to<TechnoClass*>(pTarget))
 		{
-			auto const pTechnoExt = TechnoExtContainer::Instance.Find(pTechno);
-
-			if (pTechnoExt->IsAboutToStartCloaking || pTechno->IsInCloakState())
-				return SkipDetaching;
+			if (TechnoExtContainer::Instance.Find(pTechno)->IsDetachingForCloak)
+				return 0x4251A3;
 		}
 	}
 
-	return 0;
+	return 0x0;
 }

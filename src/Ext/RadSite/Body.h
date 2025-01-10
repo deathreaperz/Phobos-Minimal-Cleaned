@@ -25,26 +25,7 @@ public:
 	bool NoOwner { true };
 	int CreationFrame { 0 };
 
-	RadSiteExtData() noexcept = default;
-	~RadSiteExtData() noexcept = default;
-
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-
-	static bool InvalidateIgnorable(AbstractClass* ptr)
-	{
-		switch (VTable::Get(ptr))
-		{
-		case BuildingClass::vtable:
-		case AircraftClass::vtable:
-		case UnitClass::vtable:
-		case InfantryClass::vtable:
-		case HouseClass::vtable:
-			return false;
-		}
-
-		return true;
-	}
-
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -62,12 +43,6 @@ public:
 	const DamagingState ApplyRadiationDamage(TechnoClass* pTarget, int damage, int distance);
 
 	static void CreateInstance(CoordStruct const& nCoord, int spread, int amount, WeaponTypeExtData* pWeaponExt, TechnoClass* const pTech);
-	static CoordStruct __fastcall GetAltCoords_Wrapper(RadSiteClass* pThis, void* _)
-	{
-		auto const pCell = MapClass::Instance->GetCellAt(pThis->BaseCell);
-		return pCell->GetCoordsWithBridge();
-	}
-
 	constexpr FORCEINLINE static size_t size_Of()
 	{
 		return sizeof(RadSiteExtData) -
@@ -84,5 +59,26 @@ class RadSiteExtContainer final : public Container<RadSiteExtData>
 public:
 	static RadSiteExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(RadSiteExtContainer, RadSiteExtData, "RadSiteClass");
+	//CONSTEXPR_NOCOPY_CLASSB(RadSiteExtContainer, RadSiteExtData, "RadSiteClass");
 };
+
+class FakeRadSiteClass : public RadSiteClass
+{
+public:
+	void _Detach(AbstractClass* target, bool all);
+	HouseClass* _GetOwningHouse();
+	CoordStruct __GetAltCoords()
+	{
+		auto const pCell = MapClass::Instance->GetCellAt(this->BaseCell);
+		return pCell->GetCoordsWithBridge();
+	}
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	RadSiteExtData* _GetExtData()
+	{
+		return *reinterpret_cast<RadSiteExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeRadSiteClass) == sizeof(RadSiteClass), "Invalid Size !");

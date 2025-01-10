@@ -1,10 +1,8 @@
 #pragma once
 
-#include <Utilities/Enumerable.h>
-#include <Utilities/Template.h>
-#include <Utilities/GeneralUtils.h>
 #include <Ext/Rules/Body.h>
-#include <Utilities/TemplateDef.h>
+
+#include <Utilities/Enumerable.h>
 
 #include <New/Type/CursorTypeClass.h>
 
@@ -69,22 +67,71 @@ public:
 	Nullable<ColorStruct> Tint_Color;
 	Valueable<double> Tint_Intensity;
 	Valueable<AffectedHouse> Tint_VisibleToHouses;
+
+	ValueableVector<TechnoTypeClass*> InheritArmor_Allowed;
+	ValueableVector<TechnoTypeClass*> InheritArmor_Disallowed;
+	Valueable<bool> InheritArmorFromTechno;
 public:
 
-	ShieldTypeClass::ShieldTypeClass(const char* const pTitle);
-	virtual ~ShieldTypeClass() override = default;
-	//{
-	//	if(Pips_Background_SHP.Get(nullptr)) {
-	//		GameDelete(Pips_Background_SHP.Get());
-	//		Pips_Background_SHP.Reset();
-	//	}
-	//};
+	ShieldTypeClass(const char* const pTitle) : Enumerable<ShieldTypeClass> { pTitle }
+		, Strength { 0 }
+		, InitialStrength {}
+		, ConditionYellow {}
+		, ConditionRed {}
+		, Armor { Armor::None }
+		, Powered { false }
+		, Respawn { 0.0 }
+		, Respawn_Rate { 0 }
+		, SelfHealing { 0.0 }
+		, SelfHealing_Rate { 0 }
+		, SelfHealing_RestartInCombat { true }
+		, SelfHealing_RestartInCombatDelay { 0 }
+		, SelfHealing_EnabledBy {}
+		, AbsorbOverDamage { false }
+		, BracketDelta { 0 }
+		, IdleAnim_OfflineAction { AttachedAnimFlag::Hides }
+		, IdleAnim_TemporalAction { AttachedAnimFlag::Hides }
+		, IdleAnim {}
+		, IdleAnimDamaged {}
+		, BreakAnim {}
+		, HitAnim {}
+		, BreakWeapon {}
+		, AbsorbPercent { 1.0 }
+		, PassPercent { 0.0 }
+		, ReceivedDamage_Minimum { INT32_MIN }
+		, ReceivedDamage_Maximum { INT32_MAX }
+		, AllowTransfer {}
+		, Pips { { -1,-1,-1 } }
+		, Pips_Background_SHP {}
+		, Pips_Building { { -1,-1,-1 } }
+		, Pips_Building_Empty {}
+		, Pips_HideIfNoStrength { false }
+		, ImmuneToPsychedelic { false }
+		, ThreadPosed { }
+		, ImmuneToCrit { false }
+		, BreakWeapon_TargetSelf { true }
+		, PassthruNegativeDamage { false }
+		, CanBeHealed { false }
+		, HealCursorType { }
+		, HitFlash { false }
+		, HitFlash_FixedSize {}
+		, HitFlash_Red { true }
+		, HitFlash_Green { true }
+		, HitFlash_Blue { true }
+		, HitFlash_Black { false }
+		, Tint_Color {}
+		, Tint_Intensity { 0.0 }
+		, Tint_VisibleToHouses { AffectedHouse::All }
+		, InheritArmor_Allowed {}
+		, InheritArmor_Disallowed {}
+		, InheritArmorFromTechno {}
+	{};
 
-	virtual void LoadFromINI(CCINIClass* pINI) override;
-	virtual void LoadFromStream(PhobosStreamReader& Stm);
-	virtual void SaveToStream(PhobosStreamWriter& Stm);
+	void LoadFromINI(CCINIClass* pINI);
+	void LoadFromStream(PhobosStreamReader& Stm);
+	void SaveToStream(PhobosStreamWriter& Stm);
 
-	static constexpr void AddDefaults()
+	static void constexpr inline AddDefaults()
 	{
 		FindOrAllocate(DEFAULT_STR2);
 	}

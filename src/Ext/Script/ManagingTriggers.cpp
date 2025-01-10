@@ -4,6 +4,8 @@
 #include <Ext/Rules/Body.h>
 #include <Ext/House/Body.h>
 
+#include <AITriggerTypeClass.h>
+
 void ScriptExtData::ManageTriggersFromList(TeamClass* pTeam, int idxAITriggerType = -1, bool isEnabled = false)
 {
 	auto pScript = pTeam->CurrentScript;
@@ -130,6 +132,8 @@ void ScriptExtData::ManageAITriggers(TeamClass* pTeam, int enabled = -1)
 	pTeam->StepCompleted = true;
 }
 
+#include <ExtraHeaders/StackVector.h>
+
 void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetType = -1, bool isEnabled = false)
 {
 	auto pScript = pTeam->CurrentScript;
@@ -162,7 +166,7 @@ void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetT
 
 	for (auto pTrigger : *AITriggerTypeClass::Array)
 	{
-		std::vector<TechnoTypeClass*> entriesList;
+		StackVector<TechnoTypeClass*, 4096> entriesList;
 
 		if (pTrigger->Team1)
 		{
@@ -170,7 +174,7 @@ void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetT
 			{
 				if (entry.Amount > 0)
 				{
-					entriesList.push_back(entry.Type);
+					entriesList->push_back(entry.Type);
 				}
 			}
 		}
@@ -181,23 +185,19 @@ void ScriptExtData::ManageTriggersWithObjects(TeamClass* pTeam, int idxAITargetT
 			{
 				if (entry.Amount > 0)
 				{
-					entriesList.push_back(entry.Type);
+					entriesList->push_back(entry.Type);
 				}
 			}
 		}
 
-		if (!entriesList.empty())
+		for (auto& entry : entriesList.container())
 		{
-			for (auto entry : entriesList)
+			for (auto const& target_ : targetList_inside)
 			{
-				for (auto const& target_ : targetList_inside)
+				if (target_ == entry)
 				{
-					if (target_ == entry)
-					{
-						//if (TeamExtData::GroupAllowed(entry, target_)) {
-						pTrigger->IsEnabled = isEnabled;
-						break;
-					}
+					pTrigger->IsEnabled = isEnabled;
+					break;
 				}
 			}
 		}

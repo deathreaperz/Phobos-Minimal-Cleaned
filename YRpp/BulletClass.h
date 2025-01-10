@@ -47,7 +47,8 @@ public:
 	virtual HRESULT __stdcall GetClassID(CLSID* pClassID) override R0;
 
 	//IPersistStream
-	virtual HRESULT __stdcall Save(IStream* pStm, BOOL fClearDirty) override R0;
+	virtual HRESULT __stdcall Load(IStream* pStm) override JMP_STD(0x46AE70);
+	virtual HRESULT __stdcall Save(IStream* pStm, BOOL fClearDirty) override JMP_STD(0x46AFB0);
 
 	//Destructor
 	virtual ~BulletClass() RX;
@@ -165,8 +166,10 @@ public:
 	DWORD unknown_E4;
 	DECLARE_PROPERTY(VelocityClass ,Velocity);
 	DWORD unknown_100;
-	bool __CourseLocked;
-	int __CourseLockedDuration;
+	bool unknown_104;
+	bool CourseLock;
+	BYTE padding[2];
+	int CourseLockCounter;
 	AbstractClass* Target;
 	int Speed;
 	int InheritedColor;
@@ -185,3 +188,4 @@ public:
 	bool SpawnNextAnim;
 	int Range;
 };
+static_assert(sizeof(BulletClass) == 0x160, "Invalid size.");

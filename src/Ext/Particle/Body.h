@@ -23,9 +23,6 @@ public:
 	std::vector<LaserTrailClass> LaserTrails { };
 	std::vector<UniversalTrail> Trails { };
 
-	ParticleExtData() noexcept = default;
-	~ParticleExtData() noexcept = default;
-
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -45,7 +42,7 @@ private:
 class ParticleExtContainer final : public Container<ParticleExtData>
 {
 public:
-	static std::vector<ParticleExtData*> Pool;
+	inline static std::vector<ParticleExtData*> Pool;
 	static ParticleExtContainer Instance;
 
 	ParticleExtData* AllocateUnchecked(ParticleClass* key)
@@ -56,15 +53,15 @@ public:
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-			val->ParticleExtData::ParticleExtData();
 		}
 		else
 		{
-			val = new ParticleExtData();
+			val = DLLAllocWithoutCTOR<ParticleExtData>();
 		}
 
 		if (val)
 		{
+			val->ParticleExtData::ParticleExtData();
 			val->AttachedToObject = key;
 			return val;
 		}
@@ -112,5 +109,31 @@ public:
 		}
 	}
 
-	CONSTEXPR_NOCOPY_CLASSB(ParticleExtContainer, ParticleExtData, "ParticleClass");
+	//CONSTEXPR_NOCOPY_CLASSB(ParticleExtContainer, ParticleExtData, "ParticleClass");
 };
+
+class ParticleTypeExtData;
+class FakeParticleClass : public ParticleClass
+{
+public:
+	void _Detach(AbstractClass* target, bool all);
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	FORCEINLINE ParticleClass* _AsParticle() const
+	{
+		return (ParticleClass*)this;
+	}
+
+	FORCEINLINE ParticleExtData* _GetExtData()
+	{
+		return *reinterpret_cast<ParticleExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+
+	FORCEINLINE ParticleTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<ParticleTypeExtData**>(((DWORD)this->Type) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeParticleClass) == sizeof(ParticleClass), "Invalid Size !");

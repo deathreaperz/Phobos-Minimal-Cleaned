@@ -2,6 +2,7 @@
 
 #include <Utilities/Enumerable.h>
 #include <Utilities/GameUniquePointers.h>
+#include <Utilities/Handle.h>
 
 class PaletteManager final : public Enumerable<PaletteManager>
 {
@@ -13,47 +14,22 @@ public:
 	};
 
 	FixedString<32> CachedName;
-	Handle<ConvertClass*, UninitConvert> Convert_Temperate;
-	Handle<ConvertClass*, UninitConvert> Convert;
+	ConvertClass* Convert_Temperate;
+	ConvertClass* Convert;
 	UniqueGamePtr<BytePalette> Palette;
 	DynamicVectorClass<ColorScheme*>* ColorschemeDataVector;
 
 	PaletteManager(const char* const pTitle);
-	virtual ~PaletteManager() override
-	{
-		if (!Phobos::Otamaa::ExeTerminated)
-		{
-			if (auto pVec = std::exchange(this->ColorschemeDataVector, nullptr))
-			{
-				for (int i = 0; i < pVec->Count; ++i)
-				{
-					if (auto pScheme = std::exchange(pVec->Items[i], nullptr))
-					{
-						GameDelete<true, false>(pScheme);
-					}
-				}
 
-				GameDelete(pVec);
-			}
-		}
-		else
-		{
-			this->Convert_Temperate.SetDestroyCondition(false);
-			this->Convert.SetDestroyCondition(false);
-			this->Palette.release();
-			std::exchange(this->ColorschemeDataVector, nullptr);
-		}
-	}
-
-	virtual void LoadFromStream(PhobosStreamReader& Stm);
-	virtual void SaveToStream(PhobosStreamWriter& Stm);
+	void LoadFromStream(PhobosStreamReader& Stm);
+	void SaveToStream(PhobosStreamWriter& Stm);
 
 public:
 
 	template<PaletteManager::Mode nMode>
 	constexpr ConvertClass* GetConvert() const
 	{
-		return nMode == Mode::Default ? Convert.get() : Convert_Temperate.get();
+		return nMode == Mode::Default ? Convert : Convert_Temperate;
 	}
 
 	template<PaletteManager::Mode nMode>

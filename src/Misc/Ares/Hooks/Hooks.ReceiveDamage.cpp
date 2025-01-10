@@ -25,6 +25,8 @@
 
 #include "Header.h"
 
+#include <InfantryClass.h>
+
 //DEFINE_HOOK(0x489280, Dmage_Area_Caller, 0x6)
 //{
 //	GET_STACK(DWORD, caller, 0x0);
@@ -130,73 +132,110 @@ DEFINE_HOOK(0x701A3B, TechnoClass_ReceiveDamage_Flash, 0xA)
 	return ContinueChecks;
 }
 
-DEFINE_HOOK(0x489968, Explosion_Damage_PenetratesIronCurtain, 0x5)
-{
-	enum { BypassInvulnerability = 0x48996D };
+// DEFINE_HOOK(0x489968, Explosion_Damage_PenetratesIronCurtain, 0x5)
+// {
+// 	enum { BypassInvulnerability = 0x48996D };
+//
+// 	GET_BASE(WarheadTypeClass*, pWarhead, 0xC);
+//
+// 	if (WarheadTypeExtContainer::Instance.Find(pWarhead)->PenetratesIronCurtain)
+// 		return BypassInvulnerability;
+//
+// 	return 0;
+// }
 
-	GET_BASE(WarheadTypeClass*, pWarhead, 0xC);
-
-	if (WarheadTypeExtContainer::Instance.Find(pWarhead)->PenetratesIronCurtain)
-		return BypassInvulnerability;
-
-	return 0;
-}
-
-DEFINE_HOOK(0x7021F5, TechnoClass_ReceiveDamage_OverrideDieSound, 0x6)
-{
-	GET_STACK(WarheadTypeClass*, pWh, 0xD0);
-	GET(TechnoClass*, pThis, ESI);
-
-	auto const& nSound = WarheadTypeExtContainer::Instance.Find(pWh)->DieSound_Override;
-
-	if (nSound.isset())
-	{
-		VocClass::PlayIndexAtPos(nSound, pThis->Location);
-		return 0x702200;
-	}
-
-	return 0x0;
-}
-
-DEFINE_HOOK(0x702185, TechnoClass_ReceiveDamage_OverrideVoiceDie, 0x6)
+DEFINE_HOOK(0x702117, TechnoClass_ReceiveDamage_OverrideSounds, 0xA)
 {
 	GET_STACK(WarheadTypeClass*, pWh, 0xD0);
 	GET(TechnoClass*, pThis, ESI);
 
-	auto const& nSound = WarheadTypeExtContainer::Instance.Find(pWh)->VoiceSound_Override;
+	auto pType = pThis->GetTechnoType();
 
-	if (nSound.isset())
+	if (pType->VoiceDie.Count > 0 && pThis->Owner->ControlledByCurrentPlayer())
 	{
-		VocClass::PlayIndexAtPos(nSound, pThis->Location);
-		return 0x702200;
+		auto const& nSound = WarheadTypeExtContainer::Instance.Find(pWh)->DieSound_Override;
+
+		if (nSound.isset())
+		{
+			VocClass::PlayIndexAtPos(nSound, pThis->Location);
+		}
+		else
+		{
+			if (pType->VoiceDie.Count == 1)
+			{
+				VocClass::PlayIndexAtPos(pType->VoiceDie[0], pThis->Location);
+			}
+			else
+			{
+				int rand = Random2Class::NonCriticalRandomNumber->Random();
+				VocClass::PlayIndexAtPos(pType->VoiceDie[rand % pType->VoiceDie.Count], pThis->Location);
+			}
+		}
 	}
 
-	return 0x0;
+	if (pType->DieSound.Count > 0)
+	{
+		auto const& nSound = WarheadTypeExtContainer::Instance.Find(pWh)->VoiceSound_Override;
+
+		if (nSound.isset())
+		{
+			VocClass::PlayIndexAtPos(nSound, pThis->Location);
+		}
+		else
+		{
+			if (pType->DieSound.Count == 1)
+			{
+				VocClass::PlayIndexAtPos(pType->DieSound[0], pThis->Location);
+			}
+			else
+			{
+				int rand = Random2Class::NonCriticalRandomNumber->Random();
+				VocClass::PlayIndexAtPos(pType->DieSound[rand % pType->DieSound.Count], pThis->Location);
+			}
+		}
+	}
+
+	return 0x702200;
 }
 
-//original hooks , jut in case the stuffs fail
-DEFINE_HOOK(0x702CFE, TechnoClass_ReceiveDamage_PreventScatter_Deep, 6)
+DEFINE_HOOK_AGAIN(0x702BFE, TechnoClass_ReceiveDamage_ScatterCheck, 0x8)
+DEFINE_HOOK(0x702B67, TechnoClass_ReceiveDamage_ScatterCheck, 0x5)
 {
-	GET(FootClass*, pThis, ESI);
+	GET(TechnoClass*, pThis, ESI);
 	GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFS(0xC4, -0xC));
 
-	// only allow to scatter if not prevented
-	if (!WarheadTypeExtContainer::Instance.Find(pWarhead)->PreventScatter)
+	if (WarheadTypeExtContainer::Instance.Find(pWarhead)->PreventScatter)
+		return 0x702D11;
+
+	if (pThis->AbstractFlags & AbstractFlags::Foot)
 	{
-		pThis->Scatter(CoordStruct::Empty, true, false);
+		auto pFoot = static_cast<FootClass*>(pThis);
+
+		if (!pFoot->Target && !pFoot->Destination)
+		{
+			if (R->Origin() == 0x702B67 && (RulesClass::Instance->PlayerScatter || pFoot->HasAbility(AbilityType::Scatter)))
+			{
+				pFoot->Scatter(CoordStruct::Empty, true, false);
+			}
+			else if (!pFoot->IsTethered && pFoot->WhatAmI() != AircraftClass::AbsID && pThis->GetCurrentMissionControl()->Scatter)
+			{
+				const bool IsMoving = pFoot->Locomotor.GetInterfacePtr()->Is_Moving();
+
+				if (!IsMoving)
+				{
+					const bool IsHuman = pFoot->Owner->IsControlledByHuman();
+					const bool IsScatter = RulesClass::Instance->PlayerScatter;
+					const bool IscatterAbility = pFoot->HasAbility(AbilityType::Scatter);
+					if (!IsHuman || IsScatter || IscatterAbility)
+					{
+						pFoot->Scatter(CoordStruct::Empty, true, false);
+					}
+				}
+			}
+		}
 	}
 
 	return 0x702D11;
-}
-
-//these hook were really early checks
-DEFINE_HOOK_AGAIN(0x702BFE, TechnoClass_ReceiveDamage_PreventScatter, 0x8)
-DEFINE_HOOK(0x702B47, TechnoClass_ReceiveDamage_PreventScatter, 0x8)
-{
-	//GET(FootClass*, pThis, ESI);
-	GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFS(0xC4, -0xC));
-
-	return WarheadTypeExtContainer::Instance.Find(pWarhead)->PreventScatter ? 0x702D11 : 0x0;
 }
 
 // #1283653: fix for jammed buildings and attackers in open topped transports
@@ -219,7 +258,9 @@ DEFINE_HOOK(0x702669, TechnoClass_ReceiveDamage_SuppressDeathWeapon, 0x9)
 	GET(TechnoClass* const, pThis, ESI);
 	GET_STACK(WarheadTypeClass* const, pWarhead, STACK_OFFS(0xC4, -0xC));
 
-	if (!WarheadTypeExtContainer::Instance.Find(pWarhead)->ApplySuppressDeathWeapon(pThis))
+	const bool result = WarheadTypeExtContainer::Instance.Find(pWarhead)->ApplySuppressDeathWeapon(pThis);
+
+	if (!result)
 	{
 		pThis->FireDeathWeapon(0);
 	}
@@ -286,6 +327,7 @@ DEFINE_HOOK(0x702050, TechnoClass_ReceiveDamage_ResultDestroyed, 6)
 			WeaponTypeExtData::DetonateAt(pWeapon, coords, pTarget, false, pOwner);
 		}
 	}
+
 	return 0x0;
 }
 
@@ -480,7 +522,7 @@ DEFINE_HOOK(0x701BFE, TechnoClass_ReceiveDamage_Abilities, 0x6)
 	{
 		// restoring TS berzerk cyborg
 		//this will happen regardless the immunity i guess
-		if (auto pInf = specific_cast<InfantryClass*>(pThis))
+		if (auto pInf = cast_to<InfantryClass*, false>(pThis))
 		{
 			if (RulesClass::Instance->BerzerkAllowed && pInf->Type->Cyborg && pThis->IsYellowHP())
 			{
@@ -534,7 +576,7 @@ DEFINE_HOOK(0x737F97, UnitClass_ReceiveDamage_Survivours, 0xA)
 
 			while (pPassenger->NextObject)
 			{
-				pPassenger = abstract_cast<FootClass*>(pPassenger->NextObject);
+				pPassenger = flag_cast_to<FootClass*, false>(pPassenger->NextObject);
 				pExt = TechnoExtContainer::Instance.Find(pPassenger);
 
 				if (pExt->OriginalPassengerOwner)
@@ -645,8 +687,8 @@ DEFINE_HOOK(0x702200, TechnoClass_ReceiveDamage_SpillTiberium, 6)
 
 	if (TechnoTypeExtContainer::Instance.Find(pType)->TiberiumSpill)
 	{
-		const auto pUnit = specific_cast<UnitClass*>(pThis);
-		const auto pBld = specific_cast<BuildingClass*>(pThis);
+		const auto pUnit = cast_to<UnitClass*, false>(pThis);
+		const auto pBld = cast_to<BuildingClass*, false>(pThis);
 
 		if (pUnit && pUnit->Type->Weeder || pBld && pBld->Type->Weeder)
 			return 0x0;
@@ -693,112 +735,112 @@ DEFINE_HOOK(0x737CE4, UnitClass_ReceiveDamage_ShipyardRepair, 6)
 		? 0x737CEE : 0x737D31;
 }
 
-DEFINE_HOOK(0x51849A, InfantryClass_ReceiveDamage_DeathAnim, 5)
-{
-	GET(InfantryClass*, I, ESI);
-	LEA_STACK(args_ReceiveDamage*, Arguments, 0xD4);
-	GET(DWORD, InfDeath, EDI);
+// DEFINE_HOOK(0x51849A, InfantryClass_ReceiveDamage_DeathAnim, 5)
+// {
+// 	GET(InfantryClass*, I, ESI);
+// 	LEA_STACK(args_ReceiveDamage*, Arguments, 0xD4);
+// 	GET(DWORD, InfDeath, EDI);
+//
+// 	// if you got here, a valid DeathAnim for this InfDeath has been defined, and the game has already checked the preconditions
+// 	// just allocate the anim and set its owner/remap
+//
+// 	AnimClass* Anim = GameCreate<AnimClass>(I->Type->DeathAnims[InfDeath], I->Location);
+//
+// 	HouseClass* Invoker = (Arguments->Attacker)
+// 		? Arguments->Attacker->Owner
+// 		: Arguments->SourceHouse
+// 		;
+//
+// 	AnimExtData::SetAnimOwnerHouseKind(Anim, Invoker, I->Owner, Arguments->Attacker, false, true);
+//
+// 	R->EAX<AnimClass*>(Anim);
+// 	return 0x5184F2;
+// }
 
-	// if you got here, a valid DeathAnim for this InfDeath has been defined, and the game has already checked the preconditions
-	// just allocate the anim and set its owner/remap
+// DEFINE_HOOK_AGAIN(0x518575, InfantryClass_ReceiveDamage_InfantryVirus1, 6)
+// DEFINE_HOOK(0x5183DE, InfantryClass_ReceiveDamage_InfantryVirus1, 6)
+// {
+// 	GET(InfantryClass*, pThis, ESI);
+// 	GET(AnimClass*, pAnim, EDI);
+// 	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
+//
+// 	// Rules->InfantryVirus animation has been created. set the owner and color.
+//
+// 	auto pInvoker = Arguments.Attacker
+// 		? Arguments.Attacker->Owner
+// 		: Arguments.SourceHouse;
+//
+// 	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, true);
+//
+// 	// bonus: don't require SpawnsParticle to be present
+//
+// 	if (ParticleSystemClass::Array->ValidIndex(pAnim->Type->SpawnsParticle))
+// 	{
+// 		return 0;
+// 	}
+//
+// 	return (R->Origin() == 0x5183DE) ? 0x518422 : 0x5185B9;
+// }
 
-	AnimClass* Anim = GameCreate<AnimClass>(I->Type->DeathAnims[InfDeath], I->Location);
+// DEFINE_HOOK_AGAIN(0x518B93, InfantryClass_ReceiveDamage_Anims, 5) // InfantryBrute
+// DEFINE_HOOK_AGAIN(0x518821, InfantryClass_ReceiveDamage_Anims, 5) // InfantryNuked
+// DEFINE_HOOK_AGAIN(0x5187BB, InfantryClass_ReceiveDamage_Anims, 5) // InfantryHeadPop
+// DEFINE_HOOK_AGAIN(0x518755, InfantryClass_ReceiveDamage_Anims, 5) // InfantryElectrocuted
+// DEFINE_HOOK_AGAIN(0x5186F2, InfantryClass_ReceiveDamage_Anims, 5) // FlamingInfantry
+// DEFINE_HOOK(0x518698, InfantryClass_ReceiveDamage_Anims, 5) // InfantryExplode
+// {
+// 	GET(InfantryClass*, pThis, ESI);
+// 	GET(AnimClass*, pAnim, EAX);
+// 	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
+//
+// 	// animation has been created. set the owner and color.
+// 	const auto pInvoker = Arguments.Attacker
+// 		? Arguments.Attacker->Owner
+// 		: Arguments.SourceHouse;
+//
+// 	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
+//
+// 	return 0x5185F1;
+// }
 
-	HouseClass* Invoker = (Arguments->Attacker)
-		? Arguments->Attacker->Owner
-		: Arguments->SourceHouse
-		;
-
-	AnimExtData::SetAnimOwnerHouseKind(Anim, Invoker, I->Owner, Arguments->Attacker, false, true);
-
-	R->EAX<AnimClass*>(Anim);
-	return 0x5184F2;
-}
-
-DEFINE_HOOK_AGAIN(0x518575, InfantryClass_ReceiveDamage_InfantryVirus1, 6)
-DEFINE_HOOK(0x5183DE, InfantryClass_ReceiveDamage_InfantryVirus1, 6)
-{
-	GET(InfantryClass*, pThis, ESI);
-	GET(AnimClass*, pAnim, EDI);
-	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
-
-	// Rules->InfantryVirus animation has been created. set the owner and color.
-
-	auto pInvoker = Arguments.Attacker
-		? Arguments.Attacker->Owner
-		: Arguments.SourceHouse;
-
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, true);
-
-	// bonus: don't require SpawnsParticle to be present
-
-	if (ParticleSystemClass::Array->ValidIndex(pAnim->Type->SpawnsParticle))
-	{
-		return 0;
-	}
-
-	return (R->Origin() == 0x5183DE) ? 0x518422 : 0x5185B9;
-}
-
-DEFINE_HOOK_AGAIN(0x518B93, InfantryClass_ReceiveDamage_Anims, 5) // InfantryBrute
-DEFINE_HOOK_AGAIN(0x518821, InfantryClass_ReceiveDamage_Anims, 5) // InfantryNuked
-DEFINE_HOOK_AGAIN(0x5187BB, InfantryClass_ReceiveDamage_Anims, 5) // InfantryHeadPop
-DEFINE_HOOK_AGAIN(0x518755, InfantryClass_ReceiveDamage_Anims, 5) // InfantryElectrocuted
-DEFINE_HOOK_AGAIN(0x5186F2, InfantryClass_ReceiveDamage_Anims, 5) // FlamingInfantry
-DEFINE_HOOK(0x518698, InfantryClass_ReceiveDamage_Anims, 5) // InfantryExplode
-{
-	GET(InfantryClass*, pThis, ESI);
-	GET(AnimClass*, pAnim, EAX);
-	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
-
-	// animation has been created. set the owner and color.
-	const auto pInvoker = Arguments.Attacker
-		? Arguments.Attacker->Owner
-		: Arguments.SourceHouse;
-
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
-
-	return 0x5185F1;
-}
-
-DEFINE_HOOK(0x51887B, InfantryClass_ReceiveDamage_InfantryVirus2, 0xA)
-{
-	GET(InfantryClass*, pThis, ESI);
-	GET(AnimClass*, pAnim, EAX);
-	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
-
-	// Rules->InfantryVirus animation has been created. set the owner, but
-	auto pInvoker = Arguments.Attacker
-		? Arguments.Attacker->Owner
-		: Arguments.SourceHouse;
-
-	const auto& [bChanged, result] =
-		AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
-
-	// reset the color for default (invoker).
-	if (bChanged && result != OwnerHouseKind::Default)
-	{
-		pAnim->LightConvert = nullptr;
-	}
-
-	return 0x5185F1;
-}
-
-DEFINE_HOOK(0x518A96, InfantryClass_ReceiveDamage_InfantryMutate, 7)
-{
-	GET(InfantryClass*, pThis, ESI);
-	GET(AnimClass*, pAnim, EDI);
-	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
-
-	// Rules->InfantryMutate animation has been created. set the owner and color.
-	auto pInvoker = Arguments.Attacker
-		? Arguments.Attacker->Owner
-		: Arguments.SourceHouse;
-
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
-
-	return 0x518AFF;
-}
+// DEFINE_HOOK(0x51887B, InfantryClass_ReceiveDamage_InfantryVirus2, 0xA)
+// {
+// 	GET(InfantryClass*, pThis, ESI);
+// 	GET(AnimClass*, pAnim, EAX);
+// 	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
+//
+// 	// Rules->InfantryVirus animation has been created. set the owner, but
+// 	auto pInvoker = Arguments.Attacker
+// 		? Arguments.Attacker->Owner
+// 		: Arguments.SourceHouse;
+//
+// 	const auto& [bChanged, result] =
+// 		AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
+//
+// 	// reset the color for default (invoker).
+// 	if (bChanged && result != OwnerHouseKind::Default)
+// 	{
+// 		pAnim->LightConvert = nullptr;
+// 	}
+//
+// 	return 0x5185F1;
+// }
+//
+// DEFINE_HOOK(0x518A96, InfantryClass_ReceiveDamage_InfantryMutate, 7)
+// {
+// 	GET(InfantryClass*, pThis, ESI);
+// 	GET(AnimClass*, pAnim, EDI);
+// 	REF_STACK(args_ReceiveDamage, Arguments, STACK_OFFS(0xD0, -0x4));
+//
+// 	// Rules->InfantryMutate animation has been created. set the owner and color.
+// 	auto pInvoker = Arguments.Attacker
+// 		? Arguments.Attacker->Owner
+// 		: Arguments.SourceHouse;
+//
+// 	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, Arguments.Attacker, false, true);
+//
+// 	return 0x518AFF;
+// }
 
 DEFINE_HOOK(0x518CB3, InfantryClass_ReceiveDamage_Doggie, 0x6)
 {
@@ -1014,3 +1056,367 @@ DEFINE_HOOK(0x7027E6, TechnoClass_ReceiveDamage_Nonprovocative, 0x8)
 //	return AdvanceLoop;
 //	//return Continue;
 //}
+
+#include <Ext/Infantry/Body.h>
+DWORD NOINLINE Crashable(FootClass* pThis, TechnoTypeClass* pType, ObjectClass* pKiller)
+{
+	if (pType->Crashable)
+	{
+		if (pThis->Crash(pKiller))
+		{
+			return 0x518623;
+		}
+	}
+
+	pThis->UnInit();
+	return 0x518623;
+}
+
+DEFINE_HOOK(0x51813C, InfantryClass_ReceiverDamage_ResultDestroyed_HandleAnim, 0x7)
+{
+	GET(FakeInfantryClass*, pThis, ESI);
+	REF_STACK(args_ReceiveDamage, args, STACK_OFFS(0xD0, -0x4));
+
+	if (!pThis->_GetExtData())
+		Debug::FatalError("Wut [%s - %x] \n", pThis->Type->ID, pThis);
+
+	enum
+	{
+		RetResult4 = 0x518623,
+		ContinueChecks = 0x518BB2
+	};
+
+	auto const pWarheadExt = WarheadTypeExtContainer::Instance.Find(args.WH);
+	if (!TechnoExtContainer::Instance.Find(pThis)->GarrisonedIn)
+	{
+		bool IsForcedCyborg = false;
+		if (args.IgnoreDefenses)
+		{
+			if (pThis->Type->Cyborg)
+			{
+				IsForcedCyborg = true;
+				if (pThis->IsABomb)
+				{
+					GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+				}
+			}
+		}
+
+		if (pThis->GetHeight() <= 10)
+		{
+			if (MapClass::Instance->GetCellAt(pThis->Location)->LandType == LandType::Water)
+			{
+				if (pThis->IsABomb)
+				{
+					GameCreate<AnimClass>(RulesClass::Instance->Wake, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+
+					auto splash_loc = pThis->Location + CoordStruct { 0, 0, 3 };
+					GameCreate<AnimClass>(RulesClass::Instance->SplashList[0], splash_loc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+				}
+
+				return Crashable(pThis, pThis->Type, args.Attacker);
+			}
+		}
+
+		if (pThis->Type->Cyborg && pThis->Crawling)
+		{
+			GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+			return Crashable(pThis, pThis->Type, args.Attacker);
+		}
+		else
+		{
+			auto infDeath = args.WH->InfDeath;
+			if (!pThis->Type->JumpJet)
+			{
+				if (pThis->SequenceAnim == DoType::Paradrop)
+				{
+					if (infDeath == InfDeath::Virus)
+					{
+						auto pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+						auto pInvoker = args.Attacker
+							? args.Attacker->Owner
+							: args.SourceHouse;
+
+						AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+
+						if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
+						{
+							auto pParticleType = ParticleTypeClass::Array->Items[RulesClass::Instance->InfantryVirus->SpawnsParticle];
+							ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
+						}
+
+						if (pThis)
+						{
+							pThis->_DestroyThis(1u);
+						}
+					}
+
+					infDeath = InfDeath::Explode;
+				}
+
+				if (auto pAttackerBld = cast_to<BuildingClass*>(args.Attacker))
+				{
+					if (pAttackerBld->Type->LaserFence)
+					{
+						infDeath = InfDeath::Electro;
+					}
+				}
+
+				if (pThis->Type->DeathAnims.Count <= 0)
+				{
+					if (pThis->Type->NotHuman)
+					{
+						bool Succeeded = false;
+
+						if (auto pDeathAnim = pWarheadExt->NotHuman_DeathAnim.Get(nullptr))
+						{
+							auto pAnim = GameCreate<AnimClass>(pDeathAnim, pThis->Location);
+							auto pInvoker = args.Attacker ? args.Attacker->GetOwningHouse() : nullptr;
+							AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->GetOwningHouse(), args.Attacker, true, true);
+							pAnim->ZAdjust = pThis->GetZAdjustment();
+							Succeeded = true;
+						}
+						else
+						{
+							auto const& whSequence = pWarheadExt->NotHuman_DeathSequence;
+							// Die1-Die5 sequences are offset by 10
+							constexpr auto Die = [](int x) { return x + 10; };
+
+							int resultSequence = Die(1);
+
+							if (!whSequence.isset()
+								&& TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->NotHuman_RandomDeathSequence.Get())
+							{
+								resultSequence = ScenarioClass::Instance->Random.RandomRanged(Die(1), Die(5));
+							}
+							else if (whSequence.isset())
+							{
+								resultSequence = std::clamp(Die(Math::abs(whSequence.Get())), Die(1), Die(5));
+							}
+
+							pThis->_GetExtData()->IsUsingDeathSequence = true;
+
+							//BugFix : when the sequence not declared , it keep the infantry alive ! , wtf WW ?!
+							if (pThis->PlayAnim(static_cast<DoType>(resultSequence), true))
+							{
+								Succeeded = true;
+							}
+						}
+
+						if (Succeeded)
+						{
+							if (infDeath == InfDeath::Virus)
+							{
+								auto pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								auto pInvoker = args.Attacker
+									? args.Attacker->Owner
+									: args.SourceHouse;
+
+								AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+
+								if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
+								{
+									auto pParticleType = ParticleTypeClass::Array->Items[RulesClass::Instance->InfantryVirus->SpawnsParticle];
+									ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
+								}
+
+								if (pThis)
+								{
+									pThis->_DestroyThis(1u);
+								}
+							}
+
+							if (!IsForcedCyborg)
+								return RetResult4;
+						}
+						else
+						{
+							pThis->UnInit();
+							return 0x518623;
+						}
+
+						return Crashable(pThis, pThis->Type, args.Attacker);
+					}
+					else
+					{
+						AnimTypeClass* pTypeAnim = pWarheadExt->InfDeathAnim;
+						for (auto begin = pWarheadExt->InfDeathAnims.begin(); begin != pWarheadExt->InfDeathAnims.end(); ++begin)
+						{
+							if (begin->first == pThis->Type)
+							{
+								pTypeAnim = begin->second;
+								break;
+							}
+						}
+
+						if (pTypeAnim)
+						{
+							auto pAnim = GameCreate<AnimClass>(pTypeAnim, pThis->Location);
+							HouseClass* const Invoker = (args.Attacker)
+								? args.Attacker->Owner
+								: args.SourceHouse
+								;
+
+							AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, args.Attacker, false, true);
+						}
+						else
+						{
+							AnimClass* pAnim = nullptr;
+							switch (infDeath)
+							{
+							case InfDeath::Die1:
+								if (pThis->PlayAnim(DoType::Die1, true, false))
+								{
+									if (!IsForcedCyborg)
+										return RetResult4;
+								}
+
+								break;
+							case InfDeath::Die2:
+								if (pThis->PlayAnim(DoType::Die2, true, false))
+								{
+									if (!IsForcedCyborg)
+										return RetResult4;
+								}
+
+								break;
+							case InfDeath::Explode:
+								pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								break;
+							case InfDeath::Flames:
+								pAnim = GameCreate<AnimClass>(RulesClass::Instance->FlamingInfantry, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								break;
+							case InfDeath::Electro:
+							{
+								AnimTypeClass* El = RulesExtData::Instance()->ElectricDeath;
+
+								if (!El)
+								{
+									El = AnimTypeClass::Array->Items[0];
+								}
+
+								pAnim = GameCreate<AnimClass>(El, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+							}
+							break;
+							case InfDeath::HeadPop:
+								pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryHeadPop, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								break;
+							case InfDeath::Nuked:
+								pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryNuked, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								break;
+							case InfDeath::Virus:
+							{
+								pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+							}
+							break;
+							case InfDeath::Mutate:
+							{
+								auto curLoc = pThis->Location;
+								pThis->UnmarkAllOccupationBits(curLoc);
+								auto pCell = MapClass::Instance->GetCellAt(CellClass::Coord2Cell(curLoc));
+								bool Hasbuilding = false;
+
+								for (auto i = pCell->FirstObject; i; i = i->NextObject)
+								{
+									if (i && i->WhatAmI() == BuildingClass::AbsID)
+										Hasbuilding = true;
+								}
+
+								if (GroundType::Get(pCell->LandType)->Cost[0] == 0.0 && !pThis->OnBridge)
+								{
+									if (!pThis->PlayAnim(DoType::Die2, true, false))
+										break;
+
+									if (!IsForcedCyborg)
+										return RetResult4;
+								}
+
+								CoordStruct closest {};
+								pCell->FindInfantrySubposition(&closest, curLoc, false, false, false);
+
+								if (!closest.IsValid())
+								{
+									if (!pThis->PlayAnim(DoType::Die2, true, false))
+										break;
+
+									if (!IsForcedCyborg)
+										return RetResult4;
+								}
+
+								if (Hasbuilding)
+								{
+									if (!pThis->PlayAnim(DoType::Die2, true, false))
+										break;
+
+									if (!IsForcedCyborg)
+										return RetResult4;
+								}
+
+								pThis->MarkAllOccupationBits(curLoc);
+								auto pAnim_Mutate = GameCreate<AnimClass>(RulesClass::Instance->InfantryMutate, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+
+								auto pInvoker = args.Attacker
+									? args.Attacker->Owner
+									: args.SourceHouse;
+
+								AnimExtData::SetAnimOwnerHouseKind(pAnim_Mutate, pInvoker, pThis->Owner, args.Attacker, true);
+
+								pAnim_Mutate->MarkAllOccupationBits(pThis->Location);
+							}
+							break;
+							case InfDeath::Brute:
+								pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryBrute, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								break;
+							default:
+								pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								break;
+							}
+
+							if (pAnim)
+							{
+								auto pInvoker = args.Attacker
+									? args.Attacker->Owner
+									: args.SourceHouse;
+
+								const auto& [bChanged, result] = AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+
+								if (infDeath == InfDeath::Mutate && bChanged && result != OwnerHouseKind::Default)
+								{
+									pAnim->LightConvert = nullptr;
+								}
+							}
+						}
+
+						return Crashable(pThis, pThis->Type, args.Attacker);
+					}
+				}
+				else
+				{
+					int infDeathInt = (int)infDeath;
+					if (infDeathInt < 0
+						|| infDeathInt >= pThis->Type->DeathAnims.Count
+						|| !pThis->Type->DeathAnims[infDeathInt])
+					{
+						infDeathInt = 0;
+					}
+
+					if (auto pDeathAnim = pThis->Type->DeathAnims[infDeathInt])
+					{
+						auto pAnim = GameCreate<AnimClass>(pDeathAnim, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+
+						HouseClass* Invoker = (args.Attacker)
+							? args.Attacker->Owner
+							: args.SourceHouse
+							;
+
+						AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, args.Attacker, false, true);
+					}
+				}
+			}
+		}
+
+		GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+	}
+
+	return Crashable(pThis, pThis->Type, args.Attacker);
+}

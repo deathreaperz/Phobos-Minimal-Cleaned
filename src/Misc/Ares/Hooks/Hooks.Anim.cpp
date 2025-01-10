@@ -23,6 +23,7 @@
 #include <New/Type/ArmorTypeClass.h>
 
 #include <Notifications.h>
+#include <InfantryClass.h>
 
 #include "Header.h"
 
@@ -49,8 +50,11 @@ DEFINE_HOOK(0x4232CE, AnimClass_Draw_SetPalette, 6)
 	{
 		if (const auto pConvertData = pData->Palette)
 		{
-			R->ECX<ConvertClass*>(pConvertData->GetConvert<PaletteManager::Mode::Temperate>());
-			return 0x4232D4;
+			if (auto pConvert = pConvertData->GetConvert<PaletteManager::Mode::Temperate>())
+			{
+				R->ECX<ConvertClass*>(pConvert);
+				return 0x4232D4;
+			}
 		}
 	}
 
@@ -92,7 +96,7 @@ DEFINE_HOOK(0x4239F0, AnimClass_UpdateBounce_Damage, 0x8)
 	const auto pAnimTypeExt = AnimTypeExtContainer::Instance.Find(pType);
 	TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis);
 	const auto nLoc = pObj->Location;
-	const auto nDist = abs(nLoc.Y - nCoord.Y) + abs(nLoc.X - nCoord.X);
+	const auto nDist = Math::abs(nLoc.Y - nCoord.Y) + abs(nLoc.X - nCoord.X);
 
 	if (nDist < nRadius)
 	{

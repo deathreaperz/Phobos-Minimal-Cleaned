@@ -241,7 +241,7 @@ void GiftBox::Release(TechnoClass* pOwner, GiftBoxData& nData)
 		if (!IsBuilding)
 		{
 			pDest = static_cast<FootClass*>(pOwner)->Destination;
-			pFocus = pOwner->Focus;
+			pFocus = pOwner->ArchiveTarget;
 		}
 
 		std::vector<TechnoTypeClass*> nOut;
@@ -251,7 +251,7 @@ void GiftBox::Release(TechnoClass* pOwner, GiftBoxData& nData)
 		{
 			if (nData.RandomRange > 0)
 			{
-				if (auto const pNewCell = GeneralUtils::GetCell(pCell, location, (size_t)(nData.RandomRange.Get()), nData.EmptyCell))
+				if (auto const pNewCell = GeneralUtils::GetCell(pCell, location, (short)(nData.RandomRange.Get()), nData.EmptyCell))
 					pCell = pNewCell;
 			}
 
@@ -267,7 +267,7 @@ void GiftBox::Release(TechnoClass* pOwner, GiftBoxData& nData)
 					}
 				}
 
-				if (auto pAir = specific_cast<AircraftClass*>(pGift))
+				if (auto pAir = cast_to<AircraftClass*, false>(pGift))
 				{
 					if (pAir->GetHeight() > 0)
 					{
@@ -294,7 +294,7 @@ void GiftBox::Release(TechnoClass* pOwner, GiftBoxData& nData)
 
 						if (pFocus)
 						{
-							pGift->SetFocus(pFocus);
+							pGift->SetArchiveTarget(pFocus);
 							if (pGift->WhatAmI() != BuildingClass::AbsID)
 							{
 								des = pFocus->GetCoords();

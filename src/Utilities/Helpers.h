@@ -212,7 +212,7 @@ namespace Helpers
 			\author AlexB
 			\date 2010-06-28
 		*/
-		template<class T = TechnoClass>
+		template<class T = TechnoClass> requires HasDeriveredAbsID<T>
 		inline std::vector<T*> getCellSpreadItems_Original(
 		CoordStruct const& coords, double const spread,
 		bool const includeInAir, bool const allowLimbo)
@@ -223,15 +223,14 @@ namespace Helpers
 
 			// the quick way. only look at stuff residing on the very cells we are affecting.
 			//auto const cellCoords = MapClass::Instance->GetCellAt(coords)->MapCoords;
-			auto const range = static_cast<size_t>(spread + 0.99);
-			for (CellSpreadEnumerator it(range); it; ++it)
+			for (CellSpreadEnumerator it(static_cast<short>(spread + 0.99)); it; ++it)
 			{
 				auto cellCoords = CellClass::Coord2Cell(coords);
 				auto const pCell = MapClass::Instance->GetCellAt(*it + cellCoords);
 				bool isCenter = pCell->MapCoords == cellCoords;
 				for (NextObject obj(pCell->GetContent()); obj; ++obj)
 				{
-					if (auto const pTechno = abstract_cast<T*>(*obj))
+					if (auto const pTechno = flag_cast_to<T*, false>(*obj))
 					{
 						if constexpr (T::AbsDerivateID != FootClass::AbsDerivateID)
 						{
@@ -253,6 +252,10 @@ namespace Helpers
 								if (dist > spreadMult)
 									continue;
 							}
+							else if (pTechno->Location.DistanceFrom(coords) > spreadMult)
+							{
+								continue;
+							}
 						}
 
 						set.insert(pTechno);
@@ -264,7 +267,7 @@ namespace Helpers
 			if (includeInAir)
 			{
 				auto const airTracker = &AircraftTrackerClass::Instance.get();
-				airTracker->AircraftTrackerClass_logics_412B40(MapClass::Instance->GetCellAt(coords), Game::F2I(spread));
+				airTracker->AircraftTrackerClass_logics_412B40(MapClass::Instance->GetCellAt(coords), int(spread));
 
 				for (auto pTechno = airTracker->Get(); pTechno; pTechno = airTracker->Get())
 				{
@@ -379,16 +382,15 @@ namespace Helpers
 
 			// the quick way. only look at stuff residing on the very cells we are affecting.
 			//auto const cellCoords = MapClass::Instance->GetCellAt(coords)->MapCoords;
-			auto const range = static_cast<size_t>(spread + 0.99);
 
-			for (CellSpreadEnumerator it(range); it; ++it)
+			for (CellSpreadEnumerator it(static_cast<short>(spread + 0.99)); it; ++it)
 			{
 				auto cellCoords = CellClass::Coord2Cell(coords);
 				auto const pCell = MapClass::Instance->GetCellAt(*it + cellCoords);
 				bool isCenter = pCell->MapCoords == cellCoords;
 				for (NextObject obj(pCell->GetContent()); obj; ++obj)
 				{
-					if (auto const pTechno = abstract_cast<TechnoClass*>(*obj))
+					if (auto const pTechno = flag_cast_to<TechnoClass*, false>(*obj))
 					{
 						// Starkku: Buildings need their distance from the origin coords checked at cell level.
 						if (pTechno->WhatAmI() == AbstractType::Building)
@@ -407,6 +409,10 @@ namespace Helpers
 							if (dist > arange)
 								continue;
 						}
+						else if (pTechno->Location.DistanceFrom(coords) > arange)
+						{
+							continue;
+						}
 
 						set.insert(pTechno);
 					}
@@ -417,7 +423,7 @@ namespace Helpers
 			if (IncludeAir)
 			{
 				auto const airTracker = &AircraftTrackerClass::Instance.get();
-				airTracker->AircraftTrackerClass_logics_412B40(MapClass::Instance->GetCellAt(coords), Game::F2I(arange));
+				airTracker->AircraftTrackerClass_logics_412B40(MapClass::Instance->GetCellAt(coords), int(arange));
 
 				for (auto pTechno = airTracker->Get(); pTechno; pTechno = airTracker->Get())
 				{
@@ -446,7 +452,7 @@ namespace Helpers
 			return ret;
 		}
 
-		template<class T = TechnoClass>
+		template<class T = TechnoClass> requires HasDeriveredAbsID<T>
 		inline std::vector<T*> getCellSpreadItems(
 			CoordStruct const& coords, double const spread,
 			bool const includeInAir = false, bool allowLimbo = false)
@@ -465,15 +471,14 @@ namespace Helpers
 
 			// the quick way. only look at stuff residing on the very cells we are affecting.
 			//auto const cellCoords = MapClass::Instance->GetCellAt(coords)->MapCoords;
-			auto const range = static_cast<size_t>(spread + 0.99);
-			for (CellSpreadEnumerator it(range); it; ++it)
+			for (CellSpreadEnumerator it(static_cast<short>(spread + 0.99)); it; ++it)
 			{
 				auto cellCoords = CellClass::Coord2Cell(coords);
 				auto const pCell = MapClass::Instance->GetCellAt(*it + cellCoords);
 				bool isCenter = pCell->MapCoords == cellCoords;
 				for (NextObject obj(pCell->GetContent()); obj; ++obj)
 				{
-					if (auto const pTechno = abstract_cast<T*>(*obj))
+					if (auto const pTechno = flag_cast_to<T*, false>(*obj))
 					{
 						if constexpr (T::AbsDerivateID != FootClass::AbsDerivateID)
 						{
@@ -495,6 +500,10 @@ namespace Helpers
 								if (dist > spreadMult)
 									continue;
 							}
+							else if (pTechno->Location.DistanceFrom(coords) > spreadMult)
+							{
+								continue;
+							}
 						}
 
 						set.insert(pTechno);
@@ -506,7 +515,7 @@ namespace Helpers
 			if (includeInAir)
 			{
 				auto const airTracker = &AircraftTrackerClass::Instance.get();
-				airTracker->AircraftTrackerClass_logics_412B40(MapClass::Instance->GetCellAt(coords), Game::F2I(spread));
+				airTracker->AircraftTrackerClass_logics_412B40(MapClass::Instance->GetCellAt(coords), int(spread));
 
 				for (auto pTechno = airTracker->Get(); pTechno; pTechno = airTracker->Get())
 				{
@@ -704,7 +713,7 @@ namespace Helpers
 
 			if (height <= 0)
 			{
-				auto const spread = static_cast<size_t>(
+				auto const spread = static_cast<short>(
 					MaxImpl(static_cast<int>(widthOrRange), 0));
 
 				if (spread > 0)
@@ -750,6 +759,12 @@ namespace Helpers
 
 			types.erase(std::remove_if(types.begin(), types.end(), [section, key](TechnoTypeClass* pItem) -> bool
 				{
+					if (!pItem)
+					{
+						Debug::INIParseFailed(section, key, pItem->ID, "Invalid types are removed.");
+						return true;
+					}
+
 					if (!is_any_of(pItem->WhatAmI(), AbstractType::InfantryType, AbstractType::UnitType))
 					{
 						Debug::INIParseFailed(section, key, pItem->ID, "Only InfantryTypes and UnitTypes are supported.");

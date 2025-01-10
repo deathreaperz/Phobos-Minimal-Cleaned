@@ -23,6 +23,11 @@
 #include "Header.h"
 
 #include <Conversions.h>
+#include <GameOptionsClass.h>
+#include <TacticalClass.h>
+#include <RadarEventClass.h>
+#include <SpawnManagerClass.h>
+#include <AirstrikeClass.h>
 
 DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 {
@@ -130,31 +135,31 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 //
 //DEFINE_DISABLE_HOOK(0x6FF26E, TechnoClass_Fire_DetachedRailgun2_ares)
 
-DEFINE_HOOK(0x6FF1FB, TechnoClass_Fire_DetachedRailgun, 0x6)
-{
-	//GET(TechnoClass*, pThis, ESI);
-	GET(WeaponTypeClass*, pWeapon, EBX);
-
-	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
-	//const bool IsRailgun = pWeapon->IsRailgun || pWeaponExt->IsDetachedRailgun;
-
-	//if (IsRailgun && Is_Aircraft(pThis))
-	//{
-		//Debug::Log("TechnoClass_FireAt Aircraft[%s] attempting to fire Railgun !\n", pThis->get_ID());
-		//return 0x6FF274;
-	//}
-
-	return pWeaponExt->IsDetachedRailgun
-		? 0x6FF20F : 0x0;
-}
-
-DEFINE_HOOK(0x6FF26E, TechnoClass_Fire_DetachedRailgun2, 0x6)
-{
-	GET(WeaponTypeClass*, pWeapon, EBX);
-
-	return WeaponTypeExtContainer::Instance.Find(pWeapon)->IsDetachedRailgun
-		? 0x6FF274 : 0x0;
-}
+// DEFINE_HOOK(0x6FF1FB, TechnoClass_Fire_DetachedRailgun, 0x6)
+// {
+// 	//GET(TechnoClass*, pThis, ESI);
+// 	GET(WeaponTypeClass*, pWeapon, EBX);
+//
+// 	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+// 	//const bool IsRailgun = pWeapon->IsRailgun || pWeaponExt->IsDetachedRailgun;
+//
+// 	//if (IsRailgun && Is_Aircraft(pThis))
+// 	//{
+// 		//Debug::Log("TechnoClass_FireAt Aircraft[%s] attempting to fire Railgun !\n", pThis->get_ID());
+// 		//return 0x6FF274;
+// /	//}
+//
+// 	//return pWeaponExt->IsDetachedRailgun
+// 		? 0x6FF20F : 0x0;
+// }
+//
+// DEFINE_HOOK(0x6FF26E, TechnoClass_Fire_DetachedRailgun2, 0x6)
+// {
+// 	GET(WeaponTypeClass*, pWeapon, EBX);
+//
+// 	return WeaponTypeExtContainer::Instance.Find(pWeapon)->IsDetachedRailgun
+// 		? 0x6FF274 : 0x0;
+// }
 
 DEFINE_HOOK(0x6FA4C6, TechnoClass_Update_ZeroOutTarget, 5)
 {
@@ -514,15 +519,6 @@ DEFINE_HOOK(0x6F6F20, TechnoClass_Put_BuildingLight, 6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x6FD0BF, TechnoClass_GetROF_AttachEffect, 6)
-{
-	GET(TechnoClass*, pThis, ESI);
-
-	const auto nRof = TechnoExtContainer::Instance.Find(pThis)->AE_ROF;
-	__asm { fmul nRof };
-	return 0x0;
-}
-
 DEFINE_HOOK(0x707D20, TechnoClass_GetCrew, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
@@ -607,7 +603,7 @@ DEFINE_HOOK(0x70FBE0, TechnoClass_Activate_AresReplace, 6)
 	{
 		pThis->Guard();
 
-		if (auto const pFoot = abstract_cast<FootClass*>(pThis))
+		if (auto const pFoot = flag_cast_to<FootClass*, false>(pThis))
 		{
 			pFoot->Locomotor.GetInterfacePtr()->Power_On();
 		}
@@ -630,7 +626,7 @@ DEFINE_HOOK(0x70FBE0, TechnoClass_Activate_AresReplace, 6)
 			}
 
 			// change: update factories
-			if (auto const pBld = specific_cast<BuildingClass*>(pThis))
+			if (auto const pBld = cast_to<BuildingClass*, false>(pThis))
 			{
 				TechnoExt_ExtData::UpdateFactoryQueues(pBld);
 			}
@@ -669,7 +665,7 @@ DEFINE_HOOK(0x6f526c, TechnoClass_DrawExtras_PowerOff, 5)
 
 	GET_STACK(RectangleStruct*, pRect, 0xA0);
 
-	if (auto pBld = specific_cast<BuildingClass*>(pTechno))
+	if (auto pBld = cast_to<BuildingClass*, false>(pTechno))
 	{
 		const auto pBldExt = BuildingExtContainer::Instance.Find(pBld);
 		const auto isObserver = HouseClass::IsCurrentPlayerObserver();
@@ -755,7 +751,7 @@ DEFINE_HOOK(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 	if (!HouseClass::CurrentPlayer)
 		return 0x70AD4C;
 
-	if (auto pBuilding = specific_cast<BuildingClass*>(pThis))
+	if (auto pBuilding = cast_to<BuildingClass*, false>(pThis))
 	{
 		auto const pType = pBuilding->Type;
 		auto const pOwner = pBuilding->Owner;
@@ -842,7 +838,7 @@ DEFINE_HOOK(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 				{
 					ConvertClass* pPalette = FileSystem::PALETTE_PAL();
 					if (RulesExtData::Instance()->PrimaryFactoryIndicator_Palette)
-						pPalette = RulesExtData::Instance()->PrimaryFactoryIndicator_Palette->GetConvert<PaletteManager::Mode::Default>();
+						pPalette = RulesExtData::Instance()->PrimaryFactoryIndicator_Palette->GetOrDefaultConvert<PaletteManager::Mode::Default>(pPalette);
 
 					int const cellsToAdjust = pType->GetFoundationHeight(false) - 1;
 					Point2D pPosition = TacticalClass::Instance->CoordsToClient(pThis->GetCell()->GetCoords());
@@ -904,7 +900,7 @@ DEFINE_HOOK(0x70FC90, TechnoClass_Deactivate_AresReplace, 6)
 	pThis->Guard();
 	pThis->Deselect();
 
-	if (auto const pFoot = abstract_cast<FootClass*>(pThis))
+	if (auto const pFoot = flag_cast_to<FootClass*, false>(pThis))
 	{
 		pFoot->Locomotor.GetInterfacePtr()->Power_Off();
 	}
@@ -927,7 +923,7 @@ DEFINE_HOOK(0x70FC90, TechnoClass_Deactivate_AresReplace, 6)
 		}
 
 		// change: update factories
-		if (auto const pBld = specific_cast<BuildingClass*>(pThis))
+		if (auto const pBld = cast_to<BuildingClass*, false>(pThis))
 		{
 			TechnoExt_ExtData::UpdateFactoryQueues(pBld);
 		}
@@ -955,6 +951,22 @@ DEFINE_HOOK(0x7014D5, TechnoClass_ChangeOwnership_Additional, 6)
 	if (auto& pJammer = TechnoExtContainer::Instance.Find(pThis)->RadarJammer)
 	{
 		pJammer->UnjamAll();
+	}
+
+	if (auto pBuilding = cast_to<BuildingClass*, false>(pThis))
+	{
+		const auto nTunnelVec = HouseExtData::GetTunnelVector(pBuilding->Type, pThis->Owner);
+
+		if (!nTunnelVec || TunnelFuncs::FindSameTunnel(pBuilding))
+			return 0x0;
+
+		for (auto nPos = nTunnelVec->Vector.begin();
+			nPos != nTunnelVec->Vector.end(); ++nPos)
+		{
+			TunnelFuncs::KillFootClass(*nPos, nullptr);
+		}
+
+		nTunnelVec->Vector.clear();
 	}
 
 	if (TechnoExtContainer::Instance.Find(pThis)->TechnoValueAmount != 0)
@@ -1007,7 +1019,10 @@ DEFINE_HOOK(0x6FAF0D, TechnoClass_Update_EMPLock, 6)
 DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 {
 	GET(TechnoClass* const, pThis, ESI);
+
 	auto const pType = pThis->GetTechnoType();
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	CaptureManagerClass* pCapturer = nullptr;
 	ParasiteClass* pParasite = nullptr;
@@ -1015,6 +1030,17 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 	SpawnManagerClass* pSpawnManager = nullptr;
 	SlaveManagerClass* pSlaveManager = nullptr;
 	AirstrikeClass* pAirstrike = nullptr;
+
+	//AircraftDiveFunctional::Init(pExt, pTypeExt);
+
+	if (pTypeExt->AttachtoType == AircraftTypeClass::AbsID)
+	{
+		if (pTypeExt->MyFighterData.Enable)
+		{
+			pExt->MyFighterData = std::make_unique<FighterAreaGuard>();
+			pExt->MyFighterData->OwnerObject = (AircraftClass*)pThis;
+		}
+	}
 
 	if (pType->Spawns)
 	{
@@ -1032,7 +1058,6 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 	}
 
 	const bool IsFoot = pThis->WhatAmI() != BuildingClass::AbsID;
-
 	const int WeaponCount = pType->TurretCount <= 0 ? 2 : pType->WeaponCount;
 
 	for (auto i = 0; i < WeaponCount; ++i)
@@ -1054,6 +1079,7 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 	{
 		((FootClass*)pThis)->ParasiteImUsing = pParasite;
 	}
+
 	pThis->SpawnManager = pSpawnManager;
 	pThis->SlaveManager = pSlaveManager;
 	pThis->Airstrike = pAirstrike;
@@ -1068,12 +1094,17 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 	{
 		Debug::Log("Techno[%s] Init Without any ownership!\n", pType->ID);
 	}
+
 	// if override is in effect, do not create initial payload.
 	// this object might have been deployed, undeployed, ...
 	if (Unsorted::ScenarioInit && Unsorted::CurrentFrame)
 	{
 		TechnoExtContainer::Instance.Find(pThis)->PayloadCreated = true;
 	}
+
+	TechnoExtData::InitializeItems(pThis, pType);
+	TechnoExtData::InitializeAttachEffects(pThis, pType);
+	TechnoExtData::InitializeUnitIdleAction(pThis, pType);
 
 	R->EAX(pType);
 	return 0x6F4212;
@@ -1129,22 +1160,23 @@ DEFINE_HOOK(0x707EEA, TechnoClass_GetGuardRange_Demacroize, 0x6)
 }
 
 // customizable berserk fire rate modification
-DEFINE_HOOK(0x6FF28F, TechnoClass_Fire_BerserkROFMultiplier, 6)
-{
-	enum { SkipROF = 0x6FF2BE, SetROF = 0x6FF29E };
-	GET(TechnoClass*, pThis, ESI);
-	GET(int, ROF, EAX);
-
-	if (pThis->Berzerk)
-	{
-		const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-		double multiplier = pExt->BerserkROFMultiplier.Get(RulesExtData::Instance()->BerserkROFMultiplier);
-		ROF = static_cast<int>(ROF * multiplier);
-	}
-
-	R->EAX(ROF);
-	return SetROF;
-}
+// DEFINE_HOOK(0x6FF28F, TechnoClass_Fire_BerserkROFMultiplier, 6)
+// {
+// 	GET(TechnoClass*, pThis, ESI);
+// 	GET(int, ROF, EAX);
+// 	GET(WeaponTypeClass*, pWeapon, EBX);
+//
+// 	if (pThis->Berzerk) {
+// 		const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+// 		const double multiplier = pExt->BerserkROFMultiplier.Get(RulesExtData::Instance()->BerserkROFMultiplier);
+// 		ROF = static_cast<int>(ROF * multiplier);
+// 	}
+//
+// 	TechnoExtData::SetChargeTurretDelay(pThis, ROF, pWeapon);
+//
+// 	R->EAX(ROF);
+// 	return 0x6FF2A4;
+// }
 
 DEFINE_HOOK(0x6FE709, TechnoClass_Fire_BallisticScatter1, 6)
 {
@@ -1247,27 +1279,25 @@ DEFINE_HOOK(0x707B09, TechnoClass_PointerGotInvalid_ResetMindControl, 0x6)
 //TechnoClass_GetActionOnObject_IvanBombsB
 DEFINE_JUMP(LJMP, 0x6FFF9E, 0x700006);
 
-DEFINE_HOOK(0x6FF2D1, TechnoClass_FireAt_Facings, 0x6)
-{
-	GET(TechnoClass*, pThis, ESI);
-	GET(WeaponTypeClass*, pWeapon, EBX);
-
-	int nIdx = 0;
-
-	if (pWeapon->Anim.Count > 1)
-	{ //only execute if the anim count is more than 1
-		const auto highest = Conversions::Int2Highest(pWeapon->Anim.Count);
-
-		// 2^highest is the frame count, 3 means 8 frames
-		if (highest >= 3)
-		{
-			nIdx = pThis->GetRealFacing().GetValue(highest, 1u << (highest - 3));
-		}
-	}
-
-	R->EDI(pWeapon->Anim.GetItemOrDefault(nIdx, nullptr));
-	return 0x6FF31B;
-}
+// DEFINE_HOOK(0x6FF2D1, TechnoClass_FireAt_Facings, 0x6)
+// {
+// 	GET(TechnoClass*, pThis, ESI);
+// 	GET(WeaponTypeClass*, pWeapon, EBX);
+//
+// 	int nIdx = 0;
+//
+// 	if (pWeapon->Anim.Count > 1) { //only execute if the anim count is more than 1
+// 		const auto highest = Conversions::Int2Highest(pWeapon->Anim.Count);
+//
+// 		// 2^highest is the frame count, 3 means 8 frames
+// 		if (highest >= 3) {
+// 			nIdx = pThis->GetRealFacing().GetValue(highest, 1u << (highest - 3));
+// 		}
+// 	}
+//
+// 	R->EDI(pWeapon->Anim.GetItemOrDefault(nIdx , nullptr));
+// 	return 0x6FF31B;
+// }
 
 DEFINE_HOOK(0x6FE53F, TechnoClass_FireAt_CreateBullet, 0x6)
 {
@@ -1316,7 +1346,7 @@ DEFINE_HOOK(0x6F826E, TechnoClass_CanAutoTargetObject_CivilianEnemy, 0x5)
 
 	// if the potential target is attacking an allied object, consider it an enemy
 	// to not allow civilians to overrun a player
-	if (const auto pTargetTarget = abstract_cast<TechnoClass*>(pTarget->Target))
+	if (const auto pTargetTarget = flag_cast_to<TechnoClass*>(pTarget->Target))
 	{
 		if (pThis->Owner->IsAlliedWith(pTargetTarget))
 		{
@@ -1486,7 +1516,7 @@ DEFINE_HOOK(0x6FA361, TechnoClass_Update_LoseTarget, 5)
 
 	bool IsAlly = false;
 
-	if (const auto pTechTarget = generic_cast<ObjectClass*>(pThis->Target))
+	if (const auto pTechTarget = flag_cast_to<ObjectClass*>(pThis->Target))
 	{
 		if (const auto pTargetHouse = pTechTarget->GetOwningHouse())
 		{
@@ -1499,7 +1529,7 @@ DEFINE_HOOK(0x6FA361, TechnoClass_Update_LoseTarget, 5)
 
 	auto pType = pThis->GetTechnoType();
 
-	if (pType->AttackFriendlies && IsAlly && TechnoTypeExtContainer::Instance.Find(pType)->AttackFriendlies_AutoAttack)
+	if (!pThis->Berzerk && pType->AttackFriendlies && IsAlly && TechnoTypeExtContainer::Instance.Find(pType)->AttackFriendlies_AutoAttack)
 	{
 		return ForceAttack;
 	}

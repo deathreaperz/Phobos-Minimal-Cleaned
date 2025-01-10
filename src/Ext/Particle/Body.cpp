@@ -53,7 +53,6 @@ void ParticleExtData::Serialize(T& Stm)
 // =============================
 // container
 ParticleExtContainer ParticleExtContainer::Instance;
-std::vector<ParticleExtData*> ParticleExtContainer::Pool;
 
 // =============================
 // container hooks
@@ -94,41 +93,38 @@ DEFINE_HOOK(0x62D9CD, ParticleClass_DTOR, 0xA)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x62D810, ParticleClass_SaveLoad_Prefix, 0x8)
-DEFINE_HOOK(0x62D7A0, ParticleClass_SaveLoad_Prefix, 0x5)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeParticleClass::_Load(IStream* pStm)
 {
-	GET_STACK(ParticleClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	ParticleExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleClass::Load(pStm);
 
-	ParticleExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		ParticleExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x62D801, ParticleClass_Load_Suffix, 0x6)
+HRESULT __stdcall FakeParticleClass::_Save(IStream* pStm, bool clearDirty)
 {
-	ParticleExtContainer::Instance.LoadStatic();
-	return 0;
-}
+	ParticleExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleClass::Save(pStm, clearDirty);
 
-DEFINE_HOOK(0x62D825, ParticleClass_Save_Suffix, 0x7)
-{
-	GET(const HRESULT, nRest, EAX);
-
-	ParticleExtContainer::Instance.GetSavingObject()->byte130 = true;
-	if (SUCCEEDED(nRest))
-	{
+	if (SUCCEEDED(res))
 		ParticleExtContainer::Instance.SaveStatic();
-	}
 
-	return 0x62D82C;
+	return res;
 }
 
-static void __fastcall ParticleClass_Detach(ParticleClass* pThis, void* _, AbstractClass* pTarget, bool bRemove)
+DEFINE_JUMP(VTABLE, 0x7EF968, MiscTools::to_DWORD(&FakeParticleClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7EF96C, MiscTools::to_DWORD(&FakeParticleClass::_Save))
+
+void FakeParticleClass::_Detach(AbstractClass* pTarget, bool bRemove)
 {
-	pThis->ObjectClass::PointerExpired(pTarget, bRemove);
+	this->ObjectClass::PointerExpired(pTarget, bRemove);
 
 	//ParticleExt::ExtMap.InvalidatePointerFor(pThis, pTarget, bRemove);
 }
 
-DEFINE_JUMP(VTABLE, 0x7EF97C, GET_OFFSET(ParticleClass_Detach))
+DEFINE_JUMP(VTABLE, 0x7EF97C, MiscTools::to_DWORD(&FakeParticleClass::_Detach))

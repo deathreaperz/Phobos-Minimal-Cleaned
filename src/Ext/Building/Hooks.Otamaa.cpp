@@ -5,6 +5,8 @@
 
 #include <Ext/BuildingType/Body.h>
 
+#include <Misc/Hooks.Otamaa.h>
+
 #pragma region Otamaa
 DEFINE_HOOK(0x4518CF, BuildingClass_AnimLogic_check, 0x9)
 {
@@ -17,15 +19,15 @@ DEFINE_HOOK(0x4518CF, BuildingClass_AnimLogic_check, 0x9)
 
 DEFINE_HOOK(0x45234B, BuildingClass_TurnOn_EVA, 0x5)
 {
-	GET(BuildingClass*, pThis, ESI);
-	VoxClass::PlayIndex(BuildingTypeExtContainer::Instance.Find(pThis->Type)->EVA_Online);
+	GET(FakeBuildingClass*, pThis, ESI);
+	VoxClass::PlayIndex(pThis->_GetTypeExtData()->EVA_Online);
 	return 0x45235A;
 }
 
 DEFINE_HOOK(0x4523D4, BuildingClass_TurnOff_EVA, 0x5)
 {
-	GET(BuildingClass*, pThis, ESI);
-	VoxClass::PlayIndex(BuildingTypeExtContainer::Instance.Find(pThis->Type)->EVA_Offline);
+	GET(FakeBuildingClass*, pThis, ESI);
+	VoxClass::PlayIndex(pThis->_GetTypeExtData()->EVA_Offline);
 	return 0x4523E3;
 }
 
@@ -46,11 +48,13 @@ DEFINE_HOOK(0x442243, BuildingClass_ReceiveDamage_AddEarly, 0xA)
 
 DEFINE_HOOK(0x44E85F, BuildingClass_Power_UntieStregth, 0x7)
 {
-	GET(BuildingClass*, pThis, ESI);
+	GET(FakeBuildingClass*, pThis, ESI);
 	GET_STACK(int, nPowMult, 0x8);
 
-	R->EAX((int)(!BuildingTypeExtContainer::Instance.Find(pThis->Type)->Power_DegradeWithHealth.Get()
-		? (nPowMult) : (nPowMult * pThis->GetHealthPercentage_())));
+	R->EAX((int)(!pThis->_GetTypeExtData()->Power_DegradeWithHealth.Get()
+		? (nPowMult) :
+		MaxImpl(
+			((nPowMult * pThis->_GetTypeExtData()->PowerPlant_DamageFactor) * pThis->GetHealthPercentage_()), 0)));
 
 	return 0x44E86F;
 }
@@ -81,7 +85,7 @@ DEFINE_HOOK(0x43F000, BuildingClass_GetStaticImage_Sell, 0x6)
 DEFINE_HOOK_AGAIN(0x6D5EB1, BuildingClass_PlaceCementGrid_Shape, 0x6)
 DEFINE_HOOK(0x47EF52, BuildingClass_PlaceCementGrid_Shape, 0x6)
 {
-	if (auto const pBuilding = specific_cast<BuildingClass*>(DisplayClass::Instance->CurrentBuilding))
+	if (auto const pBuilding = cast_to<BuildingClass*>(DisplayClass::Instance->CurrentBuilding))
 	{
 		R->EDX(BuildingTypeExtContainer::Instance.Find(pBuilding->Type)->BuildingPlacementGrid_Shape.Get(FileSystem::PLACE_SHP()));
 		return R->Origin() + 0x6;
@@ -109,8 +113,12 @@ DEFINE_HOOK(0x47EF52, BuildingClass_PlaceCementGrid_Shape, 0x6)
 
 // 	return 0x0;
 // }
+bool FakeBuildingClass::_IsFactory()
+{
+	return this->Type->Factory == AbstractType::AircraftType || this->IsFactory();
+}
 
-DEFINE_JUMP(VTABLE, 0x7E4140, GET_OFFSET(BuildingTypeExtData::IsFactory));
+DEFINE_JUMP(VTABLE, 0x7E4140, MiscTools::to_DWORD(&FakeBuildingClass::_IsFactory));
 
 /*
 #ifdef ENABLE_NEWHOOKS

@@ -1,11 +1,12 @@
 #pragma once
 
-#include <Ext/SWType/Body.h>
 #include "NewSWType.h"
-#include <ProgressTimer.h>
 
 #include <Ext/WeaponType/Body.h>
-#include <New/Entity/ElectricBoltClass.h>
+#include <Ext/SWType/Body.h>
+#include <Ext/House/Body.h>
+
+#include <ProgressTimer.h>
 
 enum class SWStateMachineIdentifier : int
 {
@@ -14,7 +15,7 @@ enum class SWStateMachineIdentifier : int
 	ChronoWarp = 1,
 	PsychicDominator = 2,
 	CloneableLighningStorm = 3,
-	DropPod = 4,
+	Droppod = 4,
 	IonCannon = 5,
 	LaserStrike = 6,
 	GenericWarhead = 7,
@@ -30,7 +31,7 @@ enum class SWStateMachineIdentifier : int
 // i.e. start anim/sound 1 frame after clicking, fire a damage wave 25 frames later, and play second sound 50 frames after that...
 class SWStateMachine
 {
-	static std::vector<std::unique_ptr<SWStateMachine>> Array;
+	inline static HelperedVector<std::unique_ptr<SWStateMachine>> Array;
 
 public:
 
@@ -142,7 +143,7 @@ public:
 
 	virtual SWStateMachineIdentifier GetIdentifier() const override
 	{
-		return SWStateMachineIdentifier::DropPod;
+		return SWStateMachineIdentifier::Droppod;
 	}
 
 	virtual const char* GetIdentifierStrings() const override
@@ -544,8 +545,8 @@ public:
 		, LaserStrikeDuration { 0 }
 		, AlreadyActivated { false }
 		, Deferment { deferment }
-		, MaxCount { abs(maxcount) }
-		, MaxCountCounter { abs(maxcount) }
+		, MaxCount { Math::abs(maxcount) }
+		, MaxCountCounter { Math::abs(maxcount) }
 	{
 	}
 
@@ -707,12 +708,12 @@ class ParaDropStateMachine : public SWStateMachine
 {
 public:
 	ParaDropStateMachine()
-		: SWStateMachine(), Target { nullptr }, PlaneType { nullptr }, Types {}, Nums {}
+		: SWStateMachine(), Target { nullptr }, PlaneType { }, Types {}, Nums {}
 	{
 	}
 
 	ParaDropStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, NewSWType* pSWType, CellClass* pTarget)
-		: SWStateMachine(Deferment, XY, pSuper, pSWType), Target { pTarget }, PlaneType { nullptr }, Types {}, Nums {}
+		: SWStateMachine(Deferment, XY, pSuper, pSWType), Target { pTarget }, PlaneType { }, Types {}, Nums {}
 	{
 		this->UpdateProperties();
 	}
@@ -759,6 +760,10 @@ protected:
 	std::vector<Iterator<int>> Nums;
 };
 
+#define MakeStatemachine(a) \
+case SWStateMachineIdentifier::## a ##:\
+return std::make_unique<## a ##StateMachine>();\
+
 template <>
 struct Savegame::ObjectFactory<SWStateMachine>
 {
@@ -769,32 +774,19 @@ struct Savegame::ObjectFactory<SWStateMachine>
 		{
 			switch (type)
 			{
-			case SWStateMachineIdentifier::UnitDelivery:
-				return std::make_unique<UnitDeliveryStateMachine>();
-			case SWStateMachineIdentifier::ChronoWarp:
-				return std::make_unique<ChronoWarpStateMachine>();
-			case SWStateMachineIdentifier::PsychicDominator:
-				return std::make_unique<PsychicDominatorStateMachine>();
-			case SWStateMachineIdentifier::CloneableLighningStorm:
-				return std::make_unique<CloneableLighningStormStateMachine>();
-			case SWStateMachineIdentifier::DropPod:
-				return std::make_unique<DroppodStateMachine>();
-			case SWStateMachineIdentifier::IonCannon:
-				return std::make_unique<IonCannonStateMachine>();
-			case SWStateMachineIdentifier::LaserStrike:
-				return std::make_unique<LaserStrikeStateMachine>();
-			case SWStateMachineIdentifier::GenericWarhead:
-				return std::make_unique<GenericWarheadStateMachine>();
-			case SWStateMachineIdentifier::SonarPulse:
-				return std::make_unique<SonarPulseStateMachine>();
-			case SWStateMachineIdentifier::SpyPlane:
-				return std::make_unique<SpyPlaneStateMachine>();
-			case SWStateMachineIdentifier::Reveal:
-				return std::make_unique<RevealStateMachine>();
-			case SWStateMachineIdentifier::GeneticMutator:
-				return std::make_unique<GeneticMutatorStateMachine>();
-			case SWStateMachineIdentifier::ParaDrop:
-				return std::make_unique<ParaDropStateMachine>();
+				MakeStatemachine(UnitDelivery)
+					MakeStatemachine(ChronoWarp)
+					MakeStatemachine(PsychicDominator)
+					MakeStatemachine(CloneableLighningStorm)
+					MakeStatemachine(Droppod)
+					MakeStatemachine(IonCannon)
+					MakeStatemachine(LaserStrike)
+					MakeStatemachine(GenericWarhead)
+					MakeStatemachine(SonarPulse)
+					MakeStatemachine(SpyPlane)
+					MakeStatemachine(Reveal)
+					MakeStatemachine(GeneticMutator)
+					MakeStatemachine(ParaDrop)
 			default:
 				Debug::FatalErrorAndExit("SWStateMachineType %d not recognized.",
 					static_cast<unsigned int>(type));
@@ -804,3 +796,4 @@ struct Savegame::ObjectFactory<SWStateMachine>
 		return nullptr;
 	}
 };
+#undef MakeStatemachine

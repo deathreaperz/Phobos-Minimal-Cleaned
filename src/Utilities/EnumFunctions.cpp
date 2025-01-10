@@ -4,6 +4,12 @@
 #include <HouseClass.h>
 #include <CellClass.h>
 
+#include <TechnoClass.h>
+#include <UnitClass.h>
+#include <InfantryClass.h>
+#include <AircraftClass.h>
+#include <GeneralDefinitions.h>
+
 std::array<const char*, (size_t)DiscardCondition::count>  EnumFunctions::DiscardCondition_to_strings {
  {
 	{ "none" } ,
@@ -12,16 +18,19 @@ std::array<const char*, (size_t)DiscardCondition::count>  EnumFunctions::Discard
 	{ "stationary" } ,
 	{ "drain" } ,
 	{ "inrange" } ,
-	{ "outofrange" }
+	{ "outofrange" },
+	{ "InvokerDeleted" },
+	{ "firing "}
  }
 };
 
-std::array<const char*, 5u>  EnumFunctions::ExpireWeaponCondition_to_strings {
+std::array<const char*, 6u>  EnumFunctions::ExpireWeaponCondition_to_strings {
  {
 	{ "none" } ,
 	{ "expire" } ,
 	{ "remove" } ,
 	{ "death" } ,
+	{ "discard" },
 	{ "all" }
  }
 };
@@ -536,6 +545,14 @@ std::array<const char*, 8u> EnumFunctions::FacingType_to_strings
 }
 };
 
+std::array<std::pair<const char* const, InterpolationMode>, 2u> EnumFunctions::InterpolationMode_ToStrings
+{
+{
+	{ "none"  , InterpolationMode::None} ,
+	{ "linear" , InterpolationMode::Linear } ,
+}
+};
+
 bool EnumFunctions::CanTargetHouse(AffectedHouse const& flags, HouseClass* ownerHouse, HouseClass* targetHouse)
 {
 	if (flags == AffectedHouse::All)
@@ -558,7 +575,7 @@ bool EnumFunctions::IsCellEligible(CellClass* const pCell, AffectedTarget const&
 {
 	if (explicitEmptyCells)
 	{
-		const auto pTechno = abstract_cast<TechnoClass*>(pCell->GetContent());
+		const auto pTechno = flag_cast_to<TechnoClass*>(pCell->GetContent());
 
 		if (!pTechno && !(allowed & AffectedTarget::NoContent))
 			return false;
@@ -653,7 +670,7 @@ bool EnumFunctions::AreCellAndObjectsEligible(CellClass* const pCell, AffectedTa
 		if (!object || !eligible)
 			break;
 
-		if (auto pTechno = abstract_cast<TechnoClass*>(object))
+		if (auto pTechno = flag_cast_to<TechnoClass*, false>(object))
 		{
 			if (owner)
 			{

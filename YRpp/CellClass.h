@@ -106,7 +106,7 @@ public:
 		if (!(int)tileType)
 			return false;
 
-		using fp_type = bool(__fastcall*)(const CellClass*, void*);
+		using fp_type = bool(__thiscall*)(const CellClass*, void*);
 		return reinterpret_cast<fp_type>(TileArray[(int)tileType])(this, nullptr);
 	}
 
@@ -447,8 +447,11 @@ public:
 	constexpr FORCEINLINE int GetLevel() const
 	{ return this->Level + (this->ContainsBridge() ? Unsorted::BridgeLevels : 0); }
 
-	static constexpr FORCEINLINE CoordStruct Cell2Coord(const CellStruct &cell, int z = 0) {
-		return { (cell.X * 256) + 128  , cell.Y * 256 + 128 ,z };
+	static constexpr FORCEINLINE CoordStruct Cell2Coord(const CellStruct &cell, int z = 0 , bool snap = true) {
+		if(snap)
+			return { (cell.X * 256) + 128  , (cell.Y * 256) + 128 ,z };
+		else
+			return { (cell.X * 256)  , (cell.Y * 256) ,z };
 	}
 
 	static constexpr FORCEINLINE CellStruct Coord2Cell(const CoordStruct &crd) {
@@ -488,7 +491,7 @@ public:
 	void ChainReaction() {
 		CellStruct* cell = &this->MapCoords;
 		SET_REG32(ecx, cell);
-		CALL(0x489270);
+		ASM_CALL(0x489270);
 	}
 
 	CoordStruct* FindInfantrySubposition(CoordStruct* pOutBuffer, const CoordStruct& coords, bool ignoreContents, bool alt, bool useCellCoords)
@@ -588,6 +591,16 @@ public:
 	void RemoveWeed() const {
 		JMP_THIS(0x486E30);
 	}
+
+	constexpr CellClass* GetBridgeOwner() const {
+		if (this->ContainsBridge()) {
+			return this->ContainsBridgeBody() ? const_cast<CellClass*>(this) : this->BridgeOwnerCell;
+		}
+
+		return nullptr;
+	}
+
+	constexpr bool Is_Overlay_Bridge() const { return this->OverlayTypeIndex == 24 || this->OverlayTypeIndex == 25; }
 
 protected:
 	//Constructor

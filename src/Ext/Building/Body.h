@@ -19,9 +19,7 @@ public:
 	static constexpr size_t Canary = 0x87654321;
 	using base_type = BuildingClass;
 
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0x71C; //ares
-#endif
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -69,7 +67,8 @@ public:
 	//and set to highest PowersUpToLevel out of
 	//applied upgrades regardless of how many are currently applied to this building.
 
-	BuildingExtData() noexcept = default;
+	FactoryClass* FactoryBuildingMe {};
+
 	~BuildingExtData() noexcept
 	{
 		this->SpyEffectAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
@@ -77,7 +76,6 @@ public:
 
 	void InitializeConstant();
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-	static bool InvalidateIgnorable(AbstractClass* ptr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -126,7 +124,112 @@ private:
 class BuildingExtContainer final : public Container<BuildingExtData>
 {
 public:
+	inline static std::vector<BuildingExtData*> Pool;
 	static BuildingExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(BuildingExtContainer, BuildingExtData, "BuildingClass");
+	BuildingExtData* AllocateUnchecked(BuildingClass* key)
+	{
+		BuildingExtData* val = nullptr;
+		if (!Pool.empty())
+		{
+			val = Pool.front();
+			Pool.erase(Pool.begin());
+			//re-init
+		}
+		else
+		{
+			val = DLLAllocWithoutCTOR<BuildingExtData>();
+		}
+
+		if (val)
+		{
+			val->BuildingExtData::BuildingExtData();
+			val->AttachedToObject = key;
+			val->InitializeConstant();
+			return val;
+		}
+
+		return nullptr;
+	}
+
+	BuildingExtData* Allocate(BuildingClass* key)
+	{
+		if (!key || Phobos::Otamaa::DoingLoadGame)
+			return nullptr;
+
+		this->ClearExtAttribute(key);
+
+		if (BuildingExtData* val = AllocateUnchecked(key))
+		{
+			this->SetExtAttribute(key, val);
+			return val;
+		}
+
+		return nullptr;
+	}
+
+	void Remove(BuildingClass* key)
+	{
+		if (BuildingExtData* Item = TryFind(key))
+		{
+			Item->~BuildingExtData();
+			Item->AttachedToObject = nullptr;
+			Pool.push_back(Item);
+			this->ClearExtAttribute(key);
+		}
+	}
+
+	void Clear()
+	{
+		if (!Pool.empty())
+		{
+			auto ptr = Pool.front();
+			Pool.erase(Pool.begin());
+			if (ptr)
+			{
+				delete ptr;
+			}
+		}
+	}
+
+	//CONSTEXPR_NOCOPY_CLASSB(BuildingExtContainer , BuildingExtData, "BuildingClass");
 };
+
+class FakeBuildingClass : public BuildingClass
+{
+public:
+	void _Detach(AbstractClass* target, bool all);
+	bool _IsFactory();
+	CoordStruct* _GetFLH(CoordStruct* pCrd, int weaponIndex);
+	int _Mission_Missile();
+	void _Spawn_Refinery_Smoke_Particles();
+	bool _SetOwningHouse(HouseClass* pHouse, bool announce)
+	{
+		const bool res = this->BuildingClass::SetOwningHouse(pHouse, announce);
+
+		// Fix : update powered anims
+		if (res && (this->Type->Powered || this->Type->PoweredSpecial))
+			this->UpdatePowerDown();
+
+		return res;
+	}
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	FORCEINLINE BuildingClass* _AsBuilding() const
+	{
+		return (BuildingClass*)this;
+	}
+
+	FORCEINLINE BuildingExtData* _GetExtData()
+	{
+		return *reinterpret_cast<BuildingExtData**>(((DWORD)this) + BuildingExtData::ExtOffset);
+	}
+
+	FORCEINLINE BuildingTypeExtData* _GetTypeExtData()
+	{
+		return ((FakeBuildingTypeClass*)this->Type)->_GetExtData();
+	}
+};
+static_assert(sizeof(FakeBuildingClass) == sizeof(BuildingClass), "Invalid Size !");

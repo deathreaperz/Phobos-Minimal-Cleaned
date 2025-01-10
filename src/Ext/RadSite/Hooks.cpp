@@ -15,6 +15,10 @@
 #include <Ext/WarheadType/Body.h>
 
 #include <Utilities/Macro.h>
+#include <Misc/Hooks.Otamaa.h>
+
+#include <SpawnManagerClass.h>
+
 /*
 	Custom Radiations
 	Worked out from old uncommented Ares RadSite Hook , adding some more hook
@@ -64,7 +68,7 @@ DEFINE_HOOK(0x46ADE0, BulletClass_ApplyRadiation_NoBullet, 0x5)
 
 		if (!pThis)
 		{
-			const auto pDefault = RadTypeClass::Array[0].get();
+			const auto pDefault = RadTypeClass::Array.begin()->get();
 			auto const it = RadSiteClass::Array->find_if([=](auto const pSite)
  {
 	 auto const pRadExt = RadSiteExtContainer::Instance.Find(pSite);
@@ -233,7 +237,7 @@ DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
 
 		const auto nCurCoord = pBuilding->InlineMapCoords();
 		for (auto pFoundation = pBuilding->GetFoundationData(false);
-			*pFoundation != CellStruct { 0x7FFF, 0x7FFF }; ++pFoundation)
+			*pFoundation != CellStruct::EOL; ++pFoundation)
 		{
 			if (!pBuilding->IsAlive)
 				return Dead;
@@ -322,7 +326,7 @@ DEFINE_HOOK(0x4DA554, FootClass_AI_ReplaceRadiationDamageProcessing, 0x5)
 		auto pSpawnTechnoType = pThis->SpawnOwner->GetTechnoType();
 		auto pSpawnTechnoTypeExt = TechnoTypeExtContainer::Instance.Find(pSpawnTechnoType);
 
-		if (const auto pTargetTech = abstract_cast<TechnoClass*>(pThis->Target))
+		if (const auto pTargetTech = flag_cast_to<TechnoClass*>(pThis->Target))
 		{
 			//Spawnee trying to chase Aircraft that go out of map until it reset
 			//fix this , so reset immedietely if target is not on map
@@ -347,7 +351,7 @@ DEFINE_HOOK(0x4DA554, FootClass_AI_ReplaceRadiationDamageProcessing, 0x5)
 	}
 
 	const auto nLoc = pThis->InlineMapCoords();
-	auto const pUnit = specific_cast<UnitClass*>(pThis);
+	auto const pUnit = cast_to<UnitClass*, false>(pThis);
 
 	//R->BL(false);
 
@@ -466,5 +470,5 @@ DEFINE_HOOK(0x65BB67, RadSite_Deactivate, 0x6)
 	return Continue;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F0858, GET_OFFSET(RadSiteExtData::GetAltCoords_Wrapper));
-DEFINE_JUMP(VTABLE, 0x7F0868, GET_OFFSET(RadSiteExtData::GetAltCoords_Wrapper));
+DEFINE_JUMP(VTABLE, 0x7F0858, MiscTools::to_DWORD(&FakeRadSiteClass::__GetAltCoords));
+DEFINE_JUMP(VTABLE, 0x7F0868, MiscTools::to_DWORD(&FakeRadSiteClass::__GetAltCoords));

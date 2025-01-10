@@ -241,7 +241,7 @@ DEFINE_HOOK(0x72590E, AnnounceInvalidPointer_Particle, 0x9)
 //	return 0x62C309;
 //}
 
-void ParticleClass_Gas_Transmography(ObjectClass* pItem, TechnoClass* pAttacker, HouseClass* pOwner, int distance, const CoordStruct& loc, ParticleTypeExtData* pTypeExt, HouseClass* transmoOwner)
+static void ParticleClass_Gas_Transmography(ObjectClass* pItem, TechnoClass* pAttacker, HouseClass* pOwner, int distance, const CoordStruct& loc, ParticleTypeExtData* pTypeExt, HouseClass* transmoOwner)
 {
 	int damage = pTypeExt->AttachedToObject->Damage;
 	if (pItem->ReceiveDamage(&damage, distance, pTypeExt->AttachedToObject->Warhead, pAttacker, false, false, pOwner) == DamageState::NowDead)
@@ -271,7 +271,7 @@ DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 		{
 			if (pOccupy && pOccupy->IsAlive && pOccupy->Health > 0)
 			{
-				if (auto pTechno = generic_cast<TechnoClass*>(pOccupy))
+				if (auto pTechno = flag_cast_to<TechnoClass*, false>(pOccupy))
 				{
 					if (pTechno->IsSinking || pTechno->IsCrashing || pTechno->TemporalTargetingMe)
 						continue;
@@ -280,8 +280,8 @@ DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 						continue;
 				}
 
-				auto nX = abs(pThis->Location.X - pOccupy->Location.X);
-				auto nY = abs(pThis->Location.Y - pOccupy->Location.Y);
+				auto nX = Math::abs(pThis->Location.X - pOccupy->Location.X);
+				auto nY = Math::abs(pThis->Location.Y - pOccupy->Location.Y);
 				ParticleClass_Gas_Transmography(pOccupy, pAttacker, pOwner, Game::AdjustHeight(nX + nY), pOccupy->Location, pTypeExt, transmoOwner);
 			}
 		}
@@ -295,8 +295,8 @@ DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 			if (pItem->WhatAmI() != BuildingClass::AbsID && TechnoExtData::IsChronoDelayDamageImmune(static_cast<FootClass*>(pItem)))
 				continue;
 
-			auto nX = abs(pThis->Location.X - pItem->Location.X);
-			auto nY = abs(pThis->Location.Y - pItem->Location.Y);
+			auto nX = Math::abs(pThis->Location.X - pItem->Location.X);
+			auto nY = Math::abs(pThis->Location.Y - pItem->Location.Y);
 			ParticleClass_Gas_Transmography(pItem, pAttacker, pOwner, Game::AdjustHeight(nX + nY), pItem->Location, pTypeExt, transmoOwner);
 		}
 	}
@@ -312,7 +312,7 @@ DEFINE_HOOK(0x62D015, ParticleClass_Draw_Palette, 6)
 	const auto pTypeExt = ParticleTypeExtContainer::Instance.Find(pThis->Type);
 	if (const auto pConvertData = pTypeExt->Palette)
 	{
-		pConvert = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
+		pConvert = pConvertData->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pConvert);
 	}
 
 	R->EDX(pConvert);
@@ -335,7 +335,7 @@ DEFINE_HOOK(0x62CCB8, ParticleClass_Update_Fire, 7)
 			if (pThis->ParticleSystem && pOccupy == pThis->ParticleSystem->Owner)
 				continue;
 
-			if (auto pTechno = generic_cast<TechnoClass*>(pOccupy))
+			if (auto pTechno = flag_cast_to<TechnoClass*, false>(pOccupy))
 			{
 				if (pTechno->IsSinking || pTechno->IsCrashing || pTechno->TemporalTargetingMe)
 					continue;
@@ -384,7 +384,7 @@ DEFINE_HOOK(0x6D9781, Tactical_RenderLayers_DrawInfoTipAndSpiedSelection, 0x5)
 	GET(TechnoClass*, pThis, EBX);
 	GET(Point2D*, pLocation, EAX);
 
-	const auto pBuilding = specific_cast<BuildingClass*>(pThis);
+	const auto pBuilding = cast_to<BuildingClass*, false>(pThis);
 
 	if (pBuilding && pBuilding->IsSelected && pBuilding->IsOnMap && BuildingExtContainer::Instance.Find(pBuilding)->LimboID <= -1)
 	{

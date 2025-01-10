@@ -10,8 +10,8 @@
 #include <Helpers/Enumerators.h>
 
 #include <Utilities/Debug.h>
-#include <Utilities/Constructs.h>
 #include <Utilities/Iterator.h>
+#include <Utilities/PhobosMap.h>
 
 #include <string.h>
 #include <iterator>
@@ -21,6 +21,10 @@
 #define MIN_VAL(x) std::numeric_limits<x>::min()
 #define MAX_VAL(x) std::numeric_limits<x>::max()
 
+#include <Drawing.h>
+#include <HouseClass.h>
+
+class AnimTypeClass;
 class GeneralUtils final
 {
 	NO_CONSTRUCT_CLASS(GeneralUtils)
@@ -32,8 +36,9 @@ public:
 	static void DoubleValidCheck(double* source, const char* section, const char* tag, double defaultValue, double min = MIN_VAL(double), double max = MAX_VAL(double));
 	static const wchar_t* LoadStringOrDefault(const char* key, const wchar_t* defaultValue);
 	static const wchar_t* LoadStringUnlessMissing(const char* key, const wchar_t* defaultValue);
-	static void AdjacentCellsInRange(std::vector<CellStruct>& nCells, size_t range);
+	static void AdjacentCellsInRange(std::vector<CellStruct>& nCells, short range);
 	static const bool ProduceBuilding(HouseClass* pOwner, int idxBuilding);
+	static AnimTypeClass* SelectRandomAnimFromVector(std::vector<AnimTypeClass*>& vec, AnimTypeClass* fallback = nullptr);
 
 	static constexpr bool is_number(const std::string& s)
 	{
@@ -252,7 +257,7 @@ public:
 		return -1;
 	}
 
-	static inline PhobosMap<Point2D, int> MakeTargetPad(std::vector<int>& weights, int count, int& maxValue)
+	static constexpr inline PhobosMap<Point2D, int> MakeTargetPad(std::vector<int>& weights, int count, int& maxValue)
 	{
 		const int weightCount = weights.size();
 		PhobosMap<Point2D, int> targetPad {};
@@ -378,7 +383,7 @@ public:
 	static bool ApplyTheaterExtToString(std::string& flag);
 	static std::string ApplyTheaterSuffixToString(const std::string& str);
 
-	static CellClass* GetCell(CellClass* pIn, CoordStruct& InOut, size_t nSpread, bool EmptyCell)
+	static CellClass* GetCell(CellClass* pIn, CoordStruct& InOut, short nSpread, bool EmptyCell)
 	{
 		if (!pIn)
 			return nullptr;
@@ -619,4 +624,20 @@ public:
 
 	static int GetLSAnimHeightFactor(AnimTypeClass* pType, CellClass* pCell, bool checklevel = false);
 #pragma endregion
+
+	static void PrintMessage(const wchar_t* pMessage)
+	{
+		MessageListClass::Instance->PrintMessage(
+			pMessage,
+			RulesClass::Instance->MessageDelay,
+			HouseClass::CurrentPlayer->ColorSchemeIndex,
+				true
+		);
+	}
+
+	template <typename T> requires std::is_enum_v<T>
+	static constexpr bool Contains(T thisEnum, T thatEnum)
+	{
+		return (thisEnum & thatEnum) != T::None;
+	}
 };

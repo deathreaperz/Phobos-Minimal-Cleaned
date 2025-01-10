@@ -3,6 +3,10 @@
 #include <TerrainTypeClass.h>
 #include <Utilities/GeneralUtils.h>
 
+#include <TerrainClass.h>
+#include <TacticalClass.h>
+#include <Helpers/Macro.h>
+
 void TerrainTypeExtData::Initialize()
 {
 	this->AttachedAnim.reserve(1);
@@ -29,9 +33,6 @@ void TerrainTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	INI_EX exINI(pINI);
 	this->SpawnsTiberium_Type.Read(exINI, pSection, "SpawnsTiberium.Type");
-
-	if (this->SpawnsTiberium_Type >= TiberiumClass::Array->Count)
-		this->SpawnsTiberium_Type = TiberiumClass::Array->Count - 1;
 
 	this->SpawnsTiberium_Range.Read(exINI, pSection, "SpawnsTiberium.Range");
 	this->SpawnsTiberium_GrowthStage.Read(exINI, pSection, "SpawnsTiberium.GrowthStage");
@@ -154,30 +155,32 @@ DEFINE_HOOK(0x71E3A5, TerrainTypeClass_SDDTOR, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x71E1D0, TerrainTypeClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x71E240, TerrainTypeClass_SaveLoad_Prefix, 0x8)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeTerrainTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(TerrainTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	TerrainTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->TerrainTypeClass::Load(pStm);
 
-	TerrainTypeExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		TerrainTypeExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x71E233, TerrainTypeClass_Load_Suffix, 0x6)
+HRESULT __stdcall FakeTerrainTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	TerrainTypeExtContainer::Instance.LoadStatic();
+	TerrainTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->TerrainTypeClass::Save(pStm, clearDirty);
 
-	return 0;
+	if (SUCCEEDED(res))
+		TerrainTypeExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x71E258, TerrainTypeClass_Save_Suffix, 0x5)
-{
-	TerrainTypeExtContainer::Instance.SaveStatic();
-
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7F546C, MiscTools::to_DWORD(&FakeTerrainTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F5470, MiscTools::to_DWORD(&FakeTerrainTypeClass::_Save))
 
 DEFINE_HOOK(0x71E0B4, TerrainTypeClass_LoadFromINI_ReturnFalse, 0xA)
 {

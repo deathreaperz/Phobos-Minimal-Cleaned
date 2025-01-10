@@ -12,6 +12,7 @@
 #include <Ext/Scenario/Body.h>
 #include <Ext/ScriptType/Body.h>
 #include <Ext/Team/Body.h>
+//#include <ExtraHeaders/StackVector.h>
 
 /*
 *	Scripts is a part of `TeamClass` that executed sequentally form `ScriptTypeClass`
@@ -979,9 +980,11 @@ void NOINLINE ScriptExtData::ExecuteTimedAreaGuardAction(TeamClass* pTeam)
 	}
 }
 
+#include <ExtraHeaders/StackVector.h>
+
 void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 {
-	std::vector<FootClass*> transports;
+	StackVector<FootClass*, 256> transports;
 
 	// Collect available transports
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
@@ -992,11 +995,11 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 			&& pUnit->Passengers.NumPassengers < pType->Passengers
 			&& pUnit->Passengers.GetTotalSize() < pType->Passengers)
 		{
-			transports.push_back(pUnit);
+			transports->push_back(pUnit);
 		}
 	}
 
-	if (transports.empty())
+	if (transports->empty())
 	{
 		// This action finished
 		pTeam->StepCompleted = true;
@@ -1004,7 +1007,7 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 	}
 
 	// Now load units into transports
-	for (auto pTransport : transports)
+	for (auto pTransport : transports.container())
 	{
 		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
 		{
@@ -1068,7 +1071,7 @@ void ScriptExtData::WaitUntilFullAmmoAction(TeamClass* pTeam)
 			if (pType->Ammo > 0 && pUnit->Ammo < pType->Ammo)
 			{
 				// If an aircraft object have AirportBound it must be evaluated
-				if (auto const pAircraft = abstract_cast<AircraftClass*>(pUnit))
+				if (auto const pAircraft = cast_to<AircraftClass*, false>(pUnit))
 				{
 					if (pAircraft->Type->AirportBound)
 					{
@@ -1271,7 +1274,7 @@ void ScriptExtData::IncreaseCurrentTriggerWeight(TeamClass* pTeam, bool forceJum
 		modifier = pTeam->CurrentScript->GetCurrentAction().Argument;
 
 	if (modifier <= 0)
-		modifier = abs(RulesClass::Instance->AITriggerSuccessWeightDelta);
+		modifier = Math::abs(RulesClass::Instance->AITriggerSuccessWeightDelta);
 
 	ScriptExtData::ModifyCurrentTriggerWeight(pTeam, forceJumpLine, modifier);
 
@@ -1325,7 +1328,7 @@ void ScriptExtData::WaitIfNoTarget(TeamClass* pTeam, int attempts = 0)
 	if (attempts < 0)
 		attempts = pTeam->CurrentScript->GetCurrentAction().Argument;
 
-	TeamExtContainer::Instance.Find(pTeam)->WaitNoTargetAttempts = abs(attempts);
+	TeamExtContainer::Instance.Find(pTeam)->WaitNoTargetAttempts = Math::abs(attempts);
 
 	// This action finished
 	pTeam->StepCompleted = true;
@@ -1445,7 +1448,7 @@ bool ScriptExtData::MoveMissionEndStatus(TeamClass* pTeam, TechnoClass* pFocus, 
 
 	if (!ScriptExtData::IsUnitAvailable(pFocus, false))
 	{
-		pTeam->Focus = nullptr;
+		pTeam->ArchiveTarget = nullptr;
 		return false;
 	}
 
@@ -1942,6 +1945,8 @@ void ScriptExtData::ChronoshiftToEnemyBase(TeamClass* pTeam, int extraDistance)
 	ScriptExtData::ChronoshiftTeamToTarget(pTeam, pLeader, pTargetCell);
 }
 
+#include <Ext/SWType/Body.h>
+
 void ScriptExtData::ChronoshiftTeamToTarget(TeamClass* pTeam, TechnoClass* pTeamLeader, AbstractClass* pTarget)
 {
 	if (!pTeam || !pTeamLeader || !pTarget)
@@ -1954,6 +1959,9 @@ void ScriptExtData::ChronoshiftTeamToTarget(TeamClass* pTeam, TechnoClass* pTeam
 
 	for (auto& pSuper : pOwner->Supers)
 	{
+		if (!SWTypeExtContainer::Instance.Find(pSuper->Type)->IsAvailable(pOwner))
+			continue;
+
 		if (!pSuperChronosphere && pSuper->Type->Type == SuperWeaponType::ChronoSphere)
 			pSuperChronosphere = pSuper;
 
@@ -2176,19 +2184,19 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 	}
 
 	// Reset Team's target if the current target isn't a repair hut
-	if (pTeam->Focus)
+	if (pTeam->ArchiveTarget)
 	{
-		if (pTeam->Focus->WhatAmI() != AbstractType::Building)
+		if (pTeam->ArchiveTarget->WhatAmI() != AbstractType::Building)
 		{
-			pTeam->Focus = nullptr;
+			pTeam->ArchiveTarget = nullptr;
 		}
 		else
 		{
-			auto pBuilding = static_cast<BuildingClass*>(pTeam->Focus);
+			auto pBuilding = static_cast<BuildingClass*>(pTeam->ArchiveTarget);
 
 			if (!pBuilding->Type->BridgeRepairHut)
 			{
-				pTeam->Focus = nullptr;
+				pTeam->ArchiveTarget = nullptr;
 			}
 			else
 			{
@@ -2196,15 +2204,15 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 
 				// If the Bridge was repaired then the repair hut isn't valid anymore
 				if (!MapClass::Instance->IsLinkedBridgeDestroyed(cell))
-					pTeam->Focus = nullptr;
+					pTeam->ArchiveTarget = nullptr;
 			}
 		}
 	}
 
-	TechnoClass* selectedTarget = pTeam->Focus ? static_cast<TechnoClass*>(pTeam->Focus) : nullptr;
+	TechnoClass* selectedTarget = pTeam->ArchiveTarget ? static_cast<TechnoClass*>(pTeam->ArchiveTarget) : nullptr;
 	bool isEngineerAmphibious = false;
-	std::vector<FootClass*> engineers;
-	std::vector<FootClass*> otherTeamMembers;
+	StackVector<FootClass*, 1250> engineers;
+	StackVector<FootClass*, 1250> otherTeamMembers;
 
 	// Check if there are no engineers
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
@@ -2212,7 +2220,7 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		if (!IsUnitAvailable(pUnit, true))
 			continue;
 
-		if (!pTeam->Focus)
+		if (!pTeam->ArchiveTarget)
 		{
 			pUnit->SetTarget(nullptr);
 			pUnit->SetDestination(nullptr, false);
@@ -2232,17 +2240,17 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 					isEngineerAmphibious = true;
 				}
 
-				engineers.push_back(pUnit);
+				engineers->push_back(pUnit);
 
 				continue;
 			}
 		}
 
 		// Non-engineers will receive a different command
-		otherTeamMembers.push_back(pUnit);
+		otherTeamMembers->push_back(pUnit);
 	}
 
-	if (engineers.empty())
+	if (engineers->empty())
 	{
 		pTeam->StepCompleted = true;
 		ScriptExtData::Log("AI Scripts - [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d -> (Reason: Team has no engineers)\n",
@@ -2258,7 +2266,7 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		return;
 	}
 
-	std::vector<BuildingClass*> validHuts;
+	StackVector<BuildingClass*, 500> validHuts;
 
 	if (!selectedTarget)
 	{
@@ -2272,7 +2280,7 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 
 			if (isEngineerAmphibious)
 			{
-				validHuts.push_back(pTechno);
+				validHuts->push_back(pTechno);
 			}
 			else
 			{
@@ -2280,14 +2288,14 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 
 				// Only huts reachable by the (first) engineer are valid
 				if (engineers[0]->IsInSameZone(&pTechno->GetCenterCoords()))
-					validHuts.push_back(pTechno);
+					validHuts->push_back(pTechno);
 			}
 		}
 
 		// Find the best repair hut
 		int bestVal = -1;
 
-		for (auto pTechno : validHuts)
+		for (auto& pTechno : validHuts.container())
 		{
 			//auto hut = pTechno;
 
@@ -2297,12 +2305,12 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 			if (mode < 0)
 			{
 				// Pick a random bridge
-				selectedTarget = validHuts[ScenarioClass::Instance->Random.RandomFromMax(validHuts.size() - 1)];
+				selectedTarget = validHuts[ScenarioClass::Instance->Random.RandomFromMax(validHuts->size() - 1)];
 				break;
 			}
 			else
 			{
-				for (auto pHut : validHuts)
+				for (auto& pHut : validHuts.container())
 				{
 					if (mode > 0)
 					{
@@ -2331,8 +2339,6 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		}
 	}
 
-	validHuts.clear();
-
 	if (!selectedTarget)
 	{
 		pTeam->StepCompleted = true;
@@ -2351,9 +2357,9 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 	}
 
 	// Setting the team's target & mission
-	pTeam->Focus = selectedTarget;
+	pTeam->ArchiveTarget = selectedTarget;
 
-	for (auto engineer : engineers)
+	for (auto engineer : engineers.container())
 	{
 		if (engineer->Destination != selectedTarget)
 		{
@@ -2362,7 +2368,7 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		}
 	}
 
-	if (!otherTeamMembers.empty())
+	if (!otherTeamMembers->empty())
 	{
 		double closeEnough = 0.0; // Note: this value is in leptons (*256)
 		if (pTeamData->CloseEnough > 0)
@@ -2370,7 +2376,7 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		else
 			closeEnough = RulesClass::Instance->CloseEnough.value;
 
-		for (auto pFoot : otherTeamMembers)
+		for (auto pFoot : otherTeamMembers.container())
 		{
 			if (!pFoot->Destination
 				|| (selectedTarget->DistanceFrom(pFoot->Destination) > closeEnough))

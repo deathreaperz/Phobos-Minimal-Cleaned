@@ -6,12 +6,53 @@
 
 #include <Locomotor/Cast.h>
 
+#include <Utilities/Macro.h>
+
+#include <TacticalClass.h>
+
 #define GET_LOCO(reg_Loco) \
 	GET(ILocomotion*, Loco, reg_Loco); \
 	TeleportLocomotionClass* pLocomotor = static_cast<TeleportLocomotionClass*>(Loco); \
 	TechnoClass* pOwner =  pLocomotor->LinkedTo ? pLocomotor->LinkedTo : pLocomotor->Owner; \
 	TechnoTypeClass* pType = pOwner->GetTechnoType(); \
 	TechnoTypeExtData *pExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+DEFINE_HOOK(0x7197E4, TeleportLocomotionClass_Process_ChronospherePreDelay, 0x6)
+{
+	GET(TeleportLocomotionClass*, pThis, ESI);
+
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis->Owner);
+	auto pTypeExtData = TechnoTypeExtContainer::Instance.Find(pExt->Type);
+	R->ECX(pTypeExtData->ChronoSpherePreDelay.Get(RulesExtData::Instance()->ChronoSpherePreDelay));
+
+	return 0;
+}
+
+DEFINE_HOOK(0x719BD9, TeleportLocomotionClass_Process_ChronosphereDelay2, 0x6)
+{
+	GET(TeleportLocomotionClass*, pThis, ESI);
+
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis->Owner);
+
+	if (!pExt->IsBeingChronoSphered)
+		return 0;
+
+	auto pTypeExtData = TechnoTypeExtContainer::Instance.Find(pExt->Type);
+	int delay = pTypeExtData->ChronoSphereDelay.Get(RulesExtData::Instance()->ChronoSphereDelay);
+
+	if (delay > 0)
+	{
+		pThis->Owner->WarpingOut = true;
+		pExt->HasRemainingWarpInDelay = true;
+		pExt->LastWarpInDelay = std::max(delay, pExt->LastWarpInDelay);
+	}
+	else
+	{
+		pExt->IsBeingChronoSphered = false;
+	}
+
+	return 0;
+}
 
 DEFINE_HOOK(0x7193F6, TeleportLocomotionClass_ILocomotion_Process_WarpoutAnim, 0x6)
 {
@@ -46,7 +87,7 @@ DEFINE_HOOK(0x7193F6, TeleportLocomotionClass_ILocomotion_Process_WarpoutAnim, 0
 	pLocomotor->Timer.Start(duree);
 	pOwner->WarpingOut = true;
 
-	if (auto pUnit = specific_cast<UnitClass*>(pOwner))
+	if (auto pUnit = cast_to<UnitClass*, false>(pOwner))
 	{
 		if (pUnit->Type->Harvester || pUnit->Type->Weeder)
 		{
@@ -55,30 +96,9 @@ DEFINE_HOOK(0x7193F6, TeleportLocomotionClass_ILocomotion_Process_WarpoutAnim, 0
 		}
 	}
 
-	TechnoExtContainer::Instance.Find(pOwner)->LastWarpInDelay = pLocomotor->Timer.GetTimeLeft();
+	auto const pLinkedExt = TechnoExtContainer::Instance.Find(pOwner);
+	pLinkedExt->LastWarpInDelay = std::max(pLocomotor->Timer.GetTimeLeft(), pLinkedExt->LastWarpInDelay);
 	return 0x7195BC;
-}
-
-DEFINE_HOOK(0x4DA53E, FootClass_AI_WarpInDelay, 0x6)
-{
-	GET(FootClass*, pThis, ESI);
-
-	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	if (pExt->HasCarryoverWarpInDelay)
-	{
-		if (pExt->LastWarpInDelay)
-		{
-			pExt->LastWarpInDelay--;
-		}
-		else
-		{
-			pExt->HasCarryoverWarpInDelay = false;
-			pThis->WarpingOut = false;
-		}
-	}
-
-	return 0;
 }
 
 DEFINE_HOOK(0x719742, TeleportLocomotionClass_ILocomotion_Process_WarpInAnim, 0x6)
@@ -131,7 +151,7 @@ DEFINE_HOOK(0x71997B, TeleportLocomotionClass_ILocomotion_Process_ChronoDelay, 0
 //	double scaley = linkedType->VoxelScaleY;
 //
 //	Matrix3D pre = Matrix3D::GetIdentity();
-//	pre.TranslateZ(float(std::abs(Math::sin(ars)) * scalex + std::abs(Math::sin(arf)) * scaley));
+//	pre.TranslateZ(float(Math::abs(Math::sin(ars)) * scalex + Math::abs(Math::sin(arf)) * scaley));
 //
 //	Matrix3D post = Matrix3D::GetIdentity();
 //	post.TranslateX(float(Math::signum(arf) * (scaley * (1 - Math::cos(arf)))));
@@ -159,7 +179,7 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 	float arf = loco->Owner->AngleRotatedForwards;
 	float ars = loco->Owner->AngleRotatedSideways;
 
-	if (std::abs(ars) >= 0.005 || std::abs(arf) >= 0.005)
+	if (Math::abs(ars) >= 0.005 || Math::abs(arf) >= 0.005)
 	{
 		//just forget about ramp here, math too complicated, not considered for other locos either
 		if (pIndex)
@@ -169,7 +189,7 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 		double scaley = loco->Owner->GetTechnoType()->VoxelScaleY;
 
 		Matrix3D pre = Matrix3D::GetIdentity();
-		pre.TranslateZ(float(std::abs(Math::sin(ars)) * scalex + std::abs(Math::sin(arf)) * scaley));
+		pre.TranslateZ(float(Math::abs(Math::sin(ars)) * scalex + Math::abs(Math::sin(arf)) * scaley));
 		ret->TranslateX(float(Math::signum(arf) * (scaley * (1 - Math::cos(arf)))));
 		ret->TranslateY(float(Math::signum(-ars) * (scalex * (1 - Math::cos(ars)))));
 		ret->RotateX(ars);
@@ -184,7 +204,7 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 
 //DEFINE_JUMP(VTABLE, 0x7F5028, 0x5142A0);//TeleportLocomotionClass_Shadow_Matrix : just use hover's to save my ass
 
-DEFINE_JUMP(VTABLE, 0x7F5024, GET_OFFSET(LocomotionClass_Draw_Matrix))
+DEFINE_JUMP(VTABLE, 0x7F5024, MiscTools::to_DWORD(&LocomotionClass_Draw_Matrix))
 
 DEFINE_HOOK(0x729B5D, TunnelLocomotionClass_DrawMatrix_Tilt, 0x8)
 {

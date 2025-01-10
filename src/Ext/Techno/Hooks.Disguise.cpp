@@ -26,7 +26,7 @@ DEFINE_HOOK(0x7466D8, UnitClass_DesguiseAs_AsAnotherUnit, 0xA)
 	GET(AbstractClass*, pTarget, ESI);
 	GET(UnitClass*, pThis, EDI);
 
-	auto const pObjectT = generic_cast<ObjectClass*>(pTarget);
+	auto const pObjectT = flag_cast_to<ObjectClass*>(pTarget);
 
 	if (!pObjectT || pObjectT->IsDisguised())
 		return 0x0;
@@ -44,8 +44,7 @@ DEFINE_HOOK(0x7466D8, UnitClass_DesguiseAs_AsAnotherUnit, 0xA)
 #ifdef ENABLE_OBESERVER_THRUDISGUISE
 DEFINE_HOOK(0x746750, UnitClass_CantTarget_Disguise, 0x5)
 {
-	if (HouseClass::IsCurrentPlayerObserver())
-	{
+	if (HouseClass::IsCurrentPlayerObserver()) {
 		R->AL(true);
 		return 0x7467FB
 	}
@@ -53,12 +52,11 @@ DEFINE_HOOK(0x746750, UnitClass_CantTarget_Disguise, 0x5)
 	return  0x0;
 }
 
-bool CanBlinkDisguise(TechnoClass* pTechno, HouseClass* pCurPlayer)
+bool CanBlinkDisguise(TechnoClass* pTechno , HouseClass* pCurPlayer)
 {
-	if (pCurPlayer && !pCurPlayer->IsObserver())
-	{
+	if(pCurPlayer && !pCurPlayer->IsObserver()) {
 		return  EnumFunctions::CanTargetHouse(
-			RulesExtData::Instance()->DisguiseBlinkingVisibility, pTechno->Owner, pCurPlayer);
+			RulesExtData::Instance()->DisguiseBlinkingVisibility,pTechno->Owner, pCurPlayer);
 	}
 
 	return true;
@@ -67,7 +65,7 @@ bool CanBlinkDisguise(TechnoClass* pTechno, HouseClass* pCurPlayer)
 DEFINE_HOOK(0x4DEDCB, FootClass_GetImage_DisguiseBlinking, 0x7)
 {
 	GET(TechnoClass*, pThis, ESI);
-	GET(HouseClass*, pCurPlayer, ECX);
+	GET(HouseClass* , pCurPlayer , ECX);
 	//GET(CellClass*, pCell, EDI);
 
 	R->EAX(CanBlinkDisguise(pThis, pCurPlayer));
@@ -99,8 +97,7 @@ DEFINE_HOOK(0x7060A9, TechnoClass_TechnoClass_DrawObject_DisguisePalette, 0x6)
 	auto const& [pType, pOwner] = TechnoExtData::GetDisguiseType(pThis, true, true);
 	LightConvertClass* pConvert = nullptr;
 
-	if (pOwner)
-	{
+	if(pOwner) {
 		if (pType->Palette && pType->Palette->Count > 0)
 			pConvert = pType->Palette->Items[pOwner->ColorSchemeIndex]->LightConvert;
 		else
@@ -251,6 +248,7 @@ DEFINE_HOOK(0x746670, UnitClass_DisguiseAs_Override, 0x5)
 			pThis->DisguisedAsHouse = pTarget->GetDisguiseHouse(true);
 			pThis->Techno_70E280(pTarget);
 		}
+
 	}
 
 	return 0x746714;
@@ -261,8 +259,7 @@ DEFINE_HOOK(0x522718, InfantryClass_DisguiseAs_Allowed, 0x8)
 	GET(InfantryClass*, pThis, EDI);
 	GET(InfantryClass*, pThat, ESI);
 
-	if (Allowed(TechnoTypeExtContainer::Instance.Find(pThis->Type), pThat->Type))
-	{
+	if (Allowed(TechnoTypeExtContainer::Instance.Find(pThis->Type), pThat->Type)) {
 		pThis->Techno_70E280(pThat);
 		return 0x522720;
 	}

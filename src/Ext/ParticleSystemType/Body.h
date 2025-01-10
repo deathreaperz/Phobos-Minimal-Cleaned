@@ -19,9 +19,6 @@ public:
 	std::array<Point2D, (size_t)FacingType::Count> FacingMult {};
 	Valueable<bool> AdjustTargetCoordsOnRotation { true };
 
-	ParticleSystemTypeExtData() noexcept = default;
-	~ParticleSystemTypeExtData() noexcept = default;
-
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -43,5 +40,19 @@ class ParticleSystemTypeExtContainer final : public Container<ParticleSystemType
 public:
 	static ParticleSystemTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(ParticleSystemTypeExtContainer, ParticleSystemTypeExtData, "ParticleSystemTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(ParticleSystemTypeExtContainer, ParticleSystemTypeExtData, "ParticleSystemTypeClass");
 };
+
+class FakeParticleSystemTypeClass : public ParticleSystemTypeClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	ParticleSystemTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<ParticleSystemTypeExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeParticleSystemTypeClass) == sizeof(ParticleSystemTypeClass), "Invalid Size !");

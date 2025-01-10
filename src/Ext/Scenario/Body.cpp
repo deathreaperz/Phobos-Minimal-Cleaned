@@ -1,9 +1,6 @@
 #include "Body.h"
 
-IStream* ScenarioExtData::g_pStm = nullptr;
-bool ScenarioExtData::CellParsed = false;
-std::unique_ptr<ScenarioExtData>  ScenarioExtData::Data = nullptr;
-bool ScenarioExtData::UpdateLightSources = false;
+#include <Ext/Rules/Body.h>
 
 void ScenarioExtData::SaveVariablesToFile(bool isGlobal)
 {
@@ -311,7 +308,7 @@ DEFINE_HOOK(0x689669, ScenarioClass_Load_Suffix, 0x6)
 {
 	// Clear UIGameMode on game load
 	if (SpawnerMain::Configs::Enabled)
-		SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0] = 0;
+		SpawnerMain::GameConfigs::m_Ptr.UIGameMode[0] = 0;
 
 	auto buffer = ScenarioExtData::Instance();
 
@@ -364,7 +361,7 @@ DEFINE_HOOK(0x68AD2F, ScenarioClass_LoadFromINI_AfterPlayerDataInit, 0x5)
 
 	if (SessionClass::IsCampaign())
 	{
-		GameModeOptionsClass::Instance->MCVRedeploy = pINI->ReadBool(GameStrings::Basic(), GameStrings::MCVRedeploys(), false);
+		GameModeOptionsClass::Instance->MCVRedeploy = pINI->ReadBool(GameStrings::Basic(), GameStrings::MCVRedeploys(), RulesExtData::Instance()->MCVRedeploysInCampaign);
 	}
 
 	return 0x0;

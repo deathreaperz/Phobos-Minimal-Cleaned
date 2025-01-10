@@ -516,25 +516,24 @@ bool HouseTypeExtContainer::Load(HouseTypeClass* key, IStream* pStm)
 	if (!key)
 		return false;
 
-	auto Iter = HouseTypeExtContainer::Instance.Map.find(key);
+	auto ptr = HouseTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (Iter == HouseTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = this->AllocateUnchecked(key);
-		Iter = HouseTypeExtContainer::Instance.Map.emplace(key, ptr).first;
+		ptr = HouseTypeExtContainer::Instance.Map.insert_unchecked(key, this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
-	this->SetExtAttribute(key, Iter->second);
+	this->SetExtAttribute(key, ptr);
 
 	PhobosByteStream loader { 0 };
 	if (loader.ReadBlockFromStream(pStm))
 	{
 		PhobosStreamReader reader { loader };
 		if (reader.Expect(HouseTypeExtData::Canary)
-			&& reader.RegisterChange(Iter->second))
+			&& reader.RegisterChange(ptr))
 		{
-			Iter->second->LoadFromStream(reader);
+			ptr->LoadFromStream(reader);
 			if (reader.ExpectEndOfBlock())
 			{
 				return true;
@@ -552,16 +551,16 @@ DEFINE_HOOK(0x511643, HouseTypeClass_CTOR, 0x5)
 {
 	GET(HouseTypeClass*, pItem, EAX);
 
-	auto Iter = HouseTypeExtContainer::Instance.Map.find(pItem);
+	auto ptr = HouseTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (Iter == HouseTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = HouseTypeExtContainer::Instance.AllocateUnchecked(pItem);
-		Iter = HouseTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
+		ptr = HouseTypeExtContainer::Instance.Map.insert_unchecked(pItem,
+			  HouseTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
 	HouseTypeExtContainer::Instance.ClearExtAttribute(pItem);
-	HouseTypeExtContainer::Instance.SetExtAttribute(pItem, Iter->second);
+	HouseTypeExtContainer::Instance.SetExtAttribute(pItem, ptr);
 
 	return 0;
 }
@@ -573,33 +572,38 @@ DEFINE_HOOK(0x5127CF, HouseTypeClass_DTOR, 0x6)
 	auto extData = HouseTypeExtContainer::Instance.GetExtAttribute(pItem);
 	HouseTypeExtContainer::Instance.ClearExtAttribute(pItem);
 	HouseTypeExtContainer::Instance.Map.erase(pItem);
-	delete extData;
+	if (extData)
+		DLLCallDTOR(extData);
 
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x512480, HouseTypeClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x512290, HouseTypeClass_SaveLoad_Prefix, 0x5)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeHouseTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(HouseTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	HouseTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->HouseTypeClass::Load(pStm);
 
-	HouseTypeExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		HouseTypeExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x51246D, HouseTypeClass_Load_Suffix, 0x5)
+HRESULT __stdcall FakeHouseTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	HouseTypeExtContainer::Instance.LoadStatic();
-	return 0;
+	HouseTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->HouseTypeClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		HouseTypeExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x51255C, HouseTypeClass_Save_Suffix, 0x5)
-{
-	HouseTypeExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7EAB6C, MiscTools::to_DWORD(&FakeHouseTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7EAB70, MiscTools::to_DWORD(&FakeHouseTypeClass::_Save))
 
 DEFINE_HOOK_AGAIN(0x51215A, HouseTypeClass_LoadFromINI, 0x5)
 DEFINE_HOOK(0x51214F, HouseTypeClass_LoadFromINI, 0x5)

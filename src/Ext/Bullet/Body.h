@@ -40,20 +40,12 @@ public:
 
 	std::vector<UniversalTrail> Trails {};
 	std::unique_ptr<PhobosTrajectory> Trajectory {};
-	Handle<ParticleSystemClass*, UninitAttachedSystem> AttachedSystem { nullptr };
+	ParticleSystemClass* AttachedSystem { nullptr };
 	int DamageNumberOffset { INT32_MIN };
 
 	AbstractClass* OriginalTarget { nullptr };
 
-	BulletExtData() noexcept = default;
-	~BulletExtData() noexcept
-	{
-		this->AttachedSystem.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
-	}
-
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-	static bool InvalidateIgnorable(AbstractClass* ptr);
-
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -61,6 +53,17 @@ public:
 	void InitializeLaserTrails();
 
 	void CreateAttachedSystem();
+
+	~BulletExtData()
+	{
+		// mimicking how this thing does , since the detach seems not properly handle these
+		if (auto pAttach = AttachedSystem)
+		{
+			pAttach->Owner = nullptr;
+			pAttach->UnInit();
+			pAttach->TimeToDie = true;
+		}
+	}
 
 	constexpr FORCEINLINE static size_t size_Of()
 	{
@@ -93,7 +96,7 @@ private:
 class BulletExtContainer final : public Container<BulletExtData>
 {
 public:
-	static std::vector<BulletExtData*> Pool;
+	inline static std::vector<BulletExtData*> Pool;
 	static BulletExtContainer Instance;
 
 	BulletExtData* AllocateUnchecked(BulletClass* key)
@@ -104,15 +107,15 @@ public:
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-			val->BulletExtData::BulletExtData();
 		}
 		else
 		{
-			val = new BulletExtData();
+			val = DLLAllocWithoutCTOR<BulletExtData>();
 		}
 
 		if (val)
 		{
+			val->BulletExtData::BulletExtData();
 			val->AttachedToObject = key;
 			return val;
 		}
@@ -160,5 +163,62 @@ public:
 		}
 	}
 
-	CONSTEXPR_NOCOPY_CLASSB(BulletExtContainer, BulletExtData, "BulletClass");
+	//CONSTEXPR_NOCOPY_CLASSB(BulletExtContainer, BulletExtData, "BulletClass");
 };
+
+class FakeWarheadTypeClass;
+class WarheadTypeExtData;
+class BulletTypeExtData;
+class WeaponTypeExtData;
+class FakeWeaponType;
+class FakeBulletClass : public BulletClass
+{
+public:
+
+	void _AnimPointerExpired(AnimClass* pTarget)
+	{
+		this->ObjectClass::AnimPointerExpired(pTarget);
+	}
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	void _Detach(AbstractClass* target, bool all);
+
+	FORCEINLINE BulletClass* _AsBullet() const
+	{
+		return (BulletClass*)this;
+	}
+
+	FORCEINLINE BulletExtData* _GetExtData()
+	{
+		return *reinterpret_cast<BulletExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+
+	FORCEINLINE BulletTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<BulletTypeExtData**>(((DWORD)this->Type) + 0x2C4);
+	}
+
+	FORCEINLINE FakeWarheadTypeClass* _GetWarheadType()
+	{
+		return (FakeWarheadTypeClass*)this->WH;
+	}
+
+	FORCEINLINE WarheadTypeExtData* _GetWarheadTypeExtData()
+	{
+		return *reinterpret_cast<WarheadTypeExtData**>(((DWORD)this->WH) + 0x1CC);
+	}
+
+	FORCEINLINE FakeWeaponType* _GetWeaponType()
+	{
+		return (FakeWeaponType*)this->WeaponType;
+	}
+
+	FORCEINLINE WeaponTypeExtData* _GetWeaponTypeExtData()
+	{
+		return *reinterpret_cast<WeaponTypeExtData**>(((DWORD)this->WeaponType) + AbstractExtOffset);
+	}
+};
+
+static_assert(sizeof(FakeBulletClass) == sizeof(BulletClass), "Invalid Size !");

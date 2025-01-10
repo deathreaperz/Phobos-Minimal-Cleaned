@@ -15,12 +15,16 @@
 #include <Ext/TerrainType/Body.h>
 
 #include <Utilities/GeneralUtils.h>
+#include <Utilities/Macro.h>
 
 //TODO :
 // Parasite Heal
 // Parasite Able To target friendly
 // Parasite not removed when heal
 // Parasite Gain victim control instead of damaging
+
+#include <TerrainClass.h>
+#include <InfantryClass.h>
 
 DEFINE_HOOK(0x62AB88, ParasiteClass_PassableTerrain, 0x5)
 {
@@ -32,7 +36,7 @@ DEFINE_HOOK(0x62AB88, ParasiteClass_PassableTerrain, 0x5)
 		{
 			for (ObjectClass* pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject)
 			{
-				const auto pTerrain = specific_cast<TerrainClass*>(pObject);
+				const auto pTerrain = cast_to<TerrainClass*, false>(pObject);
 
 				if (pTerrain && !TerrainTypeExtContainer::Instance.Find(pTerrain->Type)->IsPassable)
 					return pTerrain;
@@ -174,7 +178,7 @@ DEFINE_HOOK(0x62A222, ParasiteClass_AI_DealDamage, 0x6)
 
 	if (pWarheadTypeExt->Parasite_Damaging_Chance.isset()
 		&& ScenarioClass::Instance->Random.RandomDouble() >=
-		abs(pWarheadTypeExt->Parasite_Damaging_Chance.Get())
+		Math::abs(pWarheadTypeExt->Parasite_Damaging_Chance.Get())
 		)
 	{
 		return SkipDamaging;

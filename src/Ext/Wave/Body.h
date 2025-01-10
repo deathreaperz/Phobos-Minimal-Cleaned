@@ -2,10 +2,10 @@
 #include <WaveClass.h>
 
 #include <Utilities/Container.h>
-#include <Utilities/Template.h>
 #include <Utilities/TemplateDef.h>
 #include <Utilities/Debug.h>
-#include <Helpers/Macro.h>
+
+#include <Memory.h>
 
 //enum class SonicBeamSurfacePatternType : int
 //{
@@ -60,7 +60,7 @@
 //						SonicBeamSurfacePatternTable[x][y] = (short)(Math::sqrt(x + y));
 //						break;
 //					case SonicBeamSurfacePatternType::SQUARE:
-//						SonicBeamSurfacePatternTable[x][y] = (short)(Math::sqrt(MaxImpl(std::abs(x), std::abs(y))));
+//						SonicBeamSurfacePatternTable[x][y] = (short)(Math::sqrt(MaxImpl(Math::abs(x), Math::abs(y))));
 //						break;
 //					};
 //				}
@@ -86,7 +86,7 @@
 //				case SonicBeamSinePatternType::TRIANGLE:
 //				{
 //					double sawtooth = 2 * (i / SonicBeamSineDuration - std::floor(i / SonicBeamSineDuration + 1 / 2));
-//					SonicBeamSineTable[i] = (short)(2 * std::abs(sawtooth) - 1);
+//					SonicBeamSineTable[i] = (short)(2 * Math::abs(sawtooth) - 1);
 //					break;
 //				}
 //				};
@@ -134,8 +134,8 @@
 //		/**
 //		 *  Calculate the pixel offset position based on the surface pattern.
 //		 */
-//		int wave_pos = pThis->WaveCount + (WORD)SonicBeamSurfacePatternTable[a3][std::abs(a1 - pThis->InitialWavePixels_0.X - a2)];
-//		int pos = std::abs(SonicBeamSineTable[wave_pos]);
+//		int wave_pos = pThis->WaveCount + (WORD)SonicBeamSurfacePatternTable[a3][Math::abs(a1 - pThis->InitialWavePixels_0.X - a2)];
+//		int pos = Math::abs(SonicBeamSineTable[wave_pos]);
 //
 //		/**
 //		 *  #issue-540
@@ -256,9 +256,6 @@ public:
 	Vector3D<double> SonicBeamEndPinRight { 30.0, 100.0, 0.0 };
 	*/
 
-	WaveExtData() noexcept = default;
-	~WaveExtData() noexcept = default;
-
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -288,7 +285,94 @@ public:
 class WaveExtContainer final : public Container<WaveExtData>
 {
 public:
+	inline static std::vector<WaveExtData*> Pool;
 	static WaveExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(WaveExtContainer, WaveExtData, "WaveClass");
+	WaveExtData* AllocateUnchecked(WaveClass* key)
+	{
+		WaveExtData* val = nullptr;
+		if (!Pool.empty())
+		{
+			val = Pool.front();
+			Pool.erase(Pool.begin());
+		}
+		else
+		{
+			val = DLLAllocWithoutCTOR<WaveExtData>();
+		}
+
+		if (val)
+		{
+			//re-init
+			val->WaveExtData::WaveExtData();
+			val->AttachedToObject = key;
+			return val;
+		}
+
+		return nullptr;
+	}
+
+	WaveExtData* FindOrAllocate(WaveClass* key)
+	{
+		// Find Always check for nullptr here
+		if (WaveExtData* const ptr = TryFind(key))
+			return ptr;
+
+		return this->Allocate(key);
+	}
+
+	WaveExtData* Allocate(WaveClass* key)
+	{
+		if (!key || Phobos::Otamaa::DoingLoadGame)
+			return nullptr;
+
+		this->ClearExtAttribute(key);
+
+		if (WaveExtData* val = AllocateUnchecked(key))
+		{
+			this->SetExtAttribute(key, val);
+			return val;
+		}
+
+		return nullptr;
+	}
+
+	void Remove(WaveClass* key)
+	{
+		if (WaveExtData* Item = TryFind(key))
+		{
+			Item->~WaveExtData();
+			Item->AttachedToObject = nullptr;
+			Pool.push_back(Item);
+			this->ClearExtAttribute(key);
+		}
+	}
+
+	void Clear()
+	{
+		if (!Pool.empty())
+		{
+			auto ptr = Pool.front();
+			Pool.erase(Pool.begin());
+			if (ptr)
+			{
+				delete ptr;
+			}
+		}
+	}
+
+	//CONSTEXPR_NOCOPY_CLASSB(WaveExtContainer, WaveExtData, "WaveClass");
 };
+
+class FakeWaveClass : public WaveClass
+{
+public:
+
+	void _Detach(AbstractClass* target, bool all);
+
+	WaveExtData* _GetExtData()
+	{
+		return *reinterpret_cast<WaveExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeWaveClass) == sizeof(WaveClass), "Invalid Size !");

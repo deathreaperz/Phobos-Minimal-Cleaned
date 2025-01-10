@@ -6,6 +6,9 @@
 #include <Utilities/Helpers.h>
 #include <Utilities/Cast.h>
 
+#include <InfantryClass.h>
+#include <TacticalClass.h>
+
 DEFINE_HOOK(0x709ACF, TechnoClass_DrawPip_PipShape1_A, 0x6)
 {
 	GET(TechnoClass* const, pThis, EBP);
@@ -62,7 +65,7 @@ DEFINE_HOOK(0x6F6759, TechnoClass_DrawHealth_Building_PipFile_B_pal, 0x6)
 	}
 	else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette)
 	{
-		nPal = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
+		nPal = pConvertData->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(nPal);
 	}
 
 	R->EDX(nPal);
@@ -83,7 +86,7 @@ DEFINE_HOOK(0x6F66B3, TechnoClass_DrawHealth_Building_PipFile_A, 0x6)
 	}
 	else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette)
 	{
-		nPal = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
+		nPal = pConvertData->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(nPal);
 	}
 
 	//PipShapes01Palette
@@ -247,7 +250,7 @@ namespace DrawHeathData
 		if (pTypeExt->HealthbarRemap.Get())
 			pPalette = pTechConvert;
 		else if (const auto pConvertData = pTypeExt->HealthBarSHP_Palette)
-			pPalette = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
+			pPalette = pConvertData->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pPalette);
 
 		Point2D nLocation = *pLocation;
 		nLocation += pTypeExt->HealthBarSHP_PointOffset.Get();
@@ -416,7 +419,7 @@ DEFINE_HOOK(0x6F65D1, TechnoClass_DrawdBar_Building, 0x6)
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 	if (const auto pShieldData = pExt->Shield.get())
 	{
-		if (pShieldData->IsAvailable())
+		if (pShieldData->IsAvailable() && !pShieldData->IsBrokenAndNonRespawning())
 			pShieldData->DrawShieldBar(iLength, pLocation, pBound);
 	}
 
@@ -440,7 +443,7 @@ DEFINE_HOOK(0x6F683C, TechnoClass_DrawBar_Foot, 0x7)
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 	if (const auto pShieldData = pExt->Shield.get())
 	{
-		if (pShieldData->IsAvailable())
+		if (pShieldData->IsAvailable() && !pShieldData->IsBrokenAndNonRespawning())
 		{
 			pShieldData->DrawShieldBar(iLength, pLocation, pBound);
 		}
@@ -454,7 +457,7 @@ DEFINE_HOOK(0x6F683C, TechnoClass_DrawBar_Foot, 0x7)
 	if (HouseClass::IsCurrentPlayerObserver())
 		return 0x6F6A8E;
 
-	return 0x6F6AB6u;
+	return 0x6F6A58u;
 }
 
 //TODO :Draw all the pip

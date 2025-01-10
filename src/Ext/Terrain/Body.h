@@ -1,15 +1,14 @@
 #pragma once
 #include <TerrainClass.h>
 
-#include <Helpers/Macro.h>
 #include <Utilities/Container.h>
 #include <Utilities/TemplateDef.h>
 #include <Utilities/Debug.h>
-
-#include <Ext/TerrainType/Body.h>
+#include <Utilities/Handle.h>
 
 #include <LightSourceClass.h>
 #include <CellClass.h>
+#include <AnimClass.h>
 
 class TerrainExtData final
 {
@@ -26,7 +25,6 @@ public:
 	Handle<AnimClass*, UninitAnim> AttachedAnim { nullptr };
 	std::vector<CellStruct> Adjencentcells {};
 
-	TerrainExtData()  noexcept = default;
 	~TerrainExtData() noexcept
 	{
 		LighSource.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
@@ -34,18 +32,6 @@ public:
 	}
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-	static bool InvalidateIgnorable(AbstractClass* ptr)
-	{
-		switch (ptr->WhatAmI())
-		{
-		case AnimClass::AbsID:
-		case LightSourceClass::AbsID:
-			return false;
-		}
-
-		return true;
-	}
-
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -74,5 +60,27 @@ class TerrainExtContainer final : public Container<TerrainExtData>
 public:
 	static TerrainExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(TerrainExtContainer, TerrainExtData, "TerrainClass");
+	//CONSTEXPR_NOCOPY_CLASSB(TerrainExtContainer, TerrainExtData, "TerrainClass");
 };
+
+class TerrainTypeExtData;
+class FakeTerrainClass : public TerrainClass
+{
+public:
+
+	void _Detach(AbstractClass* target, bool all);
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	TerrainExtData* _GetExtData()
+	{
+		return *reinterpret_cast<TerrainExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+
+	TerrainTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<TerrainTypeExtData**>(((DWORD)this->Type) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeTerrainClass) == sizeof(TerrainClass), "Invalid Size !");

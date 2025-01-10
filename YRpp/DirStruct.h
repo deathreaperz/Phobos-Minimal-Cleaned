@@ -74,7 +74,7 @@ public:
 	explicit DirStruct(double rad) noexcept : Raw { 0 }
 	{ SetRadian<65536>(rad); }
 
-	explicit DirStruct(const DirType dir) noexcept : Raw { 0 }
+	constexpr explicit DirStruct(const DirType dir) noexcept : Raw { 0 }
 	{ SetDir(dir); }
 
 	constexpr explicit DirStruct(const FacingType face) noexcept :
@@ -85,14 +85,18 @@ public:
 		Raw { ((unsigned short)((unsigned char)face << 11)) }
 	{}
 
-	explicit DirStruct(size_t bits, const DirType value) noexcept : Raw { 0 }
+	constexpr explicit DirStruct(size_t bits, const DirType value) noexcept : Raw { 0 }
 	{ SetDir(bits, (unsigned short)(value)); }
 
-	explicit DirStruct(const noinit_t&) noexcept
+	constexpr explicit DirStruct(const noinit_t&) noexcept
 	{ }
 
 	explicit DirStruct(double Y, double X) noexcept : Raw { 0 }
 	{ SetRadian<65536>(Math::atan2(Y, X)); }
+
+	explicit DirStruct(int x1, int y1, int x2, int y2) noexcept : Raw { 0 }
+	{ SetRadian<65536>(Math::atan2((double)y2 - y1, (double)x2 - x1)); }
+
 
 	constexpr FORCEINLINE bool operator==(const DirStruct& another) const
 	{
@@ -123,22 +127,22 @@ public:
 		return DirStruct(*this) -= rhs;
 	}
 
-	constexpr FORCEINLINE DirStruct operator - () const {
-		return DirStruct(-this->Raw);
-	}
+	//constexpr FORCEINLINE DirStruct operator - () const {
+	//	return DirStruct(-this->Raw);
+	//}
 
-	DirStruct operator + () const {
-		return *this;
-	}
+	//DirStruct operator + () const {
+	//	return *this;
+	//}
 
-	bool CompareToTwoDir(DirStruct& pBaseDir, DirStruct& pDirFrom) { return std::abs(pDirFrom.Raw) >= std::abs(this->Raw - pBaseDir.Raw); }
+	constexpr bool CompareToTwoDir(DirStruct& pBaseDir, DirStruct& pDirFrom) { return Math::abs(pDirFrom.Raw) >= Math::abs(this->Raw - pBaseDir.Raw); }
 
 	DirStruct* GetDirOver(CoordStruct* coord1, CoordStruct* coord2)
 	{ JMP_THIS(0x4265B0); }
 
-	void Func_5B29C0(DirStruct& pDir2, DirStruct& pDir3) {
+	constexpr void Func_5B29C0(DirStruct& pDir2, DirStruct& pDir3) {
 
-		if (std::abs(pDir3.Raw) < std::abs(this->Raw - pDir2.Raw))
+		if (Math::abs(pDir3.Raw) < Math::abs(this->Raw - pDir2.Raw))
 		{
 			if ((pDir2.Raw - this->Raw) >= 0)
 			{
@@ -222,7 +226,7 @@ public:
 	}
 
 	template <size_t FacingCount = 16>
-	double GetRadian() const
+	constexpr double GetRadian() const
 	{
 		static_assert(std::has_single_bit(FacingCount));
 
@@ -235,7 +239,7 @@ public:
 	}
 
 	template <size_t FacingCount = 16>
-	void SetRadian(double rad)
+	constexpr void SetRadian(double rad)
 	{
 		static_assert(std::has_single_bit(FacingCount));
 

@@ -1,5 +1,7 @@
 #include "Body.h"
 
+#include <AircraftClass.h>
+
 FacingType GetPoseDir(AircraftClass* pAir, BuildingClass* pBld)
 {
 	FacingType ret = (FacingType)TechnoTypeExtContainer::Instance.Find(pAir->Type)->LandingDir.Get(RulesClass::Instance->PoseDir);
@@ -10,7 +12,7 @@ FacingType GetPoseDir(AircraftClass* pAir, BuildingClass* pBld)
 		{
 			for (auto i = 0; i < pAir->RadioLinks.Capacity; ++i)
 			{
-				if (auto possiblebld = specific_cast<BuildingClass*>(pAir->RadioLinks[i]))
+				if (auto possiblebld = cast_to<BuildingClass*>(pAir->RadioLinks[i]))
 				{
 					pBld = possiblebld;
 				}

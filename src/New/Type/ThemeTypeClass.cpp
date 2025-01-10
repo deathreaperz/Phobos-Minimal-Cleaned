@@ -2,7 +2,7 @@
 
 #include <ThemeClass.h>
 
-Enumerable<ThemeTypeClass>::container_t Enumerable<ThemeTypeClass>::Array;
+#include <Helpers/Macro.h>
 
 const char* Enumerable<ThemeTypeClass>::GetMainSection()
 {
@@ -99,7 +99,7 @@ DEFINE_HOOK(0x7209B0, ThemeClass_GetUIName, 0x7)
 	return 0x7209C6;
 }
 
-DEFINE_HOOK(0x720A69, ThemeClass_AI_Play, 0x8)
+DEFINE_HOOK(0x720A69, ThemeClass_AI_Play, 0x6)
 {
 	GET(ThemeClass*, pThis, ESI);
 
@@ -109,9 +109,9 @@ DEFINE_HOOK(0x720A69, ThemeClass_AI_Play, 0x8)
 		((pThis->LastTheme == idx && pThis->CurrentTheme == idx) ||
 			pThis->LastTheme != idx))
 	{
-		if (auto const& pThemeExt = ThemeTypeClass::Array[pThis->LastTheme])
+		if (auto const pThemeExt = ThemeTypeClass::Array[pThis->LastTheme].get())
 		{
-			if (!pThemeExt->Repeat.Get() &&
+			if (!pThemeExt->Repeat &&
 				strcmp(pThemeExt->NextText.data(), ""))
 			{
 				int next = ThemeClass::Instance->FindIndex(pThemeExt->NextText.data());

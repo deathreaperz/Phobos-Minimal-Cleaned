@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Utilities/Enumerable.h>
-#include <Utilities/Template.h>
 #include <Utilities/TemplateDef.h>
+#include <Utilities/PhobosFixedString.h>
 
 class ThemeTypeClass final : public Enumerable<ThemeTypeClass>
 {
@@ -26,9 +26,5 @@ public:
 		, Side { -1 }
 	{ }
 
-	virtual ~ThemeTypeClass() override = default;
-
-	virtual void LoadFromINI(CCINIClass* pINI) override;
-	virtual void LoadFromStream(PhobosStreamReader& Stm) { }
-	virtual void SaveToStream(PhobosStreamWriter& Stm) { }
+	void LoadFromINI(CCINIClass* pINI);
 };

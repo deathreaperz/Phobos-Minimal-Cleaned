@@ -246,7 +246,6 @@ DEFINE_HOOK(0x4CCB84, FlyLocomotionClass_ILocomotion_Process_HunterSeeker, 0x6)
 	return 0;
 }
 
-#ifndef aaa
 DEFINE_HOOK(0x4CFE80, FlyLocomotionClass_ILocomotion_AcquireHunterSeekerTarget, 5)
 {
 	GET_STACK(ILocomotion* const, pThis, 0x4);
@@ -258,8 +257,6 @@ DEFINE_HOOK(0x4CFE80, FlyLocomotionClass_ILocomotion_AcquireHunterSeekerTarget, 
 
 	return 0x4D016F;
 }
-#else
-#endif
 
 DEFINE_HOOK(0x4B99A2, DropshipLoadout_WriteUnit, 0xA)
 {
@@ -328,10 +325,10 @@ DEFINE_HOOK(0x4B99A2, DropshipLoadout_WriteUnit, 0xA)
 	return 0x4B9BBF;
 }
 
-DEFINE_HOOK(0x4B9A52, DropshipLoadout_PrintArmor, 5)
+DEFINE_HOOK(0x4B9A4A, DropshipLoadout_PrintArmor, 7)
 {
-	R->Stack(0x4, ArmorTypeClass::Array[R->EDX()].get());
-	return 0;
+	R->EAX(ArmorTypeClass::Array[R->EDX()]->Name.data());
+	return 0x4B9A51;
 }
 
 DEFINE_HOOK(0x4CF3D0, FlyLocomotionClass_sub_4CEFB0_HunterSeeker, 7)
@@ -445,7 +442,7 @@ DEFINE_HOOK(0x4CF3D0, FlyLocomotionClass_sub_4CEFB0_HunterSeeker, 7)
 				auto damage = pWeapon->Damage;
 
 				//if the target exist , damage the target
-				if (auto const pTechno = abstract_cast<TechnoClass*>(pTarget))
+				if (auto const pTechno = flag_cast_to<TechnoClass*>(pTarget))
 				{
 					pTechno->ReceiveDamage(&damage, 0, pWeapon->Warhead, pObject, true, true, pObject->Owner);
 				}

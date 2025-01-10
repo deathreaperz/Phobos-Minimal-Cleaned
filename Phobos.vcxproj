@@ -15,8 +15,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Commands\DetachFromTeam.cpp" />
+    <ClCompile Include="src\Commands\FireTacticalSW.cpp" />
     <ClCompile Include="src\Commands\PlaceVeinholeMonster.cpp" />
     <ClCompile Include="src\Commands\SaveVariablesToFile.cpp" />
+    <ClCompile Include="src\Commands\SelectCaptured.cpp" />
     <ClCompile Include="src\Commands\ShowAnimNames.cpp" />
     <ClCompile Include="src\Commands\RevealMap.cpp" />
     <ClCompile Include="src\Commands\CaptureObjects.cpp" />
@@ -32,13 +34,13 @@
     <ClCompile Include="src\Commands\ToggleDesignatorRange.cpp" />
     <ClCompile Include="src\Commands\ToggleDigitalDisplay.cpp" />
     <ClCompile Include="src\Commands\ToggleRadialIndicatorDrawMode.cpp" />
+    <ClCompile Include="src\Commands\ToggleSWSidebar.cpp" />
     <ClCompile Include="src\Ext\Aircraft\Hooks.cpp" />
     <ClCompile Include="src\Ext\Aircraft\Hooks.Otamaa.cpp" />
     <ClCompile Include="src\Ext\Anim\Hooks.AnimCreateUnit.cpp" />
     <ClCompile Include="src\Ext\Anim\Hooks.cpp" />
     <ClCompile Include="src\Ext\Anim\Hooks.Drawings.cpp" />
     <ClCompile Include="src\Ext\Anim\Hooks.Otamaa.cpp" />
-    <ClCompile Include="src\Ext\Anim\Hooks.Ownerships.cpp" />
     <ClCompile Include="src\Ext\Bomb\Body.cpp" />
     <ClCompile Include="src\Ext\BuildingType\Hooks.cpp" />
     <ClCompile Include="src\Ext\BuildingType\Hooks.DockPoseDir.cpp" />
@@ -49,16 +51,9 @@
     <ClCompile Include="src\Ext\Building\Hooks.Fires.cpp" />
     <ClCompile Include="src\Ext\Building\Hooks.Otamaa.cpp" />
     <ClCompile Include="src\Ext\Building\Hooks.SellFixes.cpp" />
+    <ClCompile Include="src\Ext\Building\Hooks.UnitRepair.cpp" />
     <ClCompile Include="src\Ext\Building\Hooks.Upgrades.cpp" />
     <ClCompile Include="src\Ext\Bullet\Hook.Init.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.ArcingFix.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.Obstacles.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.Otamaa.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.Scatter.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.Shrapnel.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.TargetSnap.cpp" />
-    <ClCompile Include="src\Ext\Bullet\Hooks.Trajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\ArcingTrajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\ArtilleryTrajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\BombardTrajectory.cpp" />
@@ -66,6 +61,7 @@
     <ClCompile Include="src\Ext\Bullet\Trajectories\DisperseTrajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\EngraveTrajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\MeteorTrajectory.cpp" />
+    <ClCompile Include="src\Ext\Bullet\Trajectories\ParabolaTrajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\PhobosTrajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\SpiralTrajectory.cpp" />
     <ClCompile Include="src\Ext\Bullet\Trajectories\StraightTrajectory.cpp" />
@@ -82,6 +78,7 @@
     <ClCompile Include="src\Ext\House\Hooks.AINavalProduction.cpp" />
     <ClCompile Include="src\Ext\House\Hooks.cpp" />
     <ClCompile Include="src\Ext\InfantryType\Body.cpp" />
+    <ClCompile Include="src\Ext\InfantryType\Hooks.Sequences.cpp" />
     <ClCompile Include="src\Ext\Infantry\Body.cpp" />
     <ClCompile Include="src\Ext\IsometricTileType\Body.cpp" />
     <ClCompile Include="src\Ext\LaserDraw\Hooks.Drawing.cpp" />
@@ -109,6 +106,7 @@
     <ClCompile Include="src\Ext\Sidebar\Body.cpp" />
     <ClCompile Include="src\Ext\Anim\Body.cpp" />
     <ClCompile Include="src\Ext\Sidebar\Hooks.cpp" />
+    <ClCompile Include="src\Ext\Sidebar\Hooks.SWCameo.cpp" />
     <ClCompile Include="src\Ext\Side\Hooks.cpp" />
     <ClCompile Include="src\Ext\Side\Hooks.SidebarGDIPositions.cpp" />
     <ClCompile Include="src\Ext\SmudgeType\Body.cpp" />
@@ -148,7 +146,6 @@
     <ClCompile Include="src\Ext\TAction\Hooks.cpp" />
     <ClCompile Include="src\Ext\TeamType\Body.cpp" />
     <ClCompile Include="src\Ext\Team\Body.cpp" />
-    <ClCompile Include="src\Ext\Team\Hook.NewTeamSelector.cpp" />
     <ClCompile Include="src\Ext\Team\Hooks.cpp" />
     <ClCompile Include="src\Ext\TechnoType\Hook.Tunnel.cpp" />
     <ClCompile Include="src\Ext\TechnoType\Hooks.cpp" />
@@ -156,32 +153,12 @@
     <ClCompile Include="src\Ext\TechnoType\Hooks.Hover.cpp" />
     <ClCompile Include="src\Ext\TechnoType\Hooks.Otamaa.cpp" />
     <ClCompile Include="src\Ext\TechnoType\Hooks.Teleport.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.ChronoSparkle.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Disguise.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.EffectTargetCoordsFix.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Firing.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Firing.DeployFireWeapon.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Firing.FLH.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Firing.Gravity.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Firing.JumpJet.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Firing.WeaponSelector.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Grinding.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.IC.cpp" />
     <ClCompile Include="src\Ext\Techno\Hooks.Init.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Jumpjet.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Otamaa.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Shield.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Shield.Thread.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Targeting.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.Transport.cpp" />
-    <ClCompile Include="src\Ext\Techno\Hooks.VehicleToBuildingMCFix.cpp" />
     <ClCompile Include="src\Ext\Temporal\Body.cpp" />
     <ClCompile Include="src\Ext\Temporal\Hooks.BuildingTarget.cpp" />
     <ClCompile Include="src\Ext\TerrainType\Hooks.cpp" />
     <ClCompile Include="src\Ext\TerrainType\Hooks.Passable.cpp" />
     <ClCompile Include="src\Ext\Terrain\Body.cpp" />
-    <ClCompile Include="src\Ext\Terrain\Hooks.cpp" />
     <ClCompile Include="src\Ext\TEvent\Body.cpp" />
     <ClCompile Include="src\Ext\TEvent\Hooks.cpp" />
     <ClCompile Include="src\Ext\Tiberium\Hook.RadarColor.cpp" />
@@ -190,47 +167,45 @@
     <ClCompile Include="src\Ext\Unit\Hooks.cpp" />
     <ClCompile Include="src\Ext\Unit\Hooks.Crushing.cpp" />
     <ClCompile Include="src\Ext\Unit\Hooks.DisallowMoving.cpp" />
+    <ClCompile Include="src\Ext\Unit\Hooks.SubterraneanHarvester.cpp" />
     <ClCompile Include="src\Ext\Unit\Hooks.Unload.cpp" />
     <ClCompile Include="src\Ext\VoxelAnim\Hooks.cpp" />
     <ClCompile Include="src\Ext\WarheadType\Detonate.cpp" />
     <ClCompile Include="src\Ext\WarheadType\Hooks.cpp" />
-    <ClCompile Include="src\Ext\WarheadType\Hooks.LightEffects.cpp" />
     <ClCompile Include="src\Ext\WarheadType\Transact.cpp" />
     <ClCompile Include="src\Ext\Wave\Body.cpp" />
-    <ClCompile Include="src\Ext\WeaponType\Hooks.cpp" />
-    <ClCompile Include="src\Ext\WeaponType\Hooks.DiskLaserRadius.cpp" />
-    <ClCompile Include="src\Lib\Lua542\lapi.c" />
-    <ClCompile Include="src\Lib\Lua542\lauxlib.c" />
-    <ClCompile Include="src\Lib\Lua542\lbaselib.c" />
-    <ClCompile Include="src\Lib\Lua542\lcode.c" />
-    <ClCompile Include="src\Lib\Lua542\lcorolib.c" />
-    <ClCompile Include="src\Lib\Lua542\lctype.c" />
-    <ClCompile Include="src\Lib\Lua542\ldblib.c" />
-    <ClCompile Include="src\Lib\Lua542\ldebug.c" />
-    <ClCompile Include="src\Lib\Lua542\ldo.c" />
-    <ClCompile Include="src\Lib\Lua542\ldump.c" />
-    <ClCompile Include="src\Lib\Lua542\lfunc.c" />
-    <ClCompile Include="src\Lib\Lua542\lgc.c" />
-    <ClCompile Include="src\Lib\Lua542\linit.c" />
-    <ClCompile Include="src\Lib\Lua542\liolib.c" />
-    <ClCompile Include="src\Lib\Lua542\llex.c" />
-    <ClCompile Include="src\Lib\Lua542\lmathlib.c" />
-    <ClCompile Include="src\Lib\Lua542\lmem.c" />
-    <ClCompile Include="src\Lib\Lua542\loadlib.c" />
-    <ClCompile Include="src\Lib\Lua542\lobject.c" />
-    <ClCompile Include="src\Lib\Lua542\lopcodes.c" />
-    <ClCompile Include="src\Lib\Lua542\loslib.c" />
-    <ClCompile Include="src\Lib\Lua542\lparser.c" />
-    <ClCompile Include="src\Lib\Lua542\lstate.c" />
-    <ClCompile Include="src\Lib\Lua542\lstring.c" />
-    <ClCompile Include="src\Lib\Lua542\lstrlib.c" />
-    <ClCompile Include="src\Lib\Lua542\ltable.c" />
-    <ClCompile Include="src\Lib\Lua542\ltablib.c" />
-    <ClCompile Include="src\Lib\Lua542\ltm.c" />
-    <ClCompile Include="src\Lib\Lua542\lundump.c" />
-    <ClCompile Include="src\Lib\Lua542\lutf8lib.c" />
-    <ClCompile Include="src\Lib\Lua542\lvm.c" />
-    <ClCompile Include="src\Lib\Lua542\lzio.c" />
+    <ClCompile Include="src\Lib\Lua\lapi.c" />
+    <ClCompile Include="src\Lib\Lua\lauxlib.c" />
+    <ClCompile Include="src\Lib\Lua\lbaselib.c" />
+    <ClCompile Include="src\Lib\Lua\lcode.c" />
+    <ClCompile Include="src\Lib\Lua\lcorolib.c" />
+    <ClCompile Include="src\Lib\Lua\lctype.c" />
+    <ClCompile Include="src\Lib\Lua\ldblib.c" />
+    <ClCompile Include="src\Lib\Lua\ldebug.c" />
+    <ClCompile Include="src\Lib\Lua\ldo.c" />
+    <ClCompile Include="src\Lib\Lua\ldump.c" />
+    <ClCompile Include="src\Lib\Lua\lfunc.c" />
+    <ClCompile Include="src\Lib\Lua\lgc.c" />
+    <ClCompile Include="src\Lib\Lua\linit.c" />
+    <ClCompile Include="src\Lib\Lua\liolib.c" />
+    <ClCompile Include="src\Lib\Lua\llex.c" />
+    <ClCompile Include="src\Lib\Lua\lmathlib.c" />
+    <ClCompile Include="src\Lib\Lua\lmem.c" />
+    <ClCompile Include="src\Lib\Lua\loadlib.c" />
+    <ClCompile Include="src\Lib\Lua\lobject.c" />
+    <ClCompile Include="src\Lib\Lua\lopcodes.c" />
+    <ClCompile Include="src\Lib\Lua\loslib.c" />
+    <ClCompile Include="src\Lib\Lua\lparser.c" />
+    <ClCompile Include="src\Lib\Lua\lstate.c" />
+    <ClCompile Include="src\Lib\Lua\lstring.c" />
+    <ClCompile Include="src\Lib\Lua\lstrlib.c" />
+    <ClCompile Include="src\Lib\Lua\ltable.c" />
+    <ClCompile Include="src\Lib\Lua\ltablib.c" />
+    <ClCompile Include="src\Lib\Lua\ltm.c" />
+    <ClCompile Include="src\Lib\Lua\lundump.c" />
+    <ClCompile Include="src\Lib\Lua\lutf8lib.c" />
+    <ClCompile Include="src\Lib\Lua\lvm.c" />
+    <ClCompile Include="src\Lib\Lua\lzio.c" />
     <ClCompile Include="src\Misc\Ares\Audio.cpp" />
     <ClCompile Include="src\Misc\Ares\CSF.cpp" />
     <ClCompile Include="src\Misc\Ares\EVAVoices.cpp" />
@@ -247,9 +222,9 @@
     <ClCompile Include="src\Misc\Ares\Hooks\Commands\MapSnapshot.cpp" />
     <ClCompile Include="src\Misc\Ares\Hooks\Commands\TogglePower.cpp" />
     <ClCompile Include="src\Misc\Ares\Hooks\Header.cpp" />
-    <ClCompile Include="src\Misc\Ares\Hooks\Hooks.EBolt.cpp" />
-    <ClCompile Include="src\Misc\Ares\Hooks\Hook.GameScreenshot.cpp" />
     <ClCompile Include="src\Misc\Ares\Hooks\Hook.Init.cpp" />
+    <ClCompile Include="src\Misc\Ares\Hooks\Hook.GameScreenshot.cpp" />
+    <ClCompile Include="src\Misc\Ares\Hooks\Hooks.EBolt.cpp" />
     <ClCompile Include="src\Misc\Ares\Hooks\Hooks.Foot.cpp" />
     <ClCompile Include="src\Misc\Ares\Hooks\Hooks.MouseCursors.cpp" />
     <ClCompile Include="src\Misc\Ares\Hooks\Hooks.Others.cpp" />
@@ -309,17 +284,12 @@
     <ClCompile Include="src\Misc\DynamicPatcher\ExtHooks\TechnoExt.cpp" />
     <ClCompile Include="src\Misc\DynamicPatcher\Techno\FighterGuardArea\FighterAreaGuard.cpp" />
     <ClCompile Include="src\Misc\DynamicPatcher\Techno\TurretAngle\Status.cpp" />
-    <ClCompile Include="src\Misc\Hooks.Blowfish.cpp" />
-    <ClCompile Include="src\Misc\Hooks.BugFixes.cpp" />
     <ClCompile Include="src\Misc\Hooks.Crashes.cpp" />
-    <ClCompile Include="src\Misc\Hooks.GameSpeed.cpp" />
     <ClCompile Include="src\Misc\Hooks.HealthBar.cpp" />
     <ClCompile Include="src\Misc\Hooks.Image.cpp" />
     <ClCompile Include="src\Misc\Hooks.INIClass.cpp" />
     <ClCompile Include="src\Misc\Hooks.LogicUpdater.cpp" />
     <ClCompile Include="src\Misc\Hooks.LogicUpdater.Logics.cpp" />
-    <ClCompile Include="src\Misc\Hooks.Multithread.cpp" />
-    <ClCompile Include="src\Misc\Hooks.Otamaa.AIRelated.cpp" />
     <ClCompile Include="src\Misc\Hooks.PCX.cpp" />
     <ClCompile Include="src\Misc\Hooks.Render.cpp" />
     <ClCompile Include="src\Misc\Hooks.UI.cpp" />
@@ -328,7 +298,9 @@
     <ClCompile Include="src\Misc\PhobosToolTip.cpp" />
     <ClCompile Include="src\Misc\RetryDialog.cpp" />
     <ClCompile Include="src\Misc\Selection.cpp" />
+    <ClCompile Include="src\Misc\Spawner\AutoSave.cpp" />
     <ClCompile Include="src\Misc\Spawner\Bugfixes.cpp" />
+    <ClCompile Include="src\Misc\Spawner\Chats.cpp" />
     <ClCompile Include="src\Misc\Spawner\DisableEdgeScrolling.cpp" />
     <ClCompile Include="src\Misc\Spawner\DumpTypeDataArrayToFile.cpp" />
     <ClCompile Include="src\Misc\Spawner\InGameChat.cpp" />
@@ -344,20 +316,32 @@
     <ClCompile Include="src\Misc\Spawner\SkipScoreScreen.cpp" />
     <ClCompile Include="src\Misc\Spawner\Statistics.cpp" />
     <ClCompile Include="src\Misc\Spawner\VideoMode.cpp" />
+    <ClCompile Include="src\Misc\SyncLogging.cpp" />
     <ClCompile Include="src\Misc\TextInput.cpp" />
+    <ClCompile Include="src\Misc\Vinifera\BlowfishEngine.cpp" />
     <ClCompile Include="src\New\AnonymousType\BuildSpeedBonus.cpp" />
     <ClCompile Include="src\New\AnonymousType\MultipleFactoryCaps.cpp" />
     <ClCompile Include="src\New\AnonymousType\Spawns.cpp" />
     <ClCompile Include="src\New\AnonymousType\SpawnsStatus.cpp" />
+    <ClCompile Include="src\New\Entity\NewSpawnManager.cpp" />
+    <ClCompile Include="src\New\SuperWeaponSidebar\SWButtonClass.cpp" />
+    <ClCompile Include="src\New\SuperWeaponSidebar\SWColumnClass.cpp" />
+    <ClCompile Include="src\New\Entity\SWFirerClass.cpp" />
+    <ClCompile Include="src\New\SuperWeaponSidebar\SWSidebarClass.cpp" />
+    <ClCompile Include="src\New\SuperWeaponSidebar\ToggleSWButtonClass.cpp" />
     <ClCompile Include="src\New\HugeBar.cpp" />
     <ClCompile Include="src\New\Interfaces\LevitateLocomotionClass.cpp" />
+    <ClCompile Include="src\New\PhobosAttachedAffect\AEAttachInfoTypeClass.cpp" />
     <ClCompile Include="src\New\PhobosAttachedAffect\Functions.cpp" />
     <ClCompile Include="src\New\PhobosAttachedAffect\PhobosAttachEffectClass.cpp" />
     <ClCompile Include="src\New\PhobosAttachedAffect\PhobosAttachEffectTypeClass.cpp" />
+    <ClCompile Include="src\New\Type\BarTypeClass.cpp" />
     <ClCompile Include="src\New\Type\CrateTypeClass.cpp" />
     <ClCompile Include="src\New\Type\DigitalDisplayTypeClass.cpp" />
     <ClCompile Include="src\New\Type\DroppodProperties.cpp" />
     <ClCompile Include="src\New\Type\GenericPrerequisite.cpp" />
+    <ClCompile Include="src\New\Type\InsigniaTypeClass.cpp" />
+    <ClCompile Include="src\New\Type\RocketTypeClass.cpp" />
     <ClCompile Include="src\New\Type\TechTreeTypeClass.cpp" />
     <ClCompile Include="src\New\Type\TheaterTypeClass.cpp" />
     <ClCompile Include="src\New\Type\ThemeTypeClass.cpp" />
@@ -427,15 +411,21 @@
     <ClCompile Include="src\Ext\VoxelAnim\Body.cpp" />
     <ClCompile Include="src\Ext\WeaponType\Body.cpp" />
     <ClCompile Include="src\Commands\ObjectInfo.cpp" />
+    <ClCompile Include="src\Phobos.COM.cpp" />
     <ClCompile Include="src\Phobos.Ext.cpp" />
     <ClCompile Include="src\Phobos.Lua.cpp" />
     <ClCompile Include="src\Phobos.UI.cpp" />
     <ClCompile Include="src\Utilities\Anchor.cpp" />
     <ClCompile Include="src\Utilities\Cast.cpp" />
+    <ClCompile Include="src\Utilities\CSFText.cpp" />
     <ClCompile Include="src\Utilities\Debug.cpp" />
     <ClCompile Include="src\Ext\BuildingType\Body.cpp" />
     <ClCompile Include="src\Ext\WarheadType\Body.cpp" />
+    <ClCompile Include="src\Utilities\GameConfig.cpp" />
+    <ClCompile Include="src\Utilities\Handle.cpp" />
     <ClCompile Include="src\Utilities\Helpers.cpp" />
+    <ClCompile Include="src\Utilities\OptionalStruct.cpp" />
+    <ClCompile Include="src\Utilities\PhobosPCXFile.cpp" />
     <ClCompile Include="src\Utilities\ShapeTextPrinter.cpp" />
     <ClCompile Include="src\Utilities\Stream.cpp" />
     <ClCompile Include="src\Utilities\Swizzle.cpp" />
@@ -445,32 +435,81 @@
     <ClCompile Include="src\Utilities\EnumFunctions.cpp" />
     <ClCompile Include="src\Utilities\GeneralUtils.cpp" />
     <ClCompile Include="src\Utilities\TechnoTypeConvertData.cpp" />
+    <ClCompile Include="src\Utilities\TheaterSpecificSHP.cpp" />
     <ClCompile Include="src\Utilities\VersesData.cpp" />
+    <ClCompile Include="src\Utilities\Patch.cpp" />
     <ClCompile Include="YRpp\DebugLog.cpp" />
     <ClCompile Include="YRpp\StaticInits.cpp" />
-    <ClCompile Include="src\Utilities\Patch.cpp" />
     <ClCompile Include="YRpp\Syringe.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Commands\DetachFromTeam.h" />
-    <ClInclude Include="src\ExtraHeaders\RVectorClass.h" />
-    <ClInclude Include="src\ExtraHeaders\FixedHeapClass.h" />
+    <ClInclude Include="src\Commands\FireTacticalSW.h" />
+    <ClInclude Include="src\Commands\SelectCaptured.h" />
+    <ClInclude Include="src\Commands\ToggleSWSidebar.h" />
+    <ClInclude Include="src\ExtraHeaders\AStarClass.h" />
+    <ClInclude Include="src\Ext\AircraftTypeClass\Body.h" />
     <ClInclude Include="src\Ext\Bullet\Trajectories\DisperseTrajectory.h" />
     <ClInclude Include="src\Ext\Bullet\Trajectories\EngraveTrajectory.h" />
+    <ClInclude Include="src\Ext\Bullet\Trajectories\ParabolaTrajectory.h" />
     <ClInclude Include="src\Ext\Script\Lua\Wrapper.h" />
+    <ClInclude Include="src\Lib\Lua\lapi.h" />
+    <ClInclude Include="src\Lib\Lua\lauxlib.h" />
+    <ClInclude Include="src\Lib\Lua\lcode.h" />
+    <ClInclude Include="src\Lib\Lua\lctype.h" />
+    <ClInclude Include="src\Lib\Lua\ldebug.h" />
+    <ClInclude Include="src\Lib\Lua\ldo.h" />
+    <ClInclude Include="src\Lib\Lua\lfunc.h" />
+    <ClInclude Include="src\Lib\Lua\lgc.h" />
+    <ClInclude Include="src\Lib\Lua\ljumptab.h" />
+    <ClInclude Include="src\Lib\Lua\llex.h" />
+    <ClInclude Include="src\Lib\Lua\llimits.h" />
+    <ClInclude Include="src\Lib\Lua\lmem.h" />
+    <ClInclude Include="src\Lib\Lua\lobject.h" />
+    <ClInclude Include="src\Lib\Lua\lopcodes.h" />
+    <ClInclude Include="src\Lib\Lua\lopnames.h" />
+    <ClInclude Include="src\Lib\Lua\lparser.h" />
+    <ClInclude Include="src\Lib\Lua\lprefix.h" />
+    <ClInclude Include="src\Lib\Lua\lstate.h" />
+    <ClInclude Include="src\Lib\Lua\lstring.h" />
+    <ClInclude Include="src\Lib\Lua\ltable.h" />
+    <ClInclude Include="src\Lib\Lua\ltm.h" />
+    <ClInclude Include="src\Lib\Lua\lua.h" />
+    <ClInclude Include="src\Lib\Lua\lua.hpp" />
+    <ClInclude Include="src\Lib\Lua\luaconf.h" />
+    <ClInclude Include="src\Lib\Lua\lualib.h" />
+    <ClInclude Include="src\Lib\Lua\lundump.h" />
+    <ClInclude Include="src\Lib\Lua\lvm.h" />
+    <ClInclude Include="src\Lib\Lua\lzio.h" />
+    <ClInclude Include="src\Misc\Ares\Hooks\Hooks.MouseCursors.h" />
     <ClInclude Include="src\Misc\Defines.h" />
+    <ClInclude Include="src\Misc\ImageSwapModules.h" />
     <ClInclude Include="src\Misc\PhobosToolTip.h" />
+    <ClInclude Include="src\Misc\Spawner\AutoSave.h" />
+    <ClInclude Include="src\Misc\SyncLogging.h" />
+    <ClInclude Include="src\Misc\Vinifera\BlowfishEngine.h" />
     <ClInclude Include="src\New\AnonymousType\Spawns.h" />
     <ClInclude Include="src\New\AnonymousType\SpawnsStatus.h" />
     <ClInclude Include="src\New\Entity\MissingCameoData.h" />
+    <ClInclude Include="src\New\Entity\NewSpawnManager.h" />
     <ClInclude Include="src\New\Entity\NewTiberiumStorageClass.h" />
+    <ClInclude Include="src\New\SuperWeaponSidebar\SWButtonClass.h" />
+    <ClInclude Include="src\New\SuperWeaponSidebar\SWColumnClass.h" />
+    <ClInclude Include="src\New\Entity\SWFirerClass.h" />
+    <ClInclude Include="src\New\SuperWeaponSidebar\SWSidebarClass.h" />
+    <ClInclude Include="src\New\SuperWeaponSidebar\ToggleSWButtonClass.h" />
     <ClInclude Include="src\New\Entity\TrackerClass.h" />
     <ClInclude Include="src\New\HugeBar.h" />
     <ClInclude Include="src\New\Interfaces\IEntity.h" />
     <ClInclude Include="src\New\Interfaces\LevitateLocomotionClass.h" />
+    <ClInclude Include="src\New\PhobosAttachedAffect\AEAttachInfoTypeClass.h" />
+    <ClInclude Include="src\New\PhobosAttachedAffect\AEAttachParams.h" />
     <ClInclude Include="src\New\PhobosAttachedAffect\Functions.h" />
     <ClInclude Include="src\New\PhobosAttachedAffect\PhobosAttachEffectClass.h" />
     <ClInclude Include="src\New\PhobosAttachedAffect\PhobosAttachEffectTypeClass.h" />
+    <ClInclude Include="src\New\Type\BarTypeClass.h" />
+    <ClInclude Include="src\New\Type\InsigniaTypeClass.h" />
+    <ClInclude Include="src\New\Type\RocketTypeClass.h" />
     <ClInclude Include="src\New\Type\TechTreeTypeClass.h" />
     <ClInclude Include="src\New\Type\ThemeTypeClass.h" />
     <ClInclude Include="src\Phobos.Lua.h" />
@@ -493,7 +532,6 @@
     <ClInclude Include="src\Commands\ToggleDesignatorRange.h" />
     <ClInclude Include="src\Commands\ToggleDigitalDisplay.h" />
     <ClInclude Include="src\Commands\ToggleRadialIndicatorDrawMode.h" />
-    <ClInclude Include="src\ExtraHeaders\AStarClass.h" />
     <ClInclude Include="src\Ext\Bomb\Body.h" />
     <ClInclude Include="src\Ext\Bullet\Trajectories\ArcingTrajectory.h" />
     <ClInclude Include="src\Ext\Bullet\Trajectories\ArtilleryTrajectory.h" />
@@ -550,7 +588,6 @@
     <ClInclude Include="src\Ext\SWType\NewSuperWeaponType\SpyPlane.h" />
     <ClInclude Include="src\Ext\SWType\NewSuperWeaponType\SWStateMachine.h" />
     <ClInclude Include="src\Ext\SWType\NewSuperWeaponType\UnitDelivery.h" />
-    <ClInclude Include="src\Ext\SWType\SuperWeaponSidebar.h" />
     <ClInclude Include="src\Ext\Tactical\Body.h" />
     <ClInclude Include="src\Ext\TAction\Body.h" />
     <ClInclude Include="src\Ext\TeamType\Body.h" />
@@ -562,34 +599,6 @@
     <ClInclude Include="src\Ext\Wave\Body.h" />
     <ClInclude Include="src\Lib\gcem\gcem.hpp" />
     <ClInclude Include="src\Lib\Lua542\include\lua.hpp" />
-    <ClInclude Include="src\Lib\Lua542\lapi.h" />
-    <ClInclude Include="src\Lib\Lua542\lauxlib.h" />
-    <ClInclude Include="src\Lib\Lua542\lcode.h" />
-    <ClInclude Include="src\Lib\Lua542\lctype.h" />
-    <ClInclude Include="src\Lib\Lua542\ldebug.h" />
-    <ClInclude Include="src\Lib\Lua542\ldo.h" />
-    <ClInclude Include="src\Lib\Lua542\lfunc.h" />
-    <ClInclude Include="src\Lib\Lua542\lgc.h" />
-    <ClInclude Include="src\Lib\Lua542\ljumptab.h" />
-    <ClInclude Include="src\Lib\Lua542\llex.h" />
-    <ClInclude Include="src\Lib\Lua542\llimits.h" />
-    <ClInclude Include="src\Lib\Lua542\lmem.h" />
-    <ClInclude Include="src\Lib\Lua542\lobject.h" />
-    <ClInclude Include="src\Lib\Lua542\lopcodes.h" />
-    <ClInclude Include="src\Lib\Lua542\lopnames.h" />
-    <ClInclude Include="src\Lib\Lua542\lparser.h" />
-    <ClInclude Include="src\Lib\Lua542\lprefix.h" />
-    <ClInclude Include="src\Lib\Lua542\lstate.h" />
-    <ClInclude Include="src\Lib\Lua542\lstring.h" />
-    <ClInclude Include="src\Lib\Lua542\ltable.h" />
-    <ClInclude Include="src\Lib\Lua542\ltm.h" />
-    <ClInclude Include="src\Lib\Lua542\lua.h" />
-    <ClInclude Include="src\Lib\Lua542\lua.hpp" />
-    <ClInclude Include="src\Lib\Lua542\luaconf.h" />
-    <ClInclude Include="src\Lib\Lua542\lualib.h" />
-    <ClInclude Include="src\Lib\Lua542\lundump.h" />
-    <ClInclude Include="src\Lib\Lua542\lvm.h" />
-    <ClInclude Include="src\Lib\Lua542\lzio.h" />
     <ClInclude Include="src\Misc\Ares\Audio.h" />
     <ClInclude Include="src\Misc\Ares\CSF.h" />
     <ClInclude Include="src\Misc\Ares\EVAVoices.h" />
@@ -599,9 +608,6 @@
     <ClInclude Include="src\Misc\Ares\Hooks\Classes\AresJammer.h" />
     <ClInclude Include="src\Misc\Ares\Hooks\Classes\AresPoweredUnit.h" />
     <ClInclude Include="src\Misc\Ares\Hooks\Classes\AttachedAffects.h" />
-    <ClInclude Include="src\Misc\Ares\Hooks\Classes\INIComment.h" />
-    <ClInclude Include="src\Misc\Ares\Hooks\Classes\INIEntry_.h" />
-    <ClInclude Include="src\Misc\Ares\Hooks\Classes\INISection_.h" />
     <ClInclude Include="src\Misc\Ares\Hooks\Classes\PrismForwarding.h" />
     <ClInclude Include="src\Misc\Ares\Hooks\Classes\PrismForwardingData.h" />
     <ClInclude Include="src\Misc\Ares\Hooks\Commands\AIBasePlan.h" />
@@ -699,6 +705,7 @@
     <ClInclude Include="src\Utilities\AnimHelpers.h" />
     <ClInclude Include="src\Utilities\BuildingBrackedPositionData.h" />
     <ClInclude Include="src\Utilities\Cast.h" />
+    <ClInclude Include="src\Utilities\CSFText.h" />
     <ClInclude Include="src\Utilities\Enumerable.h" />
     <ClInclude Include="src\Ext\Aircraft\Body.h" />
     <ClInclude Include="src\Ext\AnimType\Body.h" />
@@ -719,12 +726,19 @@
     <ClInclude Include="src\Ext\VoxelAnimType\Body.h" />
     <ClInclude Include="src\Ext\VoxelAnim\Body.h" />
     <ClInclude Include="src\Ext\WeaponType\Body.h" />
+    <ClInclude Include="src\Utilities\GameConfig.h" />
     <ClInclude Include="src\Utilities\GameUniquePointers.h" />
+    <ClInclude Include="src\Utilities\Handle.h" />
+    <ClInclude Include="src\Utilities\Interpolation.h" />
+    <ClInclude Include="src\Utilities\LambdaFunctionArgCount.h" />
     <ClInclude Include="src\Utilities\LocationMark.h" />
     <ClInclude Include="src\Utilities\LocomotionCast.h" />
     <ClInclude Include="src\Utilities\MapPathCellElement.h" />
     <ClInclude Include="src\Utilities\MultiBoolFixedArray.h" />
+    <ClInclude Include="src\Utilities\OptionalStruct.h" />
     <ClInclude Include="src\Utilities\PhobosFixedString.h" />
+    <ClInclude Include="src\Utilities\PhobosMap.h" />
+    <ClInclude Include="src\Utilities\PhobosPCXFile.h" />
     <ClInclude Include="src\Utilities\Savegame.h" />
     <ClInclude Include="src\Utilities\SavegameDef.h" />
     <ClInclude Include="src\Utilities\ShapeTextPrinter.h" />
@@ -752,8 +766,10 @@
     <ClInclude Include="src\Utilities\Template.h" />
     <ClInclude Include="src\Utilities\TemplateDef.h" />
     <ClInclude Include="src\Utilities\TemplateDefB.h" />
+    <ClInclude Include="src\Utilities\TheaterSpecificSHP.h" />
     <ClInclude Include="src\Utilities\TranslucencyLevel.h" />
     <ClInclude Include="src\Utilities\VectorHelper.h" />
+    <ClInclude Include="src\Utilities\VectorNames.h" />
     <ClInclude Include="src\Utilities\VersesData.h" />
     <ClInclude Include="YRpp\GameTextManager.h" />
   </ItemGroup>
@@ -761,6 +777,7 @@
     <ResourceCompile Include="src\version.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cpp.hint" />
     <None Include="Debug DPFeatures\phobos.dll" />
     <None Include="sampleconfig\Resources\ScriptAlternativeNumbering.lua" />
     <None Include="sampleconfig\tools\ExtractTheAlternativeNumbering.cs" />
@@ -768,11 +785,14 @@
   <ItemGroup>
     <Text Include="sampleconfig\README_WHERETOPUTLUA.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="YRpp\yrpp_defs.asm" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{3FAF7126-F38C-4D1E-9973-C21A37870F60}</ProjectGuid>
     <RootNamespace>Phobos</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <ProjectName>Phobos</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -795,6 +815,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -824,7 +845,7 @@
       <ConformanceMode>false</ConformanceMode>
       <DiagnosticsFormat>Column</DiagnosticsFormat>
       <OmitFramePointers>true</OmitFramePointers>
-      <PreprocessorDefinitions>SYR_VER=2;HAS_EXCEPTIONS=0;NOMINMAX;_CRT_SECURE_NO_WARNINGS;COMPILE_PORTED_DP_FEATURES;ENABLE_PHOBOS_DAMAGEDELAYANIM;ENABLE_PHOBOS_AIRBURST;_WINDLL;_WIN32_WINNT=0x0601;NTDDI_VERSION=0x06010000;%(PreprocessorDefinitions);%(AdditionalDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SYR_VER=2;HAS_EXCEPTIONS=0;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_WINDLL;_WIN32_WINNT=0x0601;NTDDI_VERSION=0x06010000;%(PreprocessorDefinitions);%(AdditionalDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -832,7 +853,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
+      <EnforceTypeConversionRules>false</EnforceTypeConversionRules>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <AssemblerListingLocation>$(IntDir)\%(RelativeDir)</AssemblerListingLocation>
       <ObjectFileName>$(IntDir)\%(RelativeDir)</ObjectFileName>
@@ -841,7 +862,7 @@
       <DisableSpecificWarnings>4100;4530;4731;4740;4505;4201;26495</DisableSpecificWarnings>
       <EnableModules>false</EnableModules>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FloatingPointModel>Precise</FloatingPointModel>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -852,6 +873,7 @@
       <BuildStlModules>false</BuildStlModules>
       <MinimalRebuild>false</MinimalRebuild>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -865,11 +887,19 @@
       <GenerateMapFile>false</GenerateMapFile>
       <MapExports>false</MapExports>
       <AdditionalLibraryDirectories>$(MSBuildProjectDirectory)\src\Lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
       <Command>
       </Command>
     </PostBuildEvent>
+    <MASM>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </MASM>
+    <MASM>
+      <EnableMASM51Compatibility>true</EnableMASM51Compatibility>
+      <UseSafeExceptionHandlers>false</UseSafeExceptionHandlers>
+    </MASM>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(GitCommit)' != ''">
     <ClCompile>
@@ -898,5 +928,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+  </ImportGroup>
 </Project>

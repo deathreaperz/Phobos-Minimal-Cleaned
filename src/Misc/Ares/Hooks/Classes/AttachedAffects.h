@@ -3,6 +3,7 @@
 #include <New/AnonymousType/AresAttachEffectTypeClass.h>
 #include <CoordStruct.h>
 #include <Utilities/GameUniquePointers.h>
+#include <AnimClass.h>
 
 struct AresAEData;
 class WarheadTypeClass;
@@ -71,7 +72,6 @@ public:
 	static void RemoveSpecific(AresAEData* ae, TechnoClass* pTechno, AbstractTypeClass* pRemove);
 	static bool Attach(AresAttachEffectTypeClass* pType, TechnoClass* pTargetTechno, int duration, HouseClass* pInvokerOwner);
 	static void TransferAttachedEffects(TechnoClass* From, TechnoClass* To);
-	static void RecalculateStat(AresAEData* ae, TechnoClass* pThis);
 	static void applyAttachedEffect(WarheadTypeClass* pWH, const CoordStruct& coords, HouseClass* Source);
 
 private:
@@ -80,10 +80,10 @@ private:
 	bool Serialize(T& Stm)
 	{
 		return Stm
-			.Process(Type)
-			.Process(Anim)
+			.Process(Type, true)
+			.Process(Anim, true)
 			.Process(Duration)
-			.Process(Invoker)
+			.Process(Invoker, true)
 			.Success()
 			&& Stm.RegisterChange(this) // announce this type
 			;

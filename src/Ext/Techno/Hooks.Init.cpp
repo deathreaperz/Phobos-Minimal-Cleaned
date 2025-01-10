@@ -2,11 +2,11 @@
 
 #include <Ext/TechnoType/Body.h>
 
-#include <Ares_TechnoExt.h>
-
 #include <Misc/DynamicPatcher/Techno/AircraftDive/AircraftDiveFunctional.h>
 #include <Misc/DynamicPatcher/Techno/DriveData/DriveDataFunctional.h>
 #include <Misc/DynamicPatcher/Techno/GiftBox/GiftBoxFunctional.h>
+
+#include <InfantryClass.h>
 
 DEFINE_HOOK_AGAIN(0x43B75C, Techno_CTOR_SetOriginalType, 0x6)
 DEFINE_HOOK_AGAIN(0x7353EC, Techno_CTOR_SetOriginalType, 0x6)
@@ -19,41 +19,6 @@ DEFINE_HOOK(0x517A7F, Techno_CTOR_SetOriginalType, 0x6)
 	if (!Phobos::Otamaa::DoingLoadGame)
 		TechnoExtContainer::Instance.Find(pThis)->Type = (pType);
 
-	return 0x0;
-}
-
-// init inside type check
-// should be no problem here
-DEFINE_HOOK(0x6F42ED, TechnoClass_Init_Early, 0xA)
-{
-	GET(TechnoClass*, pThis, ESI);
-
-	auto pType = pThis->GetTechnoType();
-
-	if (!pType)
-		return 0x0;
-
-	if (pThis->Owner)
-	{
-		HouseExtContainer::Instance.Find(pThis->Owner)->LimboTechno.insert(pThis);
-	}
-
-	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	//AircraftDiveFunctional::Init(pExt, pTypeExt);
-
-	if (pTypeExt->AttachtoType == AircraftTypeClass::AbsID)
-	{
-		if (pTypeExt->MyFighterData.Enable)
-		{
-			pExt->MyFighterData = std::make_unique<FighterAreaGuard>();
-			pExt->MyFighterData->OwnerObject = (AircraftClass*)pThis;
-		}
-	}
-
-	TechnoExtData::InitializeItems(pThis, pType);
-	TechnoExtData::InitializeAttachEffects(pThis, pType);
 	return 0x0;
 }
 

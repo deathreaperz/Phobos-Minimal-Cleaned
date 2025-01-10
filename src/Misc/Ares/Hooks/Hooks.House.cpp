@@ -23,6 +23,10 @@
 
 #include "Header.h"
 
+#include <TaskForceClass.h>
+
+#include <InfantryClass.h>
+
 static constexpr int ObserverBackgroundWidth = 121;
 static constexpr int ObserverBackgroundHeight = 96;
 
@@ -400,12 +404,12 @@ DEFINE_HOOK(0x688B37, MPGameModeClass_CreateStartingUnits_B, 5)
 // 	return 0;
 // }
 
-DEFINE_HOOK(0x4F8440, HouseClass_Update_TogglePower, 5)
-{
-	GET(HouseClass* const, pThis, ECX);
-	AresHouseExt::UpdateTogglePower(pThis);
-	return 0;
-}
+// DEFINE_HOOK(0x4F8440, HouseClass_Update_TogglePower, 5)
+// {
+// 	GET(HouseClass* const, pThis, ECX);
+// 	AresHouseExt::UpdateTogglePower(pThis);
+// 	return 0;
+// }
 
 DEFINE_HOOK(0x52267D, InfantryClass_GetDisguise_Disguise, 6)
 {
@@ -1227,7 +1231,7 @@ DEFINE_HOOK(0x4FC731, HouseClass_DestroyAll_ReturnStructures, 7)
 	}
 
 	// check whether this is a building
-	if (auto pBld = specific_cast<BuildingClass*>(pTechno))
+	if (auto pBld = cast_to<BuildingClass*>(pTechno))
 	{
 		auto pInitialOwner = pBld->InitialOwner;
 

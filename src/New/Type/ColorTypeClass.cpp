@@ -3,8 +3,6 @@
 #include <Utilities/TemplateDef.h>
 #include <Utilities/GeneralUtils.h>
 
-Enumerable<ColorTypeClass>::container_t Enumerable<ColorTypeClass>::Array;
-
 const char* Enumerable<ColorTypeClass>::GetMainSection()
 {
 	return GameStrings::Colors();
@@ -12,7 +10,7 @@ const char* Enumerable<ColorTypeClass>::GetMainSection()
 
 void ColorTypeClass::LoadFromINI(CCINIClass* pINI)
 {
-	const char* pName = this->Name.data();
+	const char* pName = this->Name.c_str();
 
 	INI_EX exINI(pINI);
 	this->Colors.Read(exINI, GetMainSection(), pName, false);

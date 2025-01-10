@@ -1,11 +1,8 @@
 #pragma once
 #include <SuperClass.h>
 
-#include <Helpers/Macro.h>
 #include <Utilities/Container.h>
 #include <Utilities/TemplateDef.h>
-#include <Ext/SWType/Body.h>
-#include <Ext/House/Body.h>
 
 // cache all super weapon statuses
 struct SWStatus
@@ -40,6 +37,7 @@ struct SWStatus
 	}
 };
 
+class SWTypeExtData;
 class SuperExtData final
 {
 public:
@@ -55,30 +53,7 @@ public:
 	CellStruct Temp_CellStruct { };
 	bool CameoFirstClickDone { false };
 	bool FirstClickAutoFireDone { false };
-	//TechnoClass* Firer { nullptr };
 	SWStatus Statusses { };
-
-	SuperExtData() noexcept = default;
-	~SuperExtData() noexcept = default;
-
-	void InvalidatePointer(AbstractClass* ptr, bool bRemoved)
-	{
-		//	AnnounceInvalidPointer(Firer, ptr);
-	}
-
-	static bool InvalidateIgnorable(AbstractClass* ptr)
-	{
-		switch (VTable::Get(ptr))
-		{
-		case BuildingClass::vtable:
-		case AircraftClass::vtable:
-		case UnitClass::vtable:
-		case InfantryClass::vtable:
-			return false;
-		}
-
-		return true;
-	}
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -101,5 +76,25 @@ class SuperExtContainer final : public Container<SuperExtData>
 public:
 	static SuperExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(SuperExtContainer, SuperExtData, "SuperClass");
+	//CONSTEXPR_NOCOPY_CLASSB(SuperExtContainer, SuperExtData, "SuperClass");
 };
+
+class SWTypeExtData;
+class FakeSuperClass : public SuperClass
+{
+public:
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	SuperExtData* _GetExtData()
+	{
+		return *reinterpret_cast<SuperExtData**>((DWORD)this + AbstractExtOffset);
+	}
+
+	SWTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<SWTypeExtData**>(((DWORD)this->Type) + AbstractExtOffset);
+	}
+};
+
+static_assert(sizeof(FakeSuperClass) == sizeof(SuperClass), "Invalid Size !");

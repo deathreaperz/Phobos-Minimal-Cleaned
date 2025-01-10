@@ -1,4 +1,7 @@
 #include "Body.h"
+#include <Ext/Rules/Body.h>
+
+#include <ParticleSystemClass.h>
 
 void ReadFacingDirMult(std::array<Point2D, (size_t)FacingType::Count>& arr, INI_EX& exINI, const char* pID, const int* beginX, const int* beginY)
 {
@@ -21,6 +24,8 @@ void ParticleSystemTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFail
 		return;
 
 	INI_EX exINI(pINI);
+	this->ApplyOptimization.Read(exINI, pID, "ApplyOptimization");
+
 	switch (pThis->BehavesLike)
 	{
 	case ParticleSystemTypeBehavesLike::Fire:
@@ -40,7 +45,6 @@ void ParticleSystemTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFail
 		break;
 	}
 
-	this->ApplyOptimization.Read(exINI, pID, "ApplyOptimization");
 	this->AdjustTargetCoordsOnRotation.Read(exINI, pID, "AdjustTargetCoordsOnRotation");
 
 	if (pThis->LightSize > 94)
@@ -81,29 +85,32 @@ DEFINE_HOOK(0x644276, ParticleSystemTypeClass_SDDTOR, 0x6)
 
 	return 0;
 }
+#include <Misc/Hooks.Otamaa.h>
 
-DEFINE_HOOK_AGAIN(0x644830, ParticleSystemTypeClass_SaveLoad_Prefix, 0x8)
-DEFINE_HOOK(0x6447E0, ParticleSystemTypeClass_SaveLoad_Prefix, 0x5)
+HRESULT __stdcall FakeParticleSystemTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(ParticleSystemTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	ParticleSystemTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleSystemTypeClass::Load(pStm);
 
-	ParticleSystemTypeExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		ParticleSystemTypeExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x64481F, ParticleSystemTypeClass_Load_Suffix, 0x6)
+HRESULT __stdcall FakeParticleSystemTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	ParticleSystemTypeExtContainer::Instance.LoadStatic();
-	return 0;
+	ParticleSystemTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleSystemTypeClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		ParticleSystemTypeExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x644844, ParticleSystemTypeClass_Save_Suffix, 0x5)
-{
-	ParticleSystemTypeExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7F00BC, MiscTools::to_DWORD(&FakeParticleSystemTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F00C0, MiscTools::to_DWORD(&FakeParticleSystemTypeClass::_Save))
 
 DEFINE_HOOK_AGAIN(0x644620, ParticleSystemTypeClass_LoadFromINI, 0x5)
 DEFINE_HOOK(0x644617, ParticleSystemTypeClass_LoadFromINI, 0x5)

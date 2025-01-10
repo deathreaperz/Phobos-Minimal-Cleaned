@@ -7,20 +7,20 @@
 #include <Ext/House/Body.h>
 #include <Ext/WarheadType/Body.h>
 
-std::vector<std::unique_ptr<SWStateMachine>> SWStateMachine::Array;
+#include <New/Entity/ElectricBoltClass.h>
+
+//HelperedVector<std::unique_ptr<SWStateMachine>> SWStateMachine::Array;
 
 void SWStateMachine::UpdateAll()
 {
-	auto iter = std::remove_if(SWStateMachine::Array.begin(), SWStateMachine::Array.end(), [](std::unique_ptr<SWStateMachine>& pMachine)
-{
-	if (!pMachine)
-		return true;
+	SWStateMachine::Array.remove_all_if([](std::unique_ptr<SWStateMachine>& pMachine)
+ {
+	 if (!pMachine)
+		 return true;
 
-	pMachine->Update();
-	return pMachine->Finished();
+	 pMachine->Update();
+	 return pMachine->Finished();
 	});
-
-	SWStateMachine::Array.erase(iter, SWStateMachine::Array.end());
 }
 
 void SWStateMachine::PointerGotInvalid(AbstractClass* ptr, bool remove)

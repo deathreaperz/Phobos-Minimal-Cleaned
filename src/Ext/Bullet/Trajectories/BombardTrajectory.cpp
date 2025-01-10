@@ -15,7 +15,7 @@ bool BombardTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange
 		.Process(this->TargetSnapDistance, false)
 		.Process(this->FreeFallOnTarget, false)
 		.Process(this->NoLaunch, false)
-		.Process(this->TurningPointAnim, false)
+		.Process(this->TurningPointAnim, true)
 		;
 }
 
@@ -60,7 +60,7 @@ void BombardTrajectory::ApplyTurningPointAnim(CoordStruct& Position)
 
 	if (pType->TurningPointAnim)
 	{
-		if (auto const pAnim = GameCreate<AnimClass>(pType->TurningPointAnim, Position))
+		auto const pAnim = GameCreate<AnimClass>(pType->TurningPointAnim, Position);
 		{
 			auto pExt = BulletExtContainer::Instance.Find(this->AttachedTo);
 			auto pTechno = this->AttachedTo->Owner ? this->AttachedTo->Owner : nullptr;
@@ -160,7 +160,7 @@ void BombardTrajectory::OnAIPreDetonate()
 {
 	auto const pBullet = this->AttachedTo;
 
-	auto pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	auto pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	auto pCoords = pTarget ? pTarget->GetCoords() : pBullet->Data.Location;
 
 	if (pCoords.DistanceFrom(pBullet->Location) <= this->GetTrajectoryType()->TargetSnapDistance.Get())

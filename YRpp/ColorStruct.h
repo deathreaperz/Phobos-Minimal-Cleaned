@@ -105,20 +105,8 @@ struct ColorStruct
 
 	inline explicit operator WORD() const;
 
-	ColorStruct* Adjust_Brightness(ColorStruct& color, float adjust)
-	{ JMP_THIS(0x661190); }
-
-	ColorStruct* Adjust_Brightness(ColorStruct* color, float adjust)
-	{ JMP_THIS(0x661190); }
-
-	static FORCEINLINE constexpr ColorStruct Interpolate(const ColorStruct& from, const ColorStruct& towards, double amount)
-	{
-		return {
-			std::clamp<BYTE>((BYTE)(from.R * (1.0 - amount) + towards.R * amount), 0u, 255u) ,
-			std::clamp<BYTE>((BYTE)(from.G * (1.0 - amount) + towards.G * amount), 0u, 255u) ,
-			std::clamp<BYTE>((BYTE)(from.B * (1.0 - amount) + towards.B * amount), 0u, 255u)
-		};
-	}
+	//ColorStruct* Adjust_Brightness(ColorStruct& color, float adjust)
+	//{ JMP_THIS(0x661190); }
 
 	static FORCEINLINE constexpr ColorStruct Interpolate(const ColorStruct* from, const ColorStruct* towards, double amount)
 	{
@@ -129,28 +117,50 @@ struct ColorStruct
 		};
 	}
 
-	FORCEINLINE constexpr ColorStruct* AdjustBrightness(const ColorStruct* towards, float amount)
-	{
+	FORCEINLINE constexpr ColorStruct* AdjustBrightness(const ColorStruct* towards, float amount) {
 		this->R = (BYTE)std::clamp((towards->R * amount), 0.0f, 255.0f);
 		this->G = (BYTE)std::clamp((towards->G * amount), 0.0f, 255.0f);
 		this->B = (BYTE)std::clamp((towards->B * amount), 0.0f, 255.0f);
 		return this;
 	}
 
-	ColorStruct* Lerp(const ColorStruct& lower, const ColorStruct& upper, float adjust) const
-	{ JMP_THIS(0x661020); }
+	FORCEINLINE constexpr ColorStruct* Lerp(ColorStruct* lower, ColorStruct* upper, float adjust) {
+		auto adj = (1.0 - adjust);
+		this->R = (BYTE)std::clamp((double)(upper->R * adj) + (double)(lower->R * adj), 0.0, 255.0);
+		this->G = (BYTE)std::clamp((double)(upper->G * adj) + (double)(lower->G * adj), 0.0, 255.0);
+		this->B = (BYTE)std::clamp((double)(upper->B * adj) + (double)(lower->B * adj), 0.0, 255.0);
+		return this;
+	}
 
-	ColorStruct* Lerp(ColorStruct* lower, ColorStruct* upper, float adjust) const
-	{ JMP_THIS(0x661020); }
-
-	constexpr uintptr_t ToInit() const
+	FORCEINLINE constexpr uintptr_t ToInit() const
 	{ return ((unsigned __int8)this->R >> RedShiftRight << RedShiftLeft) | ((unsigned __int8)this->G >> GreenShiftRight << GreenShiftLeft) | ((unsigned __int8)this->B >> BlueShiftRight << BlueShiftLeft); }
 
-	void Adjust(int adjust, const ColorStruct& that)
-	{ JMP_THIS(0x6612C0); }
+	FORCEINLINE constexpr void Adjust(int adjust, const ColorStruct* that)
+	{
+		this->R += (unsigned __int8)adjust * ((unsigned __int8)that->R - (unsigned __int8)this->R) / 256;
+		this->G += (unsigned __int8)adjust * ((unsigned __int8)that->G - (unsigned __int8)this->G) / 256;
+		this->B += (unsigned __int8)adjust * ((unsigned __int8)that->B - (unsigned __int8)this->B) / 256;
+	}
 
-	int Difference(const ColorStruct& that) const
-	{ JMP_THIS(0x661350); }
+	FORCEINLINE constexpr int Difference(const ColorStruct* that) const
+	{
+		auto red = (unsigned __int8)this->R - (unsigned __int8)that->R;
+		if ( red < 0 ) {
+			red = (unsigned __int8)that->R - (unsigned __int8)this->R;
+		}
+
+		auto green = (unsigned __int8)this->G - (unsigned __int8)that->G;
+		if ( green < 0 ) {
+			green = (unsigned __int8)that->G - (unsigned __int8)this->G;
+		}
+
+		auto blue = (unsigned __int8)this->B - (unsigned __int8)that->B;
+		if ( blue < 0 ) {
+			blue = (unsigned __int8)that->B - (unsigned __int8)this->B;
+		}
+
+		return 3 * blue + 2 * (red + 2 * green);
+	}
 
 	HSVClass* ConstructHSV(HSVClass* ret) const
 	{ JMP_THIS(0x6613A0); }
@@ -164,10 +174,52 @@ struct HSVClass
 	char Sat;
 	char Val;
 
-	ColorStruct* ToColorStruct(ColorStruct* pResult)
+	constexpr ColorStruct ToColorStruct()
 	{
+		//JMP_THIS(0x517440);
+		__int8 values[7];
+		auto val = (unsigned __int8)this->Val;
+		auto sat = (unsigned __int8)this->Sat;
+		auto hue = ((unsigned __int8)this->Hue) * 2;
+
+		values[1] = val;
+		values[2] = val;
+		values[3] = val * (255 - sat * (hue % 255) / 0xFFu) / 0xFF;
+		values[4] = values[5] = val * (255 - sat) / 255;
+		values[6] = val * (255 - sat * (255 - hue % 255) / 255u) / 255;
+
+		unsigned int red_arr = ((unsigned int)(hue / 255) > 4 ? -4 : 2) + hue / 255;
+		unsigned int green_arr = (red_arr > 4 ? 0xFFFFFFFC : 2) + red_arr;
+		unsigned int blue_arr = green_arr + (green_arr > 4 ? -4 : 2);
+
+		return { (BYTE)values[red_arr] , (BYTE)values[green_arr] , (BYTE)values[blue_arr] };
+	}
+
+	constexpr uintptr_t ToColorStructInt()
+	{
+		//JMP_THIS(0x517440);
+		uint8_t values[7] {};
+		uint8_t val = (uint8_t)this->Val;
+		uint8_t sat = (uint8_t)this->Sat;
+		uint8_t hue = ((uint8_t)this->Hue) * 2;
+
+		values[1] = val;
+		values[2] = val;
+		values[3] = val * (255 - sat * (hue % 255) / 0xFFu) / 0xFF;
+		values[4] = values[5] = val * (255 - sat) / 255;
+		values[6] = val * (255 - sat * (255 - hue % 255) / 255u) / 255;
+
+		uint32_t red_arr = ((uint32_t)(hue / 255) > 4 ? -4 : 2) + hue / 255;
+		uint32_t green_arr = (red_arr > 4 ? 0xFFFFFFFC : 2) + red_arr;
+		uint32_t blue_arr = green_arr + (green_arr > 4 ? -4 : 2);
+
+		return ColorStruct{ (BYTE)values[red_arr] , (BYTE)values[green_arr] , (BYTE)values[blue_arr] }.ToInit();
+	}
+
+	ColorStruct* ToColorStruct(ColorStruct* ret) {
 		JMP_THIS(0x517440);
 	}
+
 };
 
 #pragma pack(push, 1)

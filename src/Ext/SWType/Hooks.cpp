@@ -5,27 +5,36 @@
 #include <Ext/Bullet/Body.h>
 #include <Ext/WarheadType/Body.h>
 #include <Ext/WeaponType/Body.h>
+#include <Ext/Sidebar/Body.h>
+
 #include "Body.h"
 
 #include <CCToolTip.h>
 
-#include <Ares_TechnoExt.h>
-
-#include "SuperWeaponSidebar.h"
+#include <New/SuperWeaponSidebar/SWSidebarClass.h>
 
 #include "NewSuperWeaponType/NuclearMissile.h"
 #include "NewSuperWeaponType/LightningStorm.h"
 #include "NewSuperWeaponType/Dominator.h"
+
+#include <Misc/Ares/Hooks/Header.h>
+
+#include <Utilities/Macro.h>
+#include <New/Entity/SWFirerClass.h>
 #pragma endregion
 
-DEFINE_HOOK(0x55AFB3, LogicClass_Update_Early, 0x6)
+//DEFINE_HOOK_AGAIN(0x55B6F8, LogicClass_Update, 0xC) //_End
+DEFINE_HOOK(0x55AFB3, LogicClass_Update, 0x6) //_Early
 {
+	SWFirerClass::Update();
 	SWStateMachine::UpdateAll();
+	HouseExtData::UpdateAutoDeathObjects();
+	HouseExtData::UpdateTransportReloaders();
+
 	for (auto pHouse : *HouseClass::Array)
 	{
 		auto pExt = HouseExtContainer::Instance.Find(pHouse);
-		pExt->UpdateAutoDeathObjects();
-		pExt->UpdateTransportReloaders();
+		AresHouseExt::UpdateTogglePower(pHouse);
 	}
 
 	//auto pCellbegin = MapClass::Instance->Cells.Items;
@@ -61,40 +70,25 @@ DEFINE_HOOK(0x55AFB3, LogicClass_Update_Early, 0x6)
 	return 0x0;
 }
 
-#ifndef aaa
 DEFINE_HOOK(0x6CC390, SuperClass_Launch, 0x6)
-#else
-DEFINE_HOOK(0x6CC390, SuperClass_Launch, 0x6)
-#endif
 {
-	GET(SuperClass* const, pSuper, ECX);
+	GET(FakeSuperClass* const, pSuper, ECX);
 	GET_STACK(CellStruct* const, pCell, 0x4);
 	GET_STACK(bool const, isPlayer, 0x8);
 
-	Debug::Log("[%s - %x] Lauch [%s - %x] \n", pSuper->Owner->get_ID(), pSuper->Owner, pSuper->Type->ID, pSuper);
-#ifndef aaa
-	if (
-		SWTypeExtData::Activate(pSuper, *pCell, isPlayer)
-		)
-#endif
+	//Debug::Log("[%s - %x] Lauch [%s - %x] \n", pSuper->Owner->get_ID() , pSuper->Owner, pSuper->Type->ID, pSuper);
+	if (SWTypeExtData::Activate(pSuper, *pCell, isPlayer))
 	{
-#ifndef aaa
-		SWTypeExtContainer::Instance.Find(pSuper->Type)->FireSuperWeapon(pSuper, pSuper->Owner, pCell, isPlayer);
-		return 0x6CDE40;
-#endif
+		pSuper->_GetTypeExtData()->FireSuperWeapon(pSuper, pSuper->Owner, pCell, isPlayer);
 	}
 
 	//Debug::Log("Lauch [%x][%s] %s failed \n", pSuper, pSuper->Owner->get_ID(), pSuper->Type->ID);
-#ifndef aaa
 	return 0x6CDE40;
-#else
-	return 0x0;
-#endif
 }
 
 DEFINE_HOOK(0x6CEA92, SuperWeaponType_LoadFromINI_ParseAction, 0x6)
 {
-	GET(SuperWeaponTypeClass*, pThis, EBP);
+	GET(FakeSuperWeaponTypeClass*, pThis, EBP);
 	GET(CCINIClass*, pINI, EBX);
 	GET(Action, result, ECX);
 
@@ -133,7 +127,7 @@ DEFINE_HOOK(0x6CEA92, SuperWeaponType_LoadFromINI_ParseAction, 0x6)
 			found = true;
 		}
 
-		SWTypeExtContainer::Instance.Find(pThis)->LastAction = result;
+		pThis->_GetExtData()->LastAction = result;
 	}
 
 	R->EAX(result);
@@ -155,9 +149,9 @@ DEFINE_HOOK(0x6CBEF4, SuperClass_AnimStage_UseWeeds, 0x6)
 	};
 
 	GET(SuperClass*, pSuper, ECX);
-	GET(SuperWeaponTypeClass*, pSWType, EBX);
+	GET(FakeSuperWeaponTypeClass*, pSWType, EBX);
 
-	auto pExt = SWTypeExtContainer::Instance.Find(pSWType);
+	auto pExt = pSWType->_GetExtData();
 
 	if (pExt->UseWeeds)
 	{
@@ -190,9 +184,9 @@ DEFINE_HOOK(0x6CBD2C, SuperClass_AI_UseWeeds, 0x6)
 		Charged = 0x6CBD73
 	};
 
-	GET(SuperClass*, pSuper, ESI);
+	GET(FakeSuperClass*, pSuper, ESI);
 
-	const auto pExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
+	const auto pExt = pSuper->_GetTypeExtData();
 
 	if (pExt->UseWeeds)
 	{
@@ -229,15 +223,13 @@ DEFINE_HOOK(0x6CC1E6, SuperClass_SetSWCharge_UseWeeds, 0x5)
 {
 	enum { Skip = 0x6CC251 };
 
-	GET(SuperClass*, pSuper, EDI);
-	return SWTypeExtContainer::Instance.Find(pSuper->Type)->UseWeeds ? Skip : 0;
+	GET(FakeSuperClass*, pSuper, EDI);
+	return pSuper->_GetTypeExtData()->UseWeeds ? Skip : 0;
 }
-
-#ifndef aaa
 
 DEFINE_HOOK(0x6CEC19, SuperWeaponType_LoadFromINI_ParseType, 0x6)
 {
-	GET(SuperWeaponTypeClass*, pThis, EBP);
+	GET(FakeSuperWeaponTypeClass*, pThis, EBP);
 	GET(CCINIClass*, pINI, EBX);
 
 	INI_EX exINI(pINI);
@@ -250,7 +242,7 @@ DEFINE_HOOK(0x6CEC19, SuperWeaponType_LoadFromINI_ParseType, 0x6)
 			if (IS_SAME_STR_(SuperWeaponTypeClass::SuperweaponTypeName[i], exINI.value()))
 			{
 				pThis->Type = (SuperWeaponType)(i);
-				SWTypeExtContainer::Instance.Find(pThis)->HandledType = NewSWType::GetHandledType((SuperWeaponType)(i));
+				pThis->_GetExtData()->HandledType = NewSWType::GetHandledType((SuperWeaponType)(i));
 			}
 		}
 
@@ -336,10 +328,10 @@ DEFINE_HOOK(0x6DBE74, Tactical_SuperLinesCircles_ShowDesignatorRange, 0x7)
 DEFINE_HOOK(0x41F0F1, AITriggerClass_IC_Ready, 0xA)
 {
 	enum { advance = 0x41F0FD, breakloop = 0x41F10D };
-	GET(SuperClass*, pSuper, EDI);
+	GET(FakeSuperClass*, pSuper, EDI);
 
 	return (pSuper->Type->Type == SuperWeaponType::IronCurtain
-		&& SWTypeExtContainer::Instance.Find(pSuper->Type)->IsAvailable(pSuper->Owner))
+		&& pSuper->_GetTypeExtData()->IsAvailable(pSuper->Owner))
 		? breakloop : advance;
 }
 
@@ -347,20 +339,20 @@ DEFINE_HOOK(0x41F0F1, AITriggerClass_IC_Ready, 0xA)
 // should check if the SW itself avaible before deciding it!
 DEFINE_HOOK(0x6EFF05, TeamClass_ChronosphereTeam_PickSuper_IsAvail_A, 0x9)
 {
-	GET(SuperClass*, pSuper, EAX);
+	GET(FakeSuperClass*, pSuper, EAX);
 	GET(HouseClass*, pOwner, EBP);
 
-	return SWTypeExtContainer::Instance.Find(pSuper->Type)->IsAvailable(pOwner) ?
+	return pSuper->_GetTypeExtData()->IsAvailable(pOwner) ?
 		0x0//allow
 		: 0x6EFF1C;//advance
 }
 
 DEFINE_HOOK(0x6F01BA, TeamClass_ChronosphereTeam_PickSuper_IsAvail_B, 0x9)
 {
-	GET(SuperClass*, pSuper, EAX);
+	GET(FakeSuperClass*, pSuper, EAX);
 	GET(HouseClass*, pOwner, EDI);
 
-	return SWTypeExtContainer::Instance.Find(pSuper->Type)->IsAvailable(pOwner) ?
+	return pSuper->_GetTypeExtData()->IsAvailable(pOwner) ?
 		0x0//allow
 		: 0x6F01D3;//advance
 }
@@ -381,10 +373,10 @@ DEFINE_HOOK(0x41F180, AITriggerClass_Chrono, 0x5)
 	auto iter = pOwner->Supers.find_if([pOwner](SuperClass* pItem)
  {
 	 return (pItem->Type->Type == SuperWeaponType::ChronoSphere
-		 && SWTypeExtContainer::Instance.Find(pItem->Type)->IsAvailable(pOwner));
+		 && SWTypeExtContainer::Instance.Find(pItem->Type)->IsAvailable(pOwner)) && pItem->Granted;
 	});
 
-	if (iter == pOwner->Supers.end() || !(*iter)->Granted)
+	if (iter == pOwner->Supers.end())
 	{
 		R->EAX(false);
 		return 0x41F1BA;
@@ -593,47 +585,6 @@ DEFINE_HOOK(0x6AAF9D, SidebarClass_ProcessCameoClick_SelectTarget, 5)
 	return 0x6AB95A;
 }
 
-DEFINE_HOOK(0x6A932B, StripClass_GetTip_MoneySW, 6)
-{
-	GET(SuperWeaponTypeClass*, pSW, EAX);
-
-	const auto pData = SWTypeExtContainer::Instance.Find(pSW);
-
-	if (pData->Money_Amount < 0)
-	{
-		// account for no-name SWs
-		if (CCToolTip::HideName() || !wcslen(pSW->UIName))
-		{
-			const wchar_t* pFormat = StringTable::LoadStringA(GameStrings::TXT_MONEY_FORMAT_1);
-			swprintf_s(SidebarClass::TooltipBuffer(), SidebarClass::TooltipBuffer.size(), pFormat, -pData->Money_Amount);
-		}
-		else
-		{
-			// then, this must be brand SWs
-			const wchar_t* pFormat = StringTable::LoadStringA(GameStrings::TXT_MONEY_FORMAT_2);
-			swprintf_s(SidebarClass::TooltipBuffer(), SidebarClass::TooltipBuffer.size(), pFormat, pSW->UIName, -pData->Money_Amount);
-		}
-
-		SidebarClass::TooltipBuffer[SidebarClass::TooltipBuffer.size() - 1] = 0;
-
-		// replace space by new line
-		for (int i = wcslen(SidebarClass::TooltipBuffer()); i >= 0; --i)
-		{
-			if (SidebarClass::TooltipBuffer[i] == 0x20)
-			{
-				SidebarClass::TooltipBuffer[i] = 0xA;
-				break;
-			}
-		}
-
-		// put it there
-		R->EAX(SidebarClass::TooltipBuffer());
-		return 0x6A93E5;
-	}
-
-	return 0;
-}
-
 // 4AC20C, 7
 // translates SW click to type
 DEFINE_HOOK(0x4AC20C, DisplayClass_LeftMouseButtonUp, 7)
@@ -781,8 +732,8 @@ DEFINE_HOOK(0x4468F4, BuildingClass_Place_AnnounceSW, 6)
 // 6CBDD7, 6
 DEFINE_HOOK(0x6CBDD7, SuperClass_AI_AnnounceReady, 6)
 {
-	GET(SuperWeaponTypeClass*, pThis, EAX);
-	const auto pData = SWTypeExtContainer::Instance.Find(pThis);
+	GET(FakeSuperWeaponTypeClass*, pThis, EAX);
+	const auto pData = pThis->_GetExtData();
 
 	pData->PrintMessage(pData->Message_Ready, HouseClass::CurrentPlayer);
 
@@ -798,8 +749,8 @@ DEFINE_HOOK(0x6CBDD7, SuperClass_AI_AnnounceReady, 6)
 // 6CC0EA, 9
 DEFINE_HOOK(0x6CC0EA, SuperClass_ForceCharged_AnnounceQuantity, 9)
 {
-	GET(SuperClass*, pThis, ESI);
-	const auto pData = SWTypeExtContainer::Instance.Find(pThis->Type);
+	GET(FakeSuperClass*, pThis, ESI);
+	const auto pData = pThis->_GetTypeExtData();
 
 	pData->PrintMessage(pData->Message_Ready, HouseClass::CurrentPlayer);
 
@@ -889,8 +840,9 @@ DEFINE_HOOK(0x4FAE72, HouseClass_SWFire_PreDependent, 6)
 
 DEFINE_HOOK(0x6CC2B0, SuperClass_NameReadiness, 5)
 {
-	GET(SuperClass*, pThis, ECX);
-	const auto pData = SWTypeExtContainer::Instance.Find(pThis->Type);
+	GET(FakeSuperClass*, pThis, ECX);
+
+	const auto pData = pThis->_GetTypeExtData();
 
 	// complete rewrite of this method.
 
@@ -959,6 +911,7 @@ DEFINE_HOOK(0x4F9004, HouseClass_Update_TrySWFire, 7)
 	enum { UpdateAIExpert = 0x4F9015, Continue = 0x4F9038 };
 
 	GET(HouseClass*, pThis, ESI);
+
 	//Debug::Log("House[%s - %x , calling %s\n" , pThis->get_ID() , pThis ,__FUNCTION__);
 	if (R->AL())
 	{ // HumanControlled
@@ -975,14 +928,14 @@ DEFINE_HOOK(0x6CBF5B, SuperClass_GetCameoChargeStage_ChargeDrainRatio, 9)
 	GET_STACK(int, rechargeTime2, 0x14);
 	GET_STACK(int, timeLeft, 0xC);
 
-	GET(SuperWeaponTypeClass*, pType, EBX);
+	GET(FakeSuperWeaponTypeClass*, pType, EBX);
 
 	// use per-SW charge-to-drain ratio.
-	const double ratio = SWTypeExtContainer::Instance.Find(pType)->GetChargeToDrainRatio();
+	const double ratio = pType->_GetExtData()->GetChargeToDrainRatio();
 	const double percentage = (std::fabs(rechargeTime2 * ratio) > 0.001) ?
 		1.0 - (rechargeTime1 * ratio - timeLeft) / (rechargeTime2 * ratio) : 0.0;
 
-	R->EAX(Game::F2I(percentage * 54.0));
+	R->EAX(int(percentage * 54.0));
 	return 0x6CC053;
 }
 
@@ -1538,7 +1491,6 @@ DEFINE_HOOK(0x50B1D0, HouseClass_UpdateSuperWeaponsUnavailable, 6)
 						// hide the cameo (only if this is an auto-firing SW)
 						if (pExt->Type->SW_ShowCameo || !pExt->Type->SW_AutoFire)
 						{
-							SuperWeaponSidebar::Instance()->AddSuper(pSuper);
 							MouseClass::Instance->AddCameo(AbstractType::Special, index);
 							MouseClass::Instance->RepaintSidebar(SidebarClass::GetObjectTabIdx(SuperClass::AbsID, index, 0));
 						}
@@ -1780,7 +1732,7 @@ DEFINE_HOOK(0x44CE46, BuildingClass_Mi_Missile_EMPulse_Pulsball, 5)
 		pThis->GetFLH(&flh, 0, CoordStruct::Empty);
 		auto pAnim = GameCreate<AnimClass>(pPulseBall, flh);
 		pAnim->Owner = pThis->GetOwningHouse();
-		AnimExtContainer::Instance.Find(pAnim)->Invoker = pThis;
+		((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pThis;
 	}
 
 	pThis->MissionStatus = 2;
@@ -1825,7 +1777,8 @@ DEFINE_HOOK(0x44CEEC, BuildingClass_Mission_Missile_EMPulseSelectWeapon, 0x6)
 	GET(BuildingClass*, pThis, ESI);
 
 	int weaponIndex = 0;
-	auto const pHouseExt = HouseExtContainer::Instance.Find(pThis->Owner);
+	const auto pHouseExt = HouseExtContainer::Instance.Find(pThis->Owner);
+	const auto pLinked = TechnoExtContainer::Instance.Find(pThis)->LinkedSW;
 
 	if (pHouseExt->EMPulseWeaponIndex >= 0)
 	{
@@ -1844,19 +1797,40 @@ DEFINE_HOOK(0x44CEEC, BuildingClass_Mission_Missile_EMPulseSelectWeapon, 0x6)
 		}
 	}
 
+	auto const pSWExt = SWTypeExtContainer::Instance.Find(pLinked->Type);
+
+	//why this fuckery even exist ,..
+	//the SW can be state can be exploited at some point , smh
+	if (pSWExt->EMPulse_SuspendOthers)
+	{
+		auto iter = pHouseExt->SuspendedEMPulseSWs.get_key_iterator(pLinked);
+
+		if (iter != pHouseExt->SuspendedEMPulseSWs.end())
+		{
+			for (auto const& pSuper : iter->second)
+			{
+				pSuper->IsOnHold = false;
+			}
+
+			pHouseExt->SuspendedEMPulseSWs.erase(iter);
+		}
+	}
+
 	EMPulseCannonTemp::weaponIndex = weaponIndex;
 	R->EAX(pThis->GetWeapon(weaponIndex));
 	return SkipGameCode;
 }
 
-CoordStruct* __fastcall BuildingClass_MI_Missile_EMPUlse_GetFireCoords_Wrapper(BuildingClass* pThis, void* _, CoordStruct* pCrd, int weaponIndex)
+#include <Misc/Hooks.Otamaa.h>
+
+CoordStruct* FakeBuildingClass::_GetFLH(CoordStruct* pCrd, int weaponIndex)
 {
 	CoordStruct coords {};
-	MapClass::Instance->GetCellAt(pThis->Owner->EMPTarget)->GetCellCoords(&coords);
-	pCrd = pThis->GetFLH(&coords, EMPulseCannonTemp::weaponIndex, *pCrd);
+	MapClass::Instance->GetCellAt(this->Owner->EMPTarget)->GetCellCoords(&coords);
+	pCrd = this->GetFLH(&coords, EMPulseCannonTemp::weaponIndex, *pCrd);
 	return pCrd;
 }
-DEFINE_JUMP(CALL6, 0x44D1F9, GET_OFFSET(BuildingClass_MI_Missile_EMPUlse_GetFireCoords_Wrapper));
+DEFINE_JUMP(CALL6, 0x44D1F9, MiscTools::to_DWORD(&FakeBuildingClass::_GetFLH));
 
 DEFINE_HOOK(0x44C9F3, BuildingClass_Mi_Missile_PsiWarn, 0x5)
 {
@@ -1875,19 +1849,6 @@ DEFINE_HOOK(0x44C9F3, BuildingClass_Mi_Missile_PsiWarn, 0x5)
 
 	R->EDI(PsiWarn);
 	return 0x44CA74;
-}
-
-DEFINE_HOOK(0x44C992, BuildingClass_MI_Missile_Safeguard, 0x6)
-{
-	GET(BuildingClass*, pThis, ESI);
-
-	if (!TechnoExtContainer::Instance.Find(pThis)->LinkedSW)
-	{
-		Debug::Log("Building[%s] with Mission::Missile Missing Important Linked SW data !\n", pThis->get_ID());
-		return 0x44D584;
-	}
-
-	return 0x0;
 }
 
 // Create bullet pointing up to the sky
@@ -1948,7 +1909,7 @@ DEFINE_HOOK(0x44CA97, BuildingClass_MI_Missile_CreateBullet, 0x6)
 					pAnim->ZAdjust = -100;
 
 				pAnim->SetHouse(pThis->GetOwningHouse());
-				AnimExtContainer::Instance.Find(pAnim)->Invoker = pThis;
+				((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pThis;
 			}
 
 			return SetUpNext;
@@ -1956,28 +1917,6 @@ DEFINE_HOOK(0x44CA97, BuildingClass_MI_Missile_CreateBullet, 0x6)
 	}
 
 	return SetRate;
-}
-
-DEFINE_HOOK(0x48A59A, MapClass_SelectDamageAnimation_LightningWarhead, 5)
-{
-	// override the lightning bolt explosion
-	GET(WarheadTypeClass* const, pWarhead, ESI);
-	if (auto const pSuper = SW_LightningStorm::CurrentLightningStorm)
-	{
-		auto const pData = SWTypeExtContainer::Instance.Find(pSuper->Type);
-
-		if (pData->GetNewSWType()->GetWarhead(pData) == pWarhead)
-		{
-			if (auto const pAnimType = pData->Weather_BoltExplosion.Get(
-				RulesClass::Instance->WeatherConBoltExplosion))
-			{
-				R->EAX(pAnimType);
-				return 0x48A5AD;
-			}
-		}
-	}
-
-	return 0;
 }
 
 // this is a complete rewrite of LightningStorm::Start.
@@ -2302,7 +2241,7 @@ DEFINE_HOOK(0x53A6CF, LightningStorm_Update, 7)
 					if (auto const pObj = pCell->FindTechnoNearestTo(
 						Point2D::Empty, false, pCellBld))
 					{
-						if (auto const pBld = specific_cast<BuildingClass*>(pObj))
+						if (auto const pBld = cast_to<BuildingClass*, false>(pObj))
 						{
 							if (pBld->Type->LightningRod)
 							{
@@ -2325,8 +2264,8 @@ DEFINE_HOOK(0x53A6CF, LightningStorm_Update, 7)
 					for (auto const& pCloud : LightningStorm::CloudsPresent.get())
 					{
 						auto const cellCloud = pCloud->GetMapCoords();
-						auto const dist = std::abs(cellCloud.X - ret.X)
-							+ std::abs(cellCloud.Y - ret.Y);
+						auto const dist = Math::abs(cellCloud.X - ret.X)
+							+ Math::abs(cellCloud.Y - ret.Y);
 
 						if (dist < separation)
 						{
@@ -2461,7 +2400,7 @@ DEFINE_HOOK(0x53A300, LightningStorm_Strike2, 5)
 
 		auto const empty = Point2D::Empty;
 		auto const pObj = pCell->FindTechnoNearestTo(empty, false, nullptr);
-		auto const isInfantry = specific_cast<InfantryClass*>(pObj) != nullptr;
+		auto const isInfantry = cast_to<InfantryClass*>(pObj) != nullptr;
 
 		// empty cell action
 		if (!pBld && !pObj)
@@ -2478,7 +2417,7 @@ DEFINE_HOOK(0x53A300, LightningStorm_Strike2, 5)
 		auto damage = pNewSW->GetDamage(pData);
 		if (!pData->Weather_IgnoreLightningRod)
 		{
-			if (auto const pBldObj = specific_cast<BuildingClass*>(pObj))
+			if (auto const pBldObj = cast_to<BuildingClass*>(pObj))
 			{
 				const auto& nRodTypes = pData->Weather_LightningRodTypes;
 				auto const pBldType = pBldObj->Type;
@@ -2688,7 +2627,7 @@ DEFINE_HOOK(0x53B080, PsyDom_Fire, 5)
 				}
 
 				// add to the other newly captured minions.
-				if (FootClass* pFoot = generic_cast<FootClass*>(pTechno))
+				if (FootClass* pFoot = flag_cast_to<FootClass*, false>(pTechno))
 				{
 					// the AI sends all new minions to hunt
 					const auto nMission = pFoot->GetTechnoType()->ResourceGatherer ? Mission::Harvest :
@@ -2915,4 +2854,17 @@ DEFINE_HOOK(0x712045, TechnoTypeClass_GetCameo, 5)
 	return 0x7120C6;
 }
 
-#endif
+int FakeBuildingClass::_Mission_Missile()
+{
+	if (!TechnoExtContainer::Instance.Find(this)->LinkedSW && this->MissionStatus < 3)
+	{
+		Debug::Log("Building[%s] with Mission::Missile Missing Important Linked SW data !\n", this->get_ID());
+	}
+	else if (TechnoExtContainer::Instance.Find(this)->LinkedSW && this->MissionStatus >= 3)
+	{
+		TechnoExtContainer::Instance.Find(this)->LinkedSW = nullptr;
+	}
+
+	return this->BuildingClass::Mission_Missile();
+}
+DEFINE_JUMP(VTABLE, 0x7E410C, MiscTools::to_DWORD(&FakeBuildingClass::_Mission_Missile));

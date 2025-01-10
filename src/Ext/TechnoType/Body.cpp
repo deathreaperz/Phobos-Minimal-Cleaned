@@ -19,7 +19,7 @@
 
 void TechnoTypeExtData::Initialize()
 {
-	this->ShieldType = ShieldTypeClass::Array[0].get();
+	this->ShieldType = ShieldTypeClass::Array.begin()->get();
 
 	this->SellSound = RulesClass::Instance->SellSound;
 	auto Eva_ready = GameStrings::EVA_ConstructionComplete();
@@ -129,8 +129,8 @@ bool TechnoTypeExtData::IsGenericPrerequisite() const
 
 		for (; begin != end; ++begin)
 		{
-			auto alt_begin = (*begin)->Alternates.begin();
-			auto alt_end = (*begin)->Alternates.end();
+			auto alt_begin = begin->get()->Alternates.begin();
+			auto alt_end = begin->get()->Alternates.end();
 
 			if (alt_begin == alt_end)
 			{
@@ -166,20 +166,20 @@ bool TechnoTypeExtData::HasSelectionGroupID(ObjectTypeClass* pType, const std::s
 	return (IS_SAME_STR_(id, pID.c_str()));
 }
 
-bool TechnoTypeExtData::IsCountedAsHarvester() const
+bool TechnoTypeExtData::IsCountedAsHarvester()
 {
 	if (!this->Harvester_Counted.isset())
 	{
 		if (this->AttachedToObject->Enslaves)
 		{
-			return true;
+			this->Harvester_Counted = true;
 		}
 
-		if (const auto pUnit = specific_cast<UnitTypeClass*>(this->AttachedToObject))
+		if (const auto pUnit = type_cast<UnitTypeClass*>(this->AttachedToObject))
 		{
 			if (pUnit->Harvester || pUnit->Enslaves)
 			{
-				return true;
+				this->Harvester_Counted = true;
 			}
 		}
 	}
@@ -507,15 +507,16 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->SelectBrd_ShowEnemy.Read(exINI, pSection, "SelectBrd.ShowEnemy");
 
 		this->MobileRefinery.Read(exINI, pSection, "MobileRefinery");
-		this->MobileRefinery_TransRate.Read(exINI, pSection, "MobileRefinery.TransRate");
+		this->MobileRefinery_TransRate.Read(exINI, pSection, "MobileRefinery.TransDelay");
 		this->MobileRefinery_CashMultiplier.Read(exINI, pSection, "MobileRefinery.CashMultiplier");
 		this->MobileRefinery_AmountPerCell.Read(exINI, pSection, "MobileRefinery.AmountPerCell");
 		this->MobileRefinery_FrontOffset.Read(exINI, pSection, "MobileRefinery.FrontOffset");
 		this->MobileRefinery_LeftOffset.Read(exINI, pSection, "MobileRefinery.LeftOffset");
 		this->MobileRefinery_Display.Read(exINI, pSection, "MobileRefinery.Display");
-		this->MobileRefinery_DisplayColor.Read(exINI, pSection, "MobileRefinery.DisplayColor");
+		this->MobileRefinery_Display_House.Read(exINI, pSection, "MobileRefinery.Display.House");
 		this->MobileRefinery_Anims.Read(exINI, pSection, "MobileRefinery.Anims");
 		this->MobileRefinery_AnimMove.Read(exINI, pSection, "MobileRefinery.AnimMove");
+
 		this->Explodes_KillPassengers.Read(exINI, pSection, "Explodes.KillPassengers");
 
 		this->DeployFireWeapon.Read(exINI, pSection, "DeployFireWeapon");
@@ -608,6 +609,10 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->SlaveFreeSound_Enable.Read(exINI, pSection, "SlaveFreeSound.Enable");
 		this->SlaveFreeSound.Read(exINI, pSection, "SlaveFreeSound");
+
+		if (Phobos::Otamaa::CompatibilityMode)
+			this->SinkAnim.Read(exINI, pSection, "Wake.Sink");
+
 		this->SinkAnim.Read(exINI, pSection, "Sink.Anim");
 		this->Tunnel_Speed.Read(exINI, pSection, "TunnelSpeed");
 		this->HoverType.Read(exINI, pSection, "HoverType");
@@ -1112,6 +1117,20 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->FactoryOwners.Read(exINI, pSection, "FactoryOwners");
 		this->FactoryOwners_Forbidden.Read(exINI, pSection, "FactoryOwners.Forbidden");
 		this->Wake.Read(exINI, pSection, "Wake");
+
+		this->UnitIdleRotateTurret.Read(exINI, pSection, "UnitIdleRotateTurret");
+		this->UnitIdlePointToMouse.Read(exINI, pSection, "UnitIdlePointToMouse");
+
+		this->FallingDownDamage.Read(exINI, pSection, "FallingDownDamage");
+		this->FallingDownDamage_Water.Read(exINI, pSection, "FallingDownDamage.Water");
+
+		this->DropCrate.Read(exINI, pSection, "DropCrate");
+
+		this->WhenCrushed_Warhead.Read(exINI, pSection, "WhenCrushed.Warhead.%s", nullptr, true);
+		this->WhenCrushed_Weapon.Read(exINI, pSection, "WhenCrushed.Weapon.%s", nullptr, true);
+		this->WhenCrushed_Damage.Read(exINI, pSection, "WhenCrushed.Damage.%s");
+		this->WhenCrushed_Warhead_Full.Read(exINI, pSection, "WhenCrushed.Warhead.Full");
+
 		this->FactoryOwners_HaveAllPlans.Read(exINI, pSection, "FactoryOwners.HaveAllPlans");
 		this->FactoryOwners_HaveAllPlans.Read(exINI, pSection, "FactoryOwners.Permanent");
 		this->FactoryOwners_HasAllPlans.Read(exINI, pSection, "FactoryOwners.HasAllPlans");
@@ -1199,11 +1218,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Tint_Intensity.Read(exINI, pSection, "Tint.Intensity");
 		this->Tint_VisibleToHouses.Read(exINI, pSection, "Tint.VisibleToHouses");
 
-		this->AttachEffect_AttachTypes.Read(exINI, pSection, "AttachEffect.AttachTypes");
-		this->AttachEffect_DurationOverrides.Read(exINI, pSection, "AttachEffect.DurationOverrides");
-		this->AttachEffect_Delays.Read(exINI, pSection, "AttachEffect.Delays");
-		this->AttachEffect_InitialDelays.Read(exINI, pSection, "AttachEffect.InitialDelays");
-		this->AttachEffect_RecreationDelays.Read(exINI, pSection, "AttachEffect.RecreationDelays");
+		this->PhobosAttachEffects.LoadFromINI(pINI, pSection);
 
 		this->KeepTargetOnMove.Read(exINI, pSection, "KeepTargetOnMove");
 		this->KeepTargetOnMove_ExtraDistance.Read(exINI, pSection, "KeepTargetOnMove.ExtraDistance");
@@ -1223,9 +1238,13 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->PlayerNormalTargetingDelay.Read(exINI, pSection, "PlayerNormalTargetingDelay");
 		this->AIGuardAreaTargetingDelay.Read(exINI, pSection, "AIGuardAreaTargetingDelay");
 		this->PlayerGuardAreaTargetingDelay.Read(exINI, pSection, "PlayerGuardAreaTargetingDelay");
+		this->DistributeTargetingFrame.Read(exINI, pSection, "DistributeTargetingFrame");
 		this->CanBeBuiltOn.Read(exINI, pSection, "CanBeBuiltOn");
 		this->UnitBaseNormal.Read(exINI, pSection, "UnitBaseNormal");
 		this->UnitBaseForAllyBuilding.Read(exINI, pSection, "UnitBaseForAllyBuilding");
+		this->ChronoSpherePreDelay.Read(exINI, pSection, "ChronoSpherePreDelay");
+		this->ChronoSphereDelay.Read(exINI, pSection, "ChronoSphereDelay");
+		this->PassengerWeapon.Read(exINI, pSection, "PassengerWeapon");
 
 #pragma region AircraftOnly
 		if (this->AttachtoType == AircraftTypeClass::AbsID)
@@ -1259,6 +1278,8 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			this->CustomMissileTrailerSeparation.Read(exINI, pSection, "Missile.TrailerSeparation");
 			this->CustomMissileWeapon.Read(exINI, pSection, "Missile.Weapon");
 			this->CustomMissileEliteWeapon.Read(exINI, pSection, "Missile.EliteWeapon");
+			this->CustomMissileInaccuracy.Read(exINI, pSection, "Missile.Inaccuracy");
+			this->CustomMissileTrailAppearDelay.Read(exINI, pSection, "Missile.TrailerAppearDelay");
 
 			this->AttackingAircraftSightRange.Read(exINI, pSection, "AttackingAircraftSightRange");
 			this->CrashWeapon_s.Read(exINI, pSection, "Crash.Weapon", true);
@@ -1338,6 +1359,68 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			this->HarvesterDumpAmount.Read(exINI, pSection, "HarvesterDumpAmount");
 			this->DropPodProp.Read(exINI, pSection);
 		}
+
+		this->RefinerySmokeParticleSystemOne.Read(exINI, pSection, "RefinerySmokeParticleSystemOne");
+		this->RefinerySmokeParticleSystemTwo.Read(exINI, pSection, "RefinerySmokeParticleSystemTwo");
+		this->RefinerySmokeParticleSystemThree.Read(exINI, pSection, "RefinerySmokeParticleSystemThree");
+		this->RefinerySmokeParticleSystemFour.Read(exINI, pSection, "RefinerySmokeParticleSystemFour");
+
+		exINI.ReadSpeed(pSection, "SubterraneanSpeed", &this->SubterraneanSpeed);
+
+		this->ForceWeapon_InRange.Read(exINI, pSection, "ForceWeapon.InRange");
+		this->ForceWeapon_InRange_Overrides.Read(exINI, pSection, "ForceWeapon.InRange.Overrides");
+		this->ForceWeapon_InRange_ApplyRangeModifiers.Read(exINI, pSection, "ForceWeapon.InRange.ApplyRangeModifiers");
+
+		if (!RefinerySmokeParticleSystemOne.isset())
+		{
+			RefinerySmokeParticleSystemOne = this->AttachedToObject->RefinerySmokeParticleSystem;
+		}
+
+		if (!RefinerySmokeParticleSystemTwo.isset())
+		{
+			RefinerySmokeParticleSystemTwo = this->AttachedToObject->RefinerySmokeParticleSystem;
+		}
+
+		if (!RefinerySmokeParticleSystemThree.isset())
+		{
+			RefinerySmokeParticleSystemThree = this->AttachedToObject->RefinerySmokeParticleSystem;
+		}
+
+		if (!RefinerySmokeParticleSystemFour.isset())
+		{
+			RefinerySmokeParticleSystemFour = this->AttachedToObject->RefinerySmokeParticleSystem;
+		}
+
+		char tempBuffer[32];
+
+		this->Convert_ToHouseOrCountry.clear();
+		Nullable<TechnoTypeClass*> technoType;
+		// put all sides into the map
+		this->Convert_ToHouseOrCountry.reserve(SideClass::Array->Count + HouseTypeClass::Array->Count);
+
+		for (auto const& pSide : *SideClass::Array)
+		{
+			IMPL_SNPRNINTF(tempBuffer, sizeof(tempBuffer), "Convert.To%s", pSide->ID);
+			technoType.Read(exINI, pSection, tempBuffer);
+			if (technoType.isset())
+			{
+				this->Convert_ToHouseOrCountry.insert(pSide, technoType.Get());
+			}
+		}
+
+		// put all countries into the map
+		for (auto const& pTHouse : *HouseTypeClass::Array)
+		{
+			IMPL_SNPRNINTF(tempBuffer, sizeof(tempBuffer), "Convert.To%s", pTHouse->ID);
+			technoType.Read(exINI, pSection, tempBuffer);
+			if (technoType.isset())
+			{
+				this->Convert_ToHouseOrCountry.insert(pTHouse, technoType.Get());
+			}
+		}
+
+		this->SuppressKillWeapons.Read(exINI, pSection, "SuppressKillWeapons");
+		this->SuppressKillWeapons_Types.Read(exINI, pSection, "SuppressKillWeapons.Types");
 	}
 
 	// Art tags
@@ -1611,7 +1694,7 @@ void TechnoTypeExtData::AdjustCrushProperties()
 	if (this->CrushableLevel.Elite <= 0)
 		this->CrushableLevel.Elite = this->CrushableLevel.Veteran;
 
-	if (const auto pInfType = abstract_cast<InfantryTypeClass*>(pThis))
+	if (const auto pInfType = type_cast<InfantryTypeClass*>(pThis))
 	{
 		if (this->DeployCrushableLevel.Rookie <= 0)
 		{
@@ -1806,7 +1889,7 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->MobileRefinery_FrontOffset)
 		.Process(this->MobileRefinery_LeftOffset)
 		.Process(this->MobileRefinery_Display)
-		.Process(this->MobileRefinery_DisplayColor)
+		.Process(this->MobileRefinery_Display_House)
 		.Process(this->MobileRefinery_Anims)
 		.Process(this->MobileRefinery_AnimMove)
 		.Process(this->Explodes_KillPassengers)
@@ -1892,6 +1975,8 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->CustomMissileTrailerSeparation)
 		.Process(this->CustomMissileWeapon)
 		.Process(this->CustomMissileEliteWeapon)
+		.Process(this->CustomMissileInaccuracy)
+		.Process(this->CustomMissileTrailAppearDelay)
 		.Process(this->CustomMissileRaise)
 		.Process(this->CustomMissileOffset)
 
@@ -2087,6 +2172,11 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->TurretRot)
 
 		.Process(this->WaterImage)
+		.Process(this->WaterImage_Yellow)
+		.Process(this->WaterImage_Red)
+
+		.Process(this->Image_Yellow)
+		.Process(this->Image_Red)
 
 		.Process(this->FallRate_Parachute)
 		.Process(this->FallRate_NoParachute)
@@ -2390,11 +2480,7 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Tint_Intensity)
 		.Process(this->Tint_VisibleToHouses)
 
-		.Process(this->AttachEffect_AttachTypes)
-		.Process(this->AttachEffect_DurationOverrides)
-		.Process(this->AttachEffect_Delays)
-		.Process(this->AttachEffect_InitialDelays)
-		.Process(this->AttachEffect_RecreationDelays)
+		.Process(this->PhobosAttachEffects)
 
 		.Process(this->KeepTargetOnMove)
 		.Process(this->KeepTargetOnMove_ExtraDistance)
@@ -2417,9 +2503,40 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->PlayerNormalTargetingDelay)
 		.Process(this->AIGuardAreaTargetingDelay)
 		.Process(this->PlayerGuardAreaTargetingDelay)
+		.Process(this->DistributeTargetingFrame)
 		.Process(this->CanBeBuiltOn)
 		.Process(this->UnitBaseNormal)
 		.Process(this->UnitBaseForAllyBuilding)
+		.Process(this->ChronoSpherePreDelay)
+		.Process(this->ChronoSphereDelay)
+		.Process(this->PassengerWeapon)
+
+		.Process(this->RefinerySmokeParticleSystemOne)
+		.Process(this->RefinerySmokeParticleSystemTwo)
+		.Process(this->RefinerySmokeParticleSystemThree)
+		.Process(this->RefinerySmokeParticleSystemFour)
+
+		.Process(this->SubterraneanSpeed)
+
+		.Process(this->ForceWeapon_InRange)
+		.Process(this->ForceWeapon_InRange_Overrides)
+		.Process(this->ForceWeapon_InRange_ApplyRangeModifiers)
+
+		.Process(this->UnitIdleRotateTurret)
+		.Process(this->UnitIdlePointToMouse)
+
+		.Process(this->FallingDownDamage)
+		.Process(this->FallingDownDamage_Water)
+		.Process(this->DropCrate)
+
+		.Process(this->WhenCrushed_Warhead)
+		.Process(this->WhenCrushed_Weapon)
+		.Process(this->WhenCrushed_Damage)
+		.Process(this->WhenCrushed_Warhead_Full)
+		.Process(this->Convert_ToHouseOrCountry)
+
+		.Process(this->SuppressKillWeapons)
+		.Process(this->SuppressKillWeapons_Types)
 		;
 }
 
@@ -2436,25 +2553,24 @@ bool TechnoTypeExtContainer::Load(TechnoTypeClass* key, IStream* pStm)
 		return false;
 	}
 
-	auto Iter = TechnoTypeExtContainer::Instance.Map.find(key);
+	auto ptr = TechnoTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (Iter == TechnoTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = this->AllocateUnchecked(key);
-		Iter = TechnoTypeExtContainer::Instance.Map.emplace(key, ptr).first;
+		ptr = TechnoTypeExtContainer::Instance.Map.insert_unchecked(key, this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
-	this->SetExtAttribute(key, Iter->second);
+	this->SetExtAttribute(key, ptr);
 
 	PhobosByteStream loader { 0 };
 	if (loader.ReadBlockFromStream(pStm))
 	{
 		PhobosStreamReader reader { loader };
 		if (reader.Expect(TechnoTypeExtData::Canary)
-			&& reader.RegisterChange(Iter->second))
+			&& reader.RegisterChange(ptr))
 		{
-			Iter->second->LoadFromStream(reader);
+			ptr->LoadFromStream(reader);
 			if (reader.ExpectEndOfBlock())
 				return true;
 		}
@@ -2470,15 +2586,15 @@ DEFINE_HOOK(0x711835, TechnoTypeClass_CTOR, 0x5)
 {
 	GET(TechnoTypeClass*, pItem, ESI);
 
-	auto Iter = TechnoTypeExtContainer::Instance.Map.find(pItem);
+	auto ptr = TechnoTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (Iter == TechnoTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = TechnoTypeExtContainer::Instance.AllocateUnchecked(pItem);
-		Iter = TechnoTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
+		ptr = TechnoTypeExtContainer::Instance.Map.insert_unchecked(pItem,
+			  TechnoTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
-	TechnoTypeExtContainer::Instance.SetExtAttribute(pItem, Iter->second);
+	TechnoTypeExtContainer::Instance.SetExtAttribute(pItem, ptr);
 
 	return 0;
 }
@@ -2490,7 +2606,8 @@ DEFINE_HOOK(0x711AE0, TechnoTypeClass_DTOR, 0x5)
 	auto extData = TechnoTypeExtContainer::Instance.GetExtAttribute(pItem);
 	TechnoTypeExtContainer::Instance.ClearExtAttribute(pItem);
 	TechnoTypeExtContainer::Instance.Map.erase(pItem);
-	delete extData;
+	if (extData)
+		DLLCallDTOR(extData);
 
 	return 0;
 }

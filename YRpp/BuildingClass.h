@@ -60,6 +60,8 @@ public:
 	ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseClass* pAttackingHouse) override JMP_THIS(0x442230);
 
 	//MissionClass
+	virtual int Mission_Missile() override JMP_THIS(0x44C980);
+
 	//TechnoClass
 	virtual InfantryTypeClass* GetCrew() const override { JMP_THIS(0x44EB53); }
 	virtual void Destroyed(ObjectClass* Killer) override JMP_THIS(0x44D760);
@@ -346,6 +348,10 @@ public:
 	void KickAllOccupants(bool missionHunt, bool donotKill) const {
 		JMP_THIS(0x457DE0);
 	}
+
+	bool CanUpgrade(BuildingTypeClass* pType, HouseClass * pHouse) const
+	{ JMP_THIS(0x452670); }
+
 	//Constructor
 	BuildingClass(BuildingTypeClass* pType, HouseClass* pOwner) noexcept
 		: BuildingClass(noinit_t())
@@ -372,7 +378,7 @@ public:
 	DWORD LastStrength; //544
 	AnimClass* FirestormAnim; //pointer
 	AnimClass* PsiWarnAnim; //pointer
-	CDTimerClass PlacementDelay; //550
+	CDTimerClass FactoryRetryTimer; //550
 
 	AnimClass * Anims [0x15];
 	bool AnimStates [0x15]; // one flag for each of the above anims (whether the anim was enabled when power went offline?)

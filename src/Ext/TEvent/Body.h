@@ -1,13 +1,10 @@
 #pragma once
 
-#include <Utilities/Container.h>
-#include <Utilities/Template.h>
-
-#include <Helpers/Template.h>
-
 #include <TEventClass.h>
 
-#include <Utilities/Constructs.h>
+#include <Utilities/Container.h>
+#include <Utilities/Template.h>
+#include <Utilities/OptionalStruct.h>
 
 class HouseClass;
 
@@ -71,10 +68,8 @@ public:
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 public:
-	OptionalStruct<TechnoTypeClass*, false> TechnoType {};
 
-	TEventExtData() noexcept = default;
-	~TEventExtData() noexcept = default;
+	OptionalStruct<TechnoTypeClass*, false> TechnoType {};
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -118,5 +113,19 @@ class TEventExtContainer final : public Container<TEventExtData>
 public:
 	static TEventExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(TEventExtContainer, TEventExtData, "TEventClass");
+	//CONSTEXPR_NOCOPY_CLASSB(TEventExtContainer, TEventExtData, "TEventClass");
 };
+
+class FakeTEventClass : public TEventClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	TEventExtData* _GetExtData()
+	{
+		return *reinterpret_cast<TEventExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeTEventClass) == sizeof(TEventClass), "Invalid Size !");

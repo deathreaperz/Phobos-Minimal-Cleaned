@@ -3,6 +3,7 @@
 #include <Utilities/Enumerable.h>
 #include <Utilities/TemplateDefB.h>
 #include <Utilities/Enum.h>
+#include <Utilities/PhobosFixedString.h>
 
 enum class BannerType : int
 {
@@ -56,11 +57,9 @@ public:
 
 	void LoadImage();
 
-	virtual ~BannerTypeClass() override = default;
-
-	virtual void LoadFromINI(CCINIClass* pINI) override;
-	virtual void LoadFromStream(PhobosStreamReader& Stm);
-	virtual void SaveToStream(PhobosStreamWriter& Stm);
+	void LoadFromINI(CCINIClass* pINI);
+	void LoadFromStream(PhobosStreamReader& Stm);
+	void SaveToStream(PhobosStreamWriter& Stm);
 
 private:
 	template <typename T>

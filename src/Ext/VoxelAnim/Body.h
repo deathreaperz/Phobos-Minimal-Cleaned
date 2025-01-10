@@ -3,17 +3,13 @@
 #include <VoxelAnimClass.h>
 
 #include <Utilities/Container.h>
-#include <Utilities/Template.h>
-#include <Utilities/TemplateDef.h>
-#include <Utilities/Debug.h>
+#include <Utilities/SavegameDef.h>
 
-#include <Helpers/Macro.h>
-
-#include <Ext/VoxelAnimType/Body.h>
 #include <New/Entity/LaserTrailClass.h>
 
 #include <Misc/DynamicPatcher/Trails/Trails.h>
 
+class VoxelAnimTypeExtData;
 class VoxelAnimExtData final
 {
 public:
@@ -29,29 +25,12 @@ public:
 	std::vector<LaserTrailClass> LaserTrails { };
 	std::vector<UniversalTrail> Trails { };
 
-	VoxelAnimExtData() noexcept = default;
-	~VoxelAnimExtData() noexcept = default;
-
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-
-	static bool InvalidateIgnorable(AbstractClass* ptr)
-	{
-		switch (ptr->WhatAmI())
-		{
-		case AircraftClass::AbsID:
-		case BuildingClass::AbsID:
-		case InfantryClass::AbsID:
-		case UnitClass::AbsID:
-			return false;
-		}
-
-		return true;
-	}
-
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
 	void InitializeLaserTrails(VoxelAnimTypeExtData* pTypeExt);
+
 	constexpr FORCEINLINE static size_t size_Of()
 	{
 		return sizeof(VoxelAnimExtData) -
@@ -70,7 +49,7 @@ public:
 class VoxelAnimExtContainer final : public Container<VoxelAnimExtData>
 {
 public:
-	static std::vector<VoxelAnimExtData*> Pool;
+	inline static std::vector<VoxelAnimExtData*> Pool;
 	static VoxelAnimExtContainer Instance;
 
 	VoxelAnimExtData* AllocateUnchecked(VoxelAnimClass* key)
@@ -81,15 +60,15 @@ public:
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-			val->VoxelAnimExtData::VoxelAnimExtData();
 		}
 		else
 		{
-			val = new VoxelAnimExtData();
+			val = DLLAllocWithoutCTOR<VoxelAnimExtData>();
 		}
 
 		if (val)
 		{
+			val->VoxelAnimExtData::VoxelAnimExtData();
 			val->AttachedToObject = key;
 			return val;
 		}
@@ -137,5 +116,34 @@ public:
 		}
 	}
 
-	CONSTEXPR_NOCOPY_CLASSB(VoxelAnimExtContainer, VoxelAnimExtData, "VoxelAnimClass");
+	//CONSTEXPR_NOCOPY_CLASSB(VoxelAnimExtContainer, VoxelAnimExtData, "VoxelAnimClass");
 };
+
+class VoxelAnimTypeExtData;
+class FakeVoxelAnimClass : public VoxelAnimClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	void _Detach(AbstractClass* target, bool all);
+	void _RemoveThis()
+	{
+		if (this->Type)
+			VocClass::PlayIndexAtPos(this->Type->StopSound, this->Location);
+
+		this->ObjectClass::UnInit();
+	}
+
+	VoxelAnimExtData* _GetExtData()
+	{
+		return *reinterpret_cast<VoxelAnimExtData**>(((DWORD)this) + VoxelAnimExtData::ExtOffset);
+	}
+
+	VoxelAnimTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<VoxelAnimTypeExtData**>(((DWORD)this->Type) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeVoxelAnimClass) == sizeof(VoxelAnimClass), "Invalid Size !");

@@ -191,8 +191,8 @@ DEFINE_HOOK(0x4F9E10, HouseClass_MakeAlly_4, 0x8)
 
 DEFINE_HOOK(0x4F9E56, HouseClass_MakeAlly_5, 0x9)
 {
-	GET(HouseClass*, pHouse, EBP);
-	GET(HouseClass*, pHouse_2, ESI);
+	GET(HouseClass* , pHouse , EBP);
+	GET(HouseClass* , pHouse_2 , ESI);
 
 	if (!pHouse_2->IsAlliedWith(HouseClass::CurrentPlayer()))
 		return 0x4F9EBD;
@@ -241,8 +241,9 @@ DEFINE_HOOK(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 	if (pTarget->InLimbo || !pTarget->IsAlive)
 		return 0x6F894F;
 
-	if (const auto pTechno = generic_cast<TechnoClass*>(pTarget))
+	if (const auto pTechno = flag_cast_to<TechnoClass*>(pTarget))
 	{
+
 		if (pTechno->IsCrashing || pTechno->IsSinking)
 			return 0x6F894F;
 
@@ -264,6 +265,7 @@ DEFINE_HOOK(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 		}
 		case AbstractType::Unit:
 		{
+
 			const auto pUnit = (UnitClass*)pTarget;
 
 			if (pUnit->DeathFrameCounter > 0)

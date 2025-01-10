@@ -1,7 +1,6 @@
 //This file initializes static constant values.
 
 #include <YRPP.h>
-#include <YRPPGlobal.h>
 #include <ASMMacros.h>
 #include <YRPPCore.h>
 #include <Unsorted.h>
@@ -32,15 +31,17 @@
 
 #include <WWKeyboardClass.h>
 
-const CoordStruct CoordStruct::Empty = { 0,0,0 };
-const ColorStruct ColorStruct::Empty = { 0,0,0 };
-const Color16Struct Color16Struct::Empty = { 0,0,0 };
-const CellStruct CellStruct::Empty = { 0,0 };
+const CoordStruct CoordStruct::Empty = {};
+const ColorStruct ColorStruct::Empty = {};
+const Color16Struct Color16Struct::Empty = {};
+const CellStruct CellStruct::Empty = {};
+const CellStruct CellStruct::EOL = { 0x7FFF , 0x7FFF };
+const VelocityClass VelocityClass::Empty = {};
 const CellStruct CellStruct::DefaultUnloadCell = { 3 , 1 };
-const Point2D Point2D::Empty = { 0,0 };
-const Point2DBYTE Point2DBYTE::Empty = { 0u,0u };
-const Point3D Point3D::Empty = { 0,0,0 };
-const RectangleStruct RectangleStruct::Empty = { 0 ,0 ,0 ,0 };
+const Point2D Point2D::Empty = {};
+const Point2DBYTE Point2DBYTE::Empty = {};
+const Point3D Point3D::Empty = {};
+const RectangleStruct RectangleStruct::Empty = {};
 
 std::array< ColorStruct, (size_t)DefaultColorList::count> Drawing::DefaultColors
 {
@@ -403,7 +404,7 @@ void InfantryClass::RemoveMe_FromGunnerTransport()
 {
 	if (auto pTransport = this->Transporter)
 	{
-		if (auto pUnit = specific_cast<UnitClass*>(pTransport))
+		if (auto pUnit = cast_to<UnitClass*, false>(pTransport))
 		{
 			if (pUnit->GetTechnoType()->Gunner)
 			{
@@ -1275,18 +1276,17 @@ void TechnoClass::SpillTiberium(int& value, int idx, CellClass* pCenter, Point2D
 
 ObjectClass* AnimTypeClass::CreateObject(HouseClass* owner)
 {
-	if (auto pAnim = GameCreate<AnimClass>(this, CoordStruct::Empty))
-	{
-		pAnim->SetHouse(owner);
-		return (ObjectClass*)pAnim;
-	}
-
-	return nullptr;
+	auto pAnim = GameCreate<AnimClass>(this, CoordStruct::Empty);
+	pAnim->SetHouse(owner);
+	return (ObjectClass*)pAnim;
 }; // ! this just returns NULL instead of creating the anim, fucking slackers
 
 bool GameStrings::IsBlank(const char* pValue)
 {
-	return CRT::strcmpi(pValue, NoneStr()) == 0
+	if (!pValue)
+		return true;
+
+	return CRT::strcmpi(pValue, NoneStr.get()) == 0
 		|| CRT::strcmpi(pValue, NoneStrb()) == 0;
 }
 
@@ -1369,7 +1369,7 @@ void TechnoClass::FreeSpecificSlave(HouseClass* Affector)
 	//as I wrote it in http://bugs.renegadeprojects.com/view.php?id=357#c10331
 	//So, expand that one instead, kthx.
 
-	if (InfantryClass* pSlave = specific_cast<InfantryClass*>(this))
+	if (InfantryClass* pSlave = cast_to<InfantryClass*, false>(this))
 	{
 		auto Manager = pSlave->SlaveOwner->SlaveManager;
 

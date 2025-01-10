@@ -90,8 +90,8 @@ namespace Helper
 
 		inline std::tuple<bool, int, int> CheckMinMax(double nMin, double nMax)
 		{
-			int nMinL = (int)(std::abs(nMin) * 256.0);
-			int nMaxL = (int)(std::abs(nMax) * 256.0);
+			int nMinL = (int)(Math::abs(nMin) * 256.0);
+			int nMaxL = (int)(Math::abs(nMax) * 256.0);
 
 			if (!nMinL && !nMaxL)
 				return { false ,0,0 };
@@ -109,7 +109,7 @@ namespace Helper
 			if (nMinMax)
 			{
 				auto nRandomCoords = MapClass::GetRandomCoordsNear(nPos,
-					(std::abs(ScenarioClass::Instance->Random.RandomRanged(nMinL, nMaxL)) *
+					(Math::abs(ScenarioClass::Instance->Random.RandomRanged(nMinL, nMaxL)) *
 						MaxImpl(Increment, 1)),
 					ScenarioClass::Instance->Random.RandomBool());
 

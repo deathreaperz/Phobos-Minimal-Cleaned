@@ -11,7 +11,7 @@ int AddExpCustom(VeterancyStruct* vstruct, int targetCost, int exp)
 {
 	double toBeAdded = (double)exp / (targetCost * RulesClass::Instance->VeteranRatio);
 	// Used in experience transfer to get the actual amount substracted
-	int transffered = (int)(MinImpl(vstruct->Veterancy, (float)abs(toBeAdded))
+	int transffered = (int)(MinImpl(vstruct->Veterancy, (float)Math::abs(toBeAdded))
 		* (targetCost * RulesClass::Instance->VeteranRatio));
 
 	// Don't do anything when current exp at 0
@@ -66,7 +66,7 @@ int WarheadTypeExtData::TransactGetValue(TechnoClass* pTarget, TechnoClass* pOwn
 			percentValue = pOwner ? (int)(pOwner->GetTechnoType()->GetActualCost(pOwner->Owner) * percent) : 0;
 	}
 
-	return abs(percentValue) > abs(flatValue) ? percentValue : flatValue;
+	return Math::abs(percentValue) > Math::abs(flatValue) ? percentValue : flatValue;
 }
 
 TransactData WarheadTypeExtData::TransactGetSourceAndTarget(TechnoClass* pTarget, TechnoTypeClass* pTargetType, TechnoClass* pOwner, TechnoTypeClass* pOwnerType, int targets)
@@ -116,7 +116,7 @@ TransactData WarheadTypeExtData::TransactGetSourceAndTarget(TechnoClass* pTarget
 
 	targetValues.push_back(targetExp / targets);
 
-	allVal.push_back({ sourceValues, targetValues, TransactValueType::Experience });
+	allVal.emplace_back(sourceValues, targetValues, TransactValueType::Experience);
 
 	return allVal;
 }
@@ -138,7 +138,7 @@ void WarheadTypeExtData::TransactOnOneUnit(TechnoClass* pTarget, TechnoClass* pO
 			// Transact (A loses B gains)
 			if (sourceValue != 0 && targetValue != 0 && targetValue * sourceValue < 0)
 			{
-				int transactValue = abs(sourceValue) > abs(targetValue) ? abs(targetValue) : abs(sourceValue);
+				int transactValue = Math::abs(sourceValue) > Math::abs(targetValue) ? Math::abs(targetValue) : Math::abs(sourceValue);
 
 				if (sourceValue < 0)
 				{

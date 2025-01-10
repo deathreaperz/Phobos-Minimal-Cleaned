@@ -96,7 +96,7 @@ void ParticleTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->Trails.Read(exINI, pID, false);
 
-	this->Palette.Read(exINI, pID, "CustomPalette");
+	this->Palette.Read(exINI, pID, "Palette");
 	this->DamageRange.Read(exINI, pID, "DamageRange");
 
 	///if (IS_SAME_STR_(pID, "SuperNapalmCloudPart"))
@@ -158,28 +158,32 @@ DEFINE_HOOK(0x645A42, ParticleTypeClass_SDDTOR, 0xA)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x6457A0, ParticleTypeClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x645660, ParticleTypeClass_SaveLoad_Prefix, 0x7)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeParticleTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(ParticleTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	ParticleTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleTypeClass::Load(pStm);
 
-	ParticleTypeExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		ParticleTypeExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x64578C, ParticleTypeClass_Load_Suffix, 0x5)
+HRESULT __stdcall FakeParticleTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	ParticleTypeExtContainer::Instance.LoadStatic();
-	return 0;
+	ParticleTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleTypeClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		ParticleTypeExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x64580A, ParticleTypeClass_Save_Suffix, 0x7)
-{
-	ParticleTypeExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7F019C, MiscTools::to_DWORD(&FakeParticleTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F01A0, MiscTools::to_DWORD(&FakeParticleTypeClass::_Save))
 
 DEFINE_HOOK_AGAIN(0x645414, ParticleTypeClass_LoadFromINI, 0x5)
 DEFINE_HOOK(0x645405, ParticleTypeClass_LoadFromINI, 0x5)

@@ -1,5 +1,7 @@
 #include "Body.h"
+
 #include <Utilities/GeneralUtils.h>
+#include <Helpers\Macro.h>
 
 void OverlayTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 {
@@ -38,25 +40,25 @@ bool OverlayTypeExtContainer::Load(OverlayTypeClass* key, IStream* pStm)
 	if (!key)
 		return false;
 
-	auto Iter = OverlayTypeExtContainer::Instance.Map.find(key);
+	auto ptr = OverlayTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (Iter == OverlayTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = this->AllocateUnchecked(key);
-		Iter = OverlayTypeExtContainer::Instance.Map.emplace(key, ptr).first;
+		ptr = OverlayTypeExtContainer::Instance.Map.insert_unchecked(key,
+			  this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
-	this->SetExtAttribute(key, Iter->second);
+	this->SetExtAttribute(key, ptr);
 
 	PhobosByteStream loader { 0 };
 	if (loader.ReadBlockFromStream(pStm))
 	{
 		PhobosStreamReader reader { loader };
 		if (reader.Expect(OverlayTypeExtData::Canary)
-			&& reader.RegisterChange(Iter->second))
+			&& reader.RegisterChange(ptr))
 		{
-			Iter->second->LoadFromStream(reader);
+			ptr->LoadFromStream(reader);
 			if (reader.ExpectEndOfBlock())
 			{
 				return true;
@@ -74,15 +76,15 @@ DEFINE_HOOK(0x5FE3A2, OverlayTypeClass_CTOR, 0x5)
 {
 	GET(OverlayTypeClass*, pItem, EAX);
 
-	auto Iter = OverlayTypeExtContainer::Instance.Map.find(pItem);
+	auto ptr = OverlayTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (Iter == OverlayTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = OverlayTypeExtContainer::Instance.AllocateUnchecked(pItem);
-		Iter = OverlayTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
+		ptr = OverlayTypeExtContainer::Instance.Map.insert_unchecked(pItem,
+			  OverlayTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
-	OverlayTypeExtContainer::Instance.SetExtAttribute(pItem, Iter->second);
+	OverlayTypeExtContainer::Instance.SetExtAttribute(pItem, ptr);
 
 	return 0;
 }
@@ -94,7 +96,8 @@ DEFINE_HOOK(0x5FE3F6, OverlayTypeClass_DTOR, 0x6)
 	auto extData = OverlayTypeExtContainer::Instance.GetExtAttribute(pItem);
 	OverlayTypeExtContainer::Instance.ClearExtAttribute(pItem);
 	OverlayTypeExtContainer::Instance.Map.erase(pItem);
-	delete extData;
+	if (extData)
+		DLLCallDTOR(extData);
 
 	return 0;
 }

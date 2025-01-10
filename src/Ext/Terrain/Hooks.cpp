@@ -71,8 +71,7 @@ DEFINE_HOOK(0x71BB2C, TerrainClass_ReceiveDamage_NowDead_Add_light, 0x6)
 	VocClass::PlayIndexAtPos(pTerrainExt->DestroySound, nCoords);
 	const auto pAttackerHoue = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
 
-	if (auto const pAnimType = pTerrainExt->DestroyAnim)
-	{
+	if (auto const pAnimType = pTerrainExt->DestroyAnim) {
 		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, nCoords),
 			args.SourceHouse,
 			pThis->GetOwningHouse(),
@@ -81,10 +80,8 @@ DEFINE_HOOK(0x71BB2C, TerrainClass_ReceiveDamage_NowDead_Add_light, 0x6)
 		);
 	}
 
-	if (const auto nBounty = pTerrainExt->Bounty.Get())
-	{
-		if (pAttackerHoue && pAttackerHoue->CanTransactMoney(nBounty))
-		{
+	if (const auto nBounty = pTerrainExt->Bounty.Get()) {
+		if (pAttackerHoue && pAttackerHoue->CanTransactMoney(nBounty)) {
 			pAttackerHoue->TransactMoney(nBounty);
 			FlyingStrings::AddMoneyString(true, nBounty, pAttackerHoue, AffectedHouse::All, nCoords);
 		}
@@ -122,16 +119,17 @@ DEFINE_HOOK(0x71C2BC, TerrainClass_Draw_CustomPal, 0x6)
 	GET(ConvertClass*, pConvert, EDX);
 	GET(TerrainTypeClass*, pThisType, EAX);
 
+
 	const auto pTerrainExt = TerrainTypeExtContainer::Instance.Find(pThisType);
 
-	if (const auto pConvertData = pTerrainExt->CustomPalette)
-	{
+	if (const auto pConvertData = pTerrainExt->CustomPalette) {
 		auto const pCell = pThis->GetCell();
 		int wallOwnerIndex = pCell->WallOwnerIndex;
 		int colorSchemeIndex = HouseClass::CurrentPlayer->ColorSchemeIndex;
 
 		if (wallOwnerIndex >= 0)
 			colorSchemeIndex = HouseClass::Array->GetItem(wallOwnerIndex)->ColorSchemeIndex;
+
 
 		pConvert = pConvertData->ColorschemeDataVector->Items[colorSchemeIndex]->LightConvert;
 		R->EBP(pCell->Intensity_Normal);
@@ -187,25 +185,21 @@ DEFINE_HOOK(0x5F4FEF, ObjectClass_Put_RegisterLogic_Terrain, 0x6)
 
 	enum { FurtherCheck = 0x5F501B, NoUpdate = 0x5F5045 };
 
-	if (pThis->WhatAmI() == AbstractType::VeinholeMonster)
-	{
+	if(pThis->WhatAmI() == AbstractType::VeinholeMonster) {
 		return FurtherCheck;
 	}
 
-	if (!pType->IsLogic)
-	{
+	if (!pType->IsLogic) {
 		return NoUpdate;
 	}
 
-	if (pType->WhatAmI() == TerrainTypeClass::AbsID)
-	{
+	if (pType->WhatAmI() == TerrainTypeClass::AbsID) {
 		auto const pTerrainType = static_cast<TerrainTypeClass* const>(pType);
 		if (!pTerrainType->SpawnsTiberium
 			&& !pTerrainType->IsFlammable
 			&& !pTerrainType->IsAnimated
 			&& !pTerrainType->IsVeinhole
-			)
-		{
+			) {
 			return NoUpdate;
 		}
 	}
@@ -213,6 +207,7 @@ DEFINE_HOOK(0x5F4FEF, ObjectClass_Put_RegisterLogic_Terrain, 0x6)
 	return FurtherCheck;
 }
 //#endif
+
 
 DEFINE_HOOK(0x71C6EE, TerrainClass_FireOut_Crumbling, 0x6)
 {
@@ -250,12 +245,11 @@ DEFINE_HOOK(0x71B98B, TerrainClass_TakeDamage_RefreshDamageFrame, 0x7)
 	GET(TerrainClass*, pThis, ESI);
 	REF_STACK(args_ReceiveDamage const, args, STACK_OFFS(0x3C, -0x4));
 
-	if (!pThis->IsBurning && *args.Damage > 0 && args.WH->Sparky)
-	{
+	if (!pThis->IsBurning && *args.Damage > 0 && args.WH->Sparky) {
 		const auto pWarheadExt = WarheadTypeExtContainer::Instance.Find(args.WH);
 
 		if (!pWarheadExt->Flammability.isset() || ScenarioClass::Instance->Random.PercentChance
-		(abs(pWarheadExt->Flammability.Get())))
+		   (abs(pWarheadExt->Flammability.Get())))
 			pThis->Ignite();
 	}
 

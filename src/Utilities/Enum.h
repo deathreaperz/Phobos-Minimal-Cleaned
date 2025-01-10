@@ -34,6 +34,13 @@
 
 #include <GeneralDefinitions.h>
 
+// use to put check on `NullableIdx`
+// TODO : put this on other `Idx` based stuffs ,..
+enum class EnumCheckMode
+{
+	default, ignore, disable
+};
+
 enum class LandTypeFlags : unsigned short
 {
 	None = 0,
@@ -55,7 +62,7 @@ enum class LandTypeFlags : unsigned short
 };
 
 MAKE_ENUM_FLAGS(LandTypeFlags);
-inline bool IsLandTypeInFlags(LandTypeFlags flags, LandType type)
+constexpr FORCEINLINE bool IsLandTypeInFlags(LandTypeFlags flags, LandType type)
 {
 	return (bool)((LandTypeFlags)(1 << (char)type) & flags);
 }
@@ -69,7 +76,8 @@ enum class DiscardCondition : unsigned char
 	Drain,
 	InRange,
 	OutOfRange,
-
+	InvokerDeleted,
+	Firing,
 	count
 };
 
@@ -81,8 +89,9 @@ enum class ExpireWeaponCondition : unsigned char
 	Expire = 0x1,
 	Remove = 0x2,
 	Death = 0x4,
+	Discard = 0x5,
 
-	All = Expire | Remove | Death,
+	All = 0xFF,
 };
 
 MAKE_ENUM_FLAGS(ExpireWeaponCondition);

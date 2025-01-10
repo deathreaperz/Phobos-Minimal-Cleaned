@@ -12,20 +12,32 @@ class CursorTypeClass final : public Enumerable<CursorTypeClass>
 public:
 
 	Valueable<MouseCursor> CursorData;
-	CursorTypeClass(const char* const pTitle) : Enumerable<CursorTypeClass>(pTitle)
+
+	CursorTypeClass(const char* pTitle) : Enumerable<CursorTypeClass>(pTitle)
 		, CursorData { }
 	{ }
 
-	CursorTypeClass(const char* const pTitle, const MouseCursor& cursor) : Enumerable<CursorTypeClass>(pTitle)
-		, CursorData { cursor }
-	{ }
+	static void inline AddDefaults()
+	{
+		if (!Array.empty())
+			return;
 
-	virtual ~CursorTypeClass() override = default;
-	static void AddDefaults();
+		Array.reserve(MouseCursorTypeToStrings.size() + NewMouseCursorTypeToStrings.size());
 
-	virtual void LoadFromINI(CCINIClass* pINI) override;
-	virtual void LoadFromStream(PhobosStreamReader& Stm);
-	virtual void SaveToStream(PhobosStreamWriter& Stm);
+		for (size_t i = 0; i < MouseCursorTypeToStrings.size(); ++i)
+		{
+			AllocateWithDefault(MouseCursorTypeToStrings[i], MouseCursor::DefaultCursors[i]);
+		}
+
+		for (size_t a = 0; a < NewMouseCursorTypeToStrings.size(); ++a)
+		{
+			AllocateWithDefault(NewMouseCursorTypeToStrings[a], CursorTypeClass::NewMouseCursorTypeData[a]);
+		}
+	}
+
+	void LoadFromINI(CCINIClass* pINI);
+	void LoadFromStream(PhobosStreamReader& Stm);
+	void SaveToStream(PhobosStreamWriter& Stm);
 
 	static void LoadFromINIList_New(CCINIClass* pINI, bool bDebug = false);
 
@@ -80,9 +92,10 @@ public:
 		}
 	};
 
-	static inline constexpr void AllocateWithDefault(const char* Title, MouseCursor cursor)
+	static inline constexpr void AllocateWithDefault(const char* Title, const MouseCursor& cursor)
 	{
-		Array.emplace_back(std::make_unique<CursorTypeClass>(Title, cursor));
+		Array.emplace_back(std::move(std::make_unique<CursorTypeClass>(Title)));
+		Array.back()->CursorData = cursor;
 	}
 
 private:

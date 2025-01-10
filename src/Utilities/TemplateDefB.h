@@ -2,6 +2,9 @@
 
 #include <New/Type/ColorTypeClass.h>
 
+#include <ParticleSystemTypeClass.h>
+#include <VoxelAnimTypeClass.h>
+
 #include "TemplateDef.h"
 
 namespace detail
@@ -166,7 +169,7 @@ namespace detail
 				{
 					if (auto const& nResult = ColorScheme::Find(parser.value()))
 					{
-						value = nResult->BaseColor;
+						nResult->BaseColor.ToColorStruct(&value);
 						return true;
 					}
 				}
@@ -498,6 +501,28 @@ namespace detail
 		return false;
 	}
 
+	template <>
+	inline bool read<InterpolationMode>(InterpolationMode& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocat)
+	{
+		if (parser.ReadString(pSection, pKey))
+		{
+			auto str = parser.value();
+
+			for (auto& [pString, val] : EnumFunctions::InterpolationMode_ToStrings)
+			{
+				if (IS_SAME_STR_(pString, str))
+				{
+					value = val;
+					return true;
+				}
+			}
+
+			Debug::INIParseFailed(pSection, pKey, str, "Expected an interpolation mode");
+		}
+
+		return false;
+	}
+
 	template<typename T, bool Alloc = false>
 	inline void ParseVector(INI_EX& IniEx, std::vector<std::vector<T>>& nVecDest, const char* pSection, bool bDebug = true, bool bVerbose = false, const char* Delims = Phobos::readDelims, const char* message = nullptr)
 	{
@@ -573,7 +598,7 @@ namespace detail
 				auto res = PhobosCRT::trim(cur);
 
 				if (!res.empty())
-					nVecDest[i].push_back(res.c_str());
+					nVecDest[i].emplace_back(res);
 
 				if (bVerbose)
 					Debug::Log("ParseVector DEBUG: [%s][%d]: Verose parsing [%s]\n", pSection, i, res.c_str());

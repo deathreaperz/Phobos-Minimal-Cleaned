@@ -10,6 +10,17 @@
 #include <Utilities/Macro.h>
 
 #include <Misc/PhobosGlobal.h>
+#include <Misc/SyncLogging.h>
+
+#include <AnimClass.h>
+#include <FootClass.h>
+#include <InfantryClass.h>
+#include <UnitClass.h>
+#include <AircraftClass.h>
+#include <BuildingClass.h>
+
+#include <GameModeOptionsClass.h>
+#include <GameOptionsClass.h>
 
 DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 {
@@ -104,11 +115,14 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 		Debug::Log("PathfindingCrash\n");
 		break;
 	}
-	//case 0x755C7F:
-	//{
-	//	Debug::Log("BounceAnimError \n");
-	//	return PrintException(exception_id, ExceptionInfo);
-	//}
+	case 0x584DF7:
+		Debug::Log("SubzoneTrackingCrash\n");
+		break;
+		//case 0x755C7F:
+		//{
+		//	Debug::Log("BounceAnimError \n");
+		//	return PrintException(exception_id, ExceptionInfo);
+		//}
 	case 0x000000:
 		if (pExs->ContextRecord->Esp && *(DWORD*)pExs->ContextRecord->Esp == 0x55E018)
 		{
@@ -316,7 +330,24 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 				auto& pp = PhobosGlobal::Instance()->PathfindTechno;
 				if (pp.IsValid())
 				{
-					Debug::Log("LastPathfind [%s] - [%s] from (%d - %d) to (%d - %d)\n", pp.Finder->get_ID(), pp.Finder->GetThisClassName(),
+					const char* pTechnoID = GameStrings::NoneStr();
+					const char* what = GameStrings::NoneStr();
+					if (pp.Finder)
+					{
+						const auto vtable = VTable::Get(pp.Finder);
+						if (vtable == UnitClass::vtable)
+						{
+							pTechnoID = pp.Finder->get_ID();
+							what = "UnitClass";
+						}
+						else if (vtable == InfantryClass::vtable)
+						{
+							what = "InfantryClass";
+							pTechnoID = pp.Finder->get_ID();
+						}
+					}
+
+					Debug::Log("LastPathfind (%x)[%s] - [%s] from (%d - %d) to (%d - %d)\n", pp.Finder, what, pTechnoID,
 						pp.From.X, pp.From.Y,
 						pp.To.X, pp.To.Y
 					);
@@ -398,7 +429,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 	return 0u;
 };
 
-DEFINE_JUMP(LJMP, 0x4C8FE0, GET_OFFSET(ExceptionHandler))
+DEFINE_JUMP(LJMP, 0x4C8FE0, MiscTools::to_DWORD(&ExceptionHandler))
 
 //DEFINE_STRONG_HOOK(0x4C8FE0, Exception_Handler, 9)
 //{
@@ -493,7 +524,7 @@ void WriteLog(const FootClass* it, int idx, DWORD checksum, FILE* F)
 
 	fprintf(F, "; Destination: %s (%d; %d,%d); SpeedPercentage %d ; Height %d",
 		destID, destIndex, destCrd.X, destCrd.Y
-		, Game::F2I(it->SpeedPercentage * 256)
+		, int(it->SpeedPercentage * 256)
 		, it->GetHeight()
 	);
 }
@@ -671,7 +702,7 @@ bool LogFrame(const char* LogFilename, EventClass* OffendingEvent = nullptr)
 
 		fprintf(LogFile, "My Random Number: %08X\n", ScenarioClass::Instance->Random.Random());
 		fprintf(LogFile, "My Frame: %08X\n", Unsorted::CurrentFrame());
-		fprintf(LogFile, "Average FPS: %d\n", Game::F2I(FPSCounter::GetAverageFrameRate()));
+		fprintf(LogFile, "Average FPS: %d\n", int(FPSCounter::GetAverageFrameRate()));
 		fprintf(LogFile, "Max MaxAhead: %d\n", Game::Network::MaxMaxAhead());
 		fprintf(LogFile, "Latency setting: %d\n", Game::Network::LatencyFudge());
 		fprintf(LogFile, "Game speed setting: %d\n", GameOptionsClass::Instance->GameSpeed);
@@ -748,6 +779,7 @@ DEFINE_STRONG_HOOK(0x64DEA0, Multiplay_LogToSYNC_NOMPDEBUG, 6)
 	IMPL_SNPRNINTF(LogFilename, sizeof(LogFilename), GameStrings::SYNCNAME_TXT(), HouseClass::CurrentPlayer->ArrayIndex);
 
 	LogFrame(LogFilename, OffendingEvent);
+	SyncLogger::WriteSyncLog(LogFilename);
 
 	return 0x64DF3D;
 }
@@ -761,6 +793,7 @@ DEFINE_STRONG_HOOK(0x6516F0, Multiplay_LogToSync_MPDEBUG, 6)
 	IMPL_SNPRNINTF(LogFilename, sizeof(LogFilename), GameStrings::SYNCNAME2_TXT(), HouseClass::CurrentPlayer->ArrayIndex, SlotNumber);
 
 	LogFrame(LogFilename, OffendingEvent);
+	SyncLogger::WriteSyncLog(LogFilename);
 
 	return 0x651781;
 }

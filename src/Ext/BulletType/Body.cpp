@@ -41,7 +41,7 @@ CoordStruct BulletTypeExtData::CalculateInaccurate(BulletTypeClass* pBulletType)
 const ConvertClass* BulletTypeExtData::GetBulletConvert()
 {
 	if (!this->ImageConvert.empty())
-		return  this->ImageConvert;
+		return this->ImageConvert;
 	else
 	{
 		ConvertClass* pConvert = nullptr;
@@ -305,25 +305,24 @@ bool BulletTypeExtContainer::Load(BulletTypeClass* key, IStream* pStm)
 		return false;
 	}
 
-	auto Iter = BulletTypeExtContainer::Instance.Map.find(key);
+	auto ptr = BulletTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (Iter == BulletTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = this->AllocateUnchecked(key);
-		Iter = BulletTypeExtContainer::Instance.Map.emplace(key, ptr).first;
+		ptr = BulletTypeExtContainer::Instance.Map.insert_unchecked(key, this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
-	this->SetExtAttribute(key, Iter->second);
+	this->SetExtAttribute(key, ptr);
 
 	PhobosByteStream loader { 0 };
 	if (loader.ReadBlockFromStream(pStm))
 	{
 		PhobosStreamReader reader { loader };
 		if (reader.Expect(BulletTypeExtData::Canary)
-			&& reader.RegisterChange(Iter->second))
+			&& reader.RegisterChange(ptr))
 		{
-			Iter->second->LoadFromStream(reader);
+			ptr->LoadFromStream(reader);
 			if (reader.ExpectEndOfBlock())
 				return true;
 		}
@@ -339,15 +338,15 @@ DEFINE_HOOK(0x46BDD9, BulletTypeClass_CTOR, 0x5)
 	GET(BulletTypeClass*, pItem, EAX);
 	//BulletTypeExtContainer::Instance.Allocate(pItem);
 
-	auto Iter = BulletTypeExtContainer::Instance.Map.find(pItem);
+	auto ptr = BulletTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (Iter == BulletTypeExtContainer::Instance.Map.end())
+	if (!ptr)
 	{
-		auto ptr = BulletTypeExtContainer::Instance.AllocateUnchecked(pItem);
-		Iter = BulletTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
+		ptr = BulletTypeExtContainer::Instance.Map.insert_unchecked(pItem,
+			  BulletTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
-	BulletTypeExtContainer::Instance.SetExtAttribute(pItem, Iter->second);
+	BulletTypeExtContainer::Instance.SetExtAttribute(pItem, ptr);
 	return 0;
 }
 
@@ -357,47 +356,37 @@ DEFINE_HOOK(0x46C8B6, BulletTypeClass_SDDTOR, 0x6)
 	auto extData = BulletTypeExtContainer::Instance.GetExtAttribute(pItem);
 	BulletTypeExtContainer::Instance.ClearExtAttribute(pItem);
 	BulletTypeExtContainer::Instance.Map.erase(pItem);
-	delete extData;
+	if (extData)
+		DLLCallDTOR(extData);
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x46C730, BulletTypeClass_SaveLoad_Prefix, 0x8)
-DEFINE_HOOK(0x46C6A0, BulletTypeClass_SaveLoad_Prefix, 0x5)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeBulletTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(BulletTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	BulletTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->BulletTypeClass::Load(pStm);
 
-	BulletTypeExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		BulletTypeExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-//// Before : 0x46C722 , 0x4
-//// After : 46C70F , 0x6
-DEFINE_HOOK(0x46C70F, BulletTypeClass_Load_Suffix, 0x6)
+HRESULT __stdcall FakeBulletTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	GET(BulletTypeClass*, pThis, ESI);
+	BulletTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->BulletTypeClass::Save(pStm, clearDirty);
 
-	SwizzleManagerClass::Instance->Swizzle((void**)&pThis->ShrapnelWeapon);
-	BulletTypeExtContainer::Instance.LoadStatic();
-
-	return 0x46C720;
-}
-
-//// Before : 0x46C74A , 0x3
-//// After : 46C744 , 0x6
-DEFINE_HOOK(0x46C744, BulletTypeClass_Save_Suffix, 0x6)
-{
-	GET(HRESULT, nRes, EAX);
-
-	if (SUCCEEDED(nRes))
-	{
-		nRes = 0;
+	if (SUCCEEDED(res))
 		BulletTypeExtContainer::Instance.SaveStatic();
-	}
 
-	return 0x46C74A;
+	return res;
 }
+
+DEFINE_JUMP(VTABLE, 0x7E495C, MiscTools::to_DWORD(&FakeBulletTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7E4960, MiscTools::to_DWORD(&FakeBulletTypeClass::_Save))
 
 DEFINE_HOOK_AGAIN(0x46C429, BulletTypeClass_LoadFromINI, 0xA)
 DEFINE_HOOK(0x46C41C, BulletTypeClass_LoadFromINI, 0xA)

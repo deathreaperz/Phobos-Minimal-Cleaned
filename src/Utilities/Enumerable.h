@@ -18,10 +18,9 @@
 template <typename T> class Enumerable
 {
 	typedef std::vector<std::unique_ptr<T>> container_t;
-
 public:
 
-	static container_t Array;
+	inline static container_t Array;
 
 	static int FindOrAllocateIndex(const char* Title)
 	{
@@ -42,7 +41,7 @@ public:
 			pos != Array.end();
 			++pos)
 		{
-			if (IS_SAME_STR_((*pos)->Name.data(), Title))
+			if (IS_SAME_STR_(pos->get()->Name.data(), Title))
 			{
 				return std::distance(Array.begin(), pos);
 			}
@@ -92,6 +91,9 @@ public:
 	// With Idx validation ,return to the first item if Idx is invalid
 	static inline constexpr T* FindFromIndexFix(int Idx)
 	{
+		if (Array.empty())
+			return nullptr;
+
 		return Array[size_t(Idx) > Array.size() ? 0 : Idx].get();
 	}
 
@@ -103,7 +105,7 @@ public:
 
 	static inline constexpr void AllocateNoCheck(const char* Title)
 	{
-		Array.emplace_back(std::make_unique<T>(Title));
+		Array.emplace_back(std::move(std::make_unique<T>(Title)));
 	}
 
 	static inline constexpr T* FindOrAllocate(const char* Title)
@@ -145,9 +147,6 @@ public:
 
 	static void LoadFromINIOnlyTheList(CCINIClass* pINI, bool bDebug = false)
 	{
-		if (!pINI)
-			return;
-
 		const char* section = GetMainSection();
 
 		if (!pINI->GetSection(section))
@@ -175,9 +174,6 @@ public:
 
 	static void LoadFromINIList(CCINIClass* pINI, bool bDebug = false)
 	{
-		if (!pINI)
-			return;
-
 		const char* section = GetMainSection();
 
 		if (!pINI->GetSection(section))
@@ -219,16 +215,14 @@ public:
 		for (size_t i = 0; i < Count; ++i)
 		{
 			void* oldPtr = nullptr;
-			decltype(Name) name;
+			std::string name {};
 
-			if (!Stm.Load(oldPtr) ||
-				!Stm.Load(name))
+			if (!Stm.Load(oldPtr) || !Stm.Load(name))
 				return false;
 
-			auto newPtr = Allocate(name);
-			PhobosSwizzle::Instance.RegisterChange(oldPtr, newPtr);
-
-			newPtr->LoadFromStream(Stm);
+			auto pNew = Allocate(name.c_str());
+			PhobosSwizzle::Instance.RegisterChange(oldPtr, pNew);
+			pNew->LoadFromStream(Stm);
 		}
 
 		return true;
@@ -238,7 +232,7 @@ public:
 	{
 		Stm.Save(Array.size());
 
-		for (const auto& item : Array)
+		for (auto& item : Array)
 		{
 			// write old pointer and name, then delegate
 			Stm.Save(item.get());
@@ -251,18 +245,12 @@ public:
 
 	static const char* GetMainSection();
 
-	Enumerable(const char* Title) : Name { Title }
-	{ }
+	std::string Name {};
+
+	constexpr Enumerable(const char* name) : Name {}
+	{
+		Name = name;
+	}
 
 	virtual ~Enumerable() = default;
-	virtual void LoadFromINI(CCINIClass* pINI) { }
-	virtual void LoadFromStream(PhobosStreamReader& Stm) = 0;
-	virtual void SaveToStream(PhobosStreamWriter& Stm) = 0;
-
-public:
-	FixedString<32> Name;
-
-private:
-	Enumerable<T>& operator=(Enumerable<T> const& value) = default;
-	Enumerable<T>& operator=(Enumerable<T>&& value) = default;
 };

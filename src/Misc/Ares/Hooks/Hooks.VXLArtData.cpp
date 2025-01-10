@@ -25,13 +25,14 @@
 #include <Conversions.h>
 
 #include <Locomotor/Cast.h>
+#include <SpawnManagerClass.h>
 
 DEFINE_HOOK(0x5F8277, ObjectTypeClass_Load3DArt_NoSpawnAlt1, 7)
 {
 	REF_STACK(bool, bLoadFailed, 0x13);
 	GET(ObjectTypeClass*, pThis, ESI);
 
-	const auto pType = specific_cast<UnitTypeClass*>(pThis);
+	const auto pType = type_cast<UnitTypeClass*>(pThis);
 
 	if (!pType)
 		return 0x5F8640;
@@ -223,7 +224,11 @@ int ChooseFrame(FootClass* pThis, int shadow_index_now, VoxelStruct* pVXL)
 		if (who_are_you[0] == UnitTypeClass::vtable)
 			pType = reinterpret_cast<TechnoTypeClass*>(who_are_you);//you are someone else
 		else
-			return pThis->TurretAnimFrame % pVXL->HVA->FrameCount;
+		{
+			if ((&TechnoTypeExtContainer::Instance.Find(pType)->SpawnAltData) != pVXL)
+				return pThis->TurretAnimFrame % pVXL->HVA->FrameCount;
+		}
+
 		// you might also be SpawnAlt voxel, but I can't know
 		// otherwise what would you expect me to do, shift back to ares typeext base and check if ownerobject is technotype?
 	}
@@ -255,6 +260,14 @@ int ChooseFrame(FootClass* pThis, int shadow_index_now, VoxelStruct* pVXL)
 	return pThis->WalkedFramesSoFar % pVXL->HVA->FrameCount;
 }
 
+static Matrix3D* __fastcall BounceClass_ShadowMatrix(BounceClass* self, void*, Matrix3D* ret)
+{
+	Matrix3D::FromQuaternion(ret, &self->CurrentAngle);
+	*ret = Matrix3D { 1, 0, 0 , 0,	0, 0.25f, -0.4330127f , 0, 0, -0.4330127f, 0.75f , 0 } *(*ret) * Matrix3D { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0 };
+	return ret;
+}
+DEFINE_JUMP(CALL, 0x749CAC, MiscTools::to_DWORD(&BounceClass_ShadowMatrix));
+
 //the deeper part
 DEFINE_HOOK(0x7072A1, suka707280_ChooseTheGoddamnMatrix, 0x7)
 {
@@ -268,18 +281,12 @@ DEFINE_HOOK(0x7072A1, suka707280_ChooseTheGoddamnMatrix, 0x7)
 	int frameChoosen = ChooseFrame(pThis, shadow_index_now, pVXL);//Don't want to use goto
 
 	matRet = (*pMat) * pVXL->HVA->Matrixes[shadow_index_now + pVXL->HVA->LayerCount * frameChoosen];
-	{
-		auto& arr = matRet.row;
-		arr[0][2] = arr[1][2] = arr[2][2] = arr[2][1] = arr[2][0] = 0;
-	}
-	// A nasty temporary backward compatibility option
-	// if (pVXL->HVA->LayerCount > 1 || pThis->GetTechnoType()->Turret) {
-	// 	// NEEDS IMPROVEMENT : Choose the proper Z offset to shift the sections to the same level
-	// 	matRet.TranslateZ(
-	// 		-matRet.GetZVal()
-	// 		- pVXL->VXL->TailerData->Bounds[0].Z
-	// 	);
-	// }
+	matRet *= Matrix3D { 1,0,0,0,0,1,0,0,0,0,0,0 };
+
+	double l2 = 0;
+	auto& arr = matRet.row;
+	for (int i = 0; i < 3; i++)	for (int j = 0; j < 3; j++)	l2 += arr[i][j] * arr[i][j];
+	if (l2 < 0.03) R->Stack(STACK_OFFSET(0xE8, 0x20), true);
 
 	// Recover vanilla instructions
 	if (pThis->GetTechnoType()->UseBuffer)
@@ -303,7 +310,7 @@ DEFINE_HOOK(0x4147F9, AircraftClass_Draw_Shadow, 0x6)
 	enum { FinishDrawing = 0x4148A5 };
 
 	auto loco = pThis->Locomotor.GetInterfacePtr();
-	if (pThis->Type->NoShadow || !loco->Is_To_Have_Shadow() || pThis->IsSinking)
+	if (pThis->Type->NoShadow || pThis->CloakState != CloakState::Uncloaked || !loco->Is_To_Have_Shadow() || pThis->IsSinking)
 		return FinishDrawing;
 
 	const auto aTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
@@ -334,11 +341,11 @@ DEFINE_HOOK(0x4147F9, AircraftClass_Draw_Shadow, 0x6)
 		if (flyloco->CurrentSpeed > pThis->Type->PitchSpeed)
 			arf += pThis->Type->PitchAngle;
 		double ars = pThis->AngleRotatedSideways;
-		if (key.Is_Valid_Key() && (std::abs(arf) > 0.005 || std::abs(ars) > 0.005))
+		if (key.Is_Valid_Key() && (Math::abs(arf) > 0.005 || Math::abs(ars) > 0.005))
 			key.Invalidate();
 
-		shadow_mtx.ScaleY((float)Math::cos(ars));
-		shadow_mtx.ScaleX((float)Math::cos(arf));
+		shadow_mtx.RotateY((float)(ars));
+		shadow_mtx.RotateX((float)(arf));
 	}
 	else if (height > 0)
 	{
@@ -388,7 +395,7 @@ DEFINE_HOOK(0x4147F9, AircraftClass_Draw_Shadow, 0x6)
 	return FinishDrawing;
 }
 
-void TranslateAngleRotated(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pType)
+static void TranslateAngleRotated(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pType)
 {
 	float arf = pThis->AngleRotatedForwards;
 	float ars = pThis->AngleRotatedSideways;
@@ -405,7 +412,7 @@ void TranslateAngleRotated(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* p
 	}
 }
 
-VoxelStruct* GetmainVxl(TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKey& key)
+static VoxelStruct* GetmainVxl(TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKey& key)
 {
 	if (pType->NoSpawnAlt && pThis->SpawnManager && pThis->SpawnManager->CountDockedSpawns() == 0)
 	{
@@ -416,7 +423,7 @@ VoxelStruct* GetmainVxl(TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKe
 	return &pType->MainVoxel;
 }
 
-void DecideScaleAndIndex(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKey& key, ILocomotion* iLoco, int height)
+static void DecideScaleAndIndex(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pType, VoxelIndexKey& key, ILocomotion* iLoco, int height)
 {
 	const double baseScale_log = RulesExtData::Instance()->AirShadowBaseScale_log; // -ln(baseScale) precomputed
 
@@ -456,6 +463,7 @@ void DecideScaleAndIndex(Matrix3D* mtx, TechnoClass* pThis, TechnoTypeClass* pTy
 
 // Shadow_Point of RocketLoco was forgotten to be set to {0,0}. It was an oversight.
 DEFINE_JUMP(VTABLE, 0x7F0B4C, 0x4CF940);
+DEFINE_JUMP(LJMP, 0x706BDD, 0x706C01); // I checked it a priori
 
 DEFINE_HOOK(0x73C47A, UnitClass_DrawAsVXL_Shadow, 0x5)
 {
@@ -465,7 +473,9 @@ DEFINE_HOOK(0x73C47A, UnitClass_DrawAsVXL_Shadow, 0x5)
 
 	auto const loco = pThis->Locomotor.GetInterfacePtr();
 
-	if (pThis->Type->NoShadow || !loco->Is_To_Have_Shadow())
+	if (pThis->Type->NoShadow
+		|| pThis->CloakState != CloakState::Uncloaked
+		|| !loco->Is_To_Have_Shadow())
 		return SkipDrawing;
 
 	REF_STACK(Matrix3D, shadow_matrix, STACK_OFFSET(0x1C4, -0x130));
@@ -492,30 +502,30 @@ DEFINE_HOOK(0x73C47A, UnitClass_DrawAsVXL_Shadow, 0x5)
 	TranslateAngleRotated(&shadow_matrix, pThis, pType);
 
 	auto mtx = Game::VoxelDefaultMatrix() * (shadow_matrix);
-	{
-		auto& arr = mtx.row;
-		arr[0][2] = arr[1][2] = arr[2][2] = arr[2][1] = arr[2][0] = 0;
-	}
+
 	if (height > 0)
 		shadow_point.Y += 1;
 
 	const auto uTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-	if (uTypeExt->ShadowIndices.empty())
+	if (!pType->UseTurretShadow)
 	{
-		if (pType->ShadowIndex >= 0 && pType->ShadowIndex < main_vxl->HVA->LayerCount)
-			pThis->DrawVoxelShadow(
-				   main_vxl,
-				   pType->ShadowIndex,
-				   vxl_index_key,
-				   &pType->VoxelCaches.Shadow,
-				   bounding,
-				   &why,
-				   &mtx,
-				   true,
-				   surface,
-				   shadow_point
-			);
+		if (uTypeExt->ShadowIndices.empty())
+		{
+			if (pType->ShadowIndex >= 0 && pType->ShadowIndex < main_vxl->HVA->LayerCount)
+				pThis->DrawVoxelShadow(
+					   main_vxl,
+					   pType->ShadowIndex,
+					   vxl_index_key,
+					   &pType->VoxelCaches.Shadow,
+					   bounding,
+					   &why,
+					   &mtx,
+					   true,
+					   surface,
+					   shadow_point
+				);
+		}
 	}
 	else
 	{
@@ -534,52 +544,66 @@ DEFINE_HOOK(0x73C47A, UnitClass_DrawAsVXL_Shadow, 0x5)
 			);
 	}
 
-	if (!uTypeExt->TurretShadow.Get(RulesExtData::Instance()->DrawTurretShadow) || main_vxl == &pType->TurretVoxel)
+	if (main_vxl == &pType->TurretVoxel
+		|| (!pType->UseTurretShadow
+			&& !uTypeExt->TurretShadow.Get(RulesExtData::Instance()->DrawTurretShadow)))
 		return SkipDrawing;
 
-	Matrix3D rot = Matrix3D::GetIdentity();
-	uTypeExt->ApplyTurretOffset(&rot, Game::Pixel_Per_Lepton());
-	rot.RotateZ(static_cast<float>(pThis->SecondaryFacing.Current().GetRadian<32>() - pThis->PrimaryFacing.Current().GetRadian<32>()));
-	auto tur_mtx = mtx * rot; // unfortunately we won't have TurretVoxelScaleX/Y given the amount of work
-	{
-		auto& arr = tur_mtx.row;
-		arr[0][2] = arr[1][2] = arr[2][2] = arr[2][1] = arr[2][0] = 0;
-	}
+	uTypeExt->ApplyTurretOffset(&mtx, Game::Pixel_Per_Lepton());
+	mtx.RotateZ(static_cast<float>(pThis->SecondaryFacing.Current().GetRadian<32>() - pThis->PrimaryFacing.Current().GetRadian<32>()));
+
 	auto tur = TechnoTypeExtData::GetTurretsVoxel(pType, pThis->CurrentTurretNumber);
 
 	// sorry but you're fucked
 	if (tur && tur->VXL && tur->HVA)
+	{
+		auto bar = TechnoTypeExtData::GetBarrelsVoxel(pType, pThis->CurrentTurretNumber);
+		auto haveBar = bar && bar->VXL && bar->HVA && !bar->VXL->LoadFailed;
+
+		if (vxl_index_key.Is_Valid_Key())
+			vxl_index_key.TurretWeapon.Facing = pThis->SecondaryFacing.Current().GetFacing<32>();
+
+		auto* cache = &pType->VoxelCaches.Shadow;
+
+		if (!pType->UseTurretShadow)
+		{
+			if (haveBar)
+				cache = nullptr;
+			else
+				cache = tur != &pType->TurretVoxel ?
+				nullptr // man what can I say, you are fucked, for now
+				: reinterpret_cast<decltype(cache)>(&pType->VoxelCaches.TurretBarrel) // excuse me
+				;
+		}
+
 		pThis->DrawVoxelShadow(
 			tur,
 			0,
-			std::bit_cast<VoxelIndexKey>(-1), // no cache, no use for valid key
-			nullptr, // no cache atm
+			vxl_index_key,
+			cache,
 			bounding,
 			&why,
-			&tur_mtx,
-			false,
+			&mtx,
+			cache != nullptr,
 			surface,
 			shadow_point
 		);
 
-	auto bar = TechnoTypeExtData::GetBarrelsVoxel(pType, pThis->CurrentTurretNumber);
-	// and you are utterly fucked
-	if (bar && bar->VXL && bar->HVA)
-		pThis->DrawVoxelShadow(
-			bar,
-			0,
-			std::bit_cast<VoxelIndexKey>(-1), // no cache, no use
-			nullptr,//no cache atm
-			bounding,
-			&why,
-			&tur_mtx,
-			false,
-			surface,
-			shadow_point
-		);
-	// Add caches in Ext if necessary, remember not to serialize these shit
-	// IndexClass<ShadowVoxelIndexKey, VoxelCacheStruct*> VoxelTurretShadowCache {};
-	// IndexClass<ShadowVoxelIndexKey, VoxelCacheStruct*> VoxelBarrelShadowCache {};
+		// and you are utterly fucked
+		if (haveBar)
+			pThis->DrawVoxelShadow(
+				bar,
+				0,
+				std::bit_cast<VoxelIndexKey>(-1), // no cache, no use
+				nullptr,//no cache atm
+				bounding,
+				&why,
+				&mtx,
+				false,
+				surface,
+				shadow_point
+			);
+	}
 
 	return SkipDrawing;
 }
@@ -684,7 +708,14 @@ DEFINE_HOOK(0x715320, TechnoTypeClass_LoadFromINI_EarlyReader, 6)
 	GET(TechnoTypeClass*, pType, EBP);
 
 	INI_EX exINI(pINI);
-	TechnoTypeExtContainer::Instance.Find(pType)->WaterImage.Read(exINI, pType->ID, "WaterImage");
+	auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+	pExt->WaterImage.Read(exINI, pType->ID, "WaterImage");
+	pExt->WaterImage_Yellow.Read(exINI, pType->ID, "WaterDamagedImage.ConditionYellow");
+	pExt->WaterImage_Red.Read(exINI, pType->ID, "WaterDamagedImage.ConditionRed");
+
+	pExt->Image_Yellow.Read(exINI, pType->ID, "DamagedImage.ConditionYellow");
+	pExt->Image_Red.Read(exINI, pType->ID, "DamagedImage.ConditionRed");
 
 	return 0;
 }

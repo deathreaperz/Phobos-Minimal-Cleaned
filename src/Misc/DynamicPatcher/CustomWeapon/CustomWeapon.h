@@ -9,7 +9,7 @@ class WeaponTypeClass;
 class TechnoClass;
 struct CustomWeaponManager
 {
-	std::vector<SimulateBurst> simulateBurstQueue {};
+	HelperedVector<SimulateBurst> simulateBurstQueue {};
 
 	void Clear()
 	{
@@ -50,7 +50,7 @@ private:
 
 struct FireWeaponManager
 {
-	std::vector<DelayFireWeapon> DelayFires {};
+	HelperedVector<DelayFireWeapon> DelayFires {};
 	CustomWeaponManager CWeaponManager {};
 
 public:

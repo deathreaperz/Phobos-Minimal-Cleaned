@@ -122,7 +122,7 @@ void PrintBld(const BuildingClass* pThis, FILE* stream)
 			//DECLARE_PROPERTY(IndexBitfield<HouseClass*>, DisplayProductionTo); // each bit corresponds to one player on the map, telling us whether that player has (1) or hasn't (0) spied this building, and the game should display what's being produced inside it to that player. The bits are arranged by player ID, i.e. bit 0 refers to house #0 in HouseClass::Array, 1 to 1, etc.; query like ((1 << somePlayer->ArrayIndex) & someFactory->DisplayProductionToHouses) != 0
 
 			fprintf(stream, "%d\n", pThis->Group);
-			fprintf(stream, "%p\n", pThis->Focus);
+			fprintf(stream, "%p\n", pThis->ArchiveTarget);
 			fprintf(stream, "%p\n", pThis->Owner);
 			fprintf(stream, "%d\n", pThis->CloakState);
 			//DECLARE_PROPERTY(StageClass, CloakProgress); // phase from [opaque] -> [fading] -> [transparent] , [General]CloakingStages= long
@@ -246,7 +246,7 @@ void PrintBld(const BuildingClass* pThis, FILE* stream)
 			fprintf(stream, "%p\n", pThis->ChronoWarpedByHouse);
 			fprintf(stream, "%d\n", pThis->_Mission_Patrol_430);
 			fprintf(stream, "%d\n", pThis->IsMouseHovering);
-			fprintf(stream, "%d\n", pThis->parasitecontrol_byte432);
+			fprintf(stream, "%d\n", pThis->ShouldBeReselectOnUnlimbo);
 			//	BYTE			 byte_433;
 			fprintf(stream, "%p\n", pThis->OldTeam);
 			fprintf(stream, "%d\n", pThis->CountedAsOwnedSpecial); // for absorbers, infantry uses this to manually control OwnedInfantry count

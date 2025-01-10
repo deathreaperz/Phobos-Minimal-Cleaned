@@ -1,4 +1,4 @@
-#include "Body.h"
+ #include "Body.h"
 #include <SpecificStructures.h>
 
 #include <Utilities/Macro.h>
@@ -9,6 +9,38 @@
 #include <Locomotor/Cast.h>
 #include <Ext/Script/Body.h>
 #include <Ext/Anim/Body.h>
+
+#include <RadarEventClass.h>
+
+static int CalculateArmorMultipliers(TechnoClass* pThis, int damage, WarheadTypeClass* pWarhead)
+{
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (!pExt->AE.ArmorMultData.Enabled()) {
+		return static_cast<int>(damage / pExt->AE.ArmorMultData.Get(1.0, pWarhead));
+	}
+
+	return damage;
+}
+
+DEFINE_HOOK(0x6FDC87, TechnoClass_AdjustDamage_ArmorMultiplier, 0x6)
+{
+	GET(TechnoClass*, pTarget, EDI);
+	GET(int, damage, EAX);
+	GET_STACK(WeaponTypeClass*, pWeapon, STACK_OFFSET(0x18, 0x8));
+
+	R->EAX(CalculateArmorMultipliers(pTarget, damage, pWeapon->Warhead));
+	return 0;
+}
+DEFINE_HOOK(0x701966, TechnoClass_ReceiveDamage_ArmorMultiplier, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(int, damage, EAX);
+	GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFSET(0xC4, 0xC));
+	R->EAX(CalculateArmorMultipliers(pThis, damage, pWarhead));
+
+	return 0;
+}
 
 // namespace EvaluateObjectTemp
 // {
@@ -24,13 +56,14 @@
 // 	return 0;
 // }
 
-// TODO : evaluate this
-// interesting mechanic to replace negative damage always remove parasite
-void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
+//TODO : evaluate this
+//interesting mechanic to replace negative damage always remove parasite
+//https://github.com/Phobos-developers/Phobos/pull/1126
+static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 {
 	if (ScriptExtData::IsUnitAvailable(pThis, false))
 	{
-		if (const auto pFoot = abstract_cast<FootClass*>(pThis))
+		if (const auto pFoot = flag_cast_to<FootClass*, false>(pThis))
 		{
 			// Ignore other cases that aren't useful for this logic
 			if (pFoot->ParasiteEatingMe)
@@ -88,28 +121,22 @@ void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 	}
 }
 
-// #issue 88 : shield logic
-// TODO : Emp reset shield
-DEFINE_HOOK(0x701900, TechnoClass_ReceiveDamage_Early, 0x6)
-{
-	GET(TechnoClass*, pThis, ECX);
-	REF_STACK(args_ReceiveDamage, args, 0x4);
+//TODO : update , add the new tags problaby
+//the newer implementation is seems weird
+//https://github.com/Phobos-developers/Phobos/pull/1313
+static void applyCombatAlert(TechnoClass* pThis, args_ReceiveDamage* args) {
+	const auto pHouse = pThis->Owner;
+	const auto pWH = args->WH;
+	const auto pSourceHouse = args->SourceHouse;
+	const auto pType = pThis->GetTechnoType();
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(args.WH);
-
-	pWHExt->ApplyDamageMult(pThis, &args);
-	//SkipAllReaction = false
-
-	if (!args.IgnoreDefenses)
+	if (!pType->Insignificant)
 	{
-		const auto pHouse = pThis->Owner;
-		const auto pWH = args.WH;
-		const auto pSourceHouse = args.SourceHouse;
-		const auto pType = pThis->GetTechnoType();
-		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(args->WH);
 
 		if (pTypeExt->CombatAlert.Get(RulesExtData::Instance()->CombatAlert) && pThis->IsOwnedByCurrentPlayer &&
-			*args.Damage > 1 && pThis->IsInPlayfield && !pWHExt->CombatAlert_Suppress.Get(!pWHExt->Malicious))
+			*args->Damage > 1 && pThis->IsInPlayfield && !pWHExt->CombatAlert_Suppress.Get(!pWHExt->Malicious || pWHExt->Nonprovocative))
 		{
 			if (const auto pHouseExt = HouseExtContainer::Instance.TryFind(pHouse))
 			{
@@ -136,22 +163,32 @@ DEFINE_HOOK(0x701900, TechnoClass_ReceiveDamage_Early, 0x6)
 				}
 			}
 		}
+	}
+}
 
-		auto pExt = TechnoExtContainer::Instance.Find(pThis);
+// #issue 88 : shield logic
+// TODO : Emp reset shield
+DEFINE_HOOK(0x701900, TechnoClass_ReceiveDamage_Early, 0x6)
+{
+	GET(TechnoClass*, pThis, ECX);
+	REF_STACK(args_ReceiveDamage, args, 0x4);
 
-		if (auto pShieldData = pExt->GetShield())
-		{
+	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(args.WH);
+	auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	//pExt->LastDamageWH = args.WH;
+	pWHExt->ApplyDamageMult(pThis, &args);
+	//SkipAllReaction = false
+
+	TechnoExtData::ApplyKillWeapon(pThis, args.Attacker, args.WH);
+
+	if (!args.IgnoreDefenses) {
+
+		applyCombatAlert(pThis, &args);
+
+		if (auto pShieldData = pExt->GetShield()) {
 			pShieldData->OnReceiveDamage(&args);
 		}
-		//else
-		//{
-		//	if (pThis->Owner == HouseClass::CurrentPlayer
-		//		&& pThis->OnBridge
-		//		&& (pThis->CurrentMission == Mission::Harmless || pThis->CurrentMission == Mission::Sleep))
-		//	{
-		//		Debug::Log("GereIam !\n");
-		//	}
-		//}
 	}
 
 	return 0;
@@ -171,6 +208,7 @@ DEFINE_HOOK(0x7019D8, TechnoClass_ReceiveDamage_SkipLowDamageCheck, 0x5)
 	}
 	else
 	{
+
 		// Restore overridden instructions
 		if (*pDamage < 1)
 			*pDamage = 1;
@@ -184,7 +222,7 @@ DEFINE_HOOK(0x7019D8, TechnoClass_ReceiveDamage_SkipLowDamageCheck, 0x5)
 #include <Ext/Super/Body.h>
 #include <New/PhobosAttachedAffect/Functions.h>
 
-DEFINE_HOOK(0x6F6AC4, TechnoClass_Remove_AfterRadioClassRemove, 0x5)
+DEFINE_HOOK(0x6F6AC4, TechnoClass_Limbo_AfterRadioClassRemove, 0x5)
 {
 	GET(TechnoClass*, pThis, ECX);
 
@@ -201,36 +239,35 @@ DEFINE_HOOK(0x6F6AC4, TechnoClass_Remove_AfterRadioClassRemove, 0x5)
 	bool altered = false;
 
 	// Do not remove attached effects from undeploying buildings.
-	if (auto const pBuilding = specific_cast<BuildingClass*>(pThis))
-	{
-		if ((pBuilding->Type->UndeploysInto && pBuilding->CurrentMission == Mission::Selling && pBuilding->MissionStatus == 2))
-		{
+	if (auto const pBuilding = cast_to<BuildingClass*, false>(pThis)) {
+		if ((pBuilding->Type->UndeploysInto && pBuilding->CurrentMission == Mission::Selling && pBuilding->MissionStatus == 2)) {
 			return 0;
 		}
 	}
 
-	pExt->PhobosAE.remove_if([&](auto& it)
-{
-	if ((it.GetType()->DiscardOn & DiscardCondition::Entry) != DiscardCondition::None)
-	{
-		altered = true;
+	pExt->PhobosAE.remove_if([&](auto& it){
 
-		if (it.GetType()->HasTint())
-			markForRedraw = true;
+		if(!it)
+			return true;
 
-		if (it.ResetIfRecreatable())
-		{
-			return false;
+		if ((it->GetType()->DiscardOn & DiscardCondition::Entry) != DiscardCondition::None) {
+			altered = true;
+
+			if (it->GetType()->HasTint())
+				markForRedraw = true;
+
+			if (it->ResetIfRecreatable()) {
+				return false;
+			}
+
+			return true;
 		}
 
-		return true;
-	}
-
-	return false;
+		return false;
 	});
 
 	if (altered)
-		AresAE::RecalculateStat(&TechnoExtContainer::Instance.Find(pThis)->AeData, pThis);
+		AEProperties::Recalculate(pThis);
 
 	if (markForRedraw)
 		pThis->MarkForRedraw();

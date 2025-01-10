@@ -1,13 +1,15 @@
 #pragma once
 #include <AnimClass.h>
 
-#include <Helpers/Macro.h>
-
 #include <Utilities/Container.h>
+#include <Utilities/OptionalStruct.h>
 #include <Utilities/TemplateDef.h>
+
 #include <New/AnonymousType/SpawnsStatus.h>
 
-class ParticleSystemClass;
+#include <ParticleSystemClass.h>
+
+class HouseClass;
 class AnimExtData final //: public Extension<AnimClass>
 {
 public:
@@ -30,22 +32,27 @@ public:
 	// and the building is not on same cell as the animation.
 	BuildingClass* ParentBuilding { nullptr };
 
-	Handle<ParticleSystemClass*, UninitAttachedSystem> AttachedSystem { nullptr };
+	ParticleSystemClass* AttachedSystem { nullptr };
 	CoordStruct CreateUnitLocation {};
 	SpawnsStatus SpawnsStatusData {};
 
-	AnimExtData() noexcept = default;
-	~AnimExtData() noexcept
-	{
-		this->AttachedSystem.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
-	}
-
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-	static bool InvalidateIgnorable(AbstractClass* ptr);
+
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
 	void CreateAttachedSystem();
+
+	~AnimExtData()
+	{
+		// mimicking how this thing does , since the detach seems not properly handle these
+		if (auto pAttach = AttachedSystem)
+		{
+			pAttach->Owner = nullptr;
+			pAttach->UnInit();
+			pAttach->TimeToDie = true;
+		}
+	}
 
 	constexpr FORCEINLINE static size_t size_Of()
 	{
@@ -58,7 +65,7 @@ public:
 	static const std::pair<bool, OwnerHouseKind> SetAnimOwnerHouseKind(AnimClass* pAnim, HouseClass* pInvoker, HouseClass* pVictim, TechnoClass* pTechnoInvoker, bool defaultToVictimOwner = true, bool forceOwnership = false);
 	static TechnoClass* GetTechnoInvoker(AnimClass* pThis);
 	static AbstractClass* GetTarget(AnimClass* const);
-
+	static void ChangeAnimType(AnimClass* pAnim, AnimTypeClass* pNewType, bool resetLoops, bool restart);
 	static DWORD DealDamageDelay(AnimClass* pThis);
 	static bool OnExpired(AnimClass* pThis, bool LandIsWater, bool EligibleHeight);
 	static bool OnMiddle(AnimClass* pThis);
@@ -67,26 +74,42 @@ public:
 
 	static Layer __fastcall GetLayer_patch(AnimClass* pThis, void* _);
 
-	static constexpr HouseClass* __fastcall GetOwningHouse_Wrapper(AnimClass* pThis, void* _)
-	{
-		return pThis->Owner;
-	}
-
 	static void SpawnFireAnims(AnimClass* pThis);
 private:
 	template <typename T>
 	void Serialize(T& Stm);
 };
 
-class AnimExtContainer final : public Container<AnimExtData>
+class AnimTypeExtData;
+class FakeAnimClass : public AnimClass
 {
 public:
+	inline static std::vector<AnimExtData*> Pool;
 
-	//all inactive pointer will be on the back
-	static std::vector<AnimExtData*> Pool;
-	static AnimExtContainer Instance;
+	static constexpr FORCEINLINE void ClearExtAttribute(AnimClass* key)
+	{
+		(*(uintptr_t*)((char*)key + AbstractExtOffset)) = 0;
+	}
 
-	AnimExtData* AllocateUnchecked(AnimClass* key)
+	static constexpr FORCEINLINE void SetExtAttribute(AnimClass* key, AnimExtData* val)
+	{
+		(*(uintptr_t*)((char*)key + AbstractExtOffset)) = (uintptr_t)val;
+	}
+
+	static constexpr FORCEINLINE AnimExtData* GetExtAttribute(AnimClass* key)
+	{
+		return (AnimExtData*)(*(uintptr_t*)((char*)key + AbstractExtOffset));
+	}
+
+	static constexpr AnimExtData* TryFind(AnimClass* key)
+	{
+		if (!key)
+			return nullptr;
+
+		return FakeAnimClass::GetExtAttribute(key);
+	}
+
+	static AnimExtData* AllocateUnchecked(AnimClass* key)
 	{
 		AnimExtData* val = nullptr;
 		if (!Pool.empty())
@@ -94,15 +117,15 @@ public:
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-			val->AnimExtData::AnimExtData();
 		}
 		else
 		{
-			val = new AnimExtData();
+			val = DLLAllocWithoutCTOR<AnimExtData>();
 		}
 
 		if (val)
 		{
+			val->AnimExtData::AnimExtData();
 			val->AttachedToObject = key;
 			return val;
 		}
@@ -110,34 +133,34 @@ public:
 		return nullptr;
 	}
 
-	AnimExtData* Allocate(AnimClass* key)
+	static AnimExtData* Allocate(AnimClass* key)
 	{
 		if (!key || Phobos::Otamaa::DoingLoadGame)
 			return nullptr;
 
-		this->ClearExtAttribute(key);
+		FakeAnimClass::ClearExtAttribute(key);
 
 		if (AnimExtData* val = AllocateUnchecked(key))
 		{
-			this->SetExtAttribute(key, val);
+			FakeAnimClass::SetExtAttribute(key, val);
 			return val;
 		}
 
 		return nullptr;
 	}
 
-	void Remove(AnimClass* key)
+	static void Remove(AnimClass* key)
 	{
-		if (AnimExtData* Item = TryFind(key))
+		if (AnimExtData* Item = FakeAnimClass::TryFind(key))
 		{
 			Item->~AnimExtData();
 			Item->AttachedToObject = nullptr;
 			Pool.push_back(Item);
-			this->ClearExtAttribute(key);
+			FakeAnimClass::ClearExtAttribute(key);
 		}
 	}
 
-	void Clear()
+	static void Clear()
 	{
 		if (!Pool.empty())
 		{
@@ -150,5 +173,27 @@ public:
 		}
 	}
 
-	CONSTEXPR_NOCOPY_CLASSB(AnimExtContainer, AnimExtData, "AnimClass");
+	FORCEINLINE HouseClass* _GetOwningHouse()
+	{
+		return this->Owner;
+	}
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	FORCEINLINE AnimClass* _AsAnim() const
+	{
+		return (AnimClass*)this;
+	}
+
+	FORCEINLINE AnimExtData* _GetExtData()
+	{
+		return *reinterpret_cast<AnimExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+
+	FORCEINLINE AnimTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<AnimTypeExtData**>(((DWORD)this->Type) + AbstractExtOffset);
+	}
 };
+static_assert(sizeof(FakeAnimClass) == sizeof(AnimClass), "Invalid Size !");

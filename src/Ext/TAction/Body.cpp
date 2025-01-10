@@ -16,6 +16,9 @@
 #include <Ext/Terrain/Body.h>
 #include <Ext/Rules/Body.h>
 #include <Ext/Script/Body.h>
+#include <Ext/Techno/Body.h>
+
+#include <TriggerTypeClass.h>
 
 //Static init
 #include <TagClass.h>
@@ -146,12 +149,14 @@ bool TActionExt::UndeployToWaypoint(TActionClass* pThis, HouseClass* pHouse, Obj
 
 		// Why does having this allow it to undeploy?
 		// Why don't vehicles move when waypoints are placed off the map?
-		pBld->SetFocus(pCell);
+		pBld->SetArchiveTarget(pCell);
 		pBld->Sell(true);
 	}
 
 	return true;
 }
+
+#include <ExtraHeaders/StackVector.h>
 
 bool TActionExt::MessageForSpecifiedHouse(TActionClass* pThis, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct* plocation)
 {
@@ -159,19 +164,19 @@ bool TActionExt::MessageForSpecifiedHouse(TActionClass* pThis, HouseClass* pHous
 	if (pThis->Param3 == -3)
 	{
 		// Random Human Player
-		std::vector<int> housesListIdx;
+		StackVector<int, 256> housesListIdx;
 		for (auto ptmpHouse : *HouseClass::Array)
 		{
 			if (ptmpHouse->IsControlledByHuman()
 				&& !ptmpHouse->Defeated
 				&& !ptmpHouse->IsObserver())
 			{
-				housesListIdx.push_back(ptmpHouse->ArrayIndex);
+				housesListIdx->push_back(ptmpHouse->ArrayIndex);
 			}
 		}
 
-		if (!housesListIdx.empty())
-			houseIdx = housesListIdx[(ScenarioClass::Instance->Random.RandomFromMax(housesListIdx.size() - 1))];
+		if (!housesListIdx->empty())
+			houseIdx = housesListIdx[(ScenarioClass::Instance->Random.RandomFromMax(housesListIdx->size() - 1))];
 		else
 			return true;
 	}
@@ -247,7 +252,7 @@ bool TActionExt::TransactMoneyFor(TActionClass* pThis, HouseClass* pHouse, Objec
 	{
 		auto nAmount = pOwner->Available_Money();
 		pOwner->TakeMoney(nAmount);
-		pOwner->GiveMoney(abs(pThis->Value));
+		pOwner->GiveMoney(Math::abs(pThis->Value));
 	}
 	else
 	{
@@ -268,7 +273,7 @@ bool TActionExt::SetAIMode(TActionClass* pThis, HouseClass* pHouse, ObjectClass*
 	if (!pOwner)
 		return false;
 
-	switch (abs(pThis->Value))
+	switch (Math::abs(pThis->Value))
 	{
 	case 0:
 		pOwner->AIMode = AIMode::General;
@@ -327,7 +332,9 @@ bool TActionExt::DrawAnimWithin(TActionClass* pThis, HouseClass* pHouse, ObjectC
 		{
 			do
 			{
-				Vector3D<float> Vec3Dresult = Matrix3D::MatrixMultiply(TacticalClass::Instance->IsoTransformMatrix, { v29 * 1.0f, nDimension * 1.0f, 0.0f });
+				Vector3D<float> Vec3Dresult {};
+				Vector3D<float> Vec3rot { v29 * 1.0f, nDimension * 1.0f, 0.0f };
+				Matrix3D::MatrixMultiply(&Vec3Dresult, &TacticalClass::Instance->IsoTransformMatrix, &Vec3rot);
 				GameCreate<AnimClass>(pAnimType, CoordStruct { (int)Vec3Dresult.X , (int)Vec3Dresult.Y , 0 });
 				nDimension += nShpWidth_;
 			}
@@ -452,7 +459,9 @@ CoordStruct* GetSomething(CoordStruct* a1)
 	auto v2 = 30 * MapRect.Height;
 	auto vect_X = ScenarioClass::Instance->Random.RandomFromMax((60 * MapRect.Width) - v1 / 2);
 	auto vect_Y = (v2 / 2 + ScenarioClass::Instance->Random.RandomFromMax(v2));
-	Vector3D<float> Vec3Dresult = Matrix3D::MatrixMultiply(TacticalClass::Instance->IsoTransformMatrix, { (float)vect_X, (float)vect_Y, 0.0f });
+	Vector3D<float> Vec3Dresult {};
+	Vector3D<float> Vec3Drot { (float)vect_X, (float)vect_Y, 0.0f };
+	Matrix3D::MatrixMultiply(&Vec3Dresult, &TacticalClass::Instance->IsoTransformMatrix, &Vec3Drot);
 	a1->Z = 0;
 	a1->X = (int)Vec3Dresult.X;
 	a1->Y = (int)Vec3Dresult.Y;
@@ -555,6 +564,9 @@ bool TActionExt::Occured(TActionClass* pThis, ActionArgs const& args, bool& ret)
 	case PhobosTriggerAction::PrintMessageRemainingTechnos:
 		ret = TActionExt::PrintMessageRemainingTechnos(pThis, pHouse, pObject, pTrigger, args.plocation);
 		break;
+	case PhobosTriggerAction::SetDropCrate:
+		ret = TActionExt::SetDropCrate(pThis, pHouse, pObject, pTrigger, args.plocation);
+		break;
 	default:
 	{
 		// Vanilla overriden
@@ -577,6 +589,42 @@ bool TActionExt::Occured(TActionClass* pThis, ActionArgs const& args, bool& ret)
 }
 
 //========================================================================================
+
+bool TActionExt::SetDropCrate(TActionClass* pThis, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct* plocation)
+{
+	for (auto pTechno : *TechnoClass::Array)
+	{
+		const auto pAttachedTag = pTechno->AttachedTag;
+
+		if (!pAttachedTag)
+			continue;
+
+		bool foundTrigger = false;
+		auto pAttachedTrigger = pAttachedTag->FirstTrigger;
+
+		// A tag can link multiple triggers
+		do
+		{
+			if (IS_SAME_STR_(pAttachedTrigger->Type->ID, pTrigger->Type->ID) == 0)
+				foundTrigger = true;
+
+			pAttachedTrigger = pAttachedTrigger->NextTrigger;
+		}
+		while (pAttachedTrigger && !foundTrigger);
+
+		if (!foundTrigger)
+			continue;
+
+		// Overwrite the default techno's crate properties
+		auto pExt = TechnoExtContainer::Instance.Find(pTechno);
+		pExt->DropCrate = pThis->Value;
+
+		if (pExt->DropCrate == 1)
+			pExt->DropCrateType = static_cast<PowerupEffects>(pThis->Param3);
+	}
+
+	return true;
+}
 
 bool TActionExt::DrawLaserBetweenWaypoints(TActionClass* pThis, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct* plocation)
 {
@@ -633,7 +681,7 @@ bool TActionExt::SaveGame(TActionClass* pThis, HouseClass* pHouse, ObjectClass* 
 	if (SessionClass::Instance->GameMode == GameMode::Campaign || SessionClass::Instance->GameMode == GameMode::Skirmish)
 	{
 		auto nMessage = StringTable::LoadString(GameStrings::TXT_SAVING_GAME());
-		auto pUI = UI::sub_623230((LPARAM)nMessage, 0, 0);
+		auto pUI = UI::ShowMessageWithCancelOnly((LPARAM)nMessage, 0, 0);
 		WWMouseClass::Instance->HideCursor();
 
 		if (pUI)
@@ -641,32 +689,10 @@ bool TActionExt::SaveGame(TActionClass* pThis, HouseClass* pHouse, ObjectClass* 
 			UI::FocusOnWindow(pUI);
 		}
 
-		auto PrintMessage = [](const wchar_t* pMessage)
-			{
-				MessageListClass::Instance->PrintMessage(
-					pMessage,
-					RulesClass::Instance->MessageDelay,
-					HouseClass::CurrentPlayer->ColorSchemeIndex,
-					true
-				);
-			};
-
-		SYSTEMTIME time;
-		Imports::GetLocalTime.get()(&time);
-		const std::string fName = std::format("Map.{:04}{:02}{:02}-{:02}{:02}{:02}-{:05}.sav",
-			time.wYear,
-			time.wMonth,
-			time.wDay,
-			time.wHour,
-			time.wMinute,
-			time.wSecond,
-			time.wMilliseconds
-		);
-
-		const std::wstring fDesc = std::format(L"{} - {}"
-			, SessionClass::Instance->GameMode == GameMode::Campaign ? ScenarioClass::Instance->UINameLoaded : ScenarioClass::Instance->Name
-			, StringTable::LoadString(pThis->Text)
-		);
+		const std::string fName = "Map." + Debug::GetCurTimeA() + ".sav";
+		std::wstring fDesc = SessionClass::Instance->GameMode == GameMode::Campaign ? ScenarioClass::Instance->UINameLoaded : ScenarioClass::Instance->Name;
+		fDesc += L" - ";
+		fDesc += StringTable::LoadString(pThis->Text);
 
 		bool Status = ScenarioClass::Instance->SaveGame(fName.c_str(), fDesc.c_str());
 
@@ -677,10 +703,11 @@ bool TActionExt::SaveGame(TActionClass* pThis, HouseClass* pHouse, ObjectClass* 
 			UI::EndDialog(pUI);
 		}
 
-		if (Status)
-			PrintMessage(StringTable::LoadString(GameStrings::TXT_GAME_WAS_SAVED));
-		else
-			PrintMessage(StringTable::LoadString(GameStrings::TXT_ERROR_SAVING_GAME));
+		auto pMessage = Status ?
+			StringTable::LoadString(GameStrings::TXT_GAME_WAS_SAVED) :
+			StringTable::LoadString(GameStrings::TXT_ERROR_SAVING_GAME);
+
+		GeneralUtils::PrintMessage(pMessage);
 	}
 
 	return true;
@@ -841,7 +868,7 @@ NOINLINE HouseClass* GetPlayerAt(int param, HouseClass* const pOwnerHouse = null
 
 	if (param < 0)
 	{
-		std::vector<HouseClass*> housesListIdx;
+		StackVector<HouseClass*, 256> housesListIdx;
 
 		switch (param)
 		{
@@ -854,12 +881,12 @@ NOINLINE HouseClass* GetPlayerAt(int param, HouseClass* const pOwnerHouse = null
 					&& !HouseExtData::IsObserverPlayer(pHouse)
 					&& !pHouse->Type->MultiplayPassive)
 				{
-					housesListIdx.push_back(pHouse);
+					housesListIdx->push_back(pHouse);
 				}
 			}
 
-			return housesListIdx.empty() ?
-				nullptr : housesListIdx[ScenarioClass::Instance->Random.RandomFromMax(housesListIdx.size() - 1)];
+			return housesListIdx->empty() ?
+				nullptr : housesListIdx[ScenarioClass::Instance->Random.RandomFromMax(housesListIdx->size() - 1)];
 		}
 		case -2:
 		{
@@ -883,13 +910,13 @@ NOINLINE HouseClass* GetPlayerAt(int param, HouseClass* const pOwnerHouse = null
 					&& !pHouse->Defeated
 					&& !HouseExtData::IsObserverPlayer(pHouse))
 				{
-					housesListIdx.push_back(pHouse);
+					housesListIdx->push_back(pHouse);
 				}
 			}
 
-			return housesListIdx.empty() ?
+			return housesListIdx->empty() ?
 				nullptr :
-				housesListIdx[(ScenarioClass::Instance->Random.RandomFromMax(housesListIdx.size() - 1))]
+				housesListIdx[(ScenarioClass::Instance->Random.RandomFromMax(housesListIdx->size() - 1))]
 				;
 		}
 		default:
@@ -1185,7 +1212,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 		return true;
 	// Example:
 	// ID=ActionCount,[Action1],507,4,[CSFKey],[HouseIndex],[AIHousesLists Index],[AITargetTypes Index],[MesageDelay],A,[ActionX]
-	std::vector<HouseClass*> pHousesList;
+	StackVector<HouseClass*, 256> pHousesList;
 
 	// Obtain houses
 	int param3 = pThis->Param3;
@@ -1208,7 +1235,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 
 	if (param3 >= 0)
 	{
-		pHousesList.push_back(HouseClass::Array->GetItem(param3));
+		pHousesList->push_back(HouseClass::Array->GetItem(param3));
 	}
 	else
 	{
@@ -1234,17 +1261,17 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 			for (auto pHouse : *HouseClass::Array)
 			{
 				if (pHouse->Type == pHouseType && !pHouse->Defeated && !pHouse->IsObserver())
-					pHousesList.push_back(pHouse);
+					pHousesList->push_back(pHouse);
 			}
 		}
 
 		// Nothing to check
-		if (pHousesList.empty())
+		if (pHousesList->empty())
 			return true;
 	}
 
 	// Read the ID list of technos
-	int listIdx = std::abs(pThis->Param5);
+	int listIdx = Math::abs(pThis->Param5);
 
 	if ((size_t)listIdx < RulesExtData::Instance()->AIHousesLists.size()
 		|| RulesExtData::Instance()->AITargetTypesLists[listIdx].empty())
@@ -1267,7 +1294,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 			if (!IsUnitAvailable(pTechno, false) || pTechno->GetTechnoType() != pType)
 				continue;
 
-			for (const auto& pHouse : pHousesList)
+			for (const auto& pHouse : pHousesList.container())
 			{
 				if (pTechno->Owner == pHouse)
 				{

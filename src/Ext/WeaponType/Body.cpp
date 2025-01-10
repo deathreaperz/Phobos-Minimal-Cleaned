@@ -7,13 +7,12 @@
 #include <Ext/TechnoType/Body.h>
 #include <Ext/Techno/Body.h>
 
-int WeaponTypeExtData::nOldCircumference = DiskLaserClass::Radius;
-PhobosMap<EBolt*, const WeaponTypeExtData*> WeaponTypeExtData::boltWeaponTypeExt;
+#include <EBolt.h>
 
 void WeaponTypeExtData::Initialize()
 {
 	Burst_Delays.reserve(10);
-	this->RadType = RadTypeClass::Array[0].get();
+	this->RadType = RadTypeClass::Array.begin()->get();
 }
 
 // =============================
@@ -34,6 +33,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->DiskLaser_Circumference = (int)(this->DiskLaser_Radius * Math::Pi * 2);
 	}
 
+#ifdef _Enable
 	int Bolt_Count;
 	if (detail::read(Bolt_Count, exINI, pSection, "Bolt.Count") && Bolt_Count > 0)
 	{
@@ -52,6 +52,8 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->WeaponBolt_Data = data;
 	}
 	else
+#endif
+
 	{
 		this->Bolt_Color1.Read(exINI, pSection, "Bolt.Color1");
 		this->Bolt_Color2.Read(exINI, pSection, "Bolt.Color2");
@@ -96,6 +98,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->DelayedFire_DurationTimer.Read(exINI, pSection, "DelayedFire.DurationTimer");
 	this->Burst_FireWithinSequence.Read(exINI, pSection, "Burst.FireWithinSequence");
 	this->ROF_RandomDelay.Read(exINI, pSection, "ROF.RandomDelay");
+	this->ChargeTurret_Delays.Read(exINI, pSection, "ChargeTurret.Delays");
 	this->OmniFire_TurnToTarget.Read(exINI, pSection, "OmniFire.TurnToTarget");
 
 #pragma region Otamaa
@@ -188,6 +191,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->ExtraWarheads.Read(exINI, pSection, "ExtraWarheads");
 	this->ExtraWarheads_DamageOverrides.Read(exINI, pSection, "ExtraWarheads.DamageOverrides");
 	this->ExtraWarheads_DetonationChances.Read(exINI, pSection, "ExtraWarheads.DetonationChances");
+	this->ExtraWarheads_FullDetonation.Read(exINI, pSection, "ExtraWarheads.FullDetonation");
 	this->Burst_Retarget.Read(exINI, pSection, "Burst.Retarget");
 	this->KickOutPassenger.Read(exINI, pSection, "KickOutPassenger");
 
@@ -203,6 +207,9 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->RecoilForce.Read(exINI, pSection, "RecoilForce");
 	//this->BlockageTargetingBypassDamageOverride.Read(exINI, pSection, "BlockageTargetingBypassDamageOverride");
 
+	// AttachEffect
+	this->AttachEffects.LoadFromINI(pINI, pSection);
+
 	this->AttachEffect_RequiredTypes.Read(exINI, pSection, "AttachEffect.RequiredTypes");
 	this->AttachEffect_DisallowedTypes.Read(exINI, pSection, "AttachEffect.DisallowedTypes");
 	exINI.ParseList(this->AttachEffect_RequiredGroups, pSection, "AttachEffect.RequiredGroups");
@@ -211,7 +218,13 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->AttachEffect_RequiredMaxCounts.Read(exINI, pSection, "AttachEffect.RequiredMaxCounts");
 	this->AttachEffect_DisallowedMinCounts.Read(exINI, pSection, "AttachEffect.DisallowedMinCounts");
 	this->AttachEffect_DisallowedMaxCounts.Read(exINI, pSection, "AttachEffect.DisallowedMaxCounts");
+	this->AttachEffect_CheckOnFirer.Read(exINI, pSection, "AttachEffect.CheckOnFirer");
 	this->AttachEffect_IgnoreFromSameSource.Read(exINI, pSection, "AttachEffect.IgnoreFromSameSource");
+
+	this->AttachEffect_Enable = (this->AttachEffects.AttachTypes.size() > 0 || this->AttachEffects.RemoveTypes.size() > 0 || this->AttachEffects.RemoveGroups.size() > 0);
+
+	this->FireOnce_ResetSequence.Read(exINI, pSection, "FireOnce.ResetSequence");
+	this->NoRepeatFire.Read(exINI, pSection, "NoRepeatFire");
 }
 
 int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass* pFirer, std::optional<int> fallback)
@@ -250,9 +263,9 @@ int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass
 
 	{
 		auto pExt = TechnoExtContainer::Instance.Find(pTechno);
-		if (pExt->AE_ExtraRange.Enabled())
+		if (pExt->AE.ExtraRange.Enabled())
 		{
-			range = pExt->AE_ExtraRange.Get(range, pThis);
+			range = pExt->AE.ExtraRange.Get(range, pThis);
 		}
 	}
 	return MaxImpl(range, 0);
@@ -260,15 +273,22 @@ int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass
 
 #include <New/PhobosAttachedAffect/Functions.h>
 
-bool WeaponTypeExtData::HasRequiredAttachedEffects(TechnoClass* pTechno, TechnoClass* pFirer)
+bool WeaponTypeExtData::HasRequiredAttachedEffects(TechnoClass* pTarget, TechnoClass* pFirer)
 {
-	bool hasRequiredTypes = this->AttachEffect_RequiredTypes.size() > 0;
-	bool hasDisallowedTypes = this->AttachEffect_DisallowedTypes.size() > 0;
-	bool hasRequiredGroups = this->AttachEffect_RequiredGroups.size() > 0;
-	bool hasDisallowedGroups = this->AttachEffect_DisallowedGroups.size() > 0;
+	bool hasRequiredTypes = !this->AttachEffect_RequiredTypes.empty();
+	bool hasDisallowedTypes = !this->AttachEffect_DisallowedTypes.empty();
+	bool hasRequiredGroups = !this->AttachEffect_RequiredGroups.empty();
+	bool hasDisallowedGroups = !this->AttachEffect_DisallowedGroups.empty();
 
 	if (hasRequiredTypes || hasDisallowedTypes || hasRequiredGroups || hasDisallowedGroups)
 	{
+		auto pTechno = pTarget;
+		if (this->AttachEffect_CheckOnFirer && pFirer)
+			pTechno = pFirer;
+
+		if (!pTechno || !pTechno->IsAlive)
+			return true;
+
 		auto const pTechnoExt = TechnoExtContainer::Instance.Find(pTechno);
 
 		if (hasDisallowedTypes && PhobosAEFunctions::HasAttachedEffects(pTechno, this->AttachEffect_DisallowedTypes, false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_DisallowedMinCounts, &this->AttachEffect_DisallowedMaxCounts))
@@ -341,6 +361,7 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->DelayedFire_DurationTimer)
 		.Process(this->Burst_FireWithinSequence)
 		.Process(this->ROF_RandomDelay)
+		.Process(this->ChargeTurret_Delays)
 		.Process(this->OmniFire_TurnToTarget)
 		.Process(this->Ylo)
 		.Process(this->Xlo)
@@ -389,7 +410,9 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->ApplyDamage)
 		.Process(this->Cursor_Attack)
 		.Process(this->Cursor_AttackOutOfRange)
+#ifdef _Enable
 		.Process(this->WeaponBolt_Data)
+#endif
 		.Process(this->Bolt_Color1)
 		.Process(this->Bolt_Color2)
 		.Process(this->Bolt_Color3)
@@ -399,6 +422,7 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->ExtraWarheads)
 		.Process(this->ExtraWarheads_DamageOverrides)
 		.Process(this->ExtraWarheads_DetonationChances)
+		.Process(this->ExtraWarheads_FullDetonation)
 		.Process(this->Burst_Retarget)
 		.Process(this->KickOutPassenger)
 
@@ -422,7 +446,14 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->AttachEffect_RequiredMaxCounts)
 		.Process(this->AttachEffect_DisallowedMinCounts)
 		.Process(this->AttachEffect_DisallowedMaxCounts)
+		.Process(this->AttachEffect_CheckOnFirer)
 		.Process(this->AttachEffect_IgnoreFromSameSource)
+
+		.Process(this->FireOnce_ResetSequence)
+
+		.Process(this->AttachEffects)
+		.Process(this->AttachEffect_Enable)
+		.Process(this->NoRepeatFire)
 		;
 
 	MyAttachFireDatas.Serialize(Stm);
@@ -573,28 +604,32 @@ DEFINE_HOOK(0x77311D, WeaponTypeClass_SDDTOR, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x772EB0, WeaponTypeClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x772CD0, WeaponTypeClass_SaveLoad_Prefix, 0x7)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeWeaponTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(WeaponTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	WeaponTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->WeaponTypeClass::Load(pStm);
 
-	WeaponTypeExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		WeaponTypeExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x772EA6, WeaponTypeClass_Load_Suffix, 0x6)
+HRESULT __stdcall FakeWeaponTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	WeaponTypeExtContainer::Instance.LoadStatic();
-	return 0;
+	WeaponTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->WeaponTypeClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		WeaponTypeExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x772F8C, WeaponTypeClass_Save, 0x5)
-{
-	WeaponTypeExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7F73CC, MiscTools::to_DWORD(&FakeWeaponTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F73D0, MiscTools::to_DWORD(&FakeWeaponTypeClass::_Save))
 
 DEFINE_HOOK_AGAIN(0x7729C7, WeaponTypeClass_LoadFromINI, 0x5)
 DEFINE_HOOK_AGAIN(0x7729D6, WeaponTypeClass_LoadFromINI, 0x5)

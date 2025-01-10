@@ -31,8 +31,10 @@
 #include <SlaveManagerClass.h>
 
 #include "Header.h"
-#include <Ares_TechnoExt.h>
+
 #include <Misc/PhobosGlobal.h>
+
+#include <RadarEventClass.h>
 
 DEFINE_HOOK(0x46920B, BulletClass_Detonate, 6)
 {
@@ -48,8 +50,8 @@ DEFINE_HOOK(0x46920B, BulletClass_Detonate, 6)
 	auto const pTechno = pThis->Owner ? pThis->Owner : nullptr;
 	auto const pOwnerHouse = pTechno ? pTechno->Owner : BulletExtContainer::Instance.Find(pThis)->Owner;
 
-	pWHExt->Detonate(pTechno, pOwnerHouse, pThis, *pCoordsDetonation, pThis->WeaponType ? pThis->WeaponType->Damage : 0);
-	PhobosGlobal::Instance()->DetonateDamageArea = false;
+	//pWHExt->Detonate(pTechno, pOwnerHouse, pThis, *pCoordsDetonation , pThis->WeaponType ? pThis->WeaponType->Damage : 0);
+	//PhobosGlobal::Instance()->DetonateDamageArea = false;
 
 	// this snapping stuff does not belong here. it should go into BulletClass::Fire
 	auto coords = *pCoordsDetonation;

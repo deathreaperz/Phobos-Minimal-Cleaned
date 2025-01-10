@@ -1,7 +1,6 @@
 #pragma once
 #include <TiberiumClass.h>
 
-#include <Helpers/Macro.h>
 #include <Utilities/Container.h>
 #include <Utilities/TemplateDefB.h>
 #include <Utilities/Macro.h>
@@ -16,13 +15,12 @@ public:
 	using base_type = TiberiumClass;
 
 	//Dont forget to remove this if ares one re-enabled
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0xAC;
-#endif
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 public:
+
 	Valueable<PaletteManager*> Palette {}; //CustomPalette::PaletteMode::Temperate
 	Nullable<AnimTypeClass*> OreTwinkle {};
 	Nullable<int> OreTwinkleChance {};
@@ -47,9 +45,6 @@ public:
 
 	Valueable<std::string> LinkedOverlayType {};
 	Valueable<int> PipIndex { -1 };
-
-	TiberiumExtData()noexcept = default;
-	~TiberiumExtData() noexcept = default;
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
@@ -112,12 +107,26 @@ class TiberiumExtContainer final : public Container<TiberiumExtData>
 {
 public:
 	static TiberiumExtContainer Instance;
-	static std::map<OverlayTypeClass*, TiberiumClass*> LinkedType;
+	inline static PhobosMap<OverlayTypeClass*, TiberiumClass*> LinkedType;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
 
 	void Clear();
 
-	CONSTEXPR_NOCOPY_CLASSB(TiberiumExtContainer, TiberiumExtData, "TiberiumClass");
+	//CONSTEXPR_NOCOPY_CLASSB(TiberiumExtContainer, TiberiumExtData, "TiberiumClass");
 };
+
+class FakeTiberiumClass : public TiberiumClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	TiberiumExtData* _GetExtData()
+	{
+		return *reinterpret_cast<TiberiumExtData**>(((DWORD)this) + TiberiumExtData::ExtOffset);
+	}
+};
+static_assert(sizeof(FakeTiberiumClass) == sizeof(TiberiumClass), "Invalid Size !");

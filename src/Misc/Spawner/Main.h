@@ -32,8 +32,8 @@ struct SpawnerMain
 {
 	struct Configs
 	{
-		static bool Enabled; // false
-		static bool Active; //false
+		static inline bool Enabled; // false
+		static inline bool Active; //false
 
 	public:
 
@@ -55,7 +55,7 @@ struct SpawnerMain
 		bool AllowChat { true };
 	public:
 
-		static std::unique_ptr<Configs> m_Ptr;
+		static Configs m_Ptr;
 	};
 
 	struct GameConfigs
@@ -65,7 +65,7 @@ struct SpawnerMain
 		static void AssignHouses();
 
 	public:
-		static std::unique_ptr<GameConfigs> m_Ptr;
+		static  GameConfigs m_Ptr;
 
 	private:
 		static bool StartNewScenario(const char* scenarioName);
@@ -101,6 +101,8 @@ struct SpawnerMain
 			{
 			}
 
+			~PlayerConfig() = default;
+
 			void LoadFromINIFile(CCINIClass* pINI, int index);
 		};
 
@@ -112,12 +114,14 @@ struct SpawnerMain
 			int SpawnLocations;
 			int Alliances[8];
 
-			HouseConfig()
+			constexpr HouseConfig()
 				: IsObserver { false }
 				, SpawnLocations { -2 }
 				, Alliances { -1, -1, -1, -1, -1, -1, -1, -1 }
 			{
 			}
+
+			constexpr ~HouseConfig() = default;
 
 			void LoadFromINIFile(CCINIClass* pINI, int index);
 		};
@@ -182,8 +186,8 @@ struct SpawnerMain
 		HouseConfig Houses[8];
 
 		// Extended Options
-		bool Ra2Mode;
 		bool QuickMatch;
+		bool SpawnerHackMPNodes;
 		bool SkipScoreScreen;
 		bool WriteStatistics;
 		bool AINamesByDifficulty;
@@ -277,9 +281,9 @@ struct SpawnerMain
 			}
 
 			// Extended Options
-			, Ra2Mode { false }
 			, QuickMatch { false }
-			, SkipScoreScreen { Configs::m_Ptr->SkipScoreScreen }
+			, SpawnerHackMPNodes { false }
+			, SkipScoreScreen { Configs::m_Ptr.SkipScoreScreen }
 			, WriteStatistics { false }
 			, AINamesByDifficulty { false }
 			, ContinueWithoutHumans { false }
@@ -295,22 +299,21 @@ struct SpawnerMain
 		void LoadFromINIFile(CCINIClass* pINI);
 	};
 
-	static std::list<MixFileClass*> LoadedMixFiles;
+	inline static std::list<MixFileClass*> LoadedMixFiles;
 
-	static void ExeRun(bool HasCNCnet);
 	static void CmdLineParse(char*);
 	static void PrintInitializeLog();
 
 	static void LoadConfigurations(); // Early load settings from ra2md
 	static void ApplyStaticOptions(); // Apply all the settings
 
-	static Configs* GetMainConfigs()
+	static constexpr Configs* GetMainConfigs()
 	{
-		return Configs::m_Ptr.get();
+		return &Configs::m_Ptr;
 	}
 
-	static GameConfigs* GetGameConfigs()
+	static constexpr GameConfigs* GetGameConfigs()
 	{
-		return GameConfigs::m_Ptr.get();
+		return &GameConfigs::m_Ptr;
 	}
 };

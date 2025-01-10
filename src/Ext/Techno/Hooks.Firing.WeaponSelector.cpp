@@ -46,13 +46,15 @@ DEFINE_HOOK(0x6F33CD, TechnoClass_WhatWeaponShouldIUse_ForceFire, 0x6)
 	GET(TechnoClass*, pThis, ESI);
 	GET_STACK(AbstractClass*, pTarget, STACK_OFFS(0x18, -0x4));
 
-	if (const auto pCell = specific_cast<CellClass*>(pTarget))
+	if (const auto pCell = cast_to<CellClass*>(pTarget))
 	{
 		auto const pWeaponPrimary = pThis->GetWeapon(0)->WeaponType;
 		auto const pWeaponSecondary = pThis->GetWeapon(1)->WeaponType;
 		const auto pPrimaryExt = WeaponTypeExtContainer::Instance.Find(pWeaponPrimary);
 
-		if (pWeaponSecondary && !EnumFunctions::IsCellEligible(pCell, pPrimaryExt->CanTarget, true, true))
+		if (pWeaponSecondary && !EnumFunctions::IsCellEligible(pCell, pPrimaryExt->CanTarget, true, true)
+			|| (pPrimaryExt->AttachEffect_CheckOnFirer && !pPrimaryExt->HasRequiredAttachedEffects(pThis, pThis)
+		))
 		{
 			R->EAX(1);
 			return UseWeaponIndex;
@@ -61,7 +63,7 @@ DEFINE_HOOK(0x6F33CD, TechnoClass_WhatWeaponShouldIUse_ForceFire, 0x6)
 		{
 			auto const pOverlayType = OverlayTypeClass::Array()->Items[pCell->OverlayTypeIndex];
 
-			if (pCell->OverlayData >> 4 != pOverlayType->DamageLevels)
+			if (pOverlayType->Wall && pCell->OverlayData >> 4 != pOverlayType->DamageLevels)
 			{
 				R->EAX(TechnoExtData::GetWeaponIndexAgainstWall(pThis, pOverlayType));
 				return UseWeaponIndex;
@@ -117,6 +119,43 @@ DEFINE_HOOK(0x6F3428, TechnoClass_WhatWeaponShouldIUse_ForceWeapon, 0x6)
 		{
 			R->EAX(pTechnoTypeExt->ForceWeapon_UnderEMP.Get());
 			return ReturnHandled;
+		}
+
+		if (!pTechnoTypeExt->ForceWeapon_InRange.empty())
+		{
+			for (size_t i = 0; i < pTechnoTypeExt->ForceWeapon_InRange.size(); i++)
+			{
+				int distance = 0;
+
+				// Value below 0 means Range won't be overriden
+				if (i < pTechnoTypeExt->ForceWeapon_InRange_Overrides.size() && pTechnoTypeExt->ForceWeapon_InRange_Overrides[i] > 0)
+					distance = static_cast<int>(pTechnoTypeExt->ForceWeapon_InRange_Overrides[i] * 256.0);
+
+				if (pTechnoTypeExt->ForceWeapon_InRange[i] >= 0)
+				{
+					auto const pWeapon = pThis->GetWeapon(pTechnoTypeExt->ForceWeapon_InRange[i])->WeaponType;
+					distance = distance > 0 ? distance : pWeapon->Range;
+
+					if (pTechnoTypeExt->ForceWeapon_InRange_ApplyRangeModifiers)
+						distance = WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis, distance);
+
+					if (pThis->DistanceFrom(pTarget) <= distance)
+					{
+						R->EAX(pTechnoTypeExt->ForceWeapon_InRange[i]);
+						return ReturnHandled;
+					}
+				}
+				else
+				{
+					// Apply range modifiers regardless of weapon
+					if (pTechnoTypeExt->ForceWeapon_InRange_ApplyRangeModifiers)
+						distance = WeaponTypeExtData::GetRangeWithModifiers(nullptr, pThis, distance);
+
+					// Don't force weapon if range satisfied
+					if (pThis->DistanceFrom(pTarget) <= distance)
+						break;
+				}
+			}
 		}
 	}
 
@@ -305,24 +344,24 @@ DEFINE_HOOK(0x6F36DB, TechnoClass_WhatWeaponShouldIUse, 0x8)
 	return vsData_Primary->Verses != 0.0 ? FurtherCheck : Secondary;
 }
 
-DEFINE_HOOK(0x6FF4CC, TechnoClass_FireAt_ToggleLaserWeaponIndex, 0x6)
-{
-	GET(TechnoClass* const, pThis, ESI);
-	GET(WeaponTypeClass* const, pWeapon, EBX);
-	GET_BASE(int, weaponIndex, 0xC);
-
-	if (pThis->WhatAmI() == BuildingClass::AbsID && pWeapon->IsLaser)
-	{
-		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-
-		if (pExt->CurrentLaserWeaponIndex.empty())
-			pExt->CurrentLaserWeaponIndex = weaponIndex;
-		else
-			pExt->CurrentLaserWeaponIndex.clear();
-	}
-
-	return 0;
-}
+// DEFINE_HOOK(0x6FF4CC, TechnoClass_FireAt_ToggleLaserWeaponIndex, 0x6)
+// {
+// 	GET(TechnoClass* const, pThis, ESI);
+// 	GET(WeaponTypeClass* const, pWeapon, EBX);
+// 	GET_BASE(int, weaponIndex, 0xC);
+//
+// 	if (pThis->WhatAmI() == BuildingClass::AbsID && pWeapon->IsLaser)
+// 	{
+// 		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+//
+// 		if (pExt->CurrentLaserWeaponIndex.empty())
+// 			pExt->CurrentLaserWeaponIndex = weaponIndex;
+// 		else
+// 			pExt->CurrentLaserWeaponIndex.clear();
+// 	}
+//
+// 	return 0;
+// }
 
 DEFINE_HOOK(0x6F37EB, TechnoClass_WhatWeaponShouldIUse_AntiAir, 0x6)
 {
@@ -350,7 +389,7 @@ DEFINE_HOOK(0x6F3432, TechnoClass_WhatWeaponShouldIUse_Gattling, 0xA)
 	int oddWeaponIndex = 2 * pThis->CurrentGattlingStage;
 	int evenWeaponIndex = oddWeaponIndex + 1;
 	int chosenWeaponIndex = oddWeaponIndex;
-	int eligibleWeaponIndex = TechnoExtData::PickWeaponIndex(pThis, pTargetTechno, pTarget, oddWeaponIndex, evenWeaponIndex, true, true);
+	int eligibleWeaponIndex = TechnoExtData::PickWeaponIndex(pThis, pTargetTechno, pTarget, oddWeaponIndex, evenWeaponIndex, true,true);
 
 	if (eligibleWeaponIndex != -1)
 	{
@@ -373,7 +412,8 @@ DEFINE_HOOK(0x6F3432, TechnoClass_WhatWeaponShouldIUse_Gattling, 0xA)
 
 		if (!skipRemainingChecks)
 		{
-			if (std::abs(
+
+			if (Math::abs(
 				//GeneralUtils::GetWarheadVersusArmor(pWeaponOdd->Warhead , pTargetTechno->GetTechnoType()->Armor)
 				WarheadTypeExtContainer::Instance.Find(pWeaponOdd->Warhead)->GetVerses(
 					TechnoExtData::GetArmor(pTargetTechno)).Verses
@@ -443,8 +483,7 @@ DEFINE_HOOK(0x70E1A0, TechnoClass_GetTurretWeapon_LaserWeapon, 0x5)
 	{
 		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
-		if (!pExt->CurrentLaserWeaponIndex.empty())
-		{
+		if (!pExt->CurrentLaserWeaponIndex.empty()) {
 			R->EAX(pThis->GetWeapon(pExt->CurrentLaserWeaponIndex));
 			return 0x70E1C8;
 		}

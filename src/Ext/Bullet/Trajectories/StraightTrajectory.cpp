@@ -176,7 +176,7 @@ void StraightTrajectory::OnAIPreDetonate()
 	if (type->PassThrough)
 		return;
 
-	const auto pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	const auto pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	CoordStruct coords = (pTarget ? pTarget->GetCoords() : pBullet->Data.Location);
 
 	if (coords.DistanceFrom(pBullet->Location) <= type->SnapThreshold.Get(type->TargetSnapDistance.Get()))
@@ -279,7 +279,7 @@ void StraightTrajectoryVarianB::OnAIPreDetonate()
 	if (type->PassThrough)
 		return;
 
-	const auto pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	const auto pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	const auto pCoords = pTarget ? pTarget->GetCoords() : pBullet->Data.Location;
 
 	if (pCoords.DistanceFrom(pBullet->Location) <= type->SnapThreshold.Get(type->TargetSnapDistance.Get()))

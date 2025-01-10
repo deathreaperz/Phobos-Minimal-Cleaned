@@ -1,17 +1,16 @@
 #pragma once
 
 #include <SidebarClass.h>
+#include <ArrayClasses.h>
 
 #include <Helpers/Macro.h>
-#include <Utilities/Container.h>
 #include <Utilities/TemplateDef.h>
-
-#include <map>
+#include <Utilities/SavegameDef.h>
 
 class SidebarExtData final
 {
 private:
-	static std::unique_ptr<SidebarExtData> Data;
+	static inline std::unique_ptr<SidebarExtData> Data;
 
 public:
 
@@ -20,10 +19,11 @@ public:
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
-public:
 
-	SidebarExtData() noexcept = default;
-	~SidebarExtData() noexcept = default;
+	bool SWSidebar_Enable { true };
+	DynamicVectorClass<int> SWSidebar_Indices {};
+
+public:
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -33,13 +33,13 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	static IStream* g_pStm;
-	static std::array<SHPReference*, 4u> TabProducingProgress;
+	inline static IStream* g_pStm;
+	inline static std::array<SHPReference*, 4u> TabProducingProgress;
 
 	static void Allocate(SidebarClass* pThis);
 	static void Remove(SidebarClass* pThis);
 
-	constexpr FORCEINLINE static SidebarExtData* Instance()
+	static SidebarExtData* Instance()
 	{
 		return Data.get();
 	}

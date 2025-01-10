@@ -15,33 +15,35 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/House/Body.h>
 
-DEFINE_HOOK(0x711F39, TechnoTypeClass_CostOf_FactoryPlant, 0x8)
-{
-	GET(TechnoTypeClass*, pThis, ESI);
-	GET(HouseClass*, pHouse, EDI);
-	REF_STACK(float, mult, STACK_OFFSET(0x10, -0x8));
+#include <TacticalClass.h>
 
-	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
+// DEFINE_HOOK(0x711F39, TechnoTypeClass_CostOf_FactoryPlant, 0x8)
+// {
+// 	GET(TechnoTypeClass*, pThis, ESI);
+// 	GET(HouseClass*, pHouse, EDI);
+// 	REF_STACK(float, mult, STACK_OFFSET(0x10, -0x8));
+//
+// 	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
+//
+// 	if (!pHouseExt->RestrictedFactoryPlants.empty())
+// 		mult *= pHouseExt->GetRestrictedFactoryPlantMult(pThis);
 
-	if (!pHouseExt->RestrictedFactoryPlants.empty())
-		mult *= pHouseExt->GetRestrictedFactoryPlantMult(pThis);
+// 	return 0;
+// }
 
-	return 0;
-}
-
-DEFINE_HOOK(0x711FDF, TechnoTypeClass_RefundAmount_FactoryPlant, 0x8)
-{
-	GET(TechnoTypeClass*, pThis, ESI);
-	GET(HouseClass*, pHouse, EDI);
-	REF_STACK(float, mult, STACK_OFFSET(0x10, -0x4));
-
-	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
-
-	if (!pHouseExt->RestrictedFactoryPlants.empty())
-		mult *= pHouseExt->GetRestrictedFactoryPlantMult(pThis);
-
-	return 0;
-}
+// DEFINE_HOOK(0x711FDF, TechnoTypeClass_RefundAmount_FactoryPlant, 0x8)
+// {
+// 	GET(TechnoTypeClass*, pThis, ESI);
+// 	GET(HouseClass*, pHouse, EDI);
+// 	REF_STACK(float, mult, STACK_OFFSET(0x10, -0x4));
+//
+// 	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
+//
+// 	if (!pHouseExt->RestrictedFactoryPlants.empty())
+// 		mult *= pHouseExt->GetRestrictedFactoryPlantMult(pThis);
+//
+// 	return 0;
+// }
 
 DEFINE_HOOK(0x707319, TechnoClass_CalcVoxelShadow_ShadowScale, 0x6)
 {
@@ -256,7 +258,7 @@ DEFINE_HOOK(0x73D223, UnitClass_DrawIt_OreGath, 0x6)
 			{
 				pSHP = pAnimType->GetImage();
 				if (const auto pPalette = AnimTypeExtContainer::Instance.Find(pAnimType)->Palette)
-					pDrawer = pPalette->GetConvert<PaletteManager::Mode::Temperate>();
+					pDrawer = pPalette->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(FileSystem::ANIM_PAL);
 			}
 
 			idxFrame = nFramesPerFacing * nFacing + (Unsorted::CurrentFrame + pThis->WalkedFramesSoFar) % nFramesPerFacing;
@@ -328,46 +330,89 @@ AnimTypeClass* GetDeployAnim(UnitClass* pThis)
 	return pThis->Type->DeployingAnim;
 }
 
-bool NOINLINE SetAnim(AnimTypeClass* pAnimType, UnitClass* pUnit, bool isDeploying)
-{
-	if (pUnit->DeployAnim)
-	{
-		return true;
-	}
+// bool NOINLINE SetAnim(AnimTypeClass* pAnimType , UnitClass* pUnit , bool isDeploying)
+// {
+// 	if(pUnit->DeployAnim) {
+// 		return true;
+// 	}
+//
+// 	auto const pExt = TechnoTypeExtContainer::Instance.Find(pUnit->Type);
+//
+// 	if (pAnimType) {
+// 		auto const pAnim = GameCreate<AnimClass>(pAnimType,
+// 			pUnit->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0,
+// 				!isDeploying ? pExt->DeployingAnim_ReverseForUndeploy.Get() : false);
+//
+// 			pUnit->DeployAnim = pAnim;
+// 			pAnim->SetOwnerObject(pUnit);
+//
+// 			if (pExt->DeployingAnim_UseUnitDrawer) {
+// 				pAnim->LightConvert = pUnit->GetRemapColour();
+// 			}
+//
+// 		return true;
+// 	}
+//
+// 	return false;
+// }
 
-	auto const pExt = TechnoTypeExtContainer::Instance.Find(pUnit->Type);
-
-	if (pAnimType)
-	{
-		auto const pAnim = GameCreate<AnimClass>(pAnimType,
-			pUnit->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0,
-				!isDeploying ? pExt->DeployingAnim_ReverseForUndeploy.Get() : false);
-
-		pUnit->DeployAnim = pAnim;
-		pAnim->SetOwnerObject(pUnit);
-
-		if (pExt->DeployingAnim_UseUnitDrawer)
-		{
-			pAnim->LightConvert = pUnit->GetRemapColour();
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
-DEFINE_HOOK(0x739B90, UnitClass_Deploy_DeployAnim, 0x6)
+DEFINE_HOOK(0x739B7C, UnitClass_SimpleDeploy_Facing, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
+	auto const pType = pThis->Type;
+	enum { PlayDeploySound = 0x739C70, SetAnimTimer = 0x739C20, SetDeployingState = 0x739C62 };
 
-	const auto pAnimType = GetDeployAnim(pThis);
+	if (!pThis->InAir)
+	{
+		R->BL(true);
 
-	if (!pAnimType)
-		return 0x739C6A;
+		if (const auto pAnimType = GetDeployAnim(pThis))
+		{
+			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-	return SetAnim(pAnimType, pThis, true) ?
-		0x739C20 : 0x739C62;
+			if (!pTypeExt->DeployingAnim_AllowAnyDirection)
+			{
+				// not sure what is the bitfrom or bitto so it generate this result
+				// yes iam dum , iam sorry - otamaa
+				const auto nRulesDeployDir = ((((RulesClass::Instance->DeployDir) >> 4) + 1) >> 1) & 7;
+				const FacingType nRaw = pTypeExt->DeployDir.isset() ? pTypeExt->DeployDir.Get() : (FacingType)nRulesDeployDir;
+				const auto nCurrent = (((((pThis->PrimaryFacing.Current().Raw) >> 12) + 1) >> 1) & 7);
+
+				if (nCurrent != (int)nRaw)
+				{
+					if (const auto pLoco = pThis->Locomotor.GetInterfacePtr())
+					{
+						if (!pLoco->Is_Moving_Now())
+						{
+							pLoco->Do_Turn(DirStruct { nRaw });
+						}
+
+						return PlayDeploySound; //adjust the facing first
+					}
+				}
+			}
+
+			if (pThis->DeployAnim)
+				return SetAnimTimer;
+
+			auto const pAnim = GameCreate<AnimClass>(pAnimType,
+			pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false);
+
+			pThis->DeployAnim = pAnim;
+			pAnim->SetOwnerObject(pThis);
+
+			if (pTypeExt->DeployingAnim_UseUnitDrawer)
+			{
+				pAnim->LightConvert = pThis->GetRemapColour();
+			}
+
+			return SetAnimTimer;
+		}
+
+		return SetDeployingState;
+	}
+
+	return PlayDeploySound;
 }
 
 DEFINE_HOOK(0x739D73, UnitClass_UnDeploy_DeployAnim, 0x6)
@@ -379,8 +424,24 @@ DEFINE_HOOK(0x739D73, UnitClass_UnDeploy_DeployAnim, 0x6)
 	if (!pAnimType)
 		return 0x739E4F;
 
-	return SetAnim(pAnimType, pThis, false) ?
-		0x739E04 : 0x739E46;
+	if (pThis->DeployAnim)
+		return 0x739E04;
+
+	auto const pExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+
+	auto const pAnim = GameCreate<AnimClass>(pAnimType,
+	pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0,
+				pExt->DeployingAnim_ReverseForUndeploy);
+
+	pThis->DeployAnim = pAnim;
+	pAnim->SetOwnerObject(pThis);
+
+	if (pExt->DeployingAnim_UseUnitDrawer)
+	{
+		pAnim->LightConvert = pThis->GetRemapColour();
+	}
+
+	return 0x739E04;
 }
 
 //DEFINE_HOOK(0x714706, TechnoTypeClass_read_DeployAnim, 0x9)
@@ -476,7 +537,7 @@ DEFINE_HOOK(0x513D2C, HoverLocomotionClass_ProcessBobbing_DeployToLand, 0x6)
 
 	GET(LocomotionClass*, pThis, ECX);
 
-	if (auto const pUnit = specific_cast<UnitClass*>(pThis->Owner))
+	if (auto const pUnit = cast_to<UnitClass*, false>(pThis->Owner))
 	{
 		if (pUnit->Deploying && pUnit->Type->DeployToLand)
 			return SkipBobbing;
@@ -495,7 +556,7 @@ DEFINE_HOOK(0x4AE670, DisplayClass_GetToolTip_EnemyUIName, 0x8)
 
 	if (!HouseExtData::IsObserverPlayer())
 	{
-		if (auto pFoot = generic_cast<FootClass*>(pObject))
+		if (auto pFoot = flag_cast_to<FootClass*, false>(pObject))
 		{
 			if (!pObject->IsDisguised())
 			{
@@ -543,7 +604,8 @@ DEFINE_HOOK(0x6FDFA8, TechnoClass_FireAt_SprayOffsets, 0x5)
 		R->Stack(0x88, pThis->Location.X + Coord->X);//X
 		R->Stack(0x8C, pThis->Location.Y + Coord->Y);//Y
 		R->EAX(pThis->Location.Z + Coord->Z); //Z
+		return 0x6FE218;
 	}
 
-	return 0x6FE218;
+	return 0x6FE140;
 }

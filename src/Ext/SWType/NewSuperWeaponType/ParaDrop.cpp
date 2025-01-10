@@ -160,6 +160,7 @@ void SW_ParaDrop::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 	\author AlexB
 	\date 2010-07-19
 */
+
 bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 {
 	auto const pType = pThis->Type;
@@ -349,12 +350,6 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 			for (int k = 0; k < Nums[i]; ++k)
 			{
 				auto const pNew = static_cast<FootClass*>(pType->CreateObject(pOwner));
-
-				if (!pNew)
-				{
-					continue;
-				}
-
 				pNew->SetLocation(pPlane->Location);
 				pNew->Limbo();
 

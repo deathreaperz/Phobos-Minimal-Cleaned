@@ -1,8 +1,9 @@
 #pragma once
 #include <SuperWeaponTypeClass.h>
 
-#include <Helpers/Macro.h>
 #include <Utilities/Container.h>
+#include <Utilities/PhobosPCXFile.h>
+#include <Utilities/PhobosFixedString.h>
 #include <Utilities/TemplateDefB.h>
 
 #include <New/Type/CursorTypeClass.h>
@@ -304,6 +305,7 @@ public:
 	Valueable<int> EMPulse_PulseDelay { 32 };
 	Nullable<AnimTypeClass*> EMPulse_PulseBall {};
 	ValueableVector<BuildingTypeClass*> EMPulse_Cannons {};
+	Valueable<bool> EMPulse_SuspendOthers {};
 #pragma endregion
 
 #pragma region Genetic Mutator
@@ -360,6 +362,7 @@ public:
 
 #pragma region Unit Delivery
 	ValueableVector<TechnoTypeClass*> SW_Deliverables {};
+	ValueableVector<int> SW_DeliverableCounts {};
 	ValueableVector<FacingType> SW_Deliverables_Facing {};
 	Valueable<bool> SW_DeliverBuildups { true };
 	Valueable<bool> SW_BaseNormal { true };
@@ -463,7 +466,12 @@ public:
 	NullableIdx<VoxClass> EVA_GrantOneTimeLaunched {};
 
 	Valueable<bool> CrateGoodies { false };
-	SWTypeExtData() noexcept = default;
+	Valueable<bool> SuperWeaponSidebar_Allow { true };
+	DWORD SuperWeaponSidebar_PriorityHouses { 0u };
+	DWORD SuperWeaponSidebar_RequiredHouses { 0xFFFFFFFFu };
+
+	Valueable<int> TabIndex { 1 };
+
 	~SWTypeExtData() noexcept;
 
 	void FireSuperWeapon(SuperClass* pSW, HouseClass* pHouse, const CellStruct* const pCell, bool IsCurrentPlayer);
@@ -552,11 +560,11 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	static bool Handled;
-	static SuperClass* TempSuper;
-	static SuperClass* LauchData;
+	inline static bool Handled;
+	inline static SuperClass* TempSuper;
+	inline static SuperClass* LauchData;
 	static std::array<const AITargetingModeInfo, (size_t)SuperWeaponAITargetingMode::count> AITargetingModes;
-	static SuperWeaponTypeClass* CurrentSWType;
+	inline static SuperWeaponTypeClass* CurrentSWType;
 
 	static void LimboDeliver(BuildingTypeClass* pType, HouseClass* pOwner, int ID);
 	static void WeightedRollsHandler(std::vector<int>& nResult, Valueable<double>& RandomBuffer, const ValueableVector<float>& rolls, const ValueableVector<ValueableVector<int>>& weights, size_t size);
@@ -572,12 +580,23 @@ class SWTypeExtContainer final : public Container<SWTypeExtData>
 public:
 	static SWTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(SWTypeExtContainer, SWTypeExtData, "SuperWeaponTypeClass");
 public:
 
 	static void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-	static bool InvalidateIgnorable(AbstractClass* ptr);
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
 	static void Clear();
 };
+
+class FakeSuperWeaponTypeClass : public SuperWeaponTypeClass
+{
+public:
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	SWTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<SWTypeExtData**>((DWORD)this + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeSuperWeaponTypeClass) == sizeof(SuperWeaponTypeClass), "Invalid Size !");

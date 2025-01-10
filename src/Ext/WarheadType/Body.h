@@ -1,37 +1,38 @@
 #pragma once
 #include <WarheadTypeClass.h>
+#include <CoordStruct.h>
 
-#include <Helpers/Macro.h>
 #include <Utilities/Container.h>
+#include <Utilities/PhobosMap.h>
 #include <Utilities/TemplateDef.h>
-#include <New/Type/ShieldTypeClass.h>
-#include <New/Entity/LauchSWData.h>
 
+#include <New/AnonymousType/AresAttachEffectTypeClass.h>
+
+#include <New/Type/ShieldTypeClass.h>
 #include <New/Type/ArmorTypeClass.h>
 #include <New/Type/ImmunityTypeClass.h>
 #include <New/Type/CrateTypeClass.h>
 
-#include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
+#include <New/Entity/LauchSWData.h>
+#include <New/PhobosAttachedAffect/AEAttachInfoTypeClass.h>
 
 #include <Misc/DynamicPatcher/Others/DamageText.h>
 #include <Misc/DynamicPatcher/AttachedAffects/Effects/PaintBall/PaintBall.h>
 
-#include <New/AnonymousType/AresAttachEffectTypeClass.h>
 #include <Utilities/VersesData.h>
 
 typedef std::vector<std::tuple< std::vector<int>, std::vector<int>, TransactValueType>> TransactData;
 
 struct args_ReceiveDamage;
 class ArmorTypeClass;
+class IonBlastClass;
 class WarheadTypeExtData final
 {
 public:
 	static constexpr size_t Canary = 0x22242222;
 	using base_type = WarheadTypeClass;
 
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0x1CC; //ares
-#endif
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -83,6 +84,8 @@ public:
 	Valueable<AffectedHouse> Crit_AffectsHouses { AffectedHouse::All };
 	ValueableVector<AnimTypeClass*> Crit_AnimList {};
 	Nullable<bool> Crit_AnimList_PickRandom {};
+	Nullable<bool> Crit_AnimList_CreateAll {};
+	ValueableVector<AnimTypeClass*> Crit_ActiveChanceAnims {};
 	Valueable<bool> Crit_AnimOnAffectedTargets { false };
 	ValueableVector<double> Crit_AffectBelowPercent { };
 	Valueable<bool> Crit_SuppressOnIntercept { false };
@@ -111,6 +114,8 @@ public:
 	Nullable<double> Shield_PassPercent {};
 	Nullable<int> Shield_ReceivedDamage_Minimum {};
 	Nullable<int> Shield_ReceivedDamage_Maximum {};
+	Valueable<double> Shield_ReceivedDamage_MinMultiplier { 1.0 };
+	Valueable<double> Shield_ReceivedDamage_MaxMultiplier { 1.0 };
 
 	Valueable<int> Shield_Respawn_Duration { 0 };
 	Nullable<double> Shield_Respawn_Amount { 0.0 };
@@ -156,7 +161,7 @@ public:
 	Valueable<bool> Transact_Experience_IgnoreNotTrainable { true };
 
 	Nullable<int> NotHuman_DeathSequence { };
-	Nullable<bool> AllowDamageOnSelf { };
+	Valueable<bool> AllowDamageOnSelf { false };
 	Valueable<bool> Debris_Conventional { false };
 	Valueable<int> GattlingStage { 0 };
 	Valueable<int> GattlingRateUp { 0 };
@@ -170,6 +175,7 @@ public:
 	Valueable<bool> MindControl_CanKill { false };
 
 	Valueable<bool> DetonateOnAllMapObjects { false };
+	Valueable<bool> DetonateOnAllMapObjects_Full { true };
 	Valueable<bool> DetonateOnAllMapObjects_RequireVerses { false };
 	Valueable<AffectedTarget> DetonateOnAllMapObjects_AffectTargets { AffectedTarget::All };
 	Valueable<AffectedHouse> DetonateOnAllMapObjects_AffectHouses { AffectedHouse::All };
@@ -304,7 +310,7 @@ public:
 	Valueable<bool> RemoveInflictedLocomotor { false };
 
 	Nullable<int> Rocker_AmplitudeOverride {};
-	Nullable<double> Rocker_AmplitudeMultiplier { };
+	Valueable<double> Rocker_AmplitudeMultiplier { 0.01 };
 
 	Nullable<int> PaintBallDuration { };
 	PaintballType PaintBallData { };
@@ -364,14 +370,10 @@ public:
 	std::vector<int> SpawnsCrate_Types {};
 	std::vector<int> SpawnsCrate_Weights {};
 
-	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_AttachTypes {};
-	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_RemoveTypes {};
-	ValueableVector<std::string> AttachEffect_RemoveGroups {};
-	ValueableVector<int> AttachEffect_CumulativeRemoveMinCounts {};
-	ValueableVector<int> AttachEffect_CumulativeRemoveMaxCounts {};
-	ValueableVector<int> AttachEffect_DurationOverrides {};
+	AEAttachInfoTypeClass PhobosAttachEffects {};
 
 	Valueable<bool> Shield_HitFlash { true };
+	Valueable<bool> Shield_SkipHitAnim { false };
 	Nullable<bool> CombatAlert_Suppress { };
 
 	Valueable<bool> AffectsOnFloor { true };
@@ -388,11 +390,21 @@ public:
 
 	ValueableVector<std::string> SuppressReflectDamage_Groups {};
 
-	bool Reflected { false };
-public:
+	Nullable<bool> RemoveParasites {};
 
-	WarheadTypeExtData() noexcept = default;
-	~WarheadTypeExtData() noexcept = default;
+	bool Reflected { false };
+	Valueable<bool> CLIsBlack { false };
+	Valueable<bool> ApplyMindamage { false };
+	Valueable<int> MinDamage { -1 };
+
+	TechnoClass* IntendedTarget { nullptr };
+
+	Valueable<WeaponTypeClass*> KillWeapon {};
+	Valueable<AffectedTarget> KillWeapon_AffectTargets { AffectedTarget::All };
+	Valueable<AffectedHouse> KillWeapon_AffectHouses { AffectedHouse::All };
+	ValueableVector<TechnoTypeClass*> KillWeapon_AffectTypes {};
+	ValueableVector<TechnoTypeClass*> KillWeapon_IgnoreTypes {};
+public:
 
 	void InitializeConstant();
 	void ApplyRemoveDisguise(HouseClass* pHouse, TechnoClass* pTarget) const;
@@ -483,7 +495,8 @@ private:
 	template <typename T>
 	void Serialize(T& Stm);
 public:
-	static PhobosMap<IonBlastClass*, WarheadTypeExtData*> IonBlastExt;
+	inline static PhobosMap<IonBlastClass*, WarheadTypeExtData*> IonBlastExt;
+
 	static void DetonateAt(
 		WarheadTypeClass* pThis,
 		ObjectClass* pTarget,
@@ -511,6 +524,8 @@ public:
 		HouseClass* pFiringHouse = nullptr
 	);
 
+	DamageAreaResult DamageAreaWithTarget(const CoordStruct& coords, int damage, TechnoClass* pSource, WarheadTypeClass* pWH, bool affectsTiberium, HouseClass* pSourceHouse, TechnoClass* pTarget);
+
 	static void CreateIonBlast(WarheadTypeClass* pThis, const CoordStruct& coords);
 
 	static void applyEMP(WarheadTypeClass* pWH, const CoordStruct& coords, TechnoClass* source);
@@ -521,10 +536,29 @@ class WarheadTypeExtContainer final : public Container<WarheadTypeExtData>
 public:
 	static WarheadTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(WarheadTypeExtContainer, WarheadTypeExtData, "WarheadTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(WarheadTypeExtContainer, WarheadTypeExtData, "WarheadTypeClass");
 public:
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
 	static void Clear();
 };
+
+class FakeWarheadTypeClass : public WarheadTypeClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	WarheadTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<WarheadTypeExtData**>(((DWORD)this) + WarheadTypeExtData::ExtOffset);
+	}
+
+	constexpr VersesData* GetVersesData(Armor armor)
+	{
+		return this->_GetExtData()->Verses.data() + static_cast<size_t>(armor);
+	}
+};
+static_assert(sizeof(FakeWarheadTypeClass) == sizeof(WarheadTypeClass), "Invalid Size !");

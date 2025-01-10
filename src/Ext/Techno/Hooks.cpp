@@ -27,6 +27,11 @@
 #include <New/PhobosAttachedAffect/Functions.h>
 #include <New/Entity/FlyingStrings.h>
 
+#include <Misc/SyncLogging.h>
+
+#include <BombClass.h>
+#include <SpawnManagerClass.h>
+
 // DEFINE_HOOK(0x448277 , BuildingClass_SetOwningHouse_Additionals , 5)
 // {
 // 	GET(BuildingClass* const, pThis, ESI);
@@ -50,6 +55,32 @@
 //	return announce ? 0 : 0x44848F; //early bailout
 //}
 
+DEFINE_HOOK(0x51AA40, InfantryClass_Assign_Destination_DisallowMoving, 0x5)
+{
+	GET(InfantryClass*, pThis, ECX);
+	GET_STACK(AbstractClass*, pDest, 0x4);
+	GET_STACK(unsigned int, callerAddress, 0x0);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (!SyncLogger::HooksDisabled)
+		SyncLogger::AddDestinationChangeSyncLogEvent(pThis, pDest, callerAddress);
+
+	//if (pExt->IsWebbed && pThis->ParalysisTimer.HasTimeLeft())
+	//{
+	//	if (pThis->Target)
+	//	{
+	//		pThis->SetTarget(nullptr);
+	//		pThis->FootClass::SetDestination(nullptr, false);
+	//		pThis->QueueMission(Mission::Sleep, false);
+	//	}
+	//
+	//	return 0x51B1DE;
+	//}
+
+	return 0;
+}
+
 DEFINE_HOOK(0x702E4E, TechnoClass_RegisterDestruction_SaveKillerInfo, 0x6)
 {
 	GET(TechnoClass*, pKiller, EDI);
@@ -60,21 +91,72 @@ DEFINE_HOOK(0x702E4E, TechnoClass_RegisterDestruction_SaveKillerInfo, 0x6)
 	return 0;
 }
 
+// TunnelLocomotionClass_IsToHaveShadow, skip shadow on all but idle.
+// TODO: Investigate if it is possible to fix the shadows not tilting on the burrowing etc. states.
+//DEFINE_JUMP(LJMP, 0x72A070, 0x72A07F);
+
+#include <Locomotor/TunnelLocomotionClass.h>
+
+Matrix3D* __stdcall TunnelLocomotionClass_ShadowMatrix(ILocomotion* iloco, Matrix3D* ret, VoxelIndexKey* key)
+{
+	auto tLoco = static_cast<TunnelLocomotionClass*>(iloco);
+	tLoco->LocomotionClass::Shadow_Matrix(ret, key);
+
+	if (tLoco->State != TunnelLocomotionClass::State::IDLE)
+	{
+		double theta = 0.;
+		switch (tLoco->State)
+		{
+		case TunnelLocomotionClass::State::DIGGING:
+			if (key)key->Invalidate();
+			theta = Math::HalfPi;
+			if (auto total = tLoco->Timer.Duration)
+				theta *= 1.0 - double(tLoco->Timer.GetTimeLeft()) / double(total);
+			break;
+		case TunnelLocomotionClass::State::DUG_IN:
+			theta = Math::HalfPi;
+			break;
+		case TunnelLocomotionClass::State::PRE_DIG_OUT:
+			theta = -Math::HalfPi;
+			break;
+		case TunnelLocomotionClass::State::DIGGING_OUT:
+			if (key)key->Invalidate();
+			theta = -Math::HalfPi;
+			if (auto total = tLoco->Timer.Duration)
+				theta *= double(tLoco->Timer.GetTimeLeft()) / double(total);
+			break;
+		case TunnelLocomotionClass::State::DUG_OUT:
+			if (key)key->Invalidate();
+			theta = Math::HalfPi;
+			if (auto total = tLoco->Timer.Duration)
+				theta *= double(tLoco->Timer.GetTimeLeft()) / double(total);
+			break;
+		default:break;
+		}
+		ret->ScaleX((float)Math::cos(theta));// I know it's ugly
+	}
+	return ret;
+}
+
+DEFINE_JUMP(VTABLE, 0x7F5A4C, MiscTools::to_DWORD(&TunnelLocomotionClass_ShadowMatrix));
+
 DEFINE_HOOK(0x708FC0, TechnoClass_ResponseMove_Pickup, 0x5)
 {
 	enum { SkipResponse = 0x709015 };
 
 	GET(TechnoClass*, pThis, ECX);
 
-	if (auto const pAircraft = abstract_cast<AircraftClass*>(pThis))
+	if (auto const pAircraft = cast_to<AircraftClass*, false>(pThis))
 	{
 		if (pAircraft->Type->Carryall && pAircraft->HasAnyLink() &&
 			pAircraft->Destination && (pAircraft->Destination->AbstractFlags & AbstractFlags::Foot) != AbstractFlags::None)
 		{
+
 			auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pAircraft->Type);
 
 			if (!pTypeExt->VoicePickup.empty())
 			{
+
 				pThis->QueueVoice(pTypeExt->VoicePickup[Random2Class::NonCriticalRandomNumber->Random() & pTypeExt->VoicePickup.size()]);
 
 				R->EAX(1);
@@ -84,24 +166,6 @@ DEFINE_HOOK(0x708FC0, TechnoClass_ResponseMove_Pickup, 0x5)
 	}
 
 	return 0;
-}
-
-DEFINE_HOOK(0x6FD05E, TechnoClass_RearmDelay_BurstDelays, 0x7)
-{
-	GET(TechnoClass*, pThis, ESI);
-	GET(WeaponTypeClass*, pWeapon, EDI);
-
-	const int burstDelay = WeaponTypeExtData::GetBurstDelay(pWeapon, pThis->CurrentBurstIndex);
-
-	if (burstDelay >= 0)
-	{
-		R->EAX(burstDelay);
-		return 0x6FD099;
-	}
-
-	// Restore overridden instructions
-	GET(int, idxCurrentBurst, ECX);
-	return idxCurrentBurst <= 0 || idxCurrentBurst > 4 ? 0x6FD084 : 0x6FD067;
 }
 
 DEFINE_HOOK(0x71A82C, TemporalClass_AI_Opentopped_WarpDistance, 0x6) //C
@@ -227,23 +291,103 @@ DEFINE_HOOK(0x6B0B9C, SlaveManagerClass_Killed_DecideOwner, 0x6) //0x8
 
 DEFINE_HOOK(0x6FD054, TechnoClass_RearmDelay_ForceFullDelay, 0x6)
 {
-	enum { ApplyFullRearmDelay = 0x6FD09E };
-
 	GET(TechnoClass*, pThis, ESI);
+	GET(WeaponTypeClass*, pWeapon, EDI);
+	GET(int, currentBurstIdx, ECX);
+
+	TechnoExtContainer::Instance.Find(pThis)->LastRearmWasFullDelay = false;
+
+	bool rearm = currentBurstIdx >= pWeapon->Burst;
 
 	// Currently only used with infantry, so a performance saving measure.
-	if (const auto pInf = specific_cast<InfantryClass*>(pThis))
+	if (const auto pInf = cast_to<InfantryClass*, false>(pThis))
 	{
-		const auto pExt = InfantryExtContainer::Instance.Find(pInf);
-		if (pExt->ForceFullRearmDelay)
+		const auto pInfExt = InfantryExtContainer::Instance.Find(pInf);
+		if (pInfExt->ForceFullRearmDelay)
 		{
-			pExt->ForceFullRearmDelay = false;
+			pInfExt->ForceFullRearmDelay = false;
 			pThis->CurrentBurstIndex = 0;
-			return ApplyFullRearmDelay;
+			rearm = true;
 		}
 	}
 
-	return 0;
+	if (!rearm)
+	{
+		const int burstDelay = WeaponTypeExtData::GetBurstDelay(pWeapon, pThis->CurrentBurstIndex);
+
+		if (burstDelay >= 0)
+		{
+			R->EAX(burstDelay);
+			return 0x6FD099;
+		}
+
+		// Restore overridden instructions
+		return currentBurstIdx <= 0 || currentBurstIdx > 4 ? 0x6FD084 : 0x6FD067;
+	}
+
+	TechnoExtContainer::Instance.Find(pThis)->LastRearmWasFullDelay = true;
+	int nResult = 0;
+	auto const pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pExt->ROF_Random.Get())
+	{
+		const auto nDefault = Point2D { RulesExtData::Instance()->ROF_RandomDelay->X , RulesExtData::Instance()->ROF_RandomDelay->Y };
+		nResult += GeneralUtils::GetRangedRandomOrSingleValue(pExt->Rof_RandomMinMax.Get(nDefault));
+	}
+
+	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+
+	if (pWeaponExt->ROF_RandomDelay.isset())
+	{
+		nResult += GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->ROF_RandomDelay);
+	}
+
+	int _ROF = int(
+		(double)pWeapon->ROF *
+		TechnoExtContainer::Instance.Find(pThis)->AE.ROFMultiplier *
+		pThis->Owner->ROFMultiplier + nResult
+	);
+
+	if (pThis->HasAbility(AbilityType::ROF))
+		_ROF = int(_ROF * RulesClass::Instance->VeteranROF);
+
+	auto const Building = cast_to<BuildingClass*, false>(pThis);
+
+	if (pThis->CanOccupyFire())
+	{
+		const auto occupant = pThis->GetOccupantCount();
+
+		if (occupant > 0)
+		{
+			_ROF /= occupant;
+		}
+
+		auto OccupyRofMult = RulesClass::Instance->OccupyROFMultiplier;
+
+		if (Building)
+		{
+			OccupyRofMult = BuildingTypeExtContainer::Instance.Find(Building->Type)->BuildingOccupyROFMult.Get(OccupyRofMult);
+		}
+
+		if (OccupyRofMult > 0.0)
+			_ROF = int(float(_ROF) / OccupyRofMult);
+
+	}
+
+	if (pThis->BunkerLinkedItem && !Building)
+	{
+		auto BunkerMult = RulesClass::Instance->BunkerROFMultiplier;
+		if (auto const pBunkerIsBuilding = cast_to<BuildingClass*, false>(pThis->BunkerLinkedItem))
+		{
+			BunkerMult = BuildingTypeExtContainer::Instance.Find(pBunkerIsBuilding->Type)->BuildingBunkerROFMult.Get(BunkerMult);
+		}
+
+		if (BunkerMult != 0.0)
+			_ROF = int(float(_ROF) / BunkerMult);
+	}
+
+	R->EAX(_ROF);
+	return 0x6FD1F5;
 }
 
 namespace FiringAITemp
@@ -407,6 +551,7 @@ DEFINE_HOOK(0x702603, TechnoClass_ReceiveDamage_Explodes, 0x6)
 	// //only add the data that can affect this current techno
 	// void Init()
 	// {
+
 	// }
 
 	// //update trigger count
@@ -423,8 +568,13 @@ DEFINE_HOOK(0x702603, TechnoClass_ReceiveDamage_Explodes, 0x6)
 
 	// // apply the multiplier to the attacker ??
 	// void Apply() {
+
 	// }
 	// constexpr bool Eligible(TechnoClass* attacker, HouseClass* attackerOwner , bool isInAir) {
+
+
+
+
 	//	 return true;
 	// }
  //};
@@ -541,7 +691,7 @@ DEFINE_HOOK(0x70A36E, TechnoClass_DrawPips_Ammo, 0x6)
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	Point2D position = { offset->X + pTypeExt->AmmoPipOffset->X, offset->Y + pTypeExt->AmmoPipOffset->Y };
 	ConvertClass* pConvert = pTypeExt->AmmoPip_Palette ?
-		pTypeExt->AmmoPip_Palette->GetConvert<PaletteManager::Mode::Default>()
+		pTypeExt->AmmoPip_Palette->GetOrDefaultConvert<PaletteManager::Mode::Default>(FileSystem::PALETTE_PAL)
 		: FileSystem::PALETTE_PAL();
 
 	auto pSHApe = pTypeExt->AmmoPip_shape.Get(pDefault);
@@ -706,17 +856,18 @@ void DrawFactoryProgress(TechnoClass* pThis, RectangleStruct* pBounds)
 	if (pThis->WhatAmI() != AbstractType::Building)
 		return;
 
-	const bool display = RulesExtData::Instance()->FactoryProgressDisplay;
-	const bool obs = HouseClass::IsCurrentPlayerObserver();
-	if (!display && !obs)
+	if (!RulesExtData::Instance()->FactoryProgressDisplay)
 		return;
 
-	BuildingClass* const pBuilding = specific_cast<BuildingClass*>(pThis);
+	if (!HouseClass::IsCurrentPlayerObserver())
+		return;
+
+	BuildingClass* const pBuilding = static_cast<BuildingClass*>(pThis);
+
+	if(pBuilding->Type->InvisibleInGame || pBuilding->Type->Invisible )
+		return;
+
 	CellClass* pCell = pBuilding->GetCell();
-
-	if (!obs && (pBuilding->IsFogged || pBuilding->Type->Invisible || pBuilding->Type->InvisibleInGame || (pCell && pCell->IsShrouded())))
-		return;
-
 	BuildingTypeClass* const pBuildingType = pBuilding->Type;
 	HouseClass* const pHouse = pBuilding->Owner;
 	FactoryClass* pPrimaryFactory = nullptr;
@@ -793,17 +944,18 @@ void DrawSuperProgress(TechnoClass* pThis, RectangleStruct* pBounds)
 	if (pThis->WhatAmI() != AbstractType::Building)
 		return;
 
-	const bool display = RulesExtData::Instance()->FactoryProgressDisplay;
-	const bool obs = HouseClass::IsCurrentPlayerObserver();
-	if (!display && !obs)
+	if (!RulesExtData::Instance()->FactoryProgressDisplay)
 		return;
 
-	BuildingClass* const pBuilding = specific_cast<BuildingClass*>(pThis);
+	if (!HouseClass::IsCurrentPlayerObserver())
+		return;
+
+	BuildingClass* const pBuilding = static_cast<BuildingClass*>(pThis);
+
+	if(pBuilding->Type->InvisibleInGame || pBuilding->Type->Invisible )
+		return;
+
 	CellClass* pCell = pBuilding->GetCell();
-
-	if (!obs && (pBuilding->IsFogged || pBuilding->Type->Invisible || pBuilding->Type->InvisibleInGame || (pCell && pCell->IsShrouded())))
-		return;
-
 	BuildingTypeClass* const pBuildingType = pBuilding->Type;
 
 	if (pBuildingType->SuperWeapon == -1)
@@ -875,3 +1027,87 @@ DEFINE_HOOK(0x6F5EE3, TechnoClass_DrawExtras_DrawAboveHealth, 0x9)
 //
 // 	return 0;
 // }
+
+DEFINE_HOOK(0x6FA540, TechnoClass_AI_ChargeTurret, 0x6)
+{
+	enum { SkipGameCode = 0x6FA5BE };
+
+	GET(TechnoClass*, pThis, ESI);
+
+	if (pThis->ROF <= 0)
+	{
+		pThis->CurrentTurretNumber = 0;
+		return SkipGameCode;
+	}
+
+	auto const pType = pThis->GetTechnoType();
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+	int timeLeft = pThis->DiskLaserTimer.GetTimeLeft();
+
+	if (pExt->ChargeTurretTimer.HasStarted())
+		timeLeft = pExt->ChargeTurretTimer.GetTimeLeft();
+	else if (pExt->ChargeTurretTimer.Expired())
+		pExt->ChargeTurretTimer.Stop();
+
+	int turretCount = pType->TurretCount;
+	int turretIndex = std::max(0, timeLeft * turretCount / pThis->ROF);
+
+	if (turretIndex >= turretCount)
+		turretIndex = turretCount - 1;
+
+	pThis->CurrentTurretNumber = turretIndex;
+	return SkipGameCode;
+}
+
+//DEFINE_HOOK(0x5F4032, ObjectClass_FallingDown_ToDead, 0x6)
+//{
+//	GET(ObjectClass*, pThis, ESI);
+//
+//	if (auto const pTechno = abstract_cast<TechnoClass*>(pThis))
+//	{
+//		auto pCell = pTechno->GetCell();
+//		auto pType = pTechno->GetTechnoType();
+//		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+//
+//		if (!pCell || !pCell->IsClearToMove(pType->SpeedType, true, true, ZoneType::None, pType->MovementZone, pCell->GetLevel(), pCell->ContainsBridge()))
+//			return 0;
+//
+//
+//		double ratio = pCell->Tile_Is_Water() && !pTechno->OnBridge ?
+//				pTypeExt->FallingDownDamage_Water.Get(pTypeExt->FallingDownDamage.Get())
+//				: pTypeExt->FallingDownDamage.Get();
+//
+//		int damage = 0;
+//
+//		if (ratio < 0.0)
+//			damage = int(pThis->Health * abs(ratio));
+//		else if (ratio >= 0.0 && ratio <= 1.0)
+//			damage = int(pThis->GetTechnoType()->Strength * ratio);
+//		else
+//			damage = int(ratio);
+//
+//		pThis->ReceiveDamage(&damage, 0, RulesClass::Instance->C4Warhead, nullptr, true, true, nullptr);
+//
+//		if (pThis->Health > 0 && pThis->IsAlive)
+//		{
+//			pThis->IsABomb = false;
+//
+//			if (pThis->WhatAmI() == AbstractType::Infantry)
+//			{
+//				auto pInf = static_cast<InfantryClass*>(pTechno);
+//				const bool isWater = pCell->Tile_Is_Water();
+//
+//				if (isWater && pInf->SequenceAnim != DoType::Swim)
+//					pInf->PlayAnim(DoType::Swim, true, false);
+//				else if (!isWater && pInf->SequenceAnim != DoType::Guard)
+//					pInf->PlayAnim(DoType::Guard, true, false);
+//			}
+//		} else {
+//			pTechno->UpdatePosition((int)PCPType::During);
+//		}
+//
+//		return 0x5F405B;
+//	}
+//
+//	return 0;
+//}

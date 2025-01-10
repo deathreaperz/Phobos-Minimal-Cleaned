@@ -19,6 +19,7 @@ inline void __cdecl Set_Bit(void* array, int bit, int value)
 	}
 }
 
+
 inline int __cdecl Get_Bit(void const* array, int bit)
 {
 	__asm {
@@ -47,9 +48,11 @@ inline int __cdecl First_True_Bit(void const* array)
 	}
 }
 
+
 inline int __cdecl First_False_Bit(void const* array)
 {
 	__asm {
+
 		mov	esi, [array]
 		mov	eax, -32
 		again:
@@ -81,8 +84,7 @@ public:
 	RVectlorClass(unsigned size = 0, T const* array = 0) :
 		Vector(0),
 		VectorMax(size),
-		IsAllocated(false)
-	{
+		IsAllocated(false) {
 		/*
 		**	Allocate the vector. The default constructor will be called for every
 		**	object in this vector.
@@ -163,6 +165,7 @@ public:
 	{
 		if (newsize)
 		{
+
 			/*
 			**	Allocate a new vector of the size specified. The default constructor
 			**	will be called for every object in this vector.
@@ -187,6 +190,7 @@ public:
 			*/
 			if (Vector)
 			{
+
 				/*
 				**	Copy as much of the old vector into the new vector as possible. This
 				**	presumes that there is a functional assignment operator for each
@@ -217,9 +221,11 @@ public:
 			Vector = newptr;
 			VectorMax = newsize;
 			IsAllocated = (Vector && !array);
+
 		}
 		else
 		{
+
 			/*
 			**	Resizing to zero is the same as clearing the vector.
 			*/
@@ -274,6 +280,7 @@ protected:
 	unsigned IsAllocated : 1;
 };
 
+
 /**************************************************************************
 **	This derivative vector class adds the concept of adding and deleting
 **	objects. The objects are packed to the beginning of the vector array.
@@ -319,6 +326,7 @@ public:
 			{
 				if (!Resize(Length() + GrowthStep))
 				{
+
 					/*
 					**	Failure to increase the size of the vector is an error condition.
 					**	Return with the error flag.
@@ -328,6 +336,7 @@ public:
 			}
 			else
 			{
+
 				/*
 				**	Increasing the size of this vector is not allowed! Bail this
 				**	routine with the error code.
@@ -351,6 +360,7 @@ public:
 			{
 				if (!Resize(Length() + GrowthStep))
 				{
+
 					/*
 					**	Failure to increase the size of the vector is an error condition.
 					**	Return with the error flag.
@@ -360,6 +370,7 @@ public:
 			}
 			else
 			{
+
 				/*
 				**	Increasing the size of this vector is not allowed! Bail this
 				**	routine with the error code.
@@ -380,6 +391,7 @@ public:
 		//	(*this)[ActiveCount++] = object;
 		return(true);
 	}
+
 
 	// Delete object just like this from vector.
 	int Delete(T const& object)
@@ -509,6 +521,7 @@ public:
 		}
 	}
 
+
 	// Set all boolean values to true.
 	void Set(void)
 	{
@@ -604,6 +617,7 @@ private:
 		*/
 		if (index != LastIndex)
 		{
+
 			/*
 			**	If the previously fetched boolean value was changed, then update
 			**	the boolean array accordingly.

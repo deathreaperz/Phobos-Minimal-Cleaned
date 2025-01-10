@@ -57,10 +57,6 @@
 
 #include "Header.h"
 
-#include <Ares_TechnoExt.h>
-
-#include <Misc/Spawner/Main.h>
-
 #include <Misc/Spawner/Main.h>
 
 DEFINE_HOOK(0x52C5E0, Ares_NOLOGO, 0x7)
@@ -102,16 +98,18 @@ DEFINE_HOOK(0x4CA0E3, FactoryClass_AbandonProduction_Invalidate, 0x6)
 
 DEFINE_JUMP(LJMP, 0x565215, 0x56522D);
 
-constexpr int cell_Distance_Squared(CoordStruct& our_coord, CoordStruct& their_coord)
+FORCEINLINE int cell_Distance_Squared(CoordStruct& our_coord, CoordStruct& their_coord)
 {
-	int our_cell_x = our_coord.X / Unsorted::LeptonsPerCell;
-	int their_cell_x = their_coord.X / Unsorted::LeptonsPerCell;
-	int our_cell_y = our_coord.Y / Unsorted::LeptonsPerCell;
-	int their_cell_y = their_coord.Y / Unsorted::LeptonsPerCell;
+	//int our_cell_x = our_coord.X / Unsorted::LeptonsPerCell;
+	//int their_cell_x = their_coord.X / Unsorted::LeptonsPerCell;
+	//int our_cell_y = our_coord.Y / Unsorted::LeptonsPerCell;
+	//int their_cell_y = their_coord.Y / Unsorted::LeptonsPerCell;
 
-	int x_distance = our_cell_x - their_cell_x;
-	int y_distance = our_cell_y - their_cell_y;
-	return x_distance * x_distance + y_distance * y_distance;
+	//int x_distance = our_cell_x - their_cell_x;
+	//int y_distance = our_cell_y - their_cell_y;
+	//return x_distance * x_distance + y_distance * y_distance;
+
+	return int(Point2D { our_coord.X - their_coord.X, our_coord.Y - their_coord.Y }.Length());
 }
 
 DEFINE_HOOK(0x5F6500, AbstractClass_Distance2DSquared_1, 8)
@@ -253,9 +251,9 @@ DEFINE_HOOK(0x4C6DDB, Networking_RespondToEvent_Selling, 0x8)
 	GET(TechnoClass* const, pTechno, EDI);
 	GET(AbstractClass* const, pFocus, EAX);
 
-	if (pTechno->CurrentMission != Mission::Selling || pTechno->Focus)
+	if (pTechno->CurrentMission != Mission::Selling || pTechno->ArchiveTarget)
 	{
-		pTechno->SetFocus(pFocus);
+		pTechno->SetArchiveTarget(pFocus);
 	}
 
 	return 0x4C6DE3;
@@ -289,7 +287,7 @@ DEFINE_HOOK(0x472198, CaptureManagerClass_DrawLinks, 0x6)
 	GET(CaptureManagerClass*, Controlled, EDI);
 	//GET(TechnoClass *, Item, ECX);
 
-	if (FootClass* F = generic_cast<FootClass*>(Controlled->Owner))
+	if (FootClass* F = flag_cast_to<FootClass*>(Controlled->Owner))
 	{
 		if (F->ParasiteImUsing && F->InLimbo)
 		{
@@ -325,15 +323,22 @@ DEFINE_HOOK(0x551A30, LayerClass_YSortReorder, 0x5)
 //	return 0x0;
 //}
 
-DEFINE_HOOK(0x5F6612, ObjectClass_UnInit_SkipInvalidation, 0x9)
+static void __fastcall AnnounceInvalidatePointerWrapper(ObjectClass* pObject, bool removed)
 {
-	GET(ObjectClass*, pThis, ESI);
-
-	if (!pThis->Limbo())
-		pThis->AnnounceExpiredPointer();
-
-	return 0x5F6625;
+	if (!pObject->Limbo())
+		pObject->AnnounceExpiredPointer(removed);
 }
+
+//DEFINE_JUMP(CALL , 0x5F6616, MiscTools::to_DWORD(AnnounceInvalidatePointerWrapper))
+// DEFINE_HOOK(0x5F6612, ObjectClass_UnInit_SkipInvalidation, 0x9)
+// {
+// 	GET(ObjectClass*, pThis, ESI);
+//
+// 	if (!pThis->Limbo())
+// 		pThis->AnnounceExpiredPointer();
+//
+// 	return 0x5F6625;
+// }
 
 //speeds up preview drawing by insane amounts
 DEFINE_HOOK(0x5FED00, OverlayTypeClass_GetRadarColor, 0x6)
@@ -564,7 +569,7 @@ DEFINE_HOOK(0x731E08, Select_By_Units_Text_FakeOf, 0x6)
 
 	for (const auto pObj : ObjectClass::CurrentObjects())
 	{
-		if (const auto pTechno = generic_cast<const TechnoClass*>(pObj))
+		if (const auto pTechno = flag_cast_to<const TechnoClass*>(pObj))
 		{
 			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType());
 
@@ -889,6 +894,7 @@ DEFINE_HOOK(0x4B769B, ScenarioClass_GenerateDropshipLoadout, 5)
 DEFINE_HOOK(0x5F3FB2, ObjectClass_Update_MaxFallRate, 6)
 {
 	GET(ObjectClass*, pThis, ESI);
+	GET(Layer, curLayer, EBP);
 
 	const auto pTechnoType = pThis->GetTechnoType();
 	const bool bAnimAttached = pTechnoType ? pThis->Parachute != 0 : pThis->HasParachute;
@@ -910,7 +916,77 @@ DEFINE_HOOK(0x5F3FB2, ObjectClass_Update_MaxFallRate, 6)
 		nMaxFallRate = pThis->FallRate - nFallRate;
 
 	pThis->FallRate = nMaxFallRate;
-	return 0x5F3FFD;
+
+	if (curLayer != pThis->InWhichLayer())
+	{
+		DisplayClass::Instance->SubmitObject(pThis);
+	}
+
+	if (!pThis->IsFallingDown)
+	{
+		if (pThis->IsABomb && pThis->Health > 0)
+		{
+			if (pTechnoType)
+			{
+				auto const pTechno = static_cast<TechnoClass*>(pThis);
+
+				auto pCell = pTechno->GetCell();
+				const auto pExt = TechnoTypeExtContainer::Instance.Find(pTechnoType);
+
+				if (!pCell || !pCell->IsClearToMove(pTechnoType->SpeedType, true, true, ZoneType::None, pTechnoType->MovementZone, pCell->GetLevel(), pCell->ContainsBridge()))
+					return 0;
+
+				double ratio = pCell->Tile_Is_Water() && !pTechno->OnBridge ?
+					pExt->FallingDownDamage_Water.Get(pExt->FallingDownDamage.Get())
+					: pExt->FallingDownDamage.Get();
+
+				int damage = 0;
+
+				if (ratio < 0.0)
+					damage = int(pThis->Health * Math::abs(ratio));
+				else if (ratio >= 0.0 && ratio <= 1.0)
+					damage = int(pThis->GetTechnoType()->Strength * ratio);
+				else
+					damage = int(ratio);
+
+				pThis->ReceiveDamage(&damage, 0, RulesClass::Instance->C4Warhead, nullptr, true, true, nullptr);
+
+				if (pThis->Health > 0 && pThis->IsAlive)
+				{
+					pThis->IsABomb = false;
+
+					if (pThis->WhatAmI() == AbstractType::Infantry)
+					{
+						auto pInf = static_cast<InfantryClass*>(pTechno);
+						const bool isWater = pCell->Tile_Is_Water();
+
+						if (isWater && pInf->SequenceAnim != DoType::Swim)
+							pInf->PlayAnim(DoType::Swim, true, false);
+						else if (!isWater && pInf->SequenceAnim != DoType::Guard)
+							pInf->PlayAnim(DoType::Guard, true, false);
+					}
+
+					return 0x5F413F;
+				}
+				else
+				{
+					pTechno->UpdatePosition((int)PCPType::During);
+					return 0x5F413F;
+				}
+			}
+			else
+			{
+				int _str = pThis->Health;
+				pThis->ReceiveDamage(&_str, 0, RulesClass::Instance->C4Warhead, nullptr, true, true, nullptr);
+			}
+		}
+
+		//iam confused with the code ..
+		//probably calculating the desired destination ..
+		return 0x5F405B;
+	}
+
+	return 0x5F413F;
 }
 
 // temporal per-slot
@@ -996,12 +1072,6 @@ DEFINE_HOOK(0x41D5AE, AirstrikeClass_PointerGotInvalid_AirstrikeAbortSound, 9)
 	return 0x41D5E0;
 }
 
-DEFINE_HOOK(0x4A8FF5, MapClass_CanBuildingTypeBePlacedHere_Ignore, 5)
-{
-	GET(BuildingClass*, pBuilding, ESI);
-	return BuildingExtContainer::Instance.Find(pBuilding)->IsFromSW ? 0x4A8FFA : 0x0;
-}
-
 //DEFINE_SKIP_HOOK(0x71B09C, TemporalClass_Logic_BuildingUnderAttack_NullptrShit, 0x5, 71B0E7);
 DEFINE_JUMP(LJMP, 0x71B09C, 0x71B0E7);
 
@@ -1040,13 +1110,6 @@ DEFINE_HOOK(0x4ABFBE, DisplayClass_LeftMouseButtonUp_ExecPowerToggle, 7)
 		;
 }
 
-DEFINE_HOOK(0x480534, CellClass_AttachesToNeighbourOverlay, 5)
-{
-	GET(int, idxOverlay, EAX);
-	const bool Wall = idxOverlay != -1 && OverlayTypeClass::Array->Items[idxOverlay]->Wall;
-	return Wall ? 0x480549 : 0x480552;
-}
-
 DEFINE_HOOK(0x4A76ED, DiskLaserClass_Update_Anim, 7)
 {
 	GET(DiskLaserClass* const, pThis, ESI);
@@ -1075,13 +1138,13 @@ DEFINE_HOOK(0x4A76ED, DiskLaserClass_Update_Anim, 7)
 	return 0;
 }
 
-DEFINE_HOOK(0x48a4f9, SelectDamageAnimation_FixNegatives, 6)
-{
-	GET(int, Damage, EDI);
-	Damage = abs(Damage);
-	R->EDI(Damage);
-	return Damage ? 0x48A4FF : 0x48A618;
-}
+// DEFINE_HOOK(0x48a4f9, SelectDamageAnimation_FixNegatives, 6)
+// {
+// 	GET(int, Damage, EDI);
+// 	Damage = abs(Damage);
+// 	R->EDI(Damage);
+// 	return Damage ? 0x48A4FF : 0x48A618;
+// }
 
 //InitGame_Delay
 DEFINE_JUMP(LJMP, 0x52CA37, 0x52CA65)
@@ -1090,7 +1153,7 @@ DEFINE_HOOK(0x5f5add, ObjectClass_SpawnParachuted_Animation, 6)
 {
 	GET(ObjectClass*, pThis, ESI);
 
-	if (const auto pTechno = generic_cast<TechnoClass*>(pThis))
+	if (const auto pTechno = flag_cast_to<TechnoClass*>(pThis))
 	{
 		auto pType = pTechno->GetTechnoType();
 		auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
@@ -1146,15 +1209,6 @@ DEFINE_HOOK(0x53044A, InitBootstrapMixfiles_CustomMixes_Postload, 0x6)
 	}
 
 	return 0x0;
-}
-
-DEFINE_HOOK(0x7cd819, ExeRun, 5)
-{
-	Game::Savegame_Magic = AresGlobalData::InternalVersion;
-	Game::bVideoBackBuffer = false;
-	Game::bAllowVRAMSidebar = false;
-
-	return 0;
 }
 
 DEFINE_HOOK(0x6BE9BD, Game_ProgramEnd_ClearResource, 6)

@@ -4,6 +4,9 @@
 #include <Ext/Bullet/Body.h>
 #include <Ext/WarheadType/Body.h>
 
+// https://github.com/Phobos-developers/Phobos/pull/1294
+// TODO : update
+
 bool StraightVariantCTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 {
 	if (!this->StraightTrajectoryType::Read(pINI, pSection))
@@ -60,7 +63,7 @@ bool StraightVariantCTrajectoryType::Load(PhobosStreamReader& Stm, bool Register
 		.Process(this->ProximityAllies)
 		.Process(this->ThroughVehicles)
 		.Process(this->ThroughBuilding)
-		.Process(this->StraightWarhead)
+		.Process(this->StraightWarhead, true)
 		.Process(this->StraightDamage)
 		.Process(this->SubjectToGround)
 		.Process(this->ConfineAtHeight)
@@ -200,7 +203,7 @@ void StraightTrajectoryVarianC::OnAIPreDetonate()
 
 	if (pType->EdgeAttenuation != 1.0 || pType->ProximityAllies != 0)
 	{
-		TechnoClass* pTechno = abstract_cast<TechnoClass*>(pBullet->Target);
+		TechnoClass* pTechno = flag_cast_to<TechnoClass*>(pBullet->Target);
 		int Damage = static_cast<int>(pBullet->WeaponType->Damage * this->FirepowerMult * GetExtraDamageMultiplier(pTechno, pOwner, true));
 		pBullet->Construct(pBullet->Type, pBullet->Target, pBullet->Owner, Damage, pBullet->WH, pBullet->Speed, pBullet->Bright);
 	}
@@ -215,7 +218,7 @@ void StraightTrajectoryVarianC::OnAIPreDetonate()
 	if (pType->PassThrough || pType->TargetSnapDistance.Value <= 0)
 		return;
 
-	auto pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	auto pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	auto pCoords = pTarget ? pTarget->GetCoords() : pBullet->Data.Location;
 
 	if (pCoords.DistanceFrom(pBullet->Location) <= pType->TargetSnapDistance.Value)
@@ -281,7 +284,7 @@ void StraightTrajectoryVarianC::PrepareForOpenFire()
 			this->OffsetCoord.Y = -(this->OffsetCoord.Y);
 	}
 
-	ObjectClass* pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	ObjectClass* pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	CoordStruct TheTargetCoords = pBullet->TargetCoords;
 	CoordStruct TheSourceCoords = pBullet->SourceCoords;
 
@@ -402,7 +405,7 @@ int StraightTrajectoryVarianC::GetVelocityZ() const
 	if (!pType->PassThrough)
 		return velocity;
 
-	if (pBullet->Owner && abs(pBullet->Owner->GetCoords().Z - pBullet->TargetCoords.Z) <= 32)
+	if (pBullet->Owner && Math::abs(pBullet->Owner->GetCoords().Z - pBullet->TargetCoords.Z) <= 32)
 	{
 		double DistanceOfTwo = pBullet->SourceCoords.DistanceFrom(pBullet->TargetCoords);
 		double TheDistance = this->DetonationDistance;
@@ -542,7 +545,7 @@ void StraightTrajectoryVarianC::BulletDetonateLastCheck(HouseClass* pOwner, doub
 
 			while (pObject)
 			{
-				auto const pTechno = abstract_cast<TechnoClass*>(pObject);
+				auto const pTechno = flag_cast_to<TechnoClass*>(pObject);
 				pObject = pObject->NextObject;
 
 				if (!pTechno)
@@ -663,7 +666,7 @@ void StraightTrajectoryVarianC::PrepareForDetonateAt(HouseClass* pOwner)
 	size_t ThisSize = 0;
 	std::vector<TechnoClass*> ValidTechnos;
 	ValidTechnos.reserve(CellSize);
-	TechnoClass* pTargetTechno = abstract_cast<TechnoClass*>(pBullet->Target);
+	TechnoClass* pTargetTechno = flag_cast_to<TechnoClass*>(pBullet->Target);
 
 	for (auto const pRecCell : RecCellClass)
 	{
@@ -671,7 +674,7 @@ void StraightTrajectoryVarianC::PrepareForDetonateAt(HouseClass* pOwner)
 
 		while (pObject)
 		{
-			auto const pTechno = abstract_cast<TechnoClass*>(pObject);
+			auto const pTechno = flag_cast_to<TechnoClass*, false>(pObject);
 			pObject = pObject->NextObject;
 
 			if (!pTechno)
@@ -741,12 +744,12 @@ void StraightTrajectoryVarianC::PrepareForDetonateAt(HouseClass* pOwner)
 			if ((TechnoCrd.X - SourceCrd.X) * pBullet->Velocity.X + (TechnoCrd.Y - SourceCrd.Y) * pBullet->Velocity.Y < 0)
 				continue;
 
-			double Distance = abs(TechnoCrd.X - BulletCrd.X);
+			double Distance = Math::abs(TechnoCrd.X - BulletCrd.X);
 
 			if (FutureCrd.X != BulletCrd.X)
 			{
-				double Factor = (FutureCrd.Y - BulletCrd.Y) / (FutureCrd.X - BulletCrd.X);
-				Distance = abs(Factor * TechnoCrd.X - TechnoCrd.Y + BulletCrd.Y - Factor * BulletCrd.X) / sqrt(Factor * Factor + 1);
+				double Factor = double(FutureCrd.Y - BulletCrd.Y) / double(FutureCrd.X - BulletCrd.X);
+				Distance = Math::abs(Factor * TechnoCrd.X - TechnoCrd.Y + BulletCrd.Y - Factor * BulletCrd.X) / sqrt(Factor * Factor + 1);
 			}
 
 			if (TechnoType != AbstractType::Building && Distance > pTrajType->ProximityRadius * 256.0)
@@ -941,7 +944,7 @@ std::vector<CellClass*> StraightTrajectoryVarianC::GetCellsInProximityRadius()
 std::vector<CellStruct> StraightTrajectoryVarianC::GetCellsInRectangle(CellStruct bStaCell, CellStruct lMidCell, CellStruct rMidCell, CellStruct tEndCell)
 {
 	std::vector<CellStruct> RecCells;
-	int CellNums = (abs(tEndCell.Y - bStaCell.Y) + 1) * (abs(rMidCell.X - lMidCell.X) + 1);
+	int CellNums = (Math::abs(tEndCell.Y - bStaCell.Y) + 1) * (abs(rMidCell.X - lMidCell.X) + 1);
 	RecCells.reserve(CellNums);
 	RecCells.push_back(bStaCell);
 
@@ -1205,10 +1208,10 @@ bool StraightTrajectoryVarianC::PassAndConfineAtHeight(double StraightSpeed)
 		CoordStruct CellCoords = pCell->GetCoordsWithBridge();
 		int DifferenceOnBridge = CellCoords.Z - FutureCoords.Z;
 
-		if (abs(DifferenceOnBridge) < abs(CheckDifference))
+		if (Math::abs(DifferenceOnBridge) < Math::abs(CheckDifference))
 			CheckDifference = DifferenceOnBridge;
 
-		if (abs(CheckDifference) < 384 || !pBullet->Type->SubjectToCliffs)
+		if (Math::abs(CheckDifference) < 384 || !pBullet->Type->SubjectToCliffs)
 		{
 			pBullet->Velocity.Z += static_cast<double>(CheckDifference + pType->ConfineAtHeight);
 			if (CalculateBulletVelocity(StraightSpeed))

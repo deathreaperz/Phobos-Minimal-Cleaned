@@ -3,6 +3,15 @@
 #include <Ext/WarheadType/Body.h>
 #include <Helpers/Macro.h>
 
+// DEFINE_HOOK(0x48A444 , AreaDamage_Particle_Handle , 0x5){
+// 	GET(WarheadTypeClass*, pWH, EDI);
+// 	GET_BASE(HouseClass* , pHouse , 0x14);
+// 	GET(CoordStruct* , pCoord , ESI);
+//
+// 	auto pParticleSystem = GameCreate<ParticleSystemClass>(pWH->Parasite,pCoord,nullptr ,nullptr , &CoordStruct::Empty, pHouse);
+// 	ParticleSystemExtContainer::Instance.Find(pParticleSystem)->
+// }
+
 namespace LightEffectsTemp
 {
 	bool AlphaIsLightFlash = false;
@@ -76,6 +85,9 @@ DEFINE_HOOK(0x48A62E, DoFlash_CombatLightOptions, 0x6)
 		//check chance if set
 		if (pWHExt->CombatLightChance.isset() && pWHExt->CombatLightChance < Random2Class::Global->RandomDouble())
 			return SkipFlash;
+
+		if (pWHExt->CLIsBlack)
+			R->EBX(SpotlightFlags::NoColor);
 
 		return Continue;
 	}

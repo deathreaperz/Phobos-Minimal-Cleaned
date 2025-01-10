@@ -21,6 +21,8 @@ struct CoordStruct;
 class CCFileClass;
 class CCINIClass;
 class CellClass;
+class BuildingClass;
+class BuildingTypeClass;
 
 struct PacketField {
 	char str[4];
@@ -39,6 +41,9 @@ struct Game
 
 	static constexpr reference<DynamicVectorClass<ULONG>, 0xB0BC88u> const ClassFactories {};
 
+	static constexpr reference<unsigned, 0x8B3A84u> const ExceptionReturnBase {};
+	static constexpr reference<unsigned, 0x8B3A7Cu> const ExceptionReturnStack {};
+	static constexpr reference<unsigned, 0x8B3A80u> const ExceptionReturnAddress {};
 	static constexpr reference<HWND, 0xB73550u> const hWnd {};
 	static constexpr reference<HINSTANCE, 0xB732F0u> const hInstance {};
 
@@ -158,8 +163,15 @@ struct Game
 		{ JMP_STD(0x5DA6C0); }
 	};
 
+	static void __fastcall GetKeyboardKeyString(unsigned short key, wchar_t* buffer)
+		{ JMP_STD(0x61EF70); }
+
 	static bool __fastcall File_Finder_Start(char* filename) {
 		JMP_STD(0x47AF70);
+	}
+
+	static BuildingTypeClass* __fastcall Set_Sidebar_Tab_Object(BuildingClass* pThis) {
+		JMP_STD(0x734250);
 	}
 
 	static bool __fastcall File_Finder_Next_Name(char* filename) {
@@ -184,7 +196,7 @@ struct Game
 	{
 		double something = val;
 		__asm { fld something };
-		CALL(0x7C5F00);
+		ASM_CALL(0x7C5F00);
 	}
 
 	static constexpr int FORCEINLINE AdjustHeight(int height)  {
@@ -204,7 +216,7 @@ struct Game
 	}
 
 	static void ClearScenario() {
-		CALL(0x6851F0);
+		ASM_CALL(0x6851F0);
 	}
 
 	// actually is SessionClass::Callback
@@ -212,7 +224,7 @@ struct Game
 	{ SET_REG32(ECX, 0xA8B238); JMP_STD(0x69AE90); }
 
 	static void CallBack()
-	{ CALL(0x48D080); }
+	{ ASM_CALL(0x48D080); }
 
 	static int __fastcall GetResource(int ID, int Type)
 	{ JMP_STD(0x4A3B40); }
@@ -245,7 +257,7 @@ struct Game
 	{ JMP_STD(0x732D00); }
 
 	static double GetFloaterGravity()
-	{ CALL(0x48ACF0); }
+	{ ASM_CALL(0x48ACF0); }
 
 	static void __fastcall KeyboardProcess(DWORD& input)
 	{ JMP_STD(0x55DEE0); }
@@ -254,22 +266,22 @@ struct Game
 	{ JMP_STD(0x4093B0); }
 
 	static void InitRandom()
-	{ CALL(0x52FC20); }
+	{ ASM_CALL(0x52FC20); }
 
 	static void ShowSpecialDialog()
-	{ CALL(0x48C8B0); }
+	{ ASM_CALL(0x48C8B0); }
 
 	static bool __fastcall InitNetwork()
 	{ JMP_STD(0x5DA6C0); }
 
 	static void InitUIStuff()
 	{
-		/* InitCommonDialogStuff() */ CALL(0x600560);
+		/* InitCommonDialogStuff() */ ASM_CALL(0x600560);
 
 		if (!PCXInitialized)
 		{
-			/* InitUIColorShifts() */ CALL(0x61F190);
-			/* LoadPCXFiles() */      CALL(0x61F210);
+			/* InitUIColorShifts() */ ASM_CALL(0x61F190);
+			/* LoadPCXFiles() */      ASM_CALL(0x61F210);
 			PCXInitialized = true;
 		}
 	}
@@ -358,6 +370,12 @@ struct Game
 	{
 		JMP_STD(0x48A8D0);
 	}
+
+	static void __fastcall ComputeFrameCRC()
+	{ JMP_STD(0x64DAB0); }
+
+	static void __fastcall LogFrameCRC(int frameIndex)
+	{ JMP_STD(0x650A90); }
 };
 
 // this fake class contains the IIDs used by the game
@@ -453,7 +471,7 @@ struct Imports
 	static constexpr referencefunc<FP_EndDialog, 0x7E13C8> const EndDialog {};
 
 	typedef HWND(__stdcall* FP_SetFocus)(HWND hWnd);
-	static constexpr referencefunc<FP_SetFocus, 0x7E13CC> const SetFocus {};
+	static constexpr referencefunc<FP_SetFocus, 0x7E13CC> const SetArchiveTarget {};
 
 	typedef BOOL(__stdcall* FP_SetDlgItemTextA)(HWND hDlg, int nIDDlgItem, LPCSTR lpString);
 	static constexpr referencefunc<FP_SetDlgItemTextA, 0x7E13D0> const SetDlgItemTextA {};

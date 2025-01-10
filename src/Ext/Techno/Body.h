@@ -35,22 +35,533 @@
 
 #include <New/PhobosAttachedAffect/PhobosAttachEffectClass.h>
 
+#include <TemporalClass.h>
+
 class BulletClass;
 class TechnoTypeClass;
 class REGISTERS;
 struct BurstFLHBundle;
+
+struct AEProperties
+{
+	struct ExtraRange
+	{
+		struct RangeData
+		{
+			double rangeMult { 1.0 };
+			double extraRange { 0.0 };
+			std::set<WeaponTypeClass*> allow {};
+			std::set<WeaponTypeClass*> disallow {};
+
+			bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+			{
+				return this->Serialize(Stm);
+			}
+
+			bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+			{
+				return const_cast<RangeData*>(this)->Serialize(Stm);
+			}
+
+			bool Eligible(WeaponTypeClass* who)
+			{
+				bool allowed = false;
+
+				if (allow.begin() != allow.end())
+				{
+					for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
+					{
+						if (*iter_allow == who)
+						{
+							allowed = true;
+							break;
+						}
+					}
+				}
+				else
+				{
+					allowed = true;
+				}
+
+				if (allowed && disallow.begin() != disallow.end())
+				{
+					for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
+					{
+						if (*iter_disallow == who)
+						{
+							allowed = false;
+							break;
+						}
+					}
+				}
+
+				return allowed;
+			}
+		private:
+
+			template <typename T>
+			bool FORCEINLINE Serialize(T& Stm)
+			{
+				return Stm
+					.Process(this->rangeMult)
+					.Process(this->extraRange)
+					.Process(this->allow)
+					.Process(this->disallow)
+					.Success()
+					;
+			}
+		};
+
+		struct RangeDataOut
+		{
+			double rangeMult { 1.0 };
+			double extraRange { 0.0 };
+		};
+
+		HelperedVector<RangeData> ranges { };
+
+		bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+		{
+			return this->Serialize(Stm);
+		}
+
+		bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+		{
+			return const_cast<ExtraRange*>(this)->Serialize(Stm);
+		}
+
+		constexpr void Clear()
+		{
+			ranges.clear();
+		}
+
+		constexpr bool Enabled()
+		{
+			return !ranges.empty();
+		}
+
+		constexpr int Get(int initial, WeaponTypeClass* who)
+		{
+			int add = 0;
+			for (auto& ex_range : ranges)
+			{
+				if (!ex_range.Eligible(who))
+					continue;
+
+				initial = static_cast<int>(initial * MaxImpl(ex_range.rangeMult, 0.0));
+				add += static_cast<int>(ex_range.extraRange);
+			}
+
+			return initial + add;
+		}
+
+		constexpr void FillEligible(WeaponTypeClass* who, std::vector<RangeDataOut>& eligible)
+		{
+			for (auto& ex_range : this->ranges)
+			{
+				if (ex_range.Eligible(who))
+				{
+					eligible.emplace_back(ex_range.rangeMult, ex_range.extraRange);
+				}
+			}
+		}
+
+		static constexpr int Count(int initial, std::vector<RangeDataOut>& eligible)
+		{
+			int add = 0;
+			for (auto& ex_range : eligible)
+			{
+				initial = static_cast<int>(initial * MaxImpl(ex_range.rangeMult, 0.0));
+				add += static_cast<int>(ex_range.extraRange);
+			}
+
+			return initial + add;
+		}
+
+	private:
+
+		template <typename T>
+		bool FORCEINLINE Serialize(T& Stm)
+		{
+			return Stm
+				.Process(this->ranges)
+				.Success()
+				;
+		}
+	} ExtraRange {};
+
+	struct ExtraCrit
+	{
+		struct CritData
+		{
+			double Mult { 1.0 };
+			double extra { 0.0 };
+			std::set<WarheadTypeClass*> allow {};
+			std::set<WarheadTypeClass*> disallow {};
+
+			bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+			{
+				return this->Serialize(Stm);
+			}
+
+			bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+			{
+				return const_cast<CritData*>(this)->Serialize(Stm);
+			}
+
+			bool Eligible(WarheadTypeClass* who)
+			{
+				bool allowed = false;
+
+				if (allow.begin() != allow.end())
+				{
+					for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
+					{
+						if (*iter_allow == who)
+						{
+							allowed = true;
+							break;
+						}
+					}
+				}
+				else
+				{
+					allowed = true;
+				}
+
+				if (allowed && disallow.begin() != disallow.end())
+				{
+					for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
+					{
+						if (*iter_disallow == who)
+						{
+							allowed = false;
+							break;
+						}
+					}
+				}
+
+				return allowed;
+			}
+		private:
+
+			template <typename T>
+			bool FORCEINLINE Serialize(T& Stm)
+			{
+				return Stm
+					.Process(this->Mult)
+					.Process(this->extra)
+					.Process(this->allow)
+					.Process(this->disallow)
+					.Success()
+					;
+			}
+		};
+
+		struct CritDataOut
+		{
+			double Mult { 1.0 };
+			double extra { 0.0 };
+		};
+
+		HelperedVector<CritData> ranges { };
+
+		bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+		{
+			return this->Serialize(Stm);
+		}
+
+		bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+		{
+			return const_cast<ExtraCrit*>(this)->Serialize(Stm);
+		}
+
+		constexpr void Clear()
+		{
+			ranges.clear();
+		}
+
+		constexpr bool Enabled()
+		{
+			return !ranges.empty();
+		}
+
+		constexpr double Get(double initial, WarheadTypeClass* who)
+		{
+			double add = 0.0;
+			for (auto& ex_range : ranges)
+			{
+				if (!ex_range.Eligible(who))
+					continue;
+
+				initial = initial * ex_range.Mult;
+				add += ex_range.extra;
+			}
+
+			return initial + add;
+		}
+
+		constexpr void FillEligible(WarheadTypeClass* who, std::vector<CritDataOut>& eligible)
+		{
+			for (auto& ex_range : this->ranges)
+			{
+				if (ex_range.Eligible(who))
+				{
+					eligible.emplace_back(ex_range.Mult, ex_range.extra);
+				}
+			}
+		}
+
+		static constexpr double Count(double initial, std::vector<CritDataOut>& eligible)
+		{
+			double add = 0.0;
+			for (auto& ex_range : eligible)
+			{
+				initial *= MaxImpl(ex_range.Mult, 0.0);
+				add += ex_range.extra;
+			}
+
+			return initial + add;
+		}
+
+	private:
+
+		template <typename T>
+		bool FORCEINLINE Serialize(T& Stm)
+		{
+			return Stm
+				.Process(this->ranges)
+				.Success()
+				;
+		}
+	} ExtraCrit {};
+
+	struct ArmorMult
+	{
+		struct MultData
+		{
+			double Mult { 1.0 };
+			std::set<WarheadTypeClass*> allow {};
+			std::set<WarheadTypeClass*> disallow {};
+
+			bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+			{
+				return this->Serialize(Stm);
+			}
+
+			bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+			{
+				return const_cast<MultData*>(this)->Serialize(Stm);
+			}
+
+			bool Eligible(WarheadTypeClass* who)
+			{
+				bool allowed = false;
+
+				if (allow.begin() != allow.end())
+				{
+					for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
+					{
+						if (*iter_allow == who)
+						{
+							allowed = true;
+							break;
+						}
+					}
+				}
+				else
+				{
+					allowed = true;
+				}
+
+				if (allowed && disallow.begin() != disallow.end())
+				{
+					for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
+					{
+						if (*iter_disallow == who)
+						{
+							allowed = false;
+							break;
+						}
+					}
+				}
+
+				return allowed;
+			}
+		private:
+
+			template <typename T>
+			bool FORCEINLINE Serialize(T& Stm)
+			{
+				return Stm
+					.Process(this->Mult)
+					.Process(this->allow)
+					.Process(this->disallow)
+					.Success()
+					;
+			}
+		};
+
+		HelperedVector<MultData> mults { };
+
+		bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+		{
+			return this->Serialize(Stm);
+		}
+
+		bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+		{
+			return const_cast<ArmorMult*>(this)->Serialize(Stm);
+		}
+
+		constexpr void Clear()
+		{
+			mults.clear();
+		}
+
+		constexpr bool Enabled()
+		{
+			return !mults.empty();
+		}
+
+		constexpr double Get(double initial, WarheadTypeClass* who)
+		{
+			for (auto& ex_range : mults)
+			{
+				if (!ex_range.Eligible(who))
+					continue;
+
+				initial *= ex_range.Mult;
+			}
+
+			return initial;
+		}
+
+		constexpr void FillEligible(WarheadTypeClass* who, std::vector<double>& eligible)
+		{
+			for (auto& ex_range : this->mults)
+			{
+				if (ex_range.Eligible(who))
+				{
+					eligible.emplace_back(ex_range.Mult);
+				}
+			}
+		}
+
+		static constexpr double Apply(double initial, std::vector<double>& eligible)
+		{
+			for (auto& ex_range : eligible)
+			{
+				initial *= ex_range;
+			}
+
+			return initial;
+		}
+	private:
+
+		template <typename T>
+		bool FORCEINLINE Serialize(T& Stm)
+		{
+			return Stm
+				.Process(this->mults)
+				.Success()
+				;
+		}
+	} ArmorMultData {};
+
+	double FirepowerMultiplier { 1.0 };
+	double ArmorMultiplier { 1.0 };
+	double SpeedMultiplier { 1.0 };
+	double ROFMultiplier { 1.0 };
+	double ReceiveRelativeDamageMult { 1.0 };
+
+	//TODO :
+	int FirepowerBonus { 0 };
+	int ArmorBonus { 0 };
+	double SpeedBonus { 0.0 };
+	int ROFBonus { 0 };
+
+	//TODO :
+	MinMaxValue<int> ReceivedDamage { INT32_MIN , INT32_MAX };
+	MinMaxValue<double> Speed { 0.0 ,  INT32_MAX };
+
+	bool Cloakable { false };
+	bool ForceDecloak { false };
+
+	bool DisableWeapons { false };
+	bool DisableSelfHeal { false };
+
+	bool HasRangeModifier { false };
+	bool HasTint { false };
+	bool HasOnFireDiscardables { false };
+
+	bool ReflectDamage { false };
+
+	bool Untrackable { false };
+
+	bool DisableRadar { false };
+	bool DisableSpySat { false };
+
+public:
+
+	static void Recalculate(TechnoClass* pTechno);
+
+public:
+
+	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
+		return this->Serialize(Stm);
+	}
+
+	bool Save(PhobosStreamWriter& Stm) const
+	{
+		return const_cast<AEProperties*>(this)->Serialize(Stm);
+	}
+
+protected:
+	template <typename T>
+	bool Serialize(T& Stm)
+	{
+		return Stm
+			.Process(this->ExtraRange)
+			.Process(this->ExtraCrit)
+			.Process(this->FirepowerMultiplier)
+			.Process(this->ArmorMultiplier)
+			.Process(this->SpeedMultiplier)
+			.Process(this->ROFMultiplier)
+			.Process(this->ReceiveRelativeDamageMult)
+			.Process(this->FirepowerBonus)
+			.Process(this->ArmorBonus)
+			.Process(this->SpeedBonus)
+			.Process(this->ROFBonus)
+			.Process(this->ReceivedDamage)
+			.Process(this->Speed)
+			.Process(this->Cloakable)
+			.Process(this->ForceDecloak)
+			.Process(this->DisableWeapons)
+			.Process(this->DisableSelfHeal)
+			.Process(this->HasRangeModifier)
+			.Process(this->HasTint)
+			.Process(this->HasOnFireDiscardables)
+			.Process(this->ReflectDamage)
+			.Process(this->Untrackable)
+			.Process(this->DisableRadar)
+			.Process(this->DisableSpySat)
+			.Process(this->ArmorMultData)
+			.Success() && Stm.RegisterChange(this)
+			;
+	}
+};
 
 class TechnoExtData
 {
 public:
 	static constexpr size_t Canary = 0x22365555;
 	using base_type = TechnoClass;
+
 	//static constexpr size_t ExtOffset = 0x4FC;
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0x154; //ares
-#else
-	static constexpr size_t ExtOffset = 0x34C;
-#endif
+	//static constexpr size_t ExtOffset = 0x34C;
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -58,19 +569,7 @@ public:
 	TechnoTypeClass* Type { nullptr }; //original Type pointer
 	OptionalStruct<AbstractType, true> AbsType {};
 
-	double AE_ROF { 1.0 };
-	double AE_FirePowerMult { 1.0 };
-	double AE_ArmorMult { 1.0 };
-	double AE_SpeedMult { 1.0 };
-	double AE_ReceiveRelativeDamageMult { 1.0 };
-
-	bool AE_Cloak { false };
-	bool AE_ForceDecloak { false };
-	bool AE_DisableWeapons { false };
-	bool AE_DisableSelfHeal { false };
-	bool AE_Untrackable { false };
-	bool AE_HasTint { false };
-	bool AE_ReflectDamage { false };
+	AEProperties AE {};
 
 	BYTE idxSlot_Wave { 0 }; //5
 	BYTE idxSlot_Beam { 0 }; //6
@@ -185,311 +684,41 @@ public:
 
 	bool CanCurrentlyDeployIntoBuilding { false }; // Only set on UnitClass technos with DeploysInto set in multiplayer games, recalculated once per frame.
 
-	struct ExtraRange
-	{
-		struct RangeData
-		{
-			double rangeMult { 1.0 };
-			double extraRange { 0.0 };
-			std::set<WeaponTypeClass*> allow {};
-			std::set<WeaponTypeClass*> disallow {};
-
-			bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
-			{
-				return this->Serialize(Stm);
-			}
-
-			bool Save(PhobosStreamWriter& Stm) const
-			{
-				return const_cast<RangeData*>(this)->Serialize(Stm);
-			}
-
-			bool Eligible(WeaponTypeClass* who)
-			{
-				bool allowed = false;
-
-				if (allow.begin() != allow.end())
-				{
-					for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
-					{
-						if (*iter_allow == who)
-						{
-							allowed = true;
-							break;
-						}
-					}
-				}
-				else
-				{
-					allowed = true;
-				}
-
-				if (allowed && disallow.begin() != disallow.end())
-				{
-					for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
-					{
-						if (*iter_disallow == who)
-						{
-							allowed = false;
-							break;
-						}
-					}
-				}
-
-				return allowed;
-			}
-		private:
-
-			template <typename T>
-			bool Serialize(T& Stm)
-			{
-				return Stm
-					.Process(this->rangeMult)
-					.Process(this->extraRange)
-					.Success()
-					;
-			}
-		};
-
-		struct RangeDataOut
-		{
-			double rangeMult { 1.0 };
-			double extraRange { 0.0 };
-		};
-
-		HelperedVector<RangeData> ranges { };
-
-		bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
-		{
-			return this->Serialize(Stm);
-		}
-
-		bool Save(PhobosStreamWriter& Stm) const
-		{
-			return const_cast<ExtraRange*>(this)->Serialize(Stm);
-		}
-
-		constexpr void Clear()
-		{
-			ranges.clear();
-		}
-
-		constexpr bool Enabled()
-		{
-			return !ranges.empty();
-		}
-
-		constexpr int Get(int initial, WeaponTypeClass* who)
-		{
-			int add = 0;
-			for (auto& ex_range : ranges)
-			{
-				if (!ex_range.Eligible(who))
-					continue;
-
-				initial = static_cast<int>(initial * MaxImpl(ex_range.rangeMult, 0.0));
-				add += static_cast<int>(ex_range.extraRange);
-			}
-
-			return initial + add;
-		}
-
-		constexpr void FillEligible(WeaponTypeClass* who, std::vector<RangeDataOut>& eligible)
-		{
-			for (auto& ex_range : this->ranges)
-			{
-				if (ex_range.Eligible(who))
-				{
-					eligible.emplace_back(ex_range.rangeMult, ex_range.extraRange);
-				}
-			}
-		}
-
-		static constexpr int Count(int initial, std::vector<RangeDataOut>& eligible)
-		{
-			int add = 0;
-			for (auto& ex_range : eligible)
-			{
-				initial = static_cast<int>(initial * MaxImpl(ex_range.rangeMult, 0.0));
-				add += static_cast<int>(ex_range.extraRange);
-			}
-
-			return initial + add;
-		}
-
-	private:
-
-		template <typename T>
-		bool Serialize(T& Stm)
-		{
-			return Stm
-				.Process(this->ranges)
-				.Success()
-				;
-		}
-	} AE_ExtraRange {};
-
-	struct ExtraCrit
-	{
-		struct CritData
-		{
-			double Mult { 1.0 };
-			double extra { 0.0 };
-			std::set<WarheadTypeClass*> allow {};
-			std::set<WarheadTypeClass*> disallow {};
-
-			bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
-			{
-				return this->Serialize(Stm);
-			}
-
-			bool Save(PhobosStreamWriter& Stm) const
-			{
-				return const_cast<CritData*>(this)->Serialize(Stm);
-			}
-
-			bool Eligible(WarheadTypeClass* who)
-			{
-				bool allowed = false;
-
-				if (allow.begin() != allow.end())
-				{
-					for (auto iter_allow = allow.begin(); iter_allow != allow.end(); ++iter_allow)
-					{
-						if (*iter_allow == who)
-						{
-							allowed = true;
-							break;
-						}
-					}
-				}
-				else
-				{
-					allowed = true;
-				}
-
-				if (allowed && disallow.begin() != disallow.end())
-				{
-					for (auto iter_disallow = disallow.begin(); iter_disallow != disallow.end(); ++iter_disallow)
-					{
-						if (*iter_disallow == who)
-						{
-							allowed = false;
-							break;
-						}
-					}
-				}
-
-				return allowed;
-			}
-		private:
-
-			template <typename T>
-			bool Serialize(T& Stm)
-			{
-				return Stm
-					.Process(this->Mult)
-					.Process(this->extra)
-					.Process(this->allow)
-					.Process(this->disallow)
-					.Success()
-					;
-			}
-		};
-
-		struct CritDataOut
-		{
-			double Mult { 1.0 };
-			double extra { 0.0 };
-		};
-
-		HelperedVector<CritData> ranges { };
-
-		bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
-		{
-			return this->Serialize(Stm);
-		}
-
-		bool Save(PhobosStreamWriter& Stm) const
-		{
-			return const_cast<ExtraCrit*>(this)->Serialize(Stm);
-		}
-
-		constexpr void Clear()
-		{
-			ranges.clear();
-		}
-
-		constexpr bool Enabled()
-		{
-			return !ranges.empty();
-		}
-
-		constexpr double Get(double initial, WarheadTypeClass* who)
-		{
-			double add = 0.0;
-			for (auto& ex_range : ranges)
-			{
-				if (!ex_range.Eligible(who))
-					continue;
-
-				initial = initial * ex_range.Mult;
-				add += ex_range.extra;
-			}
-
-			return initial + add;
-		}
-
-		constexpr void FillEligible(WarheadTypeClass* who, std::vector<CritDataOut>& eligible)
-		{
-			for (auto& ex_range : this->ranges)
-			{
-				if (ex_range.Eligible(who))
-				{
-					eligible.emplace_back(ex_range.Mult, ex_range.extra);
-				}
-			}
-		}
-
-		static constexpr double Count(double initial, std::vector<CritDataOut>& eligible)
-		{
-			double add = 0.0;
-			for (auto& ex_range : eligible)
-			{
-				initial *= MaxImpl(ex_range.Mult, 0.0);
-				add += ex_range.extra;
-			}
-
-			return initial + add;
-		}
-
-	private:
-
-		template <typename T>
-		bool Serialize(T& Stm)
-		{
-			return Stm
-				.Process(this->ranges)
-				.Success()
-				;
-		}
-	} AE_ExtraCrit {};
-
-	HelperedVector<PhobosAttachEffectClass> PhobosAE {};
+	HelperedVector<std::unique_ptr<PhobosAttachEffectClass>> PhobosAE {};
 
 	int ShootCount { 0 };
 	int CurrentAircraftWeaponIndex { 0 };
 
 	CellClass* FiringObstacleCell { nullptr }; // Set on firing if there is an obstacle cell between target and techno, used for updating WaveClass target etc.
 	OptionalStruct<int, true> AdditionalRange {};
-	bool IsAboutToStartCloaking { false }; // After TechnoClass::Cloak() has been called but before detaching everything from the object & before CloakState has been updated.
+	bool IsDetachingForCloak { false }; // After TechnoClass::Cloak() has been called but before detaching everything from the object & before CloakState has been updated.
 
-	bool HasCarryoverWarpInDelay { false }; // Converted from object with Teleport Locomotor to one with a different Locomotor while still phasing in.
-	int LastWarpInDelay { 0 };          // Last-warp in delay for this unit, used by HasCarryoverWarpInDelay
+	bool HasRemainingWarpInDelay { false }; // Converted from object with Teleport Locomotor to one with a different Locomotor while still phasing in.
+	int LastWarpInDelay { 0 };          // Last-warp in delay for this unit, used by HasRemainingWarpInDelay
+	bool IsBeingChronoSphered { false }; // Set to true on units currently being ChronoSphered, does not apply to Ares-ChronoSphere'd buildings or Chrono reinforcements.
 
 	CDTimerClass UnitAutoDeployTimer {};
+	CellClass* SubterraneanHarvRallyPoint { nullptr };
 
-	TechnoExtData() noexcept = default;
+	CDTimerClass MobileRefineryTimer {};
+	WarheadTypeClass* LastDamageWH {};
+
+	bool UnitIdleAction {};
+	bool UnitIdleActionSelected {};
+	bool UnitIdleIsSelected {};
+	CDTimerClass UnitIdleActionTimer {};
+	CDTimerClass UnitIdleActionGapTimer {};
+
+	int MyTargetingFrame { ScenarioClass::Instance->Random.RandomRanged(0,15) };
+
+	CDTimerClass ChargeTurretTimer {};// Used for charge turrets instead of RearmTimer if weapon has ChargeTurret.Delays set.
+	bool LastRearmWasFullDelay { false };
+
+	int DropCrate { -1 }; // Drop crate on death, modified by map action
+	PowerupEffects DropCrateType { PowerupEffects::Money };
+
+	int LastBeLockedFrame {};
+
 	~TechnoExtData() noexcept
 	{
 		if (!Phobos::Otamaa::ExeTerminated)
@@ -505,9 +734,8 @@ public:
 	}
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-	static bool InvalidateIgnorable(AbstractClass* ptr);
 
-	ShieldClass* GetShield() const
+	FORCEINLINE ShieldClass* GetShield() const
 	{
 		return this->Shield.get();
 	}
@@ -544,6 +772,12 @@ public:
 
 	bool IsInterceptor();
 	void CreateInitialPayload(bool forced = false);
+
+	static void InitializeUnitIdleAction(TechnoClass* pThis, TechnoTypeClass* pType);
+	void StopIdleAction();
+	void ApplyIdleAction();
+	void ManualIdleAction();
+	void StopRotateWithNewROT(int ROT = -1);
 
 	constexpr FORCEINLINE static size_t size_Of()
 	{
@@ -770,12 +1004,18 @@ public:
 
 	static NOINLINE Armor GetArmor(ObjectClass* pThis);
 	static bool CanDeployIntoBuilding(UnitClass* pThis, bool noDeploysIntoDefaultValue = false);
+
+	static void SetChargeTurretDelay(TechnoClass* pThis, int rearmDelay, WeaponTypeClass* pWeapon);
+
+	static bool TryToCreateCrate(CoordStruct location, PowerupEffects selectedPowerup = PowerupEffects::Money, int maxCellRange = 10);
+
+	static void ApplyKillWeapon(TechnoClass* pThis, TechnoClass* pSource, WarheadTypeClass* pWH);
 };
 
 class TechnoExtContainer final : public Container<TechnoExtData>
 {
 public:
-	static std::vector<TechnoExtData*> Pool;
+	inline static std::vector<TechnoExtData*> Pool;
 	static TechnoExtContainer Instance;
 
 	TechnoExtData* AllocateUnchecked(TechnoClass* key)
@@ -786,15 +1026,15 @@ public:
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-			val->TechnoExtData::TechnoExtData();
 		}
 		else
 		{
-			val = new TechnoExtData();
+			val = DLLAllocWithoutCTOR<TechnoExtData>();
 		}
 
 		if (val)
 		{
+			val->TechnoExtData::TechnoExtData();
 			val->AttachedToObject = key;
 			val->InitializeConstant();
 			return val;
@@ -843,5 +1083,5 @@ public:
 		}
 	}
 
-	CONSTEXPR_NOCOPY_CLASSB(TechnoExtContainer, TechnoExtData, "TechnoClass");
+	//CONSTEXPR_NOCOPY_CLASSB(TechnoExtContainer, TechnoExtData, "TechnoClass");
 };

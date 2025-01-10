@@ -183,6 +183,7 @@ void BuildingTypeExtData::Initialize()
 	this->PrismForwarding.Initialize(this->AttachedToObject);
 	this->EVA_Online = VoxClass::FindIndexById(GameStrings::EVA_BuildingOnLine());
 	this->EVA_Offline = VoxClass::FindIndexById(GameStrings::EVA_BuildingOffLine());
+	this->NextBuilding_CurrentHeapId = this->AttachedToObject->ArrayIndex;
 }
 
 bool BuildingTypeExtData::CanBeOccupiedBy(InfantryClass* whom) const
@@ -199,14 +200,14 @@ bool BuildingTypeExtData::CanBeOccupiedBy(InfantryClass* whom) const
 
 void BuildingTypeExtData::DisplayPlacementPreview()
 {
-	const auto pBuilding = specific_cast<BuildingClass*>(DisplayClass::Instance->CurrentBuilding);
+	const auto pBuilding = cast_to<BuildingClass*>(DisplayClass::Instance->CurrentBuilding);
 
 	if (!pBuilding)
 		return;
 
 	const auto pType = pBuilding->Type;
 	const auto pTypeExt = BuildingTypeExtContainer::Instance.Find(pType);
-	const bool bShow = pTypeExt->PlacementPreview_Show.Get(RulesExtData::Instance()->Building_PlacementPreview.Get(Phobos::Config::EnableBuildingPlacementPreview));
+	const bool bShow = pTypeExt->PlacementPreview_Show;
 
 	if (!bShow)
 		return;
@@ -261,7 +262,7 @@ void BuildingTypeExtData::DisplayPlacementPreview()
 	{
 		if (const auto pCustom = pTypeExt->PlacementPreview_Palette)
 		{
-			pDecidedPal = pCustom->GetConvert<PaletteManager::Mode::Temperate>();
+			pDecidedPal = pCustom->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pDecidedPal);
 		}
 	}
 	else
@@ -314,17 +315,17 @@ SuperClass* BuildingTypeExtData::GetSuperWeaponByIndex(int index, HouseClass* pH
 
 int BuildingTypeExtData::GetSuperWeaponIndex(const int index, HouseClass* pHouse) const
 {
-	auto idxSW = this->GetSuperWeaponIndex(index);
+	const size_t idxSW = this->GetSuperWeaponIndex(index);
 
-	if (auto pSuper = pHouse->Supers.GetItemOrDefault(idxSW))
+	if (idxSW < (size_t)pHouse->Supers.Count)
 	{
-		if (!SWTypeExtContainer::Instance.Find(pSuper->Type)->IsAvailable(pHouse))
+		if (!SWTypeExtContainer::Instance.Find(pHouse->Supers[idxSW]->Type)->IsAvailable(pHouse))
 		{
 			return -1;
 		}
 	}
 
-	return idxSW;
+	return (int)idxSW;
 }
 
 int BuildingTypeExtData::GetSuperWeaponIndex(const int index) const
@@ -391,14 +392,6 @@ int BuildingTypeExtData::GetBuildingAnimTypeIndex(BuildingClass* pThis, const Bu
 	}
 
 	return AnimTypeClass::FindIndexById(pDefault);
-}
-
-bool __fastcall BuildingTypeExtData::IsFactory(BuildingClass* pThis, void* _)
-{
-	if (!pThis || !pThis->Type)
-		return false;
-
-	return pThis->Type->Factory == AbstractType::AircraftType || pThis->IsFactory();
 }
 
 void __fastcall BuildingTypeExtData::DrawPlacementGrid(Surface* Surface, ConvertClass* Pal, SHPStruct* SHP, int FrameIndex, const Point2D* const Position, const RectangleStruct* const Bounds, BlitterFlags Flags, int Remap, int ZAdjust, ZGradient ZGradientDescIndex, int Brightness, int TintColor, SHPStruct* ZShape, int ZShapeFrame, int XOffset, int YOffset)
@@ -684,7 +677,8 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Refinery_UseStorage.Read(exINI, pSection, "Refinery.UseStorage");
 		const auto IscompatibilityMode = Phobos::Otamaa::CompatibilityMode;
 
-		this->PlacementPreview_Show.Read(exINI, pSection, !Refinery_UseStorage ? "PlacementPreview.Show" : "PlacementPreview");
+		this->PlacementPreview_Show.Read(exINI, pSection, "PlacementPreview.Show");
+		this->PlacementPreview_Show.Read(exINI, pSection, "PlacementPreview");
 
 		if (pINI->GetString(pSection, "PlacementPreview.Shape", Phobos::readBuffer))
 		{
@@ -970,6 +964,25 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		}
 
 		this->PrismForwarding.LoadFromINIFile(pThis, pINI);
+
+		this->ExcludeFromMultipleFactoryBonus.Read(exINI, pSection, "ExcludeFromMultipleFactoryBonus");
+
+		this->NoBuildAreaOnBuildup.Read(exINI, pSection, "NoBuildAreaOnBuildup");
+		this->Adjacent_Allowed.Read(exINI, pSection, "Adjacent.Allowed");
+		this->Adjacent_Disallowed.Read(exINI, pSection, "Adjacent.Disallowed");
+
+		this->Units_RepairRate.Read(exINI, pSection, "Units.RepairRate");
+		this->Units_RepairStep.Read(exINI, pSection, "Units.RepairStep");
+		this->Units_RepairPercent.Read(exINI, pSection, "Units.RepairPercent");
+		this->Units_UseRepairCost.Read(exINI, pSection, "Units.UseRepairCost");
+
+		this->PowerPlant_DamageFactor.Read(exINI, pSection, "PowerPlant.DamageFactor");
+
+		// Next Building
+		{
+			this->NextBuilding_Next.Read(exINI, pSection, "NextBuilding.Next");
+			this->NextBuilding_Prev.Read(exINI, pSection, "NextBuilding.Prev");
+		}
 	}
 #pragma endregion
 	if (pArtINI->GetSection(pArtSection))
@@ -1006,7 +1019,7 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		//char tempFire_OffsBuffer[0x25];
 		for (size_t i = 0;; ++i)
 		{
-			Point2D nFire_offs;
+			Point2D nFire_offs {};
 			if (!detail::read(nFire_offs, exArtINI, pArtSection, (std::string(GameStrings::DamageFireOffset()) + std::to_string(i)).c_str()))
 				break;
 
@@ -1259,6 +1272,22 @@ void BuildingTypeExtData::Serialize(T& Stm)
 
 		.Process(this->FactoryPlant_AllowTypes)
 		.Process(this->FactoryPlant_DisallowTypes)
+
+		.Process(this->ExcludeFromMultipleFactoryBonus)
+
+		.Process(this->NoBuildAreaOnBuildup)
+		.Process(this->Adjacent_Allowed)
+		.Process(this->Adjacent_Disallowed)
+
+		.Process(this->Units_RepairRate)
+		.Process(this->Units_RepairStep)
+		.Process(this->Units_RepairPercent)
+		.Process(this->Units_UseRepairCost)
+		.Process(this->PowerPlant_DamageFactor)
+
+		.Process(this->NextBuilding_Prev)
+		.Process(this->NextBuilding_Next)
+		.Process(this->NextBuilding_CurrentHeapId)
 		;
 }
 
@@ -1271,25 +1300,24 @@ bool BuildingTypeExtContainer::Load(BuildingTypeClass* key, IStream* pStm)
 	if (!key)
 		return false;
 
-	auto Iter = BuildingTypeExtContainer::Instance.Map.find(key);
+	BuildingTypeExtData* pExt = BuildingTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (Iter == BuildingTypeExtContainer::Instance.Map.end())
+	if (!pExt)
 	{
-		auto ptr = this->AllocateUnchecked(key);
-		Iter = BuildingTypeExtContainer::Instance.Map.emplace(key, ptr).first;
+		pExt = BuildingTypeExtContainer::Instance.Map.insert_unchecked(key, this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
-	this->SetExtAttribute(key, Iter->second);
+	this->SetExtAttribute(key, pExt);
 
 	PhobosByteStream loader { 0 };
 	if (loader.ReadBlockFromStream(pStm))
 	{
 		PhobosStreamReader reader { loader };
 		if (reader.Expect(BuildingTypeExtData::Canary)
-			&& reader.RegisterChange(Iter->second))
+			&& reader.RegisterChange(pExt))
 		{
-			Iter->second->LoadFromStream(reader);
+			pExt->LoadFromStream(reader);
 			if (reader.ExpectEndOfBlock())
 			{
 				// reset the buildup time
@@ -1309,15 +1337,15 @@ DEFINE_HOOK(0x45E50C, BuildingTypeClass_CTOR, 0x6)
 {
 	GET(BuildingTypeClass*, pItem, EAX);
 
-	auto Iter = BuildingTypeExtContainer::Instance.Map.find(pItem);
+	BuildingTypeExtData* pExt = BuildingTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (Iter == BuildingTypeExtContainer::Instance.Map.end())
+	if (!pExt)
 	{
-		auto ptr = BuildingTypeExtContainer::Instance.AllocateUnchecked(pItem);
-		Iter = BuildingTypeExtContainer::Instance.Map.emplace(pItem, ptr).first;
+		pExt = BuildingTypeExtContainer::Instance.Map.insert_unchecked(pItem,
+			   BuildingTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
-	BuildingTypeExtContainer::Instance.SetExtAttribute(pItem, Iter->second);
+	BuildingTypeExtContainer::Instance.SetExtAttribute(pItem, pExt);
 
 	return 0;
 }
@@ -1329,7 +1357,8 @@ DEFINE_HOOK(0x45E707, BuildingTypeClass_DTOR, 0x6)
 	auto extData = BuildingTypeExtContainer::Instance.GetExtAttribute(pItem);
 	BuildingTypeExtContainer::Instance.ClearExtAttribute(pItem);
 	BuildingTypeExtContainer::Instance.Map.erase(pItem);
-	delete extData;
+	if (extData)
+		DLLCallDTOR(extData);
 
 	return 0;
 }

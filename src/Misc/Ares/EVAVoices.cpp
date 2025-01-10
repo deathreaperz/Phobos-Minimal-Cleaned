@@ -9,8 +9,6 @@
 
 #include <Ext/Side/Body.h>
 
-std::vector<std::string> EVAVoices::Types;
-
 int EVAVoices::FindIndexById(const char* type)
 {
 	//Debug::Log("[Phobos] Find EVAVoices Index by ID [%s]\n", type);
@@ -54,7 +52,6 @@ void EVAVoices::RegisterType(const char* type)
 	}
 }
 
-#ifndef aaa
 // replace the complete ini loading function
 DEFINE_HOOK(0x753000, VoxClass_CreateFromINIList, 6)
 {
@@ -202,4 +199,3 @@ DEFINE_HOOK(0x7534e0, VoxClass_SetEVAIndex, 5)
 
 	return 0x7534F3;
 }
-#endif

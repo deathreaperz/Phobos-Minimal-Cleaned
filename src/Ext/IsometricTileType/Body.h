@@ -23,9 +23,6 @@ public:
 	Valueable<int> Tileset { -1 };
 	Valueable<PaletteManager*> Palette {};
 
-	IsometricTileTypeExtData() noexcept = default;
-	~IsometricTileTypeExtData() noexcept = default;
-
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -71,13 +68,13 @@ public:
 			;
 	}
 
-	IsometricTileTypeExtContainer() : Container<IsometricTileTypeExtData> { "IsometricTileTypeClass" }
-	{ }
-
-	virtual ~IsometricTileTypeExtContainer() override = default;
-
-private:
-	IsometricTileTypeExtContainer(const IsometricTileTypeExtContainer&) = delete;
-	IsometricTileTypeExtContainer(IsometricTileTypeExtContainer&&) = delete;
-	IsometricTileTypeExtContainer& operator=(const IsometricTileTypeExtContainer& other) = delete;
+	//	IsometricTileTypeExtContainer() : Container<IsometricTileTypeExtData> { "IsometricTileTypeClass" }
+	//	{ }
+	//
+	//	virtual ~IsometricTileTypeExtContainer() override = default;
+	//
+	//private:
+	//	IsometricTileTypeExtContainer(const IsometricTileTypeExtContainer&) = delete;
+	//	IsometricTileTypeExtContainer(IsometricTileTypeExtContainer&&) = delete;
+	//	IsometricTileTypeExtContainer& operator=(const IsometricTileTypeExtContainer& other) = delete;
 };

@@ -3,22 +3,24 @@
 #include <BulletClass.h>
 #include <HouseClass.h>
 
-#include <Utilities/EnumFunctions.h>
 #include <Ext/Anim/Body.h>
 #include <Ext/Bullet/Body.h>
 #include <Ext/BulletType/Body.h>
-#include <New/Type/ArmorTypeClass.h>
 #include <Ext/Techno/Body.h>
 #include <Ext/House/Body.h>
 #include <Ext/Building/Body.h>
 #include <Ext/WeaponType/Body.h>
 
 #include <Utilities/Macro.h>
+#include <Utilities/EnumFunctions.h>
 #include <Utilities/Helpers.h>
 
 #include <New/Entity/FlyingStrings.h>
+#include <New/Type/ArmorTypeClass.h>
 
-PhobosMap<IonBlastClass*, WarheadTypeExtData*> WarheadTypeExtData::IonBlastExt;
+#include <IonBlastClass.h>
+#include <InfantryClass.h>
+#include <TerrainClass.h>
 
 void WarheadTypeExtData::InitializeConstant()
 {
@@ -117,6 +119,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Crit_AffectsHouses.Read(exINI, pSection, "Crit.AffectsHouses");
 	this->Crit_AnimList.Read(exINI, pSection, "Crit.AnimList");
 	this->Crit_AnimList_PickRandom.Read(exINI, pSection, "Crit.AnimList.PickRandom");
+	this->Crit_AnimList_CreateAll.Read(exINI, pSection, "Crit.AnimList.CreateAll");
+	this->Crit_ActiveChanceAnims.Read(exINI, pSection, "Crit.ActiveChanceAnims");
 	this->Crit_AnimOnAffectedTargets.Read(exINI, pSection, "Crit.AnimOnAffectedTargets");
 	this->Crit_AffectBelowPercent.Read(exINI, pSection, "Crit.AffectBelowPercent");
 	this->Crit_SuppressOnIntercept.Read(exINI, pSection, "Crit.SuppressWhenIntercepted");
@@ -143,6 +147,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Shield_PassPercent.Read(exINI, pSection, "Shield.PassPercent");
 	this->Shield_ReceivedDamage_Minimum.Read(exINI, pSection, "Shield.ReceivedDamage.Minimum");
 	this->Shield_ReceivedDamage_Maximum.Read(exINI, pSection, "Shield.ReceivedDamage.Maximum");
+	this->Shield_ReceivedDamage_MinMultiplier.Read(exINI, pSection, "Shield.ReceivedDamage.MinMultiplier");
+	this->Shield_ReceivedDamage_MaxMultiplier.Read(exINI, pSection, "Shield.ReceivedDamage.MaxMultiplier");
 	this->Shield_Respawn_Duration.Read(exINI, pSection, "Shield.Respawn.Duration");
 	this->Shield_Respawn_Amount.Read(exINI, pSection, "Shield.Respawn.Amount");
 	this->Shield_Respawn_Rate_InMinutes.Read(exINI, pSection, "Shield.Respawn.Rate");
@@ -215,6 +221,7 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->MindControl_CanKill.Read(exINI, pSection, "MindControl.CanKill");
 
 	this->DetonateOnAllMapObjects.Read(exINI, pSection, "DetonateOnAllMapObjects");
+	this->DetonateOnAllMapObjects_Full.Read(exINI, pSection, "DetonateOnAllMapObjects.Full");
 	this->DetonateOnAllMapObjects_RequireVerses.Read(exINI, pSection, "DetonateOnAllMapObjects.RequireVerses");
 	this->DetonateOnAllMapObjects_AffectTargets.Read(exINI, pSection, "DetonateOnAllMapObjects.AffectTargets");
 	this->DetonateOnAllMapObjects_AffectHouses.Read(exINI, pSection, "DetonateOnAllMapObjects.AffectHouses");
@@ -259,7 +266,7 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		if (!hitAnim[i] && ArmorTypeClass::Array[i]->DefaultTo != -1)
 		{
 			for (auto pDefArmor = ArmorTypeClass::Array[ArmorTypeClass::Array[i]->DefaultTo].get();
-				;
+				pDefArmor != ArmorTypeClass::Array[ArmorTypeClass::Array.size()].get();
 				pDefArmor = ArmorTypeClass::Array[pDefArmor->DefaultTo].get())
 			{
 				if (auto pFallback = hitAnim[ArmorTypeClass::Array[i]->DefaultTo])
@@ -332,7 +339,7 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SuppressDeathWeapon_Infantry.Read(exINI, pSection, "DeathWeapon.SuppressInfantry");
 	this->SuppressDeathWeapon.Read(exINI, pSection, "DeathWeapon.Suppress");
 	this->SuppressDeathWeapon_Exclude.Read(exINI, pSection, "DeathWeapon.SuppressExclude");
-	this->SuppressDeathWeapon_Chance.Read(exINI, pSection, "DeathWeapon.SuppressChance", true);
+	this->SuppressDeathWeapon_Chance.Read(exINI, pSection, "DeathWeapon.SuppressChance");
 
 	this->DeployedDamage.Read(exINI, pSection, "Damage.Deployed");
 	this->Temporal_WarpAway.Read(exINI, pSection, "Temporal.WarpAway");
@@ -483,13 +490,10 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->Nonprovocative.Read(exINI, pSection, "Nonprovocative");
 
-	this->AttachEffect_AttachTypes.Read(exINI, pSection, "AttachEffect.AttachTypes");
-	this->AttachEffect_RemoveTypes.Read(exINI, pSection, "AttachEffect.RemoveTypes");
-	this->AttachEffect_RemoveGroups.Read(exINI, pSection, "AttachEffect.RemoveGroups");
-	this->AttachEffect_CumulativeRemoveMinCounts.Read(exINI, pSection, "AttachEffect.CumulativeRemoveMinCounts");
-	this->AttachEffect_CumulativeRemoveMaxCounts.Read(exINI, pSection, "AttachEffect.CumulativeRemoveMaxCounts");
-	this->AttachEffect_DurationOverrides.Read(exINI, pSection, "AttachEffect.DurationOverrides");
+	// AttachEffect
+	this->PhobosAttachEffects.LoadFromINI(pINI, pSection);
 	this->Shield_HitFlash.Read(exINI, pSection, "Shield.HitFlash");
+	this->Shield_SkipHitAnim.Read(exINI, pSection, "Shield.SkipHitAnim");
 	this->CombatAlert_Suppress.Read(exINI, pSection, "CombatAlert.Suppress");
 
 	this->AffectsOnFloor.Read(exINI, pSection, "AffectsOnFloor");
@@ -566,6 +570,17 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SuppressReflectDamage.Read(exINI, pSection, "SuppressReflectDamage");
 	this->SuppressReflectDamage_Types.Read(exINI, pSection, "SuppressReflectDamage.Types");
 	this->SuppressReflectDamage_Groups.Read(exINI, pSection, "SuppressReflectDamage.Groups");
+
+	this->RemoveParasites.Read(exINI, pSection, "RemoveParasites");
+	this->CLIsBlack.Read(exINI, pSection, "CLIsBlack");
+	this->ApplyMindamage.Read(exINI, pSection, "ApplyMinDamage");
+	this->MinDamage.Read(exINI, pSection, "MinDamage");
+
+	this->KillWeapon.Read(exINI, pSection, "KillWeapon");
+	this->KillWeapon_AffectTargets.Read(exINI, pSection, "KillWeapon.AffectTargets");
+	this->KillWeapon_AffectHouses.Read(exINI, pSection, "KillWeapon.AffectHouses");
+	this->KillWeapon_AffectTypes.Read(exINI, pSection, "KillWeapon.AffectTypes");
+	this->KillWeapon_IgnoreTypes.Read(exINI, pSection, "KillWeapon.IgnoreTypes");
 }
 
 //https://github.com/Phobos-developers/Phobos/issues/629
@@ -741,7 +756,7 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool S
 		if (pType->Immune)
 			return false;
 
-		if (auto const pBld = specific_cast<BuildingClass*>(pTechno))
+		if (auto const pBld = cast_to<BuildingClass*, false>(pTechno))
 		{
 			auto const pBldExt = BuildingExtContainer::Instance.Find(pBld);
 
@@ -754,7 +769,7 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool S
 				return false;
 		}
 
-		if (const auto pFoot = abstract_cast<FootClass*>(pTechno))
+		if (const auto pFoot = flag_cast_to<FootClass*, false>(pTechno))
 		{
 			if (TechnoExtData::IsChronoDelayDamageImmune(pFoot))
 				return false;
@@ -773,7 +788,7 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool S
 
 		if (!SkipVerses && EffectsRequireVerses.Get())
 		{
-			return (std::abs(this->GetVerses(TechnoExtData::GetTechnoArmor(pTechno, this->AttachedToObject)).Verses) >= 0.001);
+			return (Math::abs(this->GetVerses(TechnoExtData::GetTechnoArmor(pTechno, this->AttachedToObject)).Verses) >= 0.001);
 		}
 
 		return true;
@@ -862,7 +877,7 @@ void WarheadTypeExtData::applyWebby(TechnoClass* pTarget, HouseClass* pKillerHou
 	if (!this->Webby || this->Webby_Duration == 0)
 		return;
 
-	if (auto pInf = specific_cast<InfantryClass*>(pTarget))
+	if (auto pInf = cast_to<InfantryClass*>(pTarget))
 	{
 		if (TechnoExtData::IsWebImmune(pInf))
 			return;
@@ -952,7 +967,7 @@ bool WarheadTypeExtData::applyCulling(TechnoClass* pSource, ObjectClass* pTarget
 	if (!pThis->Culling || !pSource)
 		return false;
 
-	if (auto const pTargetTechno = generic_cast<TechnoClass*>(pTarget))
+	if (auto const pTargetTechno = flag_cast_to<TechnoClass*, false>(pTarget))
 	{
 		if (TechnoExtData::IsCullingImmune(pTargetTechno))
 			return false;
@@ -1017,7 +1032,7 @@ static constexpr int GetRelativeValue(ObjectClass* pTarget, WarheadTypeExtData* 
 
 	if (IsTechno && relative > 0)
 	{
-		return int(relative * TechnoExtContainer::Instance.Find((TechnoClass*)pTarget)->AE_ReceiveRelativeDamageMult);
+		return int(relative * TechnoExtContainer::Instance.Find((TechnoClass*)pTarget)->AE.ReceiveRelativeDamageMult);
 	}
 
 	return relative;
@@ -1165,9 +1180,6 @@ void WarheadTypeExtData::DetonateAt(
 	HouseClass* pFiringHouse
 )
 {
-	if (!pThis)
-		return;
-
 	BulletTypeClass* pType = BulletTypeExtData::GetDefaultBulletType();
 
 	//if (pThis->NukeMaker)
@@ -1178,16 +1190,15 @@ void WarheadTypeExtData::DetonateAt(
 	//		return;
 	//	}
 	//}
-
-	if (!pOwner)
-	{
-		Debug::Log("WarheadTypeExtData::DetonateAt[%s] delivering damage from unknown source [%x] !\n", pThis->get_ID(), pOwner);
-	}
+	//
+	//if (!pOwner && Phobos::Otamaa::IsAdmin) {
+	//	Debug::Log("WarheadTypeExtData::DetonateAt[%s] delivering damage from unknown source [%x] !\n", pThis->get_ID(), pOwner);
+	//}
 
 	if (BulletClass* pBullet = BulletTypeExtContainer::Instance.Find(pType)->CreateBullet(pTarget, pOwner,
 		damage, pThis, 0, 0, pThis->Bright, true))
 	{
-		pBullet->MoveTo(coords, {});
+		pBullet->MoveTo(coords, VelocityClass::Empty);
 
 		//something like 0x6FF08B
 		const auto pCellCoord = MapClass::Instance->GetCellAt(coords);
@@ -1267,6 +1278,7 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->Crit_AffectsHouses)
 		.Process(this->Crit_AnimList)
 		.Process(this->Crit_AnimList_PickRandom)
+		.Process(this->Crit_ActiveChanceAnims)
 		.Process(this->Crit_AnimOnAffectedTargets)
 		.Process(this->Crit_AffectBelowPercent)
 		.Process(this->Crit_SuppressOnIntercept)
@@ -1274,6 +1286,7 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->RandomBuffer)
 		.Process(this->HasCrit)
 		.Process(this->Crit_CurrentChance)
+		.Process(this->Crit_AnimList_CreateAll)
 		.Process(this->MindControl_Anim)
 
 		// Ares tags
@@ -1292,6 +1305,8 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->Shield_PassPercent)
 		.Process(this->Shield_ReceivedDamage_Minimum)
 		.Process(this->Shield_ReceivedDamage_Maximum)
+		.Process(this->Shield_ReceivedDamage_MinMultiplier)
+		.Process(this->Shield_ReceivedDamage_MaxMultiplier)
 		.Process(this->Shield_Respawn_Duration)
 		.Process(this->Shield_Respawn_Amount)
 		.Process(this->Shield_Respawn_Rate)
@@ -1340,6 +1355,7 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->MindControl_CanKill)
 
 		.Process(this->DetonateOnAllMapObjects)
+		.Process(this->DetonateOnAllMapObjects_Full)
 		.Process(this->DetonateOnAllMapObjects_RequireVerses)
 		.Process(this->DetonateOnAllMapObjects_AffectTargets)
 		.Process(this->DetonateOnAllMapObjects_AffectHouses)
@@ -1518,13 +1534,10 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->SpawnsCrate_Types)
 		.Process(this->SpawnsCrate_Weights)
 
-		.Process(this->AttachEffect_AttachTypes)
-		.Process(this->AttachEffect_RemoveTypes)
-		.Process(this->AttachEffect_RemoveGroups)
-		.Process(this->AttachEffect_CumulativeRemoveMinCounts)
-		.Process(this->AttachEffect_CumulativeRemoveMaxCounts)
-		.Process(this->AttachEffect_DurationOverrides)
+		.Process(this->PhobosAttachEffects)
+
 		.Process(this->Shield_HitFlash)
+		.Process(this->Shield_SkipHitAnim)
 		.Process(this->CombatAlert_Suppress)
 
 		.Process(this->AffectsOnFloor)
@@ -1540,7 +1553,18 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->SuppressReflectDamage)
 		.Process(this->SuppressReflectDamage_Types)
 		.Process(this->SuppressReflectDamage_Groups)
+		.Process(this->RemoveParasites)
 		.Process(this->Reflected)
+		.Process(this->CLIsBlack)
+		.Process(this->ApplyMindamage)
+		.Process(this->MinDamage)
+		.Process(this->IntendedTarget)
+
+		.Process(this->KillWeapon)
+		.Process(this->KillWeapon_AffectTargets)
+		.Process(this->KillWeapon_AffectHouses)
+		.Process(this->KillWeapon_AffectTypes)
+		.Process(this->KillWeapon_IgnoreTypes)
 		;
 
 	PaintBallData.Serialize(Stm);
@@ -1560,14 +1584,14 @@ void WarheadTypeExtData::GetCritChance(TechnoClass* pFirer, std::vector<double>&
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pFirer);
 
-	if (pExt->AE_ExtraCrit.Enabled())
+	if (pExt->AE.ExtraCrit.Enabled())
 	{
-		std::vector<TechnoExtData::ExtraCrit::CritDataOut> valids;
-		pExt->AE_ExtraCrit.FillEligible(this->AttachedToObject, valids);
+		std::vector<AEProperties::ExtraCrit::CritDataOut> valids;
+		pExt->AE.ExtraCrit.FillEligible(this->AttachedToObject, valids);
 
 		for (auto& curChances : chances)
 		{
-			curChances = TechnoExtData::ExtraCrit::Count(curChances, valids);
+			curChances = AEProperties::ExtraCrit::Count(curChances, valids);
 		}
 	}
 }
@@ -1577,9 +1601,10 @@ void WarheadTypeExtData::ApplyAttachEffects(TechnoClass* pTarget, HouseClass* pI
 	if (!pTarget)
 		return;
 
-	PhobosAttachEffectClass::Attach(this->AttachEffect_AttachTypes, pTarget, pInvokerHouse, pInvoker, this->AttachedToObject, this->AttachEffect_DurationOverrides, nullptr, nullptr, nullptr);
-	PhobosAttachEffectClass::Detach(this->AttachEffect_RemoveTypes, pTarget, this->AttachEffect_CumulativeRemoveMinCounts, this->AttachEffect_CumulativeRemoveMaxCounts);
-	PhobosAttachEffectClass::DetachByGroups(this->AttachEffect_RemoveGroups, pTarget, this->AttachEffect_CumulativeRemoveMinCounts, this->AttachEffect_CumulativeRemoveMaxCounts);
+	auto const info = &this->PhobosAttachEffects;
+	PhobosAttachEffectClass::Attach(pTarget, pInvokerHouse, pInvoker, this->AttachedToObject, info);
+	PhobosAttachEffectClass::Detach(pTarget, info);
+	PhobosAttachEffectClass::DetachByGroups(pTarget, info);
 }
 
 bool WarheadTypeExtData::ApplySuppressDeathWeapon(TechnoClass* pVictim) const
@@ -1587,22 +1612,24 @@ bool WarheadTypeExtData::ApplySuppressDeathWeapon(TechnoClass* pVictim) const
 	auto const absType = pVictim->WhatAmI();
 	auto const pVictimType = pVictim->GetTechnoType();
 
-	if (SuppressDeathWeapon_Exclude.Contains(pVictimType))
-		return false;
+	if (!this->SuppressDeathWeapon_Exclude.Contains(pVictimType))
+	{
+		if (this->SuppressDeathWeapon.Contains(pVictimType))
+		{
+			if (absType == UnitClass::AbsID && !this->SuppressDeathWeapon_Vehicles)
+				return false;
 
-	if (absType == UnitClass::AbsID && !SuppressDeathWeapon_Vehicles)
-		return false;
+			if (absType == InfantryClass::AbsID && !this->SuppressDeathWeapon_Infantry)
+				return false;
 
-	if (absType == InfantryClass::AbsID && !SuppressDeathWeapon_Infantry)
-		return false;
+			if (this->SuppressDeathWeapon_Chance.isset())
+				return ScenarioClass::Instance->Random.RandomDouble() >= Math::abs(this->SuppressDeathWeapon_Chance.Get());
 
-	if (!SuppressDeathWeapon.Contains(pVictimType))
-		return false;
+			return true;
+		}
+	}
 
-	if (SuppressDeathWeapon_Chance.isset())
-		return ScenarioClass::Instance->Random.RandomDouble() >= abs(SuppressDeathWeapon_Chance.Get());
-
-	return true;
+	return false;
 }
 
 // =============================
@@ -1646,27 +1673,32 @@ DEFINE_HOOK(0x75E5C8, WarheadTypeClass_SDDTOR, 0x6)
 	WarheadTypeExtContainer::Instance.Remove(pItem);
 	return 0;
 }
+#include <Misc/Hooks.Otamaa.h>
 
-DEFINE_HOOK_AGAIN(0x75E2C0, WarheadTypeClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x75E0C0, WarheadTypeClass_SaveLoad_Prefix, 0x8)
+HRESULT __stdcall FakeWarheadTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(WarheadTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
-	WarheadTypeExtContainer::Instance.PrepareStream(pItem, pStm);
-	return 0;
+	WarheadTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->WarheadTypeClass::Load(pStm);
+
+	if (SUCCEEDED(res))
+		WarheadTypeExtContainer::Instance.LoadStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x75E2AE, WarheadTypeClass_Load_Suffix, 0x7)
+HRESULT __stdcall FakeWarheadTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	WarheadTypeExtContainer::Instance.LoadStatic();
-	return 0;
+	WarheadTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->WarheadTypeClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		WarheadTypeExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x75E39C, WarheadTypeClass_Save_Suffix, 0x5)
-{
-	WarheadTypeExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7F6B44, MiscTools::to_DWORD(&FakeWarheadTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F6B48, MiscTools::to_DWORD(&FakeWarheadTypeClass::_Save))
 
 // is return not valid
 DEFINE_HOOK_AGAIN(0x75DEAF, WarheadTypeClass_LoadFromINI, 0x5)

@@ -2,8 +2,10 @@
 #include <TechnoTypeClass.h>
 
 #include <Helpers/Macro.h>
-#include <Utilities/Container.h>
+#include <Utilities/PhobosPCXFile.h>
+#include <Utilities/OptionalStruct.h>
 #include <Utilities/TemplateDefB.h>
+#include <Utilities/PhobosMap.h>
 
 #include <New/InsigniaData.h>
 #include <New/LaserTrailDataEntry.h>
@@ -17,7 +19,7 @@
 #include <New/Type/DroppodProperties.h>
 #include <New/Type/CrateTypeClass.h>
 
-#include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
+#include <New/PhobosAttachedAffect/AEAttachInfoTypeClass.h>
 
 #include <New/AnonymousType/PassengerDeletionTypeClass.h>
 
@@ -98,12 +100,11 @@ public:
 
 	static constexpr size_t Canary = 0x22544444;
 	using base_type = TechnoTypeClass;
+
 	//static constexpr size_t ExtOffset = 0x35C;
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0x2FC;
-#else
-	static constexpr size_t ExtOffset = 0xDF4;
-#endif
+	//static constexpr size_t ExtOffset = 0xDF4;
+
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 public:
@@ -305,7 +306,7 @@ public:
 	ValueableVector<int> MobileRefinery_FrontOffset {};
 	ValueableVector<int> MobileRefinery_LeftOffset {};
 	Valueable<bool> MobileRefinery_Display { true };
-	Valueable<ColorStruct> MobileRefinery_DisplayColor { { 57, 197, 187 } };
+	Valueable<AffectedHouse> MobileRefinery_Display_House { AffectedHouse::All };
 	ValueableVector<AnimTypeClass*> MobileRefinery_Anims {};
 	Valueable<bool> MobileRefinery_AnimMove { false };
 	Valueable<bool> Explodes_KillPassengers { true };
@@ -351,6 +352,9 @@ public:
 	Valueable<int> CustomMissileTrailerSeparation { 3 };
 	Valueable<WeaponTypeClass*> CustomMissileWeapon { nullptr };
 	Valueable<WeaponTypeClass*> CustomMissileEliteWeapon { nullptr };
+	Valueable<int> CustomMissileInaccuracy { };
+	Valueable<int> CustomMissileTrailAppearDelay { 2 };
+
 	Promotable<bool> CustomMissileRaise { true };
 	Nullable<Point2D> CustomMissileOffset { };
 
@@ -544,7 +548,13 @@ public:
 	Nullable<int> Harvester_KickDelay { };
 
 	Nullable<int> TurretRot { };
+
 	Valueable<UnitTypeClass*> WaterImage { nullptr };
+	Valueable<UnitTypeClass*> WaterImage_Yellow { nullptr };
+	Valueable<UnitTypeClass*> WaterImage_Red { nullptr };
+
+	Valueable<UnitTypeClass*> Image_Yellow { nullptr };
+	Valueable<UnitTypeClass*> Image_Red { nullptr };
 
 	Valueable<int> FallRate_Parachute { 1 };
 	Valueable<int> FallRate_NoParachute { 1 };
@@ -893,9 +903,9 @@ public:
 
 	Nullable<PartialVector3D<double>> DetectDisguise_Percent {};
 
-	NullableIdx<ArmorTypeClass*> EliteArmor {};
-	NullableIdx<ArmorTypeClass*> VeteranArmor {};
-	NullableIdx<ArmorTypeClass*> DeployedArmor {};
+	Nullable<Armor> EliteArmor {};
+	Nullable<Armor> VeteranArmor {};
+	Nullable<Armor> DeployedArmor {};
 
 	Valueable<bool> Cloakable_IgnoreArmTimer { false };
 
@@ -949,11 +959,7 @@ public:
 	Valueable<double> Tint_Intensity { 0.0 };
 	Valueable<AffectedHouse> Tint_VisibleToHouses { AffectedHouse::All };
 
-	ValueableVector<PhobosAttachEffectTypeClass*> AttachEffect_AttachTypes {};
-	ValueableVector<int> AttachEffect_DurationOverrides {};
-	ValueableVector<int> AttachEffect_Delays {};
-	ValueableVector<int> AttachEffect_InitialDelays {};
-	NullableVector<int> AttachEffect_RecreationDelays {};
+	AEAttachInfoTypeClass PhobosAttachEffects {};
 
 	Valueable<bool> KeepTargetOnMove {};
 	Nullable<Leptons> KeepTargetOnMove_ExtraDistance {};
@@ -981,13 +987,45 @@ public:
 	Nullable<int> PlayerNormalTargetingDelay {};
 	Nullable<int> AIGuardAreaTargetingDelay {};
 	Nullable<int> PlayerGuardAreaTargetingDelay {};
+	Nullable<bool> DistributeTargetingFrame {};
 
 	Valueable<bool> CanBeBuiltOn { false };
 	Valueable<bool> UnitBaseNormal { false };
 	Valueable<bool> UnitBaseForAllyBuilding { false };
 
-	TechnoTypeExtData() noexcept = default;
-	~TechnoTypeExtData() noexcept = default;
+	Nullable<int> ChronoSpherePreDelay {};
+	Nullable<int> ChronoSphereDelay {};
+
+	Valueable<bool> PassengerWeapon { false };
+
+	Nullable<ParticleSystemTypeClass*> RefinerySmokeParticleSystemOne {};
+	Nullable<ParticleSystemTypeClass*> RefinerySmokeParticleSystemTwo {};
+	Nullable<ParticleSystemTypeClass*> RefinerySmokeParticleSystemThree {};
+	Nullable<ParticleSystemTypeClass*> RefinerySmokeParticleSystemFour {};
+
+	int SubterraneanSpeed { -1 };
+
+	ValueableVector<int> ForceWeapon_InRange {};
+	ValueableVector<double> ForceWeapon_InRange_Overrides {};
+	Valueable<bool> ForceWeapon_InRange_ApplyRangeModifiers { false };
+
+	Nullable<bool> UnitIdleRotateTurret {};
+	Nullable<bool> UnitIdlePointToMouse {};
+
+	Valueable<double> FallingDownDamage { 1.0 };
+	Nullable<double> FallingDownDamage_Water {};
+
+	NullableIdx<CrateTypeClass> DropCrate {};
+
+	Promotable<WarheadTypeClass*> WhenCrushed_Warhead {};
+	Promotable<WeaponTypeClass*> WhenCrushed_Weapon {};
+	NullablePromotable<int> WhenCrushed_Damage {};
+	Valueable<bool> WhenCrushed_Warhead_Full { true };
+
+	PhobosMap<AbstractTypeClass*, TechnoTypeClass*> Convert_ToHouseOrCountry {};
+
+	Valueable<bool> SuppressKillWeapons { false };
+	ValueableVector<WeaponTypeClass*> SuppressKillWeapons_Types {};
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromINIFile_Aircraft(CCINIClass* pINI);
@@ -996,7 +1034,7 @@ public:
 	void Initialize();
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
-	bool IsCountedAsHarvester() const;
+	bool IsCountedAsHarvester();
 
 	void AdjustCrushProperties();
 
@@ -1036,12 +1074,21 @@ public:
 	static bool CanBeBuiltAt(TechnoTypeClass* pProduct, BuildingTypeClass* pFactoryType);
 };
 
+class FakeTechnoTypeClass : public TechnoTypeClass
+{
+public:
+	//TODO : replace bigger hook with LJMP patch
+	WeaponStruct* GetWeapon(int which);
+	WeaponStruct* GetEliteWeapon(int which);
+	int GetWeaponTurretIndex(int which);
+};
+
 class TechnoTypeExtContainer final : public Container<TechnoTypeExtData>
 {
 public:
 	static TechnoTypeExtContainer Instance;
 
-	std::unordered_map<TechnoTypeClass*, TechnoTypeExtData*> Map;
+	PhobosMap<TechnoTypeClass*, TechnoTypeExtData*> Map {};
 
 	virtual bool Load(TechnoTypeClass* key, IStream* pStm) override;
 
@@ -1050,14 +1097,14 @@ public:
 		this->Map.clear();
 	}
 
-	TechnoTypeExtContainer() : Container<TechnoTypeExtData> { "TechnoTypeClass" }
-		, Map {}
-	{ }
-
-	virtual ~TechnoTypeExtContainer() override = default;
-
-private:
-	TechnoTypeExtContainer(const TechnoTypeExtContainer&) = delete;
-	TechnoTypeExtContainer(TechnoTypeExtContainer&&) = delete;
-	TechnoTypeExtContainer& operator=(const TechnoTypeExtContainer& other) = delete;
+	//	TechnoTypeExtContainer() : Container<TechnoTypeExtData> { "TechnoTypeClass" }
+	//		, Map {}
+	//	{ }
+	//
+	//	virtual ~TechnoTypeExtContainer() override = default;
+	//
+	//private:
+	//	TechnoTypeExtContainer(const TechnoTypeExtContainer&) = delete;
+	//	TechnoTypeExtContainer(TechnoTypeExtContainer&&) = delete;
+	//	TechnoTypeExtContainer& operator=(const TechnoTypeExtContainer& other) = delete;
 };

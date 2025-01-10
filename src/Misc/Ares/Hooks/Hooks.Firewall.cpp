@@ -267,6 +267,21 @@ DEFINE_HOOK(0x4DA53E, FootClass_Update_AresAddition, 6)
 	GET(FootClass* const, pThis, ESI);
 
 	auto const pType = pThis->GetTechnoType();
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (pExt->HasRemainingWarpInDelay)
+	{
+		if (pExt->LastWarpInDelay)
+		{
+			pExt->LastWarpInDelay--;
+		}
+		else
+		{
+			pExt->HasRemainingWarpInDelay = false;
+			pExt->IsBeingChronoSphered = false;
+			pThis->WarpingOut = false;
+		}
+	}
 
 	if (HouseExtData::IsAnyFirestormActive)
 	{
@@ -348,7 +363,7 @@ DEFINE_HOOK(0x467B94, BulletClass_Update_Ranged, 7)
 	{
 		CoordStruct crdOld = pThis->GetCoords();
 
-		pThis->Range -= Game::F2I(CrdNew.DistanceFrom(crdOld));
+		pThis->Range -= int(CrdNew.DistanceFrom(crdOld));
 		if (pThis->Range <= 0)
 		{
 			Destroy = true;

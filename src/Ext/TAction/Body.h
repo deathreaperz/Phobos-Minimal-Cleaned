@@ -1,14 +1,12 @@
 #pragma once
 
-#include <Utilities/Container.h>
-#include <Utilities/Template.h>
-
-#include <Helpers/Template.h>
-
 #include <TActionClass.h>
 
 class HouseClass;
-
+class ObjectClass;
+class TriggerClass;
+class HouseClass;
+class CellStruct;
 enum class PhobosTriggerAction : unsigned int
 {
 	SaveGame = 500,
@@ -30,6 +28,8 @@ enum class PhobosTriggerAction : unsigned int
 
 	//#1164
 	UndeployToWaypoint = 511,
+
+	SetDropCrate = 600, // Only change this number if the PR is merged into develop!
 
 	//ES
 	SetTriggerTechnoVeterancy = 700,
@@ -108,17 +108,6 @@ public:
 					AnnounceInvalidPointer(nMap.second, ptr);
 				}
 			}
-
-			static bool InvalidateIgnorable(AbstractClass* ptr)
-			{
-				switch (ptr->WhatAmI())
-				{
-				case TriggerClass::AbsID:
-					return false;
-				}
-
-				return true;
-			}
 		};
 
 		static ExtContainer ExtMap;
@@ -169,5 +158,7 @@ public:
 	ACTION_FUNC(UndeployToWaypoint);
 
 	ACTION_FUNC(PrintMessageRemainingTechnos);
+
+	ACTION_FUNC(SetDropCrate);
 #undef ACTION_FUNC
 };

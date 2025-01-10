@@ -3,7 +3,9 @@
 #include <Ext/Anim/Body.h>
 #include <Ext/BuildingType/Body.h>
 
-void PlayChronoSparkleAnim(TechnoClass* pTechno, CoordStruct* pLoc, int X_Offs = 120, int nDelay = 24, bool bHidden = false, int ZAdjust = 0)
+#include <TacticalClass.h>
+
+void PlayChronoSparkleAnim(TechnoClass* pTechno, CoordStruct* pLoc, int X_Offs = 120, int nDelay = 24 , bool bHidden = false , int ZAdjust = 0)
 {
 	if (bHidden || (Unsorted::CurrentFrame % nDelay))
 		return;
@@ -18,10 +20,8 @@ void PlayChronoSparkleAnim(TechnoClass* pTechno, CoordStruct* pLoc, int X_Offs =
 	HouseClass* pOwner = nullptr;
 	HouseClass* pVictim = pTechno->GetOwningHouse();
 	TechnoClass* pTInvoker = nullptr;
-	if (const auto pInvoker = pTechno->TemporalTargetingMe)
-	{
-		if (auto pOwnerOfTemp = pInvoker->Owner)
-		{
+	if (const auto pInvoker = pTechno->TemporalTargetingMe) {
+		if (auto pOwnerOfTemp = pInvoker->Owner) {
 			pOwner = pOwnerOfTemp->GetOwningHouse();
 			pTInvoker = pOwnerOfTemp;
 		}
@@ -33,7 +33,7 @@ void PlayChronoSparkleAnim(TechnoClass* pTechno, CoordStruct* pLoc, int X_Offs =
 DEFINE_HOOK(0x73622F, UnitClass_AI_ChronoSparkle, 0x5)
 {
 	GET(TechnoClass*, pThis, ESI);
-	PlayChronoSparkleAnim(pThis, &pThis->Location, 120, RulesExtData::Instance()->ChronoSparkleDisplayDelay);
+	PlayChronoSparkleAnim(pThis, &pThis->Location, 120 , RulesExtData::Instance()->ChronoSparkleDisplayDelay);
 	return 0x7362A7;
 }
 
@@ -42,6 +42,7 @@ DEFINE_HOOK(0x51BAF6, InfantryClass_AI_ChronoSparkle, 0x5)
 	GET(TechnoClass*, pThis, ESI);
 	PlayChronoSparkleAnim(pThis, &pThis->Location, 120, RulesExtData::Instance()->ChronoSparkleDisplayDelay);
 	return 0x51BB6E;
+
 }
 
 DEFINE_HOOK(0x414C06, AircraftClass_AI_ChronoSparkle, 0x5)
@@ -73,10 +74,10 @@ DEFINE_HOOK(0x4403D4, BuildingClass_AI_ChronoSparkle, 0x6)
 			{
 				if (!((Unsorted::CurrentFrame + i) % RulesExtData::Instance()->ChronoSparkleDisplayDelay))
 				{
-					const auto offset = TacticalClass::Instance->ApplyMatrix_Pixel(
+					const auto offset =  TacticalClass::Instance->ApplyMatrix_Pixel(
 						(pType->MaxNumberOccupants <= 10 ?
-							pType->MuzzleFlash[i] :
-							BuildingTypeExtContainer::Instance.Find(pType)->OccupierMuzzleFlashes[i])
+						pType->MuzzleFlash[i] :
+						BuildingTypeExtContainer::Instance.Find(pType)->OccupierMuzzleFlashes[i])
 					);
 
 					auto coords = pThis->GetRenderCoords();
@@ -88,10 +89,8 @@ DEFINE_HOOK(0x4403D4, BuildingClass_AI_ChronoSparkle, 0x6)
 					HouseClass* pOwner = nullptr;
 					HouseClass* pVictim = pThis->GetOwningHouse();
 					TechnoClass* pTInvoker = nullptr;
-					if (const auto pInvoker = pThis->TemporalTargetingMe)
-					{
-						if (auto pOwnerOfTemp = pInvoker->Owner)
-						{
+					if (const auto pInvoker = pThis->TemporalTargetingMe) {
+						if (auto pOwnerOfTemp = pInvoker->Owner) {
 							pOwner = pOwnerOfTemp->GetOwningHouse();
 							pTInvoker = pOwnerOfTemp;
 						}
@@ -102,8 +101,7 @@ DEFINE_HOOK(0x4403D4, BuildingClass_AI_ChronoSparkle, 0x6)
 			}
 		}
 
-		if ((!showOccupy || displayOnBuilding))
-		{
+		if ((!showOccupy || displayOnBuilding)) {
 			auto nLoc = pThis->GetCenterCoords();
 			PlayChronoSparkleAnim(pThis, &nLoc, 0);
 		}

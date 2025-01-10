@@ -26,6 +26,9 @@
 
 #include "Header.h"
 
+#include <InfantryClass.h>
+#include <CaptureManagerClass.h>
+
 DEFINE_HOOK(0x709D38, TechnoClass_DrawPipscale_Passengers, 7)
 {
 	GET(TechnoClass* const, pThis, EBP);
@@ -91,7 +94,7 @@ DEFINE_HOOK(0x442DF2, BuildingClass_Demolish_Tunnel, 6)
 	GET(BuildingClass*, pTarget, EDI);
 
 	if (auto pTunnelData = HouseExtData::GetTunnelVector(pTarget->Type, pTarget->Owner))
-		TunnelFuncs::DestroyTunnel(&pTunnelData->Vector, pTarget, generic_cast<TechnoClass*>(pKiller));
+		TunnelFuncs::DestroyTunnel(&pTunnelData->Vector, pTarget, flag_cast_to<TechnoClass*>(pKiller));
 
 	return 0;
 }
@@ -179,29 +182,6 @@ DEFINE_HOOK(0x44731C, BuildingClass_GetActionOnObject_Tunnel, 6)
 	return FindSameTunnel ? RetActionSelf : Nothing;
 }
 
-DEFINE_HOOK(0x7014B9, TechnoClass_SetOwningHouse_Tunnel, 0x6)
-{
-	GET(TechnoClass*, pThis, ESI);
-
-	if (auto pBuilding = specific_cast<BuildingClass*>(pThis))
-	{
-		const auto nTunnelVec = HouseExtData::GetTunnelVector(pBuilding->Type, pThis->Owner);
-
-		if (!nTunnelVec || TunnelFuncs::FindSameTunnel(pBuilding))
-			return 0x0;
-
-		for (auto nPos = nTunnelVec->Vector.begin();
-			nPos != nTunnelVec->Vector.end(); ++nPos)
-		{
-			TunnelFuncs::KillFootClass(*nPos, nullptr);
-		}
-
-		nTunnelVec->Vector.clear();
-	}
-
-	return 0x0;
-}
-
 DEFINE_HOOK(0x44A37F, BuildingClass_Mi_Selling_Tunnel_TryToPlacePassengers, 6)
 {
 	GET(BuildingClass*, pThis, EBP);
@@ -260,7 +240,7 @@ DEFINE_HOOK(0x44D880, BuildingClass_Mi_Unload_Tunnel, 5)
 	}
 
 	auto miss = pThis->GetCurrentMissionControl();
-	R->EAX(Game::F2I(miss->Rate * 900.0) + ScenarioClass::Instance->Random.RandomFromMax(2));
+	R->EAX(int(miss->Rate * 900.0) + ScenarioClass::Instance->Random.RandomFromMax(2));
 
 	return 0x44E388;
 }
@@ -372,7 +352,7 @@ DEFINE_HOOK(0x51ED8E, InfantryClass_GetActionOnObject_Tunnel, 6)
 		return CanEnter;
 
 	bool Enterable = false;
-	if (const auto pBuildingTarget = specific_cast<BuildingClass*>(pTarget))
+	if (const auto pBuildingTarget = cast_to<BuildingClass*>(pTarget))
 	{
 		Enterable = BuildingTypeExtContainer::Instance.Find(pBuildingTarget->Type)->TunnelType >= 0;
 	}

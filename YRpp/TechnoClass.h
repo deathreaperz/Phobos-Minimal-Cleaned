@@ -296,7 +296,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	virtual bool IsSensorVisibleToHouse(HouseClass *House) const R0;
 	virtual bool IsEngineer() const R0;
 	virtual void ProceedToNextPlanningWaypoint() RX;
-	virtual DWORD ScanForTiberium(DWORD dwUnk, DWORD dwUnk2, DWORD dwUnk3) const R0;
+	virtual CellStruct* ScanForTiberium(CellStruct* buffer, int range, DWORD dwUnk3) const R0;
 	virtual bool EnterGrinder() R0;
 	virtual bool EnterBioReactor() R0;
 	virtual bool EnterTankBunker() R0;
@@ -329,20 +329,20 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	virtual bool IsCloseEnough(AbstractClass *pTarget, int idxWeapon) const R0; //6F77B0  InRangeWpIdx
 	virtual bool IsCloseEnoughToAttack(AbstractClass *pTarget) const R0; //6F7780 InRangeWp
 	virtual bool IsCloseEnoughToAttackCoords(const CoordStruct& Coords) const R0; //6F7930 InRangeWp_coords
-	virtual bool IsCloseEnoughToAttackWithNeverUseWeapon(AbstractClass* pTarget) const R0; //6F78D0
+	virtual bool IsCloseEnoughToAttackWithNeverUseWeapon(AbstractClass* pTarget) const R0; //6F78D0 , InAuxiliarySearchRange
 	virtual void Destroyed(ObjectClass *Killer) PURE;
 	virtual FireError GetFireErrorWithoutRange(AbstractClass *pTarget, int nWeaponIndex) const RT(FireError);
 	virtual FireError GetFireError(AbstractClass *pTarget, int nWeaponIndex, bool ignoreRange) const JMP_THIS(0x6FC0B0); //CanFire
-	virtual AbstractClass* SelectAutoTarget(TargetFlags TargetFlags, int CurrentThreat, bool OnlyTargetHouseEnemy) R0; //Greatest_Threat
+	virtual AbstractClass* GreatestThreat(ThreatType threat, CoordStruct* pCoord, bool onlyTargetHouseEnemy) JMP_THIS(0x6F8DF0);
 	virtual void SetTarget(AbstractClass *pTarget) JMP_THIS(0x6FCDB0);
 	virtual BulletClass* Fire(AbstractClass* pTarget, int nWeaponIndex) JMP_THIS(0x6FDD50);
 	virtual void Guard() RX; // clears target and destination and puts in guard mission
 	virtual bool SetOwningHouse(HouseClass* pHouse, bool announce = true)JMP_THIS(0x7014A0);
-	virtual void RockByValue(Point3D* Points, float bFactor = 1.5f, bool bHalf = false) RX;
+	virtual void RockByValue(CoordStruct* sourceCoords, float bFactor = 1.5f, bool bHalf = false) RX;
 	virtual bool Crash(ObjectClass *Killer) R0;
 	virtual bool IsAreaFire() const R0;
 	virtual int IsNotSprayAttack() const R0;
-	virtual int vt_entry_3E8() R0;
+	virtual int GetSecondaryWeaponIndex() const R0;
 	virtual int IsNotSprayAttack2() const R0;
 	virtual WeaponStruct* GetDeployWeapon() const R0;
 	virtual WeaponStruct* GetPrimaryWeapon() const JMP_THIS(0x70E1A0); //Get_Primary_Weapon
@@ -393,18 +393,18 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	virtual void RadarTrackingStop() RX; //498
 	virtual void RadarTrackingFlash() RX; //49C
 	virtual void RadarTrackingUpdate(bool bUnk) RX; //4A0
-	virtual void vt_entry_4A4(DWORD dwUnk) RX;
-	virtual void vt_entry_4A8() RX;
-	virtual bool vt_entry_4AC() const R0;
-	virtual bool vt_entry_4B0() const R0;
-	virtual int vt_entry_4B4() const R0;
-	virtual CoordStruct GetNegativeOneCoords() JMP_THIS(0x70F050); // 0x4B8
+	virtual Mission RespondMegaEventMission(EventClass* pRespondTo) RT(Mission);
+	virtual void ClearMegaMissionData() RX;
+	virtual bool HaveMegaMission() const R0;
+	virtual bool HaveAttackMoveTarget() const R0;
+	virtual Mission GetMegaMission() const RT(Mission);
+	virtual CoordStruct* GetAttackMoveCoords(CoordStruct* pBuffer) R0;
 	virtual bool CanUseWaypoint() const R0; // 0x4BC
 	virtual bool CanAttackOnTheMove() const R0; //0x4C0
-	virtual bool vt_entry_4C4() const R0;
-	virtual bool vt_entry_4C8()	R0;
-	virtual void vt_entry_4CC() RX;
-	virtual bool vt_entry_4D0() R0;
+	virtual bool MegaMissionIsAttackMove() const R0;
+	virtual bool ContinueMegaMission() R0;
+	virtual void UpdateAttackMove() RX;
+	virtual bool RefreshMegaMission() R0;
 
 	//non-virtual
 	bool sub_703B10() const JMP_THIS(0x703B10);
@@ -459,7 +459,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 
 // slave of the next one
 	bool CanAutoTargetObject(
-		TargetFlags targetFlags,
+		ThreatType targetFlags,
 		int canTargetWhatAmI,
 		int wantedDistance,
 		TechnoClass* pTarget,
@@ -470,7 +470,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 
 // called by AITeam Attack Target Type and autoscan
 	bool TryAutoTargetObject(
-		TargetFlags targetFlags,
+		ThreatType targetFlags,
 		int canTargetWhatAmI,
 		CellStruct* pCoords,
 		DWORD dwUnk1,
@@ -507,8 +507,8 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	void SetCurrentWeaponStage(int idx)
 		{ JMP_THIS(0x70DDD0); }
 
-	constexpr FORCEINLINE void SetFocus(AbstractClass* pFocus) { //JMP_THIS(0x70C610);
-		this->Focus = pFocus;
+	constexpr FORCEINLINE void SetArchiveTarget(AbstractClass* pFocus) { //JMP_THIS(0x70C610);
+		this->ArchiveTarget = pFocus;
 	}
 
 	void DrawVoxelShadow(VoxelStruct* vxl,
@@ -770,6 +770,8 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	void BaseIsAttacked(TechnoClass* pEnemy) const
 	{ JMP_THIS(0x708080); }
 
+	bool planing_6385C0() const { JMP_THIS(0x6385C0); }
+
 	//Constructor
 	TechnoClass(HouseClass* pOwner) noexcept
 		: TechnoClass(noinit_t())
@@ -790,7 +792,7 @@ public:
 	DECLARE_PROPERTY(StageClass, Animation); // how the unit animates
 	DECLARE_PROPERTY(PassengersClass, Passengers);
 	TechnoClass*     Transporter; // unit carrying me
-	int              __LastGuardAreaTargetingFrame_120;
+	int              LastFireBulletFrame;
 	int              CurrentTurretNumber; // for IFV/gattling/charge turrets
 	int              __TurretWeapon2_128;
 	AnimClass*       BehindAnim;
@@ -826,21 +828,20 @@ public:
 	DECLARE_PROPERTY(CDTimerClass, DisguiseBlinkTimer); // disguise disruption timer
 	BYTE             UnlimboingInfantry; //1F8
 	DECLARE_PROPERTY(CDTimerClass, ReloadTimer);
-	DWORD            unknown_208;
-	DWORD            unknown_20C;
+	Point2D          RadarPosition;
 
 	// WARNING! this is actually an index of HouseTypeClass es, but it's being changed to fix typical WW bugs.
 	DECLARE_PROPERTY(IndexBitfield<HouseClass *>, DisplayProductionTo); // each bit corresponds to one player on the map, telling us whether that player has (1) or hasn't (0) spied this building, and the game should display what's being produced inside it to that player. The bits are arranged by player ID, i.e. bit 0 refers to house #0 in HouseClass::Array, 1 to 1, etc.; query like ((1 << somePlayer->ArrayIndex) & someFactory->DisplayProductionToHouses) != 0
 
 	int              Group; //0-9, assigned by CTRL+Number, these kinds // also set by aimd TeamType->Group !
-	/*  Focus on RA1 Source , called `ArchiveTarget` ,
+	/*  ArchiveTarget on RA1 Source , called `ArchiveTarget` ,
 		For units in area guard mode, this is the recorded home position. The guarding
 		unit will try to stay near this location in the course of it's maneuvers. This is
 		also used to record a pending transport for those passengers that are waiting for
 		the transport to become available. It is also used by harvesters so that they know
 		where to head back to after unloading.
 	*/
-	AbstractClass*   Focus;
+	AbstractClass*   ArchiveTarget;
 	HouseClass*      Owner;
 	CloakState       CloakState;
 	DECLARE_PROPERTY(StageClass, CloakProgress); // phase from [opaque] -> [fading] -> [transparent] , [General]CloakingStages= long
@@ -950,7 +951,7 @@ public:
 	DECLARE_PROPERTY(RecoilData, TurretRecoil);
 	DECLARE_PROPERTY(RecoilData, BarrelRecoil);
 	BYTE             IsTethered; //418
-	BYTE             RADIO_26_27_419;
+	BYTE             IsAlternativeTether;
 	BYTE             IsOwnedByCurrentPlayer;
 	BYTE             DiscoveredByCurrentPlayer;
 	BYTE             DiscoveredByComputer;
@@ -970,7 +971,7 @@ public:
 	HouseClass*      ChronoWarpedByHouse;
 	BYTE             _Mission_Patrol_430;
 	BYTE             IsMouseHovering;
-	BYTE             parasitecontrol_byte432;
+	BYTE             ShouldBeReselectOnUnlimbo;
 //	BYTE			 byte_433;
 	TeamClass*       OldTeam;
 	BYTE             CountedAsOwnedSpecial; // for absorbers, infantry uses this to manually control OwnedInfantry count

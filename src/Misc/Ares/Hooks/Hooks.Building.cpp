@@ -25,6 +25,9 @@
 #include "Header.h"
 
 #include <Misc/PhobosGlobal.h>
+#include <Misc/Hooks.Otamaa.h>
+
+#include <RadarEventClass.h>
 
 DEFINE_HOOK(0x446EE2, BuildingClass_Place_InitialPayload, 6)
 {
@@ -170,7 +173,7 @@ DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
 
 						ConvertClass* pPal = FileSystem::CAMEO_PAL();
 						if (auto pManager = pProdTypeExt->CameoPal)
-							pPal = pManager->GetConvert<PaletteManager::Mode::Default>();
+							pPal = pManager->GetOrDefaultConvert<PaletteManager::Mode::Default>(pPal);
 
 						DSurface::Temp->DrawSHP(pPal, pCameo, 0, &DrawCameoLoc, pBounds, BlitterFlags(0xE00), 0, 0, 0, 1000, 0, nullptr, 0, 0, 0);
 					}
@@ -226,7 +229,7 @@ DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
 
 							ConvertClass* pPal = FileSystem::CAMEO_PAL();
 							if (auto pManager = SWTypeExtContainer::Instance.Find(pSuper->Type)->SidebarPalette)
-								pPal = pManager->GetConvert<PaletteManager::Mode::Default>();
+								pPal = pManager->GetOrDefaultConvert<PaletteManager::Mode::Default>(pPal);
 
 							DSurface::Temp->DrawSHP(pPal, pCameo, 0, &DrawCameoLoc, pBounds, BlitterFlags(0xE00), 0, 0, 0, 1000, 0, nullptr, 0, 0, 0);
 						}
@@ -507,7 +510,7 @@ DEFINE_HOOK(0x69281E, DisplayClass_ChooseAction_TogglePower, 0xA)
 	bool allowed = false;
 	action = Action::NoTogglePower;
 
-	if (auto pBld = specific_cast<BuildingClass*>(pTarget))
+	if (auto pBld = cast_to<BuildingClass*>(pTarget))
 	{
 		auto pOwner = pBld->GetOwningHouse();
 
@@ -698,23 +701,12 @@ DEFINE_HOOK(0x448260, BuildingClass_SetOwningHouse_ContextSet, 0x8)
 	GET(BuildingClass*, pThis, ECX);
 	GET_STACK(bool, announce, 0x8);
 	// Fix : Suppress capture EVA event if ConsideredVehicle=yes
-	announce = announce && !pThis->Type->IsVehicle();
+	announce = announce && !pThis->IsStrange();
 	Bld_ChangeOwnerAnnounce = announce;
 	return 0x0;
 }
 
-bool __fastcall BuildingClass_SetOwningHouse_Wrapper(BuildingClass* pThis, void*, HouseClass* pHouse, bool announce)
-{
-	const bool res = pThis->BuildingClass::SetOwningHouse(pHouse, announce);
-
-	// Fix : update powered anims
-	if (res && (pThis->Type->Powered || pThis->Type->PoweredSpecial))
-		pThis->UpdatePowerDown();
-
-	return res;
-}
-
-DEFINE_JUMP(VTABLE, 0x7E4290, GET_OFFSET(BuildingClass_SetOwningHouse_Wrapper));
+DEFINE_JUMP(VTABLE, 0x7E4290, MiscTools::to_DWORD(&FakeBuildingClass::_SetOwningHouse));
 
 DEFINE_HOOK(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
 {
@@ -1425,7 +1417,7 @@ DEFINE_HOOK(0x449FF8, BuildingClass_Mi_Selling_PutMcv, 7)
 // start after free unit checks 0x446B16
 //FreeUnit end 0x446EE2
 
-DEFINE_HOOK(0x45EE30, BuildingClass_GetActualCost_FreeUnitCount, 0x6)
+DEFINE_HOOK(0x45EE30, BuildingTypeClass_GetActualCost_FreeUnitCount, 0x6)
 {
 	GET(BuildingTypeClass*, pThis, EBX);
 	GET(HouseClass*, pHouse, EBP);
@@ -1755,7 +1747,7 @@ DEFINE_HOOK(0x7004AD, TechnoClass_GetActionOnObject_Saboteur, 0x6)
 	GET(ObjectClass* const, pObject, EDI);
 
 	bool infiltratable = false;
-	if (const auto pBldObject = specific_cast<BuildingClass*>(pObject))
+	if (const auto pBldObject = cast_to<BuildingClass*>(pObject))
 	{
 		infiltratable = TechnoExt_ExtData::GetiInfiltrateActionResult(pThis, pBldObject) != Action::None;
 	}
@@ -1773,7 +1765,7 @@ DEFINE_HOOK(0x51EE6B, InfantryClass_GetActionOnObject_Saboteur, 6)
 	GET(InfantryClass*, pThis, EDI);
 	GET(ObjectClass*, pObject, ESI);
 
-	if (auto pBldObject = specific_cast<BuildingClass*>(pObject))
+	if (auto pBldObject = cast_to<BuildingClass*>(pObject))
 	{
 		if (pThis->Owner && !pThis->Owner->IsAlliedWith(pBldObject))
 		{
@@ -1843,7 +1835,7 @@ DEFINE_HOOK(0x51B2CB, InfantryClass_SetTarget_Saboteur, 0x6)
 	GET(InfantryClass*, pThis, ESI);
 	GET(ObjectClass* const, pTarget, EDI);
 
-	if (const auto pBldObject = specific_cast<BuildingClass*>(pTarget))
+	if (const auto pBldObject = cast_to<BuildingClass*>(pTarget))
 	{
 		const auto nResult = TechnoExt_ExtData::GetiInfiltrateActionResult(pThis, pBldObject);
 
@@ -1878,6 +1870,43 @@ DEFINE_HOOK(0x4571E0, BuildingClass_Infiltrate, 5)
 	return 0x4575A2;
 }
 
+#include <Ext/Infantry/Body.h>
+
+// This function is called when an infantry infiltrates a structure.
+void WhenInfiltratesInto(FakeInfantryClass* pSpy, BuildingClass* pBuilding)
+{
+	// Weapon / warhead detonation upon infiltration.
+	// Note that, despite the detonate or area damage func are called right before the normal infiltration effects,
+	// the actual damage is resolved some time later, at least later than the normal infiltration effects resolve.
+	// So there is no need to worry if the building or the spy itself will be killed before the infiltration.
+	auto const rank = pSpy->Veterancy.GetRemainingLevel();
+
+	if (auto pWeapon = pSpy->_GetTypeExtData()->WhenInfiltrate_Weapon.GetFromSpecificRank(rank))
+	{
+		WeaponTypeExtData::DetonateAt(pWeapon, pBuilding->GetCoords(), pSpy, pWeapon->Damage, false, pSpy->Owner);
+	}
+	else
+	{
+		const int damage = pSpy->_GetTypeExtData()->WhenInfiltrate_Damage.GetFromSpecificRank(rank);
+
+		if (damage != 0)
+		{
+			auto pWarhead = pSpy->_GetTypeExtData()->WhenInfiltrate_Warhead.GetFromSpecificRank(rank);
+
+			if (!pWarhead)
+				pWarhead = RulesClass::Instance->C4Warhead;
+
+			if (pWarhead)
+			{
+				if (pSpy->_GetTypeExtData()->WhenInfiltrate_Warhead_Full)
+					WarheadTypeExtData::DetonateAt(pWarhead, pBuilding->GetCoords(), pSpy, damage, pSpy->Owner);
+				else
+					MapClass::DamageArea(pBuilding->GetCoords(), damage, pSpy, pWarhead, true, pSpy->Owner);
+			}
+		}
+	}
+}
+
 DEFINE_HOOK(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
 {
 	enum
@@ -1887,7 +1916,7 @@ DEFINE_HOOK(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
 		InfiltrateSucceded = 0x51A010,
 	};
 
-	GET(InfantryClass* const, pThis, ESI);
+	GET(FakeInfantryClass* const, pThis, ESI);
 	GET(BuildingClass* const, pBuilding, EDI);
 
 	const auto nResult = TechnoExt_ExtData::GetiInfiltrateActionResult(pThis, pBuilding);
@@ -1898,8 +1927,20 @@ DEFINE_HOOK(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
 		if (!pThis->Type->Agent || pHouse->IsAlliedWith(pBuilding))
 			return SkipInfiltrate;
 
-		pBuilding->Infiltrate(pHouse);
-		return InfiltrateSucceded;
+		WhenInfiltratesInto(pThis, pBuilding);
+
+		if (pThis->IsAlive)
+		{
+			if (pBuilding->IsAlive)
+			{
+				pBuilding->Infiltrate(pHouse);
+				return InfiltrateSucceded;
+			}
+
+			return SkipInfiltrate;
+		}
+
+		return 0x51A034;
 	}
 	else
 		if (nResult == Action::NoMove)
@@ -2008,7 +2049,7 @@ DEFINE_HOOK(0x709B4E, TechnoClass_DrawPipscale_SkipSkipTiberium, 6)
 	GET(TechnoClass* const, pThis, EBP);
 
 	bool showTiberium = true;
-	if (const auto pBld = specific_cast<BuildingClass*>(pThis))
+	if (const auto pBld = cast_to<BuildingClass*, false>(pThis))
 	{
 		if ((pBld->Type->Refinery || pBld->Type->ResourceDestination) && pBld->Type->Storage > 0)
 		{

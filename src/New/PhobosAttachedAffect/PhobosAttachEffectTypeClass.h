@@ -19,6 +19,7 @@ public:
 	Nullable<bool> PenetratesForceShield;
 	Valueable<AnimTypeClass*> Animation;
 	NullableVector<AnimTypeClass*> CumulativeAnimations;
+	Valueable<bool> CumulativeAnimations_RestartOnChange;
 	Valueable<bool> Animation_ResetOnReapply;
 	Valueable<AttachedAnimFlag> Animation_OfflineAction;
 	Valueable<AttachedAnimFlag> Animation_TemporalAction;
@@ -31,7 +32,11 @@ public:
 	Valueable<double> Tint_Intensity;
 	Valueable<AffectedHouse> Tint_VisibleToHouses;
 	Valueable<double> FirepowerMultiplier;
+
 	Valueable<double> ArmorMultiplier;
+	ValueableVector<WarheadTypeClass*> ArmorMultiplier_AllowWarheads;
+	ValueableVector<WarheadTypeClass*> ArmorMultiplier_DisallowWarheads;
+
 	Valueable<double> SpeedMultiplier;
 	Valueable<double> ROFMultiplier;
 	Valueable<bool> ROFMultiplier_ApplyOnCurrentTimer;
@@ -70,7 +75,10 @@ public:
 	Nullable<double> AffectAbovePercent;
 	Nullable<double> AffectBelowPercent;
 
-	PhobosAttachEffectTypeClass(const char* const pTitle) : Enumerable<PhobosAttachEffectTypeClass>(pTitle)
+	Valueable<bool> DisableRadar;
+	Valueable<bool> DisableSpySat;
+
+	PhobosAttachEffectTypeClass(const char* pTitle) : Enumerable<PhobosAttachEffectTypeClass>(pTitle)
 		, Duration { 0 }
 		, Cumulative { false }
 		, Cumulative_MaxCount { -1 }
@@ -81,6 +89,7 @@ public:
 		, PenetratesForceShield {}
 		, Animation {}
 		, CumulativeAnimations {}
+		, CumulativeAnimations_RestartOnChange { true }
 		, Animation_ResetOnReapply { false }
 		, Animation_OfflineAction { AttachedAnimFlag::Hides }
 		, Animation_TemporalAction { AttachedAnimFlag::None }
@@ -94,6 +103,8 @@ public:
 		, Tint_VisibleToHouses { AffectedHouse::All }
 		, FirepowerMultiplier { 1.0 }
 		, ArmorMultiplier { 1.0 }
+		, ArmorMultiplier_AllowWarheads {}
+		, ArmorMultiplier_DisallowWarheads {}
 		, SpeedMultiplier { 1.0 }
 		, ROFMultiplier { 1.0 }
 		, ROFMultiplier_ApplyOnCurrentTimer { true }
@@ -129,6 +140,9 @@ public:
 		, DiscardOn_BelowPercent {}
 		, AffectAbovePercent {}
 		, AffectBelowPercent {}
+
+		, DisableRadar {}
+		, DisableSpySat {}
 	{};
 
 	constexpr FORCEINLINE bool HasTint()
@@ -180,14 +194,12 @@ public:
 		return this->CumulativeAnimations[index];
 	}
 
-	virtual ~PhobosAttachEffectTypeClass() override = default;
-
-	virtual void LoadFromINI(CCINIClass* pINI) override;
-	virtual void LoadFromStream(PhobosStreamReader& Stm);
-	virtual void SaveToStream(PhobosStreamWriter& Stm);
+	void LoadFromINI(CCINIClass* pINI);
+	void LoadFromStream(PhobosStreamReader& Stm);
+	void SaveToStream(PhobosStreamWriter& Stm);
 
 	static std::vector<PhobosAttachEffectTypeClass*> GetTypesFromGroups(std::vector<std::string>& groupIDs);
-	static PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
+	inline static PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);

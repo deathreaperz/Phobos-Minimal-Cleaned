@@ -37,9 +37,6 @@ public:
 
 	Valueable<bool> Fire_DamagingAnim { false };
 
-	ParticleTypeExtData() noexcept = default;
-	~ParticleTypeExtData() noexcept = default;
-
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -61,5 +58,19 @@ class ParticleTypeExtContainer final : public Container<ParticleTypeExtData>
 public:
 	static ParticleTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(ParticleTypeExtContainer, ParticleTypeExtData, "ParticleTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(ParticleTypeExtContainer, ParticleTypeExtData, "ParticleTypeClass");
 };
+
+class FakeParticleTypeClass : public ParticleTypeClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	ParticleTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<ParticleTypeExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeParticleTypeClass) == sizeof(ParticleTypeClass), "Invalid Size !");

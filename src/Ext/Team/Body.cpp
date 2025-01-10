@@ -2,23 +2,7 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
 
-bool TeamExtData::InvalidateIgnorable(AbstractClass* ptr)
-{
-	switch (ptr->WhatAmI())
-	{
-	case BuildingClass::AbsID:
-	case AircraftClass::AbsID:
-	case UnitClass::AbsID:
-	case InfantryClass::AbsID:
-	case ScriptClass::AbsID:
-	case SuperClass::AbsID:
-	{
-		return false;
-	}
-	}
-
-	return true;
-}
+#include <AITriggerTypeClass.h>
 
 void TeamExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
@@ -403,9 +387,9 @@ void TeamExtData::Serialize(T& Stm)
 		.Process(this->ForceJump_Countdown)
 		.Process(this->ForceJump_InitialCountdown)
 		.Process(this->ForceJump_RepeatMode)
-		.Process(this->TeamLeader)
+		.Process(this->TeamLeader, true)
 
-		.Process(this->LastFoundSW)
+		.Process(this->LastFoundSW, true)
 
 		.Process(this->ConditionalJump_Evaluation)
 		.Process(this->ConditionalJump_ComparatorMode)
@@ -431,7 +415,6 @@ void TeamExtData::Serialize(T& Stm)
 // =============================
 // container
 TeamExtContainer TeamExtContainer::Instance;
-std::vector<TeamExtData*> TeamExtContainer::Pool;
 
 // =============================
 // container hooks
@@ -451,29 +434,32 @@ DEFINE_HOOK(0x6E8ECB, TeamClass_DTOR, 0x7)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x6EC450, TeamClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x6EC540, TeamClass_SaveLoad_Prefix, 0x8)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeTeamClass::_Load(IStream* pStm)
 {
-	GET_STACK(TeamClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	TeamExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->TeamClass::Load(pStm);
 
-	TeamExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		TeamExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x6EC52F, TeamClass_Load_Suffix, 0x6)
+HRESULT __stdcall FakeTeamClass::_Save(IStream* pStm, bool clearDirty)
 {
-	TeamExtContainer::Instance.LoadStatic();
+	TeamExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->TeamClass::Save(pStm, clearDirty);
 
-	return 0;
+	if (SUCCEEDED(res))
+		TeamExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x6EC55A, TeamClass_Save_Suffix, 0x5)
-{
-	TeamExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7F4744, MiscTools::to_DWORD(&FakeTeamClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F4748, MiscTools::to_DWORD(&FakeTeamClass::_Save))
 
 DEFINE_HOOK(0x6EAE60, TeamClass_Detach, 0x7)
 {

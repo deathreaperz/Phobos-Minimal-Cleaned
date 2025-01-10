@@ -6,6 +6,8 @@
 
 #include <Utilities/Macro.h>
 
+#include <InfantryClass.h>
+
 void WaveExtData::InitWeaponData()
 {
 	if (!this->Weapon)
@@ -61,11 +63,11 @@ WORD const src, WORD& dest, int const intensity, WaveClass* const pWave, WaveCol
 	if (!colorDatas->Color && !colorDatas->Intent_Color.IsValid())
 		return false;
 
-	ColorStruct modified;
+	ColorStruct modified {};
 	Drawing::WordToColorStruct(src, modified);
 
 	// ugly hack to fix byte wraparound problems
-	auto const upcolor = [=, &modified, &colorDatas]
+	auto const upcolor = [&modified, &colorDatas, &intensity]
 	(int Point3D::* intentmember, BYTE ColorStruct::* member)
 		{
 			auto const component = std::clamp(modified.*member
@@ -147,7 +149,7 @@ void WaveExtData::Serialize(T& Stm)
 {
 	Stm
 		.Process(this->Initialized)
-		.Process(this->Weapon)
+		.Process(this->Weapon, true)
 		.Process(this->WeaponIdx)
 		.Process(this->ReverseAgainstTarget)
 		.Process(this->SourceCoord)
@@ -226,9 +228,12 @@ DEFINE_HOOK(0x763226, WaveClass_DTOR, 0x6)
 //	return 0x75F645;
 //}
 
-void __fastcall WaveClass_Detach_Wrapper(WaveClass* pThis, DWORD, AbstractClass* target, bool all)\
+#include <Misc/Hooks.Otamaa.h>
+
+void FakeWaveClass::_Detach(AbstractClass* target, bool all)\
 {
 	//WaveExtContainer::Instance.InvalidatePointerFor(pThis , target , all);
-	pThis->WaveClass::PointerExpired(target, all);
+	this->WaveClass::PointerExpired(target, all);
 }
-DEFINE_JUMP(VTABLE, 0x7F6C1C, GET_OFFSET(WaveClass_Detach_Wrapper))
+
+DEFINE_JUMP(VTABLE, 0x7F6C1C, MiscTools::to_DWORD(&FakeWaveClass::_Detach))

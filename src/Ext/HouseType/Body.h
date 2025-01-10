@@ -2,7 +2,10 @@
 #include <HouseTypeClass.h>
 
 #include <Helpers/Macro.h>
+
 #include <Utilities/Container.h>
+#include <Utilities/PhobosFixedString.h>
+#include <Utilities/PhobosPCXFile.h>
 #include <Utilities/TemplateDef.h>
 
 class HouseTypeExtData final
@@ -11,9 +14,7 @@ public:
 	using base_type = HouseTypeClass;
 	static constexpr size_t Canary = 0x1111111A;
 
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0xC4;//ARES
-#endif
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -73,9 +74,6 @@ public:
 	PhobosPCXFile ObserverBackground {};
 	SHPStruct* ObserverBackgroundSHP {};
 
-	HouseTypeExtData() noexcept = default;
-	~HouseTypeExtData() noexcept = default;
-
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromRulesFile(CCINIClass* pINI);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
@@ -105,7 +103,7 @@ class HouseTypeExtContainer final : public Container<HouseTypeExtData>
 {
 public:
 	static HouseTypeExtContainer Instance;
-	std::unordered_map<HouseTypeClass*, HouseTypeExtData*> Map;
+	PhobosMap<HouseTypeClass*, HouseTypeExtData*> Map {};
 
 	virtual bool Load(HouseTypeClass* key, IStream* pStm);
 
@@ -114,14 +112,27 @@ public:
 		this->Map.clear();
 	}
 
-	HouseTypeExtContainer() : Container<HouseTypeExtData> { "HouseTypeClass" }
-		, Map {}
-	{ }
-
-	virtual ~HouseTypeExtContainer() override = default;
-
-private:
-	HouseTypeExtContainer(const HouseTypeExtContainer&) = delete;
-	HouseTypeExtContainer(HouseTypeExtContainer&&) = delete;
-	HouseTypeExtContainer& operator=(const HouseTypeExtContainer& other) = delete;
+	//	HouseTypeExtContainer() : Container<HouseTypeExtData> { "HouseTypeClass" }
+	//		, Map {}
+	//	{ }
+	//
+	//	virtual ~HouseTypeExtContainer() override = default;
+	//
+	//private:
+	//	HouseTypeExtContainer(const HouseTypeExtContainer&) = delete;
+	//	HouseTypeExtContainer(HouseTypeExtContainer&&) = delete;
+	//	HouseTypeExtContainer& operator=(const HouseTypeExtContainer& other) = delete;
 };
+
+class FakeHouseTypeClass : public HouseTypeClass
+{
+public:
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	HouseTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<HouseTypeExtData**>(((DWORD)this) + HouseTypeExtData::ExtOffset);
+	}
+};
+static_assert(sizeof(FakeHouseTypeClass) == sizeof(HouseTypeClass), "Invalid Size !");

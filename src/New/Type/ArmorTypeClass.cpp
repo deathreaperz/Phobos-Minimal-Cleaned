@@ -7,8 +7,6 @@
 
 #include <Conversions.h>
 
-Enumerable<ArmorTypeClass>::container_t Enumerable<ArmorTypeClass>::Array;
-
 ArmorTypeClass::ArmorTypeClass(const char* const pTitle) : Enumerable<ArmorTypeClass>(pTitle)
 , DefaultTo { -1 }
 , DefaultString { }
@@ -30,15 +28,6 @@ ArmorTypeClass::ArmorTypeClass(const char* const pTitle) : Enumerable<ArmorTypeC
 const char* Enumerable<ArmorTypeClass>::GetMainSection()
 {
 	return "ArmorTypes";
-}
-
-void ArmorTypeClass::AddDefaults()
-{
-	for (auto const& nDefault : Unsorted::ArmorNameArray)
-	{
-		if (auto pVanillaArmor = FindOrAllocate(nDefault))
-			pVanillaArmor->IsVanillaArmor = true;
-	}
 }
 
 bool ArmorTypeClass::IsDefault(const char* pName)
@@ -75,7 +64,7 @@ void ArmorTypeClass::EvaluateDefault()
 {
 	for (size_t i = 0; i < Array.size(); ++i)
 	{
-		auto& pArmor = Array[i];
+		auto pArmor = Array[i].get();
 
 		if (IsDefault(pArmor->Name.data()) || pArmor->DefaultString.empty() || !strlen(pArmor->DefaultString.c_str()))
 			continue;
@@ -144,7 +133,7 @@ void ArmorTypeClass::LoadForWarhead(CCINIClass* pINI, WarheadTypeClass* pWH)
 
 	for (size_t i = 0; i < pWHExt->Verses.size(); ++i)
 	{
-		const auto& pArmor = ArmorTypeClass::Array[i];
+		const auto pArmor = ArmorTypeClass::Array[i].get();
 
 		if (exINI.ReadString(section, pArmor->BaseTag.c_str()) > 0)
 		{
@@ -181,7 +170,7 @@ void ArmorTypeClass::LoadForWarhead_NoParse(WarheadTypeClass* pWH)
 
 	for (size_t i = 0; i < pWHExt->Verses.size(); ++i)
 	{
-		const auto& pArmor = ArmorTypeClass::Array[i];
+		const auto pArmor = ArmorTypeClass::Array[i].get();
 
 		if (pArmor->DefaultTo != -1)
 		{

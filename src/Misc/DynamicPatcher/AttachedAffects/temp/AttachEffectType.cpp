@@ -1,8 +1,5 @@
 #include "AttachEffectType.h"
 
-
-Enumerable<AttachEffectType>::container_t Enumerable<AttachEffectType>::Array;
-
 const char* Enumerable<AttachEffectType>::GetMainSection()
 {
 	return "AttachEffectTypes";
@@ -10,7 +7,7 @@ const char* Enumerable<AttachEffectType>::GetMainSection()
 
 void AttachEffectType::LoadFromINI(CCINIClass* pINI)
 {
-	const char* pSection = this->Name;
+	const char* pSection = this->Name.c_str();
 	INI_EX exINI(pINI);
 
 	#pragma region CommonAE

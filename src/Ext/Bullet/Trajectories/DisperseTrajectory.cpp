@@ -10,6 +10,9 @@
 #include <ScenarioClass.h>
 #include <Utilities/Helpers.h>
 
+// https://github.com/Phobos-developers/Phobos/pull/1295
+// TODO : Update
+
 bool DisperseTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	this->PhobosTrajectoryType::Load(Stm, false);
@@ -85,7 +88,7 @@ void DisperseTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity
 	this->WeaponCount = pType->WeaponCount;
 	this->WeaponTimer = pType->WeaponTimer;
 
-	if (ObjectClass* pTarget = abstract_cast<ObjectClass*>(pBullet->Target))
+	if (ObjectClass* pTarget = flag_cast_to<ObjectClass*>(pBullet->Target))
 		this->TargetInAir = (pTarget->GetHeight() > 0);
 
 	this->FinalHeight = static_cast<int>(pBullet->TargetCoords.DistanceFrom(pBullet->SourceCoords));
@@ -253,7 +256,7 @@ void DisperseTrajectory::OnAIPreDetonate()
 {
 	auto pBullet = this->AttachedTo;
 	auto pType = this->GetTrajectoryType();
-	ObjectClass* pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	ObjectClass* pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	CoordStruct pCoords = pTarget ? pTarget->GetCoords() : pBullet->Data.Location;
 
 	if (pCoords.DistanceFrom(pBullet->Location) <= pType->TargetSnapDistance.Get())
@@ -336,7 +339,7 @@ bool DisperseTrajectory::BulletRetargetTechno(HouseClass* pOwner)
 	{
 		Check = true;
 	}
-	else if (TechnoClass* pTarget = abstract_cast<TechnoClass*>(pBullet->Target))
+	else if (TechnoClass* pTarget = flag_cast_to<TechnoClass*>(pBullet->Target))
 	{
 		if (pTarget->IsDead() || pTarget->InLimbo)Check = true;
 	}
@@ -381,7 +384,7 @@ bool DisperseTrajectory::CurveVelocityChange()
 {
 	auto pBullet = this->AttachedTo;
 	auto const pType = this->GetTrajectoryType();
-	ObjectClass* pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	ObjectClass* pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	CoordStruct TargetLocation = pTarget ? pTarget->GetCoords() : pBullet->TargetCoords;
 	pBullet->TargetCoords = TargetLocation;
 
@@ -397,7 +400,7 @@ bool DisperseTrajectory::CurveVelocityChange()
 
 		if (HorizonDistance > 0)
 		{
-			double HorizonMult = abs(pBullet->Velocity.Z / 64.0) / HorizonDistance;
+			double HorizonMult = Math::abs(pBullet->Velocity.Z / 64.0) / HorizonDistance;
 			pBullet->Velocity.X += HorizonMult * HorizonVelocity.X;
 			pBullet->Velocity.Y += HorizonMult * HorizonVelocity.Y;
 			double HorizonLength = std::sqrt(pBullet->Velocity.X * pBullet->Velocity.X + pBullet->Velocity.Y * pBullet->Velocity.Y);
@@ -449,7 +452,7 @@ bool DisperseTrajectory::CurveVelocityChange()
 bool DisperseTrajectory::StandardVelocityChange()
 {
 	auto pBullet = this->AttachedTo;
-	ObjectClass* pTarget = abstract_cast<ObjectClass*>(pBullet->Target);
+	ObjectClass* pTarget = flag_cast_to<ObjectClass*>(pBullet->Target);
 	CoordStruct TargetLocation = pTarget ? pTarget->GetCoords() : pBullet->TargetCoords;
 	pBullet->TargetCoords = TargetLocation;
 

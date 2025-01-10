@@ -4,8 +4,9 @@
 #include <SuperWeaponTypeClass.h>
 
 #include <Helpers/Macro.h>
-#include <Utilities/Container.h>
+#include <Utilities/PhobosMap.h>
 #include <Utilities/TemplateDef.h>
+
 #include <DirStruct.h>
 
 #include <Ext/TechnoType/Body.h>
@@ -31,11 +32,8 @@ public:
 	static constexpr size_t Canary = 0x23266666;
 	using base_type = BuildingTypeClass;
 
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0xE24; //ares
-#else
-	static constexpr size_t ExtOffset = 0x1794;
-#endif
+	//static constexpr size_t ExtOffset = 0x1794;
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -69,7 +67,7 @@ public:
 	Valueable<bool> Grinding_PlayDieSound { false };
 	Valueable<int> Grinding_Weapon_RequiredCredits { 0 };
 
-	Nullable<bool> PlacementPreview_Show {};
+	Valueable<bool> PlacementPreview_Show { RulesExtData::Instance()->Building_PlacementPreview };
 	Nullable<Theater_SHPStruct*> PlacementPreview_Shape {};
 	Nullable<int> PlacementPreview_ShapeFrame {};
 	Valueable<CoordStruct> PlacementPreview_Offset { {0, -15, 1} };
@@ -310,8 +308,23 @@ public:
 	ValueableVector<TechnoTypeClass*> FactoryPlant_AllowTypes {};
 	ValueableVector<TechnoTypeClass*> FactoryPlant_DisallowTypes {};
 
-	BuildingTypeExtData() noexcept = default;
-	~BuildingTypeExtData() noexcept = default;
+	Valueable<bool> ExcludeFromMultipleFactoryBonus { false };
+
+	Valueable<bool> NoBuildAreaOnBuildup {};
+	ValueableVector<BuildingTypeClass*> Adjacent_Allowed {};
+	ValueableVector<BuildingTypeClass*> Adjacent_Disallowed {};
+
+	Nullable<double> Units_RepairRate {};
+	Nullable<int> Units_RepairStep {};
+	Nullable<double> Units_RepairPercent {};
+	Nullable<bool> Units_UseRepairCost {};
+
+	Valueable<double> PowerPlant_DamageFactor { 1.0 };
+
+	// NextBuilding feature linked list
+	Valueable<BuildingTypeClass*> NextBuilding_Prev { nullptr };
+	Valueable<BuildingTypeClass*> NextBuilding_Next { nullptr };
+	int NextBuilding_CurrentHeapId;
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
@@ -378,7 +391,6 @@ public:
 
 	static void UpdateBuildupFrames(BuildingTypeClass* pThis);
 
-	static bool __fastcall IsFactory(BuildingClass* pThis, void* _);
 	static void __fastcall DrawPlacementGrid(Surface* Surface, ConvertClass* Pal, SHPStruct* SHP, int FrameIndex, const Point2D* const Position, const RectangleStruct* const Bounds, BlitterFlags Flags, int Remap, int ZAdjust, ZGradient ZGradientDescIndex, int Brightness, int TintColor, SHPStruct* ZShape, int ZShapeFrame, int XOffset, int YOffset);
 
 private:
@@ -396,7 +408,7 @@ class BuildingTypeExtContainer final : public Container<BuildingTypeExtData>
 {
 public:
 	static BuildingTypeExtContainer Instance;
-	std::unordered_map<BuildingTypeClass*, BuildingTypeExtData*> Map;
+	PhobosMap<BuildingTypeClass*, BuildingTypeExtData*> Map {};
 
 	virtual bool Load(BuildingTypeClass* key, IStream* pStm);
 
@@ -421,15 +433,26 @@ public:
 		this->Map.clear();
 	}
 
-	BuildingTypeExtContainer() : Container<BuildingTypeExtData> { "BuildingTypeClass" }
-		, Map {}
-	{ }
+	//BuildingTypeExtContainer() : Container<BuildingTypeExtData> { "BuildingTypeClass" }
+	//	, Map {}
+	//{ }
 
-	virtual ~BuildingTypeExtContainer() override = default;
+	//virtual ~BuildingTypeExtContainer() override = default;
 	//CONSTEXPR_NOCOPY_CLASSB(BulletTypeExtContainer, BulletTypeExtData, "BulletTypeClass");
 
-private:
-	BuildingTypeExtContainer(const BuildingTypeExtContainer&) = delete;
-	BuildingTypeExtContainer(BuildingTypeExtContainer&&) = delete;
-	BuildingTypeExtContainer& operator=(const BuildingTypeExtContainer& other) = delete;
+//private:
+//	BuildingTypeExtContainer(const BuildingTypeExtContainer&) = delete;
+//	BuildingTypeExtContainer(BuildingTypeExtContainer&&) = delete;
+//	BuildingTypeExtContainer& operator=(const BuildingTypeExtContainer& other) = delete;
 };
+
+class FakeBuildingTypeClass : public BuildingTypeClass
+{
+public:
+
+	BuildingTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<BuildingTypeExtData**>(((DWORD)this) + BuildingTypeExtData::ExtOffset);
+	}
+};
+static_assert(sizeof(FakeBuildingTypeClass) == sizeof(BuildingTypeClass), "Invalid Size !");

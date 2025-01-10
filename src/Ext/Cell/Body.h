@@ -18,9 +18,6 @@ public:
 
 	int NewPowerups { -1 };
 
-	CellExtData() noexcept = default;
-	~CellExtData() noexcept = default;
-
 	constexpr FORCEINLINE static size_t size_Of()
 	{
 		return sizeof(CellExtData) -
@@ -49,5 +46,5 @@ class CellExtContainer final : public Container<CellExtData>
 public:
 	static CellExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(CellExtContainer, CellExtData, "CellClass");
+	//CONSTEXPR_NOCOPY_CLASSB(CellExtContainer, CellExtData, "CellClass");
 };

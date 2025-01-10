@@ -9,7 +9,7 @@ Blowfish_Loader(
 	REFIID	riid,
 	LPVOID* ppv)
 {
-	typedef HRESULT(__stdcall* pDllGetClassObject)(const IID&, const IID&, IClassFactory**);
+	typedef HRESULT(__stdcall *pDllGetClassObject)(const IID&, const IID&, IClassFactory**);
 
 	auto result = REGDB_E_KEYMISSING;
 
@@ -19,29 +19,27 @@ Blowfish_Loader(
 		return result;
 
 	HMODULE hDll = Imports::LoadLibraryA.get()(GameStrings::BLOWFISH_DLL());
-	if (hDll)
-	{
-		if (const auto GetClassObject = (pDllGetClassObject)GetProcAddress(hDll, "DllGetClassObject"))
-		{
+	if (hDll) {
+		if (const auto GetClassObject = (pDllGetClassObject)GetProcAddress(hDll, "DllGetClassObject")) {
+
 			IClassFactory* pIFactory {};
 			result = GetClassObject(rclsid, IID_IClassFactory, &pIFactory);
 
-			if (SUCCEEDED(result))
-			{
+			if (SUCCEEDED(result)) {
 				result = pIFactory->CreateInstance(pUnkOuter, riid, ppv);
 				pIFactory->Release();
 			}
 		}
 	}
 
-	if (!SUCCEEDED(result))
-	{
-		if (hDll) Imports::FreeLibrary.get()(hDll);
+	if (!SUCCEEDED(result)) {
+
+		if(hDll) Imports::FreeLibrary.get()(hDll);
 		Debug::FatalErrorAndExit("File Blowfish.dll was not found\n");
 	}
 
 	return result;
 }
 
-DEFINE_JUMP(CALL6, 0x6BEDDD, GET_OFFSET(Blowfish_Loader));
-DEFINE_JUMP(CALL6, 0x437F6E, GET_OFFSET(Blowfish_Loader));
+DEFINE_JUMP(CALL6,0x6BEDDD, MiscTools::to_DWORD(&Blowfish_Loader));
+DEFINE_JUMP(CALL6,0x437F6E, MiscTools::to_DWORD(&Blowfish_Loader));

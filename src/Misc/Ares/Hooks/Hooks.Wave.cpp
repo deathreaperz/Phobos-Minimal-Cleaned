@@ -27,19 +27,19 @@
 
 #include "Header.h"
 
-DEFINE_HOOK(0x6FF449, TechnoClass_Fire_SonicWave, 5)
-{
-	GET(TechnoClass* const, pThis, ESI);
-	GET(WeaponTypeClass* const, pSource, EBX);
-
-	GET_BASE(AbstractClass*, pTarget, 0x8);
-
-	REF_STACK(CoordStruct const, crdSrc, 0x44);
-	REF_STACK(CoordStruct const, crdTgt, 0x88);
-
-	pThis->Wave = WaveExtData::Create(crdSrc, crdTgt, pThis, WaveType::Sonic, pTarget, pSource);
-	return 0x6FF48A;
-}
+// DEFINE_HOOK(0x6FF449, TechnoClass_Fire_SonicWave, 5)
+// {
+// 	GET(TechnoClass* const, pThis, ESI);
+// 	GET(WeaponTypeClass* const, pSource, EBX);
+//
+// 	GET_BASE(AbstractClass*, pTarget, 0x8);
+//
+// 	REF_STACK(CoordStruct const, crdSrc, 0x44);
+// 	REF_STACK(CoordStruct const, crdTgt, 0x88);
+//
+// 	pThis->Wave = WaveExtData::Create(crdSrc, crdTgt, pThis, WaveType::Sonic, pTarget, pSource);
+// 	return 0x6FF48A;
+// }
 
 DEFINE_HOOK(0x6FF5F5, TechnoClass_Fire_OtherWaves, 6)
 {
@@ -300,7 +300,10 @@ DEFINE_HOOK(0x7601C7, WaveClass_Draw_Magnetron, 0x8)
 	return 0;
 }
 
-//DEFINE_PATCH_TYPED(BYTE, 0x7609E3, 0xA1, 0x02, 0x90, 0x90, 0x90);
+//DEFINE_PATCH_TYPED(BYTE, 0x7609E3, 0x90, 0x90, 0x90, 0x00);
+//DEFINE_PATCH_TYPED(BYTE, 0x7609EB, 0x90, 0x90, 0x90 );
+//DEFINE_PATCH_TYPED(BYTE, 0x7609F3, 0x90, 0x90, 0x90, 0x90, 0x00, 0x00);
+
 DEFINE_HOOK(0x7609E3, WaveClass_Draw_NodLaser_Details, 0x5)
 {
 	R->EAX(2);
@@ -325,12 +328,12 @@ DEFINE_HOOK(0x75F415, WaveClass_DamageCell_FixNoHouseOwner, 0x6)
 	GET_STACK(int, nDamage, STACK_OFFS(0x18, 0x4));
 	GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFS(0x18, 0x8));
 
-	if (const auto pTechnoVictim = generic_cast<TechnoClass*>(pVictim))
+	if (const auto pTechnoVictim = flag_cast_to<TechnoClass*>(pVictim))
 	{
 		if (pTechnoVictim->IsSinking || pTechnoVictim->IsCrashing)
 			return 0x75F432;
 
-		if (const auto pUnit = specific_cast<UnitClass*>(pVictim))
+		if (const auto pUnit = cast_to<UnitClass*, false>(pVictim))
 		{
 			if (pUnit->DeathFrameCounter > 0)
 				return 0x75F432;

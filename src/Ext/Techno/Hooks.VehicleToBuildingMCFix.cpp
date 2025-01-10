@@ -17,8 +17,7 @@ DEFINE_HOOK(0x449E2E, BuildingClass_Mi_Selling_CreateUnit, 0x6)
 	R->ECX<HouseClass*>(pStructure->GetOriginalOwner());
 
 	// Remember MC ring animation.
-	if (pStructure->IsMindControlled())
-	{
+	if (pStructure->IsMindControlled()) {
 		TechnoExtContainer::Instance.Find(pStructure)->UpdateMindControlAnim();
 	}
 

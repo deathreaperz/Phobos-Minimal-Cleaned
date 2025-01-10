@@ -33,9 +33,16 @@ public:
 
 	ValueableIdxVector<VocClass> VoiceGarrison {};
 
-	InfantryTypeExtData() noexcept = default;
-	~InfantryTypeExtData() noexcept = default;
+	Valueable<bool> OnlyUseLandSequences { false };
+	std::vector<int> SquenceRates {};
 
+	// When infiltrates: detonates a weapon or damage
+	Promotable<WarheadTypeClass*> WhenInfiltrate_Warhead {};
+	Promotable<WeaponTypeClass*> WhenInfiltrate_Weapon {};
+	Promotable<int> WhenInfiltrate_Damage {};
+	Valueable<bool> WhenInfiltrate_Warhead_Full { true };
+
+	Valueable<bool> AllSequnceEqualRates { false };
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -57,5 +64,16 @@ class InfantryTypeExtContainer final : public Container<InfantryTypeExtData>
 public:
 	static InfantryTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(InfantryTypeExtContainer, InfantryTypeExtData, "InfantryTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(InfantryTypeExtContainer, InfantryTypeExtData, "InfantryTypeClass");
 };
+
+class FakeInfantryTypeClass : public InfantryTypeClass
+{
+public:
+
+	InfantryTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<InfantryTypeExtData**>(((DWORD)this) + InfantryTypeExtData::ExtOffset);
+	}
+};
+static_assert(sizeof(FakeInfantryTypeClass) == sizeof(InfantryTypeClass), "Invalid Size !");

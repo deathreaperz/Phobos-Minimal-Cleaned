@@ -1,5 +1,7 @@
 #include "ElectricBoltClass.h"
 
+#ifdef _Enable
+
 #include <Base/Always.h>
 #include <Utilities/TemplateDef.h>
 #include <TacticalClass.h>
@@ -8,7 +10,7 @@
 #include <Unsorted.h>
 #include <RulesClass.h>
 
-std::vector<ElectricBoltClass> ElectricBoltManager::ElectricBoltArray;
+#include <ParticleSystemClass.h>
 
 void ElectricBoltClass::Draw_It()
 {
@@ -306,3 +308,4 @@ void ElectricBoltManager::Draw_All()
 
 	ElectricBoltArray.erase(iter, ElectricBoltArray.end());
 }
+#endif

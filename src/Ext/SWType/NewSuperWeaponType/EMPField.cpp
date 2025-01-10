@@ -1,6 +1,7 @@
 #include "EMPField.h"
 
 #include <Misc/Ares/Hooks/Header.h>
+#include <Ext/SWType/Body.h>
 
 std::vector<const char*> SW_EMPField::GetTypeString() const
 {

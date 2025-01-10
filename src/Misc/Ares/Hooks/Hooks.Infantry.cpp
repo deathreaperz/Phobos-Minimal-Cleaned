@@ -18,9 +18,11 @@
 #include <Ext/InfantryType/Body.h>
 
 #include <WWKeyboardClass.h>
-#include <Ares_TechnoExt.h>
 
 #include "Header.h"
+
+#include <Locomotor/TeleportLocomotionClass.h>
+#include <CaptureManagerClass.h>
 
 DEFINE_HOOK(0x51E5E1, InfantryClass_GetActionOnObject_MultiEngineerB, 7)
 {
@@ -141,17 +143,17 @@ DEFINE_HOOK(0x51DFFD, InfantryClass_Put, 5)
 	return 0;
 }
 
-DEFINE_HOOK(0x518434, InfantryClass_ReceiveDamage_SkipDeathAnim, 7)
-{
-	GET(InfantryClass*, pThis, ESI);
-	//GET_STACK(ObjectClass *, pAttacker, 0xE0);
-
-	// there is not InfantryExt ExtMap yet!
-	// too much space would get wasted since there is only four bytes worth of data we need to store per object
-	// so those four bytes get stashed in Techno Map instead. they will get their own map if there's ever enough data to warrant it
-
-	return TechnoExtContainer::Instance.Find(pThis)->GarrisonedIn ? 0x5185F1 : 0;
-}
+// DEFINE_HOOK(0x518434, InfantryClass_ReceiveDamage_SkipDeathAnim, 7)
+// {
+// 	GET(InfantryClass*, pThis, ESI);
+// 	//GET_STACK(ObjectClass *, pAttacker, 0xE0);
+//
+// 	// there is not InfantryExt ExtMap yet!
+// 	// too much space would get wasted since there is only four bytes worth of data we need to store per object
+// 	// so those four bytes get stashed in Techno Map instead. they will get their own map if there's ever enough data to warrant it
+//
+// 	return TechnoExtContainer::Instance.Find(pThis)->GarrisonedIn ? 0x5185F1 : 0;
+// }
 
 DEFINE_HOOK(0x517D51, InfantryClass_Init_Academy, 6)
 {
@@ -178,7 +180,7 @@ DEFINE_HOOK(0x51E7BF, InfantryClass_GetActionOnObject_CanCapture, 6)
 	GET(InfantryClass*, pSelected, EDI);
 	GET(ObjectClass*, pTarget, ESI);
 
-	TechnoClass* pTechnoTarget = generic_cast<TechnoClass*>(pTarget);
+	TechnoClass* pTechnoTarget = flag_cast_to<TechnoClass*>(pTarget);
 
 	if (!pTechnoTarget)
 		return DontCapture;
@@ -242,7 +244,7 @@ DEFINE_HOOK(0x519675, InfantryClass_UpdatePosition_BeforeInfantrySpecific, 0xA)
 		// steal vehicles / reclaim KillDriver'd units using CanDrive
 		if (pThis->CurrentMission == Mission::Capture)
 		{
-			if (TechnoClass* pDest = generic_cast<TechnoClass*>(pThis->Destination))
+			if (TechnoClass* pDest = flag_cast_to<TechnoClass*>(pThis->Destination))
 			{
 				// this is the possible target we stand on
 				CellClass* pCell = pThis->GetCell();
@@ -446,7 +448,7 @@ DEFINE_HOOK(0x520731, InfantryClass_UpdateFiringState_Heal, 0x5)
 {
 	GET(InfantryClass* const, pThis, EBP);
 
-	const auto pTargetTechno = generic_cast<TechnoClass* const>(pThis->Target);
+	const auto pTargetTechno = flag_cast_to<TechnoClass* const>(pThis->Target);
 
 	if (!pTargetTechno || RulesClass::Instance->ConditionGreen <= pTargetTechno->GetHealthPercentage())
 		pThis->SetTarget(nullptr);
@@ -515,7 +517,7 @@ DEFINE_HOOK(0x51DF27, InfantryClass_Remove_Teleport, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x5243E3, InfantryTypeClass_AllowDamageSparks, 0xB)
+DEFINE_HOOK(0x5243DD, InfantryTypeClass_AllowDamageSparks, 0x6)
 {
 	GET(InfantryTypeClass*, pThis, ESI)
 		GET(INIClass* const, pINI, EBP);
@@ -593,7 +595,7 @@ DEFINE_HOOK(0x51EB48, InfantryClass_GetActionOnObject_IvanGrinder, 0xA)
 	GET(InfantryClass*, pThis, EDI);
 	GET(ObjectClass*, pTarget, ESI);
 
-	if (auto pTargetBld = abstract_cast<BuildingClass*>(pTarget))
+	if (auto pTargetBld = cast_to<BuildingClass*>(pTarget))
 	{
 		if (pTargetBld->Type->Grinding && pThis->Owner->IsAlliedWith(pTargetBld))
 		{

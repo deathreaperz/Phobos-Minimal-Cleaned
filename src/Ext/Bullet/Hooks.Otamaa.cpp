@@ -37,9 +37,9 @@ DEFINE_HOOK(0x46B1D6, BulletClass_DrawVXL_Palette, 0x6)
 DEFINE_HOOK(0x5F5A86, ObjectClass_SpawnParachuted_Animation_Bulet, 0x6)
 {
 	GET(RulesClass*, pRules, ECX);
-	GET(BulletClass*, pBullet, ESI);
+	GET(FakeBulletClass*, pBullet, ESI);
 
-	R->EDX(BulletTypeExtContainer::Instance.Find(pBullet->Type)->Parachute.Get(pRules->BombParachute));
+	R->EDX(pBullet->_GetTypeExtData()->Parachute.Get(pRules->BombParachute));
 	return 0x5F5A8C;
 }
 
@@ -55,11 +55,11 @@ DEFINE_HOOK(0x5F5A86, ObjectClass_SpawnParachuted_Animation_Bulet, 0x6)
 
 DEFINE_HOOK(0x469D3C, BulletClass_Logics_Debris, 0xA)
 {
-	GET(BulletClass*, pThis, ESI);
+	GET(FakeBulletClass*, pThis, ESI);
 	GET(int, nTotalSpawn, EBX);
-	GET(WarheadTypeClass*, pWarhead, EAX);
+	GET(FakeWarheadTypeClass*, pWarhead, EAX);
 
-	auto pExt = BulletExtContainer::Instance.Find(pThis);
+	auto pExt = pThis->_GetExtData();
 	HouseClass* const pOWner = pThis->Owner ? pThis->Owner->GetOwningHouse() : (pExt->Owner ? pExt->Owner : HouseExtData::FindFirstCivilianHouse());
 	HouseClass* const Victim = (pThis->Target) ? pThis->Target->GetOwningHouse() : nullptr;
 	CoordStruct nCoords { 0,0,0 };
@@ -76,18 +76,17 @@ DEFINE_HOOK(0x469D3C, BulletClass_Logics_Debris, 0xA)
 			if (!pWarhead->DebrisMaximums[nCurIdx])
 				continue;
 
-			int nAmountToSpawn = abs(int(ScenarioClass::Instance->Random.Random())) % pWarhead->DebrisMaximums[nCurIdx];
-			nAmountToSpawn = LessOrEqualTo(nAmountToSpawn, nTotalSpawn);
-			nTotalSpawn -= nAmountToSpawn;
+				int nAmountToSpawn = Math::abs(int(ScenarioClass::Instance->Random.Random())) % pWarhead->DebrisMaximums[nCurIdx];
+				nAmountToSpawn = LessOrEqualTo(nAmountToSpawn, nTotalSpawn);
+				nTotalSpawn -= nAmountToSpawn;
 
-			for (; nAmountToSpawn > 0; --nAmountToSpawn)
-			{
-				if (auto const pVoxelAnimType = nDebrisTypes[nCurIdx])
+				for (; nAmountToSpawn > 0; --nAmountToSpawn)
 				{
-					auto pVoxAnim = GameCreate<VoxelAnimClass>(pVoxelAnimType, &nCoords, pOWner);
-					VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis->Owner;
+					if (auto const pVoxelAnimType = nDebrisTypes[nCurIdx]){
+						auto pVoxAnim = GameCreate<VoxelAnimClass>(pVoxelAnimType, &nCoords, pOWner);
+						VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis->Owner;
+					}
 				}
-			}
 
 			if (nTotalSpawn <= 0)
 			{
@@ -99,8 +98,7 @@ DEFINE_HOOK(0x469D3C, BulletClass_Logics_Debris, 0xA)
 
 	if (!nDebrisTypes.Count && (nTotalSpawn > 0))
 	{
-		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
-		const auto AnimDebris = pWHExt->DebrisAnimTypes.GetElements(RulesClass::Instance->MetallicDebris);
+		const auto AnimDebris = pWarhead->_GetExtData()->DebrisAnimTypes.GetElements(RulesClass::Instance->MetallicDebris);
 
 		if (!AnimDebris.empty())
 		{
@@ -156,6 +154,7 @@ static void  ManipulateLoco(FootClass* pFirer, AbstractClass* pTarget, BulletCla
 
 			if (auto pUnit = specific_cast<UnitClass*>(pTarget))
 			{
+
 				if (pFoot_T->RadioLinks.IsAllocated &&
 					pFoot_T->RadioLinks.IsInitialized &&
 					pFoot_T->RadioLinks.Items)
@@ -324,11 +323,10 @@ DEFINE_HOOK(0x7102F9, FootClass_ImbueLocomotor_SetDestination, 0x5)
 
 DEFINE_HOOK(0x466BAF, BulletClass_AI_MissileROTVar, 0x6)
 {
-	GET(BulletClass*, pThis, EBP);
+	GET(FakeBulletClass*, pThis, EBP);
 
 	const auto nFrame = (Unsorted::CurrentFrame + pThis->Fetch_ID()) % 15;
-	const double nMissileROTVar = BulletTypeExtContainer::Instance.Find(pThis->Type)
-		->MissileROTVar.Get(RulesClass::Instance->MissileROTVar);
+	const double nMissileROTVar = pThis->_GetTypeExtData()->MissileROTVar.Get(RulesClass::Instance->MissileROTVar);
 
 	R->EAX(int(Math::sin(static_cast<double>(nFrame) *
 		0.06666666666666667 *
@@ -342,9 +340,8 @@ DEFINE_HOOK(0x466BAF, BulletClass_AI_MissileROTVar, 0x6)
 
 DEFINE_HOOK(0x466E9F, BulletClass_AI_MissileSafetyAltitude, 0x6)
 {
-	GET(BulletClass*, pThis, EBP);
+	GET(FakeBulletClass*, pThis, EBP);
 	GET(int, comparator, EAX);
-	auto const pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pThis->Type);
-	return comparator >= pBulletTypeExt->GetMissileSaveAltitude(RulesClass::Instance)
+	return comparator >= pThis->_GetTypeExtData()->GetMissileSaveAltitude(RulesClass::Instance)
 		? 0x466EAD : 0x466EB6;
 }

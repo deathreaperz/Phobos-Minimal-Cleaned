@@ -11,32 +11,32 @@ public:
 	static inline constexpr size_t DefaultCursorsCount = (size_t)MouseCursorType::count;
 	static constexpr reference<MouseCursor, 0x82D028u, (size_t)MouseCursorType::count> const DefaultCursors{};
 
-	static MouseCursor& GetDefaultCursor(MouseCursorType cursor)
+	static constexpr inline MouseCursor& GetDefaultCursor(MouseCursorType cursor)
 		{ return DefaultCursors[static_cast<int>(cursor)]; }
 
-	static MouseCursor& GetCursor(MouseCursorType cursor)
+	static constexpr inline MouseCursor& GetCursor(MouseCursorType cursor)
 		{ return DefaultCursors[static_cast<int>(cursor)]; }
 
-	static MouseCursor& GetCursor(size_t cursor)
+	static constexpr inline MouseCursor& GetCursor(size_t cursor)
 		{ return DefaultCursors[cursor]; }
 
-	FORCEINLINE int GetFrameRate() const
+	FORCEINLINE constexpr int GetFrameRate() const
 	{
 		return FrameRate;
 	}
 
-	FORCEINLINE int GetMouseFrame(bool wsmall) const
+	FORCEINLINE constexpr int GetMouseFrame(bool wsmall) const
 	{
 		return !wsmall || SmallFrame == -1 ?
 			StartFrame : SmallFrame;
 	}
 
-	FORCEINLINE int GetMouseFrameCount(bool wsmall) const
+	FORCEINLINE constexpr int GetMouseFrameCount(bool wsmall) const
 	{
 		return !wsmall ? FrameCount : SmallFrameCount;
 	}
 
-	FORCEINLINE Point2D GetMouseHotSpot(const ShapeFileStruct* pShape) const
+	constexpr FORCEINLINE Point2D GetMouseHotSpot(const ShapeFileStruct* pShape) const
 	{
 		Point2D nResult { 0 , 0 };
 
@@ -55,7 +55,7 @@ public:
 		return nResult;
 	}
 
-	FORCEINLINE Point2D GetMouseHotSpot(const SHPStruct* pShape) const
+	FORCEINLINE constexpr Point2D GetMouseHotSpot(const SHPStruct* pShape) const
 	{
 		Point2D nResult { 0 , 0 };
 
@@ -194,9 +194,9 @@ public:
 	virtual bool DraggingInProgress() override JMP_THIS(0x693060);
 
 	//DisplayClass
-	virtual void vt_entry_8C() override JMP_THIS(0x6938C0);
-	virtual void vt_entry_B0(DWORD dwUnk) override JMP_THIS(0x693880);
-	virtual void RightMouseButtonUp(DWORD dwUnk) override JMP_THIS(0x693840);
+	virtual void ClearDragBand() override JMP_THIS(0x6938C0);
+	virtual void RightMouseButtonClick(const Point2D& point) override JMP_THIS(0x693880);
+	virtual void RightMouseButtonUp(const Point2D& point) override JMP_THIS(0x693840);
 
 	ScrollClass() JMP_THIS(0x692290);
 

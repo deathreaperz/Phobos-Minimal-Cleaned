@@ -4,6 +4,8 @@
 #include <Ext/Cell/Body.h>
 #include <Ext/TechnoType/Body.h>
 
+#include <Utilities/Macro.h>
+
 void TerrainExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
 	if (this->LighSource.get() == ptr)
@@ -115,8 +117,8 @@ void TerrainExtData::Serialize(T& Stm)
 {
 	Stm
 		.Process(this->Initialized)
-		.Process(this->LighSource)
-		.Process(this->AttachedAnim)
+		.Process(this->LighSource, true)
+		.Process(this->AttachedAnim, true)
 		.Process(this->Adjencentcells)
 		;
 }
@@ -184,28 +186,32 @@ DEFINE_HOOK(0x71B824, TerrainClass_DTOR, 0x5)
 	return 0x71B845;
 }
 
-DEFINE_HOOK_AGAIN(0x71CDA0, TerrainClass_SaveLoad_Prefix, 0x8)
-DEFINE_HOOK(0x71CF30, TerrainClass_SaveLoad_Prefix, 0x8)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeTerrainClass::_Load(IStream* pStm)
 {
-	GET_STACK(TerrainClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	TerrainExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->TerrainClass::Load(pStm);
 
-	TerrainExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		TerrainExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x71CEAC, TerrainClass_Load_Suffix, 0x9)
+HRESULT __stdcall FakeTerrainClass::_Save(IStream* pStm, bool clearDirty)
 {
-	TerrainExtContainer::Instance.LoadStatic();
-	return 0;
+	TerrainExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->TerrainClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		TerrainExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x71CF44, TerrainClass_Save_Suffix, 0x5)
-{
-	TerrainExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7F5240, MiscTools::to_DWORD(&FakeTerrainClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F5244, MiscTools::to_DWORD(&FakeTerrainClass::_Save))
 
 //DEFINE_HOOK(0x71CFD0, TerrainClass_Detach, 0x5)
 //{
@@ -221,10 +227,11 @@ DEFINE_HOOK(0x71CF44, TerrainClass_Save_Suffix, 0x5)
 //
 //	return 0x71CFF7;
 //}
+#include <Misc/Hooks.Otamaa.h>
 
-void __fastcall TerrainClass_Detach_Wrapper(TerrainClass* pThis, DWORD, AbstractClass* target, bool all)
+void FakeTerrainClass::_Detach(AbstractClass* target, bool all)
 {
-	TerrainExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
-	pThis->TerrainClass::PointerExpired(target, all);
+	TerrainExtContainer::Instance.InvalidatePointerFor(this, target, all);
+	this->TerrainClass::PointerExpired(target, all);
 }
-DEFINE_JUMP(VTABLE, 0x7F5254, GET_OFFSET(TerrainClass_Detach_Wrapper));
+DEFINE_JUMP(VTABLE, 0x7F5254, MiscTools::to_DWORD(&FakeTerrainClass::_Detach));

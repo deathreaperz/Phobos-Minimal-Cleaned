@@ -13,20 +13,12 @@
 #include <New/Type/GenericPrerequisite.h>
 #include <New/Type/CrateTypeClass.h>
 
-std::vector<int> HouseExtData::AIProduction_CreationFrames;
-std::vector<int> HouseExtData::AIProduction_Values;
-std::vector<int> HouseExtData::AIProduction_BestChoices;
-std::vector<int> HouseExtData::AIProduction_BestChoicesNaval;
+#include <Utilities/Macro.h>
 
-int HouseExtData::LastGrindingBlanceUnit = 0;
-int HouseExtData::LastGrindingBlanceInf = 0;
-int HouseExtData::LastHarvesterBalance = 0;
-int HouseExtData::LastSlaveBalance = 0;
+#include <ExtraHeaders/StackVector.h>
 
-bool HouseExtData::IsAnyFirestormActive = false;
+#include <Utilities/Cast.h>
 
-CDTimerClass HouseExtData::CloakEVASpeak;
-CDTimerClass HouseExtData::SubTerraneanEVASpeak;
 void HouseExtData::InitializeConstant()
 {
 	//BuiltAircraftTypes.PopulateCounts(10000);
@@ -87,27 +79,27 @@ float HouseExtData::GetRestrictedFactoryPlantMult(TechnoTypeClass* pTechnoType) 
 		{
 		case AbstractType::BuildingType:
 			if (((BuildingTypeClass*)pTechnoType)->BuildCat == BuildCat::Combat)
-				currentMult -= pBuilding->Type->DefensesCostBonus;
+				currentMult = pBuilding->Type->DefensesCostBonus;
 			else
-				currentMult -= pBuilding->Type->BuildingsCostBonus;
+				currentMult = pBuilding->Type->BuildingsCostBonus;
 			break;
 		case AbstractType::AircraftType:
-			currentMult -= pBuilding->Type->AircraftCostBonus;
+			currentMult = pBuilding->Type->AircraftCostBonus;
 			break;
 		case AbstractType::InfantryType:
-			currentMult -= pBuilding->Type->InfantryCostBonus;
+			currentMult = pBuilding->Type->InfantryCostBonus;
 			break;
 		case AbstractType::UnitType:
-			currentMult -= pBuilding->Type->UnitsCostBonus;
+			currentMult = pBuilding->Type->UnitsCostBonus;
 			break;
 		default:
 			break;
 		}
 
-		mult *= float(1.0f - currentMult * pTechnoTypeExt->FactoryPlant_Multiplier);
+		mult *= currentMult;
 	}
 
-	return mult;
+	return float(1.0f - ((1.0f - mult) * pTechnoTypeExt->FactoryPlant_Multiplier));
 }
 
 RequirementStatus HouseExtData::RequirementsMet(
@@ -167,7 +159,7 @@ RequirementStatus HouseExtData::RequirementsMet(
 					return RequirementStatus::Incomplete;
 				}
 
-				if (auto const pBldType = specific_cast<BuildingTypeClass const*>(pItem))
+				if (auto const pBldType = type_cast<BuildingTypeClass const*>(pItem))
 				{
 					if (HouseExtData::IsDisabledFromShell(pHouse, pBldType))
 					{
@@ -359,7 +351,9 @@ CanBuildResult HouseExtData::PrereqValidate(
 
 	const auto builtLimitResult = static_cast<CanBuildResult>(HouseExtData::CheckBuildLimit(pHouse, pItem, includeQueued));
 
-	if (builtLimitResult == CanBuildResult::Buildable && pItem->WhatAmI() == BuildingTypeClass::AbsID && !BuildingTypeExtContainer::Instance.Find((BuildingTypeClass*)pItem)->PowersUp_Buildings.empty())
+	if (builtLimitResult == CanBuildResult::Buildable
+		&& pItem->WhatAmI() == BuildingTypeClass::AbsID
+		&& !BuildingTypeExtContainer::Instance.Find((BuildingTypeClass*)pItem)->PowersUp_Buildings.empty())
 	{
 		return static_cast<CanBuildResult>(HouseExtData::CheckBuildingBuildLimit(pHouse, (BuildingTypeClass*)pItem, includeQueued));
 	}
@@ -464,11 +458,70 @@ void HouseExtData::ApplyAcademy(HouseClass* pHouse, TechnoClass* pTechno, Abstra
 	HouseExtContainer::Instance.Find(pHouse)->ApplyAcademy(pTechno, considerAs);
 }
 
+void HouseExtData::ApplyAcademyWithoutMutexCheck(
+	TechnoClass* const pTechno, AbstractType const considerAs) const
+{
+	auto const pType = pTechno->GetTechnoType();
+	if (pType->Trainable)
+	{
+		// get the academy data for this type
+		Valueable<double> BuildingTypeExtData::* pmBonus = nullptr;
+		switch (considerAs)
+		{
+		case AbstractType::Infantry:
+		case AbstractType::InfantryType:
+			pmBonus = &BuildingTypeExtData::AcademyInfantry;
+			break;
+		case AbstractType::AircraftType:
+		case AbstractType::Aircraft:
+			pmBonus = &BuildingTypeExtData::AcademyAircraft;
+			break;
+		case AbstractType::UnitType:
+		case AbstractType::Unit:
+			pmBonus = &BuildingTypeExtData::AcademyVehicle;
+			break;
+		default:
+			pmBonus = &BuildingTypeExtData::AcademyBuilding;
+			break;
+		}
+
+		auto veterancyBonus = 0.0;
+
+		// aggregate the bonuses
+		for (auto const& pBld : this->Academies)
+		{
+			if (!pBld)
+				continue;
+
+			auto const pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
+
+			auto const isWhitelisted = pExt->AcademyWhitelist.empty()
+				|| pExt->AcademyWhitelist.Contains(pType);
+
+			if (isWhitelisted && !pExt->AcademyBlacklist.Contains(pType))
+			{
+				const auto& data = pExt->*pmBonus;
+				veterancyBonus = MaxImpl(veterancyBonus, data.Get());
+			}
+		}
+
+		// apply the bonus
+		auto& value = pTechno->Veterancy.Veterancy;
+		if (veterancyBonus > value)
+		{
+			value = static_cast<float>(MinImpl(
+				veterancyBonus, RulesClass::Instance->VeteranCap));
+		}
+	}
+}
+
 void HouseExtData::ApplyAcademy(
 	TechnoClass* const pTechno, AbstractType const considerAs) const
 {
 	// mutex in effect, ignore academies to fix preplaced order issues.
 	// also triggered in game for certain "conversions" like deploy
+	// Otamaa : added IsTethered check , so techno form WF wont get ignored !
+	//
 	if (Unsorted::ScenarioInit)
 	{
 		return;
@@ -566,7 +619,15 @@ void HouseExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		return;
 
 	INI_EX exINI(pINI);
-	exINI.Read3Bool(pSection, "RepairBaseNodes", this->RepairBaseNodes);
+	bool readBaseNodeRepairInfo[3];
+	size_t var = exINI.Read3Bool(pSection, "RepairBaseNodes", readBaseNodeRepairInfo);
+	if (var <= 3)
+	{
+		for (size_t i = 0; i < var; i++)
+		{
+			this->RepairBaseNodes[i] = readBaseNodeRepairInfo[i];
+		}
+	}
 
 	this->Degrades.Read(exINI, pSection, "Degrades");
 }
@@ -580,7 +641,7 @@ TunnelData* HouseExtData::GetTunnelVector(HouseClass* pHouse, size_t nTunnelIdx)
 
 	while (pHouseExt->Tunnels.size() < TunnelTypeClass::Array.size())
 	{
-		pHouseExt->Tunnels.emplace_back().MaxCap = TunnelTypeClass::Array[nTunnelIdx]->Passengers;
+		pHouseExt->Tunnels.emplace_back(TunnelTypeClass::Array[nTunnelIdx]->Passengers);
 	}
 
 	return pHouseExt->Tunnels.data() + nTunnelIdx;
@@ -820,29 +881,13 @@ bool HouseExtData::GetParadropContent(HouseClass* pHouse, Iterator<TechnoTypeCla
 	return (Types && Num);
 }
 
-bool HouseExtData::InvalidateIgnorable(AbstractClass* ptr)
-{
-	switch (VTable::Get(ptr))
-	{
-	case BuildingClass::vtable:
-	case InfantryClass::vtable:
-	case UnitClass::vtable:
-	case AircraftClass::vtable:
-	case TeamClass::vtable:
-	case SuperClass::vtable:
-		return false;
-	}
-
-	return true;
-}
-
 TechTreeTypeClass* HouseExtData::GetTechTreeType()
 {
 	if (!this->SideTechTree.isset())
 	{
 		TechTreeTypeClass* ret = nullptr;
 
-		for (const auto& pType : TechTreeTypeClass::Array)
+		for (auto& pType : TechTreeTypeClass::Array)
 		{
 			if (pType->SideIndex == this->AttachedToObject->SideIndex)
 			{
@@ -853,8 +898,8 @@ TechTreeTypeClass* HouseExtData::GetTechTreeType()
 		if (!ret)
 		{
 			Debug::Log("TechTreeTypeClass::GetForSide: Could not find tech tree for side %d, returning tech tree 0: %s",
-				this->AttachedToObject->SideIndex, TechTreeTypeClass::Array[0]->Name.data());
-			ret = TechTreeTypeClass::Array[0].get();
+				this->AttachedToObject->SideIndex, TechTreeTypeClass::Array.begin()->get()->Name.data());
+			ret = TechTreeTypeClass::Array.begin()->get();
 		}
 
 		this->SideTechTree = ret;
@@ -874,12 +919,8 @@ void HouseExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 	AnnounceInvalidPointer(Factory_VehicleType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_NavyType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_AircraftType, ptr, bRemoved);
-	AnnounceInvalidPointer<TechnoClass*>(LimboTechno, ptr, bRemoved);
 	AnnounceInvalidPointer<BuildingClass*>(Academies, ptr, bRemoved);
 	AnnounceInvalidPointer<BuildingClass*>(RestrictedFactoryPlants, ptr, bRemoved);
-
-	if (bRemoved)
-		AutoDeathObjects.erase((TechnoClass*)ptr);
 
 	for (auto& nTun : Tunnels)
 		AnnounceInvalidPointer(nTun.Vector, ptr, bRemoved);
@@ -956,6 +997,9 @@ HouseClass* HouseExtContainer::Neutral = nullptr;
 
 HouseClass* HouseExtData::FindFirstCivilianHouse()
 {
+	if (RulesExtData::Instance()->CivilianSideIndex == -1)
+		Debug::FatalError("Civilian Index is invalid !\n");
+
 	if (!HouseExtContainer::Civilian)
 	{
 		HouseExtContainer::Civilian = HouseClass::FindBySideIndex(RulesExtData::Instance()->CivilianSideIndex);
@@ -966,6 +1010,9 @@ HouseClass* HouseExtData::FindFirstCivilianHouse()
 
 HouseClass* HouseExtData::FindSpecial()
 {
+	if (RulesExtData::Instance()->SpecialCountryIndex == -1)
+		Debug::FatalError("Special Index is invalid !\n");
+
 	if (!HouseExtContainer::Special)
 	{
 		HouseExtContainer::Special = HouseClass::FindByCountryIndex(RulesExtData::Instance()->SpecialCountryIndex);
@@ -976,6 +1023,9 @@ HouseClass* HouseExtData::FindSpecial()
 
 HouseClass* HouseExtData::FindNeutral()
 {
+	if (RulesExtData::Instance()->NeutralCountryIndex == -1)
+		Debug::FatalError("Neutral Index is invalid !\n");
+
 	if (!HouseExtContainer::Neutral)
 	{
 		HouseExtContainer::Neutral = HouseClass::FindByCountryIndex(RulesExtData::Instance()->NeutralCountryIndex);
@@ -1108,7 +1158,7 @@ int HouseExtData::GetHouseIndex(int param, TeamClass* pTeam = nullptr, TActionCl
 
 	if (param < 0)
 	{
-		std::vector<HouseClass*> housesListIdx {};
+		StackVector<HouseClass*, 256> housesListIdx {};
 
 		switch (param)
 		{
@@ -1121,13 +1171,13 @@ int HouseExtData::GetHouseIndex(int param, TeamClass* pTeam = nullptr, TActionCl
 					&& !HouseExtData::IsObserverPlayer(pHouse)
 					&& !pHouse->Type->MultiplayPassive)
 				{
-					housesListIdx.push_back(pHouse);
+					housesListIdx->push_back(pHouse);
 				}
 			}
 
-			return housesListIdx.empty() ?
+			return housesListIdx->empty() ?
 				-1 :
-				housesListIdx[ScenarioClass::Instance->Random.RandomFromMax(housesListIdx.size() - 1)]->ArrayIndex;
+				housesListIdx[ScenarioClass::Instance->Random.RandomFromMax(housesListIdx->size() - 1)]->ArrayIndex;
 		}
 		case -2:
 		{
@@ -1151,13 +1201,13 @@ int HouseExtData::GetHouseIndex(int param, TeamClass* pTeam = nullptr, TActionCl
 					&& !pHouse->Defeated
 					&& !HouseExtData::IsObserverPlayer(pHouse))
 				{
-					housesListIdx.push_back(pHouse);
+					housesListIdx->push_back(pHouse);
 				}
 			}
 
-			return housesListIdx.empty() ?
+			return housesListIdx->empty() ?
 				-1 :
-				housesListIdx[(ScenarioClass::Instance->Random.RandomFromMax(housesListIdx.size() - 1))]
+				housesListIdx[(ScenarioClass::Instance->Random.RandomFromMax(housesListIdx->size() - 1))]
 				->ArrayIndex;
 		}
 		default:
@@ -1284,36 +1334,38 @@ bool HouseExtData::IsDisabledFromShell(
 
 void HouseExtData::UpdateAutoDeathObjects()
 {
-	if (this->AutoDeathObjects.empty())
+	if (HouseExtData::AutoDeathObjects.empty())
 		return;
 
-	for (const auto& [pThis, nMethod] : this->AutoDeathObjects)
+	const auto iter = std::remove_if(HouseExtData::AutoDeathObjects.begin(), HouseExtData::AutoDeathObjects.end(), [](auto& item)
 	{
-		if (pThis->IsInLogic || !pThis->IsAlive || nMethod == KillMethod::None)
-			continue;
-
-		auto const pExt = TechnoExtContainer::Instance.TryFind(pThis);
-		if (!pExt)
+		if (!item.first || item.second == KillMethod::None || !item.first->IsAlive)
 		{
-			Debug::Log("HouseExtData::UpdateAutoDeathObject -  Killing Techno Failed , No Extptr [%x - %s] ! \n", pThis, pThis->get_ID());
-			continue;
+			return true;
 		}
 
-		if (!pExt->Death_Countdown.Completed())
-			continue;
+		auto const pExt = TechnoExtContainer::Instance.Find(item.first);
 
-		Debug::Log("HouseExtData::UpdateAutoDeathObject -  Killing Techno[%x - %s] ! \n", pThis, pThis->get_ID());
-		if (auto const pBuilding = specific_cast<BuildingClass*>(pThis))
+		if (!item.first->IsInLogic && pExt->Death_Countdown.Completed())
 		{
-			if (BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
+			if (auto const pBuilding = cast_to<BuildingClass*, false>(item.first))
 			{
-				//this->RemoveFromLimboTracking(pBuilding->Type);
-				BuildingExtData::LimboKill(pBuilding);
-				continue;
+				if (BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
+				{
+					BuildingExtData::LimboKill(pBuilding);
+					return true;
+				}
 			}
-		}
 
-		TechnoExtData::KillSelf(pThis, nMethod, true, TechnoTypeExtContainer::Instance.Find(pExt->Type)->AutoDeath_VanishAnimation);
+			TechnoExtData::KillSelf(item.first, item.second, true, TechnoTypeExtContainer::Instance.Find(pExt->Type)->AutoDeath_VanishAnimation);
+			return true;
+		}
+		return false;
+	});
+
+	if (iter != HouseExtData::AutoDeathObjects.end())
+	{
+		HouseExtData::AutoDeathObjects.erase(iter);
 	}
 }
 
@@ -1336,11 +1388,11 @@ std::vector<int> HouseExtData::GetBuildLimitGroupLimits(HouseClass* pHouse, Tech
 		{
 			int count = 0;
 			auto pTmpType = pTypeExt->BuildLimitGroup_ExtraLimit_Types[i];
-			auto const pBuildingType = specific_cast<BuildingTypeClass*>(pTmpType);
+			auto const pBuildingType = type_cast<BuildingTypeClass*>(pTmpType);
 
 			if (pBuildingType &&
-				(BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
-				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+				(BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0
+					|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding)))
 				count = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pHouse));
 			else
 				count = pHouse->CountOwnedNow(pTmpType);
@@ -1422,10 +1474,10 @@ bool HouseExtData::ReachedBuildLimit(HouseClass* pHouse, TechnoTypeClass* pType,
 				queued += QueuedNum(pHouse, pTmpType) * pTmpTypeExt->BuildLimitGroup_Factor;
 
 			int owned = 0;
-			const auto pBuildingType = specific_cast<BuildingTypeClass*>(pTmpType);
+			const auto pBuildingType = type_cast<BuildingTypeClass*>(pTmpType);
 
-			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
-				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding)))
 				owned = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pHouse));
 			else
 				owned = pHouse->CountOwnedNow(pTmpType);
@@ -1459,10 +1511,10 @@ bool HouseExtData::ReachedBuildLimit(HouseClass* pHouse, TechnoTypeClass* pType,
 			const auto pTmpTypeExt = TechnoTypeExtContainer::Instance.Find(pTmpType);
 			int queued = ignoreQueued ? 0 : QueuedNum(pHouse, pTmpType) * pTmpTypeExt->BuildLimitGroup_Factor;
 			int num = 0;
-			const auto pBuildingType = specific_cast<BuildingTypeClass*>(pTmpType);
+			const auto pBuildingType = type_cast<BuildingTypeClass*>(pTmpType);
 
-			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
-				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding)))
 				num = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pHouse));
 			else
 				num = pHouse->CountOwnedNow(pTmpType);
@@ -1617,12 +1669,12 @@ CanBuildResult HouseExtData::BuildLimitGroupCheck(HouseClass* pThis, TechnoTypeC
 		for (size_t i = 0; i < MinImpl(pItemExt->BuildLimitGroup_Types.size(), pItemExt->BuildLimitGroup_Nums.size()); i++)
 		{
 			TechnoTypeClass* pType = pItemExt->BuildLimitGroup_Types[i];
-			const auto pBuildingType = specific_cast<BuildingTypeClass*>(pType);
+			const auto pBuildingType = type_cast<BuildingTypeClass*>(pType);
 			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 			int ownedNow = 0;
 
-			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
-				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+			if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0
+				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding)))
 				ownedNow = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pThis));
 			else
 				ownedNow = CountOwnedIncludeDeploy(pThis, pType);
@@ -1643,11 +1695,11 @@ CanBuildResult HouseExtData::BuildLimitGroupCheck(HouseClass* pThis, TechnoTypeC
 			for (auto& pType : pItemExt->BuildLimitGroup_Types)
 			{
 				const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-				const auto pBuildingType = specific_cast<BuildingTypeClass*>(pType);
+				const auto pBuildingType = type_cast<BuildingTypeClass*>(pType);
 				int owned = 0;
 
-				if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
-				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+				if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0
+					|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding)))
 					owned = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pThis));
 				else
 					owned = CountOwnedIncludeDeploy(pThis, pType);
@@ -1671,11 +1723,11 @@ CanBuildResult HouseExtData::BuildLimitGroupCheck(HouseClass* pThis, TechnoTypeC
 			{
 				TechnoTypeClass* pType = pItemExt->BuildLimitGroup_Types[i];
 				const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-				const auto pBuildingType = specific_cast<BuildingTypeClass*>(pType);
+				const auto pBuildingType = type_cast<BuildingTypeClass*>(pType);
 				int ownedNow = 0;
 
-				if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0)
-				|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding))
+				if (pBuildingType && (BuildingTypeExtContainer::Instance.Find(pBuildingType)->PowersUp_Buildings.size() > 0
+					|| BuildingTypeClass::Find(pBuildingType->PowersUpBuilding)))
 					ownedNow = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, const_cast<HouseClass*>(pThis));
 				else
 					ownedNow = CountOwnedIncludeDeploy(pThis, pType);
@@ -1824,20 +1876,82 @@ int HouseExtData::CountOwnedNowTotal(
 
 void HouseExtData::UpdateTransportReloaders()
 {
-	for (auto& pTech : this->LimboTechno)
+	for (auto& pTech : HouseExtData::LimboTechno)
 	{
-		if (pTech->IsAlive
+		if (pTech && pTech->IsAlive // the null check is only for Save game load , for some reason it contains nullptr ,...
 			&& pTech->WhatAmI() != AircraftClass::AbsID
 			&& pTech->WhatAmI() != BuildingClass::AbsID
 			&& pTech->Transporter && pTech->Transporter->IsInLogic)
 		{
 			const auto pType = pTech->GetTechnoType();
-			if (pType->Ammo > 0 && TechnoTypeExtContainer::Instance.Find(pTech->GetTechnoType())->ReloadInTransport)
+			if (TechnoTypeExtContainer::Instance.Find(pTech->GetTechnoType())->ReloadInTransport)
 			{
 				pTech->Reload();
 			}
 		}
 	}
+}
+
+void HouseExtData::UpdateNonMFBFactoryCounts(AbstractType rtti, bool remove, bool isNaval)
+{
+	int* count = nullptr;
+
+	switch (rtti)
+	{
+	case AbstractType::Aircraft:
+	case AbstractType::AircraftType:
+		count = &this->NumAirpads_NonMFB;
+		break;
+	case AbstractType::Building:
+	case AbstractType::BuildingType:
+		count = &this->NumConYards_NonMFB;
+		break;
+	case AbstractType::Infantry:
+	case AbstractType::InfantryType:
+		count = &this->NumBarracks_NonMFB;
+		break;
+	case AbstractType::Unit:
+	case AbstractType::UnitType:
+		count = isNaval ? &this->NumShipyards_NonMFB : &this->NumWarFactories_NonMFB;
+		break;
+	default:
+		break;
+	}
+
+	if (count)
+		*count += remove ? -1 : 1;
+}
+
+int HouseExtData::GetFactoryCountWithoutNonMFB(AbstractType rtti, bool isNaval)
+{
+	int count = 0;
+
+	switch (rtti)
+	{
+	case AbstractType::Aircraft:
+	case AbstractType::AircraftType:
+		count = this->AttachedToObject->NumAirpads - this->NumAirpads_NonMFB;
+		break;
+	case AbstractType::Building:
+	case AbstractType::BuildingType:
+		count = this->AttachedToObject->NumConYards - this->NumConYards_NonMFB;
+		break;
+	case AbstractType::Infantry:
+	case AbstractType::InfantryType:
+		count = this->AttachedToObject->NumBarracks - this->NumBarracks_NonMFB;
+		break;
+	case AbstractType::Unit:
+	case AbstractType::UnitType:
+		if (isNaval)
+			count = this->AttachedToObject->NumShipyards - this->NumShipyards_NonMFB;
+		else
+			count = this->AttachedToObject->NumWarFactories - this->NumWarFactories_NonMFB;
+		break;
+	default:
+		break;
+	}
+
+	return std::max(count, 0);
 }
 
 //void HouseExtData::AddToLimboTracking(TechnoTypeClass* pTechnoType)
@@ -1928,24 +2042,24 @@ void HouseExtData::Serialize(T& Stm)
 	Stm
 		.Process(this->Initialized)
 		.Process(this->Degrades)
-		.Process(this->PowerPlantEnhancerBuildings)
-		.Process(this->Building_BuildSpeedBonusCounter)
-		.Process(this->Building_OrePurifiersCounter)
+		.Process(this->PowerPlantEnhancerBuildings, true)
+		.Process(this->Building_BuildSpeedBonusCounter, true)
+		.Process(this->Building_OrePurifiersCounter, true)
 		.Process(this->m_ForceOnlyTargetHouseEnemy)
 		.Process(this->ForceOnlyTargetHouseEnemyMode)
 		//.Process(this->RandomNumber)
-		.Process(this->Factory_BuildingType)
-		.Process(this->Factory_InfantryType)
-		.Process(this->Factory_VehicleType)
-		.Process(this->Factory_NavyType)
-		.Process(this->Factory_AircraftType)
+		.Process(this->Factory_BuildingType, true)
+		.Process(this->Factory_InfantryType, true)
+		.Process(this->Factory_VehicleType, true)
+		.Process(this->Factory_NavyType, true)
+		.Process(this->Factory_AircraftType, true)
 		.Process(this->AllRepairEventTriggered)
 		.Process(this->LastBuildingTypeArrayIdx)
 		.Process(this->RepairBaseNodes)
 		.Process(this->LastBuiltNavalVehicleType)
 		.Process(this->ProducingNavalUnitTypeIndex)
 
-		.Process(this->AutoDeathObjects)
+		.Process(this->AutoDeathObjects, true)
 		.Process(this->LaunchDatas)
 		.Process(this->CaptureObjectExecuted)
 		.Process(this->DiscoverEvaDelay)
@@ -1954,15 +2068,15 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->Seed)
 
 		.Process(this->SWLastIndex)
-		.Process(this->Batteries)
-		.Process(this->LimboTechno)
+		.Process(this->Batteries, true)
+
 		.Process(this->AvaibleDocks)
 
 		.Process(this->StolenTech)
 		.Process(this->RadarPersist)
-		.Process(this->FactoryOwners_GatheredPlansOf)
+		.Process(this->FactoryOwners_GatheredPlansOf, true)
 		.Process(this->Academies, true)
-		.Process(this->Reversed)
+		.Process(this->Reversed, true)
 
 		.Process(this->Is_NavalYardSpied)
 		.Process(this->Is_AirfieldSpied)
@@ -1972,10 +2086,10 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->KeepAliveBuildingCount)
 		.Process(this->TiberiumStorage)
 
-		.Process(this->SideTechTree)
+		.Process(this->SideTechTree, true)
 		.Process(this->CombatAlertTimer)
 		.Process(this->EMPulseWeaponIndex)
-		.Process(this->RestrictedFactoryPlants)
+		.Process(this->RestrictedFactoryPlants, true)
 		.Process(this->AISellAllDelayTimer)
 		//.Process(this->BuiltAircraftTypes)
 		//.Process(this->BuiltInfantryTypes)
@@ -1988,12 +2102,22 @@ void HouseExtData::Serialize(T& Stm)
 		//.Process(this->CapturedBuildings)
 		//.Process(this->CollectedCrates)
 
-		.Process(this->OwnedDeployingUnits)
+		.Process(this->OwnedDeployingUnits, true)
 		.Process(this->BaseNormalCells)
-		.Process(this->CurrentBuildingType)
-		.Process(this->CurrentBuildingTopLeft)
+		.Process(this->CurrentBuildingType, true)
+		.Process(this->CurrentBuildingTopLeft, true)
 		.Process(this->CurrentBuildingTimer)
 		.Process(this->CurrentBuildingTimes)
+
+		.Process(this->AISuperWeaponDelayTimer)
+
+		.Process(this->NumAirpads_NonMFB)
+		.Process(this->NumBarracks_NonMFB)
+		.Process(this->NumWarFactories_NonMFB)
+		.Process(this->NumConYards_NonMFB)
+		.Process(this->NumShipyards_NonMFB)
+
+		.Process(this->SuspendedEMPulseSWs)
 		;
 }
 
@@ -2005,6 +2129,8 @@ bool HouseExtContainer::LoadGlobals(PhobosStreamReader& Stm)
 		.Process(HouseExtData::LastHarvesterBalance)
 		.Process(HouseExtData::LastSlaveBalance)
 		.Process(HouseExtData::IsAnyFirestormActive)
+		.Process(HouseExtData::LimboTechno)
+		.Process(HouseExtData::AutoDeathObjects)
 		.Success();
 }
 
@@ -2016,6 +2142,8 @@ bool HouseExtContainer::SaveGlobals(PhobosStreamWriter& Stm)
 		.Process(HouseExtData::LastHarvesterBalance)
 		.Process(HouseExtData::LastSlaveBalance)
 		.Process(HouseExtData::IsAnyFirestormActive)
+		.Process(HouseExtData::LimboTechno)
+		.Process(HouseExtData::AutoDeathObjects)
 		.Success();
 }
 
@@ -2042,13 +2170,180 @@ void HouseExtContainer::Clear()
 	Civilian = 0;
 	Special = 0;
 	Neutral = 0;
+
+	HouseExtData::LimboTechno.clear();
+	HouseExtData::AutoDeathObjects.clear();
 }
+
+#include <Misc/Spawner/Main.h>
+
+/**
+ *  Handles expert AI processing.
+ *
+ *  @author: 09/29/1995 JLB - Created.
+ *           10/11/2024 ZivDero - Adjustments for Tiberian Sun
+ * *         10/11/2024 Otamaa - Adjustments for YR + Ares + Phobos
+ */
+
+int FakeHouseClass::_Expert_AI()
+{
+	/**
+	 *  If there is no enemy assigned to this house, then assign one now. The
+	 *  enemy that is closest is picked. However, don't pick an enemy if the
+	 *  base has not been established yet.
+	 */
+	if (this->ExpertAITimer.Expired())
+	{
+		if (this->EnemyHouseIndex == -1
+			&& SessionClass::Instance->GameMode != GameMode::Campaign
+			&& !this->Type->MultiplayPassive)
+		{
+			auto center = this->BaseCenter.IsValid() ? &this->BaseCenter : &this->BaseSpawnCell;
+
+			if (center->IsValid())
+			{
+				int close = INT_MAX;
+				HouseClass* enemy = nullptr;
+				for (int i = 0; i < HouseClass::Array->Count; i++)
+				{
+					HouseClass* house = HouseClass::Array->Items[i];
+					if (house != this && !house->Type->MultiplayPassive && !house->Defeated && !this->IsAlliedWith(house) && !this->IsObserver())
+					{
+						/**
+						 *  Determine a priority value based on distance to the center of the
+						 *  candidate base. The higher the value, the better the candidate house
+						 *  is to becoming the preferred enemy for this house.
+						 */
+						auto enemycenter = house->BaseCenter.IsValid() ? house->BaseCenter : house->BaseSpawnCell;
+						const int value = (int)center->DistanceFrom(enemycenter);
+
+						/**
+						 *  Compare the calculated value for this candidate house and if it is
+						 *  greater than the previously recorded maximum, record this house as
+						 *  the prime candidate for enemy.
+						 */
+						if (value < close)
+						{
+							close = value;
+							enemy = house;
+						}
+					}
+				}
+				/**
+				 *  Record this closest enemy base as the first enemy to attack.
+				 */
+				if (enemy)
+				{
+					this->UpdateAngerNodes(1, enemy);
+				}
+			}
+		}
+	}
+
+	/**
+	 *  If the current enemy no longer has a base or is defeated, then don't consider
+	 *  that house a threat anymore. Clear out the enemy record and then try
+	 *  to find a new enemy.
+	 */
+	if (this->EnemyHouseIndex != -1)
+	{
+		HouseClass* h = HouseClass::Array->Items[this->EnemyHouseIndex];
+
+		if (h->Defeated || this->IsAlliedWith(h) || this->IsObserver())
+		{
+			this->RemoveFromAngerNodes(h);
+			this->EnemyHouseIndex = -1;
+		}
+	}
+
+	/**
+	 *  Use any ready super weapons.
+	 */
+
+	if (!RulesExtData::Instance()->AISuperWeaponDelay.isset()
+		&& (!SessionClass::IsCampaign() || this->IQLevel2 >= RulesClass::Instance->SuperWeapons))
+	{
+		this->AI_TryFireSW();
+	}
+
+	/**
+	 *  House state transition check occurs here. Transitions that occur here are ones
+	 *  that relate to general base condition rather than specific combat events.
+	 *  Typically, this is limited to transitions between normal buildup mode and
+	 *  broke mode.
+	 */
+	if (this->AIMode == AIMode::SellAll)
+	{
+		Fire_Sale();
+		All_To_Hunt();
+	}
+	else
+	{
+		if (this->AIMode == AIMode::General)
+		{
+			if (this->Available_Money() < 25)
+			{
+				this->AIMode = AIMode::LowOnCash;
+			}
+		}
+		if (this->AIMode == AIMode::LowOnCash)
+		{
+			if (this->Available_Money() >= 25)
+			{
+				this->AIMode = AIMode::General;
+			}
+		}
+		if (this->AIMode == AIMode::BuildBase && this->LATime + 900 < Unsorted::CurrentFrame)
+		{
+			this->AIMode = AIMode::General;
+		}
+		if (this->AIMode != AIMode::BuildBase && this->LATime + 900 > Unsorted::CurrentFrame)
+		{
+			this->AIMode = AIMode::BuildBase;
+		}
+	}
+
+	if (SpawnerMain::GetGameConfigs()->SpawnerHackMPNodes || SessionClass::Instance->GameMode != GameMode::Campaign)
+	{
+		using fp_type = bool(__thiscall*)(HouseClass*, int);
+
+		const std::pair<UrgencyType, DWORD> urgency[(int)StrategyType::Count] {
+			{ this->Check_Fire_Sale() ,  0x4FDCE0 }  ,
+			{ this->Check_Raise_Money() , 0x4FDD10 }
+		};
+
+		for (auto u = (int)UrgencyType::Critical; u >= (int)UrgencyType::Low; u--)
+		{
+			bool acted = false;
+			for (auto& [urg, call] : urgency)
+			{
+				if (urg == (UrgencyType)u)
+				{
+					acted |= reinterpret_cast<fp_type>(call)(this, u);
+				}
+			}
+		}
+	}
+	else
+	{
+		Check_Fire_Sale();
+	}
+
+	return ScenarioClass::Instance->Random.RandomRanged(1, 7) + 105;
+}
+
+DEFINE_JUMP(CALL, 0x4F9017, MiscTools::to_DWORD(&FakeHouseClass::_Expert_AI))
+
 // =============================
 // container hooks
 
 DEFINE_HOOK(0x4F6532, HouseClass_CTOR, 0x5)
 {
 	GET(HouseClass*, pItem, EAX);
+
+	if (RulesExtData::Instance()->EnablePowerSurplus)
+		pItem->PowerSurplus = RulesClass::Instance->PowerSurplus;
+
 	HouseExtContainer::Instance.Allocate(pItem);
 	return 0;
 }
@@ -2065,17 +2360,18 @@ DEFINE_HOOK(0x503040, HouseClass_SaveLoad_Prefix, 0x5)
 {
 	GET_STACK(HouseClass*, pItem, 0x4);
 	GET_STACK(IStream*, pStm, 0x8);
+
 	HouseExtContainer::Instance.PrepareStream(pItem, pStm);
 	return 0;
 }
 
-DEFINE_HOOK(0x504069, HouseClass_Load_Suffix, 0x7)
+DEFINE_HOOK(0x5031E6, HouseClass_Load_Suffix, 0x6)
 {
 	HouseExtContainer::Instance.LoadStatic();
 	return 0;
 }
 
-DEFINE_HOOK(0x5046DE, HouseClass_Save_Suffix, 0x7)
+DEFINE_HOOK(0x5040A2, HouseClass_Save_Suffix, 0x6)
 {
 	HouseExtContainer::Instance.SaveStatic();
 	return 0;
@@ -2105,9 +2401,12 @@ DEFINE_HOOK(0x50114D, HouseClass_InitFromINI, 0x5)
 //		0x4FB9C3 : 0x4FB9C9;
 //}
 
-void __fastcall HouseClass_Detach_Wrapper(HouseClass* pThis, DWORD, AbstractClass* target, bool all)
+#include <Misc/Hooks.Otamaa.h>
+
+void FakeHouseClass::_Detach(AbstractClass* target, bool all)
 {
-	HouseExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
-	pThis->HouseClass::PointerExpired(target, all);
+	HouseExtContainer::Instance.InvalidatePointerFor(this, target, all);
+	this->HouseClass::PointerExpired(target, all);
 }
-DEFINE_JUMP(VTABLE, 0x7EA8C8, GET_OFFSET(HouseClass_Detach_Wrapper))
+
+DEFINE_JUMP(VTABLE, 0x7EA8C8, MiscTools::to_DWORD(&FakeHouseClass::_Detach))

@@ -73,7 +73,7 @@ MapRevealer::MapRevealer(const CellStruct* pCell) :
 {
 }
 
-static reference<int, 0xABDE88> SightFrom {};
+static constexpr reference<int, 0xABDE88> SightFrom {};
 
 template <typename T>
 void MapRevealer::RevealImpl(const CoordStruct& coords, int const radius, HouseClass* const pHouse, bool const onlyOutline, bool const allowRevealByHeight, T func) const
@@ -83,7 +83,7 @@ void MapRevealer::RevealImpl(const CoordStruct& coords, int const radius, HouseC
 
 	if (this->AffectsHouse(pHouse) && this->IsCellAvailable(base) && radius > 0)
 	{
-		auto const spread = MinImpl(size_t(radius), CellSpreadEnumerator::Max);
+		auto const spread = MinImpl(short(radius), 255);
 		auto const spread_limit_sqr = (spread + 1) * (spread + 1);
 
 		auto const start = (!RulesClass::Instance->RevealByHeight && onlyOutline && spread > 2)
@@ -97,7 +97,7 @@ void MapRevealer::RevealImpl(const CoordStruct& coords, int const radius, HouseC
 
 			if (this->IsCellAvailable(cell))
 			{
-				if (std::abs(it->X) <= static_cast<int>(spread) && it->pow() < spread_limit_sqr)
+				if (Math::abs(it->X) <= static_cast<int>(spread) && it->pow() < spread_limit_sqr)
 				{
 					if (!checkLevel || this->CheckLevel(*it, level))
 					{
@@ -125,13 +125,13 @@ void MapRevealer::Reveal1(const CoordStruct& coords, int const radius, HouseClas
 	});
 }
 
-void MapRevealer::UpdateShroud(size_t start, size_t radius, bool fog) const
+void MapRevealer::UpdateShroud(short start, size_t radius, bool fog) const
 {
 	if (!fog)
 	{
 		auto const& base = this->Base();
-		radius = MinImpl(radius, CellSpreadEnumerator::Max);
-		start = MinImpl(start, CellSpreadEnumerator::Max - 3);
+		radius = MinImpl(radius, 255);
+		start = MinImpl(start, 255 - 3);
 
 		for (CellSpreadEnumerator it(radius, start); it; ++it)
 		{
@@ -255,7 +255,7 @@ DEFINE_HOOK(0x567DA0, MapClass_RevealArea2, 5)
 	return 0x567F61;
 }
 #else
-DEFINE_JUMP(LJMP, 0x5673A0, GET_OFFSET(MapRevealer::MapClass_RevealArea0));
-DEFINE_JUMP(LJMP, 0x5678E0, GET_OFFSET(MapRevealer::MapClass_RevealArea1));
-DEFINE_JUMP(LJMP, 0x567DA0, GET_OFFSET(MapRevealer::MapClass_RevealArea2));
+DEFINE_JUMP(LJMP, 0x5673A0, MiscTools::to_DWORD(&MapRevealer::MapClass_RevealArea0));
+DEFINE_JUMP(LJMP, 0x5678E0, MiscTools::to_DWORD(&MapRevealer::MapClass_RevealArea1));
+DEFINE_JUMP(LJMP, 0x567DA0, MiscTools::to_DWORD(&MapRevealer::MapClass_RevealArea2));
 #endif

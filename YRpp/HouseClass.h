@@ -280,43 +280,43 @@ public:
 		JMP_THIS(0x5095D0);
 	}
 
+	UrgencyType Check_Fire_Sale() const JMP_THIS(0x4FD940);
+	UrgencyType Check_Raise_Money() const JMP_THIS(0x4FD9A0);
+
+	bool AI_Fire_Sale(UrgencyType ur) const JMP_THIS(0x4FDCE0);
+	bool AI_Raise_Money(UrgencyType ur) const JMP_THIS(0x4FDD10);
+
+
 #ifdef _INLINED_VERSION
-	bool IsAlliedWith_(int idxHouse) const
-	{
-		if (idxHouse == this->ArrayIndex)
-		{
+	constexpr bool IsAlliedWith(int idxHouse) const {
+		if (idxHouse == this->ArrayIndex) {
 			return true;
 		}
 
-		if (idxHouse >= 0)
-		{
+		if (idxHouse >= 0) {
 			return ((1u << idxHouse) & this->Allies) != 0u;
 		}
+
 		return false;
 	}
 
-	bool IsAlliedWith_(HouseClass const* pHouse) const
-	{
-		return pHouse && (pHouse == this || this->IsAlliedWith_(pHouse->ArrayIndex));
+	constexpr bool IsAlliedWith(HouseClass const* pHouse) const {
+		return pHouse && (pHouse == this || this->IsAlliedWith(pHouse->ArrayIndex));
 	}
 
-	bool IsAlliedWith_(ObjectClass const* pObject) const
-	{
-		return this->IsAlliedWith_((AbstractClass*)pObject);
+	bool IsAlliedWith(ObjectClass const* pObject) const {
+		return this->IsAlliedWith((AbstractClass*)pObject);
 	}
 
-	bool IsAlliedWith_(TechnoClass const* pTechno) const
-	{
-		return this->IsAlliedWith_(pTechno->Owner);
+	constexpr bool IsAlliedWith(TechnoClass const* pTechno) const {
+		return this->IsAlliedWith(pTechno->Owner);
 	}
 
-	bool IsAlliedWith_(AbstractClass const* pAbstract) const
-	{
-		return this->IsAlliedWith_(pAbstract->GetOwningHouse());
+	bool IsAlliedWith(AbstractClass const* pAbstract) const {
+		return this->IsAlliedWith(pAbstract->GetOwningHouse());
 	}
 
-	bool IsMutualAllies(HouseClass const* pHouse) const
-	{
+	constexpr bool IsMutualAllies(HouseClass const* pHouse) const {
 		return pHouse == this
 			|| (this->Allies.Contains(pHouse->ArrayIndex) && pHouse->Allies.Contains(this->ArrayIndex));
 	}
@@ -354,6 +354,9 @@ public:
 
 	void UpdateAngerNodes(int nScoreAdd, HouseClass* pHouse)
 		{ JMP_THIS(0x504790); }
+
+	void RemoveFromAngerNodes(HouseClass* pHouse)
+		{ JMP_THIS(0x5093C0); }
 
 	void AllyAIHouses()
 		{ JMP_THIS(0x501640); }
@@ -858,10 +861,10 @@ public:
 	bool Fire_SW(int idx, const CellStruct &coords)
 		{ JMP_THIS(0x4FAE50); }
 
-	CellStruct* PickTargetByType(CellStruct &outBuffer, TargetType targetType) const
+	CellStruct* PickTargetByType(CellStruct &outBuffer, QuarryType targetType) const
 		{ JMP_THIS(0x50D170); }
 
-	CellStruct PickTargetByType(TargetType targetType) const {
+	CellStruct PickTargetByType(QuarryType targetType) const {
 		CellStruct outBuffer;
 		this->PickTargetByType(outBuffer, targetType);
 		return outBuffer;
@@ -1299,7 +1302,7 @@ public:
 //	IndexBitfield<HouseTypeClass *> RadarVisibleTo; // these house types(!?!, fuck you WW) can see my radar
 	IndexBitfield<HouseClass *> RadarVisibleTo;  // this crap is being rewritten to use house indices instead of house types
 	int                   SiloMoney;
-	TargetType			  PreferredTargetType; // Set via map action 35. The preferred object type to attack.
+	QuarryType			  PreferredTargetType; // Set via map action 35. The preferred object type to attack.
 	CellStruct			  PreferredTargetCell; // Set via map action 135 and 136. Used to override firing location of targettable SWs.
 	CellStruct			  PreferredDefensiveCell; // Set via map action 140 and 141, or when an AIDefendAgainst SW is launched.
 	CellStruct			  PreferredDefensiveCell2; // No known function sets this to a real value, but it would take precedence over the other.
@@ -1398,7 +1401,7 @@ public:
 	int TotalOwnedInfantryCost;
 	int TotalOwnedVehicleCost;
 	int TotalOwnedAircraftCost;
-	DWORD unknown_power_160B4;
+	int PowerSurplus;
 };
 
 static_assert(sizeof(HouseClass) == 0x160B8, "Invalid Size !.");

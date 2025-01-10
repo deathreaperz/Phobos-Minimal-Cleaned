@@ -1,13 +1,16 @@
 #pragma once
-#include <BulletClass.h>
-#include <WeaponTypeClass.h>
 
-#include <Helpers/Macro.h>
+#include <WeaponTypeClass.h>
+#include <DiskLaserClass.h>
+
 #include <Utilities/TemplateDef.h>
 
 #include <New/Type/RadTypeClass.h>
 #include <New/Type/CursorTypeClass.h>
+
 #include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
+#include <New/PhobosAttachedAffect/AEAttachInfoTypeClass.h>
+
 #include <New/Entity/ElectricBoltClass.h>
 
 #include <Misc/DynamicPatcher/Others/DamageText.h>
@@ -27,7 +30,7 @@ public:
 	Nullable<RadTypeClass*> RadType {};
 	Valueable<bool> Rad_NoOwner { true };
 
-	Valueable<int> Strafing_Shots { 5 };
+	Nullable<int> Strafing_Shots { };
 	Valueable<bool> Strafing_SimulateBurst { false };
 	Nullable<bool> Strafing { };
 	Valueable<bool> Strafing_UseAmmoPerShot { false };
@@ -54,6 +57,7 @@ public:
 	Valueable<int> DelayedFire_DurationTimer { 0 };
 	Valueable<bool> Burst_FireWithinSequence { false };
 	Nullable<PartialVector2D<int>> ROF_RandomDelay {};
+	ValueableVector<int> ChargeTurret_Delays {};
 	Valueable<bool> OmniFire_TurnToTarget { false };
 
 	Valueable<int>Xhi { 0 };
@@ -117,7 +121,7 @@ public:
 	ValueableIdx<CursorTypeClass> Cursor_Attack { (int)MouseCursorType::Attack };
 	ValueableIdx<CursorTypeClass> Cursor_AttackOutOfRange { (int)MouseCursorType::AttackOutOfRange };
 
-	Nullable<BoltData> WeaponBolt_Data {};
+	//Nullable<BoltData> WeaponBolt_Data {};
 
 	Nullable<ColorStruct> Bolt_Color1 {};
 	Nullable<ColorStruct> Bolt_Color2 {};
@@ -134,6 +138,7 @@ public:
 	ValueableVector<WarheadTypeClass*> ExtraWarheads {};
 	ValueableVector<int> ExtraWarheads_DamageOverrides {};
 	ValueableVector<double> ExtraWarheads_DetonationChances {};
+	ValueableVector<bool> ExtraWarheads_FullDetonation {};
 
 	Valueable<double> Burst_Retarget { 0.0 };
 	Nullable<bool> KickOutPassenger {};
@@ -158,10 +163,14 @@ public:
 	ValueableVector<int> AttachEffect_RequiredMaxCounts {};
 	ValueableVector<int> AttachEffect_DisallowedMinCounts {};
 	ValueableVector<int> AttachEffect_DisallowedMaxCounts {};
+	Valueable<bool> AttachEffect_CheckOnFirer { false };
 	Valueable<bool> AttachEffect_IgnoreFromSameSource { false };
 
-	WeaponTypeExtData() noexcept = default;
-	~WeaponTypeExtData() noexcept = default;
+	Valueable<bool> FireOnce_ResetSequence { true };
+
+	AEAttachInfoTypeClass AttachEffects {};
+	Valueable<bool> AttachEffect_Enable { false };
+	Valueable<int> NoRepeatFire {};
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
@@ -180,7 +189,7 @@ public:
 	}
 
 	ColorStruct GetBeamColor() const;
-	bool HasRequiredAttachedEffects(TechnoClass* pTechno, TechnoClass* pFirer);
+	bool HasRequiredAttachedEffects(TechnoClass* pTarget, TechnoClass* pFirer);
 
 	constexpr FORCEINLINE static size_t size_Of()
 	{
@@ -194,8 +203,8 @@ private:
 
 public:
 
-	static int nOldCircumference;
-	static PhobosMap<EBolt*, const WeaponTypeExtData*> boltWeaponTypeExt;
+	inline static int nOldCircumference { DiskLaserClass::Radius };
+	inline static PhobosMap<EBolt*, const WeaponTypeExtData*> boltWeaponTypeExt;
 
 	static int GetBurstDelay(WeaponTypeClass* pThis, int burstIndex);
 	static void DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarget, TechnoClass* pOwner, bool AddDamage, HouseClass* HouseInveoker);
@@ -210,6 +219,7 @@ public:
 	static void FireRadBeam(TechnoClass* pFirer, WeaponTypeClass* pWeapon, CoordStruct& source, CoordStruct& target);
 	static void FireEbolt(TechnoClass* pFirer, WeaponTypeClass* pWeapon, CoordStruct& source, CoordStruct& target, int idx);
 
+	//return lepton
 	static int GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass* pFirer, std::optional<int> fallback = std::nullopt);
 };
 
@@ -218,7 +228,7 @@ class WeaponTypeExtContainer final :public Container<WeaponTypeExtData>
 public:
 	static WeaponTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(WeaponTypeExtContainer, WeaponTypeExtData, "WeaponTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(WeaponTypeExtContainer, WeaponTypeExtData, "WeaponTypeClass");
 
 public:
 
@@ -226,3 +236,41 @@ public:
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
 	static void Clear();
 };
+
+class BulletTypeExtData;
+class WarheadTypeExtData;
+class FakeBulletTypeClass;
+class FakeWarheadTypeClass;
+class FakeWeaponTypeClass : public WeaponTypeClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	FORCEINLINE WeaponTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<WeaponTypeExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+
+	FORCEINLINE BulletTypeExtData* _GetBulletTypeExtData()
+	{
+		return *reinterpret_cast<BulletTypeExtData**>(((DWORD)this->Projectile) + 0x2C4);
+	}
+
+	FORCEINLINE FakeBulletTypeClass* _GetBulletType()
+	{
+		return (FakeBulletTypeClass*)this->Projectile;
+	}
+
+	FORCEINLINE FakeWarheadTypeClass* _GetWarheadType()
+	{
+		return (FakeWarheadTypeClass*)this->Warhead;
+	}
+
+	FORCEINLINE WarheadTypeExtData* _GetWarheadTypeExtData()
+	{
+		return *reinterpret_cast<WarheadTypeExtData**>(((DWORD)this->Warhead) + 0x1CC);
+	}
+};
+static_assert(sizeof(FakeWeaponTypeClass) == sizeof(WeaponTypeClass), "Invalid Size !");

@@ -2,10 +2,11 @@
 
 #include <Ext/House/Body.h>
 #include <Ext/Side/Body.h>
+#include <Ext/SWType/Body.h>
+#include <Ext/Rules/Body.h>
 
-IStream* SidebarExtData::g_pStm = nullptr;
-std::array<SHPReference*, 4u> SidebarExtData::TabProducingProgress {};
-std::unique_ptr<SidebarExtData> SidebarExtData::Data = nullptr;
+#include <CCToolTip.h>
+#include <EventClass.h>
 
 void SidebarExtData::Allocate(SidebarClass* pThis)
 {
@@ -81,6 +82,8 @@ void SidebarExtData::Serialize(T& Stm)
 {
 	Stm
 		.Process(this->Initialized)
+		.Process(this->SWSidebar_Enable)
+		.Process(this->SWSidebar_Indices)
 		;
 }
 

@@ -14,8 +14,7 @@ DEFINE_HOOK(0x7729F0, WeaponTypeClass_SetSpeed_ApplyGravity, 0x6)
 	GET(WeaponTypeClass*, pWeapon, ECX);
 
 	const auto pBullet = pWeapon->Projectile;
-	if (pBullet && !pBullet->ROT)
-	{
+	if (pBullet && !pBullet->ROT) {
 		const auto gravity = BulletTypeExtData::GetAdjustedGravity(pBullet);
 		pWeapon->Speed = Game::AdjustRangeWithGravity(pWeapon->Range, gravity);
 	}
@@ -27,8 +26,7 @@ DEFINE_HOOK(0x773070, WeaponTypeClass_GetSpeed_ApplyGravity, 0x6)
 {
 	GET(WeaponTypeClass*, pWeapon, ECX);
 
-	if (!pWeapon->Projectile || pWeapon->Projectile->ROT)
-	{
+	if (!pWeapon->Projectile || pWeapon->Projectile->ROT) {
 		R->EAX(pWeapon->Speed);
 		return 0x7730C9;
 	}

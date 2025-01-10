@@ -20,7 +20,6 @@
 #include <Ext/Side/Body.h>
 #include <Ext/SWType/Body.h>
 #include <Ext/SWType/NewSuperWeaponType/SWStateMachine.h>
-#include <Ext/SWType/SuperWeaponSidebar.h>
 #include <Ext/TAction/Body.h>
 #include <Ext/Team/Body.h>
 #include <Ext/Techno/Body.h>
@@ -50,6 +49,13 @@
 #include <New/Type/DigitalDisplayTypeClass.h>
 #include <New/Type/GenericPrerequisite.h>
 #include <New/Type/CrateTypeClass.h>
+#include <New/Type/ImmunityTypeClass.h>
+#include <New/Type/RocketTypeClass.h>
+#include <New/Type/ShieldTypeClass.h>
+#include <New/Type/TechTreeTypeClass.h>
+#include <New/Type/ThemeTypeClass.h>
+#include <New/Type/BarTypeClass.h>
+#include <New/Type/InsigniaTypeClass.h>
 
 #include <New/HugeBar.h>
 
@@ -78,6 +84,7 @@
 #include <New/Entity/FlyingStrings.h>
 #include <New/Entity/VerticalLaserClass.h>
 #include <New/Entity/HomingMissileTargetTracker.h>
+#include <New/Entity/SWFirerClass.h>
 
 #include <Ext/Tactical/Body.h>
 
@@ -146,23 +153,13 @@ struct InvalidatePointerAction
 	template <typename T>
 	static void Process(AbstractClass* ptr, bool removed)
 	{
-		if constexpr (HasExtMap<T>)
+		if constexpr (HasExtMap<T> && PointerInvalidationSubscribable<T>)
 		{
-			if constexpr (PointerInvalidationIgnorAble<T>)
-				if (!T::ExtMap::InvalidateIgnorable(ptr))
-					return;
-
-			if constexpr (PointerInvalidationSubscribable<T>)
-				T::ExtMap::PointerGotInvalid(ptr, removed);
+			T::ExtMap::PointerGotInvalid(ptr, removed);
 		}
-		else
+		else if constexpr (PointerInvalidationSubscribable<T>)
 		{
-			if constexpr (PointerInvalidationIgnorAble<T>)
-				if (!T::InvalidateIgnorable(ptr))
-					return;
-
-			if constexpr (PointerInvalidationSubscribable<T>)
-				T::PointerGotInvalid(ptr, removed);
+			T::PointerGotInvalid(ptr, removed);
 		}
 	}
 };
@@ -294,12 +291,9 @@ FORCEINLINE void Process_InvalidatePtr(AbstractClass* pInvalid, bool const remov
 	if constexpr (HasExtMap<T>)
 	{
 		if constexpr (PointerInvalidationIgnorAble<decltype(T::ExtMap)> &&
-				PointerInvalidationSubscribable<decltype(T::ExtMap)>)
+			PointerInvalidationSubscribable<decltype(T::ExtMap)>)
 		{
-			if (!T::ExtMap.InvalidateIgnorable(pInvalid))
-			{
-				T::ExtMap.InvalidatePointer(pInvalid, removed);
-			}
+			T::ExtMap.InvalidatePointer(pInvalid, removed);
 		}
 		else if (PointerInvalidationSubscribable<decltype(T::ExtMap)>)
 		{
@@ -308,26 +302,11 @@ FORCEINLINE void Process_InvalidatePtr(AbstractClass* pInvalid, bool const remov
 	}
 	else
 	{
-		if constexpr (PointerInvalidationIgnorAble<T> &&
-				PointerInvalidationSubscribable<T>)
-		{
-			if (!T::InvalidateIgnorable(pInvalid))
-			{
-				T::InvalidatePointer(pInvalid, removed);
-			}
-		}
-		else if (PointerInvalidationSubscribable<T>)
-		{
-			T::InvalidatePointer(pInvalid, removed);
-		}
+		T::InvalidatePointer(pInvalid, removed);
 	}
 }
 
-#ifndef aaa
 DEFINE_HOOK(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
-#else
-DEFINE_HOOK(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
-#endif
 {
 	GET(AbstractClass* const, pInvalid, ECX);
 	GET(bool const, removed, EDX);
@@ -338,23 +317,52 @@ DEFINE_HOOK(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	PhobosGlobal::PointerGotInvalid(pInvalid, removed);
 	SWStateMachine::PointerGotInvalid(pInvalid, removed);
 	Process_InvalidatePtr<SWTypeExtContainer>(pInvalid, removed);
-	HugeBar::InvalidatePointer(pInvalid, removed);
+	if (removed)
+	{
+		for (auto& item : HouseExtData::AutoDeathObjects)
+		{
+			if (item.first == pInvalid)
+			{
+				item.first = nullptr;
+				item.second = KillMethod::None;
+			}
+		}
+	}
 
+	HugeBar::InvalidatePointer(pInvalid, removed);
+	ShieldClass::Array.for_each([pInvalid, removed](ShieldClass* pShield)
+ {
+	 if (pShield->IdleAnim.get() == pInvalid)
+	 {
+		 pShield->IdleAnim.release();
+	 }
+	 });
+
+	EBolt::Array->for_each([&](EBolt* pThis)
+ {
+	 if (removed && pThis->Owner == pInvalid)
+	 {
+		 pThis->Owner = nullptr;
+	 }
+	});
 	//Process_InvalidatePtr<TActionExt>(pInvalid, removed);
 	return 0;
 }
 
 #define LogPool(s) Debug::Log("%s MemoryPool size %d\n", _STR_(s) , ##s::Instance.Pool.size());
 
-DEFINE_HOOK(0x48CEDC, Game_Exit_RecordPoolSize, 0x6)
+DEFINE_HOOK(0x48CFC6, Game_Exit_RecordPoolSize, 0x6)
 {
 	LogPool(TechnoExtContainer)
-		LogPool(AnimExtContainer)
-		LogPool(BulletExtContainer)
+		LogPool(BuildingExtContainer)
+		LogPool(InfantryExtContainer)
+		Debug::Log("%s MemoryPool size %d\n", _STR_(s), FakeAnimClass::Pool.size());
+	LogPool(BulletExtContainer)
 		LogPool(ParticleExtContainer)
 		LogPool(ParticleSystemExtContainer)
 		LogPool(TeamExtContainer)
 		LogPool(VoxelAnimExtContainer)
+		LogPool(WaveExtContainer)
 		return 0x0;
 }
 
@@ -364,7 +372,7 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	MouseClassExt::ClearCameos();
 
 	TechnoExtContainer::Instance.Clear();
-	AnimExtContainer::Instance.Clear();
+	FakeAnimClass::Clear();
 	BulletExtContainer::Instance.Clear();
 	ParticleExtContainer::Instance.Clear();
 	ParticleSystemExtContainer::Instance.Clear();
@@ -386,7 +394,7 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	DigitalDisplayTypeClass::Clear();
 	ImmunityTypeClass::Clear();
 	CursorTypeClass::Clear();
-	ElectricBoltManager::Clear();
+	//ElectricBoltManager::Clear();
 	FlyingStrings::Clear();
 	PaletteManager::Clear();
 	RadTypeClass::Clear();
@@ -404,7 +412,6 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	TunnelTypeClass::Clear();
 	WeaponTypeExtContainer::Instance.Clear();
 	WarheadTypeExtContainer::Instance.Clear();
-	SuperWeaponSidebar::Clear();
 	GenericPrerequisite::Clear();
 	CrateTypeClass::Clear();
 	StaticVars::Clear();
@@ -412,16 +419,25 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	PhobosAttachEffectTypeClass::GroupsMap.clear();
 	TechTreeTypeClass::Clear();
 	HugeBar::Clear();
+	RocketTypeClass::Clear();
+	BarTypeClass::Clear();
+	SWFirerClass::Clear();
+	ShieldClass::Array.clear();
+	InsigniaTypeClass::Clear();
 
 	if (!Phobos::Otamaa::ExeTerminated)
 	{
 		TechnoExtContainer::Instance.Pool.reserve(2000);
-		AnimExtContainer::Instance.Pool.reserve(10000);
+		BuildingExtContainer::Instance.Pool.reserve(2000);
+		InfantryExtContainer::Instance.Pool.reserve(2000);
+		FakeAnimClass::Pool.reserve(10000);
 		BulletExtContainer::Instance.Pool.reserve(1000);
 		ParticleExtContainer::Instance.Pool.reserve(1000);
 		ParticleSystemExtContainer::Instance.Pool.reserve(2000);
 		TeamExtContainer::Instance.Pool.reserve(1000);
 		VoxelAnimExtContainer::Instance.Pool.reserve(1000);
+		WaveExtContainer::Instance.Pool.reserve(1000);
+		SWFirerClass::Array.reserve(1000);
 	}
 
 	return 0;
@@ -592,7 +608,11 @@ DEFINE_HOOK(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 		Process_Load<PhobosAttachEffectTypeClass>(pStm) &&
 		Process_Load<TechTreeTypeClass>(pStm) &&
 		Process_Load<StaticVars>(pStm) &&
-		Process_Load<HugeBar>(pStm)
+		Process_Load<HugeBar>(pStm) &&
+		Process_Load<RocketTypeClass>(pStm) &&
+		Process_Load<BarTypeClass>(pStm) &&
+		Process_Load<SWFirerClass>(pStm) &&
+		Process_Load<InsigniaTypeClass>(pStm)
 		;
 
 	if (!ret)
@@ -646,7 +666,11 @@ DEFINE_HOOK(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 			Process_Save<PhobosAttachEffectTypeClass>(pStm) &&
 			Process_Save<TechTreeTypeClass>(pStm) &&
 			Process_Save<StaticVars>(pStm) &&
-			Process_Save<HugeBar>(pStm)
+			Process_Save<HugeBar>(pStm) &&
+			Process_Save<RocketTypeClass>(pStm) &&
+			Process_Save<BarTypeClass>(pStm) &&
+			Process_Save<SWFirerClass>(pStm) &&
+			Process_Save<InsigniaTypeClass>(pStm)
 			;
 
 		if (!ret)

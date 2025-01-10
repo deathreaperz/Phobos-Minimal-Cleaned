@@ -7,6 +7,11 @@
 
 #include <Utilities/Macro.h>
 
+#include <AircraftClass.h>
+#include <BuildingClass.h>
+#include <UnitClass.h>
+#include <InfantryClass.h>
+
 TechnoClass* VoxelAnimExtData::GetTechnoOwner(VoxelAnimClass* pThis)
 {
 	auto const pTypeExt = VoxelAnimTypeExtContainer::Instance.TryFind(pThis->Type);
@@ -65,7 +70,7 @@ void VoxelAnimExtData::Serialize(T& Stm)
 
 	Stm
 		.Process(this->Initialized)
-		.Process(this->Invoker)
+		.Process(this->Invoker, true)
 		.Process(this->LaserTrails)
 		.Process(this->Trails)
 		;
@@ -74,7 +79,6 @@ void VoxelAnimExtData::Serialize(T& Stm)
 // =============================
 // container
 VoxelAnimExtContainer VoxelAnimExtContainer::Instance;
-std::vector<VoxelAnimExtData*> VoxelAnimExtContainer::Pool;
 
 DEFINE_HOOK(0x7494CE, VoxelAnimClass_CTOR, 0x6)
 {
@@ -104,50 +108,37 @@ DEFINE_HOOK(0x749B02, VoxelAnimClass_DTOR, 0xA)
 
 	return 0;
 }
+#include <Misc/Hooks.Otamaa.h>
 
-DEFINE_HOOK(0x74A970, VoxelAnimClass_Load_Prefix, 0x5)
+HRESULT __stdcall FakeVoxelAnimClass::_Load(IStream* pStm)
 {
-	GET_STACK(VoxelAnimClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
-
-	VoxelAnimExtContainer::Instance.PrepareStream(pItem, pStm);
-
-	return 0;
-}
-
-// Before : DEFINE_HOOK(0x74A9FD, VoxelAnimClass_Load_Suffix, 0x5)
-DEFINE_HOOK(0x74A9EA, VoxelAnimClass_Load_Suffix, 0x6)
-{
-	GET(VoxelAnimClass*, pThis, ESI);
-
-	SwizzleManagerClass::Instance->Swizzle((void**)&pThis->OwnerHouse);
-	VoxelAnimExtContainer::Instance.LoadStatic();
-
-	return 0x74A9FB;
-}
-
-DEFINE_HOOK(0x74AA10, VoxelAnimClass_Save_Ext, 0x8)
-{
-	GET_STACK(VoxelAnimClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
-	GET_STACK(bool, isDirty, 0xC);
-
-	const auto res = AbstractClass::_Save(pItem, pStm, isDirty);
+	VoxelAnimExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->VoxelAnimClass::Load(pStm);
 
 	if (SUCCEEDED(res))
-	{
-		VoxelAnimExtContainer::Instance.PrepareStream(pItem, pStm);
-		VoxelAnimExtContainer::Instance.SaveStatic();
-	}
+		VoxelAnimExtContainer::Instance.LoadStatic();
 
-	R->EAX(res);
-	return 0x74AA24;
+	return res;
 }
 
-static void __fastcall VoxelAnimClass_Detach(VoxelAnimClass* pThis, void* _, AbstractClass* pTarget, bool bRemoved)
+HRESULT __stdcall FakeVoxelAnimClass::_Save(IStream* pStm, bool clearDirty)
 {
-	pThis->ObjectClass::PointerExpired(pTarget, bRemoved);
-	VoxelAnimExtContainer::Instance.InvalidatePointerFor(pThis, pTarget, bRemoved);
+	VoxelAnimExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->VoxelAnimClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		VoxelAnimExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F6340, GET_OFFSET(VoxelAnimClass_Detach))
+DEFINE_JUMP(VTABLE, 0x7F632C, MiscTools::to_DWORD(&FakeVoxelAnimClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7F6330, MiscTools::to_DWORD(&FakeVoxelAnimClass::_Save))
+
+void FakeVoxelAnimClass::_Detach(AbstractClass* pTarget, bool bRemoved)
+{
+	this->ObjectClass::PointerExpired(pTarget, bRemoved);
+	VoxelAnimExtContainer::Instance.InvalidatePointerFor(this, pTarget, bRemoved);
+}
+
+DEFINE_JUMP(VTABLE, 0x7F6340, MiscTools::to_DWORD(&FakeVoxelAnimClass::_Detach))

@@ -11,6 +11,7 @@ public:
 	short Y { 0 };
 
 	static const CellStruct Empty;
+	static const CellStruct EOL;
 	static const CellStruct DefaultUnloadCell;
 
 	constexpr FORCEINLINE bool SimilarTo(const CellStruct& a) const {return (X == a.X && Y == a.Y); }
@@ -18,7 +19,7 @@ public:
 	constexpr FORCEINLINE bool IsValid() const { return this->DifferTo(CellStruct::Empty); }
 
 	//equality
-	constexpr bool operator==(const CellStruct& a) const {
+	constexpr FORCEINLINE bool operator==(const CellStruct& a) const {
 		return (X == a.X && Y == a.Y);
 	}
 
@@ -37,7 +38,7 @@ public:
 	constexpr CellStruct operator+(short nThat) const
 	{ return { short(X + nThat), short(Y + nThat) }; }
 
-	constexpr CellStruct operator+(short nThat)
+	constexpr CellStruct operator+=(short nThat)
 	{
 		X += nThat;
 		Y += nThat;

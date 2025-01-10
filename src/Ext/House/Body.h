@@ -3,6 +3,8 @@
 #include <TeamClass.h>
 
 #include <Helpers/Macro.h>
+
+#include <Utilities/OptionalStruct.h>
 #include <Utilities/Container.h>
 #include <Utilities/TemplateDef.h>
 #include <Utilities/VectorHelper.h>
@@ -13,6 +15,10 @@
 
 #include <Misc/Defines.h>
 #include <map>
+
+#include <SuperWeaponTypeClass.h>
+
+class TActionClass;
 
 struct LauchData
 {
@@ -45,8 +51,12 @@ struct LauchData
 
 struct TunnelData
 {
-	std::vector<FootClass*> Vector {};
-	int MaxCap { 1 };
+	std::vector<FootClass*> Vector;
+	int MaxCap;
+
+	constexpr TunnelData() noexcept : Vector {}, MaxCap { 1 } { }
+	constexpr ~TunnelData() noexcept = default;
+	constexpr TunnelData(int MaxCap) noexcept : Vector {}, MaxCap { MaxCap } { }
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{ return Serialize(Stm); }
@@ -58,7 +68,7 @@ struct TunnelData
 	bool Serialize(T& Stm)
 	{
 		return Stm
-			.Process(Vector)
+			.Process(Vector, true)
 			.Process(MaxCap)
 			.Success()
 			//&& Stm.RegisterChange(this)
@@ -80,11 +90,8 @@ public:
 	static constexpr size_t Canary = 0x12345678;
 	using base_type = HouseClass;
 
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0x16084;//ARES
-#else
-	static constexpr size_t ExtOffset = 0x16098;
-#endif
+	//static constexpr size_t ExtOffset = 0x16098;
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -107,14 +114,11 @@ public:
 	bool AllRepairEventTriggered { false };
 	int LastBuildingTypeArrayIdx { -1 };
 
-	bool RepairBaseNodes[3] { false };
+	Nullable<bool> RepairBaseNodes[3] { };
 
 	//#817
 	int LastBuiltNavalVehicleType { -1 };
 	int ProducingNavalUnitTypeIndex { -1 };
-
-	//#830
-	PhobosMap<TechnoClass*, KillMethod> AutoDeathObjects {};
 
 	std::vector<LauchData> LaunchDatas {};
 	bool CaptureObjectExecuted { false };
@@ -124,7 +128,6 @@ public:
 
 	int SWLastIndex { -1 };
 	HelperedVector<SuperClass*> Batteries {};
-	std::set<TechnoClass*> LimboTechno {};
 
 	int AvaibleDocks { 0 };
 
@@ -168,8 +171,16 @@ public:
 	CDTimerClass CurrentBuildingTimer {};
 	int CurrentBuildingTimes { 0 };
 
-	HouseExtData() noexcept = default;
-	~HouseExtData() noexcept = default;
+	CDTimerClass AISuperWeaponDelayTimer {};
+
+	// Factories that exist but don't count towards multiple factory bonus.
+	int NumAirpads_NonMFB { 0 };
+	int NumBarracks_NonMFB { 0 };
+	int NumWarFactories_NonMFB { 0 };
+	int NumConYards_NonMFB { 0 };
+	int NumShipyards_NonMFB { 0 };
+
+	PhobosMap<SuperClass*, std::vector<SuperClass*>> SuspendedEMPulseSWs {};
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
 
@@ -180,8 +191,6 @@ public:
 			 );
 	}
 
-	static bool InvalidateIgnorable(AbstractClass* ptr);
-
 	TechTreeTypeClass* GetTechTreeType();
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
@@ -190,8 +199,6 @@ public:
 	void InitializeConstant();
 
 	void UpdateVehicleProduction();
-	void UpdateAutoDeathObjects();
-	void UpdateTransportReloaders();
 
 	void UpdateShotCount(SuperWeaponTypeClass* pFor);
 	void UpdateShotCountB(SuperWeaponTypeClass* pFor);
@@ -209,9 +216,12 @@ public:
 
 	void UpdateAcademy(BuildingClass* pAcademy, bool added);
 	void ApplyAcademy(TechnoClass* pTechno, AbstractType considerAs) const;
+	void ApplyAcademyWithoutMutexCheck(TechnoClass* pTechno, AbstractType considerAs) const;
+
+	void UpdateNonMFBFactoryCounts(AbstractType rtti, bool remove, bool isNaval);
+	int GetFactoryCountWithoutNonMFB(AbstractType rtti, bool isNaval);
 
 	static SuperClass* IsSuperAvail(int nIdx, HouseClass* pHouse);
-	static bool IsAnyFirestormActive;
 
 	static int ActiveHarvesterCount(HouseClass* pThis);
 	static int TotalHarvesterCount(HouseClass* pThis);
@@ -251,6 +261,9 @@ public:
 
 	static bool PrerequisitesMet(HouseClass* const pThis, TechnoTypeClass* const pItem);
 	static bool PrerequisitesMet(HouseClass* pThis, int* items, int size);
+
+	static void UpdateAutoDeathObjects();
+	static void UpdateTransportReloaders();
 
 	//static bool HasGenericPrerequisite(int idx, const Iterator<BuildingTypeClass*>& ownedBuildingTypes);
 	//static int FindGenericPrerequisite(const char* id);
@@ -347,24 +360,28 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	static std::vector<int> AIProduction_CreationFrames;
-	static std::vector<int> AIProduction_Values;
-	static std::vector<int> AIProduction_BestChoices;
-	static std::vector<int> AIProduction_BestChoicesNaval;
+	inline static std::vector<int> AIProduction_CreationFrames;
+	inline static std::vector<int> AIProduction_Values;
+	inline static std::vector<int> AIProduction_BestChoices;
+	inline static std::vector<int> AIProduction_BestChoicesNaval;
+	inline static PhobosMap<TechnoClass*, KillMethod> AutoDeathObjects;
+	inline static HelperedVector<TechnoClass*> LimboTechno;
 
-	static int LastGrindingBlanceUnit;
-	static int LastGrindingBlanceInf;
-	static int LastHarvesterBalance;
-	static int LastSlaveBalance;
+	inline static int LastGrindingBlanceUnit;
+	inline static int LastGrindingBlanceInf;
+	inline static int LastHarvesterBalance;
+	inline static int LastSlaveBalance;
 
-	static CDTimerClass CloakEVASpeak;
-	static CDTimerClass SubTerraneanEVASpeak;
+	inline static CDTimerClass CloakEVASpeak;
+	inline static CDTimerClass SubTerraneanEVASpeak;
+
+	static inline bool IsAnyFirestormActive;
 };
 
 class HouseExtContainer final : public Container<HouseExtData>
 {
-public:
-	CONSTEXPR_NOCOPY_CLASSB(HouseExtContainer, HouseExtData, "HouseClass");
+	//public:
+	//	CONSTEXPR_NOCOPY_CLASSB(HouseExtContainer, HouseExtData, "HouseClass");
 public:
 	static HouseExtContainer Instance;
 
@@ -377,3 +394,23 @@ public:
 
 	void Clear();
 };
+
+class HouseTypeExtData;
+class FakeHouseClass : public HouseClass
+{
+public:
+	bool _IsAlliedWith(HouseClass* pOther);
+	void _Detach(AbstractClass* target, bool all);
+	int _Expert_AI();
+
+	HouseExtData* _GetExtData()
+	{
+		return *reinterpret_cast<HouseExtData**>(((DWORD)this) + HouseExtData::ExtOffset);
+	}
+
+	HouseTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<HouseTypeExtData**>(((DWORD)this->Type) + 0xC4);
+	}
+};
+static_assert(sizeof(FakeHouseClass) == sizeof(HouseClass), "Invalid Size !");

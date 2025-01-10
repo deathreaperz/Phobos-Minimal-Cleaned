@@ -14,7 +14,7 @@ void UnitDeployConvertHelpers::RemoveDeploying(REGISTERS* R)
 	const bool canDeploy = pThis->CanDeploySlashUnload();
 
 	R->AL(canDeploy);
-	if (!canDeploy)
+	if (!canDeploy || pThis->BunkerLinkedItem)
 		return;
 
 	const bool skipMinimum = pThisType->Ammo_DeployUnlockMinimumAmount < 0;
@@ -42,7 +42,7 @@ DEFINE_HOOK(0x730C70, DeployClass_Execute_RemoveDeploying, 0xA)
 {
 	GET(TechnoClass*, pThis, ESI);
 
-	if (specific_cast<UnitClass*>(pThis))
+	if (cast_to<UnitClass*, false>(pThis))
 	{
 		UnitDeployConvertHelpers::RemoveDeploying(R);
 		return 0x730C7A;
@@ -56,7 +56,7 @@ DEFINE_HOOK(0x739C70, UnitClass_ToggleDeployState_ChangeAmmo, 0xA) // deploying
 	GET(UnitClass*, pThis, ESI);
 	auto const pThisExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
 
-	if (pThis->Deployed && !pThis->Deploying && pThisExt->Ammo_AddOnDeploy)
+	if (pThis->Deployed && !pThis->BunkerLinkedItem && !pThis->Deploying && pThisExt->Ammo_AddOnDeploy)
 	{
 		const int ammoCalc = MaxImpl(pThis->Ammo + pThisExt->Ammo_AddOnDeploy, 0);
 		pThis->Ammo = MinImpl(pThis->Type->Ammo, ammoCalc);
@@ -84,7 +84,7 @@ DEFINE_HOOK(0x73DE78, UnitClass_Unload_ChangeAmmo, 0x6) // converters
 
 	auto const pThisExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
 
-	if (pThis->Type->IsSimpleDeployer && pThisExt->Ammo_AddOnDeploy && (pThis->Type->UnloadingClass == nullptr))
+	if (pThis->Type->IsSimpleDeployer && !pThis->BunkerLinkedItem && pThisExt->Ammo_AddOnDeploy && (pThis->Type->UnloadingClass == nullptr))
 	{
 		const int ammoCalc = MaxImpl(pThis->Ammo + pThisExt->Ammo_AddOnDeploy, 0);
 		pThis->Ammo = MinImpl(pThis->Type->Ammo, ammoCalc);

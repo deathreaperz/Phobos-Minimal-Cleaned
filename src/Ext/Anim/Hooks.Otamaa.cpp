@@ -38,7 +38,7 @@ void ApplyVeinsDamage(AnimClass* pThis, int VeinDamage, WarheadTypeClass* VeinWa
 			{
 				ObjectClass* pNext = pFirst->NextObject;
 
-				if (auto pTechno = generic_cast<TechnoClass*>(pFirst))
+				if (auto pTechno = flag_cast_to<TechnoClass*, false>(pFirst))
 				{
 					const auto pType = pTechno->GetTechnoType();
 					if (!TechnoTypeExtContainer::Instance.Find(pType)->IsDummy && pTechno->IsAlive && pTechno->Health > 0 && !pTechno->InLimbo)
@@ -66,9 +66,9 @@ void ApplyVeinsDamage(AnimClass* pThis, int VeinDamage, WarheadTypeClass* VeinWa
 
 DEFINE_HOOK(0x424cfb, AnimClass_Init_Additionals, 6)
 {
-	GET(AnimClass*, pThis, ESI);
+	GET(FakeAnimClass*, pThis, ESI);
 
-	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
+	auto const pTypeExt = pThis->_GetTypeExtData();
 
 	if (pTypeExt->AltReport.isset())
 	{
@@ -104,9 +104,7 @@ DEFINE_HOOK(0x685078, Generate_OreTwinkle_Anims, 0x7)
 
 	if (value > 0)
 	{
-		const auto pTibExt = TiberiumExtContainer::Instance.Find(
-			TiberiumClass::Array->Items[tib_idx]
-		);
+		const auto pTibExt = ((FakeTiberiumClass*)TiberiumClass::Array->Items[tib_idx])->_GetExtData();
 
 		if (!ScenarioClass::Instance->Random.RandomFromMax(pTibExt->GetTwinkleChance() - 1))
 		{

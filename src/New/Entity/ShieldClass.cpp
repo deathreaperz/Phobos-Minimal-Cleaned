@@ -36,6 +36,7 @@ ShieldClass::ShieldClass() : Techno { nullptr }
 , LastBreakFrame { -1 }
 , Type { nullptr }
 {
+	Array.push_back(this);
 }
 
 ShieldClass::ShieldClass(TechnoClass* pTechno, bool isAttached) : Techno { pTechno }
@@ -59,6 +60,8 @@ ShieldClass::ShieldClass(TechnoClass* pTechno, bool isAttached) : Techno { pTech
 	this->UpdateType();
 	SetHP(this->Type->InitialStrength.Get(this->Type->Strength));
 	this->CurTechnoType = pTechno->GetTechnoType();
+
+	Array.push_back(this);
 }
 
 void ShieldClass::UpdateType()
@@ -70,11 +73,11 @@ template <typename T>
 bool ShieldClass::Serialize(T& Stm)
 {
 	return Stm
-		.Process(this->Techno)
-		.Process(this->CurTechnoType)
+		.Process(this->Techno, true)
+		.Process(this->CurTechnoType, true)
 		.Process(this->HP)
 		.Process(this->Timers)
-		.Process(this->IdleAnim)
+		.Process(this->IdleAnim, true)
 		.Process(this->Cloak)
 		.Process(this->Online)
 		.Process(this->Temporal)
@@ -89,7 +92,7 @@ bool ShieldClass::Serialize(T& Stm)
 		.Process(this->Respawn_Rate_Warhead)
 		.Process(this->LastBreakFrame)
 		.Process(this->LastTechnoHealthRatio)
-		.Process(this->Type)
+		.Process(this->Type, true)
 
 		.Success();
 }
@@ -131,9 +134,7 @@ void ShieldClass::SyncShieldToAnother(TechnoClass* pFrom, TechnoClass* pTo)
 		pToExt->Shield.reset(pFromExt->Shield.release());
 		pToExt->Shield->KillAnim();
 		pToExt->Shield->Techno = pTo;
-		pToExt->Shield->CurTechnoType = pFromExt->Shield->CurTechnoType;
 		pToExt->Shield->CreateAnim();
-		pFromExt->Shield = nullptr;
 	}
 }
 
@@ -141,7 +142,7 @@ void ShieldClass::OnRemove() { KillAnim(); }
 
 bool ShieldClass::TEventIsShieldBroken(ObjectClass* pAttached)
 {
-	if (const auto pThis = generic_cast<TechnoClass*>(pAttached))
+	if (const auto pThis = flag_cast_to<TechnoClass*>(pAttached))
 	{
 		const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
@@ -168,7 +169,7 @@ int ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 
 	if (*args->Damage < 0)
 	{
-		if (auto const pFoot = abstract_cast<FootClass*>(this->Techno))
+		if (auto const pFoot = flag_cast_to<FootClass*, false>(this->Techno))
 		{
 			if (auto const pParasite = pFoot->ParasiteEatingMe)
 			{
@@ -210,8 +211,8 @@ int ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 	int nDamageResult = 0;
 	bool IsShielRequreFeeback = true;
 	DamageToShieldAfterMinMax = std::clamp(DamageToShield,
-		pWHExt->Shield_ReceivedDamage_Minimum.Get(this->Type->ReceivedDamage_Minimum),
-		pWHExt->Shield_ReceivedDamage_Maximum.Get(this->Type->ReceivedDamage_Maximum));
+		int(pWHExt->Shield_ReceivedDamage_Minimum.Get(this->Type->ReceivedDamage_Minimum) * pWHExt->Shield_ReceivedDamage_MinMultiplier),
+		int(pWHExt->Shield_ReceivedDamage_Maximum.Get(this->Type->ReceivedDamage_Maximum) * pWHExt->Shield_ReceivedDamage_MaxMultiplier));
 
 	if (DamageToShieldAfterMinMax == 0)
 	{
@@ -296,7 +297,9 @@ int ShieldClass::OnReceiveDamage(args_ReceiveDamage* args)
 				MapClass::FlashbangWarheadAt(size, args->WH, this->Techno->Location, true, flags);
 			}
 
-			this->WeaponNullifyAnim(pWHExt->Shield_HitAnim);
+			if (!pWHExt->Shield_SkipHitAnim)
+				this->WeaponNullifyAnim(pWHExt->Shield_HitAnim);
+
 			this->HP -= DamageToShield; //set the HP remaining after get hit
 			UpdateIdleAnim();
 			//absorb all the damage
@@ -403,7 +406,7 @@ bool ShieldClass::CanBeTargeted(WeaponTypeClass* pWeapon) const
 		return true;
 
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
-	return (std::abs(pWHExt->GetVerses(this->Type->Armor).Verses) >= 0.001);
+	return (Math::abs(pWHExt->GetVerses(this->Type->Armor).Verses) >= 0.001);
 }
 
 bool ShieldClass::CanBePenetrated(WarheadTypeClass* pWarhead) const

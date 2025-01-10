@@ -61,6 +61,17 @@ enum class PacketFieldRep : int
 	VID,
 };
 
+enum class RocketMissionState : int
+{
+	None = 0,
+	Pause = 1,
+	Tilt = 2,
+	GainingAltitude = 3,
+	Flight = 4,
+	ClosingIn = 5,
+	VerticalTakeOff = 6,
+};
+
 enum class PassabilityType : DWORD
 {
 	Passable = 0,
@@ -227,6 +238,7 @@ enum class LandTargetingType : int
 
 enum class ThreatType : int
 {
+	Normal = 0x0,
 	Range = 0x1,
 	Area = 0x2,
 	Air = 0x4,
@@ -245,22 +257,7 @@ enum class ThreatType : int
 	OccupiableBuildings = 0x8000,
 	TechBuildings = 0x10000,
 };
-
-enum class QuarryType : int
-{
-	Na = 0x0,
-	Anything = 0x1,
-	Buildings = 0x2,
-	Harvesters = 0x3,
-	Infantry = 0x4,
-	Vehicles = 0x5,
-	Factories = 0x6,
-	BaseDefenses = 0x7,
-	BaseThreats = 0x8,
-	PowerFacilities = 0x9,
-	OccupiableBuildings = 0xa,
-	TechBuildings = 0xb,
-};
+MAKE_ENUM_FLAGS(ThreatType);
 
 enum class SellCheckType :int
 {
@@ -822,6 +819,29 @@ enum class LogicNeedType : int {
 	NumberNSuper,
 	BuildingNNumber,
 };
+
+enum class UrgencyType : int
+{
+	None,           // No action on this matter is needed or desired.
+	Low,            // Minimal attention requested.
+	Medium,         // Normal attention requested.
+	Hight,           // High attention requested.
+	Critical,       // This matter must be addressed immediately.
+
+	Count,
+	First = 0
+};
+MAKE_ENUM_FLAGS(UrgencyType);
+
+enum class StrategyType : int
+{
+	FireSale,         // Situation hopeless, sell and attack.
+	RaiseMoney,       // Money is low, emergency raise cash.
+
+	Count,
+	First = 0
+};
+MAKE_ENUM_FLAGS(StrategyType);
 
 enum class AIMode : int {
 	General = 0,
@@ -1762,41 +1782,22 @@ enum class WaveType : int {
 	Magnetron = 3
 };
 
-enum class TargetType : unsigned int {
-	None = 0,
-	Anything = 1,
-	Buildings = 2,
-	Harvesters = 3,
-	Infantry = 4,
-	Vehicles = 5,
-	Factories = 6,
-	BaseDefenses = 7,
-	// unknown = 8,
-	Power = 9,
-	Occupiable = 10,
-	TechBuildings = 11
+enum class QuarryType : unsigned int
+{
+	None,
+	Anything,						// Attack any enemy (same as "hunt").
+	Buildings,						// Attack buildings (in general).
+	Harvesters,						// Attack harvesters or refineries.
+	Infantry,						// Attack infantry.
+	Vehicles,						// Attack combat vehicles.
+	Factories,						// Attack factories (all types).
+	Defenses,						// Attack base defense buildings.
+	Threats,						// Attack enemies near friendly base.
+	Power,							// Attack power facilities.
+	OccupiableBuildings,			// Prefer to attack occupiable buildings.
+	TechBuildings					// Prefer to attack tech buildings.
 };
 
-enum class TargetFlags : unsigned int {
-	None = 0x0,
-	unknown_1 = 0x1,
-	unknown_2 = 0x2,
-	Air = 0x4,
-	Infantry = 0x8,
-	Vehicles = 0x10,
-	Buildings = 0x20,
-	Economy = 0x40,
-	Ships = 0x80, // from RA1
-	Neutral = 0x100, // from RA1
-	Capture = 0x200,
-	Fakes = 0x400, // from RA1
-	Power = 0x800,
-	Factories = 0x1000,
-	BaseDefense = 0x2000,
-	Friendlies = 0x4000,
-	Occupiable = 0x8000,
-	TechCapture = 0x10000
-};
 
 enum class BlitterFlags : unsigned int {
 	None = 0x0,

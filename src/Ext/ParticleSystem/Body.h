@@ -104,7 +104,7 @@ public:
 				.Process(StateAdvance)
 				.Process(ImageFrame)
 				.Process(RemainingEC)
-				.Process(LinkedParticleType)
+				.Process(LinkedParticleType, true)
 				.Process(Translucency)
 				.Process(DeleteOnStateLimit)
 				.Process(byte30)
@@ -117,8 +117,7 @@ public:
 	static_assert(sizeof(Draw) == 0x2C, "Invalid Size");
 	HelperedVector<Draw> SmokeData { };
 
-	ParticleSystemExtData() noexcept = default;
-	~ParticleSystemExtData() noexcept = default;
+	bool AlphaIsLightFlash { true };
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -151,7 +150,7 @@ private:
 class ParticleSystemExtContainer final : public Container<ParticleSystemExtData>
 {
 public:
-	static std::vector<ParticleSystemExtData*> Pool;
+	inline static std::vector<ParticleSystemExtData*> Pool;
 	static ParticleSystemExtContainer Instance;
 
 	ParticleSystemExtData* AllocateUnchecked(ParticleSystemClass* key)
@@ -162,15 +161,15 @@ public:
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-			val->ParticleSystemExtData::ParticleSystemExtData();
 		}
 		else
 		{
-			val = new ParticleSystemExtData();
+			val = DLLAllocWithoutCTOR<ParticleSystemExtData>();
 		}
 
 		if (val)
 		{
+			val->ParticleSystemExtData::ParticleSystemExtData();
 			val->AttachedToObject = key;
 			val->InitializeConstant();
 			return val;
@@ -219,5 +218,25 @@ public:
 		}
 	}
 
-	CONSTEXPR_NOCOPY_CLASSB(ParticleSystemExtContainer, ParticleSystemExtData, "ParticleSystemClass");
+	//CONSTEXPR_NOCOPY_CLASSB(ParticleSystemExtContainer, ParticleSystemExtData, "ParticleSystemClass");
 };
+
+class ParticleSystemTypeExtData;
+class FakeParticleSystemClass : public ParticleSystemClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	ParticleSystemExtData* _GetExtData()
+	{
+		return *reinterpret_cast<ParticleSystemExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+
+	ParticleSystemTypeExtData* _GetTypeExtData()
+	{
+		return *reinterpret_cast<ParticleSystemTypeExtData**>(((DWORD)this->Type) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeParticleSystemClass) == sizeof(ParticleSystemClass), "Invalid Size !");

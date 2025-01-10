@@ -4,10 +4,13 @@
 #include <Ext/ParticleType/Body.h>
 
 #include <Ext/Rules/Body.h>
+#include <Utilities/Macro.h>
 
 #include <ParticleTypeClass.h>
 #include <ParticleClass.h>
 #include <SpotlightClass.h>
+#include <GameOptionsClass.h>
+#include <TacticalClass.h>
 
 void ParticleSystemExtData::UpdateLocations()
 {
@@ -200,7 +203,7 @@ void ParticleSystemExtData::UpdateSpark()
 				{
 					if (this->HeldType->StartColor1 && this->HeldType->StartColor2)
 					{
-						data->Colors = ColorStruct::Interpolate(this->HeldType->StartColor1, this->HeldType->StartColor2, random->RandomDouble());
+						data->Colors = ColorStruct::Interpolate(&this->HeldType->StartColor1, &this->HeldType->StartColor2, random->RandomDouble());
 					}
 					else
 					{
@@ -438,7 +441,8 @@ void  ParticleSystemExtData::UpdateRailgun()
 				0 , Math::cos(radians) ,Math::sin(radians)
 			};
 
-			Vector3D<float> mtx_mult = Matrix3D::MatrixMultiply(&mtx, first_);
+			Vector3D<float> mtx_mult {};
+			Matrix3D::MatrixMultiply(&mtx_mult, &mtx, &first_);
 
 			const Vector3D<float> PositionPerturbation_ {
 				float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->PositionPerturbationCoefficient
@@ -511,7 +515,7 @@ void  ParticleSystemExtData::UpdateRailgun()
 			GameCreate<LaserDrawClass>(
 				pThis->Location,
 				pThis->TargetCoords,
-				0, 1u,
+				0, 1,
 				pThis->Type->LaserColor,
 				ColorStruct::Empty,
 				ColorStruct::Empty,
@@ -640,7 +644,9 @@ void ParticleSystemExtData::UpdateSmoke()
 	auto const pOwnerObjType = pOwnerObj->Type;
 	auto const pOwnerObj_Owner = pOwnerObj->Owner;
 
-	if (pOwnerObj_Owner && pOwnerObj_Owner->AbstractFlags & AbstractFlags::Object)
+	FootClass* Owner_obj = flag_cast_to<FootClass*>(pOwnerObj_Owner);
+
+	if (Owner_obj)
 	{
 		auto coords = pOwnerObj_Owner->GetCoords();
 		CoordStruct SpawnDistance = coords + pOwnerObj->SpawnDistanceToOwner;
@@ -677,7 +683,6 @@ void ParticleSystemExtData::UpdateSmoke()
 	}
 
 	this->UpdateState();
-	FootClass* Owner_obj = generic_cast<FootClass*>(pOwnerObj_Owner);
 
 	//updating the current particle ?
 	if (!pOwnerObj->TimeToDie && pOwnerObj->IsAlive)
@@ -867,6 +872,8 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis)
 }
 #endif
 
+//DEFINE_JUMP(LJMP, 0x62ED53, 0x62ED61);
+
 bool ParticleSystemExtData::UpdateHandled()
 {
 	switch (this->What)
@@ -881,7 +888,150 @@ bool ParticleSystemExtData::UpdateHandled()
 		this->UpdateSmoke();
 		break;
 	default:
+
+		//	switch (this->AttachedToObject->Type->BehavesLike)
+		//	{
+		//	case ParticleSystemTypeBehavesLike::Smoke:
+		//	{
+		//		const auto pOwner = this->AttachedToObject;
+
+		//		pOwner->Smoke_AI();
+		//		/*
+		//		if (auto pAttachedOwner = generic_cast<FootClass*>(pOwner->Owner))
+		//		{
+		//			auto pAttachedOwner_loc = pAttachedOwner->GetCoords();
+		//			pAttachedOwner_loc += pOwner->SpawnDistanceToOwner;
+		//			pOwner->SetLocation(pAttachedOwner_loc);
+		//		}
+
+		//		pOwner->Particles.for_each([](ParticleClass* pPart) {
+		//			pPart->BehaviourUpdate();
+		//		});
+
+		//		pOwner->Particles.for_each([pOwner](ParticleClass* pPart) {
+		//			if(pPart->hasremaining && pPart->Type->NextParticle == -1){
+		//				pPart->UnInit();
+		//				return;
+		//			} else if (!pPart->hasremaining){
+		//				pPart->BehaviourUpdate();
+		//				return;
+		//			}
+
+		//			if ( pPart->Type->NextParticle != -1) {
+		//				auto pPartLoc = pPart->Location;
+		//				auto rad = pPart->Type->Radius >> 3;
+		//				auto _xAdd = ScenarioClass::Instance->Random.Random() % rad;
+		//				rad = _xAdd > 0 ? rad + _xAdd : _xAdd - rad;
+		//				pPartLoc.X += rad;
+		//				rad = pPart->Type->Radius >> 3;
+		//				auto _yAdd = ScenarioClass::Instance->Random.Random() % rad;
+		//				rad = _yAdd > 0 ? rad + _yAdd : _yAdd - rad;
+		//				pPartLoc.Y += rad;
+		//				auto pNext = ParticleTypeClass::Array->Items[pPart->Type->NextParticle];
+		//				auto pPart_nn = GameCreate<ParticleClass>(pNext, pPartLoc, CoordStruct::Empty, pOwner);
+		//				pOwner->Particles.AddItem(pPart_nn);
+		//				pPart_nn->Velocity = pPart->Velocity;
+		//				auto v22 = ScenarioClass::Instance->Random.Random() % 6;
+		//				pPart_nn->Translucency = pPart->Translucency + (v22 != 0 ? 0x19 : 0);
+
+		//			} else {
+		//				auto pPart_nn = GameCreate<ParticleClass>(pPart->Type, pPart->Location, CoordStruct::Empty, pOwner);
+		//				pOwner->Particles.AddItem(pPart_nn);
+		//				pPart_nn->Velocity = pPart->Velocity;
+		//				auto v22 = ScenarioClass::Instance->Random.Random() % 6;
+		//				pPart_nn->Translucency = pPart->Translucency + (v22 != 0 ? 0x19 : 0);
+		//				pPart->UnInit();
+		//			}
+		//		});
+
+		//		if (!pOwner->TimeToDie && pOwner->IsAlive && !(Unsorted::CurrentFrame() % (int)pOwner->SpawnFrames))
+		//		{
+		//		}
+		//		*/
+		//		pOwner->Lifetime--;
+		//		if (pOwner->Lifetime == 0)
+		//			pOwner->UnInit();
+
+		//		if (pOwner->IsAlive
+		//			&& pOwner->TimeToDie
+		//			&& !pOwner->Particles.Count)
+		//		{
+		//			pOwner->Limbo();
+		//			pOwner->IsAlive = false;
+		//			AbstractClass::Array2->AddItem(pOwner);
+		//		}
+
+		//		return false;
+		//	}
+
+		//	case ParticleSystemTypeBehavesLike::Fire:
+		//	{
+		//		this->AttachedToObject->Fire_AI();
+
+		//		const auto pOwner = this->AttachedToObject;
+
+		//		pOwner->Lifetime--;
+		//		if (pOwner->Lifetime == 0)
+		//			pOwner->UnInit();
+
+		//		if (pOwner->IsAlive
+		//			&& pOwner->TimeToDie
+		//			&& !pOwner->Particles.Count)
+		//		{
+		//			pOwner->Limbo();
+		//			pOwner->IsAlive = false;
+		//			AbstractClass::Array2->AddItem(pOwner);
+		//		}
+
+		//		return false;
+		//	}
+
+		//	case ParticleSystemTypeBehavesLike::Gas:
+		//	{
+		//		this->AttachedToObject->Gas_AI();
+
+		//		const auto pOwner = this->AttachedToObject;
+
+		//		pOwner->Lifetime--;
+		//		if (pOwner->Lifetime == 0)
+		//			pOwner->UnInit();
+
+		//		if (pOwner->IsAlive
+		//			&& pOwner->TimeToDie
+		//			&& !pOwner->Particles.Count)
+		//		{
+		//			pOwner->Limbo();
+		//			pOwner->IsAlive = false;
+		//			AbstractClass::Array2->AddItem(pOwner);
+		//		}
+
+		//		return false;
+		//	}
+
+		//	case ParticleSystemTypeBehavesLike::Railgun:
+		//	{
+		//		this->AttachedToObject->Railgun_AI();
+
+		//		const auto pOwner = this->AttachedToObject;
+
+		//		pOwner->Lifetime--;
+		//		if (pOwner->Lifetime == 0)
+		//			pOwner->UnInit();
+
+		//		if (pOwner->IsAlive
+		//			&& pOwner->TimeToDie
+		//			&& !pOwner->Particles.Count)
+		//		{
+		//			pOwner->Limbo();
+		//			pOwner->IsAlive = false;
+		//			AbstractClass::Array2->AddItem(pOwner);
+		//		}
+
+		//		return false;
+		//	}
+		//	default:
 		return false;
+		//	}
 	}
 
 	const auto pOwner = this->AttachedToObject;
@@ -992,7 +1142,7 @@ void ParticleSystemExtData::UpdateInAir_Main(bool allowDraw)
 
 			ConvertClass* pal = FileSystem::ANIM_PAL();
 			if (auto pManager = ParticleTypeExtContainer::Instance.Find(draw.LinkedParticleType)->Palette)
-				pal = pManager->GetConvert<PaletteManager::Mode::Temperate>();
+				pal = pManager->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pal);
 
 			DSurface::Temp->DrawSHP(
 				pal,
@@ -1043,32 +1193,50 @@ void ParticleSystemExtData::InitializeConstant()
 		{
 			auto bIsZero = (int)this->HeldType->BehavesLike;
 			auto nBehave = (int)pType->BehavesLike;
-
 			if (bIsZero <= 1)
 				bIsZero = bIsZero == 0;
 
 			if (nBehave == bIsZero)
 			{
-				if (nBehave == 0)
+				if (!nBehave)
 				{
 					this->What = Behave::Smoke;
 					return;
 				}
 
 				auto v11 = nBehave - 3;
-
-				if (!v11)
+				if (!v11)                       // 0
 				{
 					this->What = Behave::Spark;
 					return;
 				}
-
-				if (v11 == 1)
+				if (v11 == 1)                   // // 1
 				{
 					this->What = Behave::Railgun;
 					return;
 				}
 			}
+			//else
+			//{
+			//	if (this->HeldType->ColorList.Count < 3) {
+			//		return;
+			//	}
+			//
+			//	switch (pType->BehavesLike)
+			//	{
+			//	case ParticleSystemTypeBehavesLike::Smoke:
+			//		this->What = Behave::Smoke;
+			//		return;
+			//	case ParticleSystemTypeBehavesLike::Spark:
+			//		this->What = Behave::Spark;
+			//		return;
+			//	case ParticleSystemTypeBehavesLike::Railgun:
+			//		this->What = Behave::Railgun;
+			//		return;
+			//	default:
+			//		break;
+			//	}
+			//}
 		}
 	}
 }
@@ -1081,15 +1249,14 @@ void ParticleSystemExtData::Serialize(T& Stm)
 		.Process(this->What)
 		.Process(this->OtherParticleData)
 		.Process(this->SmokeData)
-		.Process(this->HeldType)
+		.Process(this->HeldType, true)
+		.Process(this->AlphaIsLightFlash)
 		;
 }
 
 // =============================
 // container
 ParticleSystemExtContainer ParticleSystemExtContainer::Instance;
-std::vector<ParticleSystemExtData*> ParticleSystemExtContainer::Pool;
-
 // =============================
 // container hooks
 
@@ -1107,25 +1274,29 @@ DEFINE_HOOK(0x62E26B, ParticleSystemClass_DTOR, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x62FF20, ParticleSystemClass_SaveLoad_Prefix, 0x7)
-DEFINE_HOOK(0x630090, ParticleSystemClass_SaveLoad_Prefix, 0x5)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeParticleSystemClass::_Load(IStream* pStm)
 {
-	GET_STACK(ParticleSystemClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	ParticleSystemExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleSystemClass::Load(pStm);
 
-	ParticleSystemExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		ParticleSystemExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-DEFINE_HOOK(0x630088, ParticleSystemClass_Load_Suffix, 0x5)
+HRESULT __stdcall FakeParticleSystemClass::_Save(IStream* pStm, bool clearDirty)
 {
-	ParticleSystemExtContainer::Instance.LoadStatic();
-	return 0;
+	ParticleSystemExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->ParticleSystemClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		ParticleSystemExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x6300F3, ParticleSystemClass_Save_Suffix, 0x6)
-{
-	ParticleSystemExtContainer::Instance.SaveStatic();
-	return 0x0;
-}
+DEFINE_JUMP(VTABLE, 0x7EFBB0, MiscTools::to_DWORD(&FakeParticleSystemClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7EFBB4, MiscTools::to_DWORD(&FakeParticleSystemClass::_Save))

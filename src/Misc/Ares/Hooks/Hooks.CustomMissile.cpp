@@ -43,6 +43,10 @@
 
 //DEFINE_JUMP(CALL, 0x6632C7, GET_OFFSET(_RocketLocomotionClass_DamageArea));
 
+#pragma region RocketLocoHooks
+
+#pragma region Process
+
 DEFINE_HOOK(0x6622E0, RocketLocomotionClass_ILocomotion_Process_CustomMissile, 6)
 {
 	GET(AircraftClass* const, pThis, ECX);
@@ -156,6 +160,30 @@ DEFINE_HOOK(0x662D85, RocketLocomotionClass_ILocomotion_Process_CustomMissileTra
 	return 0;
 }
 
+// new
+// SpawnerOwner may die when this processed , should store the data at SpawnManagerExt or something
+DEFINE_HOOK(0x662720, RocketLocomotionClass_ILocomotion_Process_Raise, 0x6)
+{
+	enum { Handled = 0x6624C8, Continue = 0x0 };
+
+	GET(RocketLocomotionClass* const, pThis, ESI);
+
+	if (const auto pAir = static_cast<AircraftClass* const>(pThis->Owner))
+	{
+		const auto pExt = TechnoTypeExtContainer::Instance.Find(pAir->Type);
+		if (pExt->IsCustomMissile.Get() && pAir->SpawnOwner)
+		{
+			if (!pExt->CustomMissileRaise.GetFromSpecificRank(pThis->SpawnerIsElite ? Rank::Elite : pAir->SpawnOwner->CurrentRanking))
+				return Handled;
+		}
+	}
+
+	return Continue;
+}
+#pragma endregion
+
+#pragma region Explode
+
 DEFINE_HOOK(0x66305A, RocketLocomotionClass_Explode_CustomMissile, 6)
 {
 	GET(AircraftTypeClass* const, pType, ECX);
@@ -217,56 +245,12 @@ DEFINE_HOOK(0x663218, RocketLocomotionClass_Explode_CustomMissile2, 5)
 	return 0x66328C;
 }
 
-DEFINE_HOOK(0x6632F2, RocketLocomotionClass_ILocomotion_MoveTo_CustomMissile, 6)
-{
-	GET(AircraftTypeClass* const, pType, EDX);
-	const auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-	if (pExt->IsCustomMissile)
-	{
-		R->EDX(pExt->CustomMissileData.operator->());
-		return 0x66331E;
-	}
-
-	return 0;
-}
-
-DEFINE_HOOK(0x6634F6, RocketLocomotionClass_ILocomotion_DrawMatrix_CustomMissile, 6)
-{
-	GET(AircraftTypeClass* const, pType, ECX);
-	const auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-	if (pExt->IsCustomMissile)
-	{
-		R->EAX(pExt->CustomMissileData.operator->());
-		return 0x66351B;
-	}
-
-	return 0;
-}
-
-// new
-// SpawnerOwner may die when this processed , should store the data at SpawnManagerExt or something
-DEFINE_HOOK(0x662720, RocketLocomotionClass_ILocomotion_Process_Raise, 0x6)
-{
-	enum { Handled = 0x6624C8, Continue = 0x0 };
-
-	GET(RocketLocomotionClass* const, pThis, ESI);
-
-	if (const auto pAir = static_cast<AircraftClass* const>(pThis->Owner))
-	{
-		const auto pExt = TechnoTypeExtContainer::Instance.Find(pAir->Type);
-		if (pExt->IsCustomMissile.Get() && pAir->SpawnOwner)
-		{
-			if (!pExt->CustomMissileRaise.Get(pAir->SpawnOwner))
-				return Handled;
-		}
-	}
-
-	return Continue;
-}
+#pragma endregion
 
 #pragma endregion
+
+#pragma endregion
+
 #pragma region SpawnManagerHooks
 DEFINE_HOOK(0x6B6D60, SpawnManagerClass_CTOR_CustomMissile, 6)
 {
@@ -274,6 +258,7 @@ DEFINE_HOOK(0x6B6D60, SpawnManagerClass_CTOR_CustomMissile, 6)
 	return TechnoTypeExtContainer::Instance.Find(pSpawnManager->SpawnType)->IsCustomMissile ? 0x6B6D86 : 0x0;
 }
 
+#pragma region Update
 DEFINE_HOOK(0x6B78F8, SpawnManagerClass_Update_CustomMissile, 6)
 {
 	GET(TechnoTypeClass* const, pSpawnType, EAX);
@@ -353,6 +338,8 @@ DEFINE_HOOK(0x6B74BC, SpawnManagerClass_Update_MissileCoordOffset, 0x6)
 
 	return GetPrimaryFacing;
 }
+
+#pragma endregion
 
 DEFINE_HOOK(0x6B7D50, SpawnManagerClass_CountDockedSpawns, 0x6)
 {

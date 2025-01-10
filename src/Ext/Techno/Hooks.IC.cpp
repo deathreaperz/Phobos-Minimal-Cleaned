@@ -1,8 +1,11 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
+#include <Ext/Infantry/Body.h>
 
 #include <Utilities/Macro.h>
 #include <Utilities/EnumFunctions.h>
+
+#include <Misc/Hooks.Otamaa.h>
 
 #ifdef IC_AFFECT
 //https://github.com/Phobos-developers/Phobos/pull/674
@@ -66,25 +69,6 @@ DEFINE_HOOK(0x4DEAEE, FootClass_IronCurtain, 0x6)
 }
 #endif
 
-static DamageState __fastcall InfantryClass_IronCurtain(InfantryClass* pThis, void* _, int nDur, HouseClass* pSource, bool bIsFC)
-{
-	if (pThis->Type->Engineer && pThis->TemporalTargetingMe && pThis->Destination)
-	{
-		if (auto const pCell = pThis->GetCell())
-		{
-			if (auto const pBld = pCell->GetBuilding())
-			{
-				if (pThis->Destination == pBld && pBld->Type->BridgeRepairHut)
-				{
-					return DamageState::Unaffected;
-				}
-			}
-		}
-	}
-
-	return pThis->TechnoClass::IronCurtain(nDur, pSource, bIsFC);
-}
-
 DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 {
 	GET(FootClass*, pThis, ESI);
@@ -128,28 +112,23 @@ DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 				pSource
 			)
 		);
+
 	}break;
 	default:
 	{
-		if (!pType->Organic || what != InfantryClass::AbsID)
-		{
-			if (forceshield && what != BuildingClass::AbsID)
-			{
+		if (!pType->Organic || what != InfantryClass::AbsID) {
+			if(forceshield && what != BuildingClass::AbsID){
 				R->EAX(DamageState::Unaffected);
-			}
-			else
-			{
+			} else {
 				return MakeInvunlnerable;
 			}
-		}
-		else
-		{
+		} else {
 			const auto killWH = (forceshield ? &pTypeExt->ForceShield_KillWarhead : &pTypeExt->IronCurtain_KillWarhead);
 			const auto killWH_org = forceshield ? &RulesExtData::Instance()->ForceShield_KillOrganicsWarhead : &RulesExtData::Instance()->IronCurtain_KillOrganicsWarhead;
 			auto killWH_result = killWH->Get(!isOrganic ? RulesClass::Instance->C4Warhead : killWH_org->Get());
 
-			R->EAX(
-			pThis->ReceiveDamage(
+			R->EAX (
+			pThis->ReceiveDamage (
 				&pThis->Health,
 				0,
 				killWH_result,
@@ -159,10 +138,11 @@ DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 				pSource
 			));
 		}
+
 	}break;
 	}
 
 	return SkipGameCode;
 }
 
-DEFINE_JUMP(VTABLE, 0x7EB1AC, GET_OFFSET(InfantryClass_IronCurtain));
+DEFINE_JUMP(VTABLE, 0x7EB1AC, MiscTools::to_DWORD(&FakeInfantryClass::_IronCurtain));

@@ -4,7 +4,7 @@
 #include <RulesClass.h>
 
 #include <Utilities/Container.h>
-#include <Utilities/Constructs.h>
+#include <Utilities/PhobosFixedString.h>
 #include <Utilities/TemplateDefB.h>
 
 #include <Utilities/Debug.h>
@@ -16,6 +16,7 @@
 #include <New/AnonymousType/MultipleFactoryCaps.h>
 #include <New/HugeBar.h>
 
+class AITriggerTypeClass;
 class AnimTypeClass;
 class MouseCursor;
 class TechnoTypeClass;
@@ -27,7 +28,7 @@ class CursorTypeClass;
 class RulesExtData final
 {
 private:
-	static std::unique_ptr<RulesExtData> Data;
+	inline static std::unique_ptr<RulesExtData> Data;
 
 public:
 	static constexpr size_t Canary = 0x12341234;
@@ -177,7 +178,7 @@ public:
 	Valueable<ParticleTypeClass*> DefaultVeinParticle { nullptr };
 	Valueable<AnimTypeClass*> DefaultSquidAnim { nullptr };
 	PhobosFixedString<0x18> NukeWarheadName {};
-	Nullable<bool> Building_PlacementPreview {};
+	Valueable<bool> Building_PlacementPreview { false };
 	Nullable<PartialVector3D<float>> AI_AutoSellHealthRatio {};
 
 	Valueable<AnimTypeClass*> CarryAll_LandAnim { nullptr };
@@ -362,7 +363,8 @@ public:
 	Valueable<bool> AISellAllOnLastLegs { true };
 	Valueable<int> AISellAllDelay { 0 };
 	Valueable<bool> AIAllInOnLastLegs { true };
-	ValueableVector<bool> RepairBaseNodes { };
+	Valueable<bool> RepairBaseNodes { };
+	Valueable<bool> MCVRedeploysInCampaign { false };
 
 	Valueable<double> AircraftLevelLightMultiplier { 1.0 };
 	Valueable<double> AircraftCellLightLevelMultiplier { 0.0 };
@@ -374,6 +376,8 @@ public:
 	Nullable<int> PlayerNormalTargetingDelay { };
 	Nullable<int> AIGuardAreaTargetingDelay { };
 	Nullable<int> PlayerGuardAreaTargetingDelay { };
+	Valueable<bool> DistributeTargetingFrame { false };
+	Valueable<bool> DistributeTargetingFrame_AIOnly { true };
 
 	Valueable<bool> CheckUnitBaseNormal { false };
 	Valueable<bool> ExpandBuildingPlace { true };
@@ -381,8 +385,44 @@ public:
 	Valueable<CoordStruct> ExpandLandGridFrames { { 1, 0, 0 } };
 	Valueable<CoordStruct> ExpandWaterGridFrames { { 1, 0, 0 } };
 
-	RulesExtData() noexcept = default;
-	~RulesExtData() noexcept = default;
+	Valueable<AnimTypeClass*> DefaultExplodeFireAnim {};
+	Nullable<int> AISuperWeaponDelay {};
+
+	Valueable<int> ChronoSpherePreDelay { 60 };
+	Valueable<int> ChronoSphereDelay { 0 };
+	Valueable<bool> EnablePowerSurplus { false };
+	Valueable<bool> ShakeScreenUseTSCalculation { false };
+
+	int SubterraneanSpeed { 19 };
+
+	Valueable<bool> UnitIdleRotateTurret { false };
+	Valueable<bool> UnitIdlePointToMouse { false };
+	Valueable<int> UnitIdleActionRestartMin { 150 };
+	Valueable<int> UnitIdleActionRestartMax { 300 };
+	Valueable<int> UnitIdleActionIntervalMin { 150 };
+	Valueable<int> UnitIdleActionIntervalMax { 450 };
+
+	Valueable<bool> ExpandAircraftMission {};
+
+	struct LandTypeExt
+	{
+		Valueable<double> Bounce_Elasticity;
+
+		void LoadFromStream(PhobosStreamReader& Stm)
+		{
+			Stm.
+				Process(Bounce_Elasticity);
+		}
+
+		void SaveToStream(PhobosStreamWriter& Stm)
+		{
+			Stm.
+				Process(Bounce_Elasticity);
+		}
+	};
+
+	std::array<LandTypeExt, 12u> LandTypeConfigExts {};
+	HelperedVector<TechnoTypeClass*> Secrets {};
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);
@@ -407,7 +447,7 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	static IStream* g_pStm;
+	inline static IStream* g_pStm;
 
 	static void Allocate(RulesClass* pThis);
 	static void Remove(RulesClass* pThis);
@@ -422,7 +462,7 @@ public:
 	static void LoadVeryEarlyBeforeAnyData(RulesClass* pRules, CCINIClass* pINI);
 	static void LoadEndOfAudioVisual(RulesClass* pRules, CCINIClass* pINI);
 
-	constexpr FORCEINLINE static RulesExtData* Instance()
+	static RulesExtData* Instance()
 	{
 		return Data.get();
 	}
@@ -435,3 +475,11 @@ public:
 	static bool DetailsCurrentlyEnabled();
 	static bool DetailsCurrentlyEnabled(int minDetailLevel);
 };
+
+class FakeRulesClass : public RulesClass
+{
+public:
+	void _ReadColors(CCINIClass* pINI);
+	void _ReadGeneral(CCINIClass* pINI);
+};
+static_assert(sizeof(FakeRulesClass) == sizeof(RulesClass), "Invalid Size !");

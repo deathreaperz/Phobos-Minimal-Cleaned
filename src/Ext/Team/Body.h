@@ -8,6 +8,8 @@
 class TechnoTypeClass;
 class HouseClass;
 class FootClass;
+class SuperClass;
+class AITriggerTypeClass;
 class TeamExtData final
 {
 public:
@@ -51,8 +53,6 @@ public:
 	ScriptClass* PreviousScript { nullptr };
 	std::vector<BuildingClass*> BridgeRepairHuts {};
 
-	TeamExtData() noexcept = default;
-
 	~TeamExtData() noexcept
 	{
 		if (!Phobos::Otamaa::ExeTerminated)
@@ -64,7 +64,6 @@ public:
 	}
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
-	static bool InvalidateIgnorable(AbstractClass* ptr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -90,7 +89,7 @@ private:
 class TeamExtContainer final : public Container<TeamExtData>
 {
 public:
-	static std::vector<TeamExtData*> Pool;
+	inline static std::vector<TeamExtData*> Pool;
 	static TeamExtContainer Instance;
 
 	TeamExtData* AllocateUnchecked(TeamClass* key)
@@ -101,15 +100,15 @@ public:
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-			val->TeamExtData::TeamExtData();
 		}
 		else
 		{
-			val = new TeamExtData();
+			val = DLLAllocWithoutCTOR<TeamExtData>();
 		}
 
 		if (val)
 		{
+			val->TeamExtData::TeamExtData();
 			val->AttachedToObject = key;
 			return val;
 		}
@@ -157,5 +156,19 @@ public:
 		}
 	}
 
-	CONSTEXPR_NOCOPY_CLASSB(TeamExtContainer, TeamExtData, "TeamClass");
+	//CONSTEXPR_NOCOPY_CLASSB(TeamExtContainer, TeamExtData, "TeamClass");
 };
+
+class FakeTeamClass : public TeamClass
+{
+public:
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	TeamExtData* _GetExtData()
+	{
+		return *reinterpret_cast<TeamExtData**>(this->unknown_18);
+	}
+};
+
+static_assert(sizeof(FakeTeamClass) == sizeof(TeamClass), "Invalid Size !");

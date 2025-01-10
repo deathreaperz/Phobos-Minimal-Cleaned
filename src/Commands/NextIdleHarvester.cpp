@@ -45,7 +45,7 @@ void NextIdleHarvesterCommandClass::Execute(WWKey eInput) const
 
 	do
 	{
-		if (auto pTechno = abstract_cast<TechnoClass*>(pNextObject))
+		if (auto pTechno = flag_cast_to<TechnoClass*>(pNextObject))
 		{
 			if (auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType()))
 			{
@@ -71,6 +71,6 @@ void NextIdleHarvesterCommandClass::Execute(WWKey eInput) const
 	}
 	else
 	{
-		MessageListClass::Instance->PrintMessage(StringTable::LoadString("MSG:NothingSelected"), RulesClass::Instance->MessageDelay, HouseClass::CurrentPlayer->ColorSchemeIndex, true);
+		GeneralUtils::PrintMessage(StringTable::LoadString("MSG:NothingSelected"));
 	}
 }

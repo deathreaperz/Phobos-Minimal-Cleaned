@@ -1,7 +1,5 @@
 #include "HoverTypeClass.h"
 
-Enumerable<HoverTypeClass>::container_t Enumerable<HoverTypeClass>::Array;
-
 const char* Enumerable<HoverTypeClass>::GetMainSection()
 {
 	return "HoverCharacteristic";
@@ -9,7 +7,7 @@ const char* Enumerable<HoverTypeClass>::GetMainSection()
 
 void HoverTypeClass::LoadFromINI(CCINIClass* pINI)
 {
-	const char* pSection = this->Name;
+	const char* pSection = this->Name.c_str();
 	INI_EX exINI(pINI);
 
 	this->HoverHeight.Read(exINI, pSection, "Hover.Height");

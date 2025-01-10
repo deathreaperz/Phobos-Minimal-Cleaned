@@ -4,6 +4,7 @@
 
 #include <Utilities/Debug.h>
 #include <Utilities/Patch.h>
+#include <Utilities/GameConfig.h>
 
 #include <LoadOptionsClass.h>
 #include <UDPInterfaceClass.h>
@@ -18,8 +19,10 @@
 #include "NetHack.h"
 #include "ProtocolZero.h"
 
-std::unique_ptr<SpawnerMain::GameConfigs> SpawnerMain::GameConfigs::m_Ptr = nullptr;
-std::list<MixFileClass*> SpawnerMain::LoadedMixFiles {};
+#include <GameOptionsClass.h>
+#include <MessageBox.h>
+
+SpawnerMain::GameConfigs SpawnerMain::GameConfigs::m_Ptr {};
 
 FORCEINLINE void ReadListFromSection(CCINIClass* pINI, const char* pSection, std::list<std::string>& strings)
 {
@@ -37,10 +40,7 @@ FORCEINLINE void ReadListFromSection(CCINIClass* pINI, const char* pSection, std
 	}
 }
 
-std::unique_ptr<SpawnerMain::Configs> SpawnerMain::Configs::m_Ptr = std::make_unique<SpawnerMain::Configs>();
-
-bool SpawnerMain::Configs::Enabled = false;
-bool SpawnerMain::Configs::Active = false;
+SpawnerMain::Configs SpawnerMain::Configs::m_Ptr {};
 
 class NOVTABLE StaticLoadOptionsClass
 {
@@ -73,13 +73,6 @@ public:
 	DECLARE_PROPERTY(DynamicVectorClass<FileEntryClass*>, FileEntries);
 };
 
-void SpawnerMain::ExeRun(bool HasCNCnet)
-{
-	if (HasCNCnet)
-	{
-		Debug::FatalErrorAndExit("This dll already include cncnet5.dll code , please remove first\n");
-	}
-}
 #ifdef IS_ANTICHEAT_VER
 #define SPAWNER_PRODUCT_NAME "YR-Spawner (AntiCheat)"
 #else
@@ -97,7 +90,7 @@ void SpawnerMain::CmdLineParse(char* pArg)
 	}
 	else if (0 == strcasecmp(pArg, "-DumpTypes"))
 	{
-		SpawnerMain::Configs::m_Ptr->DumpTypes = true;
+		SpawnerMain::Configs::m_Ptr.DumpTypes = true;
 	}
 }
 
@@ -158,9 +151,8 @@ void SpawnerMain::ApplyStaticOptions()
 
 	if (pMainConfigs->SingleProcAffinity)
 	{
-		auto const process = GetCurrentProcess();
 		DWORD_PTR const processAffinityMask = 1;
-		SetProcessAffinityMask(process, processAffinityMask);
+		SetProcessAffinityMask(Patch::CurrentProcess, processAffinityMask);
 	}
 
 	if (pMainConfigs->WindowedMode)
@@ -359,6 +351,7 @@ void SpawnerMain::GameConfigs::LoadFromINIFile(CCINIClass* pINI)
 	}
 
 	// Extended Options
+	SpawnerHackMPNodes = pINI->ReadBool(GameStrings::Settings(), "UseMPAIBaseNodes", SpawnerHackMPNodes);
 	QuickMatch = pINI->ReadBool(GameStrings::Settings(), "QuickMatch", QuickMatch);
 	SkipScoreScreen = pINI->ReadBool(GameStrings::Settings(), "SkipScoreScreen", SkipScoreScreen);
 	WriteStatistics = pINI->ReadBool(GameStrings::Settings(), "WriteStatistics", WriteStatistics);
@@ -428,13 +421,13 @@ void SpawnerMain::GameConfigs::Init()
 	if (!SpawnerMain::Configs::Enabled)
 		return;
 
-	SpawnerMain::GameConfigs::m_Ptr = std::make_unique<SpawnerMain::GameConfigs>();
+	//SpawnerMain::GameConfigs::m_Ptr = std::make_unique<SpawnerMain::GameConfigs>();
 
 	GameConfig file { "SPAWN.INI" };
 	file.OpenINIAction([&file](CCINIClass* pFile)
  {
 	 Debug::Log("SpawnerMain::GameConfigs::Init Reading file %s\n", file.filename());
-	 SpawnerMain::GameConfigs::m_Ptr->LoadFromINIFile(pFile);
+	 SpawnerMain::GameConfigs::m_Ptr.LoadFromINIFile(pFile);
 	});
 
 	Patch::Apply_CALL(0x48CDD3, SpawnerMain::GameConfigs::StartGame); // Main_Game
@@ -464,7 +457,7 @@ void SpawnerMain::GameConfigs::Init()
 	}
 
 	// Set ConnTimeout
-	Patch::Apply_TYPED<int>(0x6843C7, { SpawnerMain::GameConfigs::m_Ptr->ConnTimeout }); //  Scenario_Load_Wait
+	Patch::Apply_TYPED<int>(0x6843C7, { SpawnerMain::GameConfigs::m_Ptr.ConnTimeout }); //  Scenario_Load_Wait
 
 	// Show GameMode in DiplomacyDialog in Skirmish
 	Patch::Apply_LJMP(0x658117, 0x658126); // RadarClass_DiplomacyDialog
@@ -483,7 +476,7 @@ bool SpawnerMain::GameConfigs::StartGame()
 
 	Game::InitUIStuff();
 
-	char* pScenarioName = m_Ptr->ScenarioName;
+	char* pScenarioName = m_Ptr.ScenarioName;
 
 	if (strstr(pScenarioName, "RA2->"))
 		pScenarioName += sizeof("RA2->") - 1;
@@ -501,8 +494,8 @@ bool SpawnerMain::GameConfigs::StartGame()
 
 	SpawnerMain::GameConfigs::LoadSidesStuff();
 
-	bool result = m_Ptr->LoadSaveGame
-		? LoadSavedGame(m_Ptr->SaveGameName)
+	bool result = m_Ptr.LoadSaveGame
+		? LoadSavedGame(m_Ptr.SaveGameName)
 		: StartNewScenario(pScenarioName);
 
 	if (SpawnerMain::GetMainConfigs()->DumpTypes)
@@ -517,7 +510,7 @@ void SpawnerMain::GameConfigs::AssignHouses()
 {
 	ScenarioClass::AssignHouses();
 
-	const int count = MinImpl(HouseClass::Array->Count, (int)std::size(SpawnerMain::GameConfigs::m_Ptr->Houses));
+	const int count = MinImpl(HouseClass::Array->Count, (int)std::size(SpawnerMain::GameConfigs::m_Ptr.Houses));
 	for (int indexOfHouseArray = 0; indexOfHouseArray < count; indexOfHouseArray++)
 	{
 		const auto pHouse = HouseClass::Array->GetItem(indexOfHouseArray);
@@ -525,7 +518,7 @@ void SpawnerMain::GameConfigs::AssignHouses()
 		if (pHouse->Type->MultiplayPassive)
 			continue;
 
-		const auto pHousesConfig = &SpawnerMain::GameConfigs::m_Ptr->Houses[indexOfHouseArray];
+		const auto pHousesConfig = &SpawnerMain::GameConfigs::m_Ptr.Houses[indexOfHouseArray];
 		const int nSpawnLocations = pHousesConfig->SpawnLocations;
 		const bool isObserver = pHouse->IsHumanPlayer && (
 			pHousesConfig->IsObserver
@@ -542,9 +535,9 @@ void SpawnerMain::GameConfigs::AssignHouses()
 		}
 
 		// Set AI UIName
-		if (SpawnerMain::GameConfigs::m_Ptr->AINamesByDifficulty && !pHouse->IsHumanPlayer)
+		if (SpawnerMain::GameConfigs::m_Ptr.AINamesByDifficulty && !pHouse->IsHumanPlayer)
 		{
-			const auto pAIConfig = &SpawnerMain::GameConfigs::m_Ptr->Players[indexOfHouseArray];
+			const auto pAIConfig = &SpawnerMain::GameConfigs::m_Ptr.Players[indexOfHouseArray];
 
 			switch (pAIConfig->Difficulty)
 			{
@@ -627,45 +620,45 @@ bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName)
 	pSession->ReadScenarioDescriptions();
 
 	{ // Set MPGameMode
-		pSession->MPGameMode = MPGameModeClass::Get(SpawnerMain::GameConfigs::m_Ptr->MPModeIndex);
+		pSession->MPGameMode = MPGameModeClass::Get(SpawnerMain::GameConfigs::m_Ptr.MPModeIndex);
 		if (!pSession->MPGameMode)
 			pSession->MPGameMode = MPGameModeClass::Get(1);
 	}
 
 	{ // Set Options
-		pGameModeOptions->MPModeIndex = SpawnerMain::GameConfigs::m_Ptr->MPModeIndex;
+		pGameModeOptions->MPModeIndex = SpawnerMain::GameConfigs::m_Ptr.MPModeIndex;
 		// pGameModeOptions->ScenarioIndex
-		pGameModeOptions->Bases = SpawnerMain::GameConfigs::m_Ptr->Bases;
-		pGameModeOptions->Money = SpawnerMain::GameConfigs::m_Ptr->Credits;
-		pGameModeOptions->BridgeDestruction = SpawnerMain::GameConfigs::m_Ptr->BridgeDestroy;
-		pGameModeOptions->Crates = SpawnerMain::GameConfigs::m_Ptr->Crates;
-		pGameModeOptions->ShortGame = SpawnerMain::GameConfigs::m_Ptr->ShortGame;
-		pGameModeOptions->SWAllowed = SpawnerMain::GameConfigs::m_Ptr->SuperWeapons;
-		pGameModeOptions->BuildOffAlly = SpawnerMain::GameConfigs::m_Ptr->BuildOffAlly;
-		pGameModeOptions->GameSpeed = SpawnerMain::GameConfigs::m_Ptr->GameSpeed;
-		pGameModeOptions->MultiEngineer = SpawnerMain::GameConfigs::m_Ptr->MultiEngineer;
-		pGameModeOptions->UnitCount = SpawnerMain::GameConfigs::m_Ptr->UnitCount;
-		pGameModeOptions->AIPlayers = SpawnerMain::GameConfigs::m_Ptr->AIPlayers;
-		pGameModeOptions->AIDifficulty = SpawnerMain::GameConfigs::m_Ptr->AIDifficulty;
+		pGameModeOptions->Bases = SpawnerMain::GameConfigs::m_Ptr.Bases;
+		pGameModeOptions->Money = SpawnerMain::GameConfigs::m_Ptr.Credits;
+		pGameModeOptions->BridgeDestruction = SpawnerMain::GameConfigs::m_Ptr.BridgeDestroy;
+		pGameModeOptions->Crates = SpawnerMain::GameConfigs::m_Ptr.Crates;
+		pGameModeOptions->ShortGame = SpawnerMain::GameConfigs::m_Ptr.ShortGame;
+		pGameModeOptions->SWAllowed = SpawnerMain::GameConfigs::m_Ptr.SuperWeapons;
+		pGameModeOptions->BuildOffAlly = SpawnerMain::GameConfigs::m_Ptr.BuildOffAlly;
+		pGameModeOptions->GameSpeed = SpawnerMain::GameConfigs::m_Ptr.GameSpeed;
+		pGameModeOptions->MultiEngineer = SpawnerMain::GameConfigs::m_Ptr.MultiEngineer;
+		pGameModeOptions->UnitCount = SpawnerMain::GameConfigs::m_Ptr.UnitCount;
+		pGameModeOptions->AIPlayers = SpawnerMain::GameConfigs::m_Ptr.AIPlayers;
+		pGameModeOptions->AIDifficulty = SpawnerMain::GameConfigs::m_Ptr.AIDifficulty;
 		// pGameModeOptions->AISlots
-		pGameModeOptions->AlliesAllowed = SpawnerMain::GameConfigs::m_Ptr->AlliesAllowed;
-		pGameModeOptions->HarvesterTruce = SpawnerMain::GameConfigs::m_Ptr->HarvesterTruce;
+		pGameModeOptions->AlliesAllowed = SpawnerMain::GameConfigs::m_Ptr.AlliesAllowed;
+		pGameModeOptions->HarvesterTruce = SpawnerMain::GameConfigs::m_Ptr.HarvesterTruce;
 		// pGameModeOptions->CaptureTheFlag
-		pGameModeOptions->FogOfWar = SpawnerMain::GameConfigs::m_Ptr->FogOfWar;
-		pGameModeOptions->MCVRedeploy = SpawnerMain::GameConfigs::m_Ptr->MCVRedeploy;
-		wcscpy(pGameModeOptions->MapDescription, SpawnerMain::GameConfigs::m_Ptr->UIMapName);
+		pGameModeOptions->FogOfWar = SpawnerMain::GameConfigs::m_Ptr.FogOfWar;
+		pGameModeOptions->MCVRedeploy = SpawnerMain::GameConfigs::m_Ptr.MCVRedeploy;
+		wcscpy(pGameModeOptions->MapDescription, SpawnerMain::GameConfigs::m_Ptr.UIMapName);
 
-		Game::Seed = SpawnerMain::GameConfigs::m_Ptr->Seed;
-		Game::TechLevel = SpawnerMain::GameConfigs::m_Ptr->TechLevel;
-		Game::PlayerColor = SpawnerMain::GameConfigs::m_Ptr->Players[0].Color;
-		GameOptionsClass::Instance->GameSpeed = SpawnerMain::GameConfigs::m_Ptr->GameSpeed;
+		Game::Seed = SpawnerMain::GameConfigs::m_Ptr.Seed;
+		Game::TechLevel = SpawnerMain::GameConfigs::m_Ptr.TechLevel;
+		Game::PlayerColor = SpawnerMain::GameConfigs::m_Ptr.Players[0].Color;
+		GameOptionsClass::Instance->GameSpeed = SpawnerMain::GameConfigs::m_Ptr.GameSpeed;
 	}
 
 	{ // Added AI Players
 		const auto pAISlots = &pGameModeOptions->AISlots;
 		for (char slotIndex = 0; slotIndex < (char)std::size(pAISlots->Allies); ++slotIndex)
 		{
-			const auto pPlayerConfig = &SpawnerMain::GameConfigs::m_Ptr->Players[slotIndex];
+			const auto pPlayerConfig = &SpawnerMain::GameConfigs::m_Ptr.Players[slotIndex];
 			if (pPlayerConfig->IsHuman)
 				continue;
 
@@ -678,10 +671,10 @@ bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName)
 
 	{ // Added Human Players
 		NetHack::PortHack = true;
-		const char maxPlayers = SpawnerMain::GameConfigs::m_Ptr->IsCampaign ? 1 : (char)std::size(SpawnerMain::GameConfigs::m_Ptr->Players);
+		const char maxPlayers = SpawnerMain::GameConfigs::m_Ptr.IsCampaign ? 1 : (char)std::size(SpawnerMain::GameConfigs::m_Ptr.Players);
 		for (char playerIndex = 0; playerIndex < maxPlayers; playerIndex++)
 		{
-			const auto pPlayer = &SpawnerMain::GameConfigs::m_Ptr->Players[playerIndex];
+			const auto pPlayer = &SpawnerMain::GameConfigs::m_Ptr.Players[playerIndex];
 			if (!pPlayer->IsHuman)
 				continue;
 
@@ -693,7 +686,7 @@ bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName)
 			pNode->Color = pPlayer->Color;
 			pNode->Time = -1;
 
-			if (pPlayer->IsObserver && !SpawnerMain::GameConfigs::m_Ptr->IsCampaign)
+			if (pPlayer->IsObserver && !SpawnerMain::GameConfigs::m_Ptr.IsCampaign)
 			{
 				if (pNode->Country < 0)
 					pNode->Country = -3;
@@ -712,7 +705,7 @@ bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName)
 				const auto Port = htons((u_short)pPlayer->Port);
 				ListAddress::Array[playerIndex - 1].Ip = Ip;
 				ListAddress::Array[playerIndex - 1].Port = Port;
-				if (Port != (u_short)SpawnerMain::GameConfigs::m_Ptr->ListenPort)
+				if (Port != (u_short)SpawnerMain::GameConfigs::m_Ptr.ListenPort)
 					NetHack::PortHack = false;
 			}
 		}
@@ -721,7 +714,7 @@ bool SpawnerMain::GameConfigs::StartNewScenario(const char* pScenarioName)
 	}
 
 	{ // Set SessionType
-		if (SpawnerMain::GameConfigs::m_Ptr->IsCampaign)
+		if (SpawnerMain::GameConfigs::m_Ptr.IsCampaign)
 			pSession->GameMode = GameMode::Campaign;
 		else if (Game::PlayerCount > 1)
 			pSession->GameMode = GameMode::Internet; // HACK: will be set to LAN later
@@ -816,11 +809,11 @@ bool SpawnerMain::GameConfigs::LoadSavedGame(const char* saveGameName)
 
 void SpawnerMain::GameConfigs::InitNetwork()
 {
-	Tunnel::Id = htons((u_short)SpawnerMain::GameConfigs::m_Ptr->TunnelId);
-	Tunnel::Ip = inet_addr(SpawnerMain::GameConfigs::m_Ptr->TunnelIp);
-	Tunnel::Port = htons((u_short)SpawnerMain::GameConfigs::m_Ptr->TunnelPort);
+	Tunnel::Id = htons((u_short)SpawnerMain::GameConfigs::m_Ptr.TunnelId);
+	Tunnel::Ip = inet_addr(SpawnerMain::GameConfigs::m_Ptr.TunnelIp);
+	Tunnel::Port = htons((u_short)SpawnerMain::GameConfigs::m_Ptr.TunnelPort);
 
-	Game::PlanetWestwoodPortNumber = Tunnel::Port ? 0 : (u_short)SpawnerMain::GameConfigs::m_Ptr->ListenPort;
+	Game::PlanetWestwoodPortNumber = Tunnel::Port ? 0 : (u_short)SpawnerMain::GameConfigs::m_Ptr.ListenPort;
 
 	UDPInterfaceClass::Instance = GameCreate<UDPInterfaceClass>();
 	UDPInterfaceClass::Instance->Init();
@@ -833,35 +826,35 @@ void SpawnerMain::GameConfigs::InitNetwork()
 	Game::Network::PlanetWestwoodStartTime = time(NULL);
 	Game::Network::GameStockKeepingUnit = 0x2901;
 
-	EventExt::ProtocolZero::Enable = (SpawnerMain::GameConfigs::m_Ptr->Protocol == 0);
+	EventExt::ProtocolZero::Enable = (SpawnerMain::GameConfigs::m_Ptr.Protocol == 0);
 	if (EventExt::ProtocolZero::Enable)
 	{
 		Game::Network::FrameSendRate = 2;
-		Game::Network::PreCalcMaxAhead = SpawnerMain::GameConfigs::m_Ptr->PreCalcMaxAhead;
+		Game::Network::PreCalcMaxAhead = SpawnerMain::GameConfigs::m_Ptr.PreCalcMaxAhead;
 		EventExt::ProtocolZero::MaxLatencyLevel = std::clamp(
-			SpawnerMain::GameConfigs::m_Ptr->MaxLatencyLevel,
+			SpawnerMain::GameConfigs::m_Ptr.MaxLatencyLevel,
 			(byte)LatencyLevelEnum::LATENCY_LEVEL_1,
 			(byte)LatencyLevelEnum::LATENCY_LEVEL_MAX
 		);
 	}
 	else
 	{
-		Game::Network::FrameSendRate = SpawnerMain::GameConfigs::m_Ptr->FrameSendRate;
+		Game::Network::FrameSendRate = SpawnerMain::GameConfigs::m_Ptr.FrameSendRate;
 	}
 
-	Game::Network::MaxAhead = SpawnerMain::GameConfigs::m_Ptr->MaxAhead == -1
+	Game::Network::MaxAhead = SpawnerMain::GameConfigs::m_Ptr.MaxAhead == -1
 		? Game::Network::FrameSendRate * 6
-		: SpawnerMain::GameConfigs::m_Ptr->MaxAhead;
+		: SpawnerMain::GameConfigs::m_Ptr.MaxAhead;
 
 	Game::Network::MaxMaxAhead = 0;
 	Game::Network::ProtocolVersion = 2;
 	Game::Network::LatencyFudge = 0;
 	Game::Network::RequestedFPS = 60;
-	Game::Network::Tournament = SpawnerMain::GameConfigs::m_Ptr->Tournament;
-	Game::Network::WOLGameID = SpawnerMain::GameConfigs::m_Ptr->WOLGameID;
-	Game::Network::ReconnectTimeout = SpawnerMain::GameConfigs::m_Ptr->ReconnectTimeout;
+	Game::Network::Tournament = SpawnerMain::GameConfigs::m_Ptr.Tournament;
+	Game::Network::WOLGameID = SpawnerMain::GameConfigs::m_Ptr.WOLGameID;
+	Game::Network::ReconnectTimeout = SpawnerMain::GameConfigs::m_Ptr.ReconnectTimeout;
 
-	if (SpawnerMain::GameConfigs::m_Ptr->QuickMatch)
+	if (SpawnerMain::GameConfigs::m_Ptr.QuickMatch)
 	{
 		Game::EnableMPDebug = false;
 		Game::DrawMPDebugStats = false;
@@ -895,10 +888,10 @@ DEFINE_HOOK(0x65812E, RadarClass_DiplomacyDialog_UIGameMode, 0x6)
 {
 	enum { Show = 0x65813E, DontShow = 0x65814D };
 
-	if (SpawnerMain::Configs::Enabled && SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0])
+	if (SpawnerMain::Configs::Enabled && SpawnerMain::GameConfigs::m_Ptr.UIGameMode[0])
 	{
 		R->EBX(R->EAX());
-		R->EAX(SpawnerMain::GameConfigs::m_Ptr->UIGameMode);
+		R->EAX(SpawnerMain::GameConfigs::m_Ptr.UIGameMode);
 		return Show;
 	}
 
@@ -910,7 +903,7 @@ DEFINE_HOOK(0x65812E, RadarClass_DiplomacyDialog_UIGameMode, 0x6)
 
 // DEFINE_HOOK(0x689669, ScenarioClass_Load_Suffix_Spawner, 0x6) {
 // 	if (SpawnerMain::Configs::Enabled)
-// 		SpawnerMain::GameConfigs::m_Ptr->UIGameMode[0] = 0;
+// 		SpawnerMain::GameConfigs::m_Ptr.UIGameMode[0] = 0;
 //
 // 	return 0;
 // }
@@ -956,11 +949,11 @@ DEFINE_HOOK(0x4FC551, HouseClass_MPlayerDefeated_NoEnemies, 0x5)
 		if (pHouse->Defeated || pHouse == MPlayerDefeated::pThis || pHouse->Type->MultiplayPassive)
 			continue;
 
-		if ((pHouse->IsHumanPlayer || SpawnerMain::GameConfigs::m_Ptr->ContinueWithoutHumans)
+		if ((pHouse->IsHumanPlayer || SpawnerMain::GameConfigs::m_Ptr.ContinueWithoutHumans)
 			&& HouseExtData::IsMutualAllies(pHouse, MPlayerDefeated::pThis))
 		{
 			Debug::Log("[Spawner] MPlayer_Defeated() - Defeated player has a living ally");
-			if (SpawnerMain::GameConfigs::m_Ptr->DefeatedBecomesObserver)
+			if (SpawnerMain::GameConfigs::m_Ptr.DefeatedBecomesObserver)
 				MPlayerDefeated::pThis->MakeObserver();
 
 			return ProcEpilogue;
@@ -980,12 +973,12 @@ DEFINE_HOOK(0x4FC57C, HouseClass_MPlayerDefeated_CheckAliveAndHumans, 0x7)
 	GET_STACK(int, numHumans, STACK_OFFSET(0xC0, -0xA8));
 	GET_STACK(int, numAlive, STACK_OFFSET(0xC0, -0xAC));
 
-	bool continueWithoutHumans = SpawnerMain::GameConfigs::m_Ptr->ContinueWithoutHumans ||
+	bool continueWithoutHumans = SpawnerMain::GameConfigs::m_Ptr.ContinueWithoutHumans ||
 		(SessionClass::IsSkirmish() && HouseClass::CurrentPlayer->IsInitiallyObserver());
 
 	if (numAlive > 1 && (numHumans != 0 || continueWithoutHumans))
 	{
-		if (SpawnerMain::GameConfigs::m_Ptr->DefeatedBecomesObserver)
+		if (SpawnerMain::GameConfigs::m_Ptr.DefeatedBecomesObserver)
 			MPlayerDefeated::pThis->MakeObserver();
 
 		return ProcEpilogue;

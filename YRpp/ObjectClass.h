@@ -145,7 +145,7 @@ public:
 	 // maybe Object instead of Techno? Raises Map Events, grants veterancy, increments house kill counters
 	virtual void RegisterKill(HouseClass *Destroyer) RX; // ++destroyer's kill counters , etc E0
 
-	virtual bool SpawnParachuted(const CoordStruct& coords) R0;
+	virtual bool SpawnParachuted(const CoordStruct& coords) JMP_THIS(0x5F5940);
 	virtual void DropAsBomb() RX;
 	virtual void MarkAllOccupationBits(const CoordStruct& coords) RX;
 	virtual void UnmarkAllOccupationBits(const CoordStruct& coords) RX;
@@ -215,15 +215,6 @@ public:
 	virtual bool IsWarpingSomethingOut() const R0; //70C5D0
 	virtual bool IsNotWarping() const R0; //70C5F0
 	virtual LightConvertClass *GetRemapColour() const R0;
-
-	int DistanceFrom(AbstractClass *that) const
-		{ JMP_THIS(0x5F6440); }
-
-	int DistanceFromSquared(AbstractClass* pThat)const
-		{ JMP_THIS(0x5F6360); }
-
-	int DistanceFromSquared(const CoordStruct* pThat)const
-		{ JMP_THIS(0x5F6560); }
 
 	DirStruct* GetDirectionOverObject(DirStruct* pBuffer, AbstractClass* Target) const
 		{ JMP_THIS(0x5F3DB0); }

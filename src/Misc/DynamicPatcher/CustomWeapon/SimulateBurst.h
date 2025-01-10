@@ -94,9 +94,9 @@ private:
 		//Debug::Log("Processing Element From SimulateBurst ! \n");
 
 		return Stm
-			.Process(WeaponType)
-			.Process(Shooter)
-			.Process(Target)
+			.Process(WeaponType, true)
+			.Process(Shooter, true)
+			.Process(Target, true)
 			.Process(FLH)
 			.Process(Burst)
 			.Process(MinRange)

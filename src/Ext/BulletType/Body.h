@@ -2,7 +2,10 @@
 #include <BulletTypeClass.h>
 
 #include <Helpers/Macro.h>
+
 #include <Utilities/TemplateDefB.h>
+#include <Utilities/PhobosMap.h>
+#include <Utilities/SavegameDef.h>
 
 #include <New/Type/LaserTrailTypeClass.h>
 #include <Misc/DynamicPatcher/Trails/TrailsManager.h>
@@ -15,9 +18,7 @@ public:
 	static constexpr size_t Canary = 0xF00DF00D;
 	using base_type = BulletTypeClass;
 
-#ifndef aaa
 	static constexpr size_t ExtOffset = 0x2C4; //ares
-#endif
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -112,9 +113,6 @@ public:
 
 	std::unique_ptr<PhobosTrajectoryType> TrajectoryType { };
 
-	BulletTypeExtData() noexcept = default;
-	~BulletTypeExtData() noexcept = default;
-
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
@@ -178,7 +176,7 @@ class BulletTypeExtContainer final : public Container<BulletTypeExtData>
 {
 public:
 	static BulletTypeExtContainer Instance;
-	std::unordered_map<BulletTypeClass*, BulletTypeExtData*> Map;
+	PhobosMap<BulletTypeClass*, BulletTypeExtData*> Map {};
 
 	virtual bool Load(BulletTypeClass* key, IStream* pStm);
 
@@ -187,20 +185,34 @@ public:
 		this->Map.clear();
 	}
 
-	BulletTypeExtContainer() : Container<BulletTypeExtData> { "BulletTypeClass" }
-		, Map {}
-	{ }
+	//BulletTypeExtContainer() : Container<BulletTypeExtData> { "BulletTypeClass" }
+	//	, Map {}
+	//{ }
 
-	virtual ~BulletTypeExtContainer() override = default;
+	//virtual ~BulletTypeExtContainer() override = default;
 	//CONSTEXPR_NOCOPY_CLASSB(BulletTypeExtContainer, BulletTypeExtData, "BulletTypeClass");
 
-private:
-	BulletTypeExtContainer(const BulletTypeExtContainer&) = delete;
-	BulletTypeExtContainer(BulletTypeExtContainer&&) = delete;
-	BulletTypeExtContainer& operator=(const BulletTypeExtContainer& other) = delete;
+//private:
+//	BulletTypeExtContainer(const BulletTypeExtContainer&) = delete;
+//	BulletTypeExtContainer(BulletTypeExtContainer&&) = delete;
+//	BulletTypeExtContainer& operator=(const BulletTypeExtContainer& other) = delete;
 };
 
 double BulletTypeExtData::GetAdjustedGravity(BulletTypeClass* pType)
 {
 	return BulletTypeExtContainer::Instance.Find(pType)->GetAdjustedGravity();
 }
+
+class FakeBulletTypeClass : public BulletTypeClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	BulletTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<BulletTypeExtData**>(((DWORD)this) + BulletTypeExtData::ExtOffset);
+	}
+};
+static_assert(sizeof(FakeBulletTypeClass) == sizeof(BulletTypeClass), "Invalid Size !");

@@ -1,10 +1,8 @@
 #pragma once
 #include <TerrainTypeClass.h>
 
-#include <Helpers/Macro.h>
 #include <Utilities/Container.h>
 #include <Utilities/TemplateDefB.h>
-#include <Utilities/Macro.h>
 
 class TerrainTypeExtData final
 {
@@ -47,9 +45,6 @@ public:
 	Valueable<bool> HasCrumblingFrames { false };
 	ValueableIdx<VocClass> CrumblingSound { -1 };
 	Nullable<int> AnimationLength {};
-
-	TerrainTypeExtData()  noexcept = default;
-	~TerrainTypeExtData() noexcept = default;
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
@@ -98,5 +93,19 @@ class TerrainTypeExtContainer final : public Container<TerrainTypeExtData>
 public:
 	static TerrainTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(TerrainTypeExtContainer, TerrainTypeExtData, "TerrainTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(TerrainTypeExtContainer, TerrainTypeExtData, "TerrainTypeClass");
 };
+
+class FakeTerrainTypeClass : public TerrainTypeClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	TerrainTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<TerrainTypeExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeTerrainTypeClass) == sizeof(TerrainTypeClass), "Invalid Size !");

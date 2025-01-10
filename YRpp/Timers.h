@@ -31,6 +31,11 @@ public:
 	operator long() const { return timeGetTime(); }
 };
 
+template<TimerType Clock>
+class BasicTimer {
+	int Time;
+	Clock CTime; // timer
+};
 
 //used for timed events, time measured in frames!
 template<TimerType Clock>
@@ -43,23 +48,22 @@ public:
 
 	constexpr TimerClass() : StartTime { -1 }, TimeLeft { 0 } { }
 
-
-	explicit TimerClass(int duration) : StartTime { -1 }, TimeLeft { duration } {
+	constexpr explicit TimerClass(int duration) : StartTime { -1 }, TimeLeft { duration } {
 		this->StartTime = this->CurrentTime;
 	}
 
 	constexpr TimerClass(noinit_t()){ }
 	constexpr ~TimerClass() = default;
 
-	TimerClass(const TimerClass& other) : StartTime { other.StartTime }, TimeLeft { other.TimeLeft } { }
+	constexpr TimerClass(const TimerClass& other) : StartTime { other.StartTime }, TimeLeft { other.TimeLeft } { }
 
-	TimerClass& operator=(const TimerClass& other) {
+	constexpr TimerClass& operator=(const TimerClass& other) {
 		this->StartTime = other.StartTime;
 		this->TimeLeft = other.TimeLeft;
 		return *this;
 	}
 
-	TimerClass& operator = (TimerClass&&) =  default;
+	constexpr TimerClass& operator = (TimerClass&&) =  default;
 
 	constexpr FORCEINLINE void Start(int duration)
 	{
@@ -153,7 +157,6 @@ public:
 	}
 };
 
-
 using SystemTimerClass = TimerClass<SystemTimer>;
 using MSTimerClass = TimerClass<MSTimer>;
 
@@ -174,10 +177,10 @@ public:
 	int Duration { 0 };
 
 	constexpr RepeatableTimerStruct() = default;
-	RepeatableTimerStruct(const RepeatableTimerStruct&) = default;
-	RepeatableTimerStruct& operator = (const RepeatableTimerStruct&) = default;
-	RepeatableTimerStruct& operator = (RepeatableTimerStruct&&) = default;
-	RepeatableTimerStruct(int duration) { this->Start(duration); }
+	constexpr RepeatableTimerStruct(const RepeatableTimerStruct&) = default;
+	constexpr RepeatableTimerStruct& operator = (const RepeatableTimerStruct&) = default;
+	constexpr RepeatableTimerStruct& operator = (RepeatableTimerStruct&&) = default;
+	constexpr RepeatableTimerStruct(int duration) { this->Start(duration); }
 
 	constexpr FORCEINLINE void Start(int duration)
 	{
@@ -188,6 +191,36 @@ public:
 	constexpr FORCEINLINE void Restart()
 	{
 		this->CDTimerClass::Start(this->Duration);
+	}
+
+	constexpr inline bool Expired() const { return Percent_Expired() == 1.0f; }
+
+	constexpr inline unsigned long GetValue() const
+	{
+		unsigned long remain = TimeLeft;
+
+		if (((unsigned long)StartTime) != 0xFFFFFFFFU) {
+
+			unsigned long value = this->CurrentTime - ((unsigned long)StartTime);
+
+			if (value < remain) {
+				return remain - value;
+			} else {
+				return 0;
+			}
+		}
+
+		return remain;
+	}
+
+	constexpr inline float Percent_Expired() const
+	{
+		unsigned long rate = Duration;
+		if (!rate) {
+			return 1.0;
+		}
+
+		return (float)(rate - GetValue()) / (float)rate;
 	}
 };
 

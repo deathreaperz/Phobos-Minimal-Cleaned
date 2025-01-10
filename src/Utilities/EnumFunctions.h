@@ -3,7 +3,11 @@
 #include <Phobos.h>
 
 #include "Enum.h"
+#include "Interpolation.h"
 
+#include <MouseClass.h>
+
+class TechnoClass;
 class HouseClass;
 class CellClass;
 class LocomotionClass;
@@ -57,10 +61,12 @@ public:
 	static std::array<const char*, (size_t)TrajectoryCheckReturnType::count> TrajectoryCheckReturnType_to_strings;
 
 	static std::array<const char*, (size_t)DiscardCondition::count> DiscardCondition_to_strings;
-	static std::array<const char*, 5u> ExpireWeaponCondition_to_strings;
+	static std::array<const char*, 6u> ExpireWeaponCondition_to_strings;
 
 	static std::array<std::pair<const char* const, MouseHotSpotX>, 3u> MouseHotSpotX_ToStrings;
 	static std::array<std::pair<const char* const, MouseHotSpotY>, 3u> MouseHotSpotY_ToStrings;
+
+	static std::array<std::pair<const char* const, InterpolationMode>, 2u> InterpolationMode_ToStrings;
 
 	static bool CanTargetHouse(AffectedHouse const& flags, HouseClass* ownerHouse, HouseClass* targetHouse);
 	static bool IsCellEligible(CellClass* const pCell, AffectedTarget const& allowed, bool explicitEmptyCells = false, bool considerBridgesLand = false);
@@ -93,6 +99,12 @@ public:
 					*value = arr.second;
 					return true;
 				}
+			}
+
+			if (IS_SAME_STR_(key, "centre"))
+			{
+				*value = MouseHotSpotX::Center;
+				return true;
 			}
 		}
 		return false;

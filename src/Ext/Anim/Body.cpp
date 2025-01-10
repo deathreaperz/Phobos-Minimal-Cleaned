@@ -11,9 +11,13 @@
 #include <Utilities/Helpers.h>
 #include <Utilities/AnimHelpers.h>
 
+#include <Misc/Hooks.Otamaa.h>
+
 #include <ParticleSystemClass.h>
 #include <ColorScheme.h>
 #include <SmudgeTypeClass.h>
+#include <CoordStruct.h>
+#include <GameOptionsClass.h>
 
 //std::vector<CellClass*> AnimExtData::AnimCellUpdater::Marked;
 void AnimExtData::OnInit(AnimClass* pThis, CoordStruct* pCoord)
@@ -21,7 +25,7 @@ void AnimExtData::OnInit(AnimClass* pThis, CoordStruct* pCoord)
 	if (!pThis->Type)
 		return;
 
-	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
+	const auto pTypeExt = ((FakeAnimTypeClass*)pThis->Type)->_GetExtData();
 
 	if (pTypeExt->ConcurrentChance.Get() >= 1.0 && !pTypeExt->ConcurrentAnim.empty())
 	{
@@ -51,10 +55,13 @@ bool AnimExtData::OnMiddle_SpawnSmudge(AnimClass* pThis, CellClass* pCell, Point
 	if (!pType)
 		return false;
 
-	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pType);
+	const auto pTypeExt = ((FakeAnimTypeClass*)pThis->Type)->_GetExtData();
 
 	if (pTypeExt->SpawnCrater.Get(pThis->GetHeight() < 30))
 	{
+		if (pType->Flamer || pType->Scorch)
+			AnimExtData::SpawnFireAnims(pThis);
+
 		auto nCoord = pThis->GetCoords();
 		if (!pType->Scorch || (pType->Crater && ScenarioClass::Instance->Random.RandomDouble() >= pTypeExt->CraterChance.Get()))
 		{
@@ -152,13 +159,12 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	if (!pThis->Type)
 		return CheckIsActive;
 
-	const auto pExt = AnimExtContainer::Instance.Find(pThis);
+	const auto pExt = ((FakeAnimClass*)pThis)->_GetExtData();
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 	const int delay = pTypeExt->Damage_Delay.Get();
 	TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis);
 	const double damageMultiplier = (pThis->OwnerObject && pThis->OwnerObject->WhatAmI() == TerrainClass::AbsID) ? 5.0 : 1.0;
 
-	double damage = 0;
 	int appliedDamage = 0;
 
 	if (pTypeExt->Damage_ApplyOnce.Get()) // If damage is to be applied only once per animation loop
@@ -170,7 +176,7 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	}
 	else if (delay <= 0 || pThis->Type->Damage < 1.0) // If Damage.Delay is less than 1 or Damage is a fraction.
 	{
-		damage = damageMultiplier * pThis->Type->Damage + pThis->Accum;
+		double damage = damageMultiplier * pThis->Type->Damage + pThis->Accum;
 
 		// Deal damage if it is at least 1, otherwise accumulate it for later.
 		if (damage >= 1.0)
@@ -187,10 +193,9 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	else
 	{
 		// Accum here is used as a counter for Damage.Delay, which cannot deal fractional damage.
-		damage = pThis->Accum + 1.0;
-		pThis->Accum = damage;
+		pThis->Accum += 1.0;
 
-		if (damage < delay)
+		if (pThis->Accum < delay)
 			return SkipDamage;
 
 		// Use Type->Damage as the actually dealt damage.
@@ -201,20 +206,12 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	if (appliedDamage <= 0 || pThis->IsPlaying)
 		return  SkipDamage;
 
-	const auto nCoord = pExt && pExt->BackupCoords.has_value() ? pExt->BackupCoords.get() : pThis->GetCoords();
+	const CoordStruct nCoord = pExt->BackupCoords.has_value() ? pExt->BackupCoords.get() : pThis->GetCoords();
 	const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->Owner : nullptr;
 
 	if (auto const pWeapon = pTypeExt->Weapon)
 	{
 		AbstractClass* pTarget = AnimExtData::GetTarget(pThis);
-		// use target loc instead of anim loc , it doesnt work well with bridges
-		//auto pBullet = pWeapon->Projectile->CreateBullet(pTarget, pInvoker, nDamageResult, pWeapon->Warhead, pWeapon->Speed, pWeapon->Bright);
-		//pBullet->SetWeaponType(pWeapon);
-		//pBullet->Limbo();
-		//pBullet->SetLocation(nCoord);
-		//pBullet->Explode(true);
-		//pBullet->UnInit();
-
 		WeaponTypeExtData::DetonateAt(pWeapon, nCoord, pTarget, pInvoker, appliedDamage, pTypeExt->Damage_ConsiderOwnerVeterancy.Get(), pOwner);
 	}
 	else
@@ -222,29 +219,6 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 		auto const pWarhead = pThis->Type->Warhead ? pThis->Type->Warhead :
 			!pTypeExt->IsInviso ? RulesClass::Instance->FlameDamage2 : RulesClass::Instance->C4Warhead;
 
-		/*if (IS_SAME_STR_("ZTARGET_B", pThis->Type->ID) && pInvoker &&  IS_SAME_STR_("MDUMMY7", pInvoker->get_ID())){
-			auto invoker_loc = pInvoker->GetCoords();
-			Debug::Log(__FUNCTION__" Executed Invoker [%d %d %d] Anim[%d %d %d]\n",
-				invoker_loc.X,
-				invoker_loc.Y,
-				invoker_loc.Z,
-				nCoord.X,
-				nCoord.Y,
-				nCoord.Z
-			);
-
-			auto checks = Helpers::Alex::getCellSpreadItems(pThis->GetCoords(), pWarhead->CellSpread, false, false);
-			for (auto pTech : checks) {
-				if (pTech->Owner && !pTech->Owner->IsAlliedWith(pOwner)
-					&& abs(GeneralUtils::GetWarheadVersusArmor(pWarhead, pTech->GetTechnoType()->Armor) > 0.001)
-					)
-				{
-					GameDebugLog::Log("Affecting Techno[%s] with owner[%s] from [%s]\n", pTech->get_ID(), pTech->Owner->get_ID(), pOwner->get_ID());
-				}
-			}
-
-			PhobosGlobal::Instance()->AnimAttachedto = pInvoker;
-		}*/
 		const auto nDamageResult = static_cast<int>(appliedDamage * TechnoExtData::GetDamageMult(pInvoker, !pTypeExt->Damage_ConsiderOwnerVeterancy.Get()));
 
 		if (pTypeExt->Warhead_Detonate.Get())
@@ -299,7 +273,7 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 					{
 						CoordStruct nDestCoord = CoordStruct::Empty;
 						if (!pAnimTypeExt->ParticleChance.isset() ||
-							(ScenarioClass::Instance->Random.RandomFromMax(99) < abs(pAnimTypeExt->ParticleChance.Get())))
+							(ScenarioClass::Instance->Random.RandomFromMax(99) < Math::abs(pAnimTypeExt->ParticleChance.Get())))
 						{
 							nDestCoord = Helper::Otamaa::GetRandomCoordsInsideLoops(pAnimTypeExt->ParticleRangeMin.Get(), pAnimTypeExt->ParticleRangeMax.Get(), InitialCoord, i);
 							ParticleSystemClass::Instance->SpawnParticle(pParticleType, &nDestCoord);
@@ -322,7 +296,7 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 
 							for (; numParticle > 0; --numParticle)
 							{
-								int rand = std::abs(ScenarioClass::Instance->Random.RandomRanged((int)nMin, (int)nMax));
+								int rand = Math::abs(ScenarioClass::Instance->Random.RandomRanged((int)nMin, (int)nMax));
 								double randDouble = ScenarioClass::Instance->Random.RandomDouble() * rad + start_distance;
 								CoordStruct dest {
 									InitialCoord.X + int(rand * Math::cos(randDouble)),
@@ -391,7 +365,7 @@ AbstractClass* AnimExtData::GetTarget(AnimClass* pThis)
 		}
 		else
 		{
-			if (auto const pBullet = specific_cast<BulletClass*>(pThis->OwnerObject))
+			if (auto const pBullet = cast_to<BulletClass*, true>(pThis->OwnerObject))
 				return pBullet->Owner;
 			else
 				return pThis->OwnerObject;
@@ -399,27 +373,11 @@ AbstractClass* AnimExtData::GetTarget(AnimClass* pThis)
 	}
 	case DamageDelayTargetFlag::Invoker:
 	{
-		if (auto const pExt = AnimExtContainer::Instance.Find(pThis))
-			return pExt->Invoker;
+		return ((FakeAnimClass*)pThis)->_GetExtData()->Invoker;
 	}
 	}
 
 	return nullptr;
-}
-
-bool AnimExtData::InvalidateIgnorable(AbstractClass* ptr)
-{
-	switch (VTable::Get(ptr))
-	{
-	case BuildingClass::vtable:
-	case InfantryClass::vtable:
-	case UnitClass::vtable:
-	case AircraftClass::vtable:
-	case ParticleSystemClass::vtable:
-		return false;
-	}
-
-	return true;
 }
 
 void AnimExtData::InvalidatePointer(AbstractClass* const ptr, bool bRemoved)
@@ -427,8 +385,8 @@ void AnimExtData::InvalidatePointer(AbstractClass* const ptr, bool bRemoved)
 	AnnounceInvalidPointer(this->Invoker, ptr, bRemoved);
 	AnnounceInvalidPointer(this->ParentBuilding, ptr, bRemoved);
 
-	if (this->AttachedSystem.get() == ptr)
-		this->AttachedSystem.release();
+	if (this->AttachedSystem == ptr)
+		this->AttachedSystem = nullptr;
 }
 
 void AnimExtData::CreateAttachedSystem()
@@ -444,11 +402,11 @@ void AnimExtData::CreateAttachedSystem()
 	if (pData->AttachedSystem->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
 		nLoc.Z += 100;
 
-	this->AttachedSystem.reset(GameCreate<ParticleSystemClass>(
+	this->AttachedSystem = (GameCreate<ParticleSystemClass>(
 		pData->AttachedSystem.Get(),
 		nLoc,
 		pThis->GetCell(),
-		pThis,
+		nullptr,
 		CoordStruct::Empty,
 		pThis->GetOwningHouse()
 	));
@@ -488,8 +446,7 @@ const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimCla
 
 	if (forceOwnership || !pTypeExt->NoOwner)
 	{
-		if (auto const pAnimExt = AnimExtContainer::Instance.Find(pAnim))
-			pAnimExt->Invoker = pTechnoInvoker;
+		((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pTechnoInvoker;
 
 		const auto Owner = pTypeExt->GetAnimOwnerHouseKind();
 
@@ -528,8 +485,8 @@ TechnoClass* AnimExtData::GetTechnoInvoker(AnimClass* pThis)
 	}
 
 	//additional behaviour 1
-	auto const pExt = AnimExtContainer::Instance.Find(pThis);
-	if (pExt && pExt->Invoker)
+	auto const pExt = ((FakeAnimClass*)pThis)->_GetExtData();
+	if (pExt->Invoker)
 		return pExt->Invoker;
 
 	//additional behaviour 2
@@ -551,12 +508,12 @@ Layer __fastcall AnimExtData::GetLayer_patch(AnimClass* pThis, void* _)
 
 	if (pExt->Layer_UseObjectLayer.Get())
 	{
-		if (auto const pFoot = generic_cast<FootClass*>(pThis->OwnerObject))
+		if (auto const pFoot = flag_cast_to<FootClass*, false>(pThis->OwnerObject))
 		{
 			if (auto const pLocomotor = pFoot->Locomotor.GetInterfacePtr())
 				return pLocomotor->In_Which_Layer();
 		}
-		else if (auto const pBullet = specific_cast<BulletClass*>(pThis->OwnerObject))
+		else if (auto const pBullet = cast_to<BulletClass*, false>(pThis->OwnerObject))
 			return pBullet->InWhichLayer();
 
 		return pThis->OwnerObject->ObjectClass::InWhichLayer();
@@ -568,7 +525,7 @@ Layer __fastcall AnimExtData::GetLayer_patch(AnimClass* pThis, void* _)
 void AnimExtData::SpawnFireAnims(AnimClass* pThis)
 {
 	auto const pType = pThis->Type;
-	auto const pExt = AnimExtContainer::Instance.Find(pThis);
+	auto const pExt = ((FakeAnimClass*)pThis)->_GetExtData();
 	auto const pTypeExt = AnimTypeExtContainer::Instance.Find(pType);
 	auto const coords = pThis->GetCoords();
 
@@ -594,7 +551,7 @@ void AnimExtData::SpawnFireAnims(AnimClass* pThis)
 			if (attach && pThis->OwnerObject)
 				pAnim->SetOwnerObject(pThis->OwnerObject);
 
-			auto const pExtNew = AnimExtContainer::Instance.Find(pAnim);
+			auto const pExtNew = ((FakeAnimClass*)pAnim)->_GetExtData();
 			pExtNew->Invoker = pExt->Invoker ? pExt->Invoker : pExtNew->Invoker;
 		};
 
@@ -663,6 +620,60 @@ void AnimExtData::SpawnFireAnims(AnimClass* pThis)
 	}
 }
 
+// Changes type of anim in similar fashion to Next.
+void AnimExtData::ChangeAnimType(AnimClass* pAnim, AnimTypeClass* pNewType, bool resetLoops, bool restart)
+{
+	double percentThrough = pAnim->Animation.Value / static_cast<double>(pAnim->Type->End);
+
+	if (pNewType->End == -1)
+	{
+		pNewType->End = pNewType->GetImage()->Frames;
+		if (pNewType->Shadow)
+			pNewType->End /= 2;
+	}
+
+	if (pNewType->LoopEnd == -1)
+	{
+		pNewType->LoopEnd = pNewType->End;
+	}
+
+	pAnim->Type = pNewType;
+
+	if (resetLoops)
+		pAnim->RemainingIterations = static_cast<byte>(pNewType->LoopCount);
+
+	pAnim->Accum = 0;
+	pAnim->UnableToContinue = false;
+	pAnim->Reverse = pNewType->Reverse;
+
+	int rate = pNewType->Rate;
+	if (pNewType->RandomRate.Min || pNewType->RandomRate.Max)
+		rate = ScenarioClass::Instance->Random.RandomRanged(pNewType->RandomRate.Min, pNewType->RandomRate.Max);
+	if (pNewType->Normalized)
+		rate = GameOptionsClass::Instance->GetAnimSpeed(rate);
+
+	pAnim->Animation.Start(rate, pNewType->Reverse ? -1 : 1);
+
+	if (restart)
+	{
+		pAnim->Animation.Value = pNewType->Reverse ? pNewType->End : pNewType->Start;
+		pAnim->Start();
+	}
+	else
+	{
+		pAnim->Animation.Value = static_cast<int>(pNewType->End * percentThrough);
+	}
+
+	const auto pExt = ((FakeAnimClass*)pAnim)->_GetExtData();
+	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pNewType);
+
+	if (pExt->AttachedSystem && pExt->AttachedSystem->Type != pTypeExt->AttachedSystem.Get())
+		pExt->AttachedSystem = nullptr;
+
+	if (!pExt->AttachedSystem && pTypeExt->AttachedSystem)
+		pExt->CreateAttachedSystem();
+}
+
 // =============================
 // load / save
 
@@ -674,51 +685,137 @@ void AnimExtData::Serialize(T& Stm)
 		.Process(this->BackupCoords)
 		.Process(this->DeathUnitFacing)
 		.Process(this->DeathUnitTurretFacing)
-		.Process(this->Invoker)
+		.Process(this->Invoker, true)
 		.Process(this->OwnerSet)
 		.Process(this->AllowCreateUnit)
 		.Process(this->WasOnBridge)
-		.Process(this->AttachedSystem)
-		.Process(this->ParentBuilding)
+		.Process(this->AttachedSystem, true)
+		.Process(this->ParentBuilding, true)
 		.Process(this->CreateUnitLocation)
 		.Process(this->SpawnsStatusData)
 		;
 }
 
 // =============================
-// container
-
-AnimExtContainer AnimExtContainer::Instance;
-std::vector<AnimExtData*> AnimExtContainer::Pool;
-
-// =============================
 // hooks
 
-//Only Extend Anim that Has "Type" Pointer
-DEFINE_HOOK_AGAIN(0x4228D2, AnimClass_CTOR, 0x5)
+#include <Misc/SyncLogging.h>
+
+namespace CTORTemp
+{
+	CoordStruct coords;
+	unsigned int callerAddress;
+}
+
+DEFINE_HOOK(0x421EA0, AnimClass_CTOR_SetContext, 0x6)
+{
+	GET_STACK(CoordStruct*, coords, 0x8);
+	GET_STACK(unsigned int, callerAddress, 0x0);
+
+	CTORTemp::coords = *coords;
+	CTORTemp::callerAddress = callerAddress;
+
+	return 0;
+}
+
+#ifdef TEST
+#define GET_REGISTER_STATIC_2(type, dst, reg) static type dst; _asm { mov dst, reg }
+
+[[ noreturn ]] static NOINLINE NAKED void AnimClass_DTOR_Ext() noexcept
+{
+	GET_REGISTER_STATIC_2(AnimClass*, this_ptr, esi);
+	if (!this_ptr->Type)
+	{
+		goto original_code;
+	}
+
+	FakeAnimClass::Remove(this_ptr);
+
+original_code:
+	_asm { mov eax, ds:0xA8E9A0 } // GameActive
+	JMP_REG(ebx, 0x422912);
+}
+
+[[ noreturn ]] static NOINLINE NAKED void AnimClass_CTOR_Ext() noexcept
+{
+	GET_REGISTER_STATIC_2(AnimClass*, this_ptr, esi); // Current "this" pointer.
+
+	if (Phobos::Otamaa::DoingLoadGame || !this_ptr->Type)
+		goto original_code;
+
+	// Do this here instead of using a duplicate hook in SyncLogger.cpp
+	if (!SyncLogger::HooksDisabled && this_ptr->UniqueID != -2)
+		SyncLogger::AddAnimCreationSyncLogEvent(CTORTemp::coords, CTORTemp::callerAddress);
+
+	if (this_ptr->UniqueID == -2)
+	{
+		Debug::Log("Anim[%s - %x] with some weird ID\n", this_ptr->Type->ID, this_ptr);
+	}
+
+	FakeAnimClass::ClearExtAttribute(this_ptr);
+
+	if (AnimExtData* val = FakeAnimClass::AllocateUnchecked(this_ptr))
+	{
+		FakeAnimClass::SetExtAttribute(this_ptr, val);
+
+		// Something about creating this in constructor messes with debris anims, so it has to be done for them later.
+		if (!this_ptr->HasExtras)
+			val->CreateAttachedSystem();
+	}
+
+original_code:
+	/**
+	 *  Stolen bytes/code.
+	 */
+	this_ptr->IsAlive = true;
+
+	/**
+	 *  Restore some registers.
+	 */
+	_asm { mov ecx, this_ptr }
+	_asm { mov edx, [ecx + 0xC8] } // this->Class
+	_asm { mov eax, edx }
+
+	JMP_REG(edx, 0x4220B7);
+}
+
+#undef GET_REGISTER_STATIC_2
+DEFINE_JUMP(LJMP, 0x4220AA, MiscTools::to_DWORD(&AnimClass_CTOR_Ext));
+DEFINE_JUMP(LJMP, 0x42290B, MiscTools::to_DWORD(&AnimClass_DTOR_Ext));
+
+//DEFINE_HOOK(0x422A52, AnimClass_DTOR, 0x6)
+//{
+//	GET(AnimClass* const, pItem, ESI);
+//	FakeAnimClass::Remove(pItem);
+//	return 0;
+//}
+
+#else
 DEFINE_HOOK(0x422131, AnimClass_CTOR, 0x6)
 {
 	GET(AnimClass*, pItem, ESI);
 
-	if (pItem)
+	if (Phobos::Otamaa::DoingLoadGame)
+		return 0x0;
+
+	// Do this here instead of using a duplicate hook in SyncLogger.cpp
+	if (!SyncLogger::HooksDisabled && pItem->UniqueID != -2)
+		SyncLogger::AddAnimCreationSyncLogEvent(CTORTemp::coords, CTORTemp::callerAddress);
+
+	if (pItem->UniqueID == -2)
 	{
-		if (pItem->Fetch_ID() == -2 && pItem->Type)
-		{
-			Debug::Log("Anim[%s - %x] with some weird ID\n", pItem->Type->ID, pItem);
-		}
+		Debug::Log("Anim[%s - %x] with some weird ID\n", pItem->Type->ID, pItem);
+	}
 
-		if (!pItem->Type)
-		{
-			Debug::Log("Anim[%x] with no Type pointer\n", pItem);
-			return 0x0;
-		}
+	FakeAnimClass::ClearExtAttribute(pItem);
 
-		if (auto pExt = AnimExtContainer::Instance.Allocate(pItem))
-		{
-			// Something about creating this in constructor messes with debris anims, so it has to be done for them later.
-			if (!pItem->HasExtras)
-				pExt->CreateAttachedSystem();
-		}
+	if (AnimExtData* val = FakeAnimClass::AllocateUnchecked(pItem))
+	{
+		FakeAnimClass::SetExtAttribute(pItem, val);
+
+		// Something about creating this in constructor messes with debris anims, so it has to be done for them later.
+		if (!pItem->HasExtras)
+			val->CreateAttachedSystem();
 	}
 
 	return 0;
@@ -727,51 +824,107 @@ DEFINE_HOOK(0x422131, AnimClass_CTOR, 0x6)
 DEFINE_HOOK(0x422A52, AnimClass_DTOR, 0x6)
 {
 	GET(AnimClass* const, pItem, ESI);
-	AnimExtContainer::Instance.Remove(pItem);
+	FakeAnimClass::Remove(pItem);
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x425280, AnimClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x4253B0, AnimClass_SaveLoad_Prefix, 0x5)
-{
-	GET_STACK(AnimClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
-	AnimExtContainer::Instance.PrepareStream(pItem, pStm);
+#endif
 
-	return 0;
+HRESULT __stdcall FakeAnimClass::_Load(IStream* pStm)
+{
+	HRESULT res = this->AnimClass::Load(pStm);
+
+	if (SUCCEEDED(res))
+	{
+		FakeAnimClass::ClearExtAttribute(this);
+		auto buffer = FakeAnimClass::AllocateUnchecked(this);
+		FakeAnimClass::SetExtAttribute(this, buffer);
+
+		if (!buffer)
+			return -1;
+
+		PhobosByteStream loader { 0 };
+		if (!loader.ReadBlockFromStream(pStm))
+			return -1;
+
+		PhobosStreamReader reader { loader };
+		if (!reader.Expect(AnimExtData::Canary))
+			return -1;
+
+		reader.RegisterChange(buffer);
+		buffer->LoadFromStream(reader);
+
+		if (reader.ExpectEndOfBlock())
+		{
+			return S_OK;
+		}
+	}
+
+	return res;
 }
 
-DEFINE_HOOK_AGAIN(0x425391, AnimClass_Load_Suffix, 0x7)
-DEFINE_HOOK_AGAIN(0x4253A2, AnimClass_Load_Suffix, 0x7)
-DEFINE_HOOK(0x425358, AnimClass_Load_Suffix, 0x7)
+HRESULT __stdcall FakeAnimClass::_Save(IStream* pStm, bool clearDirty)
 {
-	AnimExtContainer::Instance.LoadStatic();
-	return 0;
+	HRESULT res = this->AnimClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+	{
+		AnimExtData* const buffer = FakeAnimClass::GetExtAttribute(this);
+
+		// write the current pointer, the size of the block, and the canary
+		PhobosByteStream saver { AnimExtData::size_Of() };
+		PhobosStreamWriter writer { saver };
+
+		writer.Save(AnimExtData::Canary);
+		writer.Save(buffer);
+
+		// save the data
+		buffer->SaveToStream(writer);
+
+		// save the block
+		if (!saver.WriteBlockToStream(pStm))
+		{
+			//Debug::Log("[SaveGame] FakeAnimClass fail to write 0x%X block(s) to stream\n", saver.Size());
+			return -1;
+		}
+
+		//Debug::Log("[SaveGame] FakeAnimClass used up 0x%X bytes\n", saver.Size());
+	}
+
+	return res;
 }
 
-DEFINE_HOOK(0x4253FF, AnimClass_Save_Suffix, 0x5)
+DEFINE_JUMP(VTABLE, 0x7E3368, MiscTools::to_DWORD(&FakeAnimClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7E336C, MiscTools::to_DWORD(&FakeAnimClass::_Save))
+
+DEFINE_HOOK(0x425164, AnimClass_Detach, 0x6)
 {
-	AnimExtContainer::Instance.SaveStatic();
-	return 0;
+	GET(FakeAnimClass* const, pThis, ESI);
+	GET(AbstractClass*, target, EDI);
+	GET_STACK(bool, all, STACK_OFFS(0xC, -0x8));
+
+	if (auto pExt = pThis->_GetExtData())
+		pExt->InvalidatePointer(target, all);
+
+	R->EBX(0);
+
+	if (pThis->OwnerObject == target && target)
+	{
+		auto const pTechno = flag_cast_to<TechnoClass*, false>(target);
+
+		if (!pTechno || !TechnoExtContainer::Instance.Find(pTechno)->IsDetachingForCloak)
+		{
+			return 0x425174;
+		}
+	}
+
+	if (pThis->Type == target)
+	{
+		Debug::Log("Anim[0x%x] detaching Type[%s] Pointer ! \n", pThis, pThis->Type->ID);
+		pThis->Type = nullptr;
+	}
+
+	return 0x4251B1;
 }
 
-//DEFINE_HOOK(0x425164, AnimClass_Detach, 0x6)
-//{
-//	GET(AnimClass* const, pThis, ESI);
-//	GET(void*, target, EDI);
-//	GET_STACK(bool, all, STACK_OFFS(0xC, -0x8));
-//
-//	AnimExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
-//
-//	R->EBX(0);
-//	return pThis->OwnerObject == target && target ? 0x425174 : 0x4251A3;
-//}
-
-void __fastcall AnimClass_Detach_Wrapper(AnimClass* pThis, DWORD, AbstractClass* target, bool all)
-{
-	AnimExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
-	pThis->AnimClass::PointerExpired(target, all);
-}
-
-DEFINE_JUMP(VTABLE, 0x7E337C, GET_OFFSET(AnimClass_Detach_Wrapper));
-DEFINE_JUMP(VTABLE, 0x7E3390, GET_OFFSET(AnimExtData::GetOwningHouse_Wrapper));
+DEFINE_JUMP(VTABLE, 0x7E3390, MiscTools::to_DWORD(&FakeAnimClass::_GetOwningHouse));

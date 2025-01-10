@@ -2,33 +2,30 @@
 
 #include <AbstractClass.h>
 
-std::unique_ptr<PhobosGlobal> PhobosGlobal::GlobalObject;
-PhobosGlobal::ColorsData PhobosGlobal::ColorDatas;
+PhobosGlobal PhobosGlobal::GlobalObject;
 
 void PhobosGlobal::Clear()
 {
 	auto pInstance = PhobosGlobal::Instance();
-
-	if (!pInstance)
-		return;
-
 	pInstance->DetonateDamageArea = true;
 
 	pInstance->TempFoundationData1.clear();
 	pInstance->TempFoundationData2.clear();
 	pInstance->TempCoveredCellsData.clear();
-	PhobosGlobal::ColorDatas.reset();
+	pInstance->ColorDatas.reset();
 	pInstance->PathfindTechno.Clear();
+	pInstance->CurCopyArray.clear();
+	pInstance->LandTypeParseCounter = 0;
 }
 
 void PhobosGlobal::PointerGotInvalid(AbstractClass* ptr, bool removed)
 {
 	auto pInstance = PhobosGlobal::Instance();
-
-	if (!pInstance)
-		return;
-
 	pInstance->PathfindTechno.InvalidatePointer(ptr, removed);
+	for (auto& copyArr : pInstance->CurCopyArray)
+	{
+		copyArr.second.Invalidate(ptr, removed);
+	}
 }
 
 bool PhobosGlobal::SaveGlobals(PhobosStreamWriter& stm) { return PhobosGlobal::Instance()->Serialize(stm); }

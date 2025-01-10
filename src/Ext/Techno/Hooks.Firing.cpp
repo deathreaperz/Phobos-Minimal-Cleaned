@@ -16,6 +16,8 @@
 
 #include <Misc/DynamicPatcher/Techno/Passengers/PassengersFunctional.h>
 
+#include <TerrainClass.h>
+
 bool DisguiseAllowed(const TechnoTypeExtData* pThis, ObjectTypeClass* pThat)
 {
 	if (!pThis->DisguiseDisAllowed.empty() && pThis->DisguiseDisAllowed.Contains(pThat))
@@ -36,18 +38,53 @@ DEFINE_HOOK(0x7413DD, UnitClass_Fire_RecoilForce, 0x6)
 
 	const auto& force = WeaponTypeExtContainer::Instance.Find(pTraj->WeaponType)->RecoilForce;
 
-	if (!force.isset() || std::abs(force) < 0.005)
+	if (!force.isset() || Math::abs(force.Get()) < 0.005)
 		return 0x0;
 
 	double force_result = force / MaxImpl(pThis->Type->Weight, 1.);
 
-	if (std::abs(force) < 0.002)
+	if (Math::abs(force.Get()) < 0.002)
 		return 0;
 
 	const double theta = pThis->GetRealFacing().GetRadian<32>() - pThis->PrimaryFacing.Current().GetRadian<32>();
 
 	pThis->RockingForwardsPerFrame = (float)(-force_result * Math::cos(theta));
 	pThis->RockingSidewaysPerFrame = (float)(force_result * Math::sin(theta) * std::pow(pThis->Type->VoxelScaleX / pThis->Type->VoxelScaleY, 2));
+
+	return 0;
+}
+
+#include <Ext/Infantry/Body.h>
+
+DEFINE_HOOK(0x6FF905, TechnoClass_FireAt_FireOnce, 0x6) {
+	GET(TechnoClass*, pThis, ESI);
+
+	if (auto const pInf = cast_to<InfantryClass*, false>(pThis))
+	{
+		GET(WeaponTypeClass*, pWeapon, EBX);
+
+		if (!WeaponTypeExtContainer::Instance.Find(pWeapon)->FireOnce_ResetSequence)
+			InfantryExtContainer::Instance.Find(pInf)->SkipTargetChangeResetSequence = true;
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x51B20E, InfantryClass_AssignTarget_FireOnce, 0x6)
+{
+	enum { SkipGameCode = 0x51B255 };
+
+	GET(InfantryClass*, pThis, ESI);
+	GET(AbstractClass*, pTarget, EBX);
+
+	auto const pExt = InfantryExtContainer::Instance.Find(pThis);
+
+	if (!pTarget && pExt->SkipTargetChangeResetSequence)
+	{
+		pThis->IsFiring = false;
+		pExt->SkipTargetChangeResetSequence = false;
+		return SkipGameCode;
+	}
 
 	return 0;
 }
@@ -157,19 +194,29 @@ DEFINE_HOOK(0x6FC3FE, TechnoClass_CanFire_Immunities, 0x6)
 DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 {
 	GET(TechnoClass*, pThis, ESI);
-	GET(WeaponTypeClass*, pWeapon, EDI);
+	GET(FakeWeaponTypeClass*, pWeapon, EDI);
 	GET_STACK(AbstractClass*, pTarget, STACK_OFFS(0x20, -0x4));
 
-	enum { FireIllegal = 0x6FCB7E, Continue = 0x0, FireCant = 0x6FCD29 };
+	enum { FireIllegal = 0x6FCB7E, Continue = 0x0 , FireCant = 0x6FCD29 };
 
-	auto const pObjectT = generic_cast<ObjectClass*>(pTarget);
+	auto const pObjectT = flag_cast_to<ObjectClass*, false>(pTarget);
+	auto const pTechnoT = flag_cast_to<TechnoClass*, false>(pTarget);
+	auto const pWeaponExt = pWeapon->_GetExtData();
 
-	if (auto pTerrain = specific_cast<TerrainClass*>(pTarget))
+	if (pWeaponExt->NoRepeatFire > 0) {
+		if (pTechnoT) {
+			const auto pTargetTechnoExt = TechnoExtContainer::Instance.Find(pTechnoT);
+
+			if ((Unsorted::CurrentFrame - pTargetTechnoExt->LastBeLockedFrame) < pWeaponExt->NoRepeatFire)
+				return FireIllegal;
+		}
+	}
+
+	if (auto pTerrain = cast_to<TerrainClass*, false>(pTarget))
 		if (pTerrain->Type->Immune)
 			return FireIllegal;
 
-	if (pWeapon->Warhead->MakesDisguise && pObjectT)
-	{
+	if (pWeapon->Warhead->MakesDisguise && pObjectT) {
 		if (!DisguiseAllowed(TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType()), pObjectT->GetDisguise(true)))
 			return FireIllegal;
 	}
@@ -178,12 +225,10 @@ DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 	// gunners and opentopped together do not support temporals, because the gunner
 	// takes away the TemporalImUsing from the infantry, and thus it is missing
 	// when the infantry fires out of the opentopped vehicle
-	if (pWeapon->Warhead->Temporal && pThis->Transporter)
-	{
+	if (pWeapon->Warhead->Temporal && pThis->Transporter) {
 		auto const pType = pThis->Transporter->GetTechnoType();
-		if (pType->Gunner && pType->OpenTopped)
-		{
-			if (!pThis->TemporalImUsing)
+		if (pType->Gunner && pType->OpenTopped) {
+			if(!pThis->TemporalImUsing)
 				return FireCant;
 		}
 	}
@@ -206,8 +251,7 @@ DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 	auto const& [pTargetTechno, targetCell] = TechnoExtData::GetTargets(pObjectT, pTarget);
 
 	// AAOnly doesn't need to be checked if LandTargeting=1.
-	if (pThis->GetTechnoType()->LandTargeting != LandTargetingType::Land_not_okay && pWeapon->Projectile->AA && pTarget && !pTarget->IsInAir())
-	{
+	if (pThis->GetTechnoType()->LandTargeting != LandTargetingType::Land_not_okay && pWeapon->Projectile->AA && pTarget && !pTarget->IsInAir()) {
 		if (BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->AAOnly)
 			return FireIllegal;
 	}
@@ -228,29 +272,6 @@ DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 	}
 
 	return Continue;
-}
-
-// Weapon Firing
-DEFINE_HOOK(0x6FE43B, TechnoClass_FireAt_OpenToppedDmgMult, 0x6) //7
-{
-	enum { ApplyDamageMult = 0x6FE45A, ContinueCheck = 0x6FE460 };
-
-	GET(TechnoClass* const, pThis, ESI);
-
-	//replacing whole check due to `fild`
-	if (pThis->InOpenToppedTransport)
-	{
-		GET_STACK(int, nDamage, STACK_OFFS(0xB0, 0x84));
-		if (auto const  pTransport = pThis->Transporter)
-		{
-			float nDamageMult = TechnoTypeExtContainer::Instance.Find(pTransport->GetTechnoType())->OpenTopped_DamageMultiplier
-				.Get(RulesClass::Instance->OpenToppedDamageMultiplier);
-			R->EAX(int(nDamage * nDamageMult));
-			return ApplyDamageMult;
-		}
-	}
-
-	return ContinueCheck;
 }
 
 DEFINE_HOOK(0x6FE19A, TechnoClass_FireAt_AreaFire, 0x6) //7
@@ -295,7 +316,7 @@ DEFINE_HOOK(0x6FC5C7, TechnoClass_CanFire_OpenTopped, 0x6)
 	if (pTransport->Transporter || (pTransport->Deactivated && !pTypeExt->OpenTopped_AllowFiringIfDeactivated))
 		return Illegal;
 
-	if (pTypeExt->OpenTopped_CheckTransportDisableWeapons && TechnoExtContainer::Instance.Find(pTransport)->AE_DisableWeapons)
+	if (pTypeExt->OpenTopped_CheckTransportDisableWeapons && TechnoExtContainer::Instance.Find(pTransport)->AE.DisableWeapons)
 		return OutOfRange;
 
 	return Continue;
@@ -337,8 +358,7 @@ DEFINE_HOOK(0x7012C0, TechnoClass_WeaponRange, 0x8) //4
 				{
 					int TWeaponRange = WeaponTypeExtData::GetRangeWithModifiers(pTWeapon->WeaponType, pPassenger);
 
-					if (TWeaponRange < smallestRange)
-					{
+					if (TWeaponRange < smallestRange) {
 						smallestRange = TWeaponRange;
 					}
 				}
@@ -371,7 +391,7 @@ DEFINE_HOOK(0x6FC689, TechnoClass_CanFire_LandNavalTarget, 0x6)
 	GET_STACK(AbstractClass*, pTarget, STACK_OFFSET(0x20, 0x4));
 
 	const auto pType = pThis->GetTechnoType();
-	auto pCell = specific_cast<CellClass*>(pTarget);
+	auto pCell = cast_to<CellClass*, false>(pTarget);
 
 	if (pCell)
 	{
@@ -381,7 +401,7 @@ DEFINE_HOOK(0x6FC689, TechnoClass_CanFire_LandNavalTarget, 0x6)
 			return DisallowFiring;
 		}
 	}
-	else if (const auto pTerrain = specific_cast<TerrainClass*>(pTarget))
+	else if (const auto pTerrain = cast_to<TerrainClass*, false>(pTarget))
 	{
 		pCell = pTerrain->GetCell();
 
@@ -407,7 +427,7 @@ DEFINE_HOOK(0x6FC815, TechnoClass_CanFire_CellTargeting, 0x7)
 	GET(AbstractClass*, pTarget, EBX);
 	GET(TechnoClass*, pThis, ESI);
 
-	CellClass* pCell = specific_cast<CellClass*>(pTarget);
+	CellClass* pCell = cast_to<CellClass*, false>(pTarget);
 	if (!pCell)
 		return SkipLandTargetingCheck;
 
@@ -440,6 +460,7 @@ DEFINE_HOOK(0x6FC815, TechnoClass_CanFire_CellTargeting, 0x7)
 // 	return weaponPrimary;
 // }
 
+
 DEFINE_HOOK(0x51C1F1, InfantryClass_CanEnterCell_WallWeapon, 0x5)
 {
 	enum { SkipGameCode = 0x51C1FE };
@@ -464,21 +485,18 @@ DEFINE_HOOK(0x73F495, UnitClass_CanEnterCell_WallWeapon, 0x6)
 	return SkipGameCode;
 }
 
-DEFINE_HOOK(0x70095A, TechnoClass_WhatAction_WallWeapon, 0x6)
-{
+DEFINE_HOOK(0x70095A, TechnoClass_WhatAction_WallWeapon, 0x6) {
 	GET_STACK(OverlayTypeClass*, pOverlayTypeClass, STACK_OFFSET(0x2C, -0x18));
 	GET(TechnoClass*, pThis, ESI);
 	R->EAX(pThis->GetWeapon(TechnoExtData::GetWeaponIndexAgainstWall(pThis, pOverlayTypeClass)));
 	return 0;
 }
 
-namespace CellEvalTemp
-{
+namespace CellEvalTemp {
 	int weaponIndex;
 }
 
-DEFINE_HOOK(0x6F8C9D, TechnoClass_EvaluateCell_SetContext, 0x7)
-{
+DEFINE_HOOK(0x6F8C9D, TechnoClass_EvaluateCell_SetContext, 0x7) {
 	GET(int, weaponIndex, EAX);
 
 	CellEvalTemp::weaponIndex = weaponIndex;
@@ -502,17 +520,46 @@ DEFINE_HOOK(0x6F8DCC, TechnoClass_EvaluateCell_GetWeaponRange, 0x6)
 
 #pragma endregion
 
-//DEFINE_HOOK(0x6FDDC0, TechnoClass_FireAt_DropPassenger, 0x6)
-//{
-//	GET(TechnoClass*, pThis, ESI);
-//	GET(AbstractClass*, pTarget, EDI);
-//	GET(WeaponTypeClass*, pWeapon, EBX);
-//
-//	if (pThis->Passengers.FirstPassenger)
-//	{
-//		// TODO : implement this for UnitClass
-//		pThis->DropOffParadropCargo();
-//	}
-//
-//	return 0x0;
-//}
+DEFINE_HOOK(0x6FDDC0, TechnoClass_FireAt_Early, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(AbstractClass*, pTarget, EDI);
+	GET(FakeWeaponTypeClass*, pWeapon, EBX);
+
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (pExt->AE.HasOnFireDiscardables) {
+		for (auto& attachEffect : pExt->PhobosAE) {
+				if(!attachEffect || attachEffect->ShouldBeDiscarded)
+					continue;
+
+			if(GeneralUtils::Contains<DiscardCondition>(attachEffect->GetType()->DiscardOn ,DiscardCondition::Firing))
+				attachEffect->ShouldBeDiscarded = true;
+		}
+	}
+
+	// if (pThis->Passengers.FirstPassenger)
+	// {
+	// 	// TODO : implement this for UnitClass
+	// 	pThis->DropOffParadropCargo();
+	// }
+
+	if (pWeapon) {
+		auto pWeaponExt = pWeapon->_GetExtData();
+		if (const auto pTargetTechno = flag_cast_to<TechnoClass*>(pTarget)) {
+				auto const pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
+			if (pWeaponExt->NoRepeatFire > 0) {
+				pTargetExt->LastBeLockedFrame = Unsorted::CurrentFrame;
+			}
+
+			if (pWeaponExt->AttachEffect_Enable) {
+				auto const info = &pWeaponExt->AttachEffects;
+				PhobosAttachEffectClass::Attach(pTargetTechno, pThis->Owner, pThis, pWeapon->Warhead, info);
+				PhobosAttachEffectClass::Detach(pTargetTechno, info);
+				PhobosAttachEffectClass::DetachByGroups(pTargetTechno, info);
+			}
+		}
+	}
+
+	return 0x0;
+}

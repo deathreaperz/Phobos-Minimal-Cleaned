@@ -2,14 +2,9 @@
 #include <VoxelAnimTypeClass.h>
 
 #include <Utilities/Container.h>
-#include <Utilities/Constructs.h>
-#include <Utilities/Template.h>
 #include <Utilities/TemplateDef.h>
-#include <Utilities/Debug.h>
-#include <Helpers/Macro.h>
 
 #include <New/Type/LaserTrailTypeClass.h>
-
 #include <Misc/DynamicPatcher/Trails/TrailsManager.h>
 
 class VoxelAnimTypeExtData final
@@ -36,9 +31,6 @@ public:
 	TrailsReader Trails { };
 #pragma endregion
 
-	VoxelAnimTypeExtData() noexcept = default;
-	~VoxelAnimTypeExtData() noexcept = default;
-
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
 
@@ -61,5 +53,19 @@ class VoxelAnimTypeExtContainer final : public Container<VoxelAnimTypeExtData>
 public:
 	static VoxelAnimTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(VoxelAnimTypeExtContainer, VoxelAnimTypeExtData, "VoxelAnimTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(VoxelAnimTypeExtContainer, VoxelAnimTypeExtData, "VoxelAnimTypeClass");
 };
+
+class FakeVoxelAnimTypeClass : public VoxelAnimTypeClass
+{
+public:
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	VoxelAnimTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<VoxelAnimTypeExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeVoxelAnimTypeClass) == sizeof(VoxelAnimTypeClass), "Invalid Size !");

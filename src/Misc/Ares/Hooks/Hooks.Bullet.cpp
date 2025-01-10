@@ -19,6 +19,8 @@
 #include <Ext/VoxelAnim/Body.h>
 #include <Ext/BuildingType/Body.h>
 
+#include <InfantryClass.h>
+
 DEFINE_HOOK(0x5f4fe7, ObjectClass_Put, 8)
 {
 	GET(ObjectClass*, pThis, ESI);
@@ -26,7 +28,7 @@ DEFINE_HOOK(0x5f4fe7, ObjectClass_Put, 8)
 
 	if (pType)
 	{
-		if (auto pBullet = specific_cast<BulletClass*>(pThis))
+		if (auto pBullet = cast_to<BulletClass*, false>(pThis))
 		{
 			BulletExtContainer::Instance.Find(pBullet)->CreateAttachedSystem();
 		}
@@ -130,7 +132,7 @@ DEFINE_HOOK(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
 		HouseClass* pInvoker = nullptr;
 		HouseClass* pVictim = nullptr;
 
-		if (const TechnoClass* Target = generic_cast<TechnoClass*>(pThis->Target))
+		if (const TechnoClass* Target = flag_cast_to<TechnoClass*>(pThis->Target))
 		{
 			pVictim = Target->Owner;
 		}
@@ -149,8 +151,20 @@ DEFINE_HOOK(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
 
 		if (pWarheadExt->SplashList_CreateAll && pWarheadExt->Splashed)
 			types = pWarheadExt->SplashList.GetElements(RulesClass::Instance->SplashList);
-		else if (pWarheadExt->AnimList_CreateAll && !pWarheadExt->Splashed)
-			types = pWarheadExt->AttachedToObject->AnimList;
+		else if (!pWarheadExt->Splashed)
+		{
+			bool createAll = pWarheadExt->AnimList_CreateAll;
+			if (pWarheadExt->HasCrit && !pWarheadExt->Crit_AnimList.empty() && !pWarheadExt->Crit_AnimOnAffectedTargets)
+			{
+				createAll = pWarheadExt->Crit_AnimList_CreateAll.Get(createAll);
+				if (createAll)
+					types = pWarheadExt->Crit_AnimList;
+			}
+			else if (createAll)
+			{
+				types = pWarheadExt->AttachedToObject->AnimList;
+			}
+		}
 
 		for (auto pType : types)
 		{
@@ -171,8 +185,7 @@ DEFINE_HOOK(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
 
 				if (const auto pTech = pThis->Owner)
 				{
-					if (auto const pAnimExt = AnimExtContainer::Instance.Find(pAnim))
-						pAnimExt->Invoker = pTech;
+					((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pTech;
 				}
 
 				if (pAnim->Type->MakeInfantry > -1)
@@ -220,13 +233,12 @@ DEFINE_HOOK(0x46867F, BulletClass_SetMovement_Parachute, 5)
 	//	GET_BASE(VelocityClass *, Trajectory, 0xC);
 
 	R->EBX<BulletClass*>(Bullet);
-	if (!Bullet->Target)
-	{
-		Debug::Log("Bullet [%s - %x] Missing Target Pointer when Unlimbo! , Fallback To CreationCoord to Prevent Crash\n",
-			Bullet->get_ID(), Bullet);
-
-		Bullet->Target = MapClass::Instance->GetCellAt(XYZ);
-	}
+	// if (!Bullet->Target) {
+	// 	Debug::Log("Bullet [%s - %x] Missing Target Pointer when Unlimbo! , Fallback To CreationCoord to Prevent Crash\n",
+	// 		Bullet->get_ID(), Bullet);
+	//
+	// 	Bullet->Target = MapClass::Instance->GetCellAt(XYZ);
+	// }
 
 	const auto pBulletData = BulletTypeExtContainer::Instance.Find(Bullet->Type);
 
@@ -239,6 +251,11 @@ DEFINE_HOOK(0x46867F, BulletClass_SetMovement_Parachute, 5)
 	else
 	{
 		result = Bullet->ObjectClass::Unlimbo(*XYZ, DirType::North);
+	}
+
+	if (!Bullet->Target)
+	{
+		Bullet->Target = MapClass::Instance->GetCellAt(XYZ);
 	}
 
 	R->EAX(result);
@@ -260,12 +277,12 @@ DEFINE_HOOK(0x468FFA, BulletClass_Fire_SplitsB, 6)
 		? 0x46909Au : 0x469008u;
 }
 
-DEFINE_HOOK(0x469EBA, BulletClass_DetonateAt_Splits, 6)
-{
-	GET(BulletClass*, pThis, ESI);
-	BulletExtData::ApplyAirburst(pThis);
-	return 0x46A290;
-}
+//DEFINE_HOOK(0x469EBA, BulletClass_DetonateAt_Splits, 6)
+//{
+//	GET(BulletClass*, pThis, ESI);
+//	BulletExtData::ApplyAirburst(pThis);
+//	return 0x46A290;
+//}
 
 DEFINE_HOOK(0x468000, BulletClass_GetAnimFrame, 6)
 {

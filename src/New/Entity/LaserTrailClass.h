@@ -3,8 +3,11 @@
 #include <GeneralStructures.h>
 #include <LaserDrawClass.h>
 #include <HouseClass.h>
+#include <CoordStruct.h>
+#include <Timers.h>
 
 #include <New/Type/LaserTrailTypeClass.h>
+#include <Utilities/OptionalStruct.h>
 
 #include <vector>
 
@@ -22,7 +25,7 @@ public:
 	int InitialDelay;
 	CDTimerClass InitialDelayTimer;
 
-	LaserTrailClass(LaserTrailTypeClass* pTrailType, ColorStruct nHouseColor,
+	constexpr LaserTrailClass(LaserTrailTypeClass* pTrailType, ColorStruct nHouseColor,
 		CoordStruct flh = { 0, 0, 0 }, bool isOnTurret = false) :
 		Type { pTrailType }
 		, Visible { true }
@@ -37,7 +40,7 @@ public:
 	{
 	}
 
-	LaserTrailClass() :
+	constexpr LaserTrailClass() :
 		Type { nullptr }
 		, Visible { false }
 		, FLH { }
@@ -53,9 +56,9 @@ public:
 
 	virtual ~LaserTrailClass() = default;
 
-	LaserTrailClass(const LaserTrailClass& other) = default;
-	LaserTrailClass& operator=(const LaserTrailClass& other) = default;
-	LaserTrailClass(LaserTrailClass&&) = default;
+	constexpr LaserTrailClass(const LaserTrailClass& other) = default;
+	constexpr LaserTrailClass& operator=(const LaserTrailClass& other) = default;
+	constexpr LaserTrailClass(LaserTrailClass&&) = default;
 
 	bool Update(CoordStruct const& location);
 	void FixZLoc(bool forWho);
@@ -67,13 +70,13 @@ private:
 	template <typename T>
 	bool Serialize(T& stm);
 
-	bool AllowDraw(CoordStruct const& location)
+	constexpr bool AllowDraw(CoordStruct const& location)
 	{
 		return Type && this->Visible && !this->Cloaked && (this->Type->IgnoreVertical ?
-		  (abs(location.X - this->LastLocation.get().X) > 16 || abs(location.Y - this->LastLocation.get().Y) > 16) : true) && IsInitialDelayFinish();
+		  (Math::abs(location.X - this->LastLocation.get().X) > 16 || Math::abs(location.Y - this->LastLocation.get().Y) > 16) : true) && IsInitialDelayFinish();
 	}
 
-	bool IsInitialDelayFinish()
+	constexpr bool IsInitialDelayFinish()
 	{
 		if (!Type)
 			return false;

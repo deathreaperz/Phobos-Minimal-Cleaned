@@ -10,15 +10,19 @@
 #include <Locomotor/Cast.h>
 
 #include <FootClass.h>
+#include <VoxelAnimClass.h>
+#include <SpawnManagerClass.h>
 
 void EffectHelpers::DrawBolt(CoordStruct sourcePos, CoordStruct targetPos, WeaponTypeClass* pWeapon)
 {
 	const auto pTypeExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+#ifdef _Enable
 	if (pTypeExt->WeaponBolt_Data.isset())
 		ElectricBoltClass::Create(sourcePos, targetPos,
 		pTypeExt->WeaponBolt_Data.Get(), 0,
 		pTypeExt->Bolt_ParticleSys.Get(RulesClass::Instance->DefaultSparkSystem), false);
 	else
+
 	{
 		BoltType type {};
 		type.IsAlternateColor = pWeapon->IsAlternateColor;
@@ -41,6 +45,7 @@ void EffectHelpers::DrawBolt(CoordStruct sourcePos, CoordStruct targetPos, Weapo
 
 		EffectHelpers::DrawBolt(sourcePos, targetPos, type);
 	}
+#endif
 }
 
 void Helpers_DP::DrawBulletEffect(WeaponTypeClass* pWeapon, CoordStruct& sourcePos, CoordStruct& targetPos, TechnoClass* pAttacker, AbstractClass* pTarget)
@@ -116,7 +121,7 @@ CoordStruct Helpers_DP::GetForwardCoords(Vector3D<int> const& sourceV, Vector3D<
 
 	// 计算下一个坐标
 	double d = speed / dist;
-	double absX = std::abs(sourceV.X - targetV.X) * d;
+	double absX = Math::abs(sourceV.X - targetV.X) * d;
 	double x = sourceV.X;
 
 	if (sourceV.X < targetV.X)
@@ -132,7 +137,7 @@ CoordStruct Helpers_DP::GetForwardCoords(Vector3D<int> const& sourceV, Vector3D<
 		x = sourceV.X - absX;
 	}
 
-	double absY = std::abs(sourceV.Y - targetV.Y) * d;
+	double absY = Math::abs(sourceV.Y - targetV.Y) * d;
 	double y = sourceV.Y;
 	if (sourceV.Y < targetV.Y)
 	{
@@ -142,7 +147,7 @@ CoordStruct Helpers_DP::GetForwardCoords(Vector3D<int> const& sourceV, Vector3D<
 	{
 		y = sourceV.Y - absY;
 	}
-	double absZ = std::abs(sourceV.Z - targetV.Z) * d;
+	double absZ = Math::abs(sourceV.Z - targetV.Z) * d;
 	double z = sourceV.Z;
 	if (sourceV.Z < targetV.Z)
 	{
@@ -165,7 +170,7 @@ CoordStruct Helpers_DP::GetForwardCoords(Vector3D<float> const& sourceV, Vector3
 
 	// 计算下一个坐标
 	double d = speed / dist;
-	double absX = std::abs(sourceV.X - targetV.X) * d;
+	double absX = Math::abs(sourceV.X - targetV.X) * d;
 	double x = sourceV.X;
 
 	if (sourceV.X < targetV.X)
@@ -181,7 +186,7 @@ CoordStruct Helpers_DP::GetForwardCoords(Vector3D<float> const& sourceV, Vector3
 		x = sourceV.X - absX;
 	}
 
-	double absY = std::abs(sourceV.Y - targetV.Y) * d;
+	double absY = Math::abs(sourceV.Y - targetV.Y) * d;
 	double y = sourceV.Y;
 	if (sourceV.Y < targetV.Y)
 	{
@@ -191,7 +196,7 @@ CoordStruct Helpers_DP::GetForwardCoords(Vector3D<float> const& sourceV, Vector3
 	{
 		y = sourceV.Y - absY;
 	}
-	double absZ = std::abs(sourceV.Z - targetV.Z) * d;
+	double absZ = Math::abs(sourceV.Z - targetV.Z) * d;
 	double z = sourceV.Z;
 	if (sourceV.Z < targetV.Z)
 	{
@@ -416,7 +421,7 @@ CoordStruct Helpers_DP::OneCellOffsetToTarget(CoordStruct& sourcePos, CoordStruc
 	}
 	else
 	{
-		if (std::abs(x) <= 256)
+		if (Math::abs(x) <= 256)
 		{
 			offset.X = x;
 			if (angle > 0)
@@ -432,7 +437,7 @@ CoordStruct Helpers_DP::OneCellOffsetToTarget(CoordStruct& sourcePos, CoordStruc
 		else
 		{
 			offset.Y = y;
-			if (std::abs(angle) < 0.5 * Math::Pi)
+			if (Math::abs(angle) < 0.5 * Math::Pi)
 			{
 				offset.X = 256;
 			}
@@ -526,7 +531,8 @@ CoordStruct Helpers_DP::GetFLHAbsoluteCoords(TechnoClass* pTechno, const CoordSt
 Vector3D<float> Helpers_DP::GetFLHOffset(Matrix3D& matrix3D, CoordStruct& flh)
 {
 	matrix3D.Translate(static_cast<float>(flh.X), static_cast<float>(flh.Y), static_cast<float>(flh.Z));
-	Vector3D<float> result = Matrix3D::MatrixMultiply(matrix3D, Vector3D<float>::Empty);
+	Vector3D<float> result {};
+	Matrix3D::MatrixMultiply(&result, &matrix3D, &Vector3D<float>::Empty);
 	result.Y *= -1;
 	return result;
 }
@@ -563,7 +569,7 @@ Matrix3D Helpers_DP::GetMatrix3D(TechnoClass* pTechno)
 	// Step 1: get body transform matrix
 	Matrix3D matrix3D = Matrix3D::GetIdentity();
 
-	if (auto const pFoot = abstract_cast<FootClass*>(pTechno))
+	if (auto const pFoot = flag_cast_to<FootClass*, false>(pTechno))
 	{
 		if (auto const pLoco = pFoot->Locomotor.GetInterfacePtr())
 		{
@@ -818,7 +824,7 @@ bool Helpers_DP::CanDamageMe(TechnoClass* pTechno, int damage, int distanceFromE
 	{
 		if (data->EffectsRequireVerses)
 		{
-			if (std::abs(
+			if (Math::abs(
 				data->GetVerses(Armor).Verses
 				//GeneralUtils::GetWarheadVersusArmor(pWH , Armor)
 			) < 0.001)
@@ -944,7 +950,7 @@ TechnoClass* Helpers_DP::CreateAndPutTechno(TechnoTypeClass* pType, HouseClass* 
 {
 	if (pType)
 	{
-		auto const pTechno = generic_cast<TechnoClass*>(pType->CreateObject(pHouse));
+		auto const pTechno = flag_cast_to<TechnoClass*, false>(pType->CreateObject(pHouse));
 		bool UnlimboSuccess = false;
 
 		if (!pCell && location != CoordStruct::Empty)
@@ -1007,7 +1013,7 @@ void Helpers_DP::FireWeaponTo(TechnoClass* pShooter, TechnoClass* pAttacker, Abs
 		return;
 
 	CoordStruct targetPos {};
-	if (auto const pFoot = generic_cast<FootClass*>(pTarget))
+	if (auto const pFoot = flag_cast_to<FootClass*>(pTarget))
 		targetPos = CellClass::Cell2Coord(pFoot->GetDestinationMapCoords());
 	else
 		targetPos = pTarget->GetCoords();

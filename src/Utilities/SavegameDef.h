@@ -21,6 +21,8 @@
 #include <ScriptTypeClass.h>
 #include <queue>
 #include <optional>
+#include <RocketStruct.h>
+#include <ScenarioClass.h>
 
 #include "TranslucencyLevel.h"
 #include "Swizzle.h"
@@ -591,14 +593,12 @@ namespace Savegame
 			if (Stm.Load(size))
 			{
 				Value.resize(size);
-				std::vector<char> buffer(size);
-
-				if (!size || Stm.Read(reinterpret_cast<BYTE*>(&buffer[0]), size))
+				if (!size || Stm.Read(reinterpret_cast<BYTE*>(&Value[0]), size))
 				{
-					std::memcpy(Value.data(), buffer.data(), size);
 					return true;
 				}
 			}
+
 			return false;
 		}
 
@@ -1108,6 +1108,11 @@ namespace Savegame
 				return false;
 			}
 
+			//Debug::Log("Loading std::set with(%s) size %d\n", typeid(T).name(), Count);
+
+			if (!Count)
+				return true;
+
 			for (auto ix = 0u; ix < Count; ++ix)
 			{
 				T buffer = T();
@@ -1124,6 +1129,7 @@ namespace Savegame
 		bool WriteToStream(PhobosStreamWriter& Stm, const std::set<T>& Value) const
 		{
 			Stm.Save(Value.size());
+			//Debug::Log("Saving std::set with(%s) size %d\n", typeid(T).name(), Value.size());
 
 			for (const auto& item : Value)
 			{
@@ -1132,6 +1138,7 @@ namespace Savegame
 					return false;
 				}
 			}
+
 			return true;
 		}
 	};

@@ -26,7 +26,7 @@ public:
 	bool MakeInfantry_AI_Scatter { false };
 
 #pragma region CreateUnit
-	Valueable<UnitTypeClass*> CreateUnit {};
+	Valueable<TechnoTypeClass*> CreateUnit {};
 	Valueable<DirType> CreateUnit_Facing { DirType::North };
 	Valueable<bool> CreateUnit_InheritDeathFacings { false };
 	Valueable<bool> CreateUnit_InheritTurretFacings { false };
@@ -113,17 +113,9 @@ public:
 	Valueable<bool> DetachOnCloak { true };
 	Nullable<int> Translucency_Cloaked {};
 
-	Valueable<double> Translucent_Stage1_Percent { 0.2 };
-	Nullable<int> Translucent_Stage1_Frame {};
-	Valueable<TranslucencyLevel> Translucent_Stage1_Translucency { 25 };
-	Valueable<double> Translucent_Stage2_Percent { 0.4 };
-	Nullable<int> Translucent_Stage2_Frame {};
-	Valueable<TranslucencyLevel> Translucent_Stage2_Translucency { 50 };
-	Valueable<double> Translucent_Stage3_Percent { 0.6 };
-	Nullable<int> Translucent_Stage3_Frame {};
-	Valueable<TranslucencyLevel> Translucent_Stage3_Translucency { 75 };
+	Animatable<TranslucencyLevel> Translucent_Keyframes {};
 
-	Nullable<int> CreateUnit_SpawnHeight {};
+	Valueable<int> CreateUnit_SpawnHeight { -1 };
 
 	Valueable<bool> ConstrainFireAnimsToCellSpots { true };
 	Nullable<LandTypeFlags> FireAnimDisallowedLandTypes {};
@@ -136,9 +128,6 @@ public:
 	ValueableVector<AnimTypeClass*> LargeFireAnims {};
 	ValueableVector<double> LargeFireChances {};
 	ValueableVector<double> LargeFireDistances {};
-
-	AnimTypeExtData() noexcept = default;
-	~AnimTypeExtData() noexcept = default;
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
@@ -210,11 +199,6 @@ public:
 private:
 	template <typename T>
 	void Serialize(T& Stm);
-
-private:
-	AnimTypeExtData(const AnimTypeExtData&) = delete;
-	AnimTypeExtData& operator = (const AnimTypeExtData&) = delete;
-	AnimTypeExtData& operator = (AnimTypeExtData&&) = delete;
 };
 
 class AnimClass;
@@ -223,5 +207,18 @@ class AnimTypeExtContainer final : public Container<AnimTypeExtData>
 public:
 	static AnimTypeExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(AnimTypeExtContainer, AnimTypeExtData, "AnimTypeClass");
+	//CONSTEXPR_NOCOPY_CLASSB(AnimTypeExtContainer, AnimTypeExtData, "AnimTypeClass");
 };
+
+class FakeAnimTypeClass : public AnimTypeClass
+{
+public:
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	AnimTypeExtData* _GetExtData()
+	{
+		return *reinterpret_cast<AnimTypeExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeAnimTypeClass) == sizeof(AnimTypeClass), "Invalid Size !");

@@ -5,6 +5,7 @@
 #include <Ext/BulletType/Body.h>
 #include <Ext/Techno/Body.h>
 #include <Ext/Building/Body.h>
+#include <Ext/SWType/Body.h>
 
 #include <New/Type/CursorTypeClass.h>
 
@@ -42,7 +43,7 @@ bool SW_NuclearMissile::Activate(SuperClass* const pThis, const CellStruct& Coor
 		if ((!pThis->Granted || !pThis->OneTime) && pData->Nuke_SiloLaunch)
 		{
 			// find a building owned by the player that can fire this SWType
-			pSilo = specific_cast<BuildingClass*>(this->GetFirer(pThis, Coords, false));
+			pSilo = cast_to<BuildingClass*>(this->GetFirer(pThis, Coords, false));
 		}
 
 		// via silo
@@ -223,8 +224,8 @@ bool SW_NuclearMissile::DropNukeAt(SuperWeaponTypeClass* pSuper, CoordStruct con
 	CoordStruct nOffs { 0 , 0, pPayload->Projectile->DetonationAltitude };
 	CoordStruct dest = to + nOffs;
 
-	auto nCos = Math::cos(1.570748388432313); // Accuracy is different from the game
-	auto nSin = Math::sin(1.570748388432313); // Accuracy is different from the game
+	constexpr auto nCos = gcem::cos(1.570748388432313); // Accuracy is different from the game
+	constexpr auto nSin = gcem::sin(1.570748388432313); // Accuracy is different from the game
 
 	double nX = nCos * nCos * -1.0;
 	double nY = nCos * nSin * -1.0;

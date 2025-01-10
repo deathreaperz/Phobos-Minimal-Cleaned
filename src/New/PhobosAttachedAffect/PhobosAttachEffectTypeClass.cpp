@@ -1,7 +1,5 @@
 #include "PhobosAttachEffectTypeClass.h"
 
-PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> PhobosAttachEffectTypeClass::GroupsMap;
-Enumerable<PhobosAttachEffectTypeClass>::container_t Enumerable<PhobosAttachEffectTypeClass>::Array;
 template<>
 const char* Enumerable<PhobosAttachEffectTypeClass>::GetMainSection()
 {
@@ -27,7 +25,7 @@ std::vector<PhobosAttachEffectTypeClass*> PhobosAttachEffectTypeClass::GetTypesF
 
 void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
 {
-	const char* pSection = this->Name;
+	const char* pSection = this->Name.c_str();
 
 	if (IS_SAME_STR_N(pSection, NONE_STR))
 		return;
@@ -44,6 +42,7 @@ void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->PenetratesForceShield.Read(exINI, pSection, "PenetratesForceShield");
 	this->Animation.Read(exINI, pSection, "Animation");
 	this->CumulativeAnimations.Read(exINI, pSection, "CumulativeAnimations");
+	this->CumulativeAnimations_RestartOnChange.Read(exINI, pSection, "CumulativeAnimations.RestartOnChange");
 	this->Animation_ResetOnReapply.Read(exINI, pSection, "Animation.ResetOnReapply");
 	this->Animation_OfflineAction.Read(exINI, pSection, "Animation.OfflineAction");
 	this->Animation_TemporalAction.Read(exINI, pSection, "Animation.TemporalAction");
@@ -60,6 +59,8 @@ void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
 
 	this->FirepowerMultiplier.Read(exINI, pSection, "FirepowerMultiplier");
 	this->ArmorMultiplier.Read(exINI, pSection, "ArmorMultiplier");
+	this->ArmorMultiplier_AllowWarheads.Read(exINI, pSection, "ArmorMultiplier.AllowWarheads");
+	this->ArmorMultiplier_DisallowWarheads.Read(exINI, pSection, "ArmorMultiplier.DisallowWarheads");
 	this->SpeedMultiplier.Read(exINI, pSection, "SpeedMultiplier");
 	this->ROFMultiplier.Read(exINI, pSection, "ROFMultiplier");
 	this->ROFMultiplier_ApplyOnCurrentTimer.Read(exINI, pSection, "ROFMultiplier.ApplyOnCurrentTimer");
@@ -112,6 +113,9 @@ void PhobosAttachEffectTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->DiscardOn_BelowPercent.Read(exINI, pSection, "DiscardOn.BelowPercent");
 	this->AffectAbovePercent.Read(exINI, pSection, "AffectAbovePercent");
 	this->AffectBelowPercent.Read(exINI, pSection, "AffectBelowPercent");
+
+	this->DisableRadar.Read(exINI, pSection, "DisableRadar");
+	this->DisableSpySat.Read(exINI, pSection, "DisableSpySat");
 }
 
 template <typename T>
@@ -128,6 +132,7 @@ void PhobosAttachEffectTypeClass::Serialize(T& Stm)
 		.Process(this->PenetratesForceShield)
 		.Process(this->Animation)
 		.Process(this->CumulativeAnimations)
+		.Process(this->CumulativeAnimations_RestartOnChange)
 		.Process(this->Animation_ResetOnReapply)
 		.Process(this->Animation_OfflineAction)
 		.Process(this->Animation_TemporalAction)
@@ -141,6 +146,8 @@ void PhobosAttachEffectTypeClass::Serialize(T& Stm)
 		.Process(this->Tint_VisibleToHouses)
 		.Process(this->FirepowerMultiplier)
 		.Process(this->ArmorMultiplier)
+		.Process(this->ArmorMultiplier_AllowWarheads)
+		.Process(this->ArmorMultiplier_DisallowWarheads)
 		.Process(this->SpeedMultiplier)
 		.Process(this->ROFMultiplier)
 		.Process(this->ROFMultiplier_ApplyOnCurrentTimer)
@@ -176,6 +183,9 @@ void PhobosAttachEffectTypeClass::Serialize(T& Stm)
 		.Process(this->DiscardOn_BelowPercent)
 		.Process(this->AffectAbovePercent)
 		.Process(this->AffectBelowPercent)
+
+		.Process(this->DisableRadar)
+		.Process(this->DisableSpySat)
 		;
 }
 

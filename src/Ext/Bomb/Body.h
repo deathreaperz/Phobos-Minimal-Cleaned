@@ -17,9 +17,6 @@ public:
 
 	WeaponTypeExtData* Weapon { nullptr };
 
-	BombExtData() noexcept = default;
-	~BombExtData() noexcept = default;
-
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
@@ -29,9 +26,6 @@ public:
 			(4u //AttachedToObject
 			 );
 	}
-
-	static HouseClass* __fastcall GetOwningHouse(BombClass* pThis, void*);
-	static void __fastcall InvalidatePointer(BombClass* pThis, void*, void* const ptr, bool removed);
 
 private:
 	template <typename T>
@@ -43,5 +37,26 @@ class BombExtContainer final : public Container<BombExtData>
 public:
 	static BombExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(BombExtContainer, BombExtData, "BombClass");
+	//CONSTEXPR_NOCOPY_CLASSB(BombExtContainer, BombExtData, "BombClass");
 };
+
+class FakeBombClass : public BombClass
+{
+public:
+
+	HouseClass* _GetOwningHouse()
+	{
+		return this->OwnerHouse;
+	}
+
+	void _Detach(AbstractClass* target, bool all) { };
+
+	HRESULT __stdcall _Load(IStream* pStm);
+	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	BombExtData* _GetExtData()
+	{
+		return *reinterpret_cast<BombExtData**>(((DWORD)this) + AbstractExtOffset);
+	}
+};
+static_assert(sizeof(FakeBombClass) == sizeof(BombClass), "Invalid Size !");

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Utilities/Enum.h>
+#include <AircraftClass.h>
 
 class AbstractClass;
 class AircraftClass;
@@ -16,3 +17,16 @@ public:
 
 	static bool PlaceReinforcementAircraft(AircraftClass* pThis, CellStruct edgeCell);
 };
+
+class AbstractClass;
+class FakeAircraftClass : public AircraftClass
+{
+public:
+
+	WeaponStruct* _GetWeapon(int weaponIndex);
+	void _SetTarget(AbstractClass* pTarget);
+	void _Destroyed(int mult);
+	AbstractClass* _GreatestThreat(ThreatType threatType, CoordStruct* pSelectCoords, bool onlyTargetHouseEnemy);
+};
+
+static_assert(sizeof(FakeAircraftClass) == sizeof(AircraftClass), "Invalid Size !");

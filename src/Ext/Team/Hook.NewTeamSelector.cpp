@@ -6,6 +6,8 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
 
+#include <AITriggerTypeClass.h>
+
 // TODO :
 // - Optimization a lot of duplicate code ,..
 // - Type convert probably not handled properly yet
@@ -80,6 +82,7 @@ constexpr bool IsUnitAvailable(TechnoClass* pTechno, bool checkIfInTransportOrAb
 		isAvailable &= !pTechno->Absorbed && !pTechno->Transporter;
 
 	return isAvailable;
+
 }
 
 constexpr bool IsValidTechno(TechnoClass* pTechno)
@@ -438,6 +441,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			if (totalPercengates > 1.0 || totalPercengates <= 0.0)
 				splitTriggersByCategory = false;
 
+
 			if (splitTriggersByCategory)
 			{
 				int categoryDice = ScenarioClass::Instance->Random.RandomRanged(1, 100);
@@ -554,7 +558,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		int destroyedBridgesCount = 0;
 		int undamagedBridgesCount = 0;
-		std::map<TechnoTypeClass*, int> ownedRecruitables;
+		PhobosMap<TechnoTypeClass*, int> ownedRecruitables;
 
 		for (auto const pTechno : *TechnoClass::Array)
 		{
@@ -565,6 +569,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				auto const pBuilding = static_cast<BuildingClass*>(pTechno);
 				if (pBuilding && pBuilding->Type->BridgeRepairHut)
 				{
+
 					CellStruct cell = pTechno->GetCell()->MapCoords;
 
 					if (MapClass::Instance->IsLinkedBridgeDestroyed(cell))
@@ -572,9 +577,12 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 					else
 						undamagedBridgesCount++;
 				}
+
+
 			}
 			else
 			{
+
 				auto const pFoot = static_cast<FootClass*>(pTechno);
 
 				if (!pFoot
@@ -614,6 +622,18 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			// Ignore the deactivated triggers
 			if (pTrigger->IsEnabled)
 			{
+					//pTrigger->OwnerHouseType;
+				if (pTrigger->TechLevel > pHouse->StaticData.TechLevel)
+					continue;
+
+				// ignore it if isn't set for the house AI difficulty
+				if ((int)houseDifficulty == 0 && !pTrigger->Enabled_Hard
+					|| (int)houseDifficulty == 1 && !pTrigger->Enabled_Normal
+					|| (int)houseDifficulty == 2 && !pTrigger->Enabled_Easy)
+				{
+					continue;
+				}
+
 				// The trigger must be compatible with the owner
 				if ((triggerHouse == -1 || houseTypeIdx == triggerHouse) && (triggerSide == 0 || sideTypeIdx == triggerSide))
 				{
@@ -908,10 +928,12 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 							// Check if each unit in the taskforce has the available recruitable units in the map
 							if (allObjectsCanBeBuiltOrRecruited && entry.Type && entry.Amount > 0)
 							{
-								if ((int)ownedRecruitables.count(entry.Type) < entry.Amount)
-								{
-									allObjectsCanBeBuiltOrRecruited = false;
-									break;
+								auto iter = ownedRecruitables.get_key_iterator(entry.Type);
+								if(iter != ownedRecruitables.end()){
+									if ((iter->second) < entry.Amount) {
+										allObjectsCanBeBuiltOrRecruited = false;
+										break;
+									}
 								}
 							}
 						}
@@ -1051,6 +1073,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				{
 					selectedTrigger = element.Trigger;
 					found = true;
+					break;
 				}
 			}
 			break;
@@ -1074,6 +1097,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				{
 					selectedTrigger = element.Trigger;
 					found = true;
+					break;
 				}
 			}
 			break;
@@ -1097,6 +1121,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				{
 					selectedTrigger = element.Trigger;
 					found = true;
+					break;
 				}
 			}
 			break;
@@ -1120,6 +1145,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				{
 					selectedTrigger = element.Trigger;
 					found = true;
+					break;
 				}
 			}
 			break;
@@ -1143,6 +1169,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				{
 					selectedTrigger = element.Trigger;
 					found = true;
+					break;
 				}
 			}
 			break;
@@ -1223,12 +1250,14 @@ DEFINE_HOOK(0x4F8A27, TeamTypeClass_SuggestedNewTeam_NewTeamsSelector, 0x5)
 	return UpdateTeam(pHouse) ? SkipCode : UseOriginalSelector;
 }
 
+#include <ExtraHeaders/StackVector.h>
+
 DEFINE_HOOK(0x687C9B, ReadScenarioINI_AITeamSelector_PreloadValidTriggers, 0x7)
 {
 	// For each house save a list with only AI Triggers that can be used
 	for (HouseClass* pHouse : *HouseClass::Array)
 	{
-		std::vector<int> list;
+		StackVector<int , 4096> list;
 		const int houseIdx = pHouse->ArrayIndex;
 		const int sideIdx = pHouse->SideIndex + 1;
 
@@ -1236,16 +1265,17 @@ DEFINE_HOOK(0x687C9B, ReadScenarioINI_AITeamSelector_PreloadValidTriggers, 0x7)
 		{
 			if (auto pTrigger = AITriggerTypeClass::Array->Items[i])
 			{
+
 				const int triggerHouse = pTrigger->HouseIndex;
 				const int triggerSide = pTrigger->SideIndex;
 
 				// The trigger must be compatible with the owner
 				if ((triggerHouse == -1 || houseIdx == triggerHouse) && (triggerSide == 0 || sideIdx == triggerSide))
-					list.push_back(i);
+					list->push_back(i);
 			}
 		}
 
-		Debug::Log("House %d [%s] could use %d AI triggers in this map.\n", pHouse->ArrayIndex, pHouse->Type->ID, list.size());
+		Debug::Log("House %d [%s] could use %d AI triggers in this map.\n", pHouse->ArrayIndex, pHouse->Type->ID, list->size());
 	}
 
 	return 0;

@@ -89,6 +89,16 @@ void InfantryTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->HideWhenDeployAnimPresent.Read(exINI, pID, "Deploy.HideWhenDeployAnimPresent");
 	this->DeathBodies_UseDieSequenceAsIndex.Read(exINI, pID, "DeathBodies.UseDieSequenceAsIndex");
 	this->VoiceGarrison.Read(exINI, pID, "VoiceGarrison");
+
+	this->OnlyUseLandSequences.Read(iniEX_art, pSection_art, "OnlyUseLandSequences");
+
+	this->WhenInfiltrate_Warhead.Read(exINI, pID, "WhenInfiltrate.Warhead.%s");
+	this->WhenInfiltrate_Weapon.Read(exINI, pID, "WhenInfiltrate.Weapon.%s");
+	this->WhenInfiltrate_Damage.Read(exINI, pID, "WhenInfiltrate.Damage.%s");
+	this->WhenInfiltrate_Warhead_Full.Read(exINI, pID, "WhenInfiltrate.Warhead.Full");
+
+	this->AllSequnceEqualRates.Read(exINI, pID, "AllSequnceEqualRates");
+
 	// TODO , this stupid parsing thing
 	//auto const nPriData = this->Get()->GetWeapon(0);
 	//auto const nPriEliteData = this->Get()->GetEliteWeapon(0);
@@ -153,6 +163,15 @@ void InfantryTypeExtData::Serialize(T& Stm)
 		.Process(this->DeathBodies_UseDieSequenceAsIndex)
 		.Process(this->CrawlingWeaponDatas)
 		.Process(this->VoiceGarrison)
+		.Process(this->OnlyUseLandSequences)
+		.Process(this->SquenceRates)
+
+		.Process(this->WhenInfiltrate_Warhead)
+		.Process(this->WhenInfiltrate_Weapon)
+		.Process(this->WhenInfiltrate_Damage)
+		.Process(this->WhenInfiltrate_Warhead_Full)
+
+		.Process(this->AllSequnceEqualRates)
 		;
 }
 
@@ -163,13 +182,14 @@ InfantryTypeExtContainer InfantryTypeExtContainer::Instance;
 // =============================
 // container hooks
 
-DEFINE_HOOK(0x523970, InfantryTypeClass_CTOR, 0x5)
-{
-	GET(InfantryTypeClass*, pItem, ESI);
-	if (auto pExt = InfantryTypeExtContainer::Instance.Allocate(pItem))
-		pExt->Type = TechnoTypeExtContainer::Instance.Find(pItem);
-	return 0;
-}
+//merged with the new sequence hooks
+//DEFINE_HOOK(0x523876, InfantryTypeClass_CTOR, 0x6)
+//{
+//	GET(InfantryTypeClass*, pItem, ESI);
+//	if(auto pExt = InfantryTypeExtContainer::Instance.Allocate(pItem))
+//		pExt->Type = TechnoTypeExtContainer::Instance.Find(pItem);
+//	return 0;
+//}
 
 DEFINE_HOOK(0x5239D0, InfantryTypeClass_DTOR, 0x5)
 {
@@ -188,8 +208,17 @@ DEFINE_HOOK(0x524B60, InfantryTypeClass_SaveLoad_Prefix, 0x5)
 	return 0;
 }
 
+#include <Misc/ImageSwapModules.h>
+
 DEFINE_HOOK(0x524B53, InfantryTypeClass_Load_Suffix, 0x5)
 {
+	if (Phobos::Config::ArtImageSwap)
+	{
+		GET(BYTE*, poisonedVal, EDI);
+		poisonedVal -= 0xE20;
+		TechnoImageReplacer::Replace(reinterpret_cast<InfantryTypeClass*>(poisonedVal));
+	}
+
 	InfantryTypeExtContainer::Instance.LoadStatic();
 	return 0;
 }

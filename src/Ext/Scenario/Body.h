@@ -3,10 +3,8 @@
 #include <ScenarioClass.h>
 
 #include <Helpers/Macro.h>
-#include <Utilities/Container.h>
+#include <Utilities/PhobosMap.h>
 #include <Utilities/TemplateDef.h>
-
-#include <map>
 
 struct ExtendedVariable
 {
@@ -37,7 +35,7 @@ struct ExtendedVariable
 class ScenarioExtData final
 {
 private:
-	static std::unique_ptr<ScenarioExtData> Data;
+	inline static std::unique_ptr<ScenarioExtData> Data;
 public:
 	static constexpr size_t Canary = 0xABCD1595;
 	using base_type = ScenarioClass;
@@ -69,9 +67,6 @@ public:
 	Valueable<bool> ShowBriefing { false };
 	int BriefingTheme { -1 };
 
-	ScenarioExtData() noexcept = default;
-	~ScenarioExtData() noexcept = default;
-
 	void SetVariableToByID(const bool IsGlobal, int nIndex, char bState);
 	void GetVariableStateByID(const bool IsGlobal, int nIndex, char* pOut);
 	void ReadVariables(const bool IsGlobal, CCINIClass* pINI);
@@ -89,8 +84,8 @@ private:
 	template <typename T>
 	void Serialize(T& Stm);
 public:
-	static IStream* g_pStm;
-	static bool CellParsed;
+	inline static IStream* g_pStm;
+	inline static bool CellParsed;
 
 	static void Allocate(ScenarioClass* pThis);
 	static void Remove(ScenarioClass* pThis);
@@ -111,5 +106,11 @@ public:
 	static void LoadVariablesToFile(bool isGlobal);
 
 	static PhobosMap<int, ExtendedVariable>* GetVariables(bool IsGlobal);
-	static bool UpdateLightSources;
+	inline static bool UpdateLightSources;
+};
+
+class FakeScenarioClass : public ScenarioClass
+{
+public:
+	CellStruct _Get_Waypoint_Location(int idx);
 };

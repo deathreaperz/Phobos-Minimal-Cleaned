@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef _Enable
+
 #include <CoordStruct.h>
 #include <ColorStruct.h>
 #include <GeneralStructures.h>
@@ -242,8 +244,9 @@ public:
 
 struct ElectricBoltManager
 {
-	static std::vector<ElectricBoltClass> ElectricBoltArray;
+	inline static std::vector<ElectricBoltClass> ElectricBoltArray;
 
 	static void Draw_All();
 	static void Clear();
 };
+#endif

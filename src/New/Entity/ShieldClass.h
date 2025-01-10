@@ -10,6 +10,8 @@
 
 #include <New/Type/ShieldTypeClass.h>
 
+#include <AnimClass.h>
+
 enum class SelfHealingStatus : char
 {
 	Online = 1, Offline = 2
@@ -32,6 +34,7 @@ public:
 	~ShieldClass() noexcept
 	{
 		this->IdleAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+		Array.remove(this);
 	}
 
 	//void OnInit() { }
@@ -99,9 +102,20 @@ public:
 		return this->Type;
 	}
 
-	constexpr FORCEINLINE Armor GetArmor() const
+	constexpr FORCEINLINE Armor GetArmor(Armor inherit) const
 	{
-		return this->Type->Armor;
+		const auto pShieldType = this->Type;
+
+		if (pShieldType->InheritArmorFromTechno)
+		{
+			const auto pTechnoType = this->Techno->GetTechnoType();
+
+			if (pShieldType->InheritArmor_Allowed.empty() || pShieldType->InheritArmor_Allowed.Contains(pTechnoType)
+				&& (pShieldType->InheritArmor_Disallowed.empty() || !pShieldType->InheritArmor_Disallowed.Contains(pTechnoType)))
+				return inherit;
+		}
+
+		return pShieldType->Armor.Get();
 	}
 
 	constexpr FORCEINLINE int GetFramesSinceLastBroken() const
@@ -120,17 +134,17 @@ public:
 	static void SyncShieldToAnother(TechnoClass* pFrom, TechnoClass* pTo);
 	static bool TEventIsShieldBroken(ObjectClass* pThis);
 
-	constexpr FORCEINLINE bool IsGreenSP()
+	FORCEINLINE bool IsGreenSP()
 	{
 		return (RulesExtData::Instance()->Shield_ConditionYellow * Type->Strength.Get()) < HP;
 	}
 
-	constexpr FORCEINLINE bool IsYellowSP()
+	FORCEINLINE bool IsYellowSP()
 	{
 		return (RulesExtData::Instance()->Shield_ConditionRed * Type->Strength.Get()) < HP && HP <= (RulesExtData::Instance()->Shield_ConditionYellow * Type->Strength.Get());
 	}
 
-	constexpr FORCEINLINE bool IsRedSP()
+	FORCEINLINE bool IsRedSP()
 	{
 		return HP <= (RulesExtData::Instance()->Shield_ConditionRed * Type->Strength.Get());
 	}
@@ -141,6 +155,8 @@ public:
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 	bool Save(PhobosStreamWriter& Stm) const;
+
+	inline static HelperedVector<ShieldClass*> Array;
 
 private:
 	template <typename T>
@@ -187,7 +203,7 @@ private:
 			: 0;
 	}
 
-private:
+public:
 
 	/// Properties ///
 	TechnoClass* Techno;

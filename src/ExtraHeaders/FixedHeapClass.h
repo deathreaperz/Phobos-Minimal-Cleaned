@@ -174,6 +174,7 @@ private:
 	FixedHeapClass(FixedHeapClass const&);
 };
 
+
 /**************************************************************************
 **	This template serves only as an interface to the heap manager class. By
 **	using this template, the object pointers are automatically converted
@@ -185,6 +186,7 @@ class TFixedHeapClass : public FixedHeapClass
 public:
 	TFixedHeapClass(void) : FixedHeapClass(sizeof(T)) { };
 	virtual ~TFixedHeapClass(void) { };
+
 
 	virtual int ID(T const* pointer) const { return FixedHeapClass::ID(pointer); };
 	virtual T* Alloc(void) { return (T*)FixedHeapClass::Allocate(); };
@@ -304,6 +306,7 @@ public:
 		*/
 		for (int i = 0; i < ActiveCount; i++)
 		{
+
 			/*
 			** Save the array index of the object, so it can be loaded back into the
 			** same array location (so TARGET translations will work)

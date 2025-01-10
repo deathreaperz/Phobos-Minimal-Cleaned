@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Phobos.h>
+#include <Phobos.CRT.h>
 
 #include <Dbghelp.h>
 #include <Unsorted.h>
@@ -53,8 +54,8 @@ public:
 			bool Unused : 1;
 		};
 	};
-	static ConsoleTextAttribute TextAttribute;
-	static HANDLE ConsoleHandle;
+	inline static ConsoleTextAttribute TextAttribute;
+	inline static HANDLE ConsoleHandle;
 
 	static bool Create();
 	static void Release();
@@ -92,24 +93,26 @@ public:
 		Fatal = 5
 	};
 
-	static FILE* LogFile;
-	static bool LogEnabled;
+	inline static FILE* LogFile;
+	inline static bool LogEnabled;
 
-	static std::wstring ApplicationFilePath;
-	static std::wstring LogFilePathName;
-	static std::wstring LogFileMainName;
-	static std::wstring LogFileTempName;
-	static std::wstring LogFileMainFormattedName;
-	static std::wstring LogFileExt;
+	inline static std::wstring ApplicationFilePath {};
+	inline static std::wstring LogFilePathName {};
+	inline static std::wstring LogFileMainName { L"\\debug" };
+	inline static std::wstring LogFileTempName {};
+	inline static std::wstring LogFileMainFormattedName {};
+	inline static std::wstring LogFileExt { L".log" };
 
-	static char DeferredStringBuffer[0x1000];
-	static char LogMessageBuffer[0x1000];
-	static std::vector<std::string> DeferredLogData;
+	inline static char DeferredStringBuffer[0x1000];
+	inline static char LogMessageBuffer[0x1000];
+	inline static std::vector<std::string> DeferredLogData;
 
-	enum class ExitCode : int
+	enum class ExitCode : size_t
 	{
-		Undefined = -1,
-		SLFail = 114514
+		Normal = 0u,
+		SLFail = 1u,
+
+		Undefined = 65535u // -1
 	};
 
 	static FORCEINLINE void TakeMouse()
@@ -186,41 +189,56 @@ public:
 		}
 	}
 
-	static FORCEINLINE bool LogFileActive()
+	static constexpr FORCEINLINE bool LogFileActive()
 	{
 		return Debug::LogEnabled && Debug::LogFile;
 	}
 
 	//This log is not immedietely printed , but buffered until time it need to be finalize(printed)
-	static NOINLINE void LogDeferred(const char* pFormat, ...)
+	template <typename... TArgs>
+	static NOINLINE void LogDeferred(const char* const pFormat, TArgs&&... args)
 	{
-		va_list args;
-		va_start(args, pFormat);
-		vsprintf_s(DeferredStringBuffer, pFormat, args);
+		_snprintf(DeferredStringBuffer, sizeof(DeferredStringBuffer), pFormat, std::forward<TArgs>(args)...);
 		DeferredLogData.emplace_back(DeferredStringBuffer);
-		va_end(args);
 	}
 
 	static NOINLINE void LogDeferredFinalize()
 	{
+		if (!Debug::LogFileActive())
+			return;
+
 		for (auto const& Logs : DeferredLogData)
 		{
-			if (!Logs.empty())
-				GameDebugLog::Log("%s", Logs);
+			if (Logs.empty())
+				continue;
+
+			if (Console::ConsoleHandle != NULL)
+				WriteConsole(Console::ConsoleHandle, Logs.c_str(), Logs.size(), nullptr, nullptr);
+
+			fprintf(Debug::LogFile, Logs.c_str());
 		}
 
+		Debug::Flush();
 		DeferredLogData.clear();
 	}
 
-	static NOINLINE void LogAndMessage(const char* pFormat, ...)
+	template <typename... TArgs>
+	static NOINLINE void LogAndMessage(const char* pFormat, TArgs&&... args)
 	{
-		va_list args;
-		va_start(args, pFormat);
-		vsprintf_s(LogMessageBuffer, pFormat, args);
-		Debug::Log("%s", LogMessageBuffer);
-		va_end(args);
-		wchar_t buffer[0x1000];
-		mbstowcs(buffer, LogMessageBuffer, 0x1000);
+		_snprintf(Debug::LogMessageBuffer, sizeof(DeferredStringBuffer), pFormat, std::forward<TArgs>(args)...);
+		if (Debug::LogFileActive())
+		{
+			if (Console::ConsoleHandle == NULL)
+				return;
+
+			WriteConsole(Console::ConsoleHandle, Debug::LogMessageBuffer, strlen(Debug::LogMessageBuffer), nullptr, nullptr);
+
+			fprintf(Debug::LogFile, Debug::LogMessageBuffer);
+			Debug::Flush();
+		}
+
+		static wchar_t buffer[0x1000];
+		mbstowcs(buffer, Debug::LogMessageBuffer, 0x1000);
 		MessageListClass::Instance->PrintMessage(buffer);
 	}
 
@@ -249,15 +267,29 @@ public:
 			localTime->tm_sec);
 	}
 
-	static bool made;
+	static NOINLINE std::string GetCurTimeA()
+	{
+		const auto now = std::chrono::system_clock::now();
+		const std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+		const std::tm* localTime = std::localtime(&currentTime);
+
+		return std::format("{:04}{:02}{:02}-{:02}{:02}{:02}",
+			localTime->tm_year + 1900,
+			localTime->tm_mon + 1,
+			localTime->tm_mday,
+			localTime->tm_hour,
+			localTime->tm_min,
+			localTime->tm_sec);
+	}
+
+	static inline bool made;
 
 	static NOINLINE void PrepareLogFile()
 	{
 		if (!made)
 		{
 			Debug::LogFileTempName = Debug::LogFilePathName + Debug::LogFileMainName + Debug::LogFileExt;
-			Debug::LogFileMainFormattedName = Debug::LogFilePathName + std::format(L"{}.{}",
-			Debug::LogFileMainName, GetCurTime()) + Debug::LogFileExt;
+			Debug::LogFileMainFormattedName = Debug::LogFilePathName + Debug::LogFileMainName + L"." + GetCurTime() + Debug::LogFileExt;
 
 			made = 1;
 		}
@@ -265,11 +297,8 @@ public:
 
 	static NOINLINE std::wstring PrepareSnapshotDirectory()
 	{
-		std::wstring buffer = Debug::LogFilePathName + std::format(L"\\snapshot-{}",
-				GetCurTime());
-
+		const std::wstring buffer = Debug::LogFilePathName + L"\\snapshot-" + GetCurTime();
 		CreateDirectoryW(buffer.c_str(), nullptr);
-
 		return buffer;
 	}
 
@@ -305,9 +334,9 @@ public:
 		Debug::PrepareLogFile();
 		Debug::LogFileClose(999);
 
-		LogFile = _wfsopen(Debug::LogFileTempName.c_str(), L"w", SH_DENYNO);
+		Debug::LogFile = _wfsopen(Debug::LogFileTempName.c_str(), L"w", SH_DENYNO);
 
-		if (!LogFile)
+		if (!Debug::LogFile)
 		{
 			std::wstring msg = std::format(L"Log file failed to open. Error code = {}", errno);
 			MessageBoxW(Game::hWnd.get(), Debug::LogFileTempName.c_str(), msg.c_str(), MB_OK | MB_ICONEXCLAMATION);
@@ -401,18 +430,30 @@ public:
 		ExitProcess(code);
 	}
 
-	static NOINLINE void FatalError(bool Dump = false) /* takes formatted message from Ares::readBuffer */
+	static constexpr std::wstring GenerateDefaultMessage()
 	{
-		static wchar_t Message[0x400];
-		wsprintfW(Message,
-			L"An internal error has been encountered and the game is unable to continue normally. "
-			L"Please notify the mod's creators about this issue, or Contact Otamaa at "
-			L"Discord for updates and support.\n"
-		);
+		std::wstring first { L"An internal error has been encountered and the game is unable to continue normally. \n" };
+		std::wstring second { L"Please notify the mod's creators about this issue, or Contact Otamaa at \n" };
+		std::wstring third { L"Discord for updates and support.\n" };
+		return first + second + third;
+	}
 
-		Debug::Log("\nFatal Error: \n%s\n", Message);
-		Debug::FreeMouse();
-		MessageBoxW(Game::hWnd, Message, L"Fatal Error - Yuri's Revenge", MB_OK | MB_ICONERROR);
+	static NOINLINE void FatalErrorCore(bool Dump, const std::string& msg) /* takes formatted message from Ares::readBuffer */
+	{
+		if (msg.empty())
+		{
+			static auto def_ = GenerateDefaultMessage();
+			static auto def_str = PhobosCRT::WideStringToString(def_);
+			Debug::Log("\nFatal Error: \n%s\n", def_str.c_str());
+			Debug::FreeMouse();
+			MessageBoxW(Game::hWnd, def_.c_str(), L"Fatal Error - Yuri's Revenge", MB_OK | MB_ICONERROR);
+		}
+		else
+		{
+			Debug::Log("\nFatal Error: \n%s\n", msg.c_str());
+			Debug::FreeMouse();
+			MessageBoxA(Game::hWnd, msg.c_str(), "Fatal Error - Yuri's Revenge", MB_OK | MB_ICONERROR);
+		}
 
 		if (Dump)
 		{
@@ -422,36 +463,26 @@ public:
 		Debug::ExitGame();
 	}
 
-	static NOINLINE void FatalError(const char* Message, ...)
+	template <typename... TArgs>
+	static NOINLINE void FatalError(const char* Message, TArgs&&... args)
 	{
 		Debug::FreeMouse();
-
-		va_list args;
-		va_start(args, Message);
-		vsnprintf_s(Phobos::readBuffer, Phobos::readLength - 1, Message, args); /* note that the message will be truncated somewhere after 0x300 chars... */
-		va_end(args);
-
-		Debug::FatalError(false);
+		_snprintf(Debug::LogMessageBuffer, sizeof(Debug::LogMessageBuffer), Message, std::forward<TArgs>(args)...);
+		Debug::FatalErrorCore(false, Debug::LogMessageBuffer);
 	}
 
-	[[noreturn]] static NOINLINE void FatalErrorAndExit(ExitCode nExitCode, const char* pFormat, ...)
+	template <typename... TArgs>
+	[[noreturn]] static NOINLINE void FatalErrorAndExit(ExitCode nExitCode, const char* Message, TArgs&&... args)
 	{
-		va_list args;
-		va_start(args, pFormat);
-		vsprintf_s(Phobos::readBuffer, pFormat, args);
-		va_end(args);
-		Debug::FatalError(Phobos::Config::DebugFatalerrorGenerateDump);
-		Debug::ExitGame();
+		_snprintf(Debug::LogMessageBuffer, sizeof(Debug::LogMessageBuffer), Message, std::forward<TArgs>(args)...);
+		Debug::FatalErrorCore(Phobos::Config::DebugFatalerrorGenerateDump, Debug::LogMessageBuffer);
+		Debug::ExitGame((size_t)nExitCode);
 	}
 
-	[[noreturn]] static NOINLINE void FatalErrorAndExit(const char* pFormat, ...)
+	template <typename... TArgs>
+	[[noreturn]] static FORCEINLINE void FatalErrorAndExit(const char* pFormat, TArgs&&... args)
 	{
-		va_list args;
-		va_start(args, pFormat);
-		vsprintf_s(Phobos::readBuffer, pFormat, args);
-		va_end(args);
-		Debug::FatalError(Phobos::Config::DebugFatalerrorGenerateDump);
-		Debug::ExitGame();
+		FatalErrorAndExit(ExitCode::Normal, pFormat, std::forward<TArgs>(args)...);
 	}
 
 	static void RegisterParserError()

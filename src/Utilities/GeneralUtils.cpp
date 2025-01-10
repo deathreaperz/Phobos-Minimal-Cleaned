@@ -64,7 +64,7 @@ const wchar_t* GeneralUtils::LoadStringUnlessMissing(const char* key, const wcha
 	return wcsstr(get_result, L"MISSING:") ? defaultValue : get_result;
 }
 
-void GeneralUtils::AdjacentCellsInRange(std::vector<CellStruct>& nCells, size_t range)
+void GeneralUtils::AdjacentCellsInRange(std::vector<CellStruct>& nCells, short range)
 {
 	nCells.clear();
 
@@ -101,6 +101,17 @@ const bool GeneralUtils::ProduceBuilding(HouseClass* pOwner, int idxBuilding)
 	}
 
 	return false;
+}
+
+AnimTypeClass* GeneralUtils::SelectRandomAnimFromVector(std::vector<AnimTypeClass*>& vec, AnimTypeClass* fallback)
+{
+	if (vec.empty())
+		return fallback;
+
+	if (vec.size() < 2)
+		return vec[0];
+
+	return vec[ScenarioClass::Instance->Random.RandomFromMax(vec.size() - 1)];
 }
 
 const char* GeneralUtils::GetLocomotionName(const CLSID& clsid)

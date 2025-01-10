@@ -5,15 +5,12 @@
 
 #include <MapClass.h>
 
-DEFINE_HOOK(0x68BCC0, ScenarioClass_Get_Waypoint_Location, 0xB)
+CellStruct FakeScenarioClass::_Get_Waypoint_Location(int idx)
 {
-	GET_STACK(CellStruct*, pCell, 0x4);
-	GET_STACK(int, nWaypoint, 0x8);
-
-	*pCell = ScenarioExtData::Instance()->Waypoints[nWaypoint];
-	R->EAX(pCell);
-	return 0x68BCD1;
+	return ScenarioExtData::Instance()->Waypoints[idx];
 }
+
+DEFINE_JUMP(LJMP, 0x68BCC0, MiscTools::to_DWORD(&FakeScenarioClass::_Get_Waypoint_Location));
 
 DEFINE_HOOK(0x68BCE4, ScenarioClass_Get_Waypoint_Cell_0, 0x7)
 {

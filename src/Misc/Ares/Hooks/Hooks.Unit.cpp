@@ -27,6 +27,8 @@
 
 #include "Header.h"
 
+#include <InfantryClass.h>
+
 DEFINE_HOOK(0x73D219, UnitClass_Draw_OreGatherAnim, 0x6)
 {
 	GET(TechnoClass*, pTechno, ECX);
@@ -114,16 +116,16 @@ DEFINE_HOOK(0x73C613, UnitClass_DrawSHP_FacingsA, 0x7)
 {
 	GET(UnitClass*, pThis, EBP);
 
-	unsigned int ret = 0;
+	unsigned short ret = 0;
 
-	if (pThis->Type->Facings > 0)
+	if (pThis->Type->Facings > 0 && !pThis->IsDisguised())
 	{
 		auto highest = Conversions::Int2Highest(pThis->Type->Facings);
 
 		// 2^highest is the frame count, 3 means 8 frames
-		if (highest >= 3 && !pThis->IsDisguised())
+		if (highest >= 3)
 		{
-			ret = pThis->PrimaryFacing.Current().GetValue(highest, 1u << (highest - 3));
+			ret = (unsigned short)pThis->PrimaryFacing.Current().GetValue(highest, 1u << (highest - 3));
 		}
 	}
 
@@ -135,10 +137,10 @@ DEFINE_HOOK(0x73CD01, UnitClass_DrawSHP_FacingsB, 0x5)
 {
 	GET(UnitClass*, pThis, EBP);
 	GET(UnitTypeClass*, pType, ECX);
-	GET(int, facing, EAX);
+	GET(unsigned short, facing, EAX);
 
 	R->ECX(pThis);
-	R->EAX(facing + pType->WalkFrames * pType->Facings);
+	R->EAX(facing + (pType->WalkFrames * pType->Facings));
 
 	return 0x73CD06;
 }
@@ -161,7 +163,7 @@ DEFINE_HOOK(0x736E8E, UnitClass_UpdateFiringState_Heal, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 
-	const auto pTargetTechno = generic_cast<TechnoClass*>(pThis->Target);
+	const auto pTargetTechno = flag_cast_to<TechnoClass*>(pThis->Target);
 
 	if (!pTargetTechno || pTargetTechno->GetHealthPercentage() <= RulesClass::Instance()->ConditionGreen)
 		pThis->SetTarget(nullptr);
@@ -173,53 +175,12 @@ DEFINE_HOOK(0x7440BD, UnitClass_Remove, 0x6)
 {
 	GET(UnitClass*, U, ESI);
 
-	if (auto Bld = specific_cast<BuildingClass*>(U->BunkerLinkedItem))
+	if (auto Bld = cast_to<BuildingClass*>(U->BunkerLinkedItem))
 	{
 		Bld->ClearBunker();
 	}
 
 	return 0;
-}
-
-DEFINE_HOOK(0x739B7C, UnitClass_SimpleDeploy_Facing, 0x6)
-{
-	GET(UnitClass*, pThis, ESI);
-	auto const pType = pThis->Type;
-	enum { SkipAnim = 0x739C70, PlayAnim = 0x739B9E };
-
-	if (!pThis->InAir)
-	{
-		if (pType->DeployingAnim)
-		{
-			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-			if (pTypeExt->DeployingAnim_AllowAnyDirection)
-				return PlayAnim;
-
-			// not sure what is the bitfrom or bitto so it generate this result
-			// yes iam dum , iam sorry - otamaa
-			const auto nRulesDeployDir = ((((RulesClass::Instance->DeployDir) >> 4) + 1) >> 1) & 7;
-			const FacingType nRaw = pTypeExt->DeployDir.isset() ? pTypeExt->DeployDir.Get() : (FacingType)nRulesDeployDir;
-			const auto nCurrent = (((((pThis->PrimaryFacing.Current().Raw) >> 12) + 1) >> 1) & 7);
-
-			if (nCurrent != (int)nRaw)
-			{
-				if (const auto pLoco = pThis->Locomotor.GetInterfacePtr())
-				{
-					if (!pLoco->Is_Moving_Now())
-					{
-						pLoco->Do_Turn(DirStruct { nRaw });
-					}
-
-					return 0x739C70;
-				}
-			}
-		}
-
-		pThis->Deployed = true;
-	}
-
-	return SkipAnim;
 }
 
 DEFINE_HOOK(0x74642C, UnitClass_ReceiveGunner, 6)
@@ -378,7 +339,7 @@ DEFINE_HOOK(0x6FC0D3, TechnoClass_CanFire_DisableWeapons, 8)
 	if (pExt->DisableWeaponTimer.InProgress())
 		return FireRange;
 
-	if (pExt->AE_DisableWeapons)
+	if (pExt->AE.DisableWeapons)
 		return FireRange;
 
 	return ContinueCheck;
@@ -468,7 +429,7 @@ DEFINE_HOOK(0x7188F2, TeleportLocomotionClass_Unwarp_SinkJumpJets, 7)
 
 	if (pCell->Tile_Is_Wet() && !pCell->ContainsBridge())
 	{
-		if (UnitClass* pUnit = specific_cast<UnitClass*>(pTechno[3]))
+		if (UnitClass* pUnit = cast_to<UnitClass*>(pTechno[3]))
 		{
 			if (pUnit->Deactivated || TechnoExtContainer::Instance.Find(pUnit)->Is_DriverKilled)
 			{
@@ -871,7 +832,7 @@ DEFINE_HOOK(0x51C913, InfantryClass_CanFire_Heal, 7)
 	GET(ObjectClass*, pTarget, EDI);
 	GET_STACK(int, nWeaponIdx, STACK_OFFSET(0x20, 0x8));
 
-	const auto pThatTechno = generic_cast<TechnoClass*>(pTarget);
+	const auto pThatTechno = flag_cast_to<TechnoClass*>(pTarget);
 
 	if (!pThatTechno || pThatTechno->IsIronCurtained())
 	{
@@ -900,7 +861,7 @@ DEFINE_HOOK(0x6F7F4F, TechnoClass_EvalObject_NegativeDamage, 0x7)
 	GET(ObjectClass*, pThat, ESI);
 
 	const auto nRulesGreen = RulesClass::Instance->ConditionGreen;
-	const auto pThatTechno = generic_cast<TechnoClass*>(pThat);
+	const auto pThatTechno = flag_cast_to<TechnoClass*>(pThat);
 
 	if (!pThatTechno)
 	{
@@ -934,7 +895,7 @@ std::pair<bool, int> HealActionProhibited(TechnoClass* pTarget, WeaponTypeClass*
 			return { true , -1 };
 		}
 
-		const auto pFoot = abstract_cast<FootClass*>(pTarget);
+		const auto pFoot = flag_cast_to<FootClass*>(pTarget);
 
 		if (!pThatShield->CanBePenetrated(pWeapon->Warhead) || ((pFoot && pFoot->ParasiteEatingMe)))
 		{
@@ -981,7 +942,7 @@ DEFINE_HOOK(0x51E710, InfantryClass_GetActionOnObject_Heal, 7)
 	if (pThis == pThat)
 		return TechnoTypeExtContainer::Instance.Find(pThis->Type)->NoSelfGuardArea ? NextCheck2 : ActionGuardArea;
 
-	const auto pThatTechno = generic_cast<TechnoClass*>(pThat);
+	const auto pThatTechno = flag_cast_to<TechnoClass*>(pThat);
 	if (!pThatTechno)
 		return NextCheck;
 
@@ -991,7 +952,7 @@ DEFINE_HOOK(0x51E710, InfantryClass_GetActionOnObject_Heal, 7)
 
 	if (ret)
 	{
-		if (const auto pBuilding = specific_cast<BuildingClass*>(pThatTechno))
+		if (const auto pBuilding = cast_to<BuildingClass*, false>(pThatTechno))
 		{
 			if (pBuilding->Type->Grinding)
 			{
@@ -1019,7 +980,7 @@ DEFINE_HOOK(0x73FDBD, UnitClass_GetActionOnObject_Heal, 5)
 	if (nAct == Action::GuardArea)
 		return ContinueCheck;
 
-	const auto pThatTechno = generic_cast<TechnoClass*>(pThat);
+	const auto pThatTechno = flag_cast_to<TechnoClass*>(pThat);
 	if (WWKeyboardClass::Instance->IsForceMoveKeyPressed() ||
 		pThis == pThat ||
 		!pThatTechno ||
@@ -1027,7 +988,7 @@ DEFINE_HOOK(0x73FDBD, UnitClass_GetActionOnObject_Heal, 5)
 	  )
 		return DoActionSelect;
 
-	if (auto const pAir = specific_cast<AircraftClass*>(pThat))
+	if (auto const pAir = cast_to<AircraftClass*>(pThat))
 	{
 		if (pAir->GetCell()->GetBuilding())
 		{
@@ -1160,13 +1121,9 @@ DEFINE_HOOK(0x739956, DeploysInto_UndeploysInto_SyncStatuses, 0x6) //UnitClass_D
 	GET(TechnoClass*, pFrom, EBP);
 	GET(TechnoClass*, pTo, EBX);
 
-	// attahed bomb
-	// ae
-	// original owner
 	TechnoExt_ExtData::TransferIvanBomb(pFrom, pTo);
 	AresAE::TransferAttachedEffects(pFrom, pTo);
 	TechnoExt_ExtData::TransferOriginalOwner(pFrom, pTo);
-	//AresData::TechnoTransferAffects(pFrom, pTo);
 	TechnoExtData::TransferMindControlOnDeploy(pFrom, pTo);
 	ShieldClass::SyncShieldToAnother(pFrom, pTo);
 	TechnoExtData::SyncInvulnerability(pFrom, pTo);
@@ -1174,7 +1131,7 @@ DEFINE_HOOK(0x739956, DeploysInto_UndeploysInto_SyncStatuses, 0x6) //UnitClass_D
 	if (pFrom->AttachedTag)
 		pTo->AttachTrigger(pFrom->AttachedTag);
 
-	if (R->Origin() == 0x44A03C)
+	if (R->Origin() == 0x44A03C && pTo->IsArmed())
 		pTo->QueueMission(Mission::Hunt, true);
 
 	return 0;
@@ -1256,7 +1213,7 @@ DEFINE_HOOK(0x7418E1, UnitClass_CrushCell_DeathWeapon, 0xA)
 {
 	GET(ObjectClass* const, pVictim, ESI);
 
-	if (auto const pVictimTechno = abstract_cast<TechnoClass*>(pVictim))
+	if (auto const pVictimTechno = flag_cast_to<TechnoClass*>(pVictim))
 	{
 		const auto pExt = TechnoTypeExtContainer::Instance.Find(pVictim->GetTechnoType());
 
@@ -1280,47 +1237,34 @@ DEFINE_HOOK(0x74192E, UnitClass_CrushCell_CrushDecloak, 0x5)
 	return TechnoTypeExtContainer::Instance.Find(pThis->Type)->CrusherDecloak ? Decloak : DoNotDecloak;
 }
 
-DEFINE_HOOK(0x7418A1, UnitClass_CrusCell_TiltWhenCrushSomething, 0x5)
+static void WhenCrushedBy(UnitClass* pCrusher, TechnoClass* pVictim)
 {
-	enum { DoNotTilt = 0x7418AA, Tilt = 0x7418A6 };
-	GET(ObjectClass* const, pVictim, ESI);
-	GET(UnitClass* const, pThis, EDI);
-	GET(AbstractType, nWhat, EAX);
+	auto pExt = TechnoTypeExtContainer::Instance.Find(pVictim->GetTechnoType());
 
-	if (!pThis->IsVoxel())
-		return DoNotTilt;
-
-	switch (nWhat)
+	if (auto pWeapon = pExt->WhenCrushed_Weapon.Get(pVictim))
 	{
-	case AbstractType::Unit:
-	case AbstractType::Aircraft:
-	case AbstractType::Terrain:
-		return Tilt;
-	case AbstractType::Infantry:
+		int damage = pExt->WhenCrushed_Damage.GetOrDefault(pVictim, pWeapon->Damage);
+		WeaponTypeExtData::DetonateAt(pWeapon, pVictim->GetCoords(), pVictim, damage, false, pVictim->GetOwningHouse());
+	}
+	else if (auto pWarhead = pExt->WhenCrushed_Warhead.Get(pVictim))
 	{
-		const auto pInf = static_cast<InfantryClass*>(pVictim);
-		if (pInf->Type->Cyborg)
-			return Tilt;
+		int damage = pExt->WhenCrushed_Damage.GetOrDefault(pVictim, 0u);
 
-		break;
+		if (pExt->WhenCrushed_Warhead_Full)
+			WarheadTypeExtData::DetonateAt(pWarhead, pVictim->GetCoords(), pVictim, damage, pVictim->GetOwningHouse());
+		else
+			MapClass::DamageArea(pVictim->GetCoords(), damage, pVictim, pWarhead, true, pVictim->GetOwningHouse());
 	}
-	default:
-		break;
-	}
-
-	return DoNotTilt;
 }
 
-DEFINE_HOOK(0x7418AA, UnitClass_CrushCell_CrushDamage, 6)
+static void CrushAffect(UnitClass* pThis, ObjectClass* pVictim, bool victimIsTechno)
 {
-	GET(UnitClass* const, pThis, EDI);
-	GET(ObjectClass* const, pVictim, ESI);
-
-	if (auto const pVictimTechno = abstract_cast<TechnoClass*>(pVictim))
+	if (victimIsTechno)
 	{
+		auto const pVictimTechno = static_cast<TechnoClass*>(pVictim);
+		const auto pVictimTypeExt = TechnoTypeExtContainer::Instance.Find(pVictim->GetTechnoType());
 		const auto pExt = TechnoExtContainer::Instance.Find(pVictimTechno);
 		const auto pThisTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
-		const auto pVictimTypeExt = TechnoTypeExtContainer::Instance.Find(pVictim->GetTechnoType());
 		auto damage = pVictimTypeExt->CrushDamage.Get(pVictimTechno);
 
 		if (pThisTypeExt->Crusher_SupressLostEva)
@@ -1329,10 +1273,10 @@ DEFINE_HOOK(0x7418AA, UnitClass_CrushCell_CrushDamage, 6)
 		if (damage != 0)
 		{
 			const auto pWarhead = pVictimTypeExt->CrushDamageWarhead.Get(
-				RulesClass::Instance->C4Warhead);
+					RulesClass::Instance->C4Warhead);
 
 			pThis->ReceiveDamage(
-				&damage, 0, pWarhead, nullptr, false, false, nullptr);
+					&damage, 0, pWarhead, nullptr, false, false, nullptr);
 			if (pVictimTypeExt->CrushDamagePlayWHAnim)
 			{
 				auto loc = pVictim->GetCoords();
@@ -1343,9 +1287,54 @@ DEFINE_HOOK(0x7418AA, UnitClass_CrushCell_CrushDamage, 6)
 				}
 			}
 		}
+
+		if (pThis->IsAlive)
+		{
+			WhenCrushedBy(pThis, pVictimTechno);
+		}
+	}
+}
+
+DEFINE_HOOK(0x7418A1, UnitClass_CrusCell_TiltWhenCrushSomething, 0x5)
+{
+	enum { DoNotTilt = 0x7418AA, Tilt = 0x7418A6 };
+	GET(ObjectClass* const, pVictim, ESI);
+	GET(UnitClass* const, pThis, EDI);
+	GET(AbstractType, whatVictim, EAX);
+
+	DWORD ret_ = DoNotTilt;
+	bool victim_isTechno = false;
+
+	switch (whatVictim)
+	{
+	case AbstractType::Unit:
+	case AbstractType::Aircraft:
+		victim_isTechno = true;
+		if (pThis->IsVoxel())
+			ret_ = Tilt;
+		break;
+	case AbstractType::Terrain:
+		if (pThis->IsVoxel())
+			ret_ = Tilt;
+		break;
+	case AbstractType::Infantry:
+	{
+		victim_isTechno = true;
+		if (pThis->IsVoxel() && static_cast<InfantryClass*>(pVictim)->Type->Cyborg)
+			ret_ = Tilt;
+
+		break;
+	}
+	case AbstractType::Building:
+		victim_isTechno = true;
+		break;
+
+	default:
+		break;
 	}
 
-	return 0;// continue crush function
+	CrushAffect(pThis, pVictim, victim_isTechno);
+	return ret_;
 }
 
 DEFINE_HOOK(0x735584, UnitClass_CTOR_TurretROT, 6)

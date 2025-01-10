@@ -1,6 +1,7 @@
 #include <Ext/TechnoType/Body.h>
 
 #include "Body.h"
+#include <InfantryClass.h>
 
 DEFINE_HOOK(0x6F7E24, TechnoClass_EvaluateObject_MapZone, 0x6)
 {
@@ -9,7 +10,7 @@ DEFINE_HOOK(0x6F7E24, TechnoClass_EvaluateObject_MapZone, 0x6)
 	GET(TechnoClass*, pThis, EDI);
 	GET(ObjectClass*, pTarget, ESI);
 	GET(WeaponTypeClass*, pWeapon, EBP);
-	GET_STACK(ZoneType, zone, STACK_OFFSET(0x3C, 0x18));
+	GET_STACK(ZoneType, zone, STACK_OFFSET(0x3C ,0x18));
 
 	auto pThisTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
@@ -25,15 +26,13 @@ DEFINE_HOOK(0x6FA697, TechnoClass_Update_DontScanIfUnarmed, 0x6)
 
 	GET(TechnoClass*, pThis, ESI);
 
-	if (auto pInf = specific_cast<InfantryClass*>(pThis))
-	{
-		if (pInf->Type->Slaved && pInf->SlaveOwner)
-		{
+	if (auto pInf = cast_to<InfantryClass*, false>(pThis)) {
+		if (pInf->Type->Slaved && pInf->SlaveOwner) {
 			return SkipTargeting;
 		}
 	}
 
-	return pThis->IsArmed() ? DoTargeting : SkipTargeting;
+	return pThis->IsArmed()  ? DoTargeting : SkipTargeting;
 }
 
 DEFINE_HOOK(0x70982C, TechnoClass_TargetAndEstimateDamage_ScanDelay, 0x8)
@@ -47,38 +46,55 @@ DEFINE_HOOK(0x70982C, TechnoClass_TargetAndEstimateDamage_ScanDelay, 0x8)
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	const auto pRules = RulesClass::Instance();
 
-	if (pThis->CurrentMission == Mission::Area_Guard)
-	{
-		if (IsHuman)
-		{
+	if (pThis->CurrentMission == Mission::Area_Guard) {
+		if (IsHuman) {
 			delay += pTypeExt->PlayerGuardAreaTargetingDelay.Get(RulesExtData::Instance()->PlayerGuardAreaTargetingDelay.Get(pRules->GuardAreaTargetingDelay));
-		}
-		else
-		{
+		} else {
 			delay += pTypeExt->AIGuardAreaTargetingDelay.Get(RulesExtData::Instance()->AIGuardAreaTargetingDelay.Get(pRules->GuardAreaTargetingDelay));
 		}
-	}
-	else
-	{
-		if (IsHuman)
-		{
+	} else {
+		if (IsHuman) {
 			delay += pTypeExt->PlayerNormalTargetingDelay.Get(RulesExtData::Instance()->PlayerNormalTargetingDelay.Get(pRules->NormalTargetingDelay));
-		}
-		else
-		{
+		} else {
 			delay += pTypeExt->AINormalTargetingDelay.Get(RulesExtData::Instance()->AINormalTargetingDelay.Get(pRules->NormalTargetingDelay));
 		}
 	}
 
 	pThis->TargetingTimer.Start(delay);
+	R->EDI(threat & 3);
 
-	if (pTypeExt->AutoFire)
-	{
-		pThis->SetTarget(pTypeExt->AutoFire_TargetSelf ? pThis :
-		static_cast<AbstractClass*>(pThis->GetCell()));
+	if (pTypeExt->AutoFire) {
+		auto pCell = pThis->GetCell();
+		const auto pTarget = pTypeExt->AutoFire_TargetSelf ? pThis :
+		static_cast<AbstractClass*>(pThis->GetCell());
+
+		pThis->SetTarget(pCell);
 		return 0x7099B8;
 	}
 
 	R->EDI(threat & 3);
 	return 0x7098B9;
+}
+
+DEFINE_HOOK(0x6FA67D, TechnoClass_Update_DistributeTargetingFrame, 0xA)
+{
+	enum { Targeting = 0x6FA687, SkipTargeting = 0x6FA6F5 };
+	GET(TechnoClass* const, pThis, ESI);
+
+	auto const pRulesExt = RulesExtData::Instance();
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	bool allowed = !pThis->Owner->IsControlledByHuman() ? true : !pRulesExt->DistributeTargetingFrame_AIOnly;
+
+	if (allowed && pTypeExt && pTypeExt->DistributeTargetingFrame.Get(pRulesExt->DistributeTargetingFrame))
+	{
+		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+
+		if (Unsorted::CurrentFrame % 16 != pExt->MyTargetingFrame)
+		{
+			return SkipTargeting;
+		}
+	}
+
+	R->EAX(pThis->MegaMissionIsAttackMove());
+	return Targeting;
 }

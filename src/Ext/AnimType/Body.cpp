@@ -212,15 +212,11 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->DetachOnCloak.Read(exINI, pID, "DetachOnCloak");
 	this->Translucency_Cloaked.Read(exINI, pID, "Translucency.Cloaked");
 
-	this->Translucent_Stage1_Percent.Read(exINI, pID, "Translucent.Stage1.Percent");
-	this->Translucent_Stage1_Frame.Read(exINI, pID, "Translucent.Stage1.Frame");
-	this->Translucent_Stage1_Translucency.Read(exINI, pID, "Translucent.Stage1.Translucency");
-	this->Translucent_Stage2_Percent.Read(exINI, pID, "Translucent.Stage2.Percent");
-	this->Translucent_Stage2_Frame.Read(exINI, pID, "Translucent.Stage2.Frame");
-	this->Translucent_Stage2_Translucency.Read(exINI, pID, "Translucent.Stage2.Translucency");
-	this->Translucent_Stage3_Percent.Read(exINI, pID, "Translucent.Stage3.Percent");
-	this->Translucent_Stage3_Frame.Read(exINI, pID, "Translucent.Stage3.Frame");
-	this->Translucent_Stage3_Translucency.Read(exINI, pID, "Translucent.Stage3.Translucency");
+	if (this->AttachedToObject->Translucent)
+	{
+		this->Translucent_Keyframes.Read(exINI, pID, "Translucent.%s", this->AttachedToObject->End);
+		this->Translucent_Keyframes.InterpolationMode = InterpolationMode::None;
+	}
 
 	this->CreateUnit_SpawnHeight.Read(exINI, pID, "CreateUnit.SpawnHeight");
 #pragma endregion
@@ -243,7 +239,7 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 	if (!pThis->Type)
 		return;
 
-	auto pExt = AnimExtContainer::Instance.Find(pThis);
+	auto pExt = ((FakeAnimClass*)pThis)->_GetExtData();
 
 	if (pExt->AllowCreateUnit)
 		return;
@@ -283,17 +279,11 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 		const auto nCellHeight = MapClass::Instance->GetCellFloorHeight(Location);
 		Location.Z = MaxImpl(nCellHeight + bridgeZ, z);
 
-		const int baseHeight = pTypeExt->CreateUnit_SpawnHeight.isset() ? pTypeExt->CreateUnit_SpawnHeight : Location.Z;
+		const int baseHeight = pTypeExt->CreateUnit_SpawnHeight != -1 ? pTypeExt->CreateUnit_SpawnHeight : Location.Z;
 		const int zCoord = pTypeExt->CreateUnit_AlwaysSpawnOnGround ? INT32_MIN : baseHeight;
 		Location.Z = MaxImpl(MapClass::Instance->GetCellFloorHeight(Location) + bridgeZ, zCoord);
 
 		const auto pCellAfter = MapClass::Instance->GetCellAt(Location);
-
-		//there is some unsolved vanilla bug that causing unit uneable to die
-		//when it on brige , idk what happen there , but it is what it is for now
-		//will reenable if fixed !
-		//if (pCellAfter->ContainsBridge())
-			//return;
 
 		if (!MapClass::Instance->IsWithinUsableArea(Location))
 			return;
@@ -304,7 +294,7 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 	}
 }
 
-HouseClass* GetOwnerForSpawned(AnimClass* pThis)
+static HouseClass* GetOwnerForSpawned(AnimClass* pThis)
 {
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
 	if (!pThis->Owner || ((!pTypeExt->CreateUnit_KeepOwnerIfDefeated && pThis->Owner->Defeated)))
@@ -313,13 +303,126 @@ HouseClass* GetOwnerForSpawned(AnimClass* pThis)
 	return pThis->Owner;
 }
 
+static TechnoClass* CreateFoot(
+	TechnoTypeClass* pType,
+	CoordStruct location,
+	DirType facing,
+	std::optional<DirType>& secondaryFacing,
+	bool Scatter,
+	HouseClass* pOwner,
+	bool checkPathfinding,
+	bool parachuteIfInAir,
+	bool alwaysOnGround,
+	Mission mission)
+{
+	auto const rtti = pType->WhatAmI();
+
+	if (rtti == AbstractType::BuildingType)
+		return nullptr;
+
+	HouseClass* decidedOwner = pOwner && !pOwner->Defeated
+		? pOwner : HouseClass::FindCivilianSide();
+
+	const auto pCell = MapClass::Instance->GetCellAt(location);
+	const auto speedType = rtti != AbstractType::AircraftType ? pType->SpeedType : SpeedType::Wheel;
+	auto const mZone = rtti != AbstractType::AircraftType ? pType->MovementZone : MovementZone::Normal;
+	const bool allowBridges = GroundType::Array[static_cast<int>(LandType::Clear)].Cost[static_cast<int>(speedType)] > 0.0;
+	const bool isBridge = allowBridges && pCell->ContainsBridge();
+	const bool inAir = location.Z >= Unsorted::CellHeight * 2;
+
+	if (auto const pTechno = static_cast<FootClass*>(pType->CreateObject(decidedOwner)))
+	{
+		bool success = false;
+		bool parachuted = false;
+
+		pTechno->OnBridge = isBridge;
+
+		if (rtti != AbstractType::AircraftType && parachuteIfInAir && !alwaysOnGround && inAir)
+		{
+			parachuted = true;
+			success = pTechno->SpawnParachuted(location);
+		}
+		else if (!pCell->GetBuilding() || !checkPathfinding)
+		{
+			++Unsorted::ScenarioInit;
+			success = pTechno->Unlimbo(location, facing);
+			--Unsorted::ScenarioInit;
+		}
+		else
+		{
+			success = pTechno->Unlimbo(location, facing);
+		}
+
+		if (success)
+		{
+			if (secondaryFacing.has_value())
+				pTechno->SecondaryFacing.Set_Current(DirStruct(*secondaryFacing));
+
+			if (!pTechno->InLimbo)
+			{
+				if (!alwaysOnGround)
+				{
+					if (auto const pFlyLoco = locomotion_cast<FlyLocomotionClass*>(pTechno->Locomotor))
+					{
+						pTechno->SetLocation(location);
+						bool airportBound = rtti == AbstractType::AircraftType && static_cast<AircraftTypeClass*>(pType)->AirportBound;
+						if (pCell->GetContent() || airportBound)
+							pTechno->EnterIdleMode(false, true);
+						else
+							pFlyLoco->Move_To(pCell->GetCoordsWithBridge());
+					}
+					else if (auto const pJJLoco = locomotion_cast<JumpjetLocomotionClass*>(pTechno->Locomotor))
+					{
+						pJJLoco->Facing.Set_Current(DirStruct(facing));
+						if (pType->BalloonHover)
+						{
+							// Makes the jumpjet think it is hovering without actually moving.
+							pJJLoco->NextState = JumpjetLocomotionClass::State::Hovering;
+							pJJLoco->IsMoving = true;
+							pJJLoco->HeadToCoord = location;
+							pJJLoco->Height = pType->JumpjetData.Height;
+							if (!inAir)
+								AircraftTrackerClass::Instance->Add(pTechno);
+						}
+						else if (inAir)
+						{
+							// Order non-BalloonHover jumpjets to land.
+							pJJLoco->Move_To(location);
+						}
+					}
+					else if (inAir && !parachuted)
+					{
+						pTechno->IsFallingDown = true;
+					}
+				}
+
+				if (!Scatter)
+					pTechno->QueueMission(mission, false);
+				else
+					pTechno->Scatter(CoordStruct::Empty, false, false);
+			}
+
+			if (!decidedOwner->Type->MultiplayPassive)
+				decidedOwner->RecheckTechTree = true;
+
+			return pTechno;
+		}
+		else
+		{
+			TechnoExtData::HandleRemove(pTechno);
+		}
+	}
+
+	return nullptr;
+}
+
 void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 {
 	if (!pThis->Type)
 		return;
 
 	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
-	const auto pAnimExt = AnimExtContainer::Instance.Find(pThis);
+	const auto pAnimExt = ((FakeAnimClass*)pThis)->_GetExtData();
 
 	//location is not marked , so dont !
 	if (!pAnimExt->AllowCreateUnit)
@@ -329,97 +432,50 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 
 	HouseClass* decidedOwner = GetOwnerForSpawned(pThis);
 
-	if (const auto pTechno = static_cast<UnitClass*>(pTypeExt->CreateUnit->CreateObject(decidedOwner)))
+	if (const auto pTechnoType = pTypeExt->CreateUnit)
 	{
-		const DirType resultingFacing = (pTypeExt->CreateUnit_InheritDeathFacings.Get() &&
-			  pAnimExt->DeathUnitFacing.has_value())
-			? pAnimExt->DeathUnitFacing.get() : pTypeExt->CreateUnit_RandomFacing.Get()
-			? ScenarioClass::Instance->Random.RandomRangedSpecific<DirType>(DirType::North, DirType::Max) : pTypeExt->CreateUnit_Facing.Get();
+		const auto Is_AI = !decidedOwner->IsControlledByHuman();
+		DirType primaryFacing = pTypeExt->CreateUnit_Facing;
+		if (pTypeExt->CreateUnit_InheritDeathFacings && pAnimExt->DeathUnitFacing.has_value())
+			primaryFacing = pAnimExt->DeathUnitFacing;
+		else if (pTypeExt->CreateUnit_RandomFacing)
+			primaryFacing = ScenarioClass::Instance->Random.RandomRangedSpecific<DirType>(DirType::Min, DirType::Max);
 
-		auto pCell = MapClass::Instance->GetCellAt(pAnimExt->CreateUnitLocation);
-		const bool IsBridge = pCell->ContainsBridge();
-		bool inAir = pThis->IsOnMap && pAnimExt->CreateUnitLocation.Z >= Unsorted::CellHeight * 2;
-		bool parachuted = false;
+		std::optional<DirType> secondaryFacing {};
+		bool Scatter = false;
+		Mission missionAI = Mission::None;
 
-		if (pTypeExt->CreateUnit_SpawnParachutedInAir && !pTypeExt->CreateUnit_AlwaysSpawnOnGround && inAir)
+		if (pTechnoType->WhatAmI() == AbstractType::UnitType &&
+			pTechnoType->Turret &&
+			pAnimExt->DeathUnitTurretFacing.has_value() &&
+			pTypeExt->CreateUnit_InheritTurretFacings)
 		{
-			parachuted = true;
-			pTechno->SpawnParachuted(pAnimExt->CreateUnitLocation);
+			secondaryFacing = pAnimExt->DeathUnitTurretFacing.get().GetDir();
 		}
-		else if (!pTypeExt->CreateUnit_ConsiderPathfinding.Get() || !pCell->GetBuilding() || !IsBridge)
-		{
-			++Unsorted::ScenarioInit;
-			pTechno->Unlimbo(pAnimExt->CreateUnitLocation, resultingFacing);
-			--Unsorted::ScenarioInit;
-		}
+
+		if (!pTypeExt->ScatterCreateUnit(Is_AI))
+			missionAI = pTypeExt->GetCreateUnitMission(Is_AI);
 		else
-		{
-			pTechno->Unlimbo(pAnimExt->CreateUnitLocation, resultingFacing);
-		}
+			Scatter = true;
 
-		if (!pTechno->InLimbo)
+		if (CreateFoot(pTechnoType,
+			pAnimExt->CreateUnitLocation,
+			primaryFacing,
+			secondaryFacing,
+			Scatter,
+			decidedOwner,
+			pTypeExt->CreateUnit_ConsiderPathfinding,
+			pTypeExt->CreateUnit_SpawnParachutedInAir,
+			pTypeExt->CreateUnit_AlwaysSpawnOnGround,
+			missionAI
+		))
 		{
-			const auto Is_AI = !decidedOwner->IsControlledByHuman();
-
-			if (const auto pCreateUnitAnimType = pTypeExt->CreateUnit_SpawnAnim)
+			if (auto pSpawnAnim = pTypeExt->CreateUnit_SpawnAnim)
 			{
-				auto pCreateUnitAnim = GameCreate<AnimClass>(pCreateUnitAnimType, pAnimExt->CreateUnitLocation);
+				auto pCreateUnitAnim = GameCreate<AnimClass>(pSpawnAnim, pAnimExt->CreateUnitLocation);
 				pCreateUnitAnim->Owner = decidedOwner;
-				AnimExtContainer::Instance.Find(pCreateUnitAnim)->Invoker = AnimExtData::GetTechnoInvoker(pThis);
+				((FakeAnimClass*)pCreateUnitAnim)->_GetExtData()->Invoker = AnimExtData::GetTechnoInvoker(pThis);
 			}
-
-			if (pTechno->HasTurret() && pAnimExt->DeathUnitTurretFacing.has_value())
-			{
-				pTechno->SecondaryFacing.Set_Current(pAnimExt->DeathUnitTurretFacing.get());
-			}
-
-			if (!pTypeExt->CreateUnit_AlwaysSpawnOnGround)
-			{
-				bool inAir = pThis->IsOnMap && pAnimExt->CreateUnitLocation.Z >= Unsorted::CellHeight * 2;
-
-				if (auto const pJJLoco = locomotion_cast<JumpjetLocomotionClass*>(pTechno->Locomotor))
-				{
-					pJJLoco->Facing.Set_Current(DirStruct(static_cast<DirType>(resultingFacing)));
-
-					if (pTechno->Type->BalloonHover)
-					{
-						// Makes the jumpjet think it is hovering without actually moving.
-						pJJLoco->NextState = JumpjetLocomotionClass::State::Hovering;
-						pJJLoco->IsMoving = true;
-						pJJLoco->HeadToCoord = pAnimExt->CreateUnitLocation;
-						pJJLoco->Height = pTechno->Type->JumpjetData.JumpjetHeight;
-
-						if (!inAir)
-							AircraftTrackerClass::Instance->Add(pTechno);
-					}
-					else if (inAir)
-					{
-						// Order non-BalloonHover jumpjets to land.
-						pJJLoco->Move_To(pAnimExt->CreateUnitLocation);
-					}
-				}
-				else if (inAir && !parachuted)
-				{
-					pTechno->IsFallingDown = true;
-				}
-			}
-
-			if ((!pThis->IsInAir() || pTypeExt->CreateUnit_AlwaysSpawnOnGround) && IsBridge != pTechno->OnBridge)
-			{
-				pTechno->UpdatePlacement(PlacementType::Remove);
-				pTechno->OnBridge = pCell->ContainsBridge();
-				pTechno->UpdatePlacement(PlacementType::Put);
-			}
-
-			if (!pTypeExt->ScatterCreateUnit(Is_AI))
-				pTechno->QueueMission(pTypeExt->GetCreateUnitMission(Is_AI), false);
-			else
-				pTechno->Scatter(CoordStruct::Empty, true, false);
-		}
-		else
-		{
-			Debug::Log(__FUNCTION__" Called \n");
-			TechnoExtData::HandleRemove(pTechno);
 		}
 	}
 }
@@ -478,7 +534,7 @@ void AnimTypeExtData::ProcessDestroyAnims(FootClass* pThis, TechnoClass* pKiller
 
 	auto pAnim = GameCreate<AnimClass>(pAnimType, location);
 	const auto pAnimTypeExt = AnimTypeExtContainer::Instance.Find(pAnimType);
-	auto pAnimExt = AnimExtContainer::Instance.Find(pAnim);
+	auto pAnimExt = ((FakeAnimClass*)pAnim)->_GetExtData();
 	HouseClass* const pInvoker = pKiller ? pKiller->Owner : nullptr;
 	AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, pThis, true);
 
@@ -594,15 +650,7 @@ void AnimTypeExtData::Serialize(T& Stm)
 		.Process(this->RestrictVisibilityIfCloaked)
 		.Process(this->DetachOnCloak)
 		.Process(this->Translucency_Cloaked)
-		.Process(this->Translucent_Stage1_Percent)
-		.Process(this->Translucent_Stage1_Frame)
-		.Process(this->Translucent_Stage1_Translucency)
-		.Process(this->Translucent_Stage2_Percent)
-		.Process(this->Translucent_Stage2_Frame)
-		.Process(this->Translucent_Stage2_Translucency)
-		.Process(this->Translucent_Stage3_Percent)
-		.Process(this->Translucent_Stage3_Frame)
-		.Process(this->Translucent_Stage3_Translucency)
+		.Process(this->Translucent_Keyframes)
 
 		.Process(this->CreateUnit_SpawnHeight)
 
@@ -638,30 +686,32 @@ DEFINE_HOOK(0x428EA8, AnimTypeClass_SDDTOR, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x428970, AnimTypeClass_SaveLoad_Prefix, 0x8)
-DEFINE_HOOK(0x428800, AnimTypeClass_SaveLoad_Prefix, 0xA)
+#include <Misc/Hooks.Otamaa.h>
+
+HRESULT __stdcall FakeAnimTypeClass::_Load(IStream* pStm)
 {
-	GET_STACK(AnimTypeClass*, pItem, 0x4);
-	GET_STACK(IStream*, pStm, 0x8);
+	AnimTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->AnimTypeClass::Load(pStm);
 
-	AnimTypeExtContainer::Instance.PrepareStream(pItem, pStm);
+	if (SUCCEEDED(res))
+		AnimTypeExtContainer::Instance.LoadStatic();
 
-	return 0;
+	return res;
 }
 
-// Before :
-DEFINE_HOOK_AGAIN(0x42892C, AnimTypeClass_Load_Suffix, 0x6)
-DEFINE_HOOK(0x428958, AnimTypeClass_Load_Suffix, 0x6)
+HRESULT __stdcall FakeAnimTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-	AnimTypeExtContainer::Instance.LoadStatic();
-	return 0;
+	AnimTypeExtContainer::Instance.PrepareStream(this, pStm);
+	HRESULT res = this->AnimTypeClass::Save(pStm, clearDirty);
+
+	if (SUCCEEDED(res))
+		AnimTypeExtContainer::Instance.SaveStatic();
+
+	return res;
 }
 
-DEFINE_HOOK(0x42898A, AnimTypeClass_Save_Suffix, 0x3)
-{
-	AnimTypeExtContainer::Instance.SaveStatic();
-	return 0;
-}
+DEFINE_JUMP(VTABLE, 0x7E361C, MiscTools::to_DWORD(&FakeAnimTypeClass::_Load))
+DEFINE_JUMP(VTABLE, 0x7E3620, MiscTools::to_DWORD(&FakeAnimTypeClass::_Save))
 
 DEFINE_HOOK_AGAIN(0x4287E9, AnimTypeClass_LoadFromINI, 0xA)
 DEFINE_HOOK(0x4287DC, AnimTypeClass_LoadFromINI, 0xA)

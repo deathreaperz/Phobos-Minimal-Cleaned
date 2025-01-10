@@ -187,6 +187,7 @@ enum class PhobosScripts : int
 	ConditionalJumpCheckAliveHumans = 16024,
 	ConditionalJumpCheckObjects = 16025,
 	ConditionalJumpCheckHumanIsMostHated = 16026,
+	count
 };
 
 enum class DistanceMode : int
@@ -207,9 +208,6 @@ public:
 	InitState Initialized { InitState::Blank };
 public:
 	// Nothing yet
-
-	ScriptExtData()  noexcept = default;
-	~ScriptExtData() noexcept = default;
 
 	static bool ProcessScriptActions(TeamClass* pTeam);
 	static void ExecuteTimedAreaGuardAction(TeamClass* pTeam);
@@ -326,5 +324,5 @@ class ScriptExtContainer final : public Container<ScriptExtData>
 public:
 	static ScriptExtContainer Instance;
 
-	CONSTEXPR_NOCOPY_CLASSB(ScriptExtContainer, ScriptExtData, "ScriptClass");
+	//CONSTEXPR_NOCOPY_CLASSB(ScriptExtContainer, ScriptExtData, "ScriptClass");
 };

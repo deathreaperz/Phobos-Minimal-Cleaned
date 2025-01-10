@@ -29,6 +29,8 @@
 
 #include <Locomotor/TunnelLocomotionClass.h>
 
+#include <InfantryClass.h>
+
 #define ENABLE_THESE
 
 DEFINE_HOOK(0x728F74, TunnelLocomotionClass_Process_KillAnims, 0x5)
@@ -47,7 +49,8 @@ DEFINE_HOOK(0x728F74, TunnelLocomotionClass_Process_KillAnims, 0x5)
 
 	for (auto& attachEffect : pExt->PhobosAE)
 	{
-		attachEffect.SetAnimationTunnelState(false);
+		if (attachEffect)
+			attachEffect->SetAnimationTunnelState(false);
 	}
 
 	return 0;
@@ -69,7 +72,8 @@ DEFINE_HOOK(0x728E5F, TunnelLocomotionClass_Process_RestoreAnims, 0x7)
 
 		for (auto& attachEffect : pExt->PhobosAE)
 		{
-			attachEffect.SetAnimationTunnelState(true);
+			if (attachEffect)
+				attachEffect->SetAnimationTunnelState(true);
 		}
 	}
 
@@ -83,7 +87,7 @@ void UpdateWebbed(FootClass* pThis)
 	if (!pExt->IsWebbed)
 		return;
 
-	if (auto pInf = specific_cast<InfantryClass*>(pThis))
+	if (auto pInf = cast_to<InfantryClass*, false>(pThis))
 	{
 		if (pInf->ParalysisTimer.Completed())
 		{
@@ -102,11 +106,7 @@ void UpdateWebbed(FootClass* pThis)
 #include <Misc/Ares/Hooks/Header.h>
 #include <New/PhobosAttachedAffect/Functions.h>
 
-#ifndef aaa
 DEFINE_HOOK(0x6F9E5B, TechnoClass_AI_Early, 0x6)
-#else
-DEFINE_HOOK(0x6F9E50, TechnoClass_AI_Early, 0x5)
-#endif
 {
 	enum { retDead = 0x6FAFFD, Continue = 0x6F9E6C };
 
@@ -115,12 +115,7 @@ DEFINE_HOOK(0x6F9E50, TechnoClass_AI_Early, 0x5)
 	if (pThis->IsMouseHovering)
 		pThis->IsMouseHovering = false;
 
-	//if (!pThis || !pThis->IsAlive)
-	//	return retDead;
-
-#ifndef aaa
 	TechnoExt_ExtData::Ares_technoUpdate(pThis);
-#endif
 
 	if (!pThis->IsAlive)
 		return retDead;
@@ -155,9 +150,6 @@ DEFINE_HOOK(0x6F9E50, TechnoClass_AI_Early, 0x5)
 		}
 	}
 #endif
-	// Set only if unset or type is changed
-	// Notice that Ares may handle type conversion in the same hook here, which is executed right before this one thankfully
-	//if (pExt->Type != pType)
 
 	// Update tunnel state on exit, TechnoClass::AI is only called when not in tunnel.
 	if (pExt->IsInTunnel)
@@ -208,24 +200,33 @@ DEFINE_HOOK(0x6F9E50, TechnoClass_AI_Early, 0x5)
 	return Continue;
 }
 
-DEFINE_HOOK_AGAIN(0x703789, TechnoClass_CloakUpdateMCAnim, 0x6) // TechnoClass_Do_Cloak
-DEFINE_HOOK(0x6FB9D7, TechnoClass_CloakUpdateMCAnim, 0x6)       // TechnoClass_Cloaking_AI
+DEFINE_HOOK_AGAIN(0x6FBBC3, TechnoClass_Cloak_BeforeDetach, 0x5)  // TechnoClass_Cloaking_AI
+DEFINE_HOOK(0x703789, TechnoClass_Cloak_BeforeDetach, 0x6)        // TechnoClass_Do_Cloak
 {
 	GET(TechnoClass*, pThis, ESI);
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	pExt->UpdateMindControlAnim();
-
-	if (R->Origin() == 0x703789)
-		pExt->IsAboutToStartCloaking = true;
+	pExt->IsDetachingForCloak = true;
 
 	return 0;
 }
 
-DEFINE_HOOK(0x703799, TechnoClass_DoCloak_UnsetCloakFlag, 0xA)
+DEFINE_HOOK_AGAIN(0x6FBBCE, TechnoClass_Cloak_AfterDetach, 0x7)  // TechnoClass_Cloaking_AI
+DEFINE_HOOK(0x703799, TechnoClass_Cloak_AfterDetach, 0xA)        // TechnoClass_Do_Cloak
 {
 	GET(TechnoClass*, pThis, ESI);
-	TechnoExtContainer::Instance.Find(pThis)->IsAboutToStartCloaking = false;
+	TechnoExtContainer::Instance.Find(pThis)->IsDetachingForCloak = false;
+	return 0;
+}
+
+DEFINE_HOOK(0x6FB9D7, TechnoClass_Cloak_RestoreMCAnim, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+
+	if (auto const pExt = TechnoExtContainer::Instance.Find(pThis))
+		pExt->UpdateMindControlAnim();
+
 	return 0;
 }
 
@@ -246,40 +247,35 @@ DEFINE_HOOK(0x6F9EAD, TechnoClass_AI_AfterAres, 0x7)
 
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	//const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
 #ifdef ENABLE_THESE
-	PassengersFunctional::AI(pThis);
+	//PassengersFunctional::AI(pThis);
 	//SpawnSupportFunctional::AI(pThis);
 
-	pExt->MyWeaponManager.TechnoClass_Update_CustomWeapon(pThis);
+	//pExt->MyWeaponManager.TechnoClass_Update_CustomWeapon(pThis);
 
-	if (pThis->IsAlive)
-		GiftBoxFunctional::AI(pExt, pTypeExt);
+	//if(pThis->IsAlive)
+	//	GiftBoxFunctional::AI(pExt, pTypeExt);
 
-	if (pThis->IsAlive)
-	{
-		auto it = std::remove_if(pExt->PaintBallStates.begin(), pExt->PaintBallStates.end(), [pThis](auto& pb)
-{
-	if (pb.second.timer.GetTimeLeft())
-	{
-		if (pThis->WhatAmI() == BuildingClass::AbsID)
-		{
-			BuildingExtContainer::Instance.Find(static_cast<BuildingClass*>(pThis))->LighningNeedUpdate = true;
-		}
-		return false;
-	}
+	//if(pThis->IsAlive){
+		//auto it = std::remove_if(pExt->PaintBallStates.begin() , pExt->PaintBallStates.end() ,[pThis](auto& pb){
+		//		if(pb.second.timer.GetTimeLeft()) {
+		//			if (pThis->WhatAmI() == BuildingClass::AbsID) {
+		//				BuildingExtContainer::Instance.Find(static_cast<BuildingClass*>(pThis))->LighningNeedUpdate = true;
+		//			}
+		//			return false;
+		//		}
+		//
+		//	return true;
+		//});
 
-	return true;
-		});
+		//pExt->PaintBallStates.erase(it);
 
-		pExt->PaintBallStates.erase(it);
-
-		if (auto& pDSState = pExt->DamageSelfState)
-		{
-			pDSState->TechnoClass_Update_DamageSelf(pThis);
-		}
-	}
+		//if (auto& pDSState = pExt->DamageSelfState) {
+		//	pDSState->TechnoClass_Update_DamageSelf(pThis);
+		//}
+	//}
 #endif
 	return pThis->IsAlive ? 0x6F9EBB : 0x6FAFFD;
 	//return 0x6F9EBB;
@@ -339,9 +335,9 @@ DEFINE_HOOK(0x414DA1, AircraftClass_AI_FootClass_AI, 0x7)
 
 #ifdef ENABLE_THESE
 	pExt->UpdateAircraftOpentopped();
-	AircraftPutDataFunctional::AI(pExt, pTypeExt);
-	AircraftDiveFunctional::AI(pExt, pTypeExt);
-	FighterAreaGuardFunctional::AI(pExt, pTypeExt);
+	//AircraftPutDataFunctional::AI(pExt, pTypeExt);
+	//AircraftDiveFunctional::AI(pExt, pTypeExt);
+	//FighterAreaGuardFunctional::AI(pExt, pTypeExt);
 
 	//if (pThis->IsAlive && pThis->SpawnOwner != nullptr)
 	//{
@@ -379,8 +375,8 @@ DEFINE_HOOK(0x4DA698, FootClass_AI_IsMovingNow, 0x8)
 #ifdef ENABLE_THESE
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	DriveDataFunctional::AI(pExt);
-	//UpdateWebbed(pThis);
+	// DriveDataFunctional::AI(pExt);
+	 //UpdateWebbed(pThis);
 #endif
 	if (IsMovingNow)
 	{
@@ -389,7 +385,7 @@ DEFINE_HOOK(0x4DA698, FootClass_AI_IsMovingNow, 0x8)
 		// doesn't run when the object is off-screen which leads to visual bugs - Kerbiter
 		pExt->UpdateLaserTrails();
 
-		TrailsManager::AI(static_cast<TechnoClass*>(pThis));
+		TrailsManager::AI(pThis);
 #endif
 		return 0x4DA6A0;
 	}
@@ -420,25 +416,21 @@ DEFINE_HOOK(0x71A88D, TemporalClass_AI_Add, 0x8) //0
 
 		for (auto& ae : pTargetExt->PhobosAE)
 		{
-			ae.AI_Temporal();
+			if (ae)
+				ae->AI_Temporal();
 		}
 
-		if (auto pBldTarget = specific_cast<BuildingClass*>(pTarget))
+		if (auto pBldTarget = cast_to<BuildingClass*, false>(pTarget))
 		{
 			auto pExt = BuildingExtContainer::Instance.Find(pBldTarget);
 
-			std::array<std::pair<BuildingTypeClass*, CDTimerClass*>, 4u> Timers
-			{ {
-			{ pBldTarget->Type , &pBldTarget->CashProductionTimer },
-			{ pBldTarget->Upgrades[0] ,&pExt->CashUpgradeTimers[0] },
-			{ pBldTarget->Upgrades[1] ,&pExt->CashUpgradeTimers[1] },
-			 { pBldTarget->Upgrades[2] ,&pExt->CashUpgradeTimers[2] },
-			} };
-
-			for (auto& [pbld, timer] : Timers)
+			pBldTarget->CashProductionTimer.Pause();
+			for (size_t i = 0; i < std::size(pBldTarget->Upgrades); ++i)
 			{
-				if (pbld)
-					timer->Pause();
+				if (pBldTarget->Upgrades[i])
+				{
+					pExt->CashUpgradeTimers[i].Pause();
+				}
 			}
 		}
 	}

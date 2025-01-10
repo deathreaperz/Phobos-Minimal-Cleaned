@@ -379,7 +379,7 @@ void CloneableLighningStormStateMachine::Update()
 					if (auto const pObj = pCell->FindTechnoNearestTo(
 						Point2D::Empty, false, pCellBld))
 					{
-						if (auto const pBld = specific_cast<BuildingClass*>(pObj))
+						if (auto const pBld = cast_to<BuildingClass*, false>(pObj))
 						{
 							if (pBld->Type->LightningRod)
 							{
@@ -402,8 +402,8 @@ void CloneableLighningStormStateMachine::Update()
 					for (auto const& pCloud : CloudsPresent)
 					{
 						auto const cellCloud = pCloud->GetMapCoords();
-						auto const dist = std::abs(cellCloud.X - ret.X)
-							+ std::abs(cellCloud.Y - ret.Y);
+						auto const dist = Math::abs(cellCloud.X - ret.X)
+							+ Math::abs(cellCloud.Y - ret.Y);
 
 						if (dist < separation)
 						{
@@ -434,12 +434,11 @@ void CloneableLighningStormStateMachine::Update()
 
 void CloneableLighningStormStateMachine::Strike2(CoordStruct const& nCoord)
 {
-	auto const pData = this->GetTypeExtData();
-	auto const pCell = MapClass::Instance->GetCellAt(nCoord);
-	auto const coords = pCell->GetCoordsWithBridge();
-
-	if (coords != CoordStruct::Empty)
+	if (nCoord != CoordStruct::Empty)
 	{
+		auto const pData = this->GetTypeExtData();
+		auto const pCell = MapClass::Instance->GetCellAt(nCoord);
+		auto const coords = pCell->GetCoordsWithBridge();
 		// create a bolt animation
 		if (auto it = pData->Weather_Bolts.GetElements(
 			RulesClass::Instance->WeatherConBolts))
@@ -468,7 +467,7 @@ void CloneableLighningStormStateMachine::Strike2(CoordStruct const& nCoord)
 
 		auto const& empty = Point2D::Empty;
 		auto const pObj = pCell->FindTechnoNearestTo(empty, false, nullptr);
-		auto const isInfantry = specific_cast<InfantryClass*>(pObj) != nullptr;
+		auto const isInfantry = cast_to<InfantryClass*>(pObj) != nullptr;
 
 		// empty cell action
 		if (!pBld && !pObj)
@@ -485,7 +484,7 @@ void CloneableLighningStormStateMachine::Strike2(CoordStruct const& nCoord)
 		auto damage = Type->GetDamage(pData);
 		if (!pData->Weather_IgnoreLightningRod)
 		{
-			if (auto const pBldObj = specific_cast<BuildingClass*>(pObj))
+			if (auto const pBldObj = cast_to<BuildingClass*>(pObj))
 			{
 				const auto& nRodTypes = pData->Weather_LightningRodTypes;
 				auto const pBldType = pBldObj->Type;
@@ -553,13 +552,13 @@ bool CloneableLighningStormStateMachine::Strike(CellStruct const& nCell)
 {
 	auto const pExt = this->GetTypeExtData();
 
-	// get center of cell coords
-	auto const pCell = MapClass::Instance->GetCellAt(nCell);
-	auto coords = pCell->GetCoordsWithBridge();
-
 	// create a cloud animation
-	if (coords != CoordStruct::Empty)
+	if (nCell != CellStruct::Empty)
 	{
+		// get center of cell coords
+		auto const pCell = MapClass::Instance->GetCellAt(nCell);
+		auto coords = pCell->GetCoordsWithBridge();
+
 		// select the anim
 		auto const itClouds = pExt->Weather_Clouds.GetElements(RulesClass::Instance->WeatherConClouds);
 
