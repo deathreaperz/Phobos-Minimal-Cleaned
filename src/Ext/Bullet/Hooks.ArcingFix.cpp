@@ -9,7 +9,8 @@ DEFINE_HOOK(0x6FE657, TechnoClass_FireAt_ArcingFix, 0x6)
 	GET(int, targetHeight, EDI);
 	GET(int, fireHeight, EAX);
 
-	if (pBulletType->Arcing && targetHeight > fireHeight && !pBulletType->_GetExtData()->Arcing_AllowElevationInaccuracy) {
+	if (pBulletType->Arcing && targetHeight > fireHeight && !pBulletType->_GetExtData()->Arcing_AllowElevationInaccuracy)
+	{
 		R->EAX(targetHeight);
 	}
 
@@ -25,7 +26,8 @@ DEFINE_HOOK(0x44D23C, BuildingClass_Mission_Missile_ArcingFix, 0x7)
 	auto const pBulletType = pWeapon->Projectile;
 	auto const pBulletTypeExt = pWeapon->_GetBulletTypeExtData();
 
-	if (pBulletType->Arcing && targetHeight > fireHeight && !pBulletTypeExt->Arcing_AllowElevationInaccuracy) {
+	if (pBulletType->Arcing && targetHeight > fireHeight && !pBulletTypeExt->Arcing_AllowElevationInaccuracy)
+	{
 		R->EAX(targetHeight);
 	}
 

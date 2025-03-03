@@ -112,23 +112,28 @@ DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 				pSource
 			)
 		);
-
 	}break;
 	default:
 	{
-		if (!pType->Organic || what != InfantryClass::AbsID) {
-			if(forceshield && what != BuildingClass::AbsID){
+		if (!pType->Organic || what != InfantryClass::AbsID)
+		{
+			if (forceshield && what != BuildingClass::AbsID)
+			{
 				R->EAX(DamageState::Unaffected);
-			} else {
+			}
+			else
+			{
 				return MakeInvunlnerable;
 			}
-		} else {
+		}
+		else
+		{
 			const auto killWH = (forceshield ? &pTypeExt->ForceShield_KillWarhead : &pTypeExt->IronCurtain_KillWarhead);
 			const auto killWH_org = forceshield ? &RulesExtData::Instance()->ForceShield_KillOrganicsWarhead : &RulesExtData::Instance()->IronCurtain_KillOrganicsWarhead;
 			auto killWH_result = killWH->Get(!isOrganic ? RulesClass::Instance->C4Warhead : killWH_org->Get());
 
-			R->EAX (
-			pThis->ReceiveDamage (
+			R->EAX(
+			pThis->ReceiveDamage(
 				&pThis->Health,
 				0,
 				killWH_result,
@@ -138,7 +143,6 @@ DEFINE_HOOK(0x4DEAEE, TechnoClass_IronCurtain_Flags, 0x6)
 				pSource
 			));
 		}
-
 	}break;
 	}
 

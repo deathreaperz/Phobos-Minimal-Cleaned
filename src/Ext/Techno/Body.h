@@ -53,12 +53,12 @@ struct AEProperties
 			std::set<WeaponTypeClass*> allow {};
 			std::set<WeaponTypeClass*> disallow {};
 
-			bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+			bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
 				return this->Serialize(Stm);
 			}
 
-			bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+			bool FORCEDINLINE Save(PhobosStreamWriter& Stm) const
 			{
 				return const_cast<RangeData*>(this)->Serialize(Stm);
 			}
@@ -100,7 +100,7 @@ struct AEProperties
 		private:
 
 			template <typename T>
-			bool FORCEINLINE Serialize(T& Stm)
+			bool FORCEDINLINE Serialize(T& Stm)
 			{
 				return Stm
 					.Process(this->rangeMult)
@@ -120,27 +120,27 @@ struct AEProperties
 
 		HelperedVector<RangeData> ranges { };
 
-		bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+		bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 		{
 			return this->Serialize(Stm);
 		}
 
-		bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+		bool FORCEDINLINE Save(PhobosStreamWriter& Stm) const
 		{
 			return const_cast<ExtraRange*>(this)->Serialize(Stm);
 		}
 
-		constexpr void Clear()
+		COMPILETIMEEVAL void Clear()
 		{
 			ranges.clear();
 		}
 
-		constexpr bool Enabled()
+		COMPILETIMEEVAL bool Enabled()
 		{
 			return !ranges.empty();
 		}
 
-		constexpr int Get(int initial, WeaponTypeClass* who)
+		COMPILETIMEEVAL int Get(int initial, WeaponTypeClass* who)
 		{
 			int add = 0;
 			for (auto& ex_range : ranges)
@@ -155,7 +155,7 @@ struct AEProperties
 			return initial + add;
 		}
 
-		constexpr void FillEligible(WeaponTypeClass* who, std::vector<RangeDataOut>& eligible)
+		COMPILETIMEEVAL void FillEligible(WeaponTypeClass* who, std::vector<RangeDataOut>& eligible)
 		{
 			for (auto& ex_range : this->ranges)
 			{
@@ -166,7 +166,7 @@ struct AEProperties
 			}
 		}
 
-		static constexpr int Count(int initial, std::vector<RangeDataOut>& eligible)
+		static COMPILETIMEEVAL int Count(int initial, std::vector<RangeDataOut>& eligible)
 		{
 			int add = 0;
 			for (auto& ex_range : eligible)
@@ -181,7 +181,7 @@ struct AEProperties
 	private:
 
 		template <typename T>
-		bool FORCEINLINE Serialize(T& Stm)
+		bool FORCEDINLINE Serialize(T& Stm)
 		{
 			return Stm
 				.Process(this->ranges)
@@ -199,12 +199,12 @@ struct AEProperties
 			std::set<WarheadTypeClass*> allow {};
 			std::set<WarheadTypeClass*> disallow {};
 
-			bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+			bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
 				return this->Serialize(Stm);
 			}
 
-			bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+			bool FORCEDINLINE Save(PhobosStreamWriter& Stm) const
 			{
 				return const_cast<CritData*>(this)->Serialize(Stm);
 			}
@@ -246,7 +246,7 @@ struct AEProperties
 		private:
 
 			template <typename T>
-			bool FORCEINLINE Serialize(T& Stm)
+			bool FORCEDINLINE Serialize(T& Stm)
 			{
 				return Stm
 					.Process(this->Mult)
@@ -266,27 +266,27 @@ struct AEProperties
 
 		HelperedVector<CritData> ranges { };
 
-		bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+		bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 		{
 			return this->Serialize(Stm);
 		}
 
-		bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+		bool FORCEDINLINE Save(PhobosStreamWriter& Stm) const
 		{
 			return const_cast<ExtraCrit*>(this)->Serialize(Stm);
 		}
 
-		constexpr void Clear()
+		COMPILETIMEEVAL void Clear()
 		{
 			ranges.clear();
 		}
 
-		constexpr bool Enabled()
+		COMPILETIMEEVAL bool Enabled()
 		{
 			return !ranges.empty();
 		}
 
-		constexpr double Get(double initial, WarheadTypeClass* who)
+		COMPILETIMEEVAL double Get(double initial, WarheadTypeClass* who)
 		{
 			double add = 0.0;
 			for (auto& ex_range : ranges)
@@ -301,7 +301,7 @@ struct AEProperties
 			return initial + add;
 		}
 
-		constexpr void FillEligible(WarheadTypeClass* who, std::vector<CritDataOut>& eligible)
+		COMPILETIMEEVAL void FillEligible(WarheadTypeClass* who, std::vector<CritDataOut>& eligible)
 		{
 			for (auto& ex_range : this->ranges)
 			{
@@ -312,7 +312,7 @@ struct AEProperties
 			}
 		}
 
-		static constexpr double Count(double initial, std::vector<CritDataOut>& eligible)
+		static COMPILETIMEEVAL double Count(double initial, std::vector<CritDataOut>& eligible)
 		{
 			double add = 0.0;
 			for (auto& ex_range : eligible)
@@ -327,7 +327,7 @@ struct AEProperties
 	private:
 
 		template <typename T>
-		bool FORCEINLINE Serialize(T& Stm)
+		bool FORCEDINLINE Serialize(T& Stm)
 		{
 			return Stm
 				.Process(this->ranges)
@@ -344,12 +344,12 @@ struct AEProperties
 			std::set<WarheadTypeClass*> allow {};
 			std::set<WarheadTypeClass*> disallow {};
 
-			bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+			bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
 				return this->Serialize(Stm);
 			}
 
-			bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+			bool FORCEDINLINE Save(PhobosStreamWriter& Stm) const
 			{
 				return const_cast<MultData*>(this)->Serialize(Stm);
 			}
@@ -391,7 +391,7 @@ struct AEProperties
 		private:
 
 			template <typename T>
-			bool FORCEINLINE Serialize(T& Stm)
+			bool FORCEDINLINE Serialize(T& Stm)
 			{
 				return Stm
 					.Process(this->Mult)
@@ -404,27 +404,27 @@ struct AEProperties
 
 		HelperedVector<MultData> mults { };
 
-		bool FORCEINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
+		bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 		{
 			return this->Serialize(Stm);
 		}
 
-		bool FORCEINLINE Save(PhobosStreamWriter& Stm) const
+		bool FORCEDINLINE Save(PhobosStreamWriter& Stm) const
 		{
 			return const_cast<ArmorMult*>(this)->Serialize(Stm);
 		}
 
-		constexpr void Clear()
+		COMPILETIMEEVAL void Clear()
 		{
 			mults.clear();
 		}
 
-		constexpr bool Enabled()
+		COMPILETIMEEVAL bool Enabled()
 		{
 			return !mults.empty();
 		}
 
-		constexpr double Get(double initial, WarheadTypeClass* who)
+		COMPILETIMEEVAL double Get(double initial, WarheadTypeClass* who)
 		{
 			for (auto& ex_range : mults)
 			{
@@ -437,7 +437,7 @@ struct AEProperties
 			return initial;
 		}
 
-		constexpr void FillEligible(WarheadTypeClass* who, std::vector<double>& eligible)
+		COMPILETIMEEVAL void FillEligible(WarheadTypeClass* who, std::vector<double>& eligible)
 		{
 			for (auto& ex_range : this->mults)
 			{
@@ -448,7 +448,7 @@ struct AEProperties
 			}
 		}
 
-		static constexpr double Apply(double initial, std::vector<double>& eligible)
+		static COMPILETIMEEVAL double Apply(double initial, std::vector<double>& eligible)
 		{
 			for (auto& ex_range : eligible)
 			{
@@ -460,7 +460,7 @@ struct AEProperties
 	private:
 
 		template <typename T>
-		bool FORCEINLINE Serialize(T& Stm)
+		bool FORCEDINLINE Serialize(T& Stm)
 		{
 			return Stm
 				.Process(this->mults)
@@ -556,12 +556,12 @@ protected:
 class TechnoExtData
 {
 public:
-	static constexpr size_t Canary = 0x22365555;
+	static COMPILETIMEEVAL size_t Canary = 0x22365555;
 	using base_type = TechnoClass;
 
-	//static constexpr size_t ExtOffset = 0x4FC;
-	static constexpr size_t ExtOffset = 0x154; //ares
-	//static constexpr size_t ExtOffset = 0x34C;
+	//static COMPILETIMEEVAL size_t ExtOffset = 0x4FC;
+	static COMPILETIMEEVAL size_t ExtOffset = 0x154; //ares
+	//static COMPILETIMEEVAL size_t ExtOffset = 0x34C;
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -682,8 +682,6 @@ public:
 
 	NewTiberiumStorageClass TiberiumStorage {};
 
-	bool CanCurrentlyDeployIntoBuilding { false }; // Only set on UnitClass technos with DeploysInto set in multiplayer games, recalculated once per frame.
-
 	HelperedVector<std::unique_ptr<PhobosAttachEffectClass>> PhobosAE {};
 
 	int ShootCount { 0 };
@@ -718,6 +716,21 @@ public:
 	PowerupEffects DropCrateType { PowerupEffects::Money };
 
 	int LastBeLockedFrame {};
+	int BeControlledThreatFrame {};
+
+	DWORD LastTargetID { 0xFFFFFFFF };
+	int AccumulatedGattlingValue {};
+	bool ShouldUpdateGattlingValue {};
+
+	bool KeepTargetOnMove { false };
+
+	bool FiringSequencePaused { false };
+	int DelayedFireWeaponIndex { -1 };
+	CDTimerClass DelayedFireTimer {};
+	Handle<AnimClass*, UninitAnim> CurrentDelayedFireAnim { nullptr };
+	std::optional<CoordStruct> CustomFiringOffset {}; // If set any calls to GetFLH() will use this coordinate as
+
+	WeaponTypeClass* LastWeaponType { nullptr };
 
 	~TechnoExtData() noexcept
 	{
@@ -735,7 +748,7 @@ public:
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
 
-	FORCEINLINE ShieldClass* GetShield() const
+	FORCEDINLINE ShieldClass* GetShield() const
 	{
 		return this->Shield.get();
 	}
@@ -747,7 +760,7 @@ public:
 
 	bool CheckDeathConditions();
 	bool UpdateKillSelf_Slave();
-
+	void UpdateGattlingRateDownReset();
 	void UpdateEatPassengers();
 	void UpdateMindControlAnim();
 
@@ -763,7 +776,9 @@ public:
 	void UpdateMCRangeLimit();
 	void UpdateSpawnLimitRange();
 	void UpdateRevengeWeapons();
-
+	void UpdateRearmInEMPState();
+	void UpdateRearmInTemporal();
+	void UpdateRecountBurst();
 	void UpdateLaserTrails();
 	//
 	void UpdateAircraftOpentopped();
@@ -779,16 +794,19 @@ public:
 	void ManualIdleAction();
 	void StopRotateWithNewROT(int ROT = -1);
 
-	constexpr FORCEINLINE static size_t size_Of()
+	void ResetDelayedFireTimer();
+
+	void CreateDelayedFireAnim(AnimTypeClass* pAnimType, int weaponIndex, bool attach, bool center, bool removeOnNoDelay, bool useOffsetOverride, CoordStruct offsetOverride);
+
+	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(TechnoExtData) -
 			(4u //AttachedToObject
 			+ 4u //DamageNumberOffset
-			+ sizeof(bool) //CanCurrentlyDeployIntoBuilding
 			 );
 	}
 
-	static bool FORCEINLINE IsOnBridge(FootClass* pUnit)
+	static bool FORCEDINLINE IsOnBridge(FootClass* pUnit)
 	{
 		auto const pCell = MapClass::Instance->GetCellAt(pUnit->GetCoords());
 		auto const pCellAjd = pCell->GetNeighbourCell(FacingType::North);
@@ -801,7 +819,7 @@ public:
 		return false;
 	}
 
-	static FORCEINLINE void GetLevelIntensity(TechnoClass* pThis, int level, int& levelIntensity, int& cellIntensity, double levelMult, double cellMult, bool applyBridgeBonus = false)
+	static FORCEDINLINE void GetLevelIntensity(TechnoClass* pThis, int level, int& levelIntensity, int& cellIntensity, double levelMult, double cellMult, bool applyBridgeBonus = false)
 	{
 		double currentLevel = pThis->GetHeight() / static_cast<double>(Unsorted::LevelHeight);
 		levelIntensity = static_cast<int>(level * currentLevel * levelMult);
@@ -847,7 +865,8 @@ public:
 	static std::pair<bool, CoordStruct> GetInfantryFLH(InfantryClass* pThis, int weaponInde);
 
 	static void TransferMindControlOnDeploy(TechnoClass* pTechnoFrom, TechnoClass* pTechnoTo);
-	static double GetDamageMult(TechnoClass* pSouce, bool ForceDisable = false);
+	static double GetDamageMult(TechnoClass* pSouce, double damageIn, bool ForceDisable = false);
+	static double GetArmorMult(TechnoClass* pSouce, double damageIn, WarheadTypeClass* pWarhead);
 
 	static void InitializeItems(TechnoClass* pThis, TechnoTypeClass* pType);
 	static void InitializeLaserTrail(TechnoClass* pThis, bool bIsconverted);
@@ -1003,19 +1022,23 @@ public:
 	static void StoreLastTargetAndMissionAfterWebbed(InfantryClass* pThis);
 
 	static NOINLINE Armor GetArmor(ObjectClass* pThis);
-	static bool CanDeployIntoBuilding(UnitClass* pThis, bool noDeploysIntoDefaultValue = false);
+	static bool CanDeployIntoBuilding(UnitClass* pThis, bool noDeploysIntoDefaultValue);
+	static bool CanDeployIntoBuilding(UnitClass* pThis);
 
 	static void SetChargeTurretDelay(TechnoClass* pThis, int rearmDelay, WeaponTypeClass* pWeapon);
 
 	static bool TryToCreateCrate(CoordStruct location, PowerupEffects selectedPowerup = PowerupEffects::Money, int maxCellRange = 10);
 
 	static void ApplyKillWeapon(TechnoClass* pThis, TechnoClass* pSource, WarheadTypeClass* pWH);
+
+public:
+	static OPTIONALINLINE UnitClass* Deployer { nullptr };
 };
 
 class TechnoExtContainer final : public Container<TechnoExtData>
 {
 public:
-	inline static std::vector<TechnoExtData*> Pool;
+	OPTIONALINLINE static std::vector<TechnoExtData*> Pool;
 	static TechnoExtContainer Instance;
 
 	TechnoExtData* AllocateUnchecked(TechnoClass* key)
@@ -1084,4 +1107,9 @@ public:
 	}
 
 	//CONSTEXPR_NOCOPY_CLASSB(TechnoExtContainer, TechnoExtData, "TechnoClass");
+};
+
+class FakeTechnoClass final : TechnoClass
+{
+public:
 };

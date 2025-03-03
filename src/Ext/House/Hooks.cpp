@@ -340,6 +340,13 @@ DEFINE_HOOK(0x70173B, TechnoClass_ChangeOwnership_AfterHouseWasSet, 0x5)
 				TechnoExt_ExtData::ConvertToType(pMe, pConvertTo, true, false);
 		}
 
+		if (RulesExtData::Instance()->ExtendedBuildingPlacing
+			&& pThis->WhatAmI() == AbstractType::Unit
+			&& pThis->GetTechnoType()->DeploysInto)
+		{
+			HouseExtContainer::Instance.Find(OldOwner)->OwnedDeployingUnits.remove((UnitClass*)pThis);
+		}
+
 		OldOwner = nullptr;
 	}
 
@@ -352,9 +359,9 @@ DEFINE_HOOK(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 	GET(HouseClass* const, pNewOwner, EBP);
 
 	auto const pType = pThis->GetTechnoType();
-	auto pOldOwnerExt = HouseExtContainer::Instance.Find(pThis->Owner);
-	auto pNewOwnerExt = HouseExtContainer::Instance.Find(pNewOwner);
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	//auto pOldOwnerExt = HouseExtContainer::Instance.Find(pThis->Owner);
+	// pNewOwnerExt = HouseExtContainer::Instance.Find(pNewOwner);
+	//const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
 	if (!pNewOwner->Type->MultiplayPassive && pThis->WhatAmI() != BuildingClass::AbsID && TechnoTypeExtContainer::Instance.Find(pType)->IsGenericPrerequisite())
 	{

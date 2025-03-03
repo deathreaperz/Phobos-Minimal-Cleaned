@@ -467,7 +467,7 @@ DEFINE_HOOK(0x6EAE60, TeamClass_Detach, 0x7)
 	GET_STACK(AbstractClass*, target, 0x4);
 	GET_STACK(bool, all, 0x8);
 
-	TeamExtContainer::Instance.InvalidatePointerFor(pThis, target, true);
+	TeamExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
 
 	//return pThis->Target == target ? 0x6EAECC : 0x6EAECF;
 	return 0x0;

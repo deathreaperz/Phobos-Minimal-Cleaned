@@ -61,7 +61,7 @@ DEFINE_HOOK(0x51AA40, InfantryClass_Assign_Destination_DisallowMoving, 0x5)
 	GET_STACK(AbstractClass*, pDest, 0x4);
 	GET_STACK(unsigned int, callerAddress, 0x0);
 
-	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	//const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	if (!SyncLogger::HooksDisabled)
 		SyncLogger::AddDestinationChangeSyncLogEvent(pThis, pDest, callerAddress);
@@ -151,12 +151,10 @@ DEFINE_HOOK(0x708FC0, TechnoClass_ResponseMove_Pickup, 0x5)
 		if (pAircraft->Type->Carryall && pAircraft->HasAnyLink() &&
 			pAircraft->Destination && (pAircraft->Destination->AbstractFlags & AbstractFlags::Foot) != AbstractFlags::None)
 		{
-
 			auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pAircraft->Type);
 
 			if (!pTypeExt->VoicePickup.empty())
 			{
-
 				pThis->QueueVoice(pTypeExt->VoicePickup[Random2Class::NonCriticalRandomNumber->Random() & pTypeExt->VoicePickup.size()]);
 
 				R->EAX(1);
@@ -189,7 +187,7 @@ DEFINE_HOOK(0x6F6CFE, TechnoClass_Unlimbo_LaserTrails, 0x6)
 	GET(TechnoClass*, pThis, ESI);
 
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	//const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
 	if (!pExt->LaserTrails.empty())
 	{
@@ -246,10 +244,8 @@ DEFINE_HOOK(0x70EFE0, TechnoClass_GetMaxSpeed, 0x8) //6
 
 	int maxSpeed = 0;
 
-	if (pThis)
+	if (auto pType = pThis->GetTechnoType())
 	{
-		auto pType = pThis->GetTechnoType();
-
 		if (TechnoTypeExtContainer::Instance.Find(pType)->UseDisguiseMovementSpeed)
 			pType = TechnoExtData::GetSimpleDisguiseType(pThis, false, false);
 
@@ -371,7 +367,6 @@ DEFINE_HOOK(0x6FD054, TechnoClass_RearmDelay_ForceFullDelay, 0x6)
 
 		if (OccupyRofMult > 0.0)
 			_ROF = int(float(_ROF) / OccupyRofMult);
-
 	}
 
 	if (pThis->BunkerLinkedItem && !Building)
@@ -450,77 +445,69 @@ DEFINE_HOOK(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 	}
 
 	//IsFiring
-	if (R->AL() && pThis->Animation.Value == firingFrame + cumulativeDelay)
+	if (R->AL())
 	{
-		if (pWeaponExt->Burst_FireWithinSequence)
-		{
-			int frameCount = pThis->Type->Sequence->GetSequence(pThis->SequenceAnim).CountFrames;
+		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+		auto& timer = pExt->DelayedFireTimer;
 
-			// If projected frame for firing next shot goes beyond the sequence frame count, cease firing after this shot and start rearm timer.
-			if (firingFrame + projectedDelay > frameCount)
-			{
-				InfantryExtContainer::Instance.Find(pThis)->ForceFullRearmDelay = true;
-			}
+		if (pExt->DelayedFireWeaponIndex >= 0 && pExt->DelayedFireWeaponIndex != FiringAITemp::weaponIndex)
+		{
+			pExt->ResetDelayedFireTimer();
+			pExt->FiringSequencePaused = false;
 		}
 
-		R->EAX(FiringAITemp::weaponIndex); // Reuse the weapon index to save some time.
-		return Continue;
+		if (pWeaponExt->DelayedFire_PauseFiringSequence && pWeaponExt->DelayedFire_Duration.isset() && (!pThis->Transporter || !pWeaponExt->DelayedFire_SkipInTransport))
+		{
+			if (pWeapon->Burst <= 1 || !pWeaponExt->DelayedFire_OnlyOnInitialBurst || pThis->CurrentBurstIndex == 0)
+			{
+				if (pThis->Animation.Value == firingFrame + cumulativeDelay)
+					pExt->FiringSequencePaused = true;
+
+				if (!timer.HasStarted())
+				{
+					pExt->DelayedFireWeaponIndex = FiringAITemp::weaponIndex;
+					timer.Start(MaxImpl(GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->DelayedFire_Duration), 0));
+					auto pAnimType = pWeaponExt->DelayedFire_Animation;
+
+					if (pThis->Transporter && pWeaponExt->DelayedFire_OpenToppedAnimation.isset())
+						pAnimType = pWeaponExt->DelayedFire_OpenToppedAnimation;
+
+					pExt->CreateDelayedFireAnim(pAnimType, FiringAITemp::weaponIndex, pWeaponExt->DelayedFire_AnimIsAttached, pWeaponExt->DelayedFire_CenterAnimOnFirer,
+						pWeaponExt->DelayedFire_RemoveAnimOnNoDelay, pWeaponExt->DelayedFire_AnimOffset.isset(), pWeaponExt->DelayedFire_AnimOffset.Get());
+
+					return ReturnFromFunction;
+				}
+				else if (timer.InProgress())
+				{
+					return ReturnFromFunction;
+				}
+
+				if (timer.Completed())
+					pExt->ResetDelayedFireTimer();
+			}
+
+			pExt->FiringSequencePaused = false;
+		}
+
+		if (pThis->Animation.Value == firingFrame + cumulativeDelay)
+		{
+			if (pWeaponExt->Burst_FireWithinSequence)
+			{
+				int frameCount = pThis->Type->Sequence->GetSequence(pThis->SequenceAnim).CountFrames;
+
+				// If projected frame for firing next shot goes beyond the sequence frame count, cease firing after this shot and start rearm timer.
+				if (firingFrame + projectedDelay > frameCount)
+				{
+					InfantryExtContainer::Instance.Find(pThis)->ForceFullRearmDelay = true;
+				}
+			}
+
+			R->EAX(FiringAITemp::weaponIndex); // Reuse the weapon index to save some time.
+			return Continue;
+		}
 	}
 
 	return ReturnFromFunction;
-}
-
-DEFINE_HOOK(0x702672, TechnoClass_ReceiveDamage_RevengeWeapon, 0x5)
-{
-	GET(TechnoClass*, pThis, ESI);
-	GET_STACK(TechnoClass*, pSource, STACK_OFFSET(0xC4, 0x10));
-	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFSET(0xC4, 0xC));
-
-	if (pSource)
-	{
-		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-		auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
-		auto SourCoords = pSource->GetCoords();
-
-		if (!pWHExt->SuppressRevengeWeapons)
-		{
-			if (pTypeExt->RevengeWeapon &&
-				EnumFunctions::CanTargetHouse(pTypeExt->RevengeWeapon_AffectsHouses, pThis->Owner, pSource->Owner) &&
-				!pWHExt->SuppressRevengeWeapons_Types.empty() && !pWHExt->SuppressRevengeWeapons_Types.Contains(pTypeExt->RevengeWeapon))
-			{
-				WeaponTypeExtData::DetonateAt(pTypeExt->RevengeWeapon.Get(), pSource, pThis, true, nullptr);
-			}
-
-			for (const auto& weapon : pExt->RevengeWeapons)
-			{
-				if (EnumFunctions::CanTargetHouse(weapon.ApplyToHouses, pThis->Owner, pSource->Owner) && !pWHExt->SuppressRevengeWeapons_Types.empty() && !pWHExt->SuppressRevengeWeapons_Types.Contains(weapon.Value))
-					WeaponTypeExtData::DetonateAt(weapon.Value, pSource, pThis, true, nullptr);
-			}
-		}
-
-		PhobosAEFunctions::ApplyRevengeWeapon(pThis, pSource, pWH);
-	}
-
-	if (pThis->AttachedBomb)
-		pThis->AttachedBomb->Detonate();
-
-	return 0x702684;
-}
-
-DEFINE_HOOK(0x702603, TechnoClass_ReceiveDamage_Explodes, 0x6)
-{
-	enum { SkipExploding = 0x702672, SkipKillingPassengers = 0x702669 };
-
-	GET(TechnoClass*, pThis, ESI);
-
-	if (pThis->WhatAmI() == AbstractType::Building)
-	{
-		if (!BuildingTypeExtContainer::Instance.Find(((BuildingClass*)pThis)->Type)->Explodes_DuringBuildup && (pThis->CurrentMission == Mission::Construction || pThis->CurrentMission == Mission::Selling))
-			return SkipExploding;
-	}
-
-	return !TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->Explodes_KillPassengers ? SkipKillingPassengers : 0x0;
 }
 
 // TODO :
@@ -544,14 +531,13 @@ DEFINE_HOOK(0x702603, TechnoClass_ReceiveDamage_Explodes, 0x6)
 	//	 Packed.clear();
 	// }
 
-	// constexpr bool Enabled() {
+	// COMPILETIMEEVAL bool Enabled() {
 	//	 return !Packed.empty();
 	// }
 
 	// //only add the data that can affect this current techno
 	// void Init()
 	// {
-
 	// }
 
 	// //update trigger count
@@ -568,13 +554,8 @@ DEFINE_HOOK(0x702603, TechnoClass_ReceiveDamage_Explodes, 0x6)
 
 	// // apply the multiplier to the attacker ??
 	// void Apply() {
-
 	// }
-	// constexpr bool Eligible(TechnoClass* attacker, HouseClass* attackerOwner , bool isInAir) {
-
-
-
-
+	// COMPILETIMEEVAL bool Eligible(TechnoClass* attacker, HouseClass* attackerOwner , bool isInAir) {
 	//	 return true;
 	// }
  //};
@@ -592,32 +573,6 @@ DEFINE_HOOK(0x702603, TechnoClass_ReceiveDamage_Explodes, 0x6)
 // 		pAttacker->TakeDamage(damage, pAttacker->GetTechnoType()->Crewed, true, pAttacker, pAttackingHouse);
 // 	}
 // }
-
-DEFINE_HOOK(0x701DFF, TechnoClass_ReceiveDamage_AfterObjectClassCall, 0x7)
-{
-	GET(TechnoClass* const, pThis, ESI);
-	GET(int* const, pDamage, EBX);
-	GET(WarheadTypeClass*, pWH, EBP);
-	//GET_STACK(TechnoClass*, pAttacker, 0xD4);
-	//GET_STACK(HouseClass*, pAttackingHouse, 0xE0);
-
-	const bool Show = Phobos::Otamaa::IsAdmin || *pDamage;
-
-	if (Phobos::Debug_DisplayDamageNumbers && Show)
-		FlyingStrings::DisplayDamageNumberString(*pDamage, DamageDisplayType::Regular, pThis->GetRenderCoords(), TechnoExtContainer::Instance.Find(pThis)->DamageNumberOffset);
-
-	GET(DamageState, damageState, EDI);
-
-	GiftBoxFunctional::TakeDamage(TechnoExtContainer::Instance.Find(pThis), TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType()), pWH, damageState);
-
-	if (damageState != DamageState::PostMortem && !pThis->IsAlive)
-	{
-		R->EAX(DamageState::NowDead);
-		return 0x702688;
-	}
-
-	return 0;
-}
 
 DEFINE_HOOK(0x4D9992, FootClass_PointerGotInvalid_Parasite, 0x7)
 {
@@ -781,15 +736,20 @@ DEFINE_HOOK(0x4C7462, EventClass_Execute_KeepTargetOnMove, 0x5)
 		return 0;
 
 	auto const mission = static_cast<Mission>(pThis->Data.MegaMission.Mission);
+	auto const pExt = TechnoExtContainer::Instance.Find(pTechno);
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pExt->Type);
 
-	if ((mission == Mission::Move)
-		&& TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType())->KeepTargetOnMove
-		&& pTechno->Target && !pTarget)
+	if ((mission == Mission::Move) && pTypeExt->KeepTargetOnMove && pTechno->Target && !pTarget)
 	{
-		pTechno->SetDestination(pThis->Data.MegaMission.Destination.As_Abstract(), true);
-		return SkipGameCode;
+		if (pTechno->IsCloseEnoughToAttack(pTechno->Target))
+		{
+			auto const pDestination = pThis->Data.MegaMission.Destination.As_Abstract();
+			pTechno->SetDestination(pDestination, true);
+			pExt->KeepTargetOnMove = true;
+			return SkipGameCode;
+		}
 	}
-
+	pExt->KeepTargetOnMove = false;
 	return 0;
 }
 
@@ -801,23 +761,48 @@ DEFINE_HOOK(0x736480, UnitClass_AI_KeepTargetOnMove, 0x6)
 	GET(UnitClass*, pThis, ESI);
 
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	if (pTypeExt->KeepTargetOnMove && pThis->Target && pThis->CurrentMission == Mission::Move)
+	if (pExt->KeepTargetOnMove)
 	{
-		if (pTypeExt->KeepTargetOnMove_ExtraDistance.isset())
+		if (!pThis->Target)
 		{
-			int weaponIndex = pThis->SelectWeapon(pThis->Target);
+			pExt->KeepTargetOnMove = false;
+			return 0;
+		}
 
-			if (auto const pWeapon = pThis->GetWeapon(weaponIndex)->WeaponType)
+		if (!pTypeExt->KeepTargetOnMove)
+		{
+			pThis->SetTarget(nullptr);
+			pExt->KeepTargetOnMove = false;
+			return 0;
+		}
+
+		if (pThis->CurrentMission == Mission::Move)
+		{
+			if (pTypeExt->KeepTargetOnMove_ExtraDistance.isset())
 			{
-				auto pExt = TechnoExtContainer::Instance.Find(pThis);
-				pExt->AdditionalRange = static_cast<int>(pTypeExt->KeepTargetOnMove_ExtraDistance.Get());
+				int weaponIndex = pThis->SelectWeapon(pThis->Target);
 
-				if (!pThis->IsCloseEnough(pThis->Target, weaponIndex))
-					pThis->SetTarget(nullptr);
+				if (auto const pWeapon = pThis->GetWeapon(weaponIndex)->WeaponType)
+				{
+					//auto pExt = TechnoExtContainer::Instance.Find(pThis);
+					pExt->AdditionalRange = static_cast<int>(pTypeExt->KeepTargetOnMove_ExtraDistance.Get());
 
-				pExt->AdditionalRange.clear();
+					if (!pThis->IsCloseEnough(pThis->Target, weaponIndex))
+					{
+						pThis->SetTarget(nullptr);
+						pExt->KeepTargetOnMove = false;
+					}
+
+					pExt->AdditionalRange.clear();
+				}
 			}
+		}
+		else if (pThis->CurrentMission == Mission::Guard)
+		{
+			pThis->QueueMission(Mission::Attack, false);
+			pExt->KeepTargetOnMove = false;
 		}
 	}
 
@@ -827,7 +812,7 @@ DEFINE_HOOK(0x736480, UnitClass_AI_KeepTargetOnMove, 0x6)
 DEFINE_HOOK_AGAIN(0x6B769F, SpawnManagerClass_AI_InitDestination, 0x7)
 DEFINE_HOOK(0x6B7600, SpawnManagerClass_AI_InitDestination, 0x6)
 {
-	enum { SkipGameCode1 = 0x6B760E, SkipGameCode2 = 0x6B76DE };
+	enum { SkipGameCode1 = 0x6B795A, SkipGameCode2 = 0x6B795A };
 
 	GET(SpawnManagerClass* const, pThis, ESI);
 	GET(AircraftClass* const, pSpawnee, EDI);
@@ -864,10 +849,10 @@ void DrawFactoryProgress(TechnoClass* pThis, RectangleStruct* pBounds)
 
 	BuildingClass* const pBuilding = static_cast<BuildingClass*>(pThis);
 
-	if(pBuilding->Type->InvisibleInGame || pBuilding->Type->Invisible )
+	if (pBuilding->Type->InvisibleInGame || pBuilding->Type->Invisible)
 		return;
 
-	CellClass* pCell = pBuilding->GetCell();
+	//CellClass* pCell = pBuilding->GetCell();
 	BuildingTypeClass* const pBuildingType = pBuilding->Type;
 	HouseClass* const pHouse = pBuilding->Owner;
 	FactoryClass* pPrimaryFactory = nullptr;
@@ -952,10 +937,10 @@ void DrawSuperProgress(TechnoClass* pThis, RectangleStruct* pBounds)
 
 	BuildingClass* const pBuilding = static_cast<BuildingClass*>(pThis);
 
-	if(pBuilding->Type->InvisibleInGame || pBuilding->Type->Invisible )
+	if (pBuilding->Type->InvisibleInGame || pBuilding->Type->Invisible)
 		return;
 
-	CellClass* pCell = pBuilding->GetCell();
+	//CellClass* pCell = pBuilding->GetCell();
 	BuildingTypeClass* const pBuildingType = pBuilding->Type;
 
 	if (pBuildingType->SuperWeapon == -1)
@@ -1080,7 +1065,7 @@ DEFINE_HOOK(0x6FA540, TechnoClass_AI_ChargeTurret, 0x6)
 //		int damage = 0;
 //
 //		if (ratio < 0.0)
-//			damage = int(pThis->Health * abs(ratio));
+//			damage = int(pThis->Health * Math::abs(ratio));
 //		else if (ratio >= 0.0 && ratio <= 1.0)
 //			damage = int(pThis->GetTechnoType()->Strength * ratio);
 //		else

@@ -4,7 +4,7 @@
 
 #ifndef GAMEMD_STR
 #define GAMEMD_STR(name,addr)\
-static constexpr constant_ptr<const char,addr> const name {}
+static COMPILETIMEEVAL constant_ptr<const char,addr> const name {}
 
 struct GameStrings
 {
@@ -336,6 +336,7 @@ struct GameStrings
 	GAMEMD_STR(EVA_UnitPromoted, 0x843138u);
 	GAMEMD_STR(EVA_UnitLost, 0x822620u);
 	GAMEMD_STR(EVA_NewTechAcquired, 0x81911Cu);
+	GAMEMD_STR(EVA_NewConstructionOptions, 0x83FA64);
 	GAMEMD_STR(EVA_TechnologyStolen, 0x819138u);
 	GAMEMD_STR(EVA_BuildingInfiltrated, 0x819198u);
 	GAMEMD_STR(EVA_CashStolen, 0x81916Cu);
@@ -382,7 +383,8 @@ struct GameStrings
 	GAMEMD_STR(FailedToLoadUIMDMsg, 0x827DACu);
 	GAMEMD_STR(DominatorActive_msg, 0x8280B8);
 	GAMEMD_STR(LightningStormActive_msg, 0x82809C);
-
+	GAMEMD_STR(Init_Commands, 0x825D08);
+	GAMEMD_STR(Overlay_X_not_really_tiberium, 0x833490);
 	//..
 
 	// Hardcoded Names
@@ -536,7 +538,7 @@ struct GameStrings
 
 	// it suppose to be only 13 , but there is 3 bytes padding each
 	// so
-	static constexpr reference<char[16],0x825000 ,8u> const PlayerAt {};
+	static COMPILETIMEEVAL reference<char[16],0x825000 ,8u> const PlayerAt {};
 	static bool IsBlank(const char* pValue);
 };
 

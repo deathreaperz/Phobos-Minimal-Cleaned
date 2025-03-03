@@ -23,7 +23,7 @@
  *
  ******************************************************************************/
 
- //constexpr std::string encryptDecrypt(const std::string& toEncrypt , const std::string& key) {
+ //COMPILETIMEEVAL std::string encryptDecrypt(const std::string& toEncrypt , const std::string& key) {
  //    std::string output = toEncrypt;
  //    //char pkey[3] = {'K', 'C', 'Q'}; //Any chars will work, in an array of any size
  //	//i % (sizeof(pkey) / sizeof(char))
@@ -95,31 +95,11 @@ DEFINE_HOOK(0x437FC0, BlowfishEngine_DTOR, 0x6)
 	return 0x437FCC;
 }
 
-DEFINE_HOOK(0x437FD0, BlowfishEngine_Submit_Key, 0x6)
-{
-	GET(BlowfishEngine*, pThis, ECX);
-	GET_STACK(void*, pKey, 0x4);
-	GET_STACK(int, len, 0x8);
-	pThis->BlowfishEngine::Submit_Key(pKey, len);
-	return 0x437FF5;
-}
-
-DEFINE_HOOK(0x438000, BlowfishEngine_Encrypt, 0x6)
-{
-	GET(BlowfishEngine*, pThis, ECX);
-	GET_STACK(int, len, 0x4);
-	GET_STACK(void*, pKey, 0x8);
-	GET_STACK(void*, pChyper, 0xC);
-	R->EAX(pThis->BlowfishEngine::Encrypt(pKey, len, pChyper));
-	return 0x43802C;
-}
-
-DEFINE_HOOK(0x438030, BlowfishEngine_Decrypt, 0x6)
-{
-	GET(BlowfishEngine*, pThis, ECX);
-	GET_STACK(int, len, 0x4);
-	GET_STACK(void*, pKey, 0x8);
-	GET_STACK(void*, pChyper, 0xC);
-	R->EAX(pThis->BlowfishEngine::Decrypt(pKey, len, pChyper));
-	return 0x43805C;
-}
+//DEFINE_JUMP(LJMP, 0x438300, MiscTools::to_DWORD(&BlowStraw::Key));
+//DEFINE_JUMP(LJMP, 0x438210, MiscTools::to_DWORD(&BlowStraw::Get));
+//DEFINE_JUMP(LJMP, 0x438060, MiscTools::to_DWORD(&BlowPipe::Flush));
+//DEFINE_JUMP(LJMP, 0x4380A0, MiscTools::to_DWORD(&BlowPipe::Put));
+//DEFINE_JUMP(LJMP, 0x4381D0, MiscTools::to_DWORD(&BlowPipe::Key));
+DEFINE_JUMP(LJMP, 0x437FD0, MiscTools::to_DWORD(&BlowfishEngine::Submit_Key));
+DEFINE_JUMP(LJMP, 0x438000, MiscTools::to_DWORD(&BlowfishEngine::Encrypt_Wrapper));
+DEFINE_JUMP(LJMP, 0x438030, MiscTools::to_DWORD(&BlowfishEngine::Decrypt_Wrapper));

@@ -218,17 +218,22 @@ DEFINE_HOOK(0x6B7282, SpawnManagerClass_AI_PromoteSpawns, 0x5)
 {
 	GET(SpawnManagerClass*, pThis, ESI);
 
-	if (TechnoTypeExtContainer::Instance.Find(pThis->Owner->GetTechnoType())->Promote_IncludeSpawns)
+	if (auto pOwner = pThis->Owner)
 	{
-		for (const auto& i : pThis->SpawnedNodes)
+		if (TechnoTypeExtContainer::Instance.Find(pOwner->GetTechnoType())->Promote_IncludeSpawns)
 		{
-			if (i->Unit && i->Unit->Veterancy.Veterancy < pThis->Owner->Veterancy.Veterancy)
-				i->Unit->Veterancy.Add(pThis->Owner->Veterancy.Veterancy - i->Unit->Veterancy.Veterancy);
+			for (const auto& i : pThis->SpawnedNodes)
+			{
+				if (i->Unit && i->Unit->Veterancy.Veterancy < pThis->Owner->Veterancy.Veterancy)
+					i->Unit->Veterancy.Add(pThis->Owner->Veterancy.Veterancy - i->Unit->Veterancy.Veterancy);
+			}
 		}
 	}
 
 	return 0;
 }
+
+#include <Ext/Cell/Body.h>
 
 DEFINE_HOOK(0x73D223, UnitClass_DrawIt_OreGath, 0x6)
 {
@@ -243,7 +248,7 @@ DEFINE_HOOK(0x73D223, UnitClass_DrawIt_OreGath, 0x6)
 	ConvertClass* pDrawer = FileSystem::ANIM_PAL;
 	SHPStruct* pSHP = FileSystem::OREGATH_SHP;
 	int idxFrame = -1;
-	auto idxTiberium = pThis->GetCell()->GetContainedTiberiumIndex();
+	auto idxTiberium = ((FakeCellClass*)pThis->GetCell())->_GetTiberiumType();
 
 	if (idxTiberium != -1)
 	{
@@ -364,52 +369,51 @@ DEFINE_HOOK(0x739B7C, UnitClass_SimpleDeploy_Facing, 0x6)
 
 	if (!pThis->InAir)
 	{
-		R->BL(true);
+		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+		if (!pTypeExt->DeployingAnim_AllowAnyDirection)
+		{
+			// not sure what is the bitfrom or bitto so it generate this result
+			// yes iam dum , iam sorry - otamaa
+			const auto nRulesDeployDir = ((((RulesClass::Instance->DeployDir) >> 4) + 1) >> 1) & 7;
+			const FacingType nRaw = pTypeExt->DeployDir.isset() ? pTypeExt->DeployDir.Get() : (FacingType)nRulesDeployDir;
+			const auto nCurrent = (((((pThis->PrimaryFacing.Current().Raw) >> 12) + 1) >> 1) & 7);
+
+			if (nCurrent != (int)nRaw)
+			{
+				if (const auto pLoco = pThis->Locomotor.GetInterfacePtr())
+				{
+					if (!pLoco->Is_Moving_Now())
+					{
+						pLoco->Do_Turn(DirStruct { nRaw });
+					}
+
+					return PlayDeploySound; //adjust the facing first
+				}
+			}
+		}
 
 		if (const auto pAnimType = GetDeployAnim(pThis))
 		{
-			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-			if (!pTypeExt->DeployingAnim_AllowAnyDirection)
+			if (!pThis->DeployAnim)
 			{
-				// not sure what is the bitfrom or bitto so it generate this result
-				// yes iam dum , iam sorry - otamaa
-				const auto nRulesDeployDir = ((((RulesClass::Instance->DeployDir) >> 4) + 1) >> 1) & 7;
-				const FacingType nRaw = pTypeExt->DeployDir.isset() ? pTypeExt->DeployDir.Get() : (FacingType)nRulesDeployDir;
-				const auto nCurrent = (((((pThis->PrimaryFacing.Current().Raw) >> 12) + 1) >> 1) & 7);
+				auto const pAnim = GameCreate<AnimClass>(pAnimType,
+				pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false);
 
-				if (nCurrent != (int)nRaw)
+				pThis->DeployAnim = pAnim;
+				pAnim->SetOwnerObject(pThis);
+
+				if (pTypeExt->DeployingAnim_UseUnitDrawer)
 				{
-					if (const auto pLoco = pThis->Locomotor.GetInterfacePtr())
-					{
-						if (!pLoco->Is_Moving_Now())
-						{
-							pLoco->Do_Turn(DirStruct { nRaw });
-						}
-
-						return PlayDeploySound; //adjust the facing first
-					}
+					pAnim->LightConvert = pThis->GetRemapColour();
 				}
 			}
 
-			if (pThis->DeployAnim)
-				return SetAnimTimer;
-
-			auto const pAnim = GameCreate<AnimClass>(pAnimType,
-			pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false);
-
-			pThis->DeployAnim = pAnim;
-			pAnim->SetOwnerObject(pThis);
-
-			if (pTypeExt->DeployingAnim_UseUnitDrawer)
-			{
-				pAnim->LightConvert = pThis->GetRemapColour();
-			}
-
-			return SetAnimTimer;
+			pThis->Animation.Value = pAnimType->Start;
+			pThis->Animation.Timer.Start(pAnimType->Rate);
 		}
 
-		return SetDeployingState;
+		pThis->Deployed = true;
 	}
 
 	return PlayDeploySound;
@@ -586,6 +590,8 @@ DEFINE_HOOK(0x6FDFA8, TechnoClass_FireAt_SprayOffsets, 0x5)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(WeaponTypeClass*, pWeapon, EBX);
+	LEA_STACK(CoordStruct*, pCoord, 0xB0 - 0x28);
+
 	auto pType = pThis->GetTechnoType();
 	auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
 
@@ -601,8 +607,8 @@ DEFINE_HOOK(0x6FDFA8, TechnoClass_FireAt_SprayOffsets, 0x5)
 		}
 
 		auto& Coord = pExt->SprayOffsets[pThis->SprayOffsetIndex];
-		R->Stack(0x88, pThis->Location.X + Coord->X);//X
-		R->Stack(0x8C, pThis->Location.Y + Coord->Y);//Y
+		pCoord->X = (pThis->Location.X + Coord->X);//X
+		pCoord->Y = (pThis->Location.Y + Coord->Y);//Y
 		R->EAX(pThis->Location.Z + Coord->Z); //Z
 		return 0x6FE218;
 	}

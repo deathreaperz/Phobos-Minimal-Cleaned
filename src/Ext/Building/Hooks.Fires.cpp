@@ -16,7 +16,7 @@
 // just un-init it and replace it with nullptr is enough
 namespace DamageFireAnims
 {
-	void FORCEINLINE HandleRemoveAsExt(BuildingExtData* pExt)
+	void FORCEDINLINE HandleRemoveAsExt(BuildingExtData* pExt)
 	{
 		for (auto& nFires : pExt->DamageFireAnims)
 		{
@@ -30,12 +30,12 @@ namespace DamageFireAnims
 		}
 	}
 
-	void FORCEINLINE HandleRemove(FakeBuildingClass* pThis)
+	void FORCEDINLINE HandleRemove(FakeBuildingClass* pThis)
 	{
 		HandleRemoveAsExt(pThis->_GetExtData());
 	}
 
-	void FORCEINLINE HandleInvalidPtr(FakeBuildingClass* pThis, void* ptr)
+	void FORCEDINLINE HandleInvalidPtr(FakeBuildingClass* pThis, void* ptr)
 	{
 		for (auto& nFires : pThis->_GetExtData()->DamageFireAnims)
 		{
@@ -132,6 +132,7 @@ DEFINE_HOOK(0x43C2A0, BuildingClass_RemoveFire_handle, 0x8) //was 5
 	return 0x43C2C9;
 }
 
+//DEFINE_JUMP(LJMP, 0x44EA1C, 0x44EA2F);
 DEFINE_HOOK(0x44EA1C, BuildingClass_DetachOrInvalidPtr_handle, 0x6)
 {
 	GET(FakeBuildingClass*, pThis, ESI);
@@ -146,75 +147,3 @@ DEFINE_JUMP(LJMP, 0x454154, 0x454170);
 //	return 0x454170;
 //}
 #endif
-
-DEFINE_HOOK(0x4426C8, BuildingClass_ReceiveDamage_Handle, 0xA)
-{
-	GET(FakeBuildingClass* const, pThis, ESI);
-	GET_STACK(CellStruct*, pFoundationArray, 0x10);
-	REF_STACK(args_ReceiveDamage const, args, STACK_OFFS(0x9C, -0x4));
-
-	if (!pThis->_GetTypeExtData()->DisableDamageSound && pThis->Type->DamageSound == -1)
-	{
-		VocClass::PlayIndexAtPos(RulesClass::Instance->BuildingDamageSound, pThis->Location, nullptr);
-	}
-
-	if (args.WH->Sparky)
-	{
-		auto const pTypeExt = pThis->_GetTypeExtData();
-		auto const pBldExt = pThis->_GetExtData();
-		const bool Onfire = pTypeExt->HealthOnfire.Get(pThis->GetHealthStatus());
-		auto const pFireType = pTypeExt->OnFireTypes.GetElements(RulesClass::Instance->OnFire);
-
-		if (Onfire && pFireType.size() >= 3)
-		{
-			if (Unsorted::CurrentFrame < pBldExt->LastFlameSpawnFrame + RulesExtData::Instance()->BuildingFlameSpawnBlockFrames)
-				return 0x4428FE;
-
-			pBldExt->LastFlameSpawnFrame = Unsorted::CurrentFrame;
-			const auto rand_ = pThis->Type->GetFoundationWidth() + pThis->Type->GetFoundationHeight(false) + 5;
-
-			for (; (pFoundationArray->X != 0x7FFF || pFoundationArray->Y != 0x7FFF); ++pFoundationArray)
-			{
-				auto const& [nCellX, nCellY] = pThis->InlineMapCoords() + *pFoundationArray;
-				CoordStruct nDestCoord { (nCellX * 256) + 128, (nCellY * 256) + 128, 0 };
-				nDestCoord.Z = MapClass::Instance->GetCellFloorHeight(nDestCoord);
-
-				auto PlayFireAnim = [&](int nLoop = 1, int nFireTypeAt = 2)
-					{
-						if (auto pAnimType = pFireType[nFireTypeAt])
-						{
-							nDestCoord = MapClass::GetRandomCoordsNear(nDestCoord, 96, false);
-							auto const pAnim = GameCreate<AnimClass>(pAnimType, nDestCoord, 0, nLoop);
-							pAnim->SetOwnerObject(pThis);
-							const auto pKiller = args.Attacker;
-							const auto Invoker = (pKiller) ? pKiller->Owner : args.SourceHouse;
-							AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, pKiller, false);
-						}
-					};
-
-				switch (ScenarioClass::Instance->Random.RandomFromMax(rand_))
-				{
-				case 1:
-				case 2:
-				case 3:
-				case 4:
-				case 5:
-					PlayFireAnim(ScenarioClass::Instance->Random.RandomFromMax(pFireType.size()), 0);
-					break;
-				case 6:
-				case 7:
-				case 8:
-					PlayFireAnim(ScenarioClass::Instance->Random.RandomFromMax(pFireType.size()), 1);
-					break;
-				case 9:
-					PlayFireAnim();
-					break;
-				default:
-					break;
-				}
-			}
-		}
-	}
-
-	return 0x4428FE;
-}

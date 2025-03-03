@@ -8,6 +8,7 @@
 
 #include <Ext/Bullet/Body.h>
 #include <Ext/WarheadType/Body.h>
+#include <Ext/RadSite/Body.h>
 
 #include "Header.h"
 #include "AresTrajectoryHelper.h"
@@ -106,34 +107,6 @@ DEFINE_HOOK(0x483D94, CellClass_UpdatePassability, 6)
 	return BuildingTypeExtContainer::Instance.Find(pBuilding->Type)->Firestorm_Wall ? 0x483D9E : 0x483DB0;
 }
 
-DEFINE_HOOK(0x4423E7, BuildingClass_ReceiveDamage_FSW, 5)
-{
-	GET(BuildingClass* const, pThis, ESI);
-	GET_STACK(int* const, pDamage, 0xA0);
-
-	if (FirewallFunctions::IsActiveFirestormWall(pThis, nullptr))
-	{
-		auto const pExt = RulesExtData::Instance();
-		auto const& coefficient = pExt->DamageToFirestormDamageCoefficient;
-		auto const amount = static_cast<int>(*pDamage * coefficient);
-
-		if (amount > 0)
-		{
-			auto const index = SW_Firewall::FirewallType;
-
-			if (auto const pSuper = pThis->Owner->FindSuperWeapon(index))
-			{
-				auto const left = pSuper->RechargeTimer.GetTimeLeft();
-				int const reduced = MaxImpl(0, left - amount);
-				pSuper->RechargeTimer.Start(reduced);
-			}
-		}
-		return 0x4423B7;
-	}
-
-	return 0x4423F2;
-}
-
 template <bool remove = false>
 static void RecalculateCells(BuildingClass* pThis)
 {
@@ -147,7 +120,7 @@ static void RecalculateCells(BuildingClass* pThis)
 		{
 			pCell->RecalcAttributes(DWORD(-1));
 
-			if constexpr (remove)
+			if COMPILETIMEEVAL(remove)
 				map->ResetZones(cell);
 			else
 				map->RecalculateZones(cell);
@@ -194,7 +167,7 @@ DEFINE_HOOK(0x440378, BuildingClass_Update_FirestormWall, 6)
 
 DEFINE_HOOK(0x51BD4C, InfantryClass_Update_BuildingBelow, 6)
 {
-	GET(InfantryClass*, pThis, EDI);
+	//GET(InfantryClass*, pThis, EDI);
 	GET(BuildingClass*, pBld, EDI);
 	enum
 	{
@@ -216,7 +189,7 @@ DEFINE_HOOK(0x51BD4C, InfantryClass_Update_BuildingBelow, 6)
 
 DEFINE_HOOK(0x51C4C8, InfantryClass_IsCellOccupied, 6)
 {
-	GET(InfantryClass* const, pThis, EBP);
+	//GET(InfantryClass* const, pThis , EBP);
 	GET(BuildingClass* const, pBld, ESI);
 
 	enum
@@ -240,7 +213,7 @@ DEFINE_HOOK(0x51C4C8, InfantryClass_IsCellOccupied, 6)
 
 DEFINE_HOOK(0x73F7B0, UnitClass_IsCellOccupied, 6)
 {
-	GET(UnitClass* const, pThis, EBX);
+	//GET(UnitClass* const , pThis , EBX);
 	GET(BuildingClass* const, pBld, ESI);
 
 	enum
@@ -262,10 +235,22 @@ DEFINE_HOOK(0x73F7B0, UnitClass_IsCellOccupied, 6)
 	return NoDecision;
 }
 
-DEFINE_HOOK(0x4DA53E, FootClass_Update_AresAddition, 6)
-{
-	GET(FootClass* const, pThis, ESI);
+#include <Ext/Cell/Body.h>
+#include <SpawnManagerClass.h>
 
+DEFINE_HOOK(0x4DA54E, FootClass_Update_AresAddition, 6)
+{
+	enum
+	{
+		CheckOtherState = 0x4DA63B,
+		SkipEverything = 0x4DAF00,
+		//Continue = 0x0,
+		ProcessRadSiteCheckVanilla = 0x4DA59F,
+	};
+
+	GET(FootClass*, pThis, ESI);
+
+	pThis->isidle_6B3 = false;
 	auto const pType = pThis->GetTechnoType();
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
@@ -306,19 +291,19 @@ DEFINE_HOOK(0x4DA53E, FootClass_Update_AresAddition, 6)
 			if (pThis->Health > 0 && pThis->Health < pType->Strength)
 			{
 				bool wasDamaged = pThis->GetHealthPercentage() <= RulesClass::Instance->ConditionYellow;
-				auto const pCell = pThis->GetCell();
+				auto const pCell = (FakeCellClass*)pThis->GetCell();
 
 				if (pCell->LandType == LandType::Tiberium)
 				{
 					auto delay = RulesClass::Instance->TiberiumHeal;
 					auto health = pType->GetRepairStep();
 
-					int idxTib = pCell->GetContainedTiberiumIndex();
+					int idxTib = pCell->_GetTiberiumType();
 					if (auto const pTib = TiberiumClass::Array->GetItemOrDefault(idxTib))
 					{
-						auto pExt = TiberiumExtContainer::Instance.Find(pTib);
-						delay = pExt->GetHealDelay();
-						health = pExt->GetHealStep(pThis);
+						auto pTibExt = TiberiumExtContainer::Instance.Find(pTib);
+						delay = pTibExt->GetHealDelay();
+						health = pTibExt->GetHealStep(pThis);
 					}
 
 					if (health != 0)
@@ -349,7 +334,68 @@ DEFINE_HOOK(0x4DA53E, FootClass_Update_AresAddition, 6)
 		}
 	}
 
-	return 0;
+	if (!pThis->IsAlive)
+		return SkipEverything;
+
+	const bool IsMissisleSpawn = (RulesClass::Instance->V3Rocket.Type == pExt->Type ||
+	 pExt->Type == RulesClass::Instance->DMisl.Type || pExt->Type == RulesClass::Instance->CMisl.Type
+	 || TechnoTypeExtContainer::Instance.Find(pExt->Type)->IsCustomMissile);
+
+	if (pThis->SpawnOwner && !IsMissisleSpawn
+		)
+	{
+		auto pSpawnTechnoType = pThis->SpawnOwner->GetTechnoType();
+		auto pSpawnTechnoTypeExt = TechnoTypeExtContainer::Instance.Find(pSpawnTechnoType);
+
+		if (const auto pTargetTech = flag_cast_to<TechnoClass*>(pThis->Target))
+		{
+			//Spawnee trying to chase Aircraft that go out of map until it reset
+			//fix this , so reset immedietely if target is not on map
+			if (!MapClass::Instance->IsValid(pTargetTech->Location)
+				|| pTargetTech->TemporalTargetingMe
+				|| (pSpawnTechnoTypeExt->MySpawnSupportDatas.Enable && pThis->SpawnOwner->GetCurrentMission() != Mission::Attack && pThis->GetCurrentMission() == Mission::Attack)
+				)
+			{
+				if (pThis->SpawnOwner->Target == pThis->Target)
+					pThis->SpawnOwner->SetTarget(nullptr);
+
+				pThis->SpawnOwner->SpawnManager->ResetTarget();
+			}
+		}
+		else if (pSpawnTechnoTypeExt->MySpawnSupportDatas.Enable && pThis->SpawnOwner->GetCurrentMission() != Mission::Attack && pThis->GetCurrentMission() == Mission::Attack)
+		{
+			if (pThis->SpawnOwner->Target == pThis->Target)
+				pThis->SpawnOwner->SetTarget(nullptr);
+
+			pThis->SpawnOwner->SpawnManager->ResetTarget();
+		}
+	}
+
+	const auto nLoc = pThis->InlineMapCoords();
+	auto const pUnit = cast_to<UnitClass*, false>(pThis);
+
+	if ((pUnit && pUnit->DeathFrameCounter > 0) || !RadSiteClass::Array->Count)
+		return (CheckOtherState);
+
+	if (pThis->TemporalTargetingMe || pThis->InLimbo || !pThis->Health || pThis->IsSinking || pThis->IsCrashing)
+		return (CheckOtherState);
+
+	if (pThis->IsInAir())
+		return (CheckOtherState);
+
+	if (pThis->GetTechnoType()->Immune)
+		return (CheckOtherState);
+
+	if (pThis->IsBeingWarpedOut() || TechnoExtData::IsChronoDelayDamageImmune(pThis))
+		return (CheckOtherState);
+
+	if (TechnoExtData::IsRadImmune(pThis))
+		return (CheckOtherState);
+
+	if (!Phobos::Otamaa::DisableCustomRadSite)
+		return CheckOtherState;
+
+	return ProcessRadSiteCheckVanilla;
 }
 
 DEFINE_HOOK(0x467B94, BulletClass_Update_Ranged, 7)

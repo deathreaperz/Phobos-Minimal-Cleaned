@@ -16,6 +16,7 @@
 
 #include <Ext/TechnoType/Body.h>
 #include <Ext/Techno/Body.h>
+#include <Ext/Cell/Body.h>
 
 #include <Utilities/GeneralUtils.h>
 #include <Utilities/EnumFunctions.h>
@@ -33,7 +34,7 @@ const wchar_t* ObjectInfoCommandClass::GetUIName() const
 
 const wchar_t* ObjectInfoCommandClass::GetUICategory() const
 {
-	return CATEGORY_DEVELOPMENT;
+	return CATEGORY_GUIDEBUG;
 }
 
 const wchar_t* ObjectInfoCommandClass::GetUIDescription() const
@@ -46,7 +47,7 @@ void Append(T& buffer, const char* pFormat, ...)
 {
 	va_list args;
 	va_start(args, pFormat);
-	vsprintf(Phobos::readBuffer, pFormat, args);
+	vsprintf_s(Phobos::readBuffer, pFormat, args);
 	va_end(args);
 	strcat_s(buffer, Phobos::readBuffer);
 }
@@ -72,7 +73,7 @@ void Display(T& buffer)
 	}
 
 	MessageListClass::Instance->PrintMessage(Phobos::wideBuffer, 600, ColorIdx, true);
-	Debug::Log("%s\n", buffer);
+	Debug::LogInfo("{}", buffer);
 	buffer[0] = 0;
 }
 
@@ -140,7 +141,7 @@ void PrintFoots(T& buffer, FootClass* pFoot)
 		const auto pFirst = pFoot->Passengers.FirstPassenger;
 		if (pFoot->Passengers.NumPassengers == 1)
 		{
-			const char* pTargetStr = NONE_STR;
+			const char* pTargetStr = GameStrings::NoneStr();
 
 			if (pFirst->Target)
 			{
@@ -360,7 +361,7 @@ void ObjectInfoCommandClass::Execute(WWKey eInput) const
 		}
 		else
 		{
-			if (auto pCell = MapClass::Instance->GetCellAt(WWMouseClass::Instance->GetCellUnderCursor()))
+			if (auto pCell = (FakeCellClass*)MapClass::Instance->GetCellAt(WWMouseClass::Instance->GetCellUnderCursor()))
 			{
 				const auto nCoord = pCell->GetCoordsWithBridge();
 				Append(buffer, "Cell At [%d - %d - %d]/[%d - %d] OverlayData [%d]\n", nCoord.Y, nCoord.Y, nCoord.Z, pCell->MapCoords.X, pCell->MapCoords.Y, pCell->OverlayData);
@@ -376,7 +377,7 @@ void ObjectInfoCommandClass::Execute(WWKey eInput) const
 				{
 					Append(buffer, "[%d]OverlayType is %s\n", nOverlay, pOverlay->ID);
 
-					const auto tibIdx = pCell->GetContainedTiberiumIndex();
+					const auto tibIdx = pCell->_GetTiberiumType();
 					if (tibIdx != -1)
 						Append(buffer, "[%d]TiberiumType is %s\n", tibIdx, TiberiumClass::Array->Items[tibIdx]->ID);
 					else if (pOverlay->Wall)

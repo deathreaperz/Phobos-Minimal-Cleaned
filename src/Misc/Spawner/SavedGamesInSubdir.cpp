@@ -26,7 +26,10 @@
 #include <LoadOptionsClass.h>
 #include <optional>
 
-#define SET_SAVENAME(name) static constexpr wchar_t* SaveName = L ##name
+static inline std::string save_gamePath;
+
+#define SET_SAVENAME(name) static COMPILETIMEEVAL wchar_t* SaveName = L ##name
+
 namespace SavedGames
 {
 	int HowManyTimesISavedForThisScenario = 0;
@@ -41,8 +44,7 @@ namespace SavedGames
 			Number {
 				SessionClass::IsCampaign() ?
 				SpawnerMain::GetGameConfigs()->CustomMissionID : 0 }
-		{
-		}
+		{ }
 
 		operator int() const
 		{
@@ -65,8 +67,7 @@ namespace SavedGames
 			:CurrentFrame { Unsorted::CurrentFrame }
 			, SavedCount { HowManyTimesISavedForThisScenario }
 			, TechnoCount { TechnoClass::Array->Count }
-		{
-		}
+		{ }
 
 		ExtraMetaInfo(noinit_t()) { }
 	};
@@ -123,24 +124,27 @@ namespace SavedGames
 		return hasValue ? std::make_optional(info) : std::nullopt;
 	}
 
-	inline bool CreateSubdir()
+	OPTIONALINLINE bool CreateSubdir()
 	{
 		if (!std::filesystem::exists(SpawnerMain::GetGameConfigs()->SavedGameDir))
 		{
-			Debug::Log("\n[Spawner] Folder Saved Games does not exist, creating...\n");
+			Debug::LogInfo("[Spawner] Folder Saved Games does not exist, creating...");
 			if (!std::filesystem::create_directories(SpawnerMain::GetGameConfigs()->SavedGameDir))
 			{
-				Debug::Log("\tCannot create folder Saved Games!\n");
+				Debug::LogInfo("\tCannot create folder Saved Games!");
 				return false;
 			}
-			Debug::Log("\tDone.\n");
+			Debug::LogInfo("\tDone.");
 		}
 		return true;
 	}
 
-	inline void FormatPath(char buffer[sizeof(Phobos::readBuffer)], const char* pFileName)
+	OPTIONALINLINE char* FormatPath(const char* pFileName)
 	{
-		sprintf_s(buffer, sizeof(Phobos::readBuffer), "%s\\%s", SpawnerMain::GetGameConfigs()->SavedGameDir, pFileName);
+		save_gamePath = SpawnerMain::GetGameConfigs()->SavedGameDir;
+		save_gamePath += "\\";
+		save_gamePath += pFileName;
+		return save_gamePath.data();
 	}
 }
 
@@ -202,7 +206,7 @@ DEFINE_HOOK(0x67D2E3, SaveGame_AdditionalInfoForClient, 0x6)
 		if (SessionClass::IsCampaign() && SpawnerMain::GetGameConfigs()->CustomMissionID)
 			SavedGames::AppendToStorage<SavedGames::CustomMissionID>(pStorage);
 		if (SavedGames::AppendToStorage<SavedGames::ExtraMetaInfo>(pStorage))
-			Debug::Log("[Spawner] Extra meta info appended on sav file\n");
+			Debug::LogInfo("[Spawner] Extra meta info appended on sav file");
 	}
 
 	return 0;
@@ -221,7 +225,7 @@ DEFINE_HOOK(0x67E4DC, LoadGame_AdditionalInfoForClient, 0x7)
 		if (auto id = SavedGames::ReadFromStorage<SavedGames::CustomMissionID>(pStorage))
 		{
 			int num = id->Number;
-			Debug::Log("[Spawner] sav file CustomMissionID = %d\n", num);
+			Debug::LogInfo("[Spawner] sav file CustomMissionID = {}", num);
 			SpawnerMain::GetGameConfigs()->CustomMissionID = num;
 			ScenarioClass::Instance->EndOfGame = true;
 		}
@@ -232,7 +236,7 @@ DEFINE_HOOK(0x67E4DC, LoadGame_AdditionalInfoForClient, 0x7)
 
 		if (auto info = SavedGames::ReadFromStorage<SavedGames::ExtraMetaInfo>(pStorage))
 		{
-			Debug::Log("[Spawner] CurrentFrame = %d, TechnoCount = %d, HowManyTimesSaved = %d \n"
+			Debug::LogInfo("[Spawner] CurrentFrame = {}, TechnoCount = {}, HowManyTimesSaved = {} "
 				, info->CurrentFrame
 				, info->TechnoCount
 				, info->SavedCount
@@ -253,8 +257,7 @@ DEFINE_HOOK(0x67E475, LoadGame_SGInSubdir, 0x5)
 	if (SpawnerMain::Configs::Enabled)
 	{
 		GET(char*, pFileName, ESI);
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		R->ESI(Phobos::readBuffer);
+		R->ESI(SavedGames::FormatPath(pFileName));
 	}
 
 	return 0;
@@ -265,8 +268,7 @@ DEFINE_HOOK(0x559EB0, DeleteSave_SGInSubdir, 0x5)
 	if (SpawnerMain::Configs::Enabled)
 	{
 		REF_STACK(char*, pFileName, 0x4);
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		pFileName = Phobos::readBuffer;
+		pFileName = SavedGames::FormatPath(pFileName);
 	}
 
 	return 0;
@@ -280,8 +282,7 @@ DEFINE_HOOK(0x67CF11, SaveGame_SGInSubdir, 0x5)
 			return 0;
 
 		GET(char*, pFileName, EDI);
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		R->EDI(Phobos::readBuffer);
+		R->EDI(SavedGames::FormatPath(pFileName));
 	}
 
 	return 0;
@@ -289,14 +290,13 @@ DEFINE_HOOK(0x67CF11, SaveGame_SGInSubdir, 0x5)
 
 // Create random filename for save
 // Not used. But it does not hurt in case of using a third-party library
-// WW compiler made inline in LoadOptionsClass_Dialog
+// WW compiler made OPTIONALINLINE in LoadOptionsClass_Dialog
 DEFINE_HOOK(0x55961C, LoadOptionsClass_RandomFilename_SGInSubdir, 0x5)
 {
 	if (SpawnerMain::Configs::Enabled)
 	{
 		GET(char*, pFileName, ESI);
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		R->ESI(Phobos::readBuffer);
+		R->ESI(SavedGames::FormatPath(pFileName));
 	}
 
 	return 0;
@@ -308,8 +308,7 @@ DEFINE_HOOK(0x5592D2, LoadOptionsClass_Dialog_SGInSubdir, 0x5)
 	if (SpawnerMain::Configs::Enabled)
 	{
 		GET(char*, pFileName, EDX);
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		R->EDX(Phobos::readBuffer);
+		R->EDX(SavedGames::FormatPath(pFileName));
 	}
 
 	return 0;
@@ -323,8 +322,7 @@ DEFINE_HOOK(0x559C98, LoadOptionsClass_HasSaves_SGInSubdir, 0xB)
 
 	if (SpawnerMain::Configs::Enabled)
 	{
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		pFileName = Phobos::readBuffer; // Always "Saved Games\*.SAV"
+		pFileName = SavedGames::FormatPath(pFileName); // Always "Saved Games\*.SAV"
 	}
 
 	R->EAX(pFileName);
@@ -341,8 +339,7 @@ DEFINE_HOOK(0x559886, LoadOptionsClass_FillList_SGInSubdir, 0x8)
 
 	if (SpawnerMain::Configs::Enabled)
 	{
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		pFileName = Phobos::readBuffer; // Always "Saved Games\*.SAV"
+		pFileName = SavedGames::FormatPath(pFileName); // Always "Saved Games\*.SAV"
 	}
 
 	HANDLE result = FindFirstFileA(pFileName, pFind);
@@ -356,8 +353,7 @@ DEFINE_HOOK(0x67FD26, LoadOptionsClass_ReadSaveInfo_SGInSubdir, 0x5)
 	if (SpawnerMain::Configs::Enabled)
 	{
 		GET(char*, pFileName, ECX);
-		SavedGames::FormatPath(Phobos::readBuffer, pFileName);
-		R->ECX(Phobos::readBuffer);
+		R->ECX(SavedGames::FormatPath(pFileName));
 	}
 
 	return 0;

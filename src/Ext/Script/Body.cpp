@@ -34,7 +34,7 @@ ScriptActionNode NOINLINE ScriptExtData::GetSpecificAction(ScriptClass* pScript,
 	//if (!pTypeExt->PhobosNode.empty() && nIdxR < (int)pTypeExt->PhobosNode.size()) {
 	//	return pTypeExt->PhobosNode[nIdxR];
 	//}
-	//constexpr auto const nMax = ScriptTypeClass::MaxActions - 1;
+	//COMPILETIMEEVAL auto const nMax = ScriptTypeClass::MaxActions - 1;
 	//return pScript->Type->ScriptActions[nMax];
 
 	return { -1 , 0 };
@@ -46,7 +46,7 @@ ScriptExtContainer ScriptExtContainer::Instance;
 
 #define stringify( name ) #name
 
-NOINLINE const char* ToStrings(PhobosScripts from)
+static NOINLINE const char* ToStrings(PhobosScripts from)
 {
 	switch (from)
 	{
@@ -377,7 +377,7 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 {
 	auto const& [action, argument] = pTeam->CurrentScript->GetCurrentAction();
 
-	//Debug::Log("[%s - %x] Executing[%s - %x] [%d - %d]\n",
+	//Debug::LogInfo("[{} - {}] Executing[{} - {}] [{} - {}]",
 	//pTeam->Owner->get_ID(),
 	//pTeam->Owner,
 	//pTeam->get_ID(),
@@ -388,7 +388,7 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 	//only find stuffs on the range , reducing the load
 	//if ((AresScripts)action >= AresScripts::count)
 	{
-		//Debug::Log("[%s - %x] Executing[%s - %x] [%d (%s) - %d]\n",
+		//Debug::LogInfo("[{} - {}] Executing[{} - {}] [{} ({}) - {}]",
 		//	pTeam->Owner->get_ID(),
 		//	pTeam->Owner,
 		//	pTeam->get_ID(),
@@ -475,7 +475,7 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 		case PhobosScripts::ChangeTeamGroup:
 		{
 			//	ScriptExtData::TeamMemberSetGroup(pTeam, argument);
-			Debug::Log("Team[%x - %s , Script [%x - %s] Action [%d] - No AttachedFunction\n", pTeam, pTeam->get_ID(), pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), action);
+			Debug::LogInfo("Team[{} - {} , Script [{} - {}] Action [{}] - No AttachedFunction", (void*)pTeam, pTeam->get_ID(), (void*)pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), (int)action);
 			pTeam->StepCompleted = true;
 			break;
 		}
@@ -483,21 +483,21 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 		case PhobosScripts::DistributedLoading:
 		{
 			//ScriptExtData::DistributedLoadOntoTransport(pTeam, argument); //which branch is this again ?
-			Debug::Log("Team[%x - %s , Script [%x - %s] Action [%d] - No AttachedFunction\n", pTeam, pTeam->get_ID(), pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), action);
+			Debug::LogInfo("Team[{} - {} , Script [{} - {}] Action [{}] - No AttachedFunction", (void*)pTeam, pTeam->get_ID(), (void*)pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), (int)action);
 			pTeam->StepCompleted = true;
 			break;
 		}
 		case PhobosScripts::FollowFriendlyByGroup:
 		{
 			//ScriptExtData::FollowFriendlyByGroup(pTeam, argument); //which branch is this again ?
-			Debug::Log("Team[%x - %s , Script [%x - %s] Action [%d] - No AttachedFunction\n", pTeam, pTeam->get_ID(), pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), action);
+			Debug::LogInfo("Team[{} - {} , Script [{} - {}] Action [{}] - No AttachedFunction", (void*)pTeam, pTeam->get_ID(), (void*)pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), (int)action);
 			pTeam->StepCompleted = true;
 			break;
 		}
 		case PhobosScripts::RallyUnitWithSameGroup:
 		{
 			//ScriptExtData::RallyUnitInMap(pTeam, argument); //which branch is this again ?
-			Debug::Log("Team[%x - %s , Script [%x - %s] Action [%d] - No AttachedFunction\n", pTeam, pTeam->get_ID(), pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), action);
+			Debug::LogInfo("Team[{} - {} , Script [{} - {}] Action [{}] - No AttachedFunction", (void*)pTeam, pTeam->get_ID(), (void*)pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), (int)action);
 			pTeam->StepCompleted = true;
 			break;
 		}
@@ -515,7 +515,7 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 		{
 			// Start Timed Jump that jumps to the same line when the countdown finish (in frames)
 			ScriptExtData::RepairDestroyedBridge(pTeam, -1);  //which branch is this again ?
-			Debug::Log("Team[%x - %s , Script [%x - %s] Action [%d] - No AttachedFunction\n", pTeam, pTeam->get_ID(), pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), action);
+			Debug::LogInfo("Team[{} - {} , Script [{} - {}] Action [{}] - No AttachedFunction", (void*)pTeam, pTeam->get_ID(), (void*)pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), (int)action);
 			pTeam->StepCompleted = true;
 			break;
 		}
@@ -927,17 +927,17 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 				// Unknown action. This action finished
 				pTeam->StepCompleted = true;
 				auto const pAction = pTeam->CurrentScript->GetCurrentAction();
-				Debug::Log("AI Scripts : [%x] Team [%s][%s]  ( %x CurrentScript %s / %s line %d): Unknown Script Action: %d\n",
-					pTeam,
+				Debug::LogInfo("AI Scripts : [{}] Team [{}][{}]  ( {} CurrentScript {} / {} line {}): Unknown Script Action: {}",
+					(void*)pTeam,
 					pTeam->Type->ID,
 					pTeam->Type->Name,
 
-					pTeam->CurrentScript,
+					(void*)pTeam->CurrentScript,
 					pTeam->CurrentScript->Type->ID,
 					pTeam->CurrentScript->Type->Name,
 					pTeam->CurrentScript->CurrentMission,
 
-					pAction.Action);
+					(int)pAction.Action);
 			}
 
 			return false;
@@ -984,7 +984,7 @@ void NOINLINE ScriptExtData::ExecuteTimedAreaGuardAction(TeamClass* pTeam)
 
 void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 {
-	StackVector<FootClass*, 256> transports;
+	StackVector<FootClass*, 10> transports {};
 
 	// Collect available transports
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
@@ -1328,7 +1328,12 @@ void ScriptExtData::WaitIfNoTarget(TeamClass* pTeam, int attempts = 0)
 	if (attempts < 0)
 		attempts = pTeam->CurrentScript->GetCurrentAction().Argument;
 
-	TeamExtContainer::Instance.Find(pTeam)->WaitNoTargetAttempts = Math::abs(attempts);
+	auto pExt = TeamExtContainer::Instance.Find(pTeam);
+
+	if (attempts <= 0)
+		pExt->WaitNoTargetAttempts = -1; // Infinite waits if no target
+	else
+		pExt->WaitNoTargetAttempts = attempts;
 
 	// This action finished
 	pTeam->StepCompleted = true;
@@ -1379,7 +1384,7 @@ void ScriptExtData::PickRandomScript(TeamClass* pTeam, int idxScriptsList = -1)
 			else
 			{
 				pTeam->StepCompleted = true;
-				ScriptExtData::Log("AI Scripts - PickRandomScript: [%s] Aborting Script change because [%s] has 0 Action scripts!\n",
+				Debug::LogInfo("AI Scripts - PickRandomScript: [{}] Aborting Script change because [{}] has 0 Action scripts!",
 					pTeam->Type->ID,
 					pNewScript->ID
 				);
@@ -1390,7 +1395,7 @@ void ScriptExtData::PickRandomScript(TeamClass* pTeam, int idxScriptsList = -1)
 	}
 
 	pTeam->StepCompleted = true;
-	ScriptExtData::Log("AI Scripts - PickRandomScript: [%s] [%s] Failed to change the Team Script with index [%d]!\n",
+	Debug::LogInfo("AI Scripts - PickRandomScript: [{}] [{}] Failed to change the Team Script with index [{}]!",
 		pTeam->Type->ID,
 		pTeam->CurrentScript->Type->ID,
 		idxScriptsList
@@ -1568,7 +1573,7 @@ void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 	//	pTeam->StepCompleted = true;
 	//	const auto&[curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 	//	const auto&[nextAct, nextArg] = pTeam->CurrentScript->GetNextAction();
-	//	ScriptExtData::Log("AI Scripts - SkipNextAction: [%s] [%s] (line: %d) Jump to next line: %d = %d,%d -> (No team members alive)\n",
+	//	Debug::LogInfo("AI Scripts - SkipNextAction: [{}] [{}] (line: {}) Jump to next line: {} = {},{} -> (No team members alive)",
 	//		pTeam->Type->ID,
 	//		pTeam->CurrentScript->Type->ID,
 	//		pTeam->CurrentScript->CurrentMission,
@@ -1597,14 +1602,14 @@ void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 		const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 		const auto& [nextAct, nextArg] = ScriptExtData::GetSpecificAction(pTeam->CurrentScript, pTeam->CurrentScript->CurrentMission + 2);
 
-		ScriptExtData::Log("AI Scripts - SkipNextAction: [%s] [%s] (line: %d = %d,%d) Next script line skipped successfuly. Next line will be: %d = %d,%d\n",
+		Debug::LogInfo("AI Scripts - SkipNextAction: [{}] [{}] (line: {} = {},{}) Next script line skipped successfuly. Next line will be: {} = {},{}",
 			pTeam->Type->ID,
 			pTeam->CurrentScript->Type->ID,
 			pTeam->CurrentScript->CurrentMission,
-			curAct,
+			(int)curAct,
 			curArg,
 			pTeam->CurrentScript->CurrentMission + 2,
-			nextAct,
+			(int)nextAct,
 			nextArg
 		);
 
@@ -1866,11 +1871,11 @@ void ScriptExtData::Set_ForceJump_Countdown(TeamClass* pTeam, bool repeatLine = 
 
 	// This action finished
 	pTeam->StepCompleted = true;
-	ScriptExtData::Log("AI Scripts - SetForceJumpCountdown: [%s] [%s](line: %d = %d,%d) Set Timed Jump -> (Countdown: %d, repeat action: %d)\n",
+	Debug::LogInfo("AI Scripts - SetForceJumpCountdown: [{}] [{}](line: {} = {},{}) Set Timed Jump -> (Countdown: {}, repeat action: {})",
 		pTeam->Type->ID,
 		pScript->Type->ID,
 		pScript->CurrentMission,
-		curAct,
+		(int)curAct,
 		curArgs,
 		count, repeatLine
 	);
@@ -1888,37 +1893,24 @@ void ScriptExtData::Stop_ForceJump_Countdown(TeamClass* pTeam)
 	// This action finished
 	pTeam->StepCompleted = true;
 	const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
-	ScriptExtData::Log("AI Scripts - StopForceJumpCountdown: [%s] [%s](line: %d = %d,%d): Stopped Timed Jump\n",
+	Debug::LogInfo("AI Scripts - StopForceJumpCountdown: [{}] [{}](line: {} = {},{}): Stopped Timed Jump",
 		pTeam->Type->ID,
 		pScript->Type->ID,
 		pScript->CurrentMission,
-		curAct,
+		(int)curAct,
 		curArgs
 	);
 }
 
 void ScriptExtData::ChronoshiftToEnemyBase(TeamClass* pTeam, int extraDistance)
 {
-	auto pScript = pTeam->CurrentScript;
+	//auto pScript = pTeam->CurrentScript;
 	auto const pLeader = ScriptExtData::FindTheTeamLeader(pTeam);
-	const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
-	const auto& [nextAct, nextArgs] = pTeam->CurrentScript->GetNextAction();
-
-	char logText[1024];
-	sprintf_s(logText, "AI Scripts - ChronoshiftToEnemyBase: [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d -> (Reason: %s)\n",
-		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
-		curAct,
-		curArgs,
-		pScript->CurrentMission + 1,
-		nextAct,
-		nextArgs,
-		"%s");
+	//const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
+	//const auto& [nextAct, nextArgs] = pTeam->CurrentScript->GetNextAction();
 
 	if (!pLeader)
 	{
-		ScriptExtData::Log(logText, "No team leader found");
 		pTeam->StepCompleted = true;
 		return;
 	}
@@ -1928,7 +1920,6 @@ void ScriptExtData::ChronoshiftToEnemyBase(TeamClass* pTeam, int extraDistance)
 
 	if (!pEnemy)
 	{
-		ScriptExtData::Log(logText, "No enemy house found");
 		pTeam->StepCompleted = true;
 		return;
 	}
@@ -1937,7 +1928,6 @@ void ScriptExtData::ChronoshiftToEnemyBase(TeamClass* pTeam, int extraDistance)
 
 	if (!pTargetCell)
 	{
-		ScriptExtData::Log(logText, "No target cell found");
 		pTeam->StepCompleted = true;
 		return;
 	}
@@ -1952,7 +1942,7 @@ void ScriptExtData::ChronoshiftTeamToTarget(TeamClass* pTeam, TechnoClass* pTeam
 	if (!pTeam || !pTeamLeader || !pTarget)
 		return;
 
-	auto pScript = pTeam->CurrentScript;
+	//auto pScript = pTeam->CurrentScript;
 	HouseClass* pOwner = pTeamLeader->Owner;
 	SuperClass* pSuperChronosphere = nullptr;
 	SuperClass* pSuperChronowarp = nullptr;
@@ -1972,34 +1962,11 @@ void ScriptExtData::ChronoshiftTeamToTarget(TeamClass* pTeam, TechnoClass* pTeam
 			break;
 	}
 
-	char logTextBase[1024];
-	char logTextJump[1024];
-	char jump[256];
-
-	const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
-	const auto& [nextAct, nextArgs] = pTeam->CurrentScript->GetNextAction();
-
-	sprintf_s(jump, "Jump to next line: %d = %d,%d -> (Reason: %s)",
-		pScript->CurrentMission + 1,
-		nextAct,
-		nextArgs,
-		"%s"
-	);
-
-	sprintf_s(logTextBase, "AI Scripts - ChronoshiftTeamToTarget: [%s] [%s] (line: %d = %d,%d) %s\n",
-		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
-		curAct,
-		curArgs,
-		"%s"
-	);
-
-	sprintf_s(logTextJump, logTextBase, jump);
+	//const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
+	//const auto& [nextAct, nextArgs] = pTeam->CurrentScript->GetNextAction();
 
 	if (!pSuperChronosphere || !pSuperChronowarp)
 	{
-		ScriptExtData::Log(logTextJump, "No Chronosphere or ChronoWarp superweapon found");
 		pTeam->StepCompleted = true;
 		return;
 	}
@@ -2013,13 +1980,11 @@ void ScriptExtData::ChronoshiftTeamToTarget(TeamClass* pTeam, TechnoClass* pTeam
 
 			if ((1.0 - RulesClass::Instance->AIMinorSuperReadyPercent) < ((double)timeLeft / rechargeTime))
 			{
-				ScriptExtData::Log(logTextBase, "Chronosphere superweapon charge not at AIMinorSuperReadyPercent yet, not jumping to next line yet");
 				return;
 			}
 		}
 		else
 		{
-			ScriptExtData::Log(logTextJump, "Chronosphere superweapon is not available");
 			pTeam->StepCompleted = true;
 			return;
 		}
@@ -2032,11 +1997,6 @@ void ScriptExtData::ChronoshiftTeamToTarget(TeamClass* pTeam, TechnoClass* pTeam
 		pOwner->Fire_SW(pSuperChronosphere->Type->ArrayIndex, pTeam->SpawnCell->MapCoords);
 		pOwner->Fire_SW(pSuperChronowarp->Type->ArrayIndex, pTargetCell->MapCoords);
 		pTeam->AssignMissionTarget(pTargetCell);
-		ScriptExtData::Log(logTextJump, "Finished successfully");
-	}
-	else
-	{
-		ScriptExtData::Log(logTextJump, "No target cell found");
 	}
 
 	pTeam->StepCompleted = true;
@@ -2051,7 +2011,7 @@ void ScriptExtData::ForceGlobalOnlyTargetHouseEnemy(TeamClass* pTeam, int mode =
 		return;
 	}
 
-	auto pHouseExt = HouseExtContainer::Instance.Find(pTeam->Owner);
+	//auto pHouseExt = HouseExtContainer::Instance.Find(pTeam->Owner);
 	const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
 
 	if (mode < 0 || mode > 2)
@@ -2081,11 +2041,11 @@ void ScriptExtData::JumpBackToPreviousScript(TeamClass* pTeam)
 		auto pScript = pTeam->CurrentScript;
 		auto const& [curAct, curArgs] = pScript->GetCurrentAction();
 
-		Debug::Log("DEBUG: [%s] [%s](line: %d = %d,%d): Can't find the previous script! This script action must be used after PickRandomScript.\n",
+		Debug::LogInfo("DEBUG: [{}] [{}](line: {} = {},{}): Can't find the previous script! This script action must be used after PickRandomScript.",
 			pTeam->Type->ID,
 			pScript->Type->ID,
 			pScript->CurrentMission,
-			curAct,
+			(int)curAct,
 			curArgs
 		);
 
@@ -2136,14 +2096,6 @@ std::pair<WeaponTypeClass*, WeaponTypeClass*> ScriptExtData::GetWeapon(TechnoCla
 	return { TechnoExtData::GetCurrentWeapon(pTechno, false),TechnoExtData::GetCurrentWeapon(pTechno, true) };
 }
 
-void ScriptExtData::Log(const char* pFormat, ...)
-{
-	va_list args;
-	va_start(args, pFormat);
-	Debug::LogWithVArgs(pFormat, args);
-	va_end(args);
-}
-
 void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 {
 	if (!pTeam)
@@ -2169,14 +2121,14 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		if (pTeamData->BridgeRepairHuts.empty())
 		{
 			pTeam->StepCompleted = true;
-			ScriptExtData::Log("AI Scripts - [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d -> (Reason: No repair huts found)\n",
+			Debug::LogInfo("AI Scripts - [{}] [{}] (line: {} = {},{}) Jump to next line: {} = {},{} -> (Reason: No repair huts found)",
 				pTeam->Type->ID,
 				pScript->Type->ID,
 				pScript->CurrentMission,
-				curAction,
+				(int)curAction,
 				curArgument,
 				pScript->CurrentMission + 1,
-				nextAction,
+				(int)nextAction,
 				nextArgument);
 
 			return;
@@ -2211,8 +2163,8 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 
 	TechnoClass* selectedTarget = pTeam->ArchiveTarget ? static_cast<TechnoClass*>(pTeam->ArchiveTarget) : nullptr;
 	bool isEngineerAmphibious = false;
-	StackVector<FootClass*, 1250> engineers;
-	StackVector<FootClass*, 1250> otherTeamMembers;
+	StackVector<FootClass*, 512> engineers {};
+	StackVector<FootClass*, 512> otherTeamMembers {};
 
 	// Check if there are no engineers
 	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
@@ -2253,20 +2205,20 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 	if (engineers->empty())
 	{
 		pTeam->StepCompleted = true;
-		ScriptExtData::Log("AI Scripts - [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d -> (Reason: Team has no engineers)\n",
+		Debug::LogInfo("AI Scripts - [{}] [{}] (line: {} = {},{}) Jump to next line: {} = {},{} -> (Reason: Team has no engineers)",
 			pTeam->Type->ID,
 			pScript->Type->ID,
 			pScript->CurrentMission,
-			curAction,
+			(int)curAction,
 			curArgument,
 			pScript->CurrentMission + 1,
-			nextAction,
+			(int)nextAction,
 			nextArgument);
 
 		return;
 	}
 
-	StackVector<BuildingClass*, 500> validHuts;
+	StackVector<BuildingClass*, 10> validHuts {};
 
 	if (!selectedTarget)
 	{
@@ -2295,44 +2247,38 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		// Find the best repair hut
 		int bestVal = -1;
 
-		for (auto& pTechno : validHuts.container())
+		//auto hut = pTechno;
+
+		if (mode < 0)
+			mode = curArgument;
+
+		if (mode < 0)
 		{
-			//auto hut = pTechno;
-
-			if (mode < 0)
-				mode = curArgument;
-
-			if (mode < 0)
+			// Pick a random bridge
+			selectedTarget = validHuts[ScenarioClass::Instance->Random.RandomFromMax(validHuts->size() - 1)];
+		}
+		else
+		{
+			for (auto& pHut : validHuts.container())
 			{
-				// Pick a random bridge
-				selectedTarget = validHuts[ScenarioClass::Instance->Random.RandomFromMax(validHuts->size() - 1)];
-				break;
-			}
-			else
-			{
-				for (auto& pHut : validHuts.container())
+				int value = engineers[0]->DistanceFrom(pHut); // Note: distance is in leptons (*256)
+
+				if (mode > 0)
 				{
-					if (mode > 0)
+					// Pick the farthest target
+					if (value >= bestVal || bestVal < 0)
 					{
-						// Pick the farthest target
-						int value = engineers[0]->DistanceFrom(pHut); // Note: distance is in leptons (*256)
-
-						if (value >= bestVal || bestVal < 0)
-						{
-							bestVal = value;
-							selectedTarget = pHut;
-						}
+						bestVal = value;
+						selectedTarget = pHut;
 					}
-					else
+				}
+				else
+				{
+					// Pick the closest target
+					if (value < bestVal || bestVal < 0)
 					{
-						// Pick the closest target
-						int value = engineers[0]->DistanceFrom(pHut); // Note: distance is in leptons (*256)
-
-						if (value < bestVal || bestVal < 0)
-						{
-							bestVal = value;
-							selectedTarget = pHut;
-						}
+						bestVal = value;
+						selectedTarget = pHut;
 					}
 				}
 			}
@@ -2343,15 +2289,15 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 	{
 		pTeam->StepCompleted = true;
 
-		ScriptExtData::Log("AI Scripts - [%s] [%s] (line: %d = %d,%d) Jump to next line: %d = %d,%d -> (Reason: Can not select a bridge repair hut)\n",
-			pTeam->Type->ID,
-			pScript->Type->ID,
-			pScript->CurrentMission,
-			curAction,
-			curArgument,
-			pScript->CurrentMission + 1,
-			nextAction,
-			nextArgument);
+		//Debug::LogInfo("AI Scripts - [{}] [{}] (line: {} = {},{}) Jump to next line: {} = {},{} -> (Reason: Can not select a bridge repair hut)",
+		//	pTeam->Type->ID,
+		//	pScript->Type->ID,
+		//	pScript->CurrentMission,
+		//	(int)curAction,
+		//	curArgument,
+		//	pScript->CurrentMission + 1,
+		//	(int)nextAction,
+		//	nextArgument);
 
 		return;
 	}

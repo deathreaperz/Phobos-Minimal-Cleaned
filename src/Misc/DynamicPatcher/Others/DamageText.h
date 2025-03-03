@@ -40,7 +40,7 @@ struct DamageTextData : public PrintTextData
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
-		//Debug::Log("Loading Element From DamageTextData ! \n");
+		//Debug::LogInfo("Loading Element From DamageTextData ! ");
 		return Serialize(Stm);
 	}
 
@@ -82,14 +82,13 @@ struct DamageTextTypeData
 		, Damage { true }
 		, Repair { false }
 
-	{
-	}
+	{ }
 
 	void Read(INI_EX& reader, const char* section, const char* title);
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
-		//Debug::Log("Loading Element From DamageTextTypeData ! \n");
+		//Debug::LogInfo("Loading Element From DamageTextTypeData ! ");
 		return Serialize(Stm);
 	}
 
@@ -109,7 +108,7 @@ private:
 	}
 };
 
-inline void TechnoClass_ReceiveDamage2_DamageText(TechnoClass* pTechno, int* pRealDamage, DamageTextTypeData& nData)
+OPTIONALINLINE void TechnoClass_ReceiveDamage2_DamageText(TechnoClass* pTechno, int* pRealDamage, DamageTextTypeData& nData)
 {
 	if (!Phobos::Otamaa::ShowHealthPercentEnabled || !pTechno)
 		return;

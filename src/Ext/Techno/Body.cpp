@@ -41,6 +41,120 @@
 
 #include <memory>
 
+void TechnoExtData::UpdateRecountBurst()
+{
+	const auto pThis = this->AttachedToObject;
+	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pThis->CurrentBurstIndex && !pThis->Target && pTypeExt->RecountBurst.Get(RulesExtData::Instance()->RecountBurst))
+	{
+		const auto pWeapon = this->LastWeaponType;
+		if (pWeapon && pWeapon->Burst && pThis->LastFireBulletFrame + std::max(pWeapon->ROF, 30) <= Unsorted::CurrentFrame)
+		{
+			const auto ratio = static_cast<double>(pThis->CurrentBurstIndex) / pWeapon->Burst;
+			const auto rof = static_cast<int>(ratio * pWeapon->ROF * this->AE.ROFMultiplier) - std::max(pWeapon->ROF, 30);
+
+			if (rof > 0)
+			{
+				pThis->ROF = rof;
+				pThis->DiskLaserTimer.Start(rof);
+			}
+
+			pThis->CurrentBurstIndex = 0;
+		}
+	}
+}
+
+void TechnoExtData::UpdateRearmInEMPState()
+{
+	const auto pThis = this->AttachedToObject;
+
+	if (!pThis->IsUnderEMP() && !pThis->Deactivated)
+		return;
+
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(this->Type);
+
+	if (pThis->DiskLaserTimer.InProgress() && pTypeExt->NoRearm_UnderEMP.Get(RulesExtData::Instance()->NoRearm_UnderEMP))
+		pThis->DiskLaserTimer.StartTime++;
+
+	if (pThis->ReloadTimer.InProgress() && pTypeExt->NoReload_UnderEMP.Get(RulesExtData::Instance()->NoReload_UnderEMP))
+		pThis->ReloadTimer.StartTime++;
+}
+
+void TechnoExtData::UpdateRearmInTemporal()
+{
+	const auto pThis = this->AttachedToObject;
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(this->Type);
+
+	if (pThis->DiskLaserTimer.InProgress() && pTypeExt->NoRearm_Temporal.Get(RulesExtData::Instance()->NoRearm_Temporal))
+		pThis->DiskLaserTimer.StartTime++;
+
+	if (pThis->ReloadTimer.InProgress() && pTypeExt->NoReload_Temporal.Get(RulesExtData::Instance()->NoReload_Temporal))
+		pThis->ReloadTimer.StartTime++;
+}
+
+void TechnoExtData::ResetDelayedFireTimer()
+{
+	this->DelayedFireTimer.Stop();
+	this->DelayedFireWeaponIndex = -1;
+
+	if (this->CurrentDelayedFireAnim)
+	{
+		if (FakeAnimClass::GetExtAttribute(this->CurrentDelayedFireAnim)->DelayedFireRemoveOnNoDelay)
+			this->CurrentDelayedFireAnim.reset(nullptr);
+	}
+}
+
+void TechnoExtData::CreateDelayedFireAnim(AnimTypeClass* pAnimType, int weaponIndex, bool attach, bool center, bool removeOnNoDelay, bool useOffsetOverride, CoordStruct offsetOverride)
+{
+	if (pAnimType)
+	{
+		auto coords = this->AttachedToObject->GetCenterCoords();
+
+		if (useOffsetOverride)
+			this->CustomFiringOffset = offsetOverride;
+
+		if (!center)
+			this->AttachedToObject->GetFLH(&coords, weaponIndex, coords);
+
+		if (useOffsetOverride)
+			this->CustomFiringOffset.reset();
+
+		auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
+
+		if (attach)
+			pAnim->SetOwnerObject(this->AttachedToObject);
+
+		auto const pAnimExt = FakeAnimClass::GetExtAttribute(pAnim);
+		pAnim->Owner = this->AttachedToObject->Owner;
+		pAnimExt->Invoker = this->AttachedToObject;
+
+		if (attach)
+		{
+			pAnimExt->DelayedFireRemoveOnNoDelay = removeOnNoDelay;
+			this->CurrentDelayedFireAnim.reset(pAnim);
+		}
+	}
+}
+
+void TechnoExtData::UpdateGattlingRateDownReset()
+{
+	if (this->Type->IsGattling)
+	{
+		const auto pThis = this->AttachedToObject;
+
+		if (TechnoTypeExtContainer::Instance.Find(this->Type)->RateDown_Reset
+				&& (!pThis->Target || this->LastTargetID != pThis->Target->UniqueID))
+		{
+			this->LastTargetID = pThis->Target ? pThis->Target->UniqueID : 0xFFFFFFFF;
+			pThis->GattlingValue = 0;
+			pThis->CurrentGattlingStage = 0;
+			this->AccumulatedGattlingValue = 0;
+			this->ShouldUpdateGattlingValue = false;
+		}
+	}
+}
+
 void TechnoExtData::SetChargeTurretDelay(TechnoClass* pThis, int rearmDelay, WeaponTypeClass* pWeapon)
 {
 	pThis->ROF = rearmDelay;
@@ -115,6 +229,27 @@ bool TechnoExtData::CanDeployIntoBuilding(UnitClass* pThis, bool noDeploysIntoDe
 	return canDeploy;
 }
 
+bool TechnoExtData::CanDeployIntoBuilding(UnitClass* pThis)
+{
+	auto const pDeployType = pThis->Type->DeploysInto;
+
+	if (!pDeployType)
+		return true;
+
+	auto mapCoords = CellClass::Coord2Cell(pThis->GetCoords());
+
+	if (pDeployType->GetFoundationWidth() > 2 || pDeployType->GetFoundationHeight(false) > 2)
+		mapCoords += CellStruct { -1, -1 };
+
+	// The vanilla game used an inappropriate approach here, resulting in potential risk of desync.
+	// Now, through additional checks, we can directly exclude the unit who want to deploy.
+	TechnoExtData::Deployer = pThis;
+	const bool canDeploy = pDeployType->CanCreateHere(mapCoords, pThis->Owner);
+	TechnoExtData::Deployer = nullptr;
+
+	return canDeploy;
+}
+
 void TechnoExtData::TransferMindControlOnDeploy(TechnoClass* pTechnoFrom, TechnoClass* pTechnoTo)
 {
 	if (!pTechnoTo || TechnoExtData::IsPsionicsImmune(pTechnoTo))
@@ -166,10 +301,12 @@ void TechnoExtData::TransferMindControlOnDeploy(TechnoClass* pTechnoFrom, Techno
 		{
 			const bool Succeeded =
 				CaptureExt::FreeUnit(Manager, pTechnoFrom, true)
-				&& CaptureExt::CaptureUnit(Manager, pTechnoTo, false, true, nullptr);
+				&& CaptureExt::CaptureUnit(Manager, pTechnoTo, false, true, nullptr, 0);
 
 			if (Succeeded)
 			{
+				TechnoExtContainer::Instance.Find(pTechnoTo)->BeControlledThreatFrame = TechnoExtContainer::Instance.Find(pTechnoFrom)->BeControlledThreatFrame;
+
 				if (pBld)
 				{
 					// Capturing the building after unlimbo before buildup has finished or even started appears to throw certain things off,
@@ -731,7 +868,7 @@ Armor TechnoExtData::GetArmor(ObjectClass* pThis)
 		}
 	}
 
-	//Debug::Log("%s Armor [%d = %s]\n", pType->ID, res, ArmorTypeClass::Array[(int)res]->Name.data());
+	//Debug::LogInfo("{} Armor [{} = {}]", pType->ID, res, ArmorTypeClass::Array[(int)res]->Name.data());
 
 	return res;
 }
@@ -774,7 +911,7 @@ NOINLINE WeaponTypeClass* TechnoExtData::GetCurrentWeapon(TechnoClass* pThis, in
 		weaponIndex = pThis->CurrentGattlingStage * 2 + weaponIndex;
 	}
 
-	//Debug::Log("%s Getting WeaponIndex %d for %s\n", __FUNCTION__, weaponIndex, pThis->get_ID());
+	//Debug::LogInfo("{} Getting WeaponIndex {} for {}", __FUNCTION__, weaponIndex, pThis->get_ID());
 	if (const auto pWpStr = pThis->GetWeapon(weaponIndex))
 		return pWpStr->WeaponType;
 
@@ -794,7 +931,7 @@ bool TechnoExtData::IsCullingImmune(TechnoClass* pThis)
 
 bool TechnoExtData::IsEMPImmune(TechnoClass* pThis)
 {
-	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	//auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	if (AresEMPulse::IsTypeEMPProne(pThis))
 		return true;
 
@@ -1169,7 +1306,7 @@ bool TechnoExtData::IsCullingImmune(Rank vet, TechnoClass* pThis)
 
 bool TechnoExtData::IsEMPImmune(Rank vet, TechnoClass* pThis)
 {
-	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	//auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	if (AresEMPulse::IsTypeEMPProne(pThis))
 		return true;
 
@@ -2032,7 +2169,7 @@ bool TechnoExtData::AllowedTargetByZone(TechnoClass* pThis, ObjectClass* pTarget
 
 			auto const speedType = pThisType->SpeedType;
 			const auto cellStruct = MapClass::Instance->NearByLocation(pTarget->InlineMapCoords(),
-				speedType, -1, mZone, false, 1, 1, true,
+				speedType, ZoneType::None, mZone, false, 1, 1, true,
 				false, false, speedType != SpeedType::Float, CellStruct::Empty, false, false);
 
 			auto const pCell = MapClass::Instance->GetCellAt(cellStruct);
@@ -2196,21 +2333,54 @@ void TechnoExtData::PlayAnim(AnimTypeClass* const pAnim, TechnoClass* pInvoker)
 	}
 }
 
-double TechnoExtData::GetDamageMult(TechnoClass* pSouce, bool ForceDisable)
+double TechnoExtData::GetArmorMult(TechnoClass* pSource, double damageIn, WarheadTypeClass* pWarhead)
 {
-	if (!pSouce || !pSouce->IsAlive || ForceDisable)
-		return 1.0;
+	const auto pType = pSource->GetTechnoType();
+	double _result = damageIn;
 
-	const auto pType = pSouce->GetTechnoType();
+	auto const pExt = TechnoExtContainer::Instance.Find(pSource);
+
+	if (pWarhead && pExt->AE.ArmorMultData.Enabled())
+	{
+		_result /= pExt->AE.ArmorMultData.Get(pExt->AE.ArmorMultiplier, pWarhead);
+	}
+
+	if (auto pOwner = pSource->Owner)
+		_result /= (pOwner->GetTypeArmorMult(pType) * pSource->ArmorMultiplier);
+
+	if (pSource->HasAbility(AbilityType::Stronger))
+	{
+		_result /= RulesClass::Instance->VeteranArmor;
+	}
+
+	return _result;
+}
+
+double TechnoExtData::GetDamageMult(TechnoClass* pSource, double damageIn, bool ForceDisable)
+{
+	if (ForceDisable || !pSource || !pSource->IsAlive)
+		return damageIn;
+
+	const auto pType = pSource->GetTechnoType();
 
 	if (!pType)
-		return 1.0;
+		return damageIn;
 
-	const bool firepower = pSouce->HasAbility(AbilityType::Firepower);
+	double _result = damageIn;
 
-	const auto nFirstMult = !firepower ? 1.0 : RulesClass::Instance->VeteranCombat;
-	const auto nSecondMult = (!pSouce->Owner || !pSouce->Owner->Type) ? 1.0 : pSouce->Owner->Type->FirepowerMult;
-	return nFirstMult * pSouce->FirepowerMultiplier * nSecondMult; ;
+	if (pSource->Owner)
+	{
+		_result *= pSource->Owner->FirepowerMultiplier;
+	}
+
+	_result *= pSource->FirepowerMultiplier;
+
+	if (pSource->HasAbility(AbilityType::Firepower))
+	{
+		_result *= RulesClass::Instance->VeteranCombat;
+	}
+
+	return _result;
 }
 
 const BurstFLHBundle* TechnoExtData::PickFLHs(TechnoClass* pThis, int weaponidx)
@@ -2365,7 +2535,7 @@ CoordStruct TechnoExtData::PassengerKickOutLocation(TechnoClass* pThis, FootClas
 	for (int i = 0; i < maxAttempts; ++i)
 	{
 		placeCoords = pCell->MapCoords - CellStruct { (short)(ExtDistance.X / 2), (short)(ExtDistance.Y / 2) };
-		placeCoords = MapClass::Instance->NearByLocation(placeCoords, speedType, -1, movementZone, false, ExtDistance.X, ExtDistance.Y, true, false, false, false, CellStruct::Empty, false, false);
+		placeCoords = MapClass::Instance->NearByLocation(placeCoords, speedType, ZoneType::None, movementZone, false, ExtDistance.X, ExtDistance.Y, true, false, false, false, CellStruct::Empty, false, false);
 
 		pCell = MapClass::Instance->GetCellAt(placeCoords);
 
@@ -2561,7 +2731,7 @@ std::tuple<CoordStruct, SHPStruct*, int> GetInsigniaDatas(TechnoClass* pThis, Te
 	return { drawOffs, pShapeFile  , frameIndexRet };
 }
 
-static FORCEINLINE void GetAdjustedInsigniaOffset(TechnoClass* pThis, Point2D& offset, const CoordStruct& a_)
+static FORCEDINLINE void GetAdjustedInsigniaOffset(TechnoClass* pThis, Point2D& offset, const CoordStruct& a_)
 {
 	Point2D a__ { a_.X , a_.Y };
 	switch (pThis->WhatAmI())
@@ -2590,7 +2760,7 @@ void TechnoExtData::DrawInsignia(TechnoClass* pThis, Point2D* pLocation, Rectang
 		|| RulesExtData::Instance()->DrawInsigniaOnlyOnSelected.Get() && !pThis->IsSelected && !pThis->IsMouseHovering)
 		return;
 
-	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	//const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 	const bool IsObserverPlayer = HouseExtData::IsObserverPlayer();
 	Point2D offset = *pLocation;
 	TechnoTypeClass* pTechnoType = nullptr;
@@ -2843,14 +3013,14 @@ void TechnoExtData::ObjectKilledBy(TechnoClass* pVictim, TechnoClass* pKiller)
 				const auto& [curAction, curArgs] = pTeam->CurrentScript->GetCurrentAction();
 				const auto& [nextAction, nextArgs] = pTeam->CurrentScript->GetNextAction();
 
-				Debug::Log("DEBUG: [%s] [%s] %d = %d,%d - Force next script action after successful kill: %d = %d,%d\n"
+				Debug::LogInfo("DEBUG: [{}] [{}] {} = {},{} - Force next script action after successful kill: {} = {},{}"
 					, pTeam->Type->ID
 					, pTeam->CurrentScript->Type->ID
 					, pTeam->CurrentScript->CurrentMission
-					, curAction
+					, (int)curAction
 					, curArgs
 					, pTeam->CurrentScript->CurrentMission + 1
-					, nextAction
+					, (int)nextAction
 					, nextArgs
 				);
 
@@ -3194,7 +3364,10 @@ void TechnoExtData::UpdateEatPassengers()
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	auto const pDelType = &pTypeExt->PassengerDeletionType;
 
-	if (!pDelType->Enabled || !TechnoExtData::IsActive(pThis))
+	if (!pDelType->Enabled || !TechnoExtData::IsActive(pThis, false))
+		return;
+
+	if (!pDelType->UnderEMP && (pThis->Deactivated || pThis->IsUnderEMP()))
 		return;
 
 	if (pThis->Passengers.NumPassengers > 0)
@@ -3333,7 +3506,7 @@ void TechnoExtData::UpdateEatPassengers()
 				//}
 
 				pPassenger->RegisterDestruction(pDelType->DontScore ? nullptr : pThis);
-				Debug::Log(__FUNCTION__" Called \n");
+				Debug::LogInfo(__FUNCTION__" Called ");
 				TechnoExtData::HandleRemove(pPassenger, pDelType->DontScore ? nullptr : pThis, false, false);
 			}
 
@@ -3363,12 +3536,12 @@ void TechnoExtData::HandleRemove(TechnoClass* pThis, TechnoClass* pSource, bool 
 
 	const auto pThisType = pThis->GetTechnoType();
 	const auto nWhat = pThis->WhatAmI();
-	Debug::Log(__FUNCTION__" Called For[(%s)%s - %x][%s - %x](Method :%s)\n",
+	Debug::LogInfo(__FUNCTION__" Called For[({}){} - {}][{} - {}](Method :{})",
 		AbstractClass::GetAbstractClassName(nWhat),
 		pThisType->ID,
-		pThis,
+		(void*)pThis,
 		pThis->Owner ? pThis->Owner->get_ID() : GameStrings::NoneStr(),
-		pThis->Owner,
+		(void*)pThis->Owner,
 		Delete ? "Delete" : "UnInit"
 	);
 
@@ -3419,7 +3592,7 @@ void TechnoExtData::KillSelf(TechnoClass* pThis, bool isPeaceful)
 			pThis->Limbo();
 		}
 
-		Debug::Log(__FUNCTION__" (2args) Called \n");
+		Debug::LogInfo(__FUNCTION__" (2args) Called ");
 		TechnoExtData::HandleRemove(pThis, nullptr, SkipRemoveTracking, false);
 	}
 	else
@@ -3482,7 +3655,7 @@ void TechnoExtData::KillSelf(TechnoClass* pThis, const KillMethod& deathOption, 
 		if (RegisterKill)
 			pThis->RegisterKill(pThis->Owner);
 
-		Debug::Log(__FUNCTION__" Called \n");
+		Debug::LogInfo(__FUNCTION__" Called ");
 		TechnoExtData::HandleRemove(pThis, nullptr, skiptrackingremove, false);
 	}break;
 	case KillMethod::Sell:
@@ -4388,7 +4561,7 @@ void TechnoExtData::UpdateShield()
 	auto const pThis = this->AttachedToObject;
 
 	if (!this->CurrentShieldType)
-		Debug::FatalErrorAndExit("Techno[%s] Missing CurrentShieldType ! \n", pThis->get_ID());
+		Debug::FatalErrorAndExit("Techno[%s] Missing CurrentShieldType ! ", pThis->get_ID());
 
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
@@ -4406,6 +4579,8 @@ void TechnoExtData::UpdateShield()
 	if (const  auto pShieldData = this->GetShield())
 		pShieldData->OnUpdate();
 }
+
+#include <Ext/Cell/Body.h>
 
 // https://github.com/Phobos-developers/Phobos/pull/1111
 // TODO : Upate to this , seems new
@@ -4434,17 +4609,18 @@ void TechnoExtData::UpdateMobileRefinery()
 		flh.X = (size_t)idx < pTypeExt->MobileRefinery_FrontOffset.size() ? pTypeExt->MobileRefinery_FrontOffset[idx] * Unsorted::LeptonsPerCell : 0;
 		flh.Y = (size_t)idx < pTypeExt->MobileRefinery_LeftOffset.size() ? pTypeExt->MobileRefinery_LeftOffset[idx] * Unsorted::LeptonsPerCell : 0;
 		auto nPos = TechnoExtData::GetFLHAbsoluteCoords(pThis, flh, false);
-		const CellClass* pCell = MapClass::Instance->GetCellAt(nPos);
+		auto pCell = (FakeCellClass*)MapClass::Instance->GetCellAt(nPos);
 
 		if (!pCell)
 			continue;
 
 		nPos.Z += pThis->Location.Z;
+		const int tValue = pCell->GetContainedTiberiumValue();
 
-		if (const int tValue = pCell->GetContainedTiberiumValue())
+		if (tValue != -1)
 		{
 			active = true;
-			const int tibValue = TiberiumClass::Array->Items[pCell->GetContainedTiberiumIndex()]->Value;
+			const int tibValue = TiberiumClass::Array->Items[tValue]->Value;
 			const int tAmount = static_cast<int>(tValue * 1.0 / tibValue);
 			const int amount = pTypeExt->MobileRefinery_AmountPerCell ? MinImpl(tAmount, pTypeExt->MobileRefinery_AmountPerCell.Get()) : tAmount;
 			pCell->ReduceTiberium(amount);
@@ -4966,7 +5142,7 @@ void TechnoExtData::ReplaceArmor(Armor& armor, TechnoClass* pTarget, WarheadType
 	if (const auto& pShieldData = TechnoExtContainer::Instance.Find(pTarget)->Shield)
 	{
 		//if (IS_SAME_STR_("CAOILD", pTarget->get_ID())) {
-		//	Debug::Log("CAOILD Armor Replaced with Shield[%s]\n", pShieldData->GetType()->Name.data());
+		//	Debug::LogInfo("CAOILD Armor Replaced with Shield[{}]", pShieldData->GetType()->Name.data());
 		//}
 
 		if (pShieldData->IsActive() && !pShieldData->CanBePenetrated(pWH))
@@ -5130,7 +5306,7 @@ void TechnoExtData::ManualIdleAction()
 		if (mouseCoords != CoordStruct::Empty) // Mouse in tactical
 		{
 			CoordStruct technoCoords = this->AttachedToObject->GetCoords();
-			const int offset = -static_cast<int>(technoCoords.Z * 1.25);
+			const int offset = -static_cast<int>(technoCoords.Z * ((Unsorted::LeptonsPerCell / 2.0) / Unsorted::LevelHeight));
 			const double nowRadian = Math::atan2(double(technoCoords.Y + offset - mouseCoords.Y), double(mouseCoords.X - technoCoords.X - offset)) - 0.125;
 			DirStruct unitIdleFacingDirection;
 			unitIdleFacingDirection.SetRadian<32>(nowRadian);
@@ -5273,6 +5449,18 @@ void TechnoExtData::Serialize(T& Stm)
 		.Process(this->DropCrate)
 		.Process(this->DropCrateType)
 		.Process(this->LastBeLockedFrame)
+		.Process(this->BeControlledThreatFrame)
+		.Process(this->LastTargetID)
+		.Process(this->AccumulatedGattlingValue)
+		.Process(this->ShouldUpdateGattlingValue)
+		.Process(this->KeepTargetOnMove)
+
+		.Process(this->FiringSequencePaused)
+		.Process(this->DelayedFireTimer)
+		.Process(this->DelayedFireWeaponIndex)
+		.Process(this->CurrentDelayedFireAnim)
+		.Process(this->CustomFiringOffset)
+		.Process(this->LastWeaponType)
 		;
 }
 
@@ -5299,7 +5487,7 @@ TechnoExtContainer TechnoExtContainer::Instance;
 
 void TechnoExtData::InitializeConstant()
 {
-	//Debug::Log("Initilizing Tiberium storage for [%x] with [%d] count !\n", this->AttachedToObject, TiberiumClass::Array->Count);
+	//Debug::LogInfo("Initilizing Tiberium storage for [{}] with [{}] count !", this->AttachedToObject, TiberiumClass::Array->Count);
 	TiberiumStorage.m_values.resize(TiberiumClass::Array->Count);
 }
 
@@ -5429,7 +5617,7 @@ void AEProperties::Recalculate(TechnoClass* pTechno)
 				ranges_.disallow.insert(disallow);
 		}
 
-		if ((type->ArmorMultiplier != 1.0 && (type->ArmorMultiplier_AllowWarheads.size() > 0 || type->ArmorMultiplier_DisallowWarheads.size() > 0)))
+		if (type->ArmorMultiplier != 1.0)
 		{
 			auto& mults_ = armormultData->mults.emplace_back();
 			mults_.Mult = type->ArmorMultiplier;
@@ -5512,6 +5700,10 @@ DEFINE_HOOK(0x6F4500, TechnoClass_DTOR, 0x5)
 
 	HouseExtData::LimboTechno.remove(pItem);
 	TechnoExtContainer::Instance.Remove(pItem);
+	if (RulesExtData::Instance()->ExtendedBuildingPlacing && pItem->WhatAmI() == AbstractType::Unit && pItem->GetTechnoType()->DeploysInto)
+	{
+		HouseExtContainer::Instance.Find(pItem->Owner)->OwnedDeployingUnits.remove((UnitClass*)pItem);
+	}
 
 	return 0;
 }
@@ -5545,7 +5737,7 @@ DEFINE_HOOK(0x70BF6C, TechnoClass_Load_Suffix, 0x6)
 	//			return 0;
 	//		else
 	//		{
-	//			Debug::FatalErrorAndExit("[LoadStatic] Loading object %p with buffer %p as '%s failed!\n",
+	//			Debug::FatalErrorAndExit("[LoadStatic] Loading object %p with buffer %p as '{} failed!",
 	//			key,
 	//			buffer,
 	//			TechnoExtContainer::Instance.GetName());
@@ -5598,6 +5790,9 @@ DEFINE_HOOK(0x710415, TechnoClass_AnimPointerExpired_add, 6)
 
 		if (pExt->WebbedAnim.get() == pAnim)
 			pExt->WebbedAnim.release();
+
+		if (pExt->CurrentDelayedFireAnim.get() == pAnim)
+			pExt->CurrentDelayedFireAnim.release();
 
 		pExt->AeData.InvalidatePointer(pAnim, pThis);
 

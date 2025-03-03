@@ -23,21 +23,21 @@ DEFINE_HOOK(0x559F31, LoadOptionsClass_GetFileInfo, 9)
 
 	// compare equal if same mod and same Ares version (or compatible)
 	auto same = (Info.Version == (AresGlobalData::version)
-		&& (Info.InternalVersion - PHOBOSSAVEGAME_ID) == AresGlobalData::InternalVersion);
+		&& DWORD(Info.InternalVersion - PHOBOSSAVEGAME_ID) == AresGlobalData::InternalVersion);
 
 	R->ECX(&Info);
 	return same ? 0x559F60u : 0x559F48u;
 }
 
-DEFINE_HOOK(0x67CEFE, Game_Save_FixLog, 7)
-{
-	GET(const char*, pFilename, EDI);
-	GET(const wchar_t*, pSaveName, ESI);
-
-	Debug::Log("\nSAVING GAME [%s - %ls]\n", pFilename, pSaveName);
-
-	return 0x67CF0D;
-}
+// DEFINE_HOOK(0x67CEFE, Game_Save_FixLog, 7)
+// {
+// 	GET(const char*, pFilename, EDI);
+// 	GET(const wchar_t*, pSaveName, ESI);
+//
+// 	Debug::LogInfo("\nSAVING GAME [%s - %ls]", pFilename, pSaveName);
+//
+// 	return 0x67CF0D;
+// }
 
 DEFINE_HOOK(0x74fdc0, GetModuleVersion, 5)
 {

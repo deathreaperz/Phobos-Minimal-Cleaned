@@ -27,8 +27,7 @@ public:
 
 	MeteorTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Meteor , pBullet , pType }
-	{
-	}
+	{ }
 
 	virtual ~MeteorTrajectory() = default;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }

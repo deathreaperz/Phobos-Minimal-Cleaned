@@ -28,10 +28,10 @@ class CursorTypeClass;
 class RulesExtData final
 {
 private:
-	inline static std::unique_ptr<RulesExtData> Data;
+	OPTIONALINLINE static std::unique_ptr<RulesExtData> Data;
 
 public:
-	static constexpr size_t Canary = 0x12341234;
+	static COMPILETIMEEVAL size_t Canary = 0x12341234;
 	using base_type = RulesClass;
 
 	base_type* AttachedToObject {};
@@ -47,7 +47,7 @@ public:
 	std::vector<std::vector<TechnoTypeClass*>> AITargetTypesLists { };
 	std::vector<std::vector<ScriptTypeClass*>> AIScriptsLists { };
 	std::vector<std::vector<HouseTypeClass*>> AIHateHousesLists { };
-	std::vector<std::vector<std::string>> AIConditionsLists { };
+	std::vector<std::vector<PhobosFixedString<0x18>>> AIConditionsLists { };
 	std::vector<std::vector<AITriggerTypeClass*>> AITriggersLists { };
 	std::vector<std::vector<HouseTypeClass*>> AIHousesLists { };
 
@@ -346,18 +346,22 @@ public:
 	Valueable<bool> MainSWProgressDisplay { false };
 
 	Valueable<bool> CombatAlert { false };
+	Valueable<bool> CombatAlert_MakeAVoice { false };
 	Valueable<bool> CombatAlert_IgnoreBuilding { true };
 	Valueable<bool> CombatAlert_EVA { true };
+	Valueable<bool> CombatAlert_UseFeedbackVoice { false };
+	Valueable<bool> CombatAlert_UseAttackVoice { false };
 	Valueable<bool> CombatAlert_SuppressIfInScreen { true };
 	Valueable<int> CombatAlert_Interval { 150 };
 	Valueable<bool> CombatAlert_SuppressIfAllyDamage { true };
+
 	Valueable<int> SubterraneanHeight { -256 };
 
 	Nullable<Vector3D<float>> VoxelLightSource {};
 	Nullable<Vector3D<float>> VoxelShadowLightSource {};
 	Valueable<bool> UseFixedVoxelLighting { false };
 
-	std::vector<HugeBar> HugeBar_Config {};
+	std::vector<std::unique_ptr<HugeBar>> HugeBar_Config {};
 
 	Valueable<bool> RegroupWhenMCVDeploy { true };
 	Valueable<bool> AISellAllOnLastLegs { true };
@@ -380,7 +384,7 @@ public:
 	Valueable<bool> DistributeTargetingFrame_AIOnly { true };
 
 	Valueable<bool> CheckUnitBaseNormal { false };
-	Valueable<bool> ExpandBuildingPlace { true };
+	Valueable<bool> ExtendedBuildingPlacing { true };
 	Valueable<bool> CheckExpandPlaceGrid { false };
 	Valueable<CoordStruct> ExpandLandGridFrames { { 1, 0, 0 } };
 	Valueable<CoordStruct> ExpandWaterGridFrames { { 1, 0, 0 } };
@@ -406,7 +410,7 @@ public:
 
 	struct LandTypeExt
 	{
-		Valueable<double> Bounce_Elasticity;
+		Valueable<double> Bounce_Elasticity {};
 
 		void LoadFromStream(PhobosStreamReader& Stm)
 		{
@@ -423,6 +427,41 @@ public:
 
 	std::array<LandTypeExt, 12u> LandTypeConfigExts {};
 	HelperedVector<TechnoTypeClass*> Secrets {};
+
+	Valueable<bool> NoQueueUpToEnter {};
+	Valueable<bool> NoQueueUpToUnload {};
+
+	Valueable<bool> NoRearm_UnderEMP { false };
+	Valueable<bool> NoRearm_Temporal { false };
+	Valueable<bool> NoReload_UnderEMP { false };
+	Valueable<bool> NoReload_Temporal { false };
+
+	Valueable<int> AttackMindControlledDelay {};
+
+	Valueable<bool> Cameo_AlwaysExist { false };
+	Valueable<SHPStruct*> Cameo_OverlayShapes { FileSystem::PIPS_SHP };
+	Valueable<Vector3D<int>> Cameo_OverlayFrames { { -1, -1, -1 } };
+	Valueable<PaletteManager*> Cameo_OverlayPalette {};
+	Valueable<bool> MergeBuildingDamage { false };
+
+	Valueable<bool>ExpandBuildingQueue { false };
+
+	Valueable<bool> AutoBuilding { false };
+	Valueable<bool> AIAngerOnAlly { true };
+
+	Valueable<bool> BuildingTypeSelectable {};
+	Valueable<bool> BuildingWaypoint {};
+
+	Valueable<bool> AIAutoDeployMCV { true };
+	Valueable<bool> AISetBaseCenter { true };
+	Valueable<bool> AIBiasSpawnCell { false };
+	Valueable<bool> AIForbidConYard { false };
+
+	Valueable<bool> JumpjetTilt {};
+
+	Valueable<bool> NoTurret_TrackTarget { false };
+
+	Valueable<bool> RecountBurst { false };
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);
@@ -447,7 +486,7 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	inline static IStream* g_pStm;
+	OPTIONALINLINE static IStream* g_pStm;
 
 	static void Allocate(RulesClass* pThis);
 	static void Remove(RulesClass* pThis);

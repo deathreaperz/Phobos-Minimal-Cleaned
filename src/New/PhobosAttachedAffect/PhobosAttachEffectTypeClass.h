@@ -145,12 +145,12 @@ public:
 		, DisableSpySat {}
 	{};
 
-	constexpr FORCEINLINE bool HasTint()
+	COMPILETIMEEVAL FORCEDINLINE bool HasTint()
 	{
 		return this->Tint_Color.isset() || this->Tint_Intensity != 0.0;
 	}
 
-	constexpr bool HasGroup(const char* pGroupID)
+	COMPILETIMEEVAL bool HasGroup(const char* pGroupID)
 	{
 		for (const auto& group : this->Groups)
 		{
@@ -163,7 +163,7 @@ public:
 		return false;
 	}
 
-	constexpr bool HasGroups(std::vector<std::string> const& groupIDs, bool requireAll)
+	COMPILETIMEEVAL bool HasGroups(std::vector<std::string> const& groupIDs, bool requireAll)
 	{
 		size_t foundCount = 0;
 
@@ -184,7 +184,7 @@ public:
 		return !requireAll ? false : foundCount >= groupIDs.size();
 	}
 
-	constexpr FORCEINLINE AnimTypeClass* GetCumulativeAnimation(int cumulativeCount)
+	COMPILETIMEEVAL FORCEDINLINE AnimTypeClass* GetCumulativeAnimation(int cumulativeCount)
 	{
 		if (cumulativeCount < 0 || !this->CumulativeAnimations.HasValue() || this->CumulativeAnimations.empty())
 			return nullptr;
@@ -199,7 +199,7 @@ public:
 	void SaveToStream(PhobosStreamWriter& Stm);
 
 	static std::vector<PhobosAttachEffectTypeClass*> GetTypesFromGroups(std::vector<std::string>& groupIDs);
-	inline static PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
+	OPTIONALINLINE static PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);

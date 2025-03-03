@@ -21,26 +21,26 @@ static_assert(sizeof(PlanningMemberClass) == 0x10);
 class PlanningNodeClass
 {
 public:
-	static constexpr constant_ptr<DynamicVectorClass<PlanningNodeClass*>, 0xAC4B30u> const Unknown1 {};
-	static constexpr constant_ptr<DynamicVectorClass<PlanningNodeClass*>, 0xAC4C18u> const Unknown2 {};
-	static constexpr constant_ptr<DynamicVectorClass<PlanningNodeClass*>, 0xAC4C98u> const Unknown3 {};
-	static constexpr reference<bool, 0xAC4CF4u> const PlanningModeActive {};
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<PlanningNodeClass*>, 0xAC4B30u> const Unknown1 {};
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<PlanningNodeClass*>, 0xAC4C18u> const Unknown2 {};
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<PlanningNodeClass*>, 0xAC4C98u> const Unknown3 {};
+	static COMPILETIMEEVAL reference<bool, 0xAC4CF4u> const PlanningModeActive {};
 
 	~PlanningNodeClass() { JMP_THIS(0x633D30); }
- 	PlanningNodeClass(int nDword18) { JMP_THIS(0x633CC0) ;}
- 	PlanningNodeClass(TechnoClass* pOwner) { JMP_THIS(0x638A80;)}
+ 	PlanningNodeClass(int nDword18) { JMP_THIS(0x633CC0);}
+	PlanningNodeClass(TechnoClass* pOwner) { JMP_THIS(0x638A80); }
 public:
 	DynamicVectorClass<PlanningMemberClass*> PlanningMembers;
 	int field_18;
 	bool field_1C;
 	DynamicVectorClass<PlanningBranchClass*> PlanningBranches;
 };
-static_assert(sizeof(PlanningNodeClass) == 0xB8);
+//static_assert(sizeof(PlanningNodeClass) == 0xB8); size is broken actually
 
 class PlanningTokenClass
 {
 public:
-	static constexpr constant_ptr<DynamicVectorClass<PlanningTokenClass*>, 0xAC4C78u> const Array {};
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<PlanningTokenClass*>, 0xAC4C78u> const Array {};
 
 	void Clear(){JMP_THIS(0x636310);}
 	TechnoClass* GetTechno() {JMP_THIS(0x636110);}

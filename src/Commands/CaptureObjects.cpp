@@ -6,7 +6,7 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/House/Body.h>
 #include <Utilities/GeneralUtils.h>
-#include <Misc/Ares/Hooks/AresNetEvent.h>
+#include <Ext/Event/Body.h>
 
 bool CaptureObjectsCommandClass::Given = false;
 
@@ -32,12 +32,6 @@ const wchar_t* CaptureObjectsCommandClass::GetUIDescription() const
 
 void CaptureObjectsCommandClass::Execute(WWKey eInput) const
 {
-	if (this->CheckDebugDeactivated())
-		return;
-
-	if (!Phobos::Otamaa::IsAdmin)
-		return;
-
 	if (!ObjectClass::CurrentObjects->Count)
 		return;
 
@@ -72,7 +66,7 @@ void CaptureObjectsCommandClass::Execute(WWKey eInput) const
 	if (!pHouseExt->CaptureObjectExecuted)
 	{
 		HouseClass::CurrentPlayer()->TransactMoney(100000);
-		//Debug::Log("Giving Money to Player ! \n");
+		//Debug::LogInfo("Giving Money to Player ! ");
 		pHouseExt->CaptureObjectExecuted = true;
 	}
 

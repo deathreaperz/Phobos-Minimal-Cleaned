@@ -215,18 +215,18 @@ DEFINE_HOOK(0x66BC71, Buf_CombatDamage, 9)
 	pRules->TiberiumStrength = R->EAX<int>();
 
 	INI_EX exINI(pINI);
-	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches, exINI, COMBATDAMAGE_SECTION, GameStrings::Scorches, "Expect valid SmudgeType");
-	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches1, exINI, COMBATDAMAGE_SECTION, GameStrings::Scorches1, "Expect valid SmudgeType");
-	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches2, exINI, COMBATDAMAGE_SECTION, GameStrings::Scorches2, "Expect valid SmudgeType");
-	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches3, exINI, COMBATDAMAGE_SECTION, GameStrings::Scorches3, "Expect valid SmudgeType");
-	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches4, exINI, COMBATDAMAGE_SECTION, GameStrings::Scorches4, "Expect valid SmudgeType");
+	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches, exINI, GameStrings::CombatDamage(), GameStrings::Scorches, "Expect valid SmudgeType");
+	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches1, exINI, GameStrings::CombatDamage(), GameStrings::Scorches1, "Expect valid SmudgeType");
+	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches2, exINI, GameStrings::CombatDamage(), GameStrings::Scorches2, "Expect valid SmudgeType");
+	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches3, exINI, GameStrings::CombatDamage(), GameStrings::Scorches3, "Expect valid SmudgeType");
+	detail::ParseVector<SmudgeTypeClass*>(pRules->Scorches4, exINI, GameStrings::CombatDamage(), GameStrings::Scorches4, "Expect valid SmudgeType");
 
-	detail::ParseVector<AnimTypeClass*>(pRules->SplashList, exINI, COMBATDAMAGE_SECTION, GameStrings::SplashList, "Expect valid AnimType");
+	detail::ParseVector<AnimTypeClass*>(pRules->SplashList, exINI, GameStrings::CombatDamage(), GameStrings::SplashList, "Expect valid AnimType");
 	return 0x66C287;
 }
 
 template<typename T, bool Allocate = false, bool Unique = false>
-inline void ParseVector_loc(DynamicVectorClass<T>& List, INI_EX& IniEx, const char* section, const char* key, const char* message = nullptr)
+OPTIONALINLINE void ParseVector_loc(DynamicVectorClass<T>& List, INI_EX& IniEx, const char* section, const char* key, const char* message = nullptr)
 {
 	if (IniEx.ReadString(section, key))
 	{
@@ -234,13 +234,13 @@ inline void ParseVector_loc(DynamicVectorClass<T>& List, INI_EX& IniEx, const ch
 		char* context = nullptr;
 
 		using BaseType = std::remove_pointer_t<T>;
-		Debug::Log("Parsing [%s] form [%s] result\n %s\n", key, section, IniEx.value());
+		Debug::LogInfo("Parsing [{}] form [{}] result {}", key, section, IniEx.value());
 
 		for (char* cur = strtok_s(IniEx.value(), Phobos::readDelims, &context); cur;
 			 cur = strtok_s(nullptr, Phobos::readDelims, &context))
 		{
 			BaseType* buffer = nullptr;
-			if constexpr (Allocate)
+			if COMPILETIMEEVAL(Allocate)
 			{
 				buffer = BaseType::FindOrAllocate(cur);
 			}
@@ -251,7 +251,7 @@ inline void ParseVector_loc(DynamicVectorClass<T>& List, INI_EX& IniEx, const ch
 
 			if (buffer)
 			{
-				if constexpr (!Unique)
+				if COMPILETIMEEVAL(!Unique)
 				{
 					List.AddItem(buffer);
 				}
@@ -265,7 +265,7 @@ inline void ParseVector_loc(DynamicVectorClass<T>& List, INI_EX& IniEx, const ch
 				Debug::INIParseFailed(section, key, cur, message);
 			}
 		}
-		Debug::Log("count : %d\n", List.Count);
+		Debug::LogInfo("count : {}", List.Count);
 	}
 };
 // ============= [General] =============
@@ -277,7 +277,7 @@ DEFINE_HOOK(0x66D55E, Buf_General, 6)
 	GET(CCINIClass*, pINI, EDI);
 
 	INI_EX exINI(pINI);
-	const char* section = GENERAL_SECTION;
+	const char* section = GameStrings::General();
 	detail::ParseVector<InfantryTypeClass*>(pRules->AmerParaDropInf, exINI, section, GameStrings::AmerParaDropInf, "Expect valid InfantryType");
 	detail::ParseVector<InfantryTypeClass*>(pRules->AllyParaDropInf, exINI, section, GameStrings::AllyParaDropInf, "Expect valid InfantryType");
 	detail::ParseVector<InfantryTypeClass*>(pRules->SovParaDropInf, exINI, section, GameStrings::SovParaDropInf, "Expect valid InfantryType");
@@ -293,7 +293,7 @@ DEFINE_HOOK(0x66D55E, Buf_General, 6)
 	//if (!ATOI_Count.has_value() || !ATOI_Count.value())
 	//	ATOI_Count = pRules->AnimToInfantry.Count;
 	//else if(pRules->AnimToInfantry.Count != ATOI_Count.value()) {
-	//	Debug::FatalError("ATOI Array missmatch was %d cur %d\n", ATOI_Count.value(), pRules->AnimToInfantry.Count);
+	//	Debug::FatalError("ATOI Array missmatch was %d cur %d", ATOI_Count.value(), pRules->AnimToInfantry.Count);
 	//}
 
 	detail::ParseVector<InfantryTypeClass*>(pRules->SecretInfantry, exINI, section, GameStrings::SecretInfantry, "Expect valid InfantryType");
@@ -325,7 +325,7 @@ DEFINE_HOOK(0x66D55E, Buf_General, 6)
 		}
 		else
 		{
-			Debug::Log("WallTower Building readed as [%s] but it is nullptr ! \n", Phobos::readBuffer);
+			Debug::LogInfo("WallTower Building readed as [{}] but it is nullptr ! ", Phobos::readBuffer);
 		}
 	}
 

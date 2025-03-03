@@ -12,7 +12,7 @@ class AresJammer
 
 public:
 
-	static constexpr int ScanInterval = 30;
+	static COMPILETIMEEVAL int ScanInterval = 30;
 
 	bool InRangeOf(BuildingClass*);		//!< Calculates if the jammer is in range of this building.
 	bool IsEligible(BuildingClass*);		//!< Checks if this building can/should be jammed.
@@ -31,8 +31,7 @@ public:
 		LastScan(0),
 		AttachedToObject(GameObject),
 		Registered(false)
-	{
-	}
+	{ }
 
 	void UnjamAll();						//!< Unregisters this Jammer on all structures.
 	void Update();							//!< Updates this Jammer's status on all eligible structures.

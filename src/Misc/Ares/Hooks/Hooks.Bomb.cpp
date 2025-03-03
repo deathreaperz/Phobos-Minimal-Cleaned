@@ -31,6 +31,8 @@
 #include <New/Entity/FlyingStrings.h>
 #include <InfantryClass.h>
 
+#include <Misc/DamageArea.h>
+
 //BombListClass_Plant_AttachSound
 DEFINE_JUMP(LJMP, 0x438FD7, 0x439022);
 
@@ -144,14 +146,14 @@ DEFINE_HOOK(0x438761, BombClass_Detonate_Handle, 0x7)
 	pTarget->BombVisible = false;
 	pThis->State = BombState::Removed;
 	// Also adjust detonation coordinate.
-	const CoordStruct coords = pTarget->GetCenterCoords();
+	CoordStruct coords = pTarget->GetCenterCoords();
 	const auto pExt = BombExtContainer::Instance.Find(pThis);
 	const auto pBombWH = pExt->Weapon->Ivan_WH.Get(RulesClass::Instance->IvanWarhead);
 	const auto nDamage = pExt->Weapon->Ivan_Damage.Get(RulesClass::Instance->IvanDamage);
 	const auto OwningHouse = pThis->GetOwningHouse();
 
 	/*WarheadTypeExtData::DetonateAt(pBombWH, pTarget, coords, pThis->Owner, nDamage);*/
-	MapClass::Instance->DamageArea(coords, nDamage, pThis->Owner, pBombWH, pBombWH->Tiberium, OwningHouse);
+	DamageArea::Apply(&coords, nDamage, pThis->Owner, pBombWH, pBombWH->Tiberium, OwningHouse);
 	MapClass::Instance->FlashbangWarheadAt(nDamage, pBombWH, coords);
 	const auto pCell = MapClass::Instance->GetCellAt(coords);
 
@@ -221,7 +223,7 @@ DEFINE_HOOK(0x46934D, IvanBombs_Spread, 6)
 	}
 	else
 	{
-		Debug::Log("IvanBomb bullet without attached WeaponType.\n");
+		Debug::LogInfo("IvanBomb bullet without attached WeaponType.");
 	}
 
 	return 0x469AA4;
@@ -297,14 +299,21 @@ DEFINE_HOOK(0x417CCB, AircraftClass_GetActionOnObject_Deactivated, 5)
 	return 0;
 }
 
-DEFINE_HOOK(0x6FFEC0, TechnoClass_GetActionOnObject_IvanBombsA, 5)
+DEFINE_HOOK(0x6FFEC0, TechnoClass_GetActionOnObject_Additionals, 5)
 {
-	GET(TechnoClass* const, pThis, ECX);
+	GET(TechnoClass*, pThis, ECX);
 	GET_STACK(ObjectClass*, pObject, 0x4);
+	//GET_STACK(DWORD , caller , 0x0);
 
 	if (TechnoExt_ExtData::CanDetonate(pThis, pObject))
 	{
 		R->EAX(Action::Detonate);
+		return 0x7005EF;
+	}
+
+	if (!pThis->IsAlive)
+	{
+		R->EAX(Action::None);
 		return 0x7005EF;
 	}
 

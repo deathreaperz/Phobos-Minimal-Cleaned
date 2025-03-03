@@ -164,7 +164,7 @@ bool TActionExt::MessageForSpecifiedHouse(TActionClass* pThis, HouseClass* pHous
 	if (pThis->Param3 == -3)
 	{
 		// Random Human Player
-		StackVector<int, 256> housesListIdx;
+		StackVector<int, 10> housesListIdx {};
 		for (auto ptmpHouse : *HouseClass::Array)
 		{
 			if (ptmpHouse->IsControlledByHuman()
@@ -868,7 +868,7 @@ NOINLINE HouseClass* GetPlayerAt(int param, HouseClass* const pOwnerHouse = null
 
 	if (param < 0)
 	{
-		StackVector<HouseClass*, 256> housesListIdx;
+		StackVector<HouseClass*, 10> housesListIdx {};
 
 		switch (param)
 		{
@@ -956,7 +956,7 @@ bool TActionExt::RunSuperWeaponAt(TActionClass* pThis, int X, int Y)
 
 			if (++retry >= 10)
 			{
-				Debug::Log("Failed to `RunSuperWeaponAt` after 10 retries bailout!\n");
+				Debug::LogInfo("Failed to `RunSuperWeaponAt` after 10 retries bailout!");
 				return true;
 			}
 		}
@@ -1193,7 +1193,7 @@ bool TActionExt::SetNextMission(TActionClass* pThis, HouseClass* pHouse, ObjectC
 	return true;
 }
 
-constexpr bool IsUnitAvailable(TechnoClass* pTechno, bool checkIfInTransportOrAbsorbed)
+COMPILETIMEEVAL bool IsUnitAvailable(TechnoClass* pTechno, bool checkIfInTransportOrAbsorbed)
 {
 	if (!pTechno)
 		return false;
@@ -1212,7 +1212,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 		return true;
 	// Example:
 	// ID=ActionCount,[Action1],507,4,[CSFKey],[HouseIndex],[AIHousesLists Index],[AITargetTypes Index],[MesageDelay],A,[ActionX]
-	StackVector<HouseClass*, 256> pHousesList;
+	StackVector<HouseClass*, 10> pHousesList {};
 
 	// Obtain houses
 	int param3 = pThis->Param3;
@@ -1229,7 +1229,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 	}
 	else if (pThis->Param3 > 8997)
 	{
-		Debug::Log("Map action %d: Invalid house index '%d'. This action will be skipped.\n", (int)pThis->ActionKind, pThis->Param3);
+		Debug::LogInfo("Map action {}: Invalid house index '{}'. This action will be skipped.", (int)pThis->ActionKind, pThis->Param3);
 		return true;
 	}
 
@@ -1244,7 +1244,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 
 		if (RulesExtData::Instance()->AIHousesLists.empty() || (size_t)pThis->Param4 < RulesExtData::Instance()->AIHousesLists.size())
 		{
-			Debug::Log("Map action %d: [AIHousesList] is empty. This action will be skipped.\n", (int)pThis->ActionKind);
+			Debug::LogInfo("Map action {}: [AIHousesList] is empty. This action will be skipped.", (int)pThis->ActionKind);
 			return true;
 		}
 
@@ -1252,16 +1252,16 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 
 		if (housesList->empty())
 		{
-			Debug::Log("Map action %d: List [AIHousesList](%d) is empty. This action will be skipped.\n", (int)pThis->ActionKind, pThis->Param4);
+			Debug::LogInfo("Map action {}: List [AIHousesList]({}) is empty. This action will be skipped.", (int)pThis->ActionKind, pThis->Param4);
 			return true;
 		}
 
 		for (const auto& pHouseType : *housesList)
 		{
-			for (auto pHouse : *HouseClass::Array)
+			for (auto pCont : *HouseClass::Array)
 			{
-				if (pHouse->Type == pHouseType && !pHouse->Defeated && !pHouse->IsObserver())
-					pHousesList->push_back(pHouse);
+				if (pCont->Type == pHouseType && !pCont->Defeated && !pCont->IsObserver())
+					pHousesList->push_back(pCont);
 			}
 		}
 
@@ -1276,7 +1276,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 	if ((size_t)listIdx < RulesExtData::Instance()->AIHousesLists.size()
 		|| RulesExtData::Instance()->AITargetTypesLists[listIdx].empty())
 	{
-		Debug::Log("Map action %d: List [AITargetTypes](%d) is empty. This action will be skipped.\n", (int)pThis->ActionKind, listIdx);
+		Debug::LogInfo("Map action {}: List [AITargetTypes]({}) is empty. This action will be skipped.", (int)pThis->ActionKind, listIdx);
 		return true;
 	}
 
@@ -1294,9 +1294,9 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 			if (!IsUnitAvailable(pTechno, false) || pTechno->GetTechnoType() != pType)
 				continue;
 
-			for (const auto& pHouse : pHousesList.container())
+			for (const auto& pCont : pHousesList.container())
 			{
-				if (pTechno->Owner == pHouse)
+				if (pTechno->Owner == pCont)
 				{
 					globalRemaining++;
 					nRemaining++;
@@ -1321,7 +1321,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 	}
 	else
 	{
-		_message += L"\n";
+		_message += L"";
 
 		for (size_t i = 0; i < technosRemaining.size(); i++)
 		{
@@ -1329,7 +1329,7 @@ bool TActionExt::PrintMessageRemainingTechnos(TActionClass* pThis, HouseClass* p
 				continue;
 
 			textToShow = true;
-			_message += std::format(L"{}: {}\n", (*technosList)[i]->UIName, technosRemaining[i]);
+			_message += std::format(L"{}: {}", (*technosList)[i]->UIName, technosRemaining[i]);
 		}
 	}
 
@@ -1354,7 +1354,7 @@ bool TActionExt::DumpVariables(TActionClass* pThis, HouseClass* pHouse, ObjectCl
 
 	if (!file.Open(FileAccessMode::ReadWrite))
 	{
-		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, fileName);
+		Debug::LogInfo(__FUNCTION__" Failed to Open file {} for", fileName);
 		return false;
 	}
 

@@ -6,6 +6,8 @@
 #include <set>
 #include <map>
 
+#include <Base/Always.h>
+
 struct IStream;
 class PhobosStreamReader;
 class PhobosStreamWriter;
@@ -29,19 +31,19 @@ protected:
 	size_t CurrentOffset;
 
 public:
-	constexpr PhobosByteStream(size_t Reserve = 0x1000) : Data(), CurrentOffset(0)
+	COMPILETIMEEVAL PhobosByteStream(size_t Reserve = 0x1000) : Data(), CurrentOffset(0)
 	{
 		this->Data.reserve(Reserve);
 	}
 
-	constexpr ~PhobosByteStream() = default;
+	COMPILETIMEEVAL ~PhobosByteStream() = default;
 
-	constexpr size_t Size() const
+	COMPILETIMEEVAL size_t Size() const
 	{
 		return this->Data.size();
 	}
 
-	constexpr size_t Offset() const
+	COMPILETIMEEVAL size_t Offset() const
 	{
 		return this->CurrentOffset;
 	}
@@ -107,16 +109,15 @@ public:
 class PhobosStreamWorkerBase
 {
 public:
-	constexpr explicit PhobosStreamWorkerBase(PhobosByteStream& Stream) :
+	COMPILETIMEEVAL explicit PhobosStreamWorkerBase(PhobosByteStream& Stream) :
 		stream(&Stream),
 		success(true)
-	{
-	}
+	{ }
 
-	constexpr PhobosStreamWorkerBase(const PhobosStreamWorkerBase&) = delete;
-	constexpr PhobosStreamWorkerBase& operator = (const PhobosStreamWorkerBase&) = delete;
+	COMPILETIMEEVAL PhobosStreamWorkerBase(const PhobosStreamWorkerBase&) = delete;
+	COMPILETIMEEVAL PhobosStreamWorkerBase& operator = (const PhobosStreamWorkerBase&) = delete;
 
-	constexpr bool Success() const
+	COMPILETIMEEVAL bool Success() const
 	{
 		return this->success;
 	}
@@ -125,12 +126,12 @@ protected:
 	// set to false_type or true_type to disable or enable debugging checks
 	using stream_debugging_t = std::false_type;
 
-	constexpr bool IsValid(std::true_type) const
+	COMPILETIMEEVAL bool IsValid(std::true_type) const
 	{
 		return this->success;
 	}
 
-	constexpr bool IsValid(std::false_type) const
+	COMPILETIMEEVAL bool IsValid(std::false_type) const
 	{
 		return true;
 	}
@@ -142,10 +143,10 @@ protected:
 class PhobosStreamReader : public PhobosStreamWorkerBase
 {
 public:
-	constexpr explicit PhobosStreamReader(PhobosByteStream& Stream) : PhobosStreamWorkerBase(Stream) { }
-	constexpr PhobosStreamReader(const PhobosStreamReader&) = delete;
+	COMPILETIMEEVAL explicit PhobosStreamReader(PhobosByteStream& Stream) : PhobosStreamWorkerBase(Stream) { }
+	COMPILETIMEEVAL PhobosStreamReader(const PhobosStreamReader&) = delete;
 
-	constexpr PhobosStreamReader& operator = (const PhobosStreamReader&) = delete;
+	COMPILETIMEEVAL PhobosStreamReader& operator = (const PhobosStreamReader&) = delete;
 
 	//template <typename _Ty>
 	//PhobosStreamReader& Process(std::set<_Ty>& s, bool RegisterForChange = true)
@@ -230,7 +231,7 @@ public:
 	{
 		if (!this->Success() || this->stream->Size() != this->stream->Offset())
 		{
-			//GameDebugLog::Log("[PhobosStreamReader] Read %x bytes instead of %x!\n",
+			//GameDebugLog::Log("[PhobosStreamReader] Read %x bytes instead of %x!",
 			//	this->stream->Offset(), this->stream->Size());
 
 			return false;
@@ -244,7 +245,7 @@ public:
 	{
 		if (!this->stream->Load(buffer))
 		{
-			//GameDebugLog::Log("[PhobosStreamReader] Could not read data of length %u at %X of %X.\n",
+			//GameDebugLog::Log("[PhobosStreamReader] Could not read data of length %u at %X of %X.",
 			//	sizeof(T), this->stream->Offset() - sizeof(T), this->stream->Size());
 
 			this->success = false;
@@ -257,7 +258,7 @@ public:
 	{
 		if (!this->stream->Read(Value, Size))
 		{
-			//GameDebugLog::Log("[PhobosStreamReader] Could not read data of length %u at %X of %X.\n",
+			//GameDebugLog::Log("[PhobosStreamReader] Could not read data of length %u at %X of %X.",
 			//	Size, this->stream->Offset() - Size, this->stream->Size());
 
 			this->success = false;
@@ -274,7 +275,7 @@ public:
 			if (buffer == value)
 				return true;
 
-			//GameDebugLog::Log("[PhobosStreamReader] Value Expected [%x] != Value Get [%x] \n", value, buffer);
+			//GameDebugLog::Log("[PhobosStreamReader] Value Expected [%x] != Value Get [%x] ", value, buffer);
 		}
 		return false;
 	}
@@ -298,10 +299,10 @@ public:
 class PhobosStreamWriter : public PhobosStreamWorkerBase
 {
 public:
-	constexpr explicit PhobosStreamWriter(PhobosByteStream& Stream) : PhobosStreamWorkerBase(Stream) { }
-	constexpr PhobosStreamWriter(const PhobosStreamWriter&) = delete;
+	COMPILETIMEEVAL explicit PhobosStreamWriter(PhobosByteStream& Stream) : PhobosStreamWorkerBase(Stream) { }
+	COMPILETIMEEVAL PhobosStreamWriter(const PhobosStreamWriter&) = delete;
 
-	constexpr PhobosStreamWriter& operator = (const PhobosStreamWriter&) = delete;
+	COMPILETIMEEVAL PhobosStreamWriter& operator = (const PhobosStreamWriter&) = delete;
 
 	//template <typename _Ty>
 	//PhobosStreamWriter& Process(std::set<_Ty>& s, bool RegisterForChange = true)

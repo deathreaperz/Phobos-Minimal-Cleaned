@@ -15,7 +15,7 @@ void AresAttachEffectTypeClass::Read(INI_EX& exINI)
 {
 	if (!this->Owner)
 	{
-		Debug::FatalErrorAndExit("AttahedAffectType Is Missing OwnerPointer!\n");
+		Debug::FatalErrorAndExit("AttahedAffectType Is Missing OwnerPointer!");
 	}
 
 	auto const pSection = this->Owner->ID;

@@ -62,6 +62,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Bolt_Disable2.Read(exINI, pSection, "Bolt.Disable2");
 		this->Bolt_Disable3.Read(exINI, pSection, "Bolt.Disable3");
 		this->Bolt_Arcs.Read(exINI, pSection, "Bolt.Arcs");
+		this->Bolt_Duration.Read(exINI, pSection, "Bolt.Duration");
 	}
 
 	if (!Phobos::Otamaa::DisableCustomRadSite)
@@ -74,6 +75,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Strafing_Shots.Read(exINI, pSection, "Strafing.Shots");
 	this->Strafing_SimulateBurst.Read(exINI, pSection, "Strafing.SimulateBurst");
 	this->Strafing_UseAmmoPerShot.Read(exINI, pSection, "Strafing.UseAmmoPerShot");
+	this->Strafing_EndDelay.Read(exINI, pSection, "Strafing.EndDelay");
 
 	this->CanTarget.Read(exINI, pSection, "CanTarget");
 	this->CanTargetHouses.Read(exINI, pSection, "CanTargetHouses");
@@ -132,7 +134,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	if (this->RockerPitch > 0.0f)
 	{
-		constexpr auto halfpi = (Math::PI / 2);
+		COMPILETIMEEVAL auto halfpi = (Math::PI / 2);
 		this->RockerPitch = 1.0f * halfpi;
 	}
 
@@ -153,7 +155,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Wave_Intent.Read(exINI, pSection, "Wave.Intensity");
 	}
 
-	static constexpr std::array<const char* const, sizeof(this->Wave_Reverse)> WaveReverseAgainst
+	static COMPILETIMEEVAL std::array<const char* const, sizeof(this->Wave_Reverse)> WaveReverseAgainst
 	{
 		{   { "Wave.ReverseAgainstVehicles" }, { "Wave.ReverseAgainstAircraft" },
 			{ "Wave.ReverseAgainstBuildings" }, { "Wave.ReverseAgainstInfantry" },
@@ -225,6 +227,17 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->FireOnce_ResetSequence.Read(exINI, pSection, "FireOnce.ResetSequence");
 	this->NoRepeatFire.Read(exINI, pSection, "NoRepeatFire");
+
+	this->DelayedFire_Duration.Read(exINI, pSection, "DelayedFire.Duration");
+	this->DelayedFire_SkipInTransport.Read(exINI, pSection, "DelayedFire.SkipInTransport");
+	this->DelayedFire_Animation.Read(exINI, pSection, "DelayedFire.Animation");
+	this->DelayedFire_OpenToppedAnimation.Read(exINI, pSection, "DelayedFire.OpenToppedAnimation");
+	this->DelayedFire_AnimIsAttached.Read(exINI, pSection, "DelayedFire.AnimIsAttached");
+	this->DelayedFire_CenterAnimOnFirer.Read(exINI, pSection, "DelayedFire.CenterAnimOnFirer");
+	this->DelayedFire_RemoveAnimOnNoDelay.Read(exINI, pSection, "DelayedFire.RemoveAnimOnNoDelay");
+	this->DelayedFire_PauseFiringSequence.Read(exINI, pSection, "DelayedFire.PauseFiringSequence");
+	this->DelayedFire_OnlyOnInitialBurst.Read(exINI, pSection, "DelayedFire.OnlyOnInitialBurst");
+	this->DelayedFire_AnimOffset.Read(exINI, pSection, "DelayedFire.AnimOffset");
 }
 
 int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass* pFirer, std::optional<int> fallback)
@@ -289,20 +302,27 @@ bool WeaponTypeExtData::HasRequiredAttachedEffects(TechnoClass* pTarget, TechnoC
 		if (!pTechno || !pTechno->IsAlive)
 			return true;
 
-		auto const pTechnoExt = TechnoExtContainer::Instance.Find(pTechno);
+		//auto const pTechnoExt = TechnoExtContainer::Instance.Find(pTechno);
 
 		if (hasDisallowedTypes && PhobosAEFunctions::HasAttachedEffects(pTechno, this->AttachEffect_DisallowedTypes, false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_DisallowedMinCounts, &this->AttachEffect_DisallowedMaxCounts))
 			return false;
 
-		if (hasDisallowedGroups && PhobosAEFunctions::HasAttachedEffects(pTechno, PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_DisallowedGroups), false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_DisallowedMinCounts, &this->AttachEffect_DisallowedMaxCounts))
-			return false;
+		if (hasDisallowedGroups)
+		{
+			auto group = PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_DisallowedGroups);
+			if (PhobosAEFunctions::HasAttachedEffects(pTechno, group, false, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_DisallowedMinCounts, &this->AttachEffect_DisallowedMaxCounts))
+				return false;
+		}
 
 		if (hasRequiredTypes && !PhobosAEFunctions::HasAttachedEffects(pTechno, this->AttachEffect_RequiredTypes, true, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_RequiredMinCounts, &this->AttachEffect_RequiredMaxCounts))
 			return false;
 
-		if (hasRequiredGroups &&
-			!PhobosAEFunctions::HasAttachedEffects(pTechno, PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_RequiredGroups), true, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_RequiredMinCounts, &this->AttachEffect_RequiredMaxCounts))
-			return false;
+		if (hasRequiredGroups)
+		{
+			auto req_group = PhobosAttachEffectTypeClass::GetTypesFromGroups(this->AttachEffect_RequiredGroups);
+			if (!PhobosAEFunctions::HasAttachedEffects(pTechno, req_group, true, this->AttachEffect_IgnoreFromSameSource, pFirer, this->AttachedToObject->Warhead, &this->AttachEffect_RequiredMinCounts, &this->AttachEffect_RequiredMaxCounts))
+				return false;
+		}
 	}
 
 	return true;
@@ -336,10 +356,12 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->Bolt_Disable2)
 		.Process(this->Bolt_Disable3)
 		.Process(this->Bolt_Arcs)
+		.Process(this->Bolt_Duration)
 		.Process(this->Strafing)
 		.Process(this->Strafing_Shots)
 		.Process(this->Strafing_SimulateBurst)
 		.Process(this->Strafing_UseAmmoPerShot)
+		.Process(this->Strafing_EndDelay)
 		.Process(this->CanTarget)
 		.Process(this->CanTargetHouses)
 		.Process(this->RadType)
@@ -454,6 +476,17 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->AttachEffects)
 		.Process(this->AttachEffect_Enable)
 		.Process(this->NoRepeatFire)
+
+		.Process(this->DelayedFire_Duration)
+		.Process(this->DelayedFire_SkipInTransport)
+		.Process(this->DelayedFire_Animation)
+		.Process(this->DelayedFire_OpenToppedAnimation)
+		.Process(this->DelayedFire_AnimIsAttached)
+		.Process(this->DelayedFire_CenterAnimOnFirer)
+		.Process(this->DelayedFire_RemoveAnimOnNoDelay)
+		.Process(this->DelayedFire_PauseFiringSequence)
+		.Process(this->DelayedFire_OnlyOnInitialBurst)
+		.Process(this->DelayedFire_AnimOffset)
 		;
 
 	MyAttachFireDatas.Serialize(Stm);
@@ -490,7 +523,7 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarge
 	// {
 	// 	if (!pTarget)
 	// 	{
-	// 		Debug::Log("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
+	// 		Debug::LogInfo("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! ");
 	// 		return;
 	// 	}
 	// }
@@ -515,7 +548,7 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& co
 {
 	if (!coords.IsValid())
 	{
-		Debug::Log("WeaponTypeExtData::DetonateAt Coords empty ! ");
+		Debug::LogInfo("WeaponTypeExtData::DetonateAt Coords empty ! ");
 		return;
 	}
 
@@ -528,7 +561,7 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& co
 	// {
 	// 	if (!pTarget)
 	// 	{
-	// 		Debug::Log("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
+	// 		Debug::LogInfo("WeaponTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! ");
 	// 		return;
 	// 	}
 	// }
@@ -553,9 +586,10 @@ EBolt* WeaponTypeExtData::CreateBolt(WeaponTypeExtData* pWeapon)
 {
 	auto ret = GameCreate<EBolt>();
 
-	if (ret && pWeapon)
+	if (pWeapon)
 	{
 		WeaponTypeExtData::boltWeaponTypeExt[ret] = pWeapon;
+		ret->Lifetime = 1 << (std::clamp(pWeapon->Bolt_Duration.Get(), 1, 31) - 1);
 	}
 
 	return ret;

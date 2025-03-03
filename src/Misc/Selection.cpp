@@ -13,19 +13,19 @@ class ExtSelection final : public TacticalClass
 {
 public:
 	using callback_type = bool(__fastcall*)(ObjectClass*);
-	static inline struct TacticalSelectablesHelper
+	static OPTIONALINLINE struct TacticalSelectablesHelper
 	{
-		inline size_t size()
+		OPTIONALINLINE size_t size()
 		{
 			return TacticalClass::Instance->SelectableCount;
 		}
 
-		inline TacticalSelectableStruct* begin()
+		OPTIONALINLINE TacticalSelectableStruct* begin()
 		{
 			return &Unsorted::TacticalSelectables[0];
 		}
 
-		inline TacticalSelectableStruct* end()
+		OPTIONALINLINE TacticalSelectableStruct* end()
 		{
 			return &Unsorted::TacticalSelectables[size()];
 		}
@@ -118,15 +118,15 @@ public:
 		Unsorted::MoveFeedback = true;
 	}
 
-	static // Reversed from Tactical::MakeSelection
-		void __fastcall Tactical_MakeFilteredSelection(ExtSelection* pThis, void* _, callback_type fpCheckCallback)
+	// Reversed from Tactical::MakeSelection
+	void Tactical_MakeFilteredSelection(callback_type fpCheckCallback)
 	{
-		if (pThis->Band.Left || pThis->Band.Top)
+		if (this->Band.Left || this->Band.Top)
 		{
-			int nLeft = pThis->Band.Left;
-			int nRight = pThis->Band.Right;
-			int nTop = pThis->Band.Top;
-			int nBottom = pThis->Band.Bottom;
+			int nLeft = this->Band.Left;
+			int nRight = this->Band.Right;
+			int nTop = this->Band.Top;
+			int nBottom = this->Band.Bottom;
 
 			if (nLeft > nRight)
 				std::swap(nLeft, nRight);
@@ -136,12 +136,12 @@ public:
 			LTRBStruct rect { nLeft , nTop, nRight - nLeft + 1, nBottom - nTop + 1 };
 
 			const bool bPriorityFiltering = Phobos::Config::PrioritySelectionFiltering
-				&& pThis->IsHighPriorityInRect(&rect);
+				&& this->IsHighPriorityInRect(&rect);
 
-			pThis->SelectFiltered(&rect, fpCheckCallback, bPriorityFiltering);
+			this->SelectFiltered(&rect, fpCheckCallback, bPriorityFiltering);
 
-			pThis->Band.Left = 0;
-			pThis->Band.Top = 0;
+			this->Band.Left = 0;
+			this->Band.Top = 0;
 		}
 	}
 };

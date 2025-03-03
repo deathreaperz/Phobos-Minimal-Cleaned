@@ -380,7 +380,7 @@ bool SWTypeExtData::TryFire(SuperClass* pThis, bool IsPlayer)
 			const auto pNewType = pExt->GetNewSWType();
 			if (!pNewType)
 			{
-				Debug::FatalErrorAndExit("Trying to fire SW [%s] with invalid Type[%d]\n", pThis->Type->ID, (int)pThis->Type->Type);
+				Debug::FatalErrorAndExit("Trying to fire SW [%s] with invalid Type[%d]", pThis->Type->ID, (int)pThis->Type->Type);
 			}
 			const auto& pTargetingData = pNewType->GetTargetingData(pExt, pThis->Owner);
 			const auto& [Cell, Flag] = SWTypeExtData::PickSuperWeaponTarget(pNewType, pTargetingData.get(), pThis);
@@ -450,7 +450,7 @@ struct TargetingFuncs
 {
 #pragma region Helpers
 	template<typename It, typename Valuator>
-	static constexpr ObjectClass* GetTargetFirstMax(It first, It last, Valuator value)
+	static COMPILETIMEEVAL ObjectClass* GetTargetFirstMax(It first, It last, Valuator value)
 	{
 		ObjectClass* pTarget = nullptr;
 		int maxValue = 0;
@@ -506,7 +506,7 @@ struct TargetingFuncs
 		return targets.Select(ScenarioClass::Instance->Random);
 	}
 
-	static constexpr bool IsTargetAllowed(TechnoClass* pTechno)
+	static COMPILETIMEEVAL bool IsTargetAllowed(TechnoClass* pTechno)
 	{
 		return !pTechno->InLimbo && pTechno->IsAlive;
 	}
@@ -522,7 +522,7 @@ struct TargetingFuncs
 		return false;
 	}
 
-	static constexpr TargetResult NoTarget()
+	static COMPILETIMEEVAL TargetResult NoTarget()
 	{
 		return { CellStruct::Empty , SWTargetFlags::AllowEmpty };
 	}
@@ -662,7 +662,7 @@ struct TargetingFuncs
 			const auto pTargetPlayer = HouseClass::Array->GetItemOrDefault(pTargeting->Owner->EnemyHouseIndex, pTargeting->Owner);
 
 			target = MapClass::Instance->NearByLocation(
-				pTargetPlayer->GetBaseCenter(), SpeedType::Foot, -1,
+				pTargetPlayer->GetBaseCenter(), SpeedType::Foot, ZoneType::None,
 				MovementZone::Normal, false, SpaceSize, SpaceSize, false,
 				false, false, true, CellStruct::Empty, false, false);
 
@@ -783,7 +783,7 @@ struct TargetingFuncs
 		const auto nRandom = ScenarioClass::Instance->Random.RandomRangedSpecific(ZoneType::North, ZoneType::West);
 		const auto nCell = pTargeting->Owner->RandomCellInZone(nRandom);
 		const auto nNearby = MapClass::Instance->NearByLocation(nCell,
-			SpeedType::Foot, -1, MovementZone::Normal, false, 1, 1, false,
+			SpeedType::Foot, ZoneType::None, MovementZone::Normal, false, 1, 1, false,
 			false, false, true, CellStruct::Empty, false, false);
 
 		return  (nNearby.IsValid() && pNewType->CanFireAt(pTargeting, nNearby, false)) ?
@@ -946,7 +946,7 @@ struct TargetingFuncs
 		}
 		else
 		{
-			Debug::Log("Uneable to fire SW [%s - %s] , AuxTechno is empty!\n", pTargeting->TypeExt->AttachedToObject->ID, pTargeting->Owner->Type->ID);
+			Debug::LogInfo("Uneable to fire SW [{} - {}] , AuxTechno is empty!", pTargeting->TypeExt->AttachedToObject->ID, pTargeting->Owner->Type->ID);
 		}
 
 		return { CellStruct::Empty , SWTargetFlags::DisallowEmpty };
@@ -1304,7 +1304,7 @@ bool SWTypeExtData::Activate(SuperClass* pSuper, CellStruct const cell, bool con
 	auto const pOwner = pSuper->Owner;
 	if (!pOwner) // the game will crash later anyway , just put some log to give an hint
 	{
-		Debug::Log("Trying To Activate Super[%s] Without House Owner ! \n", pSuper->Type->ID);
+		Debug::LogInfo("Trying To Activate Super[{}] Without House Owner ! ", pSuper->Type->ID);
 		return false;
 	}
 
@@ -1314,7 +1314,7 @@ bool SWTypeExtData::Activate(SuperClass* pSuper, CellStruct const cell, bool con
 	if (!pNewType || !pExt->Launch(pNewType, pSuper, cell, isPlayer))
 		return false;
 
-	//Debug::Log(__FUNCTION__" for [%s] - Owner[%s] AfterSWLauch \n", pExt->get_ID(), pOwner->get_ID());
+	//Debug::LogInfo(__FUNCTION__" for [%s] - Owner[%s] AfterSWLauch ", pExt->get_ID(), pOwner->get_ID());
 	std::pair<SuperClass*, CellStruct> nPass { pSuper, cell };
 
 	for (int i = 0; i < pOwner->RelatedTags.Count; ++i)
@@ -1325,14 +1325,14 @@ bool SWTypeExtData::Activate(SuperClass* pSuper, CellStruct const cell, bool con
 		}
 	}
 
-	//Debug::Log(__FUNCTION__" for [%s] - Owner[%s] After SuperNearWaypoint  \n", pExt->get_ID(), pOwner->get_ID());
+	//Debug::LogInfo(__FUNCTION__" for [%s] - Owner[%s] After SuperNearWaypoint  ", pExt->get_ID(), pOwner->get_ID());
 	for (int a = 0; a < pOwner->RelatedTags.Count; ++a)
 	{
 		if (auto pTag = pOwner->RelatedTags.Items[a])
 			pTag->RaiseEvent(TriggerEvent(AresTriggerEvents::SuperActivated), nullptr, CellStruct::Empty, false, pSuper);
 	}
 
-	//Debug::Log(__FUNCTION__" for [%s] - Owner[%s] After SuperActivated  \n", pExt->get_ID(), pOwner->get_ID());
+	//Debug::LogInfo(__FUNCTION__" for [%s] - Owner[%s] After SuperActivated  ", pExt->get_ID(), pOwner->get_ID());
 
 	return true;
 }
@@ -1526,7 +1526,6 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	}
 
 	//
-	this->Converts.Read(exINI, pSection, "Converts");
 	this->Converts_UseSWRange.Read(exINI, pSection, "Converts.UseSWRange");
 	TechnoTypeConvertData::Parse(Phobos::Otamaa::CompatibilityMode, this->ConvertsPair, exINI, pSection, "ConvertsPair");
 	this->Convert_SucceededAnim.Read(exINI, pSection, "ConvertsAnim");
@@ -1792,10 +1791,10 @@ void SWTypeExtData::ApplyDetonation(SuperClass* pSW, HouseClass* pHouse, const C
 	}
 
 	if (!MapClass::Instance->IsWithinUsableArea(nDest))
-		Debug::Log("SW[%s] Lauch Outside Usable Map Area [%d . %d]! \n", this->AttachedToObject->ID, nDest.X, nDest.Y);
+		Debug::LogInfo("SW[{}] Lauch Outside Usable Map Area [{} . {}]! ", this->AttachedToObject->ID, nDest.X, nDest.Y);
 
 	if (!pFirer)
-		Debug::Log("SW[%s] ApplyDetonate without Firer!\n", this->AttachedToObject->ID);
+		Debug::LogInfo("SW[{}] ApplyDetonate without Firer!", this->AttachedToObject->ID);
 
 	if (const auto pWeapon = this->Detonate_Weapon.Get())
 		WeaponTypeExtData::DetonateAt(pWeapon, nDest, pFirer, this->Detonate_Damage.Get(pWeapon->Damage), true, pSW->Owner);
@@ -1830,7 +1829,7 @@ void SWTypeExtData::ApplySWNext(SuperClass* pSW, const CellStruct& cell, bool Is
 
 void SWTypeExtData::FireSuperWeapon(SuperClass* pSW, HouseClass* pHouse, const CellStruct* const pCell, bool IsCurrentPlayer)
 {
-	//Debug::Log("Applying additional functionalities for sw[%s]\n", pSW->get_ID());
+	//Debug::LogInfo("Applying additional functionalities for sw[%s]", pSW->get_ID());
 
 	if (!this->LimboDelivery_Types.empty())
 		ApplyLimboDelivery(pHouse);
@@ -1847,7 +1846,7 @@ void SWTypeExtData::FireSuperWeapon(SuperClass* pSW, HouseClass* pHouse, const C
 	if (this->SW_GrantOneTime.size() > 0)
 		this->GrantOneTimeFromList(pSW);
 
-	if (this->Converts)
+	if (!this->ConvertsPair.empty())
 	{
 		if (!this->Converts_UseSWRange)
 		{
@@ -1940,21 +1939,32 @@ bool SWTypeExtData::IsAvailable(HouseClass* pHouse)
 		if (!Prereqs::HouseOwnsAll(pHouse, this->SW_Require.data(), (int)this->SW_Require.size()))
 			return false;
 	}
+	// check that any aux building exist and no neg building
+	const auto IsBuildingPresent = [pHouse](BuildingTypeClass* pType)
+		{
+			if (pHouse->CountOwnedAndPresent(pType) <= 0)
+			{
+				auto pAuxExt = BuildingTypeExtContainer::Instance.Find(pType);
+
+				if (!pAuxExt->PowersUp_Buildings.empty() || BuildingTypeClass::Find(pType->PowersUpBuilding))
+					return BuildingTypeExtData::GetUpgradesAmount(pType, pHouse) > 0;
+
+				return false;
+			}
+
+			return true;
+		};
 
 	// check whether the optional aux building exists
-	if (pThis->AuxBuilding && pHouse->CountOwnedAndPresent(pThis->AuxBuilding) <= 0)
+	if (pThis->AuxBuilding && !IsBuildingPresent(pThis->AuxBuilding))
+	{
 		return false;
+	}
 
 	// allow only certain houses, disallow forbidden houses
 	if (!((this->SW_RequiredHouses.data & (1u << pHouse->Type->ArrayIndex)) != 0u)
 			|| ((this->SW_ForbiddenHouses.data & (1u << pHouse->Type->ArrayIndex)) != 0u))
 		return false;
-
-	// check that any aux building exist and no neg building
-	auto IsBuildingPresent = [pHouse](BuildingTypeClass* pType)
-		{
-			return pType && pHouse->CountOwnedAndPresent(pType) > 0;
-		};
 
 	const auto& Aux = this->SW_AuxBuildings;
 	// If building Not Exist
@@ -2235,7 +2245,6 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->SW_ChargeToDrainRatio)
 		.Process(this->HandledType)
 		.Process(this->LastAction)
-		.Process(this->Converts)
 		.Process(this->Converts_UseSWRange)
 		.Process(this->ConvertsPair)
 		.Process(this->Convert_SucceededAnim)

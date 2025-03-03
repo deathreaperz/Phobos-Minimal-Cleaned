@@ -21,9 +21,9 @@ struct GameConfig
 	{
 		if (this->OpenINI(mode))
 		{
-			if constexpr (lambda_details<decltype(action)>::argument_count == 1)
+			if COMPILETIMEEVAL(lambda_details<decltype(action)>::argument_count == 1)
 				action(Ini.get());
-			else if constexpr (lambda_details<decltype(action)>::argument_count == 2)
+			else if COMPILETIMEEVAL(lambda_details<decltype(action)>::argument_count == 2)
 				action(Ini.get(), File.get());
 			else
 				static_assert(true, "fail!");
@@ -35,9 +35,9 @@ struct GameConfig
 	{
 		if (this->OpenOrCreate(mode))
 		{
-			if constexpr (lambda_details<decltype(action)>::argument_count == 1)
+			if COMPILETIMEEVAL(lambda_details<decltype(action)>::argument_count == 1)
 				action(Ini.get());
-			else if constexpr (lambda_details<decltype(action)>::argument_count == 2)
+			else if COMPILETIMEEVAL(lambda_details<decltype(action)>::argument_count == 2)
 				action(Ini.get(), File.get());
 			else
 				static_assert(true, "fail!");
@@ -46,22 +46,22 @@ struct GameConfig
 
 	bool OpenOrCreate(FileAccessMode mode = FileAccessMode::ReadWrite) noexcept;
 
-	FORCEINLINE void WriteCCFile()
+	FORCEDINLINE void WriteCCFile()
 	{
 		Ini->WriteCCFile(File.get());
 	}
 
-	FORCEINLINE constexpr const char* filename() noexcept
+	FORCEDINLINE const char* filename() noexcept
 	{
 		return File->FileName;
 	}
 
-	FORCEINLINE constexpr CCINIClass* get() noexcept
+	FORCEDINLINE CCINIClass* get() noexcept
 	{
 		return Ini.get();
 	}
 
-	FORCEINLINE constexpr CCINIClass* operator->() noexcept
+	FORCEDINLINE CCINIClass* operator->() noexcept
 	{
 		return Ini.get();
 	}

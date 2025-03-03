@@ -11,7 +11,7 @@ class CellClass;
 class AircraftTrackerClass
 {
 public:
-	static constexpr reference<AircraftTrackerClass, 0x887888u> Instance { };
+	static COMPILETIMEEVAL reference<AircraftTrackerClass, 0x887888u> Instance { };
 
 	FootClass* Get() { JMP_THIS(0x4137A0); }
 
@@ -28,6 +28,9 @@ public:
 	int AircraftTrackerClass_4129C0(int a2) { JMP_THIS(0x4129C0); }
 	void Detach(FootClass* entry) { JMP_THIS(0x413490); }
 	void AircraftTrackerClass_logics_412B40(CellClass* cell, int range) { JMP_THIS(0x412B40); }
+
+	// Fills CurrentVector with items from TrackerVectors matching given range around cell.
+	void FillCurrentVector(CellClass* pCell, int range) { JMP_THIS(0x412B40) }
 
 	//HRESULT LoadFromStream(IStream* pStm) { JMP_THIS(0x4136C0); }
 	//HRESULT SaveFromStream(IStream* pStm) { JMP_THIS(0x413850); }

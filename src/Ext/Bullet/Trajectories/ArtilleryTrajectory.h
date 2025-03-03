@@ -31,8 +31,7 @@ public:
 	ArtilleryTrajectory() : PhobosTrajectory { TrajectoryFlag::Artillery } { }
 	ArtilleryTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Artillery, pBullet ,pType }
-	{
-	}
+	{ }
 	virtual ~ArtilleryTrajectory() = default;
 
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) { }

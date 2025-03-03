@@ -37,7 +37,7 @@ void Debug(ObjectClass* pTarget, int nArmor, VersesData* pData, WarheadTypeClass
 {
 	auto const pArmor = ArmorTypeClass::FindFromIndex(nArmor);
 
-	Debug::Log("[%s] WH[%d][%s] against [%d - %s] Flag :  FF %d , PA %d , RR %d [%fl] \n",
+	Debug::LogInfo("[{}] WH[{}][{}] against [{} - {}] Flag :  FF {} , PA {} , RR {} [{}] ",
 			pAdd,
 			arrSize,
 			pWH->get_ID(),
@@ -56,6 +56,7 @@ DEFINE_HOOK(0x489180, MapClass_GetTotalDamage, 0x6)
 	GET(FakeWarheadTypeClass*, pWH, EDX);
 	GET_STACK(Armor, armor, 0x4);
 	GET_STACK(int, distance, 0x8);
+	//GET_STACK(DWORD, caller, 0x0);
 
 	int res = 0;
 
@@ -134,10 +135,10 @@ DEFINE_HOOK(0x6F7D3D, TechnoClass_CanAutoTargetObject_Verses, 0x7)
 
 	GET(ObjectClass*, pTarget, ESI);
 	GET(FakeWarheadTypeClass*, pWH, ECX);
-	GET(WeaponTypeClass*, pWeapon, EBP);
+	//GET(WeaponTypeClass*, pWeapon , EBP);
 	//GET(int, nArmor, EAX);
 
-	const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
+	//const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
 	Armor armor = TechnoExtData::GetTechnoArmor(pTarget, pWH);
 	return pWH->GetVersesData(armor)->Flags.PassiveAcquire  //|| !(vsData->Verses <= 0.02)
 		? ContinueCheck
@@ -151,10 +152,10 @@ DEFINE_HOOK(0x6FCB6A, TechnoClass_CanFire_Verses, 0x7)
 
 	GET(ObjectClass*, pTarget, EBP);
 	GET(FakeWarheadTypeClass*, pWH, EDI);
-	GET(WeaponTypeClass*, pWeapon, EBX);
+	//GET(WeaponTypeClass*, pWeapon, EBX);
 	//GET(int, nArmor, EAX);
 
-	const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
+	//const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
 	Armor armor = TechnoExtData::GetTechnoArmor(pTarget, pWH);
 	const auto vsData = pWH->GetVersesData(armor);
 
@@ -184,9 +185,9 @@ DEFINE_HOOK(0x70CEA0, TechnoClass_EvalThreatRating_TargetWeaponWarhead_Verses, 0
 	GET(TechnoClass*, pTarget, ESI);
 	GET(FakeWarheadTypeClass*, pTargetWH, EAX);
 	GET_STACK(double, mult, 0x18);
-	GET(TechnoTypeClass*, pThisType, EBX);
+	//GET(TechnoTypeClass*, pThisType, EBX);
 
-	const auto pData = WarheadTypeExtContainer::Instance.Find(pTargetWH);
+	//const auto pData = WarheadTypeExtContainer::Instance.Find(pTargetWH);
 	const auto armor = TechnoExtData::GetTechnoArmor(pThis, pTargetWH);
 	const auto vsData = pTargetWH->GetVersesData(armor);
 
@@ -232,7 +233,7 @@ DEFINE_HOOK(0x70CF45, TechnoClass_EvalThreatRating_ThisWeaponWarhead_Verses, 0xB
 //
 //	const int nArmor = (int)TechnoExtData::GetArmor(pTarget);
 //	if ((size_t)nArmor > ArmorTypeClass::Array.size())
-//		Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
+//		Debug::LogInfo(__FUNCTION__" Armor is more that avaible ArmorTypeClass ");
 //
 //	const auto vsData_Secondary = &WarheadTypeExtContainer::Instance.Find(pSecondary->Warhead)->Verses[nArmor];
 //

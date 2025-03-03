@@ -2,6 +2,8 @@
 
 #include <Utilities/Helpers.h>
 
+#include <Misc/DamageArea.h>
+
 bool SW_GeneticMutator::HandleThisType(SuperWeaponType type) const
 {
 	return (type == SuperWeaponType::GeneticMutator);
@@ -121,7 +123,8 @@ void GeneticMutatorStateMachine::Update()
 			VocClass::PlayGlobal(sound, Panning::Center, 1.0);
 		}
 
-		ApplyGeneticMutator(this->Firer, this->Super, pData, this->Type, this->CoordsWithBridge, this->Coords, this->Type->GetWarhead(pData), this->Type->GetRange(pData), this->Type->GetDamage(pData));
+		auto range = this->Type->GetRange(pData);
+		ApplyGeneticMutator(this->Firer, this->Super, pData, this->Type, this->CoordsWithBridge, this->Coords, this->Type->GetWarhead(pData), range, this->Type->GetDamage(pData));
 	}
 }
 
@@ -130,7 +133,7 @@ void GeneticMutatorStateMachine::ApplyGeneticMutator(TechnoClass* pFirer, SuperC
 	if (pData->Mutate_Explosion.Get(RulesClass::Instance->MutateExplosion))
 	{
 		// single shot using cellspread warhead
-		MapClass::DamageArea(coord, damage, pFirer, pWarhead, pWarhead->Tiberium, pSuper->Owner);
+		DamageArea::Apply(&coord, damage, pFirer, pWarhead, pWarhead->Tiberium, pSuper->Owner);
 	}
 	else
 	{

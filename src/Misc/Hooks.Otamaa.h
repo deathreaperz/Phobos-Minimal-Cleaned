@@ -51,7 +51,17 @@ public:
 
 	bool _Paradrop(CoordStruct* pCoords);
 	CoordStruct* _GetFLH(CoordStruct* buffer, int wepon, CoordStruct base);
+
+	void _SetOccupyBit(CoordStruct* pCrd);
+	void _ClearOccupyBit(CoordStruct* pCrd);
 };
 static_assert(sizeof(FakeUnitClass) == sizeof(UnitClass), "Invalid Size !");
 
+//===================================================================================
+
+class FakeFootClass : public FootClass
+{
+public:
+};
+static_assert(sizeof(FakeFootClass) == sizeof(FootClass), "Invalid Size !");
 //===================================================================================

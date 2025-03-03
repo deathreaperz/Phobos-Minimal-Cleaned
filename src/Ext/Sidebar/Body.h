@@ -6,22 +6,23 @@
 #include <Helpers/Macro.h>
 #include <Utilities/TemplateDef.h>
 #include <Utilities/SavegameDef.h>
+#include <Utilities/VectorHelper.h>
 
 class SidebarExtData final
 {
 private:
-	static inline std::unique_ptr<SidebarExtData> Data;
+	static OPTIONALINLINE std::unique_ptr<SidebarExtData> Data;
 
 public:
 
-	static constexpr size_t Canary = 0x51DEBA12;
+	static COMPILETIMEEVAL size_t Canary = 0x51DEBA12;
 	using base_type = SidebarClass;
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 
 	bool SWSidebar_Enable { true };
-	DynamicVectorClass<int> SWSidebar_Indices {};
+	HelperedVector<int> SWSidebar_Indices {};
 
 public:
 
@@ -33,8 +34,8 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	inline static IStream* g_pStm;
-	inline static std::array<SHPReference*, 4u> TabProducingProgress;
+	OPTIONALINLINE static IStream* g_pStm;
+	OPTIONALINLINE static std::array<SHPReference*, 4u> TabProducingProgress;
 
 	static void Allocate(SidebarClass* pThis);
 	static void Remove(SidebarClass* pThis);

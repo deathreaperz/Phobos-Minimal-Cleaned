@@ -61,7 +61,7 @@ DEFINE_HOOK(0x46ADE0, BulletClass_ApplyRadiation_NoBullet, 0x5)
 		GET_STACK(int, spread, 0x8);
 		GET_STACK(int, amount, 0xC);
 
-		const auto pCell = MapClass::Instance->GetCellAt(location);
+		const auto pCell = MapClass::Instance->TryGetCellAt(location);
 
 		if (!pCell)
 			return Handled;
@@ -202,97 +202,97 @@ DEFINE_HOOK(0x521478, InfantryClass_AIDeployment_FireNotOKCloakFix, 0x6) // 4
 	return 0x521484;
 }
 
-DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
-{
-	enum { Dead = 0x440573, Continue = 0x0 };
+// DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
+// {
+// 	enum { Dead = 0x440573, Continue = 0x0 };
 
-	GET(BuildingClass* const, pBuilding, ECX);
+// 	GET(BuildingClass* const, pBuilding, ECX);
 
-	if (!pBuilding->IsAlive)
-		return Dead;
+// 	if (!pBuilding->IsAlive)
+// 		return Dead;
 
-	const auto pExt = BuildingExtContainer::Instance.Find(pBuilding);
+// 	const auto pExt = BuildingExtContainer::Instance.Find(pBuilding);
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		if (!RadSiteClass::Array->Count)
-			return Continue;
+// 	if (!Phobos::Otamaa::DisableCustomRadSite)
+// 	{
+// 		if (!RadSiteClass::Array->Count)
+// 			return Continue;
 
-		if (pBuilding->InLimbo ||
-			TechnoExtData::IsRadImmune(pBuilding))
-			return Continue;
+// 		if (pBuilding->InLimbo ||
+// 			TechnoExtData::IsRadImmune(pBuilding))
+// 			return Continue;
 
-		if (pExt->LimboID != -1)
-			return Continue;
+// 		if (pExt->LimboID != -1)
+// 			return Continue;
 
-		if (pBuilding->BeingWarpedOut ||
-			pBuilding->TemporalTargetingMe ||
-			pBuilding->Type->Immune
-			)
-		{
-			return Continue;
-		}
+// 		if (pBuilding->BeingWarpedOut ||
+// 			pBuilding->TemporalTargetingMe ||
+// 			pBuilding->Type->Immune
+// 			)
+// 		{
+// 			return Continue;
+// 		}
 
-		PhobosMap<RadSiteClass*, int> damageCounts;
+// 		PhobosMap<RadSiteClass*, int> damageCounts;
 
-		const auto nCurCoord = pBuilding->InlineMapCoords();
-		for (auto pFoundation = pBuilding->GetFoundationData(false);
-			*pFoundation != CellStruct::EOL; ++pFoundation)
-		{
-			if (!pBuilding->IsAlive)
-				return Dead;
+// 		const auto nCurCoord = pBuilding->InlineMapCoords();
+// 		for (auto pFoundation = pBuilding->GetFoundationData(false);
+// 			*pFoundation != CellStruct::EOL; ++pFoundation)
+// 		{
+// 			if (!pBuilding->IsAlive)
+// 				return Dead;
 
-			const auto nLoc = nCurCoord + (*pFoundation);
+// 			const auto nLoc = nCurCoord + (*pFoundation);
 
-			// Loop for each different radiation stored in the RadSites container
-			for (auto pRadSite : *RadSiteClass::Array())
-			{
-				if (!pBuilding->IsAlive)
-					return Dead;
+// 			// Loop for each different radiation stored in the RadSites container
+// 			for (auto pRadSite : *RadSiteClass::Array())
+// 			{
+// 				if (!pBuilding->IsAlive)
+// 					return Dead;
 
-				const auto pRadExt = RadSiteExtContainer::Instance.Find(pRadSite);
+// 				const auto pRadExt = RadSiteExtContainer::Instance.Find(pRadSite);
 
-				int maxDamageCount = pRadExt->Type->GetBuildingDamageMaxCount();
+// 				int maxDamageCount = pRadExt->Type->GetBuildingDamageMaxCount();
 
-				if (maxDamageCount > 0 && damageCounts[pRadSite] >= maxDamageCount)
-					continue;
+// 				if (maxDamageCount > 0 && damageCounts[pRadSite] >= maxDamageCount)
+// 					continue;
 
-				// Check the distance, if not in range, just skip this one
-				const double orDistance = pRadSite->BaseCell.DistanceFrom(nLoc);
-				if (static_cast<int>(orDistance) > pRadSite->Spread)
-					continue;
+// 				// Check the distance, if not in range, just skip this one
+// 				const double orDistance = pRadSite->BaseCell.DistanceFrom(nLoc);
+// 				if (static_cast<int>(orDistance) > pRadSite->Spread)
+// 					continue;
 
-				const RadTypeClass* pType = pRadExt->Type;
-				const int delay = RulesExtData::Instance()->UseGlobalRadApplicationDelay ? pType->GetBuildingApplicationDelay() : RulesExtData::Instance()->RadApplicationDelay_Building;
-				if ((delay <= 0)
-					|| (Unsorted::CurrentFrame % delay))
-					continue;
+// 				const RadTypeClass* pType = pRadExt->Type;
+// 				const int delay = RulesExtData::Instance()->UseGlobalRadApplicationDelay ? pType->GetBuildingApplicationDelay() : RulesExtData::Instance()->RadApplicationDelay_Building;
+// 				if ((delay <= 0)
+// 					|| (Unsorted::CurrentFrame % delay))
+// 					continue;
 
-				const auto nRadLevel = pRadExt->GetRadLevelAt(orDistance);
-				if (nRadLevel == 0.0 || !pType->GetWarhead())
-					continue;
+// 				const auto nRadLevel = pRadExt->GetRadLevelAt(orDistance);
+// 				if (nRadLevel == 0.0 || !pType->GetWarhead())
+// 					continue;
 
-				const auto damage = static_cast<int>((nRadLevel)*pType->GetLevelFactor());
+// 				const auto damage = static_cast<int>((nRadLevel) * pType->GetLevelFactor());
 
-				if (maxDamageCount > 0)
-					damageCounts[pRadSite]++;
+// 				if (maxDamageCount > 0)
+// 					damageCounts[pRadSite]++;
 
-				if (damage == 0)
-					continue;
+// 				if (damage == 0)
+// 					continue;
 
-				switch (pRadExt->ApplyRadiationDamage(pBuilding, damage, static_cast<int>(orDistance)))
-				{
-				case RadSiteExtData::DamagingState::Dead:
-					return Dead;
-				default:
-					break;
-				}
-			}
-		}
-	}
+// 				switch (pRadExt->ApplyRadiationDamage(pBuilding, damage, static_cast<int>(orDistance)))
+// 				{
+// 				case RadSiteExtData::DamagingState::Dead:
+// 					return Dead;
+// 				default:
+// 					break;
+// 				}
+// 			}
+// 		}
+// 	}
 
-	return Continue;
-}
+// 	return Continue;
+// }
 
 // skip Frame % RadApplicationDelay
 //DEFINE_JUMP(LJMP,0x4DA554, 0x4DA56E);
@@ -300,122 +300,6 @@ DEFINE_HOOK(0x43FB29, BuildingClass_AI_Radiation, 0x8)
 //{
 //	return !Phobos::Otamaa::DisableCustomRadSite ? 0x4DA56E : 0x0;
 //}
-
-// Hook Adjusted to support Ares RadImmune Ability check
-DEFINE_HOOK(0x4DA554, FootClass_AI_ReplaceRadiationDamageProcessing, 0x5)
-{
-	enum
-	{
-		CheckOtherState = 0x4DA63B,
-		SkipEverything = 0x4DAF00,
-		//Continue = 0x0,
-		ProcessRadSiteCheckVanilla = 0x4DA59F,
-	};
-
-	GET(FootClass* const, pThis, ESI);
-
-	auto pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	const bool IsMissisleSpawn = (RulesClass::Instance->V3Rocket.Type == pExt->Type ||
-	 pExt->Type == RulesClass::Instance->DMisl.Type || pExt->Type == RulesClass::Instance->CMisl.Type
-	 || TechnoTypeExtContainer::Instance.Find(pExt->Type)->IsCustomMissile);
-
-	if (pThis->SpawnOwner && !IsMissisleSpawn
-		)
-	{
-		auto pSpawnTechnoType = pThis->SpawnOwner->GetTechnoType();
-		auto pSpawnTechnoTypeExt = TechnoTypeExtContainer::Instance.Find(pSpawnTechnoType);
-
-		if (const auto pTargetTech = flag_cast_to<TechnoClass*>(pThis->Target))
-		{
-			//Spawnee trying to chase Aircraft that go out of map until it reset
-			//fix this , so reset immedietely if target is not on map
-			if (!MapClass::Instance->IsValid(pTargetTech->Location)
-				|| pTargetTech->TemporalTargetingMe
-				|| (pSpawnTechnoTypeExt->MySpawnSupportDatas.Enable && pThis->SpawnOwner->GetCurrentMission() != Mission::Attack && pThis->GetCurrentMission() == Mission::Attack)
-				)
-			{
-				if (pThis->SpawnOwner->Target == pThis->Target)
-					pThis->SpawnOwner->SetTarget(nullptr);
-
-				pThis->SpawnOwner->SpawnManager->ResetTarget();
-			}
-		}
-		else if (pSpawnTechnoTypeExt->MySpawnSupportDatas.Enable && pThis->SpawnOwner->GetCurrentMission() != Mission::Attack && pThis->GetCurrentMission() == Mission::Attack)
-		{
-			if (pThis->SpawnOwner->Target == pThis->Target)
-				pThis->SpawnOwner->SetTarget(nullptr);
-
-			pThis->SpawnOwner->SpawnManager->ResetTarget();
-		}
-	}
-
-	const auto nLoc = pThis->InlineMapCoords();
-	auto const pUnit = cast_to<UnitClass*, false>(pThis);
-
-	//R->BL(false);
-
-	if ((pUnit && pUnit->DeathFrameCounter > 0) || !RadSiteClass::Array->Count)
-		return (CheckOtherState);
-
-	if (pThis->TemporalTargetingMe || pThis->InLimbo || !pThis->Health || pThis->IsSinking || pThis->IsCrashing)
-		return (CheckOtherState);
-
-	if (pThis->IsInAir())
-		return (CheckOtherState);
-
-	if (pThis->GetTechnoType()->Immune)
-		return (CheckOtherState);
-
-	if (pThis->IsBeingWarpedOut() || TechnoExtData::IsChronoDelayDamageImmune(pThis))
-		return (CheckOtherState);
-
-	if (TechnoExtData::IsRadImmune(pThis))
-		return (CheckOtherState);
-
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		// Loop for each different radiation stored in the RadSites container
-		for (auto pRadSite : *RadSiteClass::Array())
-		{
-			const auto pRadExt = RadSiteExtContainer::Instance.Find(pRadSite);
-			// Check the distance, if not in range, just skip this one
-			const double orDistance = pRadSite->BaseCell.DistanceFrom(nLoc);
-			if (static_cast<int>(orDistance) > pRadSite->Spread)
-				continue;
-
-			const RadTypeClass* pType = pRadExt->Type;
-			const int RadApplicationDelay = RulesExtData::Instance()->UseGlobalRadApplicationDelay ? pType->GetApplicationDelay() : RulesClass::Instance->RadApplicationDelay;
-			if ((RadApplicationDelay <= 0)
-				|| (Unsorted::CurrentFrame % RadApplicationDelay))
-				continue;
-
-			// for more precise dmg calculation
-			const double nRadLevel = pRadExt->GetRadLevelAt(orDistance);
-			if (nRadLevel <= 0.0 || !pType->GetWarhead())
-				continue;
-
-			const int damage = static_cast<int>(nRadLevel * pType->GetLevelFactor());
-
-			if (damage == 0)
-				continue;
-
-			switch (pRadExt->ApplyRadiationDamage(pThis, damage, static_cast<int>(orDistance)))
-			{
-			case RadSiteExtData::DamagingState::Dead:
-				return SkipEverything;
-			case RadSiteExtData::DamagingState::Ignore:
-				return (CheckOtherState);
-			default:
-				break;
-			}
-		}
-
-		return (CheckOtherState);
-	}
-
-	return (ProcessRadSiteCheckVanilla);
-}
 
 #define GET_RADSITE(reg, value)\
 	GET(RadSiteClass* const, pThis, reg);\

@@ -29,9 +29,12 @@ DEFINE_HOOK(0x6F7248, TechnoClass_InRange_Additionals, 0x6)
 
 	const auto pThisTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
-	if(pThisTypeExt->NavalRangeBonus.isset()){
-		if (auto const pFoot = flag_cast_to<FootClass* const>(pTarget)) {
-			if (pThisTypeExt->AttachedToObject->Naval) {
+	if (pThisTypeExt->NavalRangeBonus.isset())
+	{
+		if (auto const pFoot = flag_cast_to<FootClass* const>(pTarget))
+		{
+			if (pThisTypeExt->AttachedToObject->Naval)
+			{
 				const auto pFootCell = pFoot->GetCell();
 				if (pFootCell->LandType == LandType::Water && !pFootCell->ContainsBridge())
 					range += pThisTypeExt->NavalRangeBonus.Get();
@@ -42,7 +45,8 @@ DEFINE_HOOK(0x6F7248, TechnoClass_InRange_Additionals, 0x6)
 	if (pTarget->IsInAir())
 		range += pThisTypeExt->AttachedToObject->AirRangeBonus;
 
-	if (pThis->BunkerLinkedItem) {
+	if (pThis->BunkerLinkedItem)
+	{
 		const auto vtable = VTable::Get(pThis->BunkerLinkedItem);
 
 		bool clear = false;
@@ -50,23 +54,24 @@ DEFINE_HOOK(0x6F7248, TechnoClass_InRange_Additionals, 0x6)
 			&& (vtable != AircraftClass::vtable)
 			&& (vtable != UnitClass::vtable))
 		{
-			Debug::Log("TechnoClass_InRange Techno[%s] bunker linked item is broken pointer[%0x] !\n", pThisTypeExt->AttachedToObject->ID , pThis->BunkerLinkedItem);
+			Debug::LogInfo("TechnoClass_InRange Techno[{}] bunker linked item is broken pointer[{}] !", pThisTypeExt->AttachedToObject->ID, (void*)pThis->BunkerLinkedItem);
 			clear = true;
 			pThis->BunkerLinkedItem = nullptr;
 		}
 
-		if(!clear && vtable != BuildingClass::vtable) {
+		if (!clear && vtable != BuildingClass::vtable)
+		{
 			range += RulesClass::Instance->BunkerWeaponRangeBonus * Unsorted::LeptonsPerCell;
 		}
 	}
 
-
-	if (pThis->InOpenToppedTransport) {
-		if(auto pTrans = pThis->Transporter)
+	if (pThis->InOpenToppedTransport)
+	{
+		if (auto pTrans = pThis->Transporter)
 			range += TechnoTypeExtContainer::Instance.Find(pTrans->GetTechnoType())
-				->OpenTopped_RangeBonus.Get(RulesClass::Instance->OpenToppedRangeBonus) * Unsorted::LeptonsPerCell;
-		  else
-		  	range += (RulesClass::Instance->OpenToppedRangeBonus* Unsorted::LeptonsPerCell);
+			->OpenTopped_RangeBonus.Get(RulesClass::Instance->OpenToppedRangeBonus) * Unsorted::LeptonsPerCell;
+		else
+			range += (RulesClass::Instance->OpenToppedRangeBonus * Unsorted::LeptonsPerCell);
 	}
 
 	R->EDI(range);
@@ -80,7 +85,6 @@ DEFINE_HOOK(0x6FC3A1, TechnoClass_CanFire_InBunkerRangeCheck, 0x5)
 	GET(TechnoClass*, pTarget, EBP);
 	GET(TechnoClass*, pThis, ESI);
 	GET(WeaponTypeClass*, pWeapon, EDI);
-
 
 	if (pTarget->WhatAmI() == AbstractType::Unit && WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis) < 384.0)
 		return CannotFire;

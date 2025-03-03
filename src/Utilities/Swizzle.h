@@ -29,7 +29,7 @@ public:
 	* pass in the *address* of the pointer you want to have changed
 	* caution, after the call *p will be NULL
 	*/
-	FORCEINLINE constexpr HRESULT RegisterForChange_Hook(void** p)
+	FORCEDINLINE COMPILETIMEEVAL HRESULT RegisterForChange_Hook(void** p)
 	{
 		if (p)
 		{
@@ -44,12 +44,12 @@ public:
 		return E_POINTER;
 	}
 
-	FORCEINLINE HRESULT RegisterForChange(void** p)
+	FORCEDINLINE HRESULT RegisterForChange(void** p)
 	{
 		return SwizzleManagerClass::Instance().Swizzle(p);
 	}
 
-	FORCEINLINE constexpr auto FindChanges(void* ptr) const
+	FORCEDINLINE COMPILETIMEEVAL auto FindChanges(void* ptr) const
 	{
 		for (auto begin = this->Changes.begin(); begin != this->Changes.end(); ++begin)
 		{
@@ -64,25 +64,25 @@ public:
 	* the original game objects all save their `this` pointer to the save stream
 	* that way they know what ptr they used and call this function with that old ptr and `this` as the new ptr
 	*/
-	FORCEINLINE HRESULT RegisterChange(void* was, void* is)
+	FORCEDINLINE HRESULT RegisterChange(void* was, void* is)
 	{
 		return SwizzleManagerClass::Instance().Here_I_Am((long)was, is);
 	}
 
-	FORCEINLINE HRESULT RegisterChange_Hook(DWORD caller, void* was, void* is)
+	FORCEDINLINE HRESULT RegisterChange_Hook(DWORD caller, void* was, void* is)
 	{
 		auto exist = this->FindChanges(was);
 
 		//the requested `was` not found
 		if (exist == this->Changes.end())
 		{
-			Debug::LogFlushed("PhobosSwizze[0x%x] :: Pointer [0x%x] request change to [0x%x]!\n", caller, was, is);
+			Debug::LogInfo("PhobosSwizze[0x{}] :: Pointer [{}] request change to [{}]!", caller, was, is);
 			this->Changes.emplace_back(was, is);
 		}
 		//the requested `was` found
 		else if (exist->second != is)
 		{
-			Debug::Log("PhobosSwizze[0x%x] :: Pointer [0x%x] are declared change to both [0x%x] AND [0x%x]!\n", caller, was, exist->second, is);
+			Debug::LogInfo("PhobosSwizze[0x{}] :: Pointer [{}] are declared change to both [{}] AND [{}]!", caller, was, exist->second, is);
 		}
 
 		return S_OK;
@@ -90,7 +90,7 @@ public:
 
 	void ConvertNodes() const
 	{
-		Debug::Log("PhobosSwizze :: Converting %u nodes.\n", this->Nodes.size());
+		Debug::LogInfo("PhobosSwizze :: Converting {} nodes.", this->Nodes.size());
 		void* lastFind(nullptr);
 		void* lastRes(nullptr);
 
@@ -102,7 +102,7 @@ public:
 
 				if (change == this->Changes.end())
 				{
-					Debug::Log("PhobosSwizze :: Pointer [%p] could not be remapped from [%p] !\n", it->second, it->first);
+					Debug::LogInfo("PhobosSwizze :: Pointer [{}] could not be remapped from [{}] !", (void*)(it->second), (void*)(it->first));
 				}
 				else
 				{
@@ -118,14 +118,14 @@ public:
 		}
 	}
 
-	constexpr FORCEINLINE void Clear()
+	COMPILETIMEEVAL FORCEDINLINE void Clear()
 	{
 		this->Nodes.clear();
 		this->Changes.clear();
 	}
 
 	template<typename T>
-	FORCEINLINE void RegisterPointerForChange(T*& ptr)
+	FORCEDINLINE void RegisterPointerForChange(T*& ptr)
 	{
 		this->RegisterForChange(reinterpret_cast<void**>(const_cast<std::remove_cv_t<T>**>(&ptr)));
 	}
@@ -139,14 +139,14 @@ struct Swizzle
 	template <typename T>
 	Swizzle(T& object)
 	{
-		if constexpr (std::is_pointer_v<T>)
+		if COMPILETIMEEVAL(std::is_pointer_v<T>)
 		{
 			PhobosSwizzle::Instance.RegisterPointerForChange(object);
 		}
 #ifdef _DEBUG
 		else
 		{
-			Debug::Log("%s Is Not Swizzeable ! \n", typeid(TSwizzle).name());
+			Debug::LogInfo("{} Is Not Swizzeable ! ", typeid(T).name());
 		}
 #endif
 	}

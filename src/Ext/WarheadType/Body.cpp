@@ -159,7 +159,7 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Shield_SelfHealing_Rate_InMinutes.Read(exINI, pSection, "Shield.SelfHealing.Rate");
 	this->Shield_SelfHealing_Rate = (int)(this->Shield_SelfHealing_Rate_InMinutes * 900);
 	this->Shield_SelfHealing_RestartInCombat.Read(exINI, pSection, "Shield.SelfHealing.RestartInCombat");
-	this->Shield_SelfHealing_RestartInCombat.Read(exINI, pSection, "Shield.SelfHealing.RestartInCombatDelay");
+	this->Shield_SelfHealing_RestartInCombatDelay.Read(exINI, pSection, "Shield.SelfHealing.RestartInCombatDelay");
 	this->Shield_SelfHealing_RestartTimer.Read(exINI, pSection, "Shield.SelfHealing.RestartTimer");
 	this->Shield_AttachTypes.Read(exINI, pSection, "Shield.AttachTypes");
 	this->Shield_RemoveTypes.Read(exINI, pSection, "Shield.RemoveTypes");
@@ -295,7 +295,6 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->PermaMC.Read(exINI, pSection, "MindControl.Permanent");
 	this->Sound.Read(exINI, pSection, GameStrings::Sound());
 
-	this->Converts.Read(exINI, pSection, "Converts");
 	TechnoTypeConvertData::Parse(Phobos::Otamaa::CompatibilityMode, this->ConvertsPair, exINI, pSection, "ConvertsPair");
 	this->Convert_SucceededAnim.Read(exINI, pSection, "ConvertsAnim");
 
@@ -517,19 +516,19 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	//if (this->InflictLocomotor && pThis->Locomotor == _GUID())
 	//{
-	//	Debug::Log("[Developer warning][%s] InflictLocomotor is specified but Locomotor is not set!", pSection);
+	//	Debug::LogInfo("[Developer warning][%s] InflictLocomotor is specified but Locomotor is not set!", pSection);
 	//	this->InflictLocomotor = false;
 	//}
 	//
 	//if ((this->InflictLocomotor || this->RemoveInflictedLocomotor) && pThis->IsLocomotor)
 	//{
-	//	Debug::Log("[Developer warning][%s] InflictLocomotor=yes/RemoveInflictedLocomotor=yes can't be specified while IsLocomotor is set!", pSection);
+	//	Debug::LogInfo("[Developer warning][%s] InflictLocomotor=yes/RemoveInflictedLocomotor=yes can't be specified while IsLocomotor is set!", pSection);
 	//	this->InflictLocomotor = this->RemoveInflictedLocomotor = false;
 	//}
 	//
 	//if (this->InflictLocomotor && this->RemoveInflictedLocomotor)
 	//{
-	//	Debug::Log("[Developer warning][%s] InflictLocomotor=yes and RemoveInflictedLocomotor=yes can't be set simultaneously!", pSection);
+	//	Debug::LogInfo("[Developer warning][%s] InflictLocomotor=yes and RemoveInflictedLocomotor=yes can't be set simultaneously!", pSection);
 	//	this->InflictLocomotor = this->RemoveInflictedLocomotor = false;
 	//}
 
@@ -581,14 +580,19 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->KillWeapon_AffectHouses.Read(exINI, pSection, "KillWeapon.AffectHouses");
 	this->KillWeapon_AffectTypes.Read(exINI, pSection, "KillWeapon.AffectTypes");
 	this->KillWeapon_IgnoreTypes.Read(exINI, pSection, "KillWeapon.IgnoreTypes");
+
+	this->MindControl_ThreatDelay.Read(exINI, pSection, "MindControl.ThreatDelay");
+	this->MergeBuildingDamage.Read(exINI, pSection, "MergeBuildingDamage");
+
+	this->BuildingSell.Read(exINI, pSection, "BuildingSell");
+	this->BuildingSell_IgnoreUnsellable.Read(exINI, pSection, "BuildingSell.IgnoreUnsellable");
+	this->BuildingUndeploy.Read(exINI, pSection, "BuildingUndeploy");
+	this->BuildingUndeploy_Leave.Read(exINI, pSection, "BuildingUndeploy.Leave");
 }
 
 //https://github.com/Phobos-developers/Phobos/issues/629
 void WarheadTypeExtData::ApplyDamageMult(TechnoClass* pVictim, args_ReceiveDamage* pArgs) const
 {
-	if (!pVictim)
-		return;
-
 	auto const pExt = TechnoExtContainer::Instance.Find(pVictim);
 
 	if (pExt->ReceiveDamageMultiplier.isset())
@@ -690,7 +694,7 @@ void WarheadTypeExtData::ApplyRecalculateDistanceDamage(ObjectClass* pVictim, ar
 	if (!this->RecalculateDistanceDamage_IgnoreMaxDamage && *pArgs->Damage == RulesClass::Instance->MaxDamage)
 		return;
 
-	const auto pThisType = pVictimTechno->GetTechnoType();
+	//const auto pThisType = pVictimTechno->GetTechnoType();
 	const auto range = pArgs->Attacker->DistanceFrom(pVictim);
 	const auto range_factor = range / (this->RecalculateDistanceDamage_Add_Factor.Get() * 256);
 	const auto add = (this->RecalculateDistanceDamage_Add.Get() * range_factor);
@@ -990,7 +994,7 @@ bool WarheadTypeExtData::applyCulling(TechnoClass* pSource, ObjectClass* pTarget
 	return  nChance < 0 || ScenarioClass::Instance->Random.RandomFromMax(99) < nChance;
 }
 
-static constexpr int GetRelativeValue(ObjectClass* pTarget, WarheadTypeExtData* pWHExt)
+static COMPILETIMEEVAL int GetRelativeValue(ObjectClass* pTarget, WarheadTypeExtData* pWHExt)
 {
 	auto const pWhat = pTarget->WhatAmI();
 	bool IsTechno = false;
@@ -1144,7 +1148,7 @@ void WarheadTypeExtData::DetonateAt(
 {
 	if (targetCell && !pTarget)
 	{
-		Debug::Log("WarheadTypeExtData::Detonate asking for targetCell but pTarget is nullptr ! \n");
+		Debug::LogInfo("WarheadTypeExtData::Detonate asking for targetCell but pTarget is nullptr ! ");
 		return;
 	}
 
@@ -1163,7 +1167,7 @@ void WarheadTypeExtData::DetonateAt(
 {
 	if (targetCell && !coords.IsValid())
 	{
-		Debug::Log("WarheadTypeExtData::Detonate asking for targetCell but coords is invalid ! \n");
+		Debug::LogInfo("WarheadTypeExtData::Detonate asking for targetCell but coords is invalid ! ");
 		return;
 	}
 
@@ -1182,17 +1186,20 @@ void WarheadTypeExtData::DetonateAt(
 {
 	BulletTypeClass* pType = BulletTypeExtData::GetDefaultBulletType();
 
+	if (!pType)
+		Debug::FatalError("Uneable to Fetch %s BulletType ! ", DEFAULT_STR2);
+
 	//if (pThis->NukeMaker)
 	//{
 	//	if (!pTarget)
 	//	{
-	//		Debug::Log("WarheadTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! \n");
+	//		Debug::LogInfo("WarheadTypeExtData::DetonateAt , cannot execute when invalid Target is present , need to be avail ! ");
 	//		return;
 	//	}
 	//}
 	//
 	//if (!pOwner && Phobos::Otamaa::IsAdmin) {
-	//	Debug::Log("WarheadTypeExtData::DetonateAt[%s] delivering damage from unknown source [%x] !\n", pThis->get_ID(), pOwner);
+	//	Debug::LogInfo("WarheadTypeExtData::DetonateAt[%s] delivering damage from unknown source [%x] !", pThis->get_ID(), pOwner);
 	//}
 
 	if (BulletClass* pBullet = BulletTypeExtContainer::Instance.Find(pType)->CreateBullet(pTarget, pOwner,
@@ -1395,7 +1402,6 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->Launchs)
 		.Process(this->PermaMC)
 		.Process(this->Sound)
-		.Process(this->Converts)
 		.Process(this->ConvertsPair)
 		.Process(this->Convert_SucceededAnim)
 		.Process(this->StealMoney)
@@ -1565,6 +1571,13 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->KillWeapon_AffectHouses)
 		.Process(this->KillWeapon_AffectTypes)
 		.Process(this->KillWeapon_IgnoreTypes)
+		.Process(this->MindControl_ThreatDelay)
+		.Process(this->MergeBuildingDamage)
+
+		.Process(this->BuildingSell)
+		.Process(this->BuildingSell_IgnoreUnsellable)
+		.Process(this->BuildingUndeploy)
+		.Process(this->BuildingUndeploy_Leave)
 		;
 
 	PaintBallData.Serialize(Stm);
@@ -1630,6 +1643,116 @@ bool WarheadTypeExtData::ApplySuppressDeathWeapon(TechnoClass* pVictim) const
 	}
 
 	return false;
+}
+
+void WarheadTypeExtData::ApplyBuildingUndeploy(TechnoClass* pTarget)
+{
+	const auto pBuilding = cast_to<BuildingClass*>(pTarget);
+
+	if (!pBuilding || !pBuilding->IsAlive || pBuilding->Health <= 0 || !pBuilding->IsOnMap || pBuilding->InLimbo)
+		return;
+
+	// Higher priority for selling
+
+	if (this->BuildingSell)
+	{
+		if ((pBuilding->CanBeSold() && !pBuilding->IsStrange()) || this->BuildingSell_IgnoreUnsellable)
+			pBuilding->Sell(1);
+
+		return;
+	}
+
+	// CanBeSold() will also check this
+	const auto mission = pBuilding->CurrentMission;
+
+	if (mission == Mission::Construction || mission == Mission::Selling)
+		return;
+
+	const auto pType = pBuilding->Type;
+	if (!pType->UndeploysInto || (pType->ConstructionYard && !GameModeOptionsClass::Instance->MCVRedeploy))
+		return;
+
+	auto cell = pBuilding->GetMapCoords();
+	const auto width = pType->GetFoundationWidth();
+	const auto height = pType->GetFoundationHeight(false);
+
+	// Offset of undeployment on large-scale buildings
+	if (width > 2 || height > 2)
+		cell += CellStruct { 1, 1 };
+
+	if (this->BuildingUndeploy_Leave)
+	{
+		const auto pHouse = pBuilding->Owner;
+		const auto pItems = Helpers::Alex::getCellSpreadItems(pBuilding->GetCoords(), 20);
+
+		// Divide the surrounding units into 16 directions and record their costs
+
+		int record[16] = { 0 };
+
+		for (const auto& pItem : pItems)
+		{
+			// Only armed units that are not considered allies will be recorded
+
+			if ((!pHouse || !pHouse->IsAlliedWith(pItem)) && pItem->IsArmed())
+				record[pBuilding->GetDirectionOverObject(pItem).GetValue<4>()] += pItem->GetTechnoType()->Cost;
+		}
+
+		int costs = 0;
+		int dir = 0;
+
+		// Starting from 16, prevent negative numbers
+
+		for (int i = 16; i < 32; ++i)
+		{
+			int newCosts = 0;
+
+			// Assign weights to values in the direction
+
+			// The highest value being 8 times in the positive direction
+
+			// And the lowest value being 0 times in the opposite direction
+
+			// The greater difference between positive direction to both sides, the lower value it is
+
+			for (int j = -7; j < 8; ++j)
+				newCosts += ((8 - Math::abs(j)) * record[(i + j) & 15]);
+
+			// Record the direction with the highest weight
+
+			if (newCosts > costs)
+			{
+				dir = (i - 16);
+				costs = newCosts;
+			}
+		}
+
+		// If there is no threat in the surrounding area, randomly select one side
+
+		if (!costs)
+			dir = ScenarioClass::Instance->Random.RandomRanged(0, 15);
+
+		// Reverse the direction and convert it into radians
+
+		const double radian = -(((dir - 4) / 16.0) * Math::TwoPi);
+
+		// Base on a location about 14 grids away
+
+		cell.X -= static_cast<short>(14 * Math::cos(radian));
+		cell.Y += static_cast<short>(14 * Math::sin(radian));
+
+		// Find a location where the conyard can be deployed
+		const auto newCell = MapClass::Instance->NearByLocation(cell, pType->UndeploysInto->SpeedType, ZoneType::None, pType->UndeploysInto->MovementZone, false, (width + 2), (height + 2), false, false, false, false, CellStruct::Empty, false, false);
+
+		// If it can find a more suitable location, go to the new one
+		if (newCell != CellStruct::Empty)
+
+			cell = newCell;
+	}
+
+	if (const auto pCell = MapClass::Instance->TryGetCellAt(cell))
+		pBuilding->SetArchiveTarget(pCell);
+
+	pBuilding->Sell(1);
 }
 
 // =============================

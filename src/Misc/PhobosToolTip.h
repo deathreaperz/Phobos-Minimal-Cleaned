@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Phobos.h>
-
 #include <string>
 
 struct StripClass;
@@ -9,23 +7,26 @@ class TechnoTypeClass;
 class SuperClass;
 struct BuildType;
 
+class TechnoTypeExtData;
+class SWTypeExtData;
 class PhobosToolTip
 {
 public:
 	static PhobosToolTip Instance;
 
 private:
-	inline int GetBuildTime(TechnoTypeClass* pType) const;
-	inline int GetPower(TechnoTypeClass* pType) const;
+	OPTIONALINLINE int GetBuildTime(TechnoTypeClass* pType) const;
+	OPTIONALINLINE int GetPower(TechnoTypeClass* pType) const;
 	static int TickTimeToSeconds(int tickTime);
 
-public:
-	constexpr FORCEINLINE bool IsEnabled() const
-	{
-		return Phobos::UI::ExtendedToolTips;
-	}
+	OPTIONALINLINE const wchar_t* GetUIDescription(TechnoTypeExtData* pData) const;
+	OPTIONALINLINE const wchar_t* GetUnbuildableUIDescription(TechnoTypeExtData* pData) const;
+	OPTIONALINLINE const wchar_t* GetUIDescription(SWTypeExtData* pData) const;
 
-	constexpr FORCEINLINE const wchar_t* GetBuffer() const
+public:
+	bool IsEnabled() const;
+
+	COMPILETIMEEVAL FORCEDINLINE const wchar_t* GetBuffer() const
 	{
 		return this->TextBuffer.c_str();
 	}

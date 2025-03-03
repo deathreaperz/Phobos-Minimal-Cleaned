@@ -138,9 +138,9 @@ struct ClearAction
 	template <typename T>
 	static void Process()
 	{
-		if constexpr (Clearable<T>)
+		if COMPILETIMEEVAL(Clearable<T>)
 			T::Clear();
-		else if constexpr (HasExtMap<T>)
+		else if COMPILETIMEEVAL(HasExtMap<T>)
 			T::ExtMap.Clear();
 	}
 };
@@ -153,11 +153,11 @@ struct InvalidatePointerAction
 	template <typename T>
 	static void Process(AbstractClass* ptr, bool removed)
 	{
-		if constexpr (HasExtMap<T> && PointerInvalidationSubscribable<T>)
+		if COMPILETIMEEVAL(HasExtMap<T> && PointerInvalidationSubscribable<T>)
 		{
 			T::ExtMap::PointerGotInvalid(ptr, removed);
 		}
-		else if constexpr (PointerInvalidationSubscribable<T>)
+		else if COMPILETIMEEVAL(PointerInvalidationSubscribable<T>)
 		{
 			T::PointerGotInvalid(ptr, removed);
 		}
@@ -171,7 +171,7 @@ struct LoadGlobalsAction
 	template <typename T>
 	static bool Process(IStream* pStm)
 	{
-		if constexpr (GlobalSaveLoadable<T>)
+		if COMPILETIMEEVAL(GlobalSaveLoadable<T>)
 		{
 			PhobosByteStream stm(0);
 			stm.ReadBlockFromStream(pStm);
@@ -193,7 +193,7 @@ struct SaveGlobalsAction
 	template <typename T>
 	static bool Process(IStream* pStm)
 	{
-		if constexpr (GlobalSaveLoadable<T>)
+		if COMPILETIMEEVAL(GlobalSaveLoadable<T>)
 		{
 			PhobosByteStream stm;
 			PhobosStreamWriter writer(stm);
@@ -213,7 +213,7 @@ struct SaveGlobalsAction
 template <typename... RegisteredTypes>
 struct TypeRegistry
 {
-	constexpr __forceinline static void Clear()
+	COMPILETIMEEVAL __forceinline static void Clear()
 	{
 		va_list args;
 		va_start(args, count);
@@ -262,7 +262,7 @@ private:
 
 HRESULT Phobos::SaveGameDataAfter(IStream* pStm)
 {
-	Debug::Log("[Phobos] Finished saving the game\n");
+	Debug::LogInfo("[Phobos] Finished saving the game");
 	return S_OK;
 }
 
@@ -279,18 +279,18 @@ void Phobos::LoadGameDataAfter(IStream* pStm)
 		}
 	}
 
-	Debug::Log("[Phobos] Finished loading the game\n");
+	Debug::LogInfo("[Phobos] Finished loading the game");
 }
 
 #pragma region Hooks
 // Global Pointer Invalidation Hooks
 
 template<typename T>
-FORCEINLINE void Process_InvalidatePtr(AbstractClass* pInvalid, bool const removed)
+FORCEDINLINE void Process_InvalidatePtr(AbstractClass* pInvalid, bool const removed)
 {
-	if constexpr (HasExtMap<T>)
+	if COMPILETIMEEVAL(HasExtMap<T>)
 	{
-		if constexpr (PointerInvalidationIgnorAble<decltype(T::ExtMap)> &&
+		if COMPILETIMEEVAL(PointerInvalidationIgnorAble<decltype(T::ExtMap)> &&
 			PointerInvalidationSubscribable<decltype(T::ExtMap)>)
 		{
 			T::ExtMap.InvalidatePointer(pInvalid, removed);
@@ -338,39 +338,59 @@ DEFINE_HOOK(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	 }
 	 });
 
-	EBolt::Array->for_each([&](EBolt* pThis)
+	SpawnManagerClass::Array->for_each([&](SpawnManagerClass* pThis)
  {
-	 if (removed && pThis->Owner == pInvalid)
+	 if (pThis->Owner && removed)
 	 {
-		 pThis->Owner = nullptr;
+		 for (int i = 0; i < pThis->SpawnedNodes.Count; ++i)
+		 {
+			 if (pThis->SpawnedNodes[i]->Unit == pInvalid)
+			 {
+				 pThis->SpawnedNodes[i]->Unit = nullptr;
+				 pThis->SpawnedNodes[i]->Status = SpawnNodeStatus::Dead;
+			 }
+		 }
 	 }
 	});
+	//EBolt::Array->for_each([&](EBolt* pThis) {
+	//	if (removed && pThis && pThis->Owner == pInvalid) {
+	//		pThis->Owner = nullptr;
+	//	}
+	//});
+
+	//PrismForwarding::Array.for_each([&](auto& pThis) {
+	//	if (pThis) {
+	//		pThis->InvalidatePointer(pInvalid, removed);
+	//	}
+	//});
 	//Process_InvalidatePtr<TActionExt>(pInvalid, removed);
 	return 0;
 }
 
-#define LogPool(s) Debug::Log("%s MemoryPool size %d\n", _STR_(s) , ##s::Instance.Pool.size());
+#define LogPool(s) Debug::LogInfo("{} MemoryPool size {}", _STR_(s) , ##s::Instance.Pool.size());
 
 DEFINE_HOOK(0x48CFC6, Game_Exit_RecordPoolSize, 0x6)
 {
 	LogPool(TechnoExtContainer)
 		LogPool(BuildingExtContainer)
 		LogPool(InfantryExtContainer)
-		Debug::Log("%s MemoryPool size %d\n", _STR_(s), FakeAnimClass::Pool.size());
+		Debug::LogInfo("FakeAnimClass MemoryPool size {}", FakeAnimClass::Pool.size());
 	LogPool(BulletExtContainer)
 		LogPool(ParticleExtContainer)
 		LogPool(ParticleSystemExtContainer)
 		LogPool(TeamExtContainer)
 		LogPool(VoxelAnimExtContainer)
 		LogPool(WaveExtContainer)
+		LogPool(TemporalExtContainer)
 		return 0x0;
 }
 
 // Clear static data from respective classes
 DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 {
+	PrismForwarding::Array.clear();
 	MouseClassExt::ClearCameos();
-
+	TemporalExtContainer::Instance.Clear();
 	TechnoExtContainer::Instance.Clear();
 	FakeAnimClass::Clear();
 	BulletExtContainer::Instance.Clear();
@@ -438,6 +458,7 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 		VoxelAnimExtContainer::Instance.Pool.reserve(1000);
 		WaveExtContainer::Instance.Pool.reserve(1000);
 		SWFirerClass::Array.reserve(1000);
+		TemporalExtContainer::Instance.Pool.reserve(100);
 	}
 
 	return 0;
@@ -450,25 +471,25 @@ DEFINE_HOOK(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 // Considering how DTA gets the scenario name, I decided to save it after Rules - secsome
 
 template<typename T>
-FORCEINLINE bool Process_Load(IStream* pStm)
+FORCEDINLINE bool Process_Load(IStream* pStm)
 {
 	PhobosByteStream stm(0);
 	stm.ReadBlockFromStream(pStm);
 	PhobosStreamReader reader(stm);
 
-	if constexpr (HasExtMap<T>)
+	if COMPILETIMEEVAL(HasExtMap<T>)
 		return T::ExtMap.LoadGlobals(reader) && reader.ExpectEndOfBlock();
 	else
 		return T::LoadGlobals(reader) && reader.ExpectEndOfBlock();
 }
 
 template<typename T>
-FORCEINLINE bool Process_Save(IStream* pStm)
+FORCEDINLINE bool Process_Save(IStream* pStm)
 {
 	PhobosByteStream stm;
 	PhobosStreamWriter writer(stm);
 
-	if constexpr (HasExtMap<T>)
+	if COMPILETIMEEVAL(HasExtMap<T>)
 		return T::ExtMap.SaveGlobals(writer) && stm.WriteBlockToStream(pStm);
 	else
 		return T::SaveGlobals(writer) && stm.WriteBlockToStream(pStm);
@@ -476,7 +497,7 @@ FORCEINLINE bool Process_Save(IStream* pStm)
 
 //DEFINE_HOOK(0x67D32C, SaveGame_Phobos_Global, 0x5)
 //{
-//	Debug::Log("Saving global Phobos data\n");
+//	Debug::LogInfo("Saving global Phobos data");
 //	GET(IStream*, pStm, ESI);
 //
 //	bool ret =
@@ -505,14 +526,14 @@ FORCEINLINE bool Process_Save(IStream* pStm)
 //		;
 //
 //	if (!ret)
-//		Debug::Log("[Phobos] Global SaveGame Failed !\n");
+//		Debug::LogInfo("[Phobos] Global SaveGame Failed !");
 //
 //	return 0;
 //}
 //
 DEFINE_HOOK(0x67E826, LoadGame_Phobos_Global_Early, 0x6)
 {
-	//	Debug::Log("Loading global Phobos data\n");
+	//	Debug::LogInfo("Loading global Phobos data");
 	//	GET(IStream*, pStm, ESI);
 	Phobos::Otamaa::DoingLoadGame = true;
 	//
@@ -542,7 +563,7 @@ DEFINE_HOOK(0x67E826, LoadGame_Phobos_Global_Early, 0x6)
 	//		;
 	//
 	//	if (!ret)
-	//		Debug::Log("[Phobos] Global LoadGame Failed !\n");
+	//		Debug::LogInfo("[Phobos] Global LoadGame Failed !");
 	//
 	return 0;
 }
@@ -565,13 +586,13 @@ DEFINE_HOOK(0x67D1B4, SaveGame_Phobos_AfterEverything, 0x6)
 
 DEFINE_HOOK(0x67D300, SaveGame_Start, 5)
 {
-	Debug::Log("About to save the game\n");
+	Debug::LogInfo("About to save the game");
 	return 0;
 }
 
 DEFINE_HOOK(0x67E730, LoadGame_Start, 5)
 {
-	Debug::Log("About to load the game\n");
+	Debug::LogInfo("About to load the game");
 	return 0;
 }
 
@@ -579,7 +600,19 @@ DEFINE_HOOK(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 {
 	GET(IStream*, pStm, ESI);
 
+	int value;
+	ULONG out = 0;
+
+	if (!SUCCEEDED(pStm->Read(&value, sizeof(value), &out)))
+	{
+		Debug::LogInfo("[Phobos] Global LoadGame Failed !");
+		return 0x0;
+	}
+
+	VoxClass::EVAIndex = value;
+
 	bool ret =
+		Process_Load<FakeAnimClass>(pStm) &&
 		Process_Load<PaletteManager>(pStm) &&
 		Process_Load<CursorTypeClass>(pStm) &&
 		Process_Load<MouseClassExt>(pStm) &&
@@ -616,12 +649,16 @@ DEFINE_HOOK(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 		;
 
 	if (!ret)
-		Debug::Log("[Phobos] Global LoadGame Failed !\n");
+		Debug::LogInfo("[Phobos] Global LoadGame Failed !");
 
 	// add more variable that need to be reset after loading an saved games
 	if (SessionClass::Instance->GameMode == GameMode::Campaign)
 	{
-		Unsorted::MuteSWLaunches = false; // this will also make radar unusable
+		if (std::exchange(Unsorted::MuteSWLaunches(), false))
+		{// this will also make radar unusable
+			auto pSide = SideClass::Array->operator[](HouseClass::CurrentPlayer()->Type->SideIndex);
+			VoxClass::EVAIndex = SideExtContainer::Instance.Find(pSide)->EVAIndex;
+		}
 		// this variable need to be reset , especially after you play as an observer on skirmish
 		// then load an save game of campaign mode , it will shutoff the radar and EVA's
 	}
@@ -637,7 +674,18 @@ DEFINE_HOOK(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 	{
 		GET(IStream*, pStm, ESI);
 
+		ULONG out = 0;
+		const int value = VoxClass::EVAIndex();
+
+		if (!SUCCEEDED(pStm->Write(&value, sizeof(value), &out)))
+		{
+			Debug::LogInfo("[Phobos] Global SaveGame Failed !");
+			R->EAX<HRESULT>(E_FAIL);
+			return 0x0;
+		}
+
 		bool ret =
+			Process_Save<FakeAnimClass>(pStm) &&
 			Process_Save<PaletteManager>(pStm) &&
 			Process_Save<CursorTypeClass>(pStm) &&
 			Process_Save<MouseClassExt>(pStm) &&
@@ -674,7 +722,7 @@ DEFINE_HOOK(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 			;
 
 		if (!ret)
-			Debug::Log("[Phobos] Global SaveGame Failed !\n");
+			Debug::LogInfo("[Phobos] Global SaveGame Failed !");
 
 		R->EAX<HRESULT>(ret ? S_OK : E_FAIL);
 	}

@@ -9,7 +9,7 @@
 #include <Utilities/Macro.h>
 #include <Utilities/GeneralUtils.h>
 
-static constexpr void FORCEINLINE MakeCallerRelative(unsigned int& caller)
+static COMPILETIMEEVAL void FORCEDINLINE MakeCallerRelative(unsigned int& caller)
 {
 	// B for Bobos
 	if (caller > Phobos::Otamaa::PhobosBaseAddress && caller < (Phobos::Otamaa::PhobosBaseAddress + 0x100000))
@@ -101,7 +101,7 @@ void SyncLogger::WriteSyncLog(const char* logFilename)
 
 	if (pLogFile)
 	{
-		Debug::Log("Writing to sync log file '%s'.\n", logFilename);
+		Debug::LogInfo("Writing to sync log file '{}'.", logFilename);
 
 		fprintf(pLogFile, "\nPhobos synchronization log:\n\n");
 
@@ -117,7 +117,7 @@ void SyncLogger::WriteSyncLog(const char* logFilename)
 	}
 	else
 	{
-		Debug::Log("Failed to open sync log file '%s'.\n", logFilename);
+		Debug::LogInfo("Failed to open sync log file '{}'.", logFilename);
 	}
 }
 

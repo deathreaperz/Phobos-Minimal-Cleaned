@@ -18,8 +18,7 @@ public:
 		, Delay { 0 }
 		, CanDive { false }
 
-	{
-	}
+	{ }
 
 	AircraftDive(int nSpeed, int nDataDelay) :
 		Speed { nSpeed }
@@ -28,8 +27,7 @@ public:
 		, Delay { 0 }
 		, CanDive { false }
 
-	{
-	}
+	{ }
 
 	~AircraftDive() = default;
 

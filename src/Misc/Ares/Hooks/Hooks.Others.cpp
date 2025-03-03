@@ -40,6 +40,7 @@
 #include <New/Type/ArmorTypeClass.h>
 
 #include <Misc/PhobosGlobal.h>
+#include <Misc/DamageArea.h>
 
 #include <WWKeyboardClass.h>
 #include <MPGameModeClass.h>
@@ -98,18 +99,18 @@ DEFINE_HOOK(0x4CA0E3, FactoryClass_AbandonProduction_Invalidate, 0x6)
 
 DEFINE_JUMP(LJMP, 0x565215, 0x56522D);
 
-FORCEINLINE int cell_Distance_Squared(CoordStruct& our_coord, CoordStruct& their_coord)
+FORCEDINLINE int cell_Distance_Squared(CoordStruct& our_coord, CoordStruct& their_coord)
 {
-	//int our_cell_x = our_coord.X / Unsorted::LeptonsPerCell;
-	//int their_cell_x = their_coord.X / Unsorted::LeptonsPerCell;
-	//int our_cell_y = our_coord.Y / Unsorted::LeptonsPerCell;
-	//int their_cell_y = their_coord.Y / Unsorted::LeptonsPerCell;
+	int our_cell_x = our_coord.X / Unsorted::LeptonsPerCell;
+	int their_cell_x = their_coord.X / Unsorted::LeptonsPerCell;
+	int our_cell_y = our_coord.Y / Unsorted::LeptonsPerCell;
+	int their_cell_y = their_coord.Y / Unsorted::LeptonsPerCell;
 
-	//int x_distance = our_cell_x - their_cell_x;
-	//int y_distance = our_cell_y - their_cell_y;
-	//return x_distance * x_distance + y_distance * y_distance;
+	int x_distance = our_cell_x - their_cell_x;
+	int y_distance = our_cell_y - their_cell_y;
+	return x_distance * x_distance + y_distance * y_distance;
 
-	return int(Point2D { our_coord.X - their_coord.X, our_coord.Y - their_coord.Y }.Length());
+	//return int(Point2D { our_coord.X - their_coord.X, our_coord.Y - their_coord.Y }.Length());
 }
 
 DEFINE_HOOK(0x5F6500, AbstractClass_Distance2DSquared_1, 8)
@@ -318,7 +319,7 @@ DEFINE_HOOK(0x551A30, LayerClass_YSortReorder, 0x5)
 //	GET(ObjectClass*, pThis, ECX);
 //
 //	if (!pThis)
-//		Debug::FatalError("ObjectClass UnInit called from %x\n",R->Stack<DWORD>(0x0));
+//		Debug::FatalError("ObjectClass UnInit called from %x",R->Stack<DWORD>(0x0));
 //
 //	return 0x0;
 //}
@@ -329,7 +330,7 @@ static void __fastcall AnnounceInvalidatePointerWrapper(ObjectClass* pObject, bo
 		pObject->AnnounceExpiredPointer(removed);
 }
 
-//DEFINE_JUMP(CALL , 0x5F6616, MiscTools::to_DWORD(AnnounceInvalidatePointerWrapper))
+DEFINE_JUMP(CALL, 0x5F6616, MiscTools::to_DWORD(&AnnounceInvalidatePointerWrapper))
 // DEFINE_HOOK(0x5F6612, ObjectClass_UnInit_SkipInvalidation, 0x9)
 // {
 // 	GET(ObjectClass*, pThis, ESI);
@@ -396,7 +397,7 @@ DEFINE_HOOK(0x62A2F8, ParasiteClass_PointerGotInvalid, 0x6)
 
 	if (result == CoordStruct::Empty || CellClass::Coord2Cell(result) == CellStruct::Empty)
 	{
-		Debug::Log("Parasite[%x : %s] With Invalid Location ! , Removing ! \n", Parasite, Parasite->Owner->get_ID());
+		Debug::LogInfo("Parasite[{} : {}] With Invalid Location ! , Removing ! ", (void*)Parasite, Parasite->Owner->get_ID());
 		TechnoExtData::HandleRemove(Parasite->Owner, nullptr, false, false);
 		Parasite->Victim = nullptr;
 		return 0x62A47B; //pop the registers
@@ -405,13 +406,44 @@ DEFINE_HOOK(0x62A2F8, ParasiteClass_PointerGotInvalid, 0x6)
 	return 0;
 }
 
-// bugfix #187: Westwood idiocy
-DEFINE_HOOK(0x5F6960, ObjectClass_Getcell, 0xA)
+struct FakeObjectClass : public ObjectClass
 {
-	GET(ObjectClass*, pThis, ECX);
-	R->EAX(MapClass::Instance->GetCellAt(pThis->Location));
-	return 0x5F69B6;
-}
+public:
+
+	CellClass* _GetCell() const
+	{
+		return MapClass::Instance->GetCellAt(this->Location);
+	}
+};
+// bugfix #187: Westwood idiocy
+// DEFINE_HOOK(0x5F6960, ObjectClass_Getcell, 0xA)
+// {
+// 	GET(ObjectClass*, pThis, ECX);
+// 	R->EAX(MapClass::Instance->GetCellAt(pThis->Location));
+// 	return 0x5F69B6;
+// }
+
+DEFINE_JUMP(VTABLE, 0x7E2460, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7E3510, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7E3C8C, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7E4078, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7E48A0, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7E8E50, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7EB214, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7EC414, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7EDE7C, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7EF21C, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7EF590, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7EFB10, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7EFD58, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F06C4, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F34B8, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F4B1C, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F53E8, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F5E2C, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F64D4, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F6864, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
+DEFINE_JUMP(VTABLE, 0x7F6DB0, MiscTools::to_DWORD(&FakeObjectClass::_GetCell));
 
 //Handle_Static_Messages_LoopingMovie
 DEFINE_JUMP(LJMP, 0x615BD3, 0x615BE0);
@@ -597,13 +629,6 @@ DEFINE_HOOK(0x7BB445, XSurface_20, 0x6)
 	return R->EAX<void*>() ? 0x0 : 0x7BB90C;
 }
 
-// DEFINE_HOOK(0x5FDDA4, OverlayClass_GetTiberiumType_NotReallyTiberiumLog, 0x6)
-// {
-// 	GET(OverlayTypeClass*, pThis, EAX);
-// 	Debug::Log("Overlay %s not really tiberium\n", pThis->ID);
-// 	return 0x5FDDC1;
-// }
-
 DEFINE_HOOK(0x716D98, TechnoTypeClass_Load_Palette, 0x5)
 {
 	GET(TechnoTypeClass*, pThis, EDI);
@@ -612,18 +637,16 @@ DEFINE_HOOK(0x716D98, TechnoTypeClass_Load_Palette, 0x5)
 	return pThis->PaletteFile[0] == 0 ? 0x716DAA : 0x716D9D;
 }
 
+#include <Ext/Cell/Body.h>
+
 // this was only a leftover stub from TS. reimplemented
 // using the same mechanism.
 DEFINE_HOOK(0x489270, CellChainReact, 5)
 {
 	GET(CellStruct*, cell, ECX);
 
-	const auto pCell = MapClass::Instance->GetCellAt(cell);
-
-	if (pCell->OverlayTypeIndex <= 0)
-		return 0x0;
-
-	TiberiumClass* pTib = TiberiumClass::Array->GetItemOrDefault(pCell->GetContainedTiberiumIndex());
+	const auto pCell = (FakeCellClass*)MapClass::Instance->GetCellAt(cell);
+	TiberiumClass* pTib = TiberiumClass::Array->GetItemOrDefault(pCell->_GetTiberiumType());
 
 	if (!pTib)
 		return 0x0;
@@ -658,7 +681,7 @@ DEFINE_HOOK(0x489270, CellChainReact, 5)
 			}
 
 			// damage the area, without affecting tiberium
-			MapClass::DamageArea(crd, damage, nullptr, pWarhead, false, nullptr);
+			DamageArea::Apply(&crd, damage, nullptr, pWarhead, false, nullptr);
 		}
 
 		// spawn some animation on the neighbour cells
@@ -666,9 +689,9 @@ DEFINE_HOOK(0x489270, CellChainReact, 5)
 		{
 			for (int i = 0; i < 8; ++i)
 			{
-				auto pNeighbour = pCell->GetNeighbourCell((FacingType)i);
+				auto pNeighbour = (FakeCellClass*)pCell->GetNeighbourCell((FacingType)i);
 
-				if (pNeighbour->GetContainedTiberiumIndex() != -1 && pNeighbour->OverlayData > 2u)
+				if (pNeighbour->_GetTiberiumType() != -1 && pNeighbour->OverlayData > 2u)
 				{
 					if (ScenarioClass::Instance->Random.RandomFromMax(99) < RulesExtData::Instance()->ChainReact_SpreadChance)
 					{
@@ -707,17 +730,6 @@ DEFINE_HOOK(0x424EC5, AnimClass_ReInit_TiberiumChainReaction_Damage, 6)
 	R->EDX(pExt->GetExplosionDamage());
 
 	return 0x424ECB;
-}
-
-DEFINE_HOOK(0x71C5D2, TerrainClass_Ignite_IsFlammable, 6)
-{
-	GET(TerrainClass*, pThis, EDI);
-
-	enum { Ignite = 0x71C5F3, CantBurn = 0x71C69D };
-
-	// prevent objects from burning that aren't flammable also
-	return (pThis->Type->SpawnsTiberium || !pThis->Type->IsFlammable)
-		? CantBurn : Ignite;
 }
 
 DEFINE_HOOK(0x6AB8BB, SelectClass_ProcessInput_BuildTime, 6)
@@ -1149,25 +1161,6 @@ DEFINE_HOOK(0x4A76ED, DiskLaserClass_Update_Anim, 7)
 //InitGame_Delay
 DEFINE_JUMP(LJMP, 0x52CA37, 0x52CA65)
 
-DEFINE_HOOK(0x5f5add, ObjectClass_SpawnParachuted_Animation, 6)
-{
-	GET(ObjectClass*, pThis, ESI);
-
-	if (const auto pTechno = flag_cast_to<TechnoClass*>(pThis))
-	{
-		auto pType = pTechno->GetTechnoType();
-		auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-		if (pTypeExt->IsBomb)
-			pThis->IsABomb = true;
-
-		R->EDX(pTypeExt->ParachuteAnim ? pTypeExt->ParachuteAnim : HouseExtData::GetParachuteAnim(pTechno->Owner));
-		return 0x5F5AE3;
-	}
-
-	return 0x0;
-}
-
 DEFINE_STRONG_HOOK(0x6BD7D5, Expand_MIX_Reorg, 7)
 {
 	StaticVars::aresMIX.reset(GameCreate<MixFileClass>("ares.mix"));
@@ -1190,7 +1183,7 @@ DEFINE_HOOK(0x5301AC, InitBootstrapMixfiles_CustomMixes_Preload, 0x5)
 		for (auto& preloadMix : SpawnerMain::GetGameConfigs()->PreloadMixes)
 		{
 			SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(preloadMix.c_str()));
-			Debug::Log("Loading Preloaded Mix Name : %s \n", preloadMix.c_str());
+			Debug::LogInfo("Loading Preloaded Mix Name : {} ", preloadMix.c_str());
 		}
 	}
 
@@ -1204,7 +1197,7 @@ DEFINE_HOOK(0x53044A, InitBootstrapMixfiles_CustomMixes_Postload, 0x6)
 		for (auto& postloadMix : SpawnerMain::GetGameConfigs()->PostloadMixes)
 		{
 			SpawnerMain::LoadedMixFiles.push_back(GameCreate<MixFileClass>(postloadMix.c_str()));
-			Debug::Log("Loading Postload Mix Name : %s \n", postloadMix.c_str());
+			Debug::LogInfo("Loading Postload Mix Name : {} ", postloadMix.c_str());
 		}
 	}
 
@@ -1269,7 +1262,6 @@ DEFINE_HOOK(0x5facdf, Options_LoadFromINI, 5)
 	Phobos::Config::Read();
 	return 0x0;
 }
-
 DEFINE_HOOK(0x6BC0CD, _LoadRA2MD, 5)
 {
 	StaticVars::LoadGlobalsConfig();

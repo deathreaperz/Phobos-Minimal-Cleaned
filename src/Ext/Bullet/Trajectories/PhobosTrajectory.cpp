@@ -9,6 +9,7 @@
 
 #include "BombardTrajectory.h"
 #include "StraightTrajectory.h"
+#include "StraightTrajectoryVarianC.h"
 #include "ArtilleryTrajectory.h"
 #include "BounceTrajectory.h"
 #include "MeteorTrajectory.h"
@@ -18,6 +19,7 @@
 #include "ArcingTrajectory.h"
 #include "EngraveTrajectory.h"
 #include "DisperseTrajectory.h"
+#include "TracingTrajectory.h"
 
 #define Make_traj(enum_type , type) \
 case TrajectoryFlag::##enum_type##: \
@@ -36,6 +38,9 @@ bool PhobosTrajectoryType::Read(CCINIClass* const pINI, const char* pSection)
 	INI_EX exINI { pINI };
 	this->DetonationDistance.Read(exINI, pSection, "Trajectory.DetonationDistance");
 
+	this->Trajectory_Speed.Read(exINI, pSection, "Trajectory.Speed");
+	this->Trajectory_Speed = MaxImpl(0.001, this->Trajectory_Speed);
+
 	return true;
 }
 
@@ -43,6 +48,7 @@ bool PhobosTrajectoryType::Load(PhobosStreamReader& Stm, bool RegisterForChange)
 {
 	return 	Stm
 		.Process(this->DetonationDistance)
+		.Process(this->Trajectory_Speed)
 		.Success()
 		;
 }
@@ -51,6 +57,7 @@ bool PhobosTrajectoryType::Save(PhobosStreamWriter& Stm) const
 {
 	return 	Stm
 		.Process(this->DetonationDistance)
+		.Process(this->Trajectory_Speed)
 		.Success()
 		;
 }
@@ -72,7 +79,7 @@ bool PhobosTrajectoryType::UpdateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 			Make_DefaultTrajType(Spiral)
 			Make_DefaultTrajType(Wave)
 			Make_DefaultTrajType(Arcing)
-
+			Make_DefaultTrajType(Tracing)
 	default:
 		pType.release();
 		return false;
@@ -97,19 +104,21 @@ std::array<const char*, (size_t)TrajectoryFlag::Count> PhobosTrajectoryType::Tra
 	{"Disperse" },
 	{"Engrave" },
 	{"Parabola" },
+	{"Tracing" },
  }
 };
 
 bool PhobosTrajectory::CanSnap(std::unique_ptr<PhobosTrajectory>& traj)
 {
-	constexpr TrajectoryFlag flags[] = {
+	COMPILETIMEEVAL TrajectoryFlag flags[] = {
 		TrajectoryFlag::Straight,
 		TrajectoryFlag::StraightVariantB,
 		TrajectoryFlag::Bombard,
 		TrajectoryFlag::StraightVariantC,
 		TrajectoryFlag::Disperse,
 		TrajectoryFlag::Engrave,
-		TrajectoryFlag::Parabola
+		TrajectoryFlag::Parabola,
+		TrajectoryFlag::Tracing
 	};
 
 	for (auto flag : flags)
@@ -125,7 +134,7 @@ bool PhobosTrajectory::CanSnap(std::unique_ptr<PhobosTrajectory>& traj)
 
 bool PhobosTrajectory::BlockDrawTrail(std::unique_ptr<PhobosTrajectory>& traj)
 {
-	constexpr TrajectoryFlag flags[] = {
+	COMPILETIMEEVAL TrajectoryFlag flags[] = {
 		TrajectoryFlag::StraightVariantC,
 		TrajectoryFlag::Disperse,
 		TrajectoryFlag::Engrave
@@ -147,10 +156,11 @@ bool PhobosTrajectory::IgnoreAircraftROT0(std::unique_ptr<PhobosTrajectory>& tra
 	if (!traj)
 		return false;
 
-	constexpr TrajectoryFlag flags[] = {
+	COMPILETIMEEVAL TrajectoryFlag flags[] = {
 		TrajectoryFlag::StraightVariantC,
 		TrajectoryFlag::Parabola,
 		TrajectoryFlag::Disperse,
+		TrajectoryFlag::Tracing,
 	};
 
 	for (auto flag : flags)
@@ -193,11 +203,11 @@ void PhobosTrajectoryType::CreateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 		if (PhobosTrajectoryType::UpdateType(pType, nFlag))
 		{
 			if (!pType->Read(pINI, pSection))
-				Debug::Log("Failed When Reading Projectile[%s] With TrajectoryType %s ! \n", pSection, Phobos::readBuffer);
+				Debug::LogInfo("Failed When Reading Projectile[{}] With TrajectoryType {} ! ", pSection, Phobos::readBuffer);
 
 			if (pType->Flag == TrajectoryFlag::Bounce)
 			{
-				Debug::Log("BounceTrajectory is Unfinished ! \n");
+				Debug::LogInfo("BounceTrajectory is Unfinished ! ");
 				//const auto pBounceType = reinterpret_cast<BounceTrajectoryType*>(pType.get());
 				//if (!(pBounceType->BounceAmount > 0))
 				//{
@@ -261,28 +271,28 @@ bool PhobosTrajectoryType::TrajectoryValidation(BulletTypeClass* pAttached)
 
 		if (pAttached->Arcing)
 		{
-			Debug::Log("Bullet[%s] has Trajectory[%s] set together with Arcing. Arcing has been set to false.\n", pSection, pTrjType);
+			Debug::LogInfo("Bullet[{}] has Trajectory[{}] set together with Arcing. Arcing has been set to false.", pSection, pTrjType);
 			pAttached->Arcing = false;
 			ret = true;
 		}
 
 		if (pAttached->Inviso)
 		{
-			Debug::Log("Bullet[%s] has Trajectory[%s] set together with Inviso. Inviso has been set to false.\n", pSection, pTrjType);
+			Debug::LogInfo("Bullet[{}] has Trajectory[{}] set together with Inviso. Inviso has been set to false.", pSection, pTrjType);
 			pAttached->Inviso = false;
 			ret = true;
 		}
 
 		if (pAttached->ROT)
 		{
-			Debug::Log("Bullet[%s] has Trajectory[%s] set together with ROT value other than 0. ROT has been set to 0.\n", pSection, pTrjType);
+			Debug::LogInfo("Bullet[{}] has Trajectory[{}] set together with ROT value other than 0. ROT has been set to 0.", pSection, pTrjType);
 			pAttached->ROT = 0;
 			ret = true;
 		}
 
 		if (pAttached->Vertical)
 		{
-			Debug::Log("Bullet[%s] has Trajectory[%s] set together with Vertical. Vertical has been set to false.\n", pSection, pTrjType);
+			Debug::LogInfo("Bullet[{}] has Trajectory[{}] set together with Vertical. Vertical has been set to false.", pSection, pTrjType);
 			pAttached->Vertical = false;
 			ret = true;
 		}
@@ -310,7 +320,7 @@ double PhobosTrajectory::GetTrajectorySpeed() const
 			return result;
 	}
 
-	return 100.0;
+	return this->GetTrajectoryType()->Trajectory_Speed;
 }
 
 bool PhobosTrajectory::Load(PhobosStreamReader& Stm, bool RegisterForChange)
@@ -350,6 +360,7 @@ bool PhobosTrajectory::UpdateType(BulletClass* pBullet, std::unique_ptr<PhobosTr
 			Make_traj(Vertical, VerticalTrajectory)
 			Make_traj(Wave, WaveTrajectory)
 			Make_traj(Arcing, ArcingTrajectory)
+			Make_traj(Tracing, TracingTrajectory)
 	default:
 		pTraj.release();
 		return false;
@@ -398,6 +409,7 @@ void PhobosTrajectory::ProcessFromStream(PhobosStreamReader& Stm, std::unique_pt
 				Make_DefaultTraj(Vertical, VerticalTrajectory)
 				Make_DefaultTraj(Wave, WaveTrajectory)
 				Make_DefaultTraj(Arcing, ArcingTrajectory)
+				Make_DefaultTraj(Tracing, TracingTrajectory)
 		default:
 			pTraj.release();
 			return;
@@ -428,7 +440,7 @@ DWORD PhobosTrajectory::OnAITargetCoordCheck(BulletClass* pBullet, CoordStruct& 
 		switch (pTraj->OnAITargetCoordCheck(coords))
 #else
 		const auto result = pTraj->OnAITargetCoordCheck(coords);
-		Debug::Log(__FUNCTION__" Bullet[%s - %p] with Trajectory[%d] result [%s]\n", pBullet->get_ID(), pBullet, TrajectoryTypeToSrings[(int)pTraj->Flag], EnumFunctions::TrajectoryCheckReturnType_to_strings[(int)result]);
+		Debug::LogInfo(__FUNCTION__" Bullet[{} - {}] with Trajectory[{}] result [{}]", pBullet->get_ID(), pBullet, TrajectoryTypeToSrings[(int)pTraj->Flag], EnumFunctions::TrajectoryCheckReturnType_to_strings[(int)result]);
 		switch (result)
 #endif
 		{
@@ -456,7 +468,7 @@ DWORD PhobosTrajectory::OnAITechnoCheck(BulletClass* pBullet, TechnoClass* pTech
 		switch (pTraj->OnAITechnoCheck(pTechno))
 #else
 		const auto result = pTraj->OnAITechnoCheck(pTechno);
-		Debug::Log(__FUNCTION__" Bullet[%s - %p] with Trajectory[%d] result [%s]\n", pBullet->get_ID(), pBullet, TrajectoryTypeToSrings[(int)pTraj->Flag], EnumFunctions::TrajectoryCheckReturnType_to_strings[(int)result]);
+		Debug::LogInfo(__FUNCTION__" Bullet[{} - {}] with Trajectory[{}] result [{}]", pBullet->get_ID(), pBullet, TrajectoryTypeToSrings[(int)pTraj->Flag], EnumFunctions::TrajectoryCheckReturnType_to_strings[(int)result]);
 		switch (result)
 #endif
 		{

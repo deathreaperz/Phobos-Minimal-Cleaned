@@ -28,7 +28,7 @@ const wchar_t* RevealMapCommandClass::GetUIDescription() const
 }
 
 #include <Misc/MapRevealer.h>
-#include <Misc/Ares/Hooks/AresNetEvent.h>
+#include <Ext/Event/Body.h>
 
 static std::vector<std::vector<TechnoClass*>> DumpedTechno;
 void NOINLINE ClearDumped()
@@ -55,21 +55,18 @@ void NOINLINE DumpDumped()
 {
 	for (size_t i = 0; i < DumpedTechno.size(); ++i)
 	{
-		Debug::Log("Dumping Techno  For[%s]\n", HouseClass::Array->Items[i]->Type->ID);
+		Debug::LogInfo("Dumping Techno  For[{}]", HouseClass::Array->Items[i]->Type->ID);
 		for (auto const& data : DumpedTechno[i])
 		{
-			Debug::Log("Techno [%s]\n", data->get_ID());
+			Debug::LogInfo("Techno [{}]", data->get_ID());
 		}
 	}
 }
 
 void RevealMapCommandClass::Execute(WWKey eInput) const
 {
-	if (this->CheckDebugDeactivated())
-		return;
-
 	const auto pPlayer = HouseClass::CurrentPlayer();
-	if (!Phobos::Otamaa::IsAdmin || !pPlayer)
+	if (!pPlayer)
 		return;
 
 	SW_Reveal::RevealMap(pPlayer->GetBaseCenter(), -1.0f, 0, pPlayer);

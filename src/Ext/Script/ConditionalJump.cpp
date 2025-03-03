@@ -23,18 +23,18 @@ void ScriptExtData::ConditionalJumpIfTrue(TeamClass* pTeam, int newScriptLine = 
 
 	if (pTeamData->ConditionalJump_Evaluation)
 	{
-		const auto& [prevAct, prevArgs] = ScriptExtData::GetSpecificAction(pScript, scriptArgument - 1);
+		//const auto&[prevAct , prevArgs] = ScriptExtData::GetSpecificAction(pScript, scriptArgument - 1 );
 
-		Debug::Log("DEBUG: [%s] [%s] %d = %d,%d - Conditional Jump was a success! - New Line: %d = %d,%d\n",
-		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
-		curAct,
-		curArgs,
-		scriptArgument - 1,
-		prevAct,
-		prevArgs
-		);
+		//Debug::LogInfo("DEBUG: [{}] [{}] {} = {},{} - Conditional Jump was a success! - New Line: {} = {},{}",
+		//pTeam->Type->ID,
+		//pScript->Type->ID,
+		//pScript->CurrentMission,
+		//(int)curAct,
+		//(int)curArgs,
+		//scriptArgument - 1,
+		//(int)prevAct,
+		//(int)prevArgs
+		//);
 
 		// Start conditional jump!
 		// This is magic: for example, for jumping into line 0 of the script list you have to point to the "-1" line so in the next AI iteration the current line will be increased by 1 and then it will point to the desired line 0
@@ -66,18 +66,18 @@ void ScriptExtData::ConditionalJumpIfFalse(TeamClass* pTeam, int newScriptLine =
 
 	if (!pTeamData->ConditionalJump_Evaluation)
 	{
-		const auto& [prevAct, prevArgs] = ScriptExtData::GetSpecificAction(pScript, scriptArgument - 1);
+		//const auto&[prevAct , prevArgs] = ScriptExtData::GetSpecificAction(pScript, scriptArgument - 1 );
 
-		Debug::Log("DEBUG: [%s] [%s] %d = %d,%d - Conditional Jump was a success! - New Line: %d = %d,%d\n",
-		pTeam->Type->ID,
-		pScript->Type->ID,
-		pScript->CurrentMission,
-		curAct,
-		curArgs,
-		scriptArgument - 1,
-		prevAct,
-		prevArgs
-		);
+		//Debug::LogInfo("DEBUG: [{}] [{}] {} = {},{} - Conditional Jump was a success! - New Line: {} = {},{}",
+		//pTeam->Type->ID,
+		//pScript->Type->ID,
+		//pScript->CurrentMission,
+		//(int)curAct,
+		//curArgs,
+		//scriptArgument - 1,
+		//(int)prevAct,
+		//prevArgs
+		//);
 
 		// Start conditional jump!
 		// This is magic: for example, for jumping into line 0 of the script list you have to point to the "-1" line so in the next AI iteration the current line will be increased by 1 and then it will point to the desired line 0

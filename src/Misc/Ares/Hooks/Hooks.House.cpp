@@ -18,6 +18,7 @@
 #include <Ext/VoxelAnim/Body.h>
 #include <Ext/HouseType/Body.h>
 #include <Ext/Side/Body.h>
+#include <Ext/Scenario/Body.h>
 
 #include <New/Type/GenericPrerequisite.h>
 
@@ -27,13 +28,13 @@
 
 #include <InfantryClass.h>
 
-static constexpr int ObserverBackgroundWidth = 121;
-static constexpr int ObserverBackgroundHeight = 96;
+static COMPILETIMEEVAL int ObserverBackgroundWidth = 121;
+static COMPILETIMEEVAL int ObserverBackgroundHeight = 96;
 
-static constexpr int ObserverFlagPCXX = 70;
-static constexpr int ObserverFlagPCXY = 70;
-static constexpr int ObserverFlagPCXWidth = 45;
-static constexpr int ObserverFlagPCXHeight = 21;
+static COMPILETIMEEVAL int ObserverFlagPCXX = 70;
+static COMPILETIMEEVAL int ObserverFlagPCXY = 70;
+static COMPILETIMEEVAL int ObserverFlagPCXWidth = 45;
+static COMPILETIMEEVAL int ObserverFlagPCXHeight = 21;
 
 DEFINE_HOOK(0x6AA0CA, StripClass_Draw_DrawObserverBackground, 6)
 {
@@ -108,7 +109,7 @@ DEFINE_HOOK(0x4E3560, Game_GetFlagSurface, 5)
 	//GET_STACK(DWORD, caller, 0x0);
 
 	//if (Phobos::Otamaa::IsAdmin)
-	//	Debug::Log(__FUNCTION__" Called From [0x%x] with idx [%d]\n", caller, n);
+	//	Debug::LogInfo(__FUNCTION__" Called From [0x%x] with idx [%d]", caller, n);
 
 	if (n == -2)
 	{
@@ -335,7 +336,7 @@ DEFINE_HOOK(0x508D32, HouseClass_UpdatePower_LocalDrain1, 5)
 
 			// use the sign to select min or max.
 			// 0 means no change (maximum of 0 and a positive value)
-			auto limit = [](int value, int limit)
+			COMPILETIMEEVAL auto limit = [](int value, int limit)
 				{
 					if (limit <= 0)
 					{
@@ -388,7 +389,7 @@ DEFINE_HOOK(0x688B37, MPGameModeClass_CreateStartingUnits_B, 5)
 		return hasBaseUnit;
 	}
 
-	Debug::Log(__FUNCTION__" House of country [%s] cannot build anything from [General]BaseUnit=.\n", pHouse->Type->ID);
+	Debug::LogInfo(__FUNCTION__" House of country [{}] cannot build anything from [General]BaseUnit=.", pHouse->Type->ID);
 	return hasNoBaseUnit;
 }
 
@@ -398,7 +399,7 @@ DEFINE_HOOK(0x688B37, MPGameModeClass_CreateStartingUnits_B, 5)
 // 	GET_STACK(HouseClass*, pHouse, 0x4C);
 //
 // 	if(!UnitCount) {
-// 		Debug::Log(__FUNCTION__" House of country [%s] cannot build anything from [General]BaseUnit=.\n", pHouse->Type->ID);
+// 		Debug::LogInfo(__FUNCTION__" House of country [%s] cannot build anything from [General]BaseUnit=.", pHouse->Type->ID);
 // 	}
 //
 // 	return 0;
@@ -514,21 +515,6 @@ DEFINE_HOOK(0x4F8B08, HouseClass_Update_DamageDelay, 6)
 	return pThis->IsCurrentPlayer() ? 0x4F8B14u : 0x4F8DB1u;
 }
 
-DEFINE_HOOK(0x508EBC, HouseClass_Radar_Update_CheckEligible, 6)
-{
-	enum { Eligible = 0, Jammed = 0x508F08 };
-
-	GET(BuildingClass*, Radar, EAX);
-
-	if (BuildingExtContainer::Instance.Find(Radar)->RegisteredJammers.empty() &&
-			Radar->EMPLockRemaining <= 0)
-	{
-		return Eligible;
-	}
-
-	return Jammed;
-}
-
 static std::vector<BuildingTypeClass*> Eligible;
 
 DEFINE_HOOK(0x4FE782, HouseClass_AI_BaseConstructionUpdate_PickPowerplant, 6)
@@ -560,13 +546,13 @@ DEFINE_HOOK(0x4FE782, HouseClass_AI_BaseConstructionUpdate_PickPowerplant, 6)
 	else if (!it.empty())
 	{
 		pResult = it.at(0);
-		Debug::Log("Country [%s] does not meet prerequisites for any possible power plant."
-					"Fall back to the first one (%s).\n", pThis->Type->ID, pResult->ID);
+		Debug::LogInfo("Country [{}] does not meet prerequisites for any possible power plant."
+					"Fall back to the first one ({}).", pThis->Type->ID, pResult->ID);
 	}
 	else
 	{
 		Debug::FatalErrorAndExit(
-			"Country [%s] did not find any powerplants it could construct!\n", pThis->Type->ID);
+			"Country [%s] did not find any powerplants it could construct!", pThis->Type->ID);
 	}
 
 	R->EDI(pResult);
@@ -760,7 +746,7 @@ DEFINE_HOOK(0x505C95, HouseClass_GenerateAIBuildList_CountExtra, 7)
 		}
 		else
 		{
-			Debug::Log("WTF! vector has %u items, requested item #%u\n",
+			Debug::LogInfo("WTF! vector has {}u items, requested item #{}",
 				it.size(), idxDifficulty);
 		}
 	}
@@ -853,8 +839,46 @@ DEFINE_HOOK(0x4F7870, HouseClass_CanBuild, 7)
 			validationResult = CanBuildResult::TemporarilyUnbuildable;
 	}
 
+	if (!buildLimitOnly && includeInProduction && pThis == HouseClass::CurrentPlayer()) // Eliminate any non-producible calls to change the list safely
+		validationResult = BuildingTypeExtData::CheckAlwaysExistCameo(pItem, validationResult);
+
 	R->EAX(validationResult);
 	return 0x4F8361;
+}
+
+// Vanilla and Ares all only hardcoded to find factory with BuildCat::DontCare...
+static inline bool CheckShouldDisableDefensesCameo(HouseClass* pHouse, TechnoTypeClass* pType)
+{
+	if (const auto pBuildingType = cast_to<BuildingTypeClass*>(pType))
+	{
+		if (pBuildingType->BuildCat == BuildCat::Combat)
+		{
+			auto count = 0;
+
+			if (const auto pFactory = pHouse->Primary_ForDefenses)
+			{
+				count = pFactory->CountTotal(pBuildingType);
+
+				if (pFactory->Object && pFactory->Object->GetType() == pBuildingType && pBuildingType->BuildLimit > 0)
+					--count;
+			}
+
+			auto buildLimitRemaining = [](HouseClass* pHouse, BuildingTypeClass* pBldType)
+				{
+					const auto BuildLimit = pBldType->BuildLimit;
+
+					if (BuildLimit >= 0)
+						return BuildLimit - BuildingTypeExtData::CountOwnedNowWithDeployOrUpgrade(pBldType, pHouse);
+					else
+						return -BuildLimit - pHouse->CountOwnedEver(pBldType);
+				};
+
+			if (buildLimitRemaining(pHouse, pBuildingType) - count <= 0)
+				return true;
+		}
+	}
+
+	return false;
 }
 
 DEFINE_HOOK(0x50B370, HouseClass_ShouldDisableCameo, 5)
@@ -862,15 +886,59 @@ DEFINE_HOOK(0x50B370, HouseClass_ShouldDisableCameo, 5)
 	GET(HouseClass*, pThis, ECX);
 	GET_STACK(TechnoTypeClass*, pType, 0x4);
 
-	bool result = HouseExtData::ShouldDisableCameo(pThis, pType);
-
-	if (!result && HouseExtData::ReachedBuildLimit(pThis, pType, false))
+	if (HouseExtData::ShouldDisableCameo(pThis, pType))
 	{
-		result = true;
+		R->EAX(true);
+		return 0x50B669;
 	}
 
-	R->EAX(result);
+	if (CheckShouldDisableDefensesCameo(pThis, pType) || HouseExtData::ReachedBuildLimit(pThis, pType, false))
+	{
+		R->EAX(true);
+		return 0x50B669;
+	}
+
+	if (pThis == HouseClass::CurrentPlayer)
+	{
+		GET(int*, pAddress, ESP);
+
+		if (*pAddress == 0x6A5FED || *pAddress == 0x6A97EF || *pAddress == 0x6AB65B)
+		{
+			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+			// The types exist in the list means that they are not buildable now
+			if (pTypeExt->Cameo_AlwaysExist.Get(RulesExtData::Instance()->Cameo_AlwaysExist))
+			{
+				auto& vec = ScenarioExtData::Instance()->OwnedExistCameoTechnoTypes;
+
+				if (vec.contains(pType))
+				{
+					R->EAX(true);
+					return 0x50B669;
+				}
+			}
+		}
+	}
+
+	R->EAX(false);
 	return 0x50B669;
+}
+
+// All technos have Cameo_AlwaysExist=true need to change the EVA_NewConstructionOptions playing time
+DEFINE_HOOK(0x6A640B, SideBarClass_AddCameo_DoNotPlayEVA, 0x5)
+{
+	enum { SkipPlaying = 0x6A641A };
+
+	GET(AbstractType, absType, ESI);
+	GET(int, idxType, EBP);
+
+	if (const auto pType = ObjectTypeClass::FetchTechnoType(absType, idxType))
+	{
+		if (TechnoTypeExtContainer::Instance.Find(pType)->Cameo_AlwaysExist.Get(RulesExtData::Instance()->Cameo_AlwaysExist))
+			return SkipPlaying;
+	}
+
+	return 0x0;
 }
 
 // HouseClass_Update_Factories_Queues_SkipBrokenDTOR
@@ -889,16 +957,21 @@ DEFINE_HOOK(0x4FA2E0, HouseClass_SetThreat_Bounds, 0x7)
 	return index < 0 ? 0x4FA347u : 0;
 }
 
+#pragma optimize("", off )
 DEFINE_HOOK(0x504796, HouseClass_AddAnger_MultiplayPassive, 0x6)
 {
 	GET_STACK(HouseClass*, pOtherHouse, 0x10);
 	GET(HouseClass*, pThis, ECX);
+
+	if (!pOtherHouse)
+		return 0x50484E;
 
 	R->ECX(SessionClass::Instance->GameMode != GameMode::Campaign
 		&& pOtherHouse->Type->MultiplayPassive ? 0x0 : pThis->AngerNodes.Count);
 
 	return 0x50479C;
 }
+#pragma optimize("", on)
 
 DEFINE_HOOK(0x509303, HouseClass_AllyWith_unused, 0x6)
 {
@@ -920,7 +993,7 @@ DEFINE_HOOK(0x4F65BF, HouseClass_CanAffordBase, 0x6)
 		return 0;
 	}
 	//GET(HouseClass *, pHouse, ESI);
-	//Debug::Log("AI House of country [%s] cannot build anything from [General]BaseUnit=.\n", pHouse->Type->ID);
+	//Debug::LogInfo("AI House of country [%s] cannot build anything from [General]BaseUnit=.", pHouse->Type->ID);
 	return 0x4F65DA;
 }
 
@@ -1224,54 +1297,63 @@ DEFINE_HOOK(0x4FC731, HouseClass_DestroyAll_ReturnStructures, 7)
 	GET_STACK(HouseClass*, pThis, STACK_OFFS(0x18, 0x8));
 	GET(TechnoClass*, pTechno, ESI);
 
-	// do not return structures in campaigns
-	if (SessionClass::Instance->IsCampaign())
-	{
-		return 0;
-	}
+	if (!pTechno->IsAlive || pTechno->Health <= 0)
+		return 0x4FC770;
 
 	// check whether this is a building
 	if (auto pBld = cast_to<BuildingClass*>(pTechno))
 	{
-		auto pInitialOwner = pBld->InitialOwner;
+		auto pBldExt = BuildingExtContainer::Instance.Find(pBld);
 
-		// was the building owned by a neutral country?
-		if (!pInitialOwner || pInitialOwner->Type->MultiplayPassive)
+		if (pBldExt->LimboID != -1)
 		{
-			auto pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
+			BuildingExtData::LimboKill(pBld);
+			return 0x4FC770;
+		}
 
-			auto occupants = pBld->GetOccupantCount();
-			auto canReturn = (pInitialOwner != pThis) || occupants > 0;
+		// do not return structures in campaigns
+		if (!SessionClass::Instance->IsCampaign())
+		{
+			// was the building owned by a neutral country?
+			auto pInitialOwner = pBld->InitialOwner;
 
-			if (canReturn && pExt->Returnable.Get(RulesExtData::Instance()->ReturnStructures))
+			if (!pInitialOwner || pInitialOwner->Type->MultiplayPassive)
 			{
-				// this may change owner
-				if (occupants)
-				{
-					pBld->KillOccupants(nullptr);
-				}
+				auto pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
 
-				// don't do this when killing occupants already changed owner
-				if (pBld->GetOwningHouse() == pThis)
+				auto occupants = pBld->GetOccupantCount();
+				auto canReturn = (pInitialOwner != pThis) || occupants > 0;
+
+				if (canReturn && pExt->Returnable.Get(RulesExtData::Instance()->ReturnStructures))
 				{
-					// fallback to first civilian side house, same logic SlaveManager uses
-					if (!pInitialOwner)
+					// this may change owner
+					if (occupants)
 					{
-						pInitialOwner = HouseClass::FindCivilianSide();
+						pBld->KillOccupants(nullptr);
 					}
 
-					// give to other house and disable
-					if (pInitialOwner && pBld->SetOwningHouse(pInitialOwner, false))
+					// don't do this when killing occupants already changed owner
+					if (pBld->GetOwningHouse() == pThis)
 					{
-						pBld->Guard();
-
-						if (pBld->Type->NeedsEngineer)
+						// fallback to first civilian side house, same logic SlaveManager uses
+						if (!pInitialOwner)
 						{
-							pBld->HasEngineer = false;
-							pBld->DisableStuff();
+							pInitialOwner = HouseClass::FindCivilianSide();
 						}
 
-						return 0x4FC770;
+						// give to other house and disable
+						if (pInitialOwner && pBld->SetOwningHouse(pInitialOwner, false))
+						{
+							pBld->Guard();
+
+							if (pBld->Type->NeedsEngineer)
+							{
+								pBld->HasEngineer = false;
+								pBld->DisableStuff();
+							}
+
+							return 0x4FC770;
+						}
 					}
 				}
 			}

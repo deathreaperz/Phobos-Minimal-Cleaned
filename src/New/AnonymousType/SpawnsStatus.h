@@ -24,7 +24,7 @@ public:
 	void OnUpdate(AnimClass* pLinked);
 	void OnLoop(AnimClass* pLinked);
 	void OnDone(AnimClass* pLinked);
-	void OnNext(AnimClass* pLinked, AnimTypeClass* pNext);
+	void OnNext(AnimClass* pLinked,AnimTypeClass* pNext);
 
 #pragma region save/load
 	template <typename T>

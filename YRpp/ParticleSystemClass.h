@@ -15,14 +15,14 @@ class DECLSPEC_UUID("0E272DC8-9C0F-11D1-B709-00A024DDAFD1")
 {
 public:
 	static const AbstractType AbsID = AbstractType::ParticleSystem;
-	static constexpr inline DWORD vtable = 0x7EFB9C;
+	static COMPILETIMEEVAL OPTIONALINLINE DWORD vtable = 0x7EFB9C;
 
 	//Static
-	static constexpr constant_ptr<DynamicVectorClass<ParticleSystemClass*>, 0xA80208u> const Array{};
-	static constexpr reference<ParticleSystemClass*, 0xA8ED78u> Instance{};
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<ParticleSystemClass*>, 0xA80208u> const Array{};
+	static COMPILETIMEEVAL reference<ParticleSystemClass*, 0xA8ED78u> Instance{};
 
-	static constexpr reference<int, 0x836704u, (size_t)FacingType::Count> const FireWind_X {};
-	static constexpr reference<int, 0x836724u, (size_t)FacingType::Count> const FireWind_Y {};
+	static COMPILETIMEEVAL reference<int, 0x836704u, (size_t)FacingType::Count> const FireWind_X {};
+	static COMPILETIMEEVAL reference<int, 0x836724u, (size_t)FacingType::Count> const FireWind_Y {};
 
 	//IPersist
 	virtual HRESULT __stdcall GetClassID(CLSID* pClassID) override JMP_STD(0x6301A0);
@@ -64,7 +64,7 @@ public:
 		ParticleSystemTypeClass* pParticleSystemType,
 		const CoordStruct& coords,
 		AbstractClass* pTarget = nullptr,
-		TechnoClass* pOwner = nullptr,
+		ObjectClass* pOwner = nullptr,
 		const CoordStruct& targetCoords = CoordStruct::Empty,
 		HouseClass* pOwnerHouse = nullptr) noexcept : ParticleSystemClass(noinit_t())
 			{ JMP_THIS(0x62DC50); }
@@ -73,7 +73,7 @@ public:
 		ParticleSystemTypeClass* pParticleSystemType,
 		CoordStruct* coords,
 		AbstractClass* pTarget,
-		TechnoClass* pOwner,
+		ObjectClass* pOwner,
 		CoordStruct* targetCoords,
 		HouseClass* pOwnerHouse) noexcept : ParticleSystemClass(noinit_t())
 	{

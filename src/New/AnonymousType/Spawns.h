@@ -5,7 +5,7 @@
 
 class Spawns
 {
-	static constexpr std::string title = "Spawns.";
+	static COMPILETIMEEVAL std::string title = "Spawns.";
 public:
 	bool Enable { false };
 
@@ -70,6 +70,7 @@ public:
 		UseRandomDelay = RandomDelay->IsValid();
 
 		Enable = !Anims.empty() && (TriggerOnDone || TriggerOnNext || TriggerOnLoop || TriggerOnStart);
+
 	}
 
 	CoordStruct GetOffset()

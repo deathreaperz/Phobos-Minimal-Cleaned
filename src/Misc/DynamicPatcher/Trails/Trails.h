@@ -41,8 +41,7 @@ public:
 		, drivingState { DrivingState::Moving }
 		, OnLandTypes { }
 		, OnTileTypes { }
-	{
-	}
+	{ }
 
 	UniversalTrail() :
 		Type { nullptr }
@@ -57,8 +56,7 @@ public:
 		, drivingState { DrivingState::Stop }
 		, OnLandTypes { }
 		, OnTileTypes { }
-	{
-	}
+	{ }
 
 	~UniversalTrail() = default;
 
@@ -232,7 +230,7 @@ private:
 	template <typename T>
 	bool Serialize(T& Stm)
 	{
-		//Debug::Log("Processing Element From UniversalTrail ! \n");
+		//Debug::LogInfo("Processing Element From UniversalTrail ! ");
 
 		return Stm
 			.Process(Type)

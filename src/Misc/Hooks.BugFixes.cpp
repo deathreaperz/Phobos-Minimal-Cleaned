@@ -52,81 +52,6 @@
 DEFINE_JUMP(LJMP, 0x545CE2, 0x545CE9) //Phobos_BugFixes_Tileset255_RemoveNonMMArrayFill
 DEFINE_JUMP(LJMP, 0x546C23, 0x546CBF) //Phobos_BugFixes_Tileset255_RefNonMMArray
 
-// WWP's shit code! Wrong check.
-// To avoid units dying when they are already dead.
-DEFINE_HOOK(0x5F53AA, ObjectClass_ReceiveDamage_DyingFix, 0x6)
-{
-	enum { PostMortem = 0x5F583E, ContinueCheck = 0x5F53B0 };
-
-	GET(int const, health, EAX);
-	GET(ObjectClass* const, pThis, ESI);
-
-	if (health <= 0 || !pThis->IsAlive)
-		return PostMortem;
-
-	return ContinueCheck;
-}
-
-DEFINE_HOOK(0x4D7431, FootClass_ReceiveDamage_DyingFix, 0x5)
-{
-	GET(FootClass* const, pThis, ESI);
-	GET(DamageState const, result, EAX);
-
-	if (result != DamageState::PostMortem)
-	{
-		if ((pThis->IsSinking || (!pThis->IsAttackedByLocomotor && pThis->IsCrashing)))
-		{
-			R->EAX(DamageState::PostMortem);
-		}
-	}
-
-	return 0;
-}
-
-DEFINE_HOOK(0x737D57, UnitClass_ReceiveDamage_DyingFix, 0x7)
-{
-	GET(UnitClass* const, pThis, ESI);
-	GET(DamageState const, result, EAX);
-
-	// Immediately release locomotor warhead's hold on a crashable unit if it dies while attacked by one.
-	if (result == DamageState::NowDead)
-	{
-
-		if (pThis->IsAttackedByLocomotor && pThis->GetTechnoType()->Crashable)
-			pThis->IsAttackedByLocomotor = false;
-
-		//this cause desync ?
-		if (!pThis->Type->Voxel && pThis->Type->Strength > 0)
-		{
-			if (pThis->Type->MaxDeathCounter > 0
-				&& !pThis->InLimbo
-				&& !pThis->IsCrashing
-				&& !pThis->IsSinking
-				&& !pThis->TemporalTargetingMe
-				&& !pThis->IsInAir()
-				&& pThis->DeathFrameCounter <= 0
-				)
-			{
-
-				pThis->Stun();
-				const auto loco = pThis->Locomotor.GetInterfacePtr();
-
-				if (loco->Is_Moving_Now())
-					loco->Stop_Moving();
-
-				pThis->DeathFrameCounter = 1;
-			}
-		}
-	}
-
-	if (result != DamageState::PostMortem && pThis->DeathFrameCounter > 0)
-	{
-		R->EAX(DamageState::PostMortem);
-	}
-
-	return 0;
-}
-
 DEFINE_HOOK(0x5F452E, TechnoClass_Selectable_DeathCounter, 0x6) // 8
 {
 	GET(TechnoClass*, pThis, ESI);
@@ -140,95 +65,6 @@ DEFINE_HOOK(0x5F452E, TechnoClass_Selectable_DeathCounter, 0x6) // 8
 	}
 
 	return 0x0;
-}
-
-DEFINE_HOOK(0x737CBB, UnitClass_ReceiveDamage_DeathCounter, 0x6)
-{
-	GET(UnitClass*, pThis, ESI);
-
-	if (pThis->DeathFrameCounter > 0)
-	{
-		return 0x737D26;
-	}
-
-	return 0x0;
-}
-
-#include <Ext/Anim/Body.h>
-
-static constexpr TypeList<AnimTypeClass*>* GetDebrisAnim(TechnoTypeClass* pType) {
-
-	if (pType->DebrisAnims.Count <= 0) {
-		if (!pType->DebrisTypes.Count &&  !RulesClass::Instance->MetallicDebris.Count)
-			return nullptr;
-
-		return &RulesClass::Instance->MetallicDebris;
-	}
-
-	return &pType->DebrisAnims;
-}
-
-// Restore DebrisMaximums logic (issue #109)
-// Author: Otamaa
-DEFINE_HOOK(0x702299, TechnoClass_ReceiveDamage_DebrisMaximumsFix, 0xA)
-{
-	GET(TechnoClass* const, pThis, ESI);
-	REF_STACK(args_ReceiveDamage const, args, STACK_OFFS(0xC4, -0x4));
-
-	const auto pType = pThis->GetTechnoType();
-	auto totalSpawnAmount = ScenarioClass::Instance->Random.RandomRanged(pType->MinDebris, pType->MaxDebris);
-	auto nCoords = pThis->GetCoords();
-
-	if (totalSpawnAmount && pType->DebrisTypes.Count > 0 && pType->DebrisMaximums.Count > 0)
-	{
-		for (int currentIndex = 0; currentIndex < pType->DebrisTypes.Count; ++currentIndex)
-		{
-			if (currentIndex >= pType->DebrisMaximums.Count)
-				break;
-
-			if (!pType->DebrisMaximums[currentIndex] || !pType->DebrisTypes.Items[currentIndex])
-				continue;
-
-			//this never goes to 0
-			int amountToSpawn = (abs(int(ScenarioClass::Instance->Random.Random())) % pType->DebrisMaximums[currentIndex]) + 1;
-			amountToSpawn = LessOrEqualTo(amountToSpawn, totalSpawnAmount);
-			totalSpawnAmount -= amountToSpawn;
-
-			for (; amountToSpawn > 0; --amountToSpawn)
-			{
-
-				auto pVoxAnim = GameCreate<VoxelAnimClass>(pType->DebrisTypes.Items[currentIndex],
-				&nCoords, pThis->Owner);
-
-				VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis;
-			}
-
-			if (totalSpawnAmount <= 0)
-			{
-				totalSpawnAmount = 0;
-				break;
-			}
-		}
-	}
-
-	if (totalSpawnAmount > 0)
-	{
-		if(const auto pArray = GetDebrisAnim(pType)) {
-			auto debrisAnim_Coord = nCoords;
-			debrisAnim_Coord.Z += 20;
-
-			for (int b = 0; b < totalSpawnAmount; ++b)
-			{
-				if (auto pDebrisAnimType = pArray->Items[ScenarioClass::Instance->Random.RandomFromMax(pArray->Count - 1)])
-				{
-					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pDebrisAnimType, debrisAnim_Coord, 0, 1, AnimFlag::AnimFlag_200 | AnimFlag::AnimFlag_400, 0, 0), args.Attacker ? args.Attacker->GetOwningHouse() : args.SourceHouse,
-					pThis->GetOwningHouse(), false);
-				}
-			}
-		}
-	}
-
-	return 0x702572;
 }
 
 // issue #250: Building placement hotkey not responding
@@ -323,7 +159,7 @@ static void IsTechnoShouldBeAliveAfterTemporal(TechnoClass* pThis)
 		{
 			pThis->TemporalTargetingMe = nullptr;
 			pThis->Limbo();
-			Debug::Log(__FUNCTION__" Called \n");
+			Debug::LogInfo(__FUNCTION__" Called ");
 			TechnoExtData::HandleRemove(pThis, nullptr, true, false);
 		}
 	}
@@ -397,14 +233,17 @@ DEFINE_HOOK(0x480534, CellClass_AttachesToNeighbourOverlay, 5)
 	GET_STACK(int const, state, STACK_OFFS(0x10, -0x8));
 	const bool Wall = idxOverlay != -1 && OverlayTypeClass::Array->Items[idxOverlay]->Wall;
 
-	if (Wall) {
+	if (Wall)
+	{
 		return 0x480549;
-
 	}
 
-	for (auto pObject = pThis->FirstObject; pObject; pObject = pObject->NextObject) {
-		if (pObject->Health > 0) {
-			if (const auto pBuilding = cast_to<BuildingClass*, false>(pObject)) {
+	for (auto pObject = pThis->FirstObject; pObject; pObject = pObject->NextObject)
+	{
+		if (pObject->Health > 0)
+		{
+			if (const auto pBuilding = cast_to<BuildingClass*, false>(pObject))
+			{
 				const auto pBType = pBuilding->Type;
 
 				if ((RulesClass::Instance->EWGates.Contains(pBType)) && (state == 2 || state == 6))
@@ -531,7 +370,6 @@ DEFINE_HOOK(0x73EFD8, UnitClass_Mission_Hunt_DeploysInto, 0x6)
 	break;
 	case 2:
 	{
-
 		// Skip MCV-specific & player control checks if coming from deploy script action.
 		if (pThis->Type->Category == Category::Support && !pThis->IsOwnedByCurrentPlayer)
 		{
@@ -575,7 +413,6 @@ DEFINE_HOOK(0x4DACDD, FootClass_CrashingVoice, 0x6)
 					VocClass::PlayIndexAtPos(pType->VoiceCrashing, nCoord);
 
 				VocClass::PlayIndexAtPos(pType->CrashingSound, nCoord, &pThis->Audio7);
-
 			}
 			else
 			{
@@ -617,7 +454,6 @@ DEFINE_HOOK(0x456776, BuildingClass_DrawRadialIndicator_Visibility, 0x6)
 	{
 		if (pThis->Owner && pThis->Owner == HouseClass::CurrentPlayer())
 			return ContinueDraw;
-
 	}
 
 	return DoNotDraw;
@@ -719,7 +555,7 @@ DEFINE_HOOK(0x56BD8B, MapClass_PlaceRandomCrate_Sampling, 0x5)
 
 	cell = MapClass::Instance->NearByLocation(pCell->MapCoords,
 		isWater ? SpeedType::Float : SpeedType::Track,
-		-1, MovementZone::Normal, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
+		ZoneType::None, MovementZone::Normal, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
 
 	R->EAX(&cell);
 
@@ -737,8 +573,8 @@ DEFINE_HOOK(0x4FD1CD, HouseClass_RecalcCenter_LimboDelivery, 0x6)
 	 || !MapClass::Instance->CoordinatesLegal(pBuilding->GetMapCoords()))
 		return R->Origin() == 0x4FD1CD ? SkipBuilding1 : SkipBuilding2;
 
-	if(VTable::Get(pBuilding) != BuildingClass::vtable)
-		Debug::FatalError("%x invalid building ptr !\n", pBuilding);
+	if (VTable::Get(pBuilding) != BuildingClass::vtable)
+		Debug::FatalError("%x invalid building ptr !", pBuilding);
 
 	return 0;
 }
@@ -751,7 +587,6 @@ DEFINE_HOOK(0x4AC534, DisplayClass_ComputeStartPosition_IllegalCoords, 0x6)
 
 	if (!MapClass::Instance->CoordinatesLegal(pTechno->GetMapCoords()))
 		return SkipTechno;
-
 
 	return 0;
 }
@@ -804,13 +639,6 @@ DEFINE_HOOK(0x51A996, InfantryClass_PerCellProcess_KillOnImpassable, 0x5)
 	return SkipKilling;
 }
 
-DEFINE_HOOK(0x718B29, LocomotionClass_SomethingWrong_ReceiveDamage_UseCurrentHP, 0x6)
-{
-	GET(FootClass* const, pLinked, ECX);
-	R->ECX(pLinked->GetType()->Strength);
-	return R->Origin() + 0x6;
-}
-
 // DEFINE_HOOK(0x6FDDD4, TechnoClass_FireAt_Suicide_UseCurrentHP, 0x6)
 // {
 // 	GET(TechnoClass* const, pThis, ESI);
@@ -828,16 +656,6 @@ DEFINE_HOOK(0x70BC6F, TechnoClass_UpdateRigidBodyKinematics_KillFlipped, 0xA)
 
 	return 0x70BCA4;
 }
-
-// DEFINE_HOOK(0x4425C0, BuildingClass_ReceiveDamage_MaybeKillRadioLinks, 0x6)
-// {
-// 	GET(TechnoClass* const, pRadio, EDI);
-//
-// 	pRadio->ReceiveDamage(&pRadio->GetType()->Strength, 0, RulesClass::Instance->C4Warhead,
-// 		nullptr, true, true, nullptr);
-//
-// 	return 0x4425F4;
-// }
 
 // DEFINE_HOOK(0x501477, HouseClass_IHouse_AllToHunt_KillMCInsignificant, 0xA)
 // {
@@ -921,7 +739,6 @@ DEFINE_JUMP(LJMP, 0x447709, 0x447727);
 //		RetFireIllegal : Continue;
 //}
 
-
 // Updates layers of all animations attached to the given techno.
 static void UpdateAttachedAnimLayers(TechnoClass* pThis)
 {
@@ -980,10 +797,10 @@ DEFINE_HOOK(0x688F8C, ScenarioClass_ScanPlaceUnit_CheckMovement, 0x5)
 
 	const auto pCell = MapClass::Instance->GetCellAt(*pHomeCoords);
 	const auto pTechnoType = pTechno->GetTechnoType();
-	if (!pCell->IsClearToMove(pTechnoType->SpeedType, 0, 0, ZoneType::None, MovementZone::Normal, -1, 1))
+	if (!pCell->IsClearToMove(pTechnoType->SpeedType, 0, 0, ZoneType::None, pTechnoType->MovementZone, -1, 1))
 	{
 		if (Phobos::Otamaa::IsAdmin)
-			Debug::Log("Techno[%s - %s] Not Allowed to exist at cell [%d . %d] !\n", pTechnoType->ID, pTechno->GetThisClassName(), pCell->MapCoords.X, pCell->MapCoords.Y);
+			Debug::LogInfo("Techno[{} - {}] Not Allowed to exist at cell [{} . {}] !", pTechnoType->ID, pTechno->GetThisClassName(), pCell->MapCoords.X, pCell->MapCoords.Y);
 
 		return 0x688FB9;
 	}
@@ -1001,16 +818,15 @@ DEFINE_HOOK(0x68927B, ScenarioClass_ScanPlaceUnit_CheckMovement2, 0x5)
 
 	const auto pCell = MapClass::Instance->GetCellAt(*pCellCoords);
 	const auto pTechnoType = pTechno->GetTechnoType();
-	if (!pCell->IsClearToMove(pTechnoType->SpeedType, 0, 0, ZoneType::None, MovementZone::Normal, -1, 1))
+	if (!pCell->IsClearToMove(pTechnoType->SpeedType, 0, 0, ZoneType::None, pTechnoType->MovementZone, -1, 1))
 	{
 		if (Phobos::Otamaa::IsAdmin)
-			Debug::Log("Techno[%s - %s] Not Allowed to exist at cell [%d . %d] !\n", pTechnoType->ID, pTechno->GetThisClassName(), pCell->MapCoords.X, pCell->MapCoords.Y);
+			Debug::LogInfo("Techno[{} - {}] Not Allowed to exist at cell [{} . {}] !", pTechnoType->ID, pTechno->GetThisClassName(), pCell->MapCoords.X, pCell->MapCoords.Y);
 
 		return 0x689295;
 	}
 
 	return 0;
-
 }
 
 // In vanilla YR, game destroys building animations directly by calling constructor.
@@ -1110,12 +926,11 @@ DEFINE_HOOK(0x53AD85, IonStormClass_AdjustLighting_ColorSchemes, 0x5)
 	if (paletteCount > 0)
 	{
 		int schemeCount = ColorScheme::GetNumberOfSchemes();
-		Debug::Log("Recalculated %d extra palettes across %d color schemes (total: %d).\n", paletteCount, schemeCount, schemeCount * paletteCount);
+		Debug::LogInfo("Recalculated {} extra palettes across {} color schemes (total: {}).", paletteCount, schemeCount, schemeCount * paletteCount);
 	}
 
 	return SkipGameCode;
 }
-
 
 //// Set ShadeCount to 53 to initialize the palette fully shaded - this is required to make it not draw over shroud for some reason.
 DEFINE_HOOK(0x68C4C4, GenerateColorSpread_ShadeCountSet, 0x5)
@@ -1153,7 +968,7 @@ DEFINE_HOOK(0x4D580B, FootClass_ApproachTarget_DeployToFire, 0x6)
 
 DEFINE_HOOK(0x741050, UnitClass_CanFire_DeployToFire, 0x6)
 {
-	enum { SkipGameCode = 0x7410B7,  MustDeploy = 0x7410A8 };
+	enum { NoNeedToCheck = 0x74132B, SkipGameCode = 0x7410B7, MustDeploy = 0x7410A8 };
 
 	GET(UnitClass*, pThis, ESI);
 
@@ -1164,6 +979,11 @@ DEFINE_HOOK(0x741050, UnitClass_CanFire_DeployToFire, 0x6)
 	{
 		return MustDeploy;
 	}
+
+	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+
+	if (!pTypeExt->NoTurret_TrackTarget.Get(RulesExtData::Instance()->NoTurret_TrackTarget))
+		return NoNeedToCheck;
 
 	return SkipGameCode;
 }
@@ -1224,7 +1044,7 @@ DEFINE_HOOK(0x689EB0, ScenarioClass_ReadMap_SkipHeaderInCampaign, 0x6)
 
 	if (SessionClass::IsCampaign())
 	{
-		Debug::Log("Skipping [Header] Section for Campaign Mode!\n");
+		Debug::LogInfo("Skipping [Header] Section for Campaign Mode!");
 		return 0x689FC0;
 	}
 
@@ -1242,7 +1062,8 @@ DEFINE_HOOK(0x4D4B43, FootClass_Mission_Capture_ForbidUnintended, 0x6)
 	GET(InfantryClass*, pThis, EDI);
 	enum { LosesDestination = 0x4D4BD1 };
 
-	if(pThis){
+	if (pThis)
+	{
 		const auto pBld = cast_to<BuildingClass*>(pThis->Destination);
 
 		if (!pBld || pThis->Target)
@@ -1294,7 +1115,7 @@ static void SetSkirmishHouseName(HouseClass* pHouse, bool IsHuman)
 		strncpy_s(pHouse->PlainName, GameStrings::PlayerAt[7u - spawn_position], 12u);
 	}
 
-	Debug::Log("%s, %ls, position %d\n", pHouse->PlainName, pHouse->UIName, spawn_position);
+	Debug::LogInfo("{}, {}, position {}", pHouse->PlainName, PhobosCRT::WideStringToString(pHouse->UIName), spawn_position);
 }
 
 //DEFINE_HOOK(0x68804A, AssignHouses_PlayerHouses, 0x5)
@@ -1340,19 +1161,19 @@ static void SetSkirmishHouseName(HouseClass* pHouse, bool IsHuman)
 // Only reasonable way to solve this is to perform the cell clear check on every client per frame
 // and use that result in cursor display which is client-specific. This is now implemented in multiplayer games only.
 #pragma region DeploysIntoDesyncFix
-
-DEFINE_HOOK(0x73635B, UnitClass_AI_DeploysIntoDesyncFix, 0x6)
-{
-	if (!SessionClass::Instance->IsMultiplayer())
-		return 0;
-
-	GET(UnitClass*, pThis, ESI);
-
-	if (pThis->Type->DeploysInto)
-		TechnoExtContainer::Instance.Find(pThis)->CanCurrentlyDeployIntoBuilding = TechnoExtData::CanDeployIntoBuilding(pThis);
-
-	return 0;
-}
+//bugged
+// DEFINE_HOOK(0x73635B, UnitClass_AI_DeploysIntoDesyncFix, 0x6)
+// {
+// 	if (!SessionClass::Instance->IsMultiplayer())
+// 		return 0;
+//
+// 	GET(UnitClass*, pThis, ESI);
+//
+// 	if (pThis->Type->DeploysInto)
+// 		TechnoExtContainer::Instance.Find(pThis)->CanCurrentlyDeployIntoBuilding = TechnoExtData::CanDeployIntoBuilding(pThis);
+//
+// 	return 0;
+// }
 
 DEFINE_HOOK(0x73FEC1, UnitClass_WhatAction_DeploysIntoDesyncFix, 0x6)
 {
@@ -1364,7 +1185,7 @@ DEFINE_HOOK(0x73FEC1, UnitClass_WhatAction_DeploysIntoDesyncFix, 0x6)
 	GET(UnitClass*, pThis, ESI);
 	LEA_STACK(Action*, pAction, STACK_OFFSET(0x20, 0x8));
 
-	if (!TechnoExtContainer::Instance.Find(pThis)->CanCurrentlyDeployIntoBuilding)
+	if (!TechnoExtData::CanDeployIntoBuilding(pThis))
 		*pAction = Action::NoDeploy;
 
 	return SkipGameCode;
@@ -1435,8 +1256,7 @@ struct OverlayReader
 
 	OverlayReader(CCINIClass* pINI)
 		:ByteReaders { {pINI, GameStrings::OverlayPack() }, { pINI,"OverlayPack2" }, { pINI,"OverlayPack3" }, { pINI,"OverlayPack4" }, }
-	{
-	}
+	{ }
 
 	~OverlayReader() = default;
 
@@ -1453,7 +1273,6 @@ DEFINE_HOOK(0x5FD2E0, OverlayClass_ReadINI, 0x7)
 
 	if (ScenarioClass::NewINIFormat > 1)
 	{
-
 		OverlayReader reader(pINI);
 
 		for (short i = 0; i < 0x200; ++i)
@@ -1539,12 +1358,12 @@ struct OverlayByteWriter
 			YRMemory::Deallocate(this->Buffer);
 	}
 
-	void  FORCEINLINE Put(unsigned char data)
+	void  FORCEDINLINE Put(unsigned char data)
 	{
 		uuLength += lp.Put(&data, 1);
 	}
 
-	void FORCEINLINE PutBlock(CCINIClass* pINI) const
+	void FORCEDINLINE PutBlock(CCINIClass* pINI) const
 	{
 		pINI->Clear(this->lpSectionName, nullptr);
 		pINI->WriteUUBlock(this->lpSectionName, this->Buffer, uuLength);
@@ -1566,8 +1385,7 @@ struct OverlayWriter
 			{ "OverlayPack3", nLen },
 			{ "OverlayPack4", nLen }
 		}
-	{
-	}
+	{ }
 
 	~OverlayWriter() = default;
 
@@ -1625,7 +1443,6 @@ DEFINE_HOOK(0x5FD6A0, OverlayClass_WriteINI, 0x6)
 	return 0x5FD8EB;
 }
 
-
 // Ares InitialPayload fix: Man, what can I say
 // Otamaa : this can cause deadlock , or crashes , better write proper fix
 // DEFINE_HOOK(0x65DE21, TeamTypeClass_CreateMembers_MutexOut, 0x6)
@@ -1640,14 +1457,13 @@ DEFINE_HOOK(0x74691D, UnitClass_UpdateDisguise_EMP, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 	// Remove mirage disguise if under emp or being flipped, approximately 15 deg
-	if (pThis->IsUnderEMP() || TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled || Math::abs(pThis->AngleRotatedForwards) > 0.25 || Math::abs(pThis->AngleRotatedSideways) > 0.25)
+	if (pThis->Deactivated || pThis->IsUnderEMP() || TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled || Math::abs(pThis->AngleRotatedForwards) > 0.25 || Math::abs(pThis->AngleRotatedSideways) > 0.25)
 	{
 		pThis->ClearDisguise();
-		R->EAX(pThis->MindControlRingAnim);
-		return 0x746AA5;
+		R->Stack(0x7, false);
 	}
 
-	return 0x746931;
+	return 0x0;
 }
 
 #include <Misc/Hooks.Otamaa.h>
@@ -1716,19 +1532,19 @@ DEFINE_HOOK(0x412B40, AircraftTrackerClass_FillCurrentVector, 0x5)
 
 #define BLENDING_MASK 0xF7DEu
 
-static inline uint16_t  Blit50TranslucencyFix(uint16_t  dst, uint16_t  src)
+static OPTIONALINLINE uint16_t  Blit50TranslucencyFix(uint16_t  dst, uint16_t  src)
 {
 	return (((src ^ dst) & BLENDING_MASK) >> 1) + (src & dst);
 }
 
-static inline uint16_t  Blit75TranslucencyFix(uint16_t  dst, uint16_t  src)
+static OPTIONALINLINE uint16_t  Blit75TranslucencyFix(uint16_t  dst, uint16_t  src)
 {
 	uint16_t  div = Blit50TranslucencyFix(dst, src);
 	return (div >> 1 & HALF_RANGE_MASK) + (dst >> 1 & HALF_RANGE_MASK);
 }
 
 //same as 75, just reversed order of args
-static inline uint16_t  Blit25TranslucencyFix(uint16_t  dst, uint16_t  src)
+static OPTIONALINLINE uint16_t  Blit25TranslucencyFix(uint16_t  dst, uint16_t  src)
 {
 	return Blit75TranslucencyFix(src, dst);
 }
@@ -1821,7 +1637,7 @@ DEFINE_HOOK(0x62AA32, ParasiteClass_TryInfect_MissBehaviorFix, 0x5)
 	}
 	auto pType = pParasiteTechno->GetTechnoType();
 	auto cell = MapClass::Instance->NearByLocation(pParasiteTechno->LastMapCoords,
-				pType->SpeedType, -1, pType->MovementZone, false, 1, 1, false,
+				pType->SpeedType, ZoneType::None, pType->MovementZone, false, 1, 1, false,
 				false, false, true, CellStruct::Empty, false, false);
 	auto crd = MapClass::Instance->GetCellAt(cell)->GetCoords();
 	bIsReturnSuccess = pParasiteTechno->Unlimbo(crd, DirType::North);
@@ -1881,7 +1697,6 @@ DEFINE_HOOK(0x51A67E, InfantryClass_UpdatePosition_DamageBridgeFix, 0x6)
 static bool IsHashable(ObjectClass* pObj)
 {
 	auto const rtti = pObj->WhatAmI();
-
 	switch (rtti)
 	{
 	case AbstractType::Anim:
@@ -1900,7 +1715,7 @@ static bool IsHashable(ObjectClass* pObj)
 
 		return false;
 	}
-	case  AbstractType::Particle :
+	case AbstractType::Particle:
 	{
 		auto const pParticle = static_cast<ParticleClass*>(pObj);
 		return pParticle->Type->Damage;
@@ -1912,43 +1727,42 @@ static bool IsHashable(ObjectClass* pObj)
 	return true;
 }
 
-static constexpr void FORCEINLINE AddCRC(DWORD* crc, unsigned int val)
+static COMPILETIMEEVAL void FORCEDINLINE AddCRC(DWORD* crc, unsigned int val)
 {
 	*crc = val + (*crc >> 31) + (*crc << 1);
 }
 
-static constexpr int FORCEINLINE GetCoordHash(CoordStruct location)
+static COMPILETIMEEVAL int FORCEDINLINE GetCoordHash(CoordStruct location)
 {
 	return location.X / 10 + ((location.Y / 10) << 16);
 }
 
 static void __fastcall ComputeGameCRC()
 {
-	auto GameCRC = EventClass::CurrentFrameCRC.get();
-	GameCRC = 0;
+	EventClass::CurrentFrameCRC = 0;
 
 	for (auto const pInf : *InfantryClass::Array)
 	{
 		int primaryFacing = pInf->PrimaryFacing.Current().GetValue<8>();
-		AddCRC(&GameCRC, GetCoordHash(pInf->Location) + primaryFacing);
+		AddCRC(&EventClass::CurrentFrameCRC, GetCoordHash(pInf->Location) + primaryFacing);
 	}
 
 	for (auto const pUnit : *UnitClass::Array)
 	{
 		int primaryFacing = pUnit->PrimaryFacing.Current().GetValue<8>();
 		int secondaryFacing = pUnit->SecondaryFacing.Current().GetValue<8>();
-		AddCRC(&GameCRC, GetCoordHash(pUnit->Location) + primaryFacing + secondaryFacing);
+		AddCRC(&EventClass::CurrentFrameCRC, GetCoordHash(pUnit->Location) + primaryFacing + secondaryFacing);
 	}
 
 	for (auto const pBuilding : *BuildingClass::Array)
 	{
 		int primaryFacing = pBuilding->PrimaryFacing.Current().GetValue<8>();
-		AddCRC(&GameCRC, GetCoordHash(pBuilding->Location) + primaryFacing);
+		AddCRC(&EventClass::CurrentFrameCRC, GetCoordHash(pBuilding->Location) + primaryFacing);
 	}
 
 	for (auto const pHouse : *HouseClass::Array)
 	{
-		AddCRC(&GameCRC, pHouse->MapIsClear);
+		AddCRC(&EventClass::CurrentFrameCRC, pHouse->MapIsClear);
 	}
 
 	for (int i = 0; i < 5; i++)
@@ -1958,18 +1772,19 @@ static void __fastcall ComputeGameCRC()
 		for (auto const pObj : *layer)
 		{
 			if (IsHashable(pObj))
-				AddCRC(&GameCRC, GetCoordHash(pObj->Location) + (int)pObj->WhatAmI());
+				AddCRC(&EventClass::CurrentFrameCRC, GetCoordHash(pObj->Location) + (int)pObj->WhatAmI());
 		}
 	}
 
-	auto const& logic = LogicClass::Instance.get();
+	LogicClass const& logic = LogicClass::Instance;
+
 	for (auto const pObj : logic)
 	{
 		if (IsHashable(pObj))
-			AddCRC(&GameCRC, GetCoordHash(pObj->Location) + (int)pObj->WhatAmI());
+			AddCRC(&EventClass::CurrentFrameCRC, GetCoordHash(pObj->Location) + (int)pObj->WhatAmI());
 	}
 
-	AddCRC(&GameCRC, ScenarioClass::Instance->Random.Random());
+	AddCRC(&EventClass::CurrentFrameCRC, ScenarioClass::Instance->Random.Random());
 	Game::LogFrameCRC(Unsorted::CurrentFrame % 256);
 }
 
@@ -2014,16 +1829,20 @@ DEFINE_HOOK(0x71464A, TechnoTypeClass_ReadINI_Speed, 0x7)
 // In the following three places the distance check was hardcoded to compare with 20, 17 and 16 respectively,
 // which means it didn't consider the actual speed of the unit. Now we check it and the units won't get stuck
 // even at high speeds - NetsuNegi
-DEFINE_HOOK(0x7295C5, TunnelLocomotionClass_ProcessDigging_SlowdownDistance, 0x9) {
+DEFINE_HOOK(0x72958E, TunnelLocomotionClass_ProcessDigging_SlowdownDistance, 0x8)
+{
 	enum { KeepMoving = 0x72980F, CloseEnough = 0x7295CE };
 
 	//this fix reqire change of `pType->Speed`
 	//which is ridicculus really - Otamaa
 	GET(TunnelLocomotionClass* const, pLoco, ESI);
-	GET(int const, distance, EAX);
+
+	auto& currLoc = pLoco->LinkedTo->Location;
+	int distance = (int)CoordStruct { currLoc.X - pLoco->_CoordsNow.X, currLoc.Y - pLoco->_CoordsNow.Y,0 }.Length();
+
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pLoco->LinkedTo->GetTechnoType());
 	int currentSpeed = pTypeExt->SubterraneanSpeed >= 0 ?
-			pTypeExt->SubterraneanSpeed : RulesExtData::Instance()->SubterraneanSpeed;
+		pTypeExt->SubterraneanSpeed : RulesExtData::Instance()->SubterraneanSpeed;
 
 	// Calculate speed multipliers.
 	pLoco->LinkedTo->SpeedPercentage = 1.0; // Subterranean locomotor doesn't normally use this so it would be 0.0 here and cause issues.		int maxSpeed = pTypeExt->AttachedToObject->Speed;
@@ -2032,12 +1851,18 @@ DEFINE_HOOK(0x7295C5, TunnelLocomotionClass_ProcessDigging_SlowdownDistance, 0x9
 	currentSpeed = pLoco->LinkedTo->GetCurrentSpeed();
 	pTypeExt->AttachedToObject->Speed = maxSpeed;
 
-	TunnelLocomotionClass::TunnelMovementSpeed = currentSpeed;
-
-	return distance >= currentSpeed + 1 ? KeepMoving : CloseEnough;
+	if (distance > currentSpeed)
+	{
+		REF_STACK(CoordStruct, newLoc, STACK_OFFSET(0x40, -0xC));
+		double angle = -Math::atan2((float)(currLoc.Y - pLoco->_CoordsNow.Y), (float)(pLoco->_CoordsNow.X - currLoc.X));
+		newLoc = currLoc + CoordStruct { int((double)currentSpeed * Math::cos(angle)), int((double)currentSpeed * Math::sin(angle)), 0 };
+		return 0x7298D3;
+	}
+	return 0x7295CE;
 }
 
-DEFINE_HOOK(0x75BD70, WalkLocomotionClass_ProcessMoving_SlowdownDistance, 0x9) {
+DEFINE_HOOK(0x75BD70, WalkLocomotionClass_ProcessMoving_SlowdownDistance, 0x9)
+{
 	enum { KeepMoving = 0x75BF85, CloseEnough = 0x75BD79 };
 
 	GET(FootClass* const, pLinkedTo, ECX);
@@ -2045,7 +1870,8 @@ DEFINE_HOOK(0x75BD70, WalkLocomotionClass_ProcessMoving_SlowdownDistance, 0x9) {
 	return distance >= pLinkedTo->GetCurrentSpeed() ? KeepMoving : CloseEnough;
 }
 
-DEFINE_HOOK(0x5B11DD, MechLocomotionClass_ProcessMoving_SlowdownDistance, 0x9) {
+DEFINE_HOOK(0x5B11DD, MechLocomotionClass_ProcessMoving_SlowdownDistance, 0x9)
+{
 	enum { KeepMoving = 0x5B14AA, CloseEnough = 0x5B11E6 };
 
 	GET(FootClass* const, pLinkedTo, ECX);
@@ -2058,7 +1884,8 @@ DEFINE_HOOK(0x4232BF, AnimClass_DrawIt_MakeInfantry, 0x6)
 {
 	GET(AnimClass*, pThis, ESI);
 
-	if (pThis->Type->MakeInfantry != -1) {
+	if (pThis->Type->MakeInfantry != -1)
+	{
 		R->EAX(pThis->GetCell()->Intensity_Normal);
 		return 0x4232C5;
 	}
@@ -2080,8 +1907,10 @@ DEFINE_HOOK(0x50C186, GetHouseIndexFromName_PlayerAtX, 0x6)
 
 	int playerAtIndex = HouseClass::GetPlayerAtFromString(name);
 
-	if (playerAtIndex != -1) {
-		if (auto const pHouse = HouseClass::FindByPlayerAt(playerAtIndex)) {
+	if (playerAtIndex != -1)
+	{
+		if (auto const pHouse = HouseClass::FindByPlayerAt(playerAtIndex))
+		{
 			R->EDX(pHouse->ArrayIndex);
 			return ReturnFromFunction;
 		}
@@ -2181,7 +2010,7 @@ DEFINE_HOOK(0x4C75DA, EventClass_RespondToEvent_Stop, 0x6)
 	GET(TechnoClass* const, pTechno, ESI);
 
 	// Check aircraft
-	const auto pAircraft = cast_to<AircraftClass* , false>(pTechno);
+	const auto pAircraft = cast_to<AircraftClass*, false>(pTechno);
 	const bool commonAircraft = pAircraft && !pAircraft->Airstrike && !pAircraft->Spawned;
 	const auto mission = pTechno->CurrentMission;
 
@@ -2274,3 +2103,131 @@ int __fastcall Check2DDistanceInsteadOf3D(ObjectClass* pSource, void* _, Abstrac
 DEFINE_JUMP(CALL, 0x6EBCC9, MiscTools::to_DWORD(Check2DDistanceInsteadOf3D));
 
 #pragma endregion
+
+void KickOutStuckUnits(BuildingClass* pThis)
+{
+	if (const auto pTechno = pThis->GetNthLink())
+	{
+		if (const auto pUnit = cast_to<UnitClass*>(pTechno))
+		{
+			if (!pUnit->IsTethered && pUnit->GetCurrentSpeed() <= 0)
+			{
+				if (const auto pTeam = pUnit->Team)
+					pTeam->LiberateMember(pUnit);
+
+				pThis->SendCommand(RadioCommand::NotifyUnlink, pUnit);
+				pUnit->QueueMission(Mission::Guard, false);
+				return; // one after another
+			}
+		}
+	}
+
+	auto buffer = CoordStruct::Empty;
+	auto pCell = MapClass::Instance->GetCellAt(pThis->GetExitCoords(&buffer, 0));
+	int i = 0;
+
+	while (true)
+	{
+		for (auto pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject)
+		{
+			if (const auto pUnit = cast_to<UnitClass*>(pObject))
+			{
+				if (pThis->Owner != pUnit->Owner || pUnit->IsTethered)
+					continue;
+
+				const auto height = pUnit->GetHeight();
+
+				if (height < 0 || height > Unsorted::CellHeight)
+					continue;
+
+				if (const auto pTeam = pUnit->Team)
+					pTeam->LiberateMember(pUnit);
+
+				pThis->SendCommand(RadioCommand::RequestLink, pUnit);
+				pThis->QueueMission(Mission::Unload, false);
+				return; // one after another
+			}
+		}
+
+		if (++i >= 2)
+			return; // no stuck
+
+		pCell = pCell->GetNeighbourCell(FacingType::East);
+	}
+}
+
+// Kick out stuck units when the factory building is not busy
+DEFINE_HOOK(0x450248, BuildingClass_UpdateFactory_KickOutStuckUnits, 0x6)
+{
+	GET(BuildingClass*, pThis, ESI);
+
+	if (!(Unsorted::CurrentFrame % 15))
+	{
+		const auto pType = pThis->Type;
+
+		if (pType->Factory == AbstractType::UnitType && pType->WeaponsFactory && !pType->Naval && pThis->QueuedMission != Mission::Unload)
+		{
+			const auto mission = pThis->CurrentMission;
+
+			if (mission == Mission::Guard || (mission == Mission::Unload && pThis->MissionStatus == 1))
+				KickOutStuckUnits(pThis);
+		}
+	}
+
+	return 0;
+}
+
+// Should not kick out units if the factory building is in construction process
+DEFINE_HOOK(0x4444A0, BuildingClass_KickOutUnit_NoKickOutInConstruction, 0xA)
+{
+	enum { ThisIsOK = 0x444565, ThisIsNotOK = 0x4444B3 };
+
+	GET(BuildingClass* const, pThis, ESI);
+
+	const auto mission = pThis->GetCurrentMission();
+
+	return (mission == Mission::Unload || mission == Mission::Construction) ? ThisIsNotOK : ThisIsOK;
+}
+
+DEFINE_HOOK(0x6B7CC1, SpawnManagerClass_Detach_ExitGame, 0x7)
+{
+	GET(SpawnManagerClass*, pThis, ESI);
+
+	if (Phobos::Otamaa::ExeTerminated)
+		return 0x6B7CCF;
+
+	pThis->KillNodes();
+	pThis->ResetTarget();
+	return 0x6B7CCF;
+}
+
+DEFINE_HOOK(0x71872C, TeleportLocomotionClass_MakeRoom_OccupationFix, 0x9)
+{
+	enum { SkipMarkOccupation = 0x71878F };
+
+	GET(const LocomotionClass* const, pLoco, EBP);
+
+	const auto pFoot = pLoco->LinkedTo;
+
+	return (pFoot && !pFoot->InLimbo && pFoot->IsAlive && pFoot->Health > 0 && !pFoot->IsSinking) ? 0 : SkipMarkOccupation;
+}
+
+DEFINE_HOOK(0x54BC99, JumpjetLocomotionClass_Ascending_BarracksExitCell, 0x6)
+{
+	GET(BuildingTypeClass*, pType, EAX);
+	return BuildingTypeExtContainer::Instance.Find(pType)->BarracksExitCell.isset() ? 0x54BCA3 : 0;
+}
+
+DEFINE_HOOK(0x4DB36C, FootClass_Limbo_RemoveSensorsAt, 0x5)
+{
+	GET(FootClass*, pThis, EDI);
+	pThis->RemoveSensorsAt(pThis->LastMapCoords);
+	return 0x4DB37C;
+}
+
+DEFINE_HOOK(0x4DBEE7, FootClass_SetOwningHouse_RemoveSensorsAt, 0x6)
+{
+	GET(FootClass*, pThis, ESI);
+	pThis->RemoveSensorsAt(pThis->LastMapCoords);
+	return 0x4DBF01;
+}

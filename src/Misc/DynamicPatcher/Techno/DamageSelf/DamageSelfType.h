@@ -64,7 +64,7 @@ public:
 	template <typename T>
 	bool Serialize(T& Stm)
 	{
-		//Debug::Log("Processing Element From DamageSelfType ! \n");
+		//Debug::LogInfo("Processing Element From DamageSelfType ! ");
 
 		return Stm
 			.Process(Enable)
@@ -115,8 +115,7 @@ public:
 		, delay { }
 		, Data { }
 		, DelayTimer { }
-	{
-	}
+	{ }
 
 	DamageSelfState(int Delay, const DamageSelfType& DData) : Hit { false }
 		, delay { Delay }
@@ -154,7 +153,7 @@ public:
 	template <typename T>
 	bool Serialize(T& Stm)
 	{
-		//	Debug::Log("Processing Element From DamageSelfState ! \n");
+		//	Debug::LogInfo("Processing Element From DamageSelfState ! ");
 		return Stm
 			.Process(Hit)
 			.Process(delay)

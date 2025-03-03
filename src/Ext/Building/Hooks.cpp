@@ -115,15 +115,6 @@ DEFINE_HOOK(0x449ADA, BuildingClass_MissionConstruction_DeployToFireFix, 0x6) //
 // 	return 0;
 // }
 
-DEFINE_HOOK(0x44224F, BuildingClass_ReceiveDamage_DamageSelf, 0x5)
-{
-	enum { SkipCheck = 0x442268, Continue = 0x0 };
-
-	REF_STACK(args_ReceiveDamage const, args, STACK_OFFS(0x9C, -0x4));
-
-	return  WarheadTypeExtContainer::Instance.Find(args.WH)->AllowDamageOnSelf ? SkipCheck : Continue;
-}
-
 DEFINE_HOOK(0x440B4F, BuildingClass_Unlimbo_SetShouldRebuild, 0x5)
 {
 	enum { ContinueCheck = 0x440B58, ShouldNotRebuild = 0x440B81 };
@@ -210,3 +201,193 @@ DEFINE_HOOK(0x450D9C, BuildingTypeClass_AI_Anims_IncludeWeeder_1, 0x6)
 //
 // 	return 0x450E3E;
 // }
+
+DEFINE_HOOK(0x44EFD8, BuildingClass_FindExitCell_BarracksExitCell, 0x6)
+{
+	enum { SkipGameCode = 0x44F13B, ReturnFromFunction = 0x44F037 };
+
+	GET(FakeBuildingClass*, pThis, EBX);
+	GET(TechnoClass*, pTechno, ESI);
+	REF_STACK(CellStruct, resultCell, STACK_OFFSET(0x30, -0x20));
+
+	auto const pTypeExt = pThis->_GetTypeExtData();
+
+	if (pTypeExt->BarracksExitCell.isset())
+	{
+		const auto exitCell = pThis->GetMapCoords() + CellStruct {
+			(short)pTypeExt->BarracksExitCell->X, (short)pTypeExt->BarracksExitCell->Y
+		};
+
+		if (MapClass::Instance->CoordinatesLegal(exitCell))
+		{
+			if (pTechno->IsCellOccupied(MapClass::Instance->GetCellAt(exitCell),
+				FacingType::None,
+				-1,
+				nullptr,
+				true)
+				== Move::OK)
+			{
+				resultCell = exitCell;
+				return ReturnFromFunction;
+			}
+		}
+
+		return SkipGameCode;
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x444B83, BuildingClass_ExitObject_BarracksExitCell, 0x7)
+{
+	enum { SkipGameCode = 0x444C7C };
+	GET(FakeBuildingClass*, pThis, ESI);
+	GET(int, xCoord, EBP);
+	GET(int, yCoord, EDX);
+	REF_STACK(CoordStruct, resultCoords, STACK_OFFSET(0x140, -0x108));
+
+	if (pThis->_GetTypeExtData()->BarracksExitCell.isset())
+	{
+		auto const exitCoords = pThis->Type->ExitCoord;
+		resultCoords = CoordStruct { xCoord + exitCoords.X, yCoord + exitCoords.Y, exitCoords.Z };
+		return SkipGameCode;
+	}
+
+	return 0;
+}
+
+#pragma region EnableBuildingProductionQueue
+
+DEFINE_HOOK(0x6AB689, SelectClass_Action_SkipBuildingProductionCheck, 0x5)
+{
+	enum { SkipGameCode = 0x6AB6CE };
+	return RulesExtData::Instance()->ExpandBuildingQueue ? SkipGameCode : 0;
+}
+
+DEFINE_HOOK(0x4FA520, HouseClass_BeginProduction_SkipBuilding, 0x5)
+{
+	enum { SkipGameCode = 0x4FA553 };
+	return RulesExtData::Instance()->ExpandBuildingQueue ? SkipGameCode : 0;
+}
+
+DEFINE_HOOK(0x4C9C7B, FactoryClass_QueueProduction_ForceCheckBuilding, 0x7)
+{
+	enum { SkipGameCode = 0x4C9C9E };
+	return RulesExtData::Instance()->ExpandBuildingQueue ? SkipGameCode : 0;
+}
+
+DEFINE_HOOK(0x4FAAD8, HouseClass_AbandonProduction_RewriteForBuilding, 0x8)
+{
+	enum { CheckSame = 0x4FAB3D, SkipCheck = 0x4FAB64, Return = 0x4FAC9B };
+
+	GET_STACK(const bool, all, STACK_OFFSET(0x18, 0x10));
+	GET(const int, index, EBX);
+	GET(const BuildCat, buildCat, ECX);
+	GET(const AbstractType, absType, EBP);
+	GET(FactoryClass* const, pFactory, ESI);
+
+	if (buildCat == BuildCat::DontCare || all)
+	{
+		const auto pType = TechnoTypeClass::GetByTypeAndIndex(absType, index);
+		const auto firstRemoved = pFactory->RemoveOneFromQueue(pType);
+
+		if (firstRemoved)
+		{
+			SidebarClass::Instance->SidebarBackgroundNeedsRedraw = true; // Added, force redraw strip
+			SidebarClass::Instance->RepaintSidebar(SidebarClass::GetObjectTabIdx(absType, index, 0));
+
+			if (all)
+				while (pFactory->RemoveOneFromQueue(pType));
+			else
+				return Return;
+		}
+
+		return CheckSame;
+	}
+
+	if (!pFactory->Object)
+		return SkipCheck;
+
+	if (!pFactory->RemoveOneFromQueue(TechnoTypeClass::GetByTypeAndIndex(absType, index)))
+		return CheckSame;
+
+	SidebarClass::Instance->SidebarBackgroundNeedsRedraw = true; // Added, force redraw strip
+	SidebarClass::Instance->RepaintSidebar(SidebarClass::GetObjectTabIdx(absType, index, 0));
+	return Return;
+}
+
+DEFINE_HOOK(0x6A9C54, StripClass_DrawStrip_FindFactoryDehardCode, 0x6)
+{
+	GET(TechnoTypeClass* const, pType, ECX);
+	LEA_STACK(BuildCat*, pBuildCat, STACK_OFFSET(0x490, -0x490));
+
+	if (const auto pBuildingType = cast_to<BuildingTypeClass*>(pType))
+		*pBuildCat = pBuildingType->BuildCat;
+
+	return 0;
+}
+
+DEFINE_HOOK(0x6A9789, StripClass_DrawStrip_NoGreyCameo, 0x6)
+{
+	enum { ContinueCheck = 0x6A9799, SkipGameCode = 0x6A97FB };
+
+	GET(TechnoTypeClass* const, pType, EBX);
+	GET_STACK(bool, clicked, STACK_OFFSET(0x48C, -0x475));
+
+	if (!RulesExtData::Instance()->ExpandBuildingQueue)
+	{
+		if (pType->WhatAmI() == AbstractType::BuildingType && clicked)
+			return SkipGameCode;
+	}
+	else if (const auto pBuildingType = cast_to<BuildingTypeClass*>(pType))
+	{
+		if (const auto pFactory = HouseClass::CurrentPlayer->GetPrimaryFactory(AbstractType::BuildingType, pType->Naval, pBuildingType->BuildCat))
+		{
+			if (const auto pProduct = cast_to<BuildingClass*>(pFactory->Object))
+			{
+				if (pFactory->IsDone() && pProduct->Type != pType && ((pProduct->Type->BuildCat != BuildCat::Combat) ^ (pBuildingType->BuildCat == BuildCat::Combat)))
+					return SkipGameCode;
+			}
+		}
+	}
+
+	return ContinueCheck;
+}
+
+DEFINE_HOOK(0x4FA612, HouseClass_BeginProduction_ForceRedrawStrip, 0x5)
+{
+	SidebarClass::Instance->SidebarBackgroundNeedsRedraw = true;
+	return 0;
+}
+
+DEFINE_HOOK(0x6AA88D, StripClass_RecheckCameo_FindFactoryDehardCode, 0x6)
+{
+	GET(TechnoTypeClass* const, pType, EBX);
+	LEA_STACK(BuildCat*, pBuildCat, STACK_OFFSET(0x158, -0x158));
+
+	if (const auto pBuildingType = cast_to<BuildingTypeClass*>(pType))
+		*pBuildCat = pBuildingType->BuildCat;
+
+	return 0;
+}
+
+#pragma endregion
+#include <PlanningTokenClass.h>
+
+DEFINE_HOOK(0x4AE95E, DisplayClass_sub_4AE750_AntiStupid, 0x5)
+{
+	enum { Ret = 0x4AE982 };
+
+	GET(ObjectClass*, pObject, ECX);
+	//GET(int, address, ESP);
+	LEA_STACK(CellStruct*, pCell, 0x28);
+
+	auto action = pObject->MouseOverCell(*pCell);
+
+	bool shouldSkip = PlanningNodeClass::PlanningModeActive && pObject->WhatAmI() == AbstractType::Building && action != Action::Attack;
+
+	if (!shouldSkip)
+		pObject->CellClickedAction(action, pCell, pCell, false);
+
+	return Ret;
+}

@@ -17,7 +17,7 @@ public:
 		, CursorData { }
 	{ }
 
-	static void inline AddDefaults()
+	static void OPTIONALINLINE AddDefaults()
 	{
 		if (!Array.empty())
 			return;
@@ -41,7 +41,7 @@ public:
 
 	static void LoadFromINIList_New(CCINIClass* pINI, bool bDebug = false);
 
-	static constexpr std::array<const char* const, (size_t)MouseCursorType::count> MouseCursorTypeToStrings {
+	static COMPILETIMEEVAL std::array<const char* const, (size_t)MouseCursorType::count> MouseCursorTypeToStrings {
 		{
 			{ "Default" }, { "MoveN" },{ "MoveNE" }, { "MoveE" }, { "MoveSE" },
 			{ "MoveS" }, { "MoveSW" }, { "MoveW" }, { "MoveNW" }, { "NoMoveN" },
@@ -67,7 +67,7 @@ public:
 		}
 	};
 
-	static constexpr std::array<const char*, (size_t)NewMouseCursorType::count> NewMouseCursorTypeToStrings {
+	static COMPILETIMEEVAL std::array<const char*, (size_t)NewMouseCursorType::count> NewMouseCursorTypeToStrings {
 		{
 			//86       //87					//88
 	{ "Tote" }, { "EngineerDamage" }, { "TogglePower" },
@@ -78,7 +78,7 @@ public:
 }
 	};
 
-	static constexpr std::array<const MouseCursor, (size_t)NewMouseCursorType::count> NewMouseCursorTypeData {
+	static COMPILETIMEEVAL std::array<const MouseCursor, (size_t)NewMouseCursorType::count> NewMouseCursorTypeData {
 		{
 			{ 239,10,4,-1,-1,MouseHotSpotX::Center , MouseHotSpotY::Middle } ,
 			{ 299,10,4,-1,-1,MouseHotSpotX::Center , MouseHotSpotY::Middle } ,
@@ -92,7 +92,7 @@ public:
 		}
 	};
 
-	static inline constexpr void AllocateWithDefault(const char* Title, const MouseCursor& cursor)
+	static OPTIONALINLINE COMPILETIMEEVAL void AllocateWithDefault(const char* Title, const MouseCursor& cursor)
 	{
 		Array.emplace_back(std::move(std::make_unique<CursorTypeClass>(Title)));
 		Array.back()->CursorData = cursor;
@@ -154,7 +154,7 @@ private:
 //
 //				CursorTypeClass::AllocateWithDefault(pSection , value);
 //				this->Value = CursorTypeClass::Array.size() - 1;
-//				Debug::Log("[Phobos]Parsing CusorTypeClass from raw Cursor value of [%s]%s=%s\n", pSection, pKey, copyed.c_str());
+//				Debug::LogInfo("[Phobos]Parsing CusorTypeClass from raw Cursor value of [%s]%s=%s", pSection, pKey, copyed.c_str());
 //				return;
 //			}
 //			else

@@ -21,6 +21,8 @@
 
 #include <Utilities/Macro.h>
 #include <New/Entity/SWFirerClass.h>
+
+#include <Misc/DamageArea.h>
 #pragma endregion
 
 //DEFINE_HOOK_AGAIN(0x55B6F8, LogicClass_Update, 0xC) //_End
@@ -33,7 +35,7 @@ DEFINE_HOOK(0x55AFB3, LogicClass_Update, 0x6) //_Early
 
 	for (auto pHouse : *HouseClass::Array)
 	{
-		auto pExt = HouseExtContainer::Instance.Find(pHouse);
+		//auto pExt = HouseExtContainer::Instance.Find(pHouse);
 		AresHouseExt::UpdateTogglePower(pHouse);
 	}
 
@@ -76,13 +78,13 @@ DEFINE_HOOK(0x6CC390, SuperClass_Launch, 0x6)
 	GET_STACK(CellStruct* const, pCell, 0x4);
 	GET_STACK(bool const, isPlayer, 0x8);
 
-	//Debug::Log("[%s - %x] Lauch [%s - %x] \n", pSuper->Owner->get_ID() , pSuper->Owner, pSuper->Type->ID, pSuper);
+	//Debug::LogInfo("[%s - %x] Lauch [%s - %x] ", pSuper->Owner->get_ID() , pSuper->Owner, pSuper->Type->ID, pSuper);
 	if (SWTypeExtData::Activate(pSuper, *pCell, isPlayer))
 	{
 		pSuper->_GetTypeExtData()->FireSuperWeapon(pSuper, pSuper->Owner, pCell, isPlayer);
 	}
 
-	//Debug::Log("Lauch [%x][%s] %s failed \n", pSuper, pSuper->Owner->get_ID(), pSuper->Type->ID);
+	//Debug::LogInfo("Lauch [%x][%s] %s failed ", pSuper, pSuper->Owner->get_ID(), pSuper->Type->ID);
 	return 0x6CDE40;
 }
 
@@ -279,8 +281,12 @@ DEFINE_HOOK(0x6CEC19, SuperWeaponType_LoadFromINI_ParseType, 0x6)
 	return 0x6CECEF;
 }
 
+#include <Commands/DistributionMode.h>
+
 DEFINE_HOOK(0x6DBE74, Tactical_SuperLinesCircles_ShowDesignatorRange, 0x7)
 {
+	DistributionMode::DrawRadialIndicator();
+
 	if (!ToggleDesignatorRangeCommandClass::ShowDesignatorRange || Unsorted::CurrentSWType < 0)
 		return 0;
 
@@ -359,9 +365,9 @@ DEFINE_HOOK(0x6F01BA, TeamClass_ChronosphereTeam_PickSuper_IsAvail_B, 0x9)
 
 DEFINE_HOOK(0x41F180, AITriggerClass_Chrono, 0x5)
 {
-	GET(AITriggerTypeClass*, pThis, ECX);
+	//GET(AITriggerTypeClass*, pThis, ECX);
 	GET_STACK(HouseClass*, pOwner, 0x4);
-	GET_STACK(HouseClass*, pEnemy, 0x8);
+	//GET_STACK(HouseClass*, pEnemy, 0x8);
 
 	if (!pOwner || pOwner->Supers.Count <= 0)
 	{
@@ -369,7 +375,7 @@ DEFINE_HOOK(0x41F180, AITriggerClass_Chrono, 0x5)
 		return 0x41F1BA;
 	}
 
-	//Debug::Log("AITrigger[%s] With Owner[%s] Enemy[%s].\n", pThis->ID, pOwner->get_ID(), pEnemy->get_ID());
+	//Debug::LogInfo("AITrigger[%s] With Owner[%s] Enemy[%s].", pThis->ID, pOwner->get_ID(), pEnemy->get_ID());
 	auto iter = pOwner->Supers.find_if([pOwner](SuperClass* pItem)
  {
 	 return (pItem->Type->Type == SuperWeaponType::ChronoSphere
@@ -416,7 +422,7 @@ DEFINE_HOOK(0x6EFC70, TeamClass_IronCurtain, 5)
 	GET_STACK(ScriptActionNode*, pTeamMission, 0x4);
 	//GET_STACK(bool, barg3, 0x8);
 
-	auto pTeamExt = TeamExtContainer::Instance.Find(pThis);
+	//auto pTeamExt = TeamExtContainer::Instance.Find(pThis);
 	const auto pLeader = pThis->FetchLeader();
 
 	if (!pLeader)
@@ -570,7 +576,7 @@ DEFINE_HOOK(0x6AAEDF, SidebarClass_ProcessCameoClick_SuperWeapons, 6)
 	else
 	{
 		const auto pHouseID = HouseClass::CurrentPlayer->get_ID();
-		Debug::Log("[%s - %x] SW [%s - %x] CannotFire\n", pHouseID, HouseClass::CurrentPlayer(), pSuper->Type->ID, pSuper);
+		Debug::LogInfo("[{} - {}] SW [{} - {}] CannotFire", pHouseID, (void*)HouseClass::CurrentPlayer(), pSuper->Type->ID, (void*)pSuper);
 		pData->PrintMessage(pData->Message_CannotFire, HouseClass::CurrentPlayer);
 	}
 
@@ -912,7 +918,7 @@ DEFINE_HOOK(0x4F9004, HouseClass_Update_TrySWFire, 7)
 
 	GET(HouseClass*, pThis, ESI);
 
-	//Debug::Log("House[%s - %x , calling %s\n" , pThis->get_ID() , pThis ,__FUNCTION__);
+	//Debug::LogInfo("House[%s - %x , calling %s" , pThis->get_ID() , pThis ,__FUNCTION__);
 	if (R->AL())
 	{ // HumanControlled
 		pThis->AI_TryFireSW();
@@ -1342,7 +1348,7 @@ DEFINE_HOOK(0x5098F0, HouseClass_Update_AI_TryFireSW, 5)
 
 	for (const auto& pSuper : pThis->Supers)
 	{
-		//Debug::Log("House[%s - %x] Trying To Fire SW[%s - %x]\n" , pThis->get_ID() , pThis, pSuper->Type->ID , pSuper);
+		//Debug::LogInfo("House[%s - %x] Trying To Fire SW[%s - %x]" , pThis->get_ID() , pThis, pSuper->Type->ID , pSuper);
 		if (pSuper->IsCharged && pSuper->ChargeDrainState != ChargeDrainState::Draining)
 		{
 			if (!humanControlled || SWTypeExtContainer::Instance.Find(pSuper->Type)->SW_AutoFire)
@@ -1376,12 +1382,12 @@ DEFINE_HOOK(0x4C78D6, Networking_RespondToEvent_SpecialPlace, 8)
 
 			if (pHouse == HouseClass::CurrentPlayer)
 			{
-				Debug::Log("[%s - %x] SW [%s - %x] CannotFire\n", pHouseID, pHouse, pSuper->Type->ID, pSuper);
+				Debug::LogInfo("[{} - {}] SW [{} - {}] CannotFire", pHouseID, (void*)pHouse, pSuper->Type->ID, (void*)pSuper);
 				pExt->PrintMessage(pExt->Message_CannotFire, pHouse);
 			}
 			else
 			{
-				Debug::Log("[%s - %x] SW [%s - %x] AI CannotFire\n", pHouseID, pHouse, pSuper->Type->ID, pSuper);
+				Debug::LogInfo("[{} - {}] SW [{} - {}] AI CannotFire", pHouseID, (void*)pHouse, pSuper->Type->ID, (void*)pSuper);
 			}
 		}
 	}
@@ -1546,8 +1552,8 @@ DEFINE_HOOK(0x46B371, BulletClass_NukeMaker, 5)
 		}
 		else
 		{
-			Debug::Log(
-				"[%s] has no payload weapon type, or it is invalid.\n",
+			Debug::LogInfo(
+				"[%s] has no payload weapon type, or it is invalid.",
 				pNukeSW->ID);
 		}
 	}
@@ -1583,7 +1589,7 @@ DEFINE_HOOK(0x467E59, BulletClass_Update_NukeBall, 5)
 	enum { Default = 0u, FireNow = 0x467F9Bu, PreImpact = 0x467ED0 };
 
 	auto allowFlash = true;
-	auto flashDuration = 0;
+	// flashDuration = 0;
 
 	// this is a bullet launched by a super weapon
 	if (pExt->NukeSW && !pThis->WH->NukeMaker)
@@ -1647,7 +1653,7 @@ DEFINE_HOOK(0x467E59, BulletClass_Update_NukeBall, 5)
 //	const auto pTarget = pThis->Target;
 //	if (!pTarget)
 //	{
-//		Debug::Log("Bullet[%s] Trying to Apply NukeMaker but has invalid target !\n", pThis->Type->ID);
+//		Debug::LogInfo("Bullet[%s] Trying to Apply NukeMaker but has invalid target !", pThis->Type->ID);
 //		return ret;
 //	}
 //
@@ -1672,7 +1678,7 @@ DEFINE_HOOK(0x467E59, BulletClass_Update_NukeBall, 5)
 //
 //	if (!pPaylod || !pPaylod->Projectile)
 //	{
-//		Debug::Log("Bullet[%s] Trying to Apply NukeMaker but has invalid Payload Weapon or Payload Weapon Projectile !\n",
+//		Debug::LogInfo("Bullet[%s] Trying to Apply NukeMaker but has invalid Payload Weapon or Payload Weapon Projectile !",
 //			pThis->Type->ID);
 //		return ret;
 //	}
@@ -2369,7 +2375,7 @@ DEFINE_HOOK(0x53A300, LightningStorm_Strike2, 5)
 	// get center of cell coords
 	auto const pCell = MapClass::Instance->GetCellAt(refCoords);
 	const auto pNewSW = pData->GetNewSWType();
-	auto const coords = pCell->GetCoordsWithBridge();
+	auto coords = pCell->GetCoordsWithBridge();
 
 	if (coords.IsValid())
 	{
@@ -2439,8 +2445,8 @@ DEFINE_HOOK(0x53A300, LightningStorm_Strike2, 5)
 			MapClass::FlashbangWarheadAt(
 				damage, pWarhead, coords, false, SpotlightFlags::None);
 
-			MapClass::DamageArea(
-				coords, damage, nullptr, pWarhead, true, pSuper->Owner);
+			DamageArea::Apply(
+				&coords, damage, nullptr, pWarhead, true, pSuper->Owner);
 
 			// fancy stuff if damage is dealt
 			if (auto const pAnimType = MapClass::SelectDamageAnimation(
@@ -2525,7 +2531,7 @@ DEFINE_HOOK(0x53B080, PsyDom_Fire, 5)
 		if (pWarhead && damage != 0)
 		{
 			//this update every frame , so getting the firer here , seems degreading the performance ,..
-			MapClass::Instance->DamageArea(coords, damage, pNewData->GetFirer(pSuper, cell, false), pWarhead, true, pFirer);
+			DamageArea::Apply(&coords, damage, pNewData->GetFirer(pSuper, cell, false), pWarhead, true, pFirer);
 		}
 
 		// capture
@@ -2858,7 +2864,7 @@ int FakeBuildingClass::_Mission_Missile()
 {
 	if (!TechnoExtContainer::Instance.Find(this)->LinkedSW && this->MissionStatus < 3)
 	{
-		Debug::Log("Building[%s] with Mission::Missile Missing Important Linked SW data !\n", this->get_ID());
+		Debug::LogInfo("Building[{}] with Mission::Missile Missing Important Linked SW data !", this->get_ID());
 	}
 	else if (TechnoExtContainer::Instance.Find(this)->LinkedSW && this->MissionStatus >= 3)
 	{

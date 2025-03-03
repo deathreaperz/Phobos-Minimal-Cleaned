@@ -27,7 +27,7 @@ WeaponStruct* FakeTechnoTypeClass::GetWeapon(int which)
 	if ((size_t)which < Vectors->size())
 		return Vectors->data() + which;
 
-	Debug::Log("Techno[%s] Trying to get AdditionalWeapon with out of bound index[%d]\n", this->ID, which);
+	Debug::LogInfo("Techno[{}] Trying to get AdditionalWeapon with out of bound index[{}]", this->ID, which);
 	return nullptr;
 }
 
@@ -43,7 +43,7 @@ WeaponStruct* FakeTechnoTypeClass::GetEliteWeapon(int which)
 	if ((size_t)which < Vectors->size())
 		return Vectors->data() + which;
 
-	Debug::Log("Techno[%s] Trying to get AdditionalEliteWeapon with out of bound index[%d]\n", this->ID, which);
+	Debug::LogInfo("Techno[{}] Trying to get AdditionalEliteWeapon with out of bound index[{}]", this->ID, which);
 	return nullptr;
 }
 
@@ -60,7 +60,7 @@ int FakeTechnoTypeClass::GetWeaponTurretIndex(int which)
 	if ((size_t)which < vec->size())
 		return *(vec->data() + which);
 
-	Debug::Log("Techno[%s] Trying to get AdditionalTurretWeaponIndex with out of bound index[%d]\n", this->ID, which);
+	Debug::LogInfo("Techno[{}] Trying to get AdditionalTurretWeaponIndex with out of bound index[{}]", this->ID, which);
 	return 0;
 }
 

@@ -34,9 +34,15 @@
 
 #include <GeneralDefinitions.h>
 
+enum class InterpolationMode : BYTE
+{
+	None = 0,
+	Linear = 1
+};
+
 // use to put check on `NullableIdx`
 // TODO : put this on other `Idx` based stuffs ,..
-enum class EnumCheckMode
+enum class EnumCheckMode : BYTE
 {
 	default, ignore, disable
 };
@@ -62,7 +68,7 @@ enum class LandTypeFlags : unsigned short
 };
 
 MAKE_ENUM_FLAGS(LandTypeFlags);
-constexpr FORCEINLINE bool IsLandTypeInFlags(LandTypeFlags flags, LandType type)
+COMPILETIMEEVAL FORCEDINLINE bool IsLandTypeInFlags(LandTypeFlags flags, LandType type)
 {
 	return (bool)((LandTypeFlags)(1 << (char)type) & flags);
 }

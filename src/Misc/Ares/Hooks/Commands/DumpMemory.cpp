@@ -29,11 +29,6 @@ const wchar_t* MemoryDumperCommandClass::GetUIDescription() const
 
 void MemoryDumperCommandClass::Execute(WWKey dwUnk) const
 {
-	if (this->CheckDebugDeactivated())
-	{
-		return;
-	}
-
 	Debug::TakeMouse();
 
 	HCURSOR loadCursor = LoadCursor(nullptr, IDC_WAIT);
@@ -44,7 +39,7 @@ void MemoryDumperCommandClass::Execute(WWKey dwUnk) const
 
 	std::wstring filename = Debug::FullDump();
 
-	Debug::Log("Process memory dumped to %ls\n", filename.c_str());
+	Debug::LogInfo("Process memory dumped to {}", PhobosCRT::WideStringToString(filename));
 
 	filename = L"Process memory dumped to " + filename;
 

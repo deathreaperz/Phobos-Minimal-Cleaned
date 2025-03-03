@@ -36,8 +36,7 @@ public:
 
 	SpiralTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Spiral , pBullet , pType }
-	{
-	}
+	{ }
 
 	virtual ~SpiralTrajectory() = default;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }

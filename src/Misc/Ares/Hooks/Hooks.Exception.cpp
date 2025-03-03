@@ -27,7 +27,7 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 	// mimic an increment because decrement happens in the middle of function cleanup and can't be erased nicely
 	++Unsorted::SystemResponseMessages;
 
-	Debug::Log("Reconnection error detected!\n");
+	Debug::LogInfo("Reconnection error detected!");
 	if (MessageBoxW(Game::hWnd, L"Yuri's Revenge has detected a desynchronization!\n"
 		L"Would you like to create a full error report for the developers?\n"
 		L"Be advised that reports from at least two players are needed.", L"Reconnection Error!", MB_YESNO | MB_ICONERROR) == IDYES)
@@ -40,14 +40,7 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 
 		std::wstring path = Debug::PrepareSnapshotDirectory();
 
-		if (Debug::LogEnabled)
-		{
-			Debug::Log("Copying debug log\n");
-			const std::wstring logCopy = path + Debug::LogFileMainName + Debug::LogFileExt;
-			CopyFileW(Debug::LogFileTempName.c_str(), logCopy.c_str(), FALSE);
-		}
-
-		Debug::Log("Making a memory snapshot\n");
+		Debug::LogInfo("Making a memory snapshot");
 		Debug::FullDump(std::move(path));
 
 		loadCursor = LoadCursor(nullptr, IDC_ARROW);
@@ -57,8 +50,14 @@ DEFINE_STRONG_HOOK(0x64CCBF, DoList_ReplaceReconMessage, 6)
 			"%s"
 			"A crash dump should have been created in your game's \\debug subfolder.\r\n"
 			"Please submit that to the developers along with SYNC*.txt, debug.txt and syringe.log."
-				, Phobos::Otamaa::ParserErrorDetected ? "(One or more parser errors have been detected that might be responsible. Check the debug logs.)\r\n" : ""
+				, Phobos::Otamaa::ParserErrorDetected ? "(One or more parser errors have been detected that might be responsible. Check the debug logs.)\r" : ""
 		);
+
+		if (Debug::LogEnabled)
+		{
+			MessageBoxW(Game::hWnd, Debug::LogFileFullPath.c_str(), L"Fatal Error - Yuri's Revenge", MB_OK | MB_ICONERROR);
+			CopyFileW(Debug::LogFileFullPath.c_str(), (path + Debug::LogFileMainName + Debug::LogFileExt).c_str(), FALSE);
+		}
 	}
 
 	return 0x64CD11;
@@ -112,15 +111,15 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 		//MovementZone movementZone = (MovementZone)(ExceptionInfo->ContextRecord->Ebp + 0x10);
 
 		//AstarClass , broken ptr
-		Debug::Log("PathfindingCrash\n");
+		Debug::LogInfo("PathfindingCrash");
 		break;
 	}
 	case 0x584DF7:
-		Debug::Log("SubzoneTrackingCrash\n");
+		Debug::LogInfo("SubzoneTrackingCrash");
 		break;
 		//case 0x755C7F:
 		//{
-		//	Debug::Log("BounceAnimError \n");
+		//	Debug::LogInfo("BounceAnimError ");
 		//	return PrintException(exception_id, ExceptionInfo);
 		//}
 	case 0x000000:
@@ -137,13 +136,14 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 	}
 
 	Debug::FreeMouse();
-	Debug::Log("Exception handler fired!\n");
-	Debug::Log("Exception %X at %p\n", pExs->ExceptionRecord->ExceptionCode, pExs->ExceptionRecord->ExceptionAddress);
+	Debug::LogInfo("Exception handler fired!");
+	Debug::Log("Exception 0x%x at 0x%x", pExs->ExceptionRecord->ExceptionCode, pExs->ExceptionRecord->ExceptionAddress);
 	Game::StreamerThreadFlush();
 
 	//the value of `reference<HWND> Game::hWnd` is stored on the stack instead of inlined as memory value, using `.get()` doesnot seems fixed it
 	//so using these oogly
 	SetWindowTextW(*reinterpret_cast<HWND*>(0xB73550), L"Fatal Error - Yuri's Revenge");
+	std::wstring path = Debug::PrepareSnapshotDirectory();
 
 	switch (pExs->ExceptionRecord->ExceptionCode)
 	{
@@ -169,23 +169,15 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 	case EXCEPTION_STACK_OVERFLOW:
 	case 0xE06D7363: // exception thrown and not caught
 	{
-		std::wstring path = Debug::PrepareSnapshotDirectory();
-
-		if (Debug::LogEnabled)
-		{
-			const std::wstring logCopy = path + Debug::LogFileMainName + Debug::LogFileExt;
-			CopyFileW(Debug::LogFileTempName.c_str(), logCopy.c_str(), FALSE);
-		}
-
 		const std::wstring except_file = path + L"\\except.txt";
 
 		if (FILE* except = _wfsopen(except_file.c_str(), L"w", _SH_DENYNO))
 		{
-			constexpr auto const pDelim = "------------------------------------------------------------------------------------\n";
+			COMPILETIMEEVAL auto const pDelim = "------------------------------------------------------------------------------------\n";
 			fprintf(except, "Internal Error encountered!\n");
 			fprintf(except, pDelim);
-			fprintf(except, "Ares version: 21.352.1218 With Phobos %s", PRODUCT_VERSION); //TODO
-			fprintf(except, "\n");
+			fprintf(except, "Ares version: 21.352.1218 With Phobos %s\n", PRODUCT_VERSION); //TODO
+			fprintf(except, "Running on %s\n", Patch::WindowsVersion.c_str());
 			fprintf(except, pDelim);
 
 			fprintf(except, "\n");
@@ -204,7 +196,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 				break;
 			case EXCEPTION_ACCESS_VIOLATION:
 			{
-				std::string VioType;
+				std::string VioType {};
 				switch (pExs->ExceptionRecord->ExceptionInformation[0])
 				{
 				case 0: // Read violation
@@ -327,6 +319,15 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 			);
 
 			{
+				auto& last_anim = PhobosGlobal::Instance()->LastAnimName;
+
+				if (!last_anim.empty())
+				{
+					Debug::LogInfo("LastAnim Calling CTOR ({})", last_anim);
+				}
+			}
+
+			{
 				auto& pp = PhobosGlobal::Instance()->PathfindTechno;
 				if (pp.IsValid())
 				{
@@ -347,7 +348,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 						}
 					}
 
-					Debug::Log("LastPathfind (%x)[%s] - [%s] from (%d - %d) to (%d - %d)\n", pp.Finder, what, pTechnoID,
+					Debug::LogInfo("LastPathfind ({})[{}] - [{}] from ({} - {}) to ({} - {})", (void*)pp.Finder, what, pTechnoID,
 						pp.From.X, pp.From.Y,
 						pp.To.X, pp.To.Y
 					);
@@ -378,7 +379,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 			}
 
 			fclose(except);
-			Debug::Log("Exception data has been saved to file:\n%ls\n", except_file.c_str());
+			Debug::LogInfo("Exception data has been saved to file: {}", PhobosCRT::WideStringToString(except_file));
 		}
 
 		//the value of `reference<HWND> Game::hWnd` is stored on the stack instead of inlined as memory value, using `.get()` doesnot seems fixed it
@@ -390,7 +391,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 			//so using these oogly
 			SetClassLong(*reinterpret_cast<HWND*>(0xB73550), GCL_HCURSOR, reinterpret_cast<LONG>(loadCursor));
 			SetCursor(loadCursor);
-			Debug::Log("Making a memory dump\n");
+			Debug::LogInfo("Making a memory dump");
 
 			MINIDUMP_EXCEPTION_INFORMATION expParam {};
 			expParam.ThreadId = GetCurrentThreadId();
@@ -408,24 +409,30 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 				"%s"
 				"A crash dump should have been created in your game's \\debug subfolder.\r\n"
 				"You can submit that to the developers (along with debug.txt and syringe.log)."
-				, Phobos::Otamaa::ParserErrorDetected ? "(One or more parser errors have been detected that might be responsible. Check the debug logs.)\r\n" : ""
+				, Phobos::Otamaa::ParserErrorDetected ? "(One or more parser errors have been detected that might be responsible. Check the debug logs.)\r" : ""
 			);
 		}
 		break;
 	}
 	case ERROR_MOD_NOT_FOUND:
 	case ERROR_PROC_NOT_FOUND:
-		Debug::Log("Massive failure: Procedure or module not found!\n");
+		Debug::LogInfo("Massive failure: Procedure or module not found!");
 		break;
 	default:
-		Debug::Log("Massive failure: reason unknown, have fun figuring it out\n");
-		Debug::DumpObj(reinterpret_cast<byte*>(pExs->ExceptionRecord), sizeof(*(pExs->ExceptionRecord)));
+		Debug::LogInfo("Massive failure: reason unknown, have fun figuring it out");
+		//Debug::DumpObj(reinterpret_cast<byte*>(pExs->ExceptionRecord), sizeof(*(pExs->ExceptionRecord)));
 		//return EXCEPTION_CONTINUE_SEARCH;
 		break;
 	}
 
-	Debug::Log("Exiting...\n");
+	if (Debug::LogEnabled)
+	{
+		MessageBoxW(Game::hWnd, Debug::LogFileFullPath.c_str(), L"Fatal Error - Yuri's Revenge", MB_OK | MB_ICONERROR);
+		CopyFileW(Debug::LogFileFullPath.c_str(), (path + Debug::LogFileMainName + Debug::LogFileExt).c_str(), FALSE);
+	}
+
 	Debug::ExitGame(pExs->ExceptionRecord->ExceptionCode);
+
 	return 0u;
 };
 
@@ -573,7 +580,7 @@ void WriteLog(const HouseClass* it, int idx, DWORD checksum, FILE* F)
 	WriteLog<void>(it, idx, checksum, F);
 
 	fprintf(F, "; Player Name : %s (%d - %s); IsHumanPlayer: %u; ColorScheme: %s (%d); Edge: %d; StartingAllies: %u; Startspot: %d,%d; Visionary: %d; MapIsClear: %u; Money: %d",
-		it->PlainName ? it->PlainName : NONE_STR,
+		it->PlainName ? it->PlainName : GameStrings::NoneStr(),
 		it->ArrayIndex, HouseTypeClass::Array->Items[it->Type->ArrayIndex]->Name,
 		it->IsHumanPlayer, ColorScheme::Array->Items[it->ColorSchemeIndex]->ID, it->ColorSchemeIndex,
 		(int)it->Edge, it->StartingAllies.data, it->StartingCell.X, it->StartingCell.Y, it->Visionary,
@@ -673,9 +680,9 @@ void HouseLogger(const DynamicVectorClass<T>* Array, FILE* F, const char* Label 
 }
 
 #include <Phobos.version.h>
-static constexpr reference<DynamicVectorClass<ObjectClass*>*, 0x87F778u> const Logics {};
+static COMPILETIMEEVAL reference<DynamicVectorClass<ObjectClass*>*, 0x87F778u> const Logics {};
 
-bool LogFrame(const char* LogFilename, EventClass* OffendingEvent = nullptr)
+static bool LogFrame(const char* LogFilename, EventClass* OffendingEvent = nullptr)
 {
 	FILE* LogFile = nullptr;
 	if (!fopen_s(&LogFile, LogFilename, "wt") && LogFile)
@@ -766,7 +773,7 @@ bool LogFrame(const char* LogFilename, EventClass* OffendingEvent = nullptr)
 	}
 	else
 	{
-		Debug::Log("Failed to open file for sync log. Error code %X.\n", errno);
+		Debug::LogInfo("Failed to open file for sync log. Error code {}.\n", errno);
 		return false;
 	}
 }

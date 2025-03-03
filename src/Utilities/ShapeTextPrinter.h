@@ -26,8 +26,7 @@ public:
 		, BaseNumberFrame { iBaseNumberFrame }
 		, BaseExtraFrame { baseExtraFrame }
 		, Spacing { spacing }
-	{
-	}
+	{ }
 
 	~ShapeTextPrintData() = default;
 	ShapeTextPrintData() = default;

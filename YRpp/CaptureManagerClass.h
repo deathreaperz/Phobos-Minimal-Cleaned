@@ -41,7 +41,7 @@ public:
 	static const AbstractType AbsID = AbstractType::CaptureManager;
 
 	//Static
-	static constexpr constant_ptr<DynamicVectorClass<CaptureManagerClass*>, 0x89E0F0u> const Array{};
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<CaptureManagerClass*>, 0x89E0F0u> const Array{};
 
 	//IPersist
 	virtual HRESULT __stdcall GetClassID(CLSID* pClassID) override JMP_STD(0x472960);
@@ -85,7 +85,7 @@ public:
 		{ JMP_THIS(0x4723B0); }
 	HouseClass* GetOriginalOwner(TechnoClass* pTarget) const
 		{ JMP_THIS(0x4722F0); }
-	bool DetachTarget(TechnoClass* pTarget) const
+	bool DetachTarget(AbstractClass* pTarget) const
 		{ JMP_THIS(0x471F90); }
 	bool CanControlOnlyOne() const
 		{ return MaxControlNodes == 1; }

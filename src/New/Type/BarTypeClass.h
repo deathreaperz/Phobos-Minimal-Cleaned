@@ -8,7 +8,7 @@ class BarTypeClass final : public Enumerable<BarTypeClass>
 {
 public:
 
-	BarTypeClass(const char* pTitle = NONE_STR) : Enumerable<BarTypeClass>(pTitle)
+	BarTypeClass(const char* pTitle = GameStrings::NoneStr()) : Enumerable<BarTypeClass>(pTitle)
 	{ }
 
 	void LoadFromINI(CCINIClass* pINI);
@@ -25,6 +25,5 @@ public:
 private:
 	template <typename T>
 	void Serialize(T& Stm)
-	{
-	}
+	{ }
 };

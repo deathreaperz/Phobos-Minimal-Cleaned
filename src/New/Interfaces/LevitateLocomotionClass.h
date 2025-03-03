@@ -67,7 +67,7 @@ public:
 		HRESULT hr = LocomotionClass::Internal_Save(this, pStm, fClearDirty);
 		if (SUCCEEDED(hr))
 		{
-			GameDebugLog::Log("LevitateLoco Save !\n");
+			GameDebugLog::Log("LevitateLoco Save !");
 			// Insert any data to be loaded here.
 		}
 
@@ -148,8 +148,7 @@ public:
 		, CurrentSpeed { 0.0 }
 		, Dampen { 0.0 }
 		, field_58 { 0.0 }
-	{
-	}
+	{ }
 
 	LevitateLocomotionClass(noinit_t) : LocomotionClass { noinit_t() }
 	{ }

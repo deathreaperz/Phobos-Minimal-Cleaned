@@ -10,13 +10,11 @@ struct VersesData
 
 	VersesData() : Verses { 1.0 }
 		, Flags { true, true, true }
-	{
-	};
+	{ };
 
 	VersesData(double VS, bool FF, bool Retal, bool Acquire) : Verses { VS }
 		, Flags { FF, Retal, Acquire }
-	{
-	};
+	{ };
 
 	~VersesData() noexcept = default;
 

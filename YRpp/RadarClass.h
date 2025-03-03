@@ -3,28 +3,30 @@
 #include <DisplayClass.h>
 #include <RectangleStruct.h>
 #include <Audio.h>
+#include <HashTable.h>
 
 class Surface;
+struct RadarTrackingStruct;
 class NOVTABLE RadarClass : public DisplayClass
 {
 public:
 	//WIP: RadarClass::RTacticalClass goes HERE
 
 	//Static
-	static constexpr constant_ptr<RadarClass, 0x87F7E8u> const Instance{};
-	static constexpr constant_ptr<RadarClass, 0x87F7E8u> const Global{};
+	static COMPILETIMEEVAL constant_ptr<RadarClass, 0x87F7E8u> const Instance{};
+	static COMPILETIMEEVAL constant_ptr<RadarClass, 0x87F7E8u> const Global{};
 
 	//this only few , there is a lot of Radar stuff around .data
 	//only add needed one atm
-	static constexpr reference<float, 0x880C70u> const RadarSizeFactor_{};
-	static constexpr reference<float, 0x880C74u> const RadarZoomFactor_{};
-	static constexpr reference<int, 0x880C78u> const Radar_dword1490_x{};
-	static constexpr reference<int, 0x880C7Cu> const Radar_dword1494_y{};
-	static constexpr reference<int, 0x880C80u> const Radar_dword1498_z{};
-	static constexpr reference<RectangleStruct, 0x880C84u> const Radar_Rect149C{};
+	static COMPILETIMEEVAL reference<float, 0x880C70u> const RadarSizeFactor_{};
+	static COMPILETIMEEVAL reference<float, 0x880C74u> const RadarZoomFactor_{};
+	static COMPILETIMEEVAL reference<int, 0x880C78u> const Radar_dword1490_x{};
+	static COMPILETIMEEVAL reference<int, 0x880C7Cu> const Radar_dword1494_y{};
+	static COMPILETIMEEVAL reference<int, 0x880C80u> const Radar_dword1498_z{};
+	static COMPILETIMEEVAL reference<RectangleStruct, 0x880C84u> const Radar_Rect149C{};
 
-	static constexpr reference <Surface*, 0x880A04u> const RadarEvenSurface{};
-	static constexpr reference <Surface*, 0x880A08u> const RadarEvenSurface_B{};
+	static COMPILETIMEEVAL reference <Surface*, 0x880A04u> const RadarEvenSurface{};
+	static COMPILETIMEEVAL reference <Surface*, 0x880A08u> const RadarEvenSurface_B{};
 
 	//Destructor
 	virtual ~RadarClass() JMP_THIS(0x6587A0);
@@ -89,7 +91,7 @@ public:
 	DWORD unknown_124C;
 	DWORD unknown_1250;
 	DWORD unknown_1254;
-	DWORD unknown_1258;
+	HashTable<RadarTrackingStruct, TechnoClass*>* unknown_1258;
 	DynamicVectorClass<Point2D> unknown_points_125C;
 	DWORD unknown_1274;
 	DynamicVectorClass<Point2D> FoundationTypePixels[22];

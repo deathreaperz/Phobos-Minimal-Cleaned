@@ -21,7 +21,7 @@
 
 DEFINE_HOOK(0x466705, BulletClass_AI, 0x6) //8
 {
-	enum { retContunue = 0x0 , retDead = 0x466781 };
+	enum { retContunue = 0x0, retDead = 0x466781 };
 	GET(FakeBulletClass* const, pThis, EBP);
 
 	const auto pBulletExt = pThis->_GetExtData();
@@ -56,14 +56,14 @@ DEFINE_HOOK(0x466705, BulletClass_AI, 0x6) //8
 				return retDead;
 	}
 
-	if (pBulletExt->InterceptedStatus == InterceptedStatus::Intercepted) {
+	if (pBulletExt->InterceptedStatus == InterceptedStatus::Intercepted)
+	{
 		if (BulletExtData::HandleBulletRemove(pThis, pBulletExt->Intercepted_Detonate, true))
 			return retDead;
 	}
 
-
-	if(!pBulletExt->Trajectory || !PhobosTrajectory::BlockDrawTrail(pBulletExt->Trajectory)){
-
+	if (!pBulletExt->Trajectory || !PhobosTrajectory::BlockDrawTrail(pBulletExt->Trajectory))
+	{
 		// LaserTrails update routine is in BulletClass::AI hook because BulletClass::Draw
 		// doesn't run when the object is off-screen which leads to visual bugs - Kerbiter
 		if ((!pBulletExt->LaserTrails.empty()))
@@ -102,16 +102,47 @@ DEFINE_HOOK(0x466705, BulletClass_AI, 0x6) //8
 	return 0;
 }
 
-DEFINE_HOOK(0x4692BD, BulletClass_Logics_ApplyMindControl_Override, 0x6)
+DEFINE_HOOK(0x469276, BulletClass_DetonateAt_ApplyLogics, 0xA)
 {
+	GET(ObjectClass* const, pVictimObject, EDI);
 	GET(FakeBulletClass*, pThis, ESI);
+	const auto payback = pThis->Owner;
+
+	if (pVictimObject)
+	{
+		if (pVictimObject->IsAlive)
+		{
+			if (pVictimObject->AttachedTag)
+			{
+				pVictimObject->AttachedTag->SpringEvent(TriggerEvent::AttackedByAnybody, pVictimObject,
+				  CellStruct::Empty,
+				  false,
+				  payback);
+			}
+
+			// #1708: this mofo was raising an event without checking whether
+			// there is a valid tag. this is the only faulty call of this kind.
+			if (pVictimObject->AttachedTag)
+			{
+				pVictimObject->AttachedTag->SpringEvent(TriggerEvent::AttackedByHouse,
+				pVictimObject,
+				CellStruct::Empty,
+				false,
+				payback);
+			}
+		}
+	}
 
 	const auto pControlledAnimType = pThis->_GetWarheadTypeExtData()->MindControl_Anim.Get(RulesClass::Instance->ControlledAnimationType);
 	const auto pTechno = flag_cast_to<TechnoClass*>(pThis->Target);
-	const auto Controller = pThis->Owner;
+	auto const threatDelay = pThis->_GetWarheadTypeExtData()->MindControl_ThreatDelay.Get(RulesExtData::Instance()->AttackMindControlledDelay);
 
-	R->AL(CaptureExt::CaptureUnit(Controller->CaptureManager,
-		pTechno, TechnoTypeExtContainer::Instance.Find(Controller->GetTechnoType())->MultiMindControl_ReleaseVictim, false  , pControlledAnimType));
+	R->AL(CaptureExt::CaptureUnit(payback->CaptureManager,
+		pTechno,
+		TechnoTypeExtContainer::Instance.Find(payback->GetTechnoType())->MultiMindControl_ReleaseVictim,
+		false,
+		pControlledAnimType,
+		threatDelay));
 
 	return 0x4692D5;
 }
@@ -154,7 +185,7 @@ DEFINE_HOOK(0x4668BD, BulletClass_AI_Interceptor_InvisoSkip, 0x6)
 		? DetonateBullet : Continue;
 }
 
-static FORCEINLINE void TryDetonateFull(BulletClass* pThis, TechnoClass* pTechno, WarheadTypeExtData* pWHExt, HouseClass* pOwner)
+static FORCEDINLINE void TryDetonateFull(BulletClass* pThis, TechnoClass* pTechno, WarheadTypeExtData* pWHExt, HouseClass* pOwner)
 {
 	if (pWHExt->EligibleForFullMapDetonation(pTechno, pOwner) == FullMapDetonateResult::TargetValid)
 	{
@@ -164,7 +195,7 @@ static FORCEINLINE void TryDetonateFull(BulletClass* pThis, TechnoClass* pTechno
 	}
 }
 
-static FORCEINLINE void TryDetonateDamageArea(BulletClass* pThis, TechnoClass* pTechno, WarheadTypeExtData* pWHExt, HouseClass* pOwner)
+static FORCEDINLINE void TryDetonateDamageArea(BulletClass* pThis, TechnoClass* pTechno, WarheadTypeExtData* pWHExt, HouseClass* pOwner)
 {
 	if (pWHExt->EligibleForFullMapDetonation(pTechno, pOwner) == FullMapDetonateResult::TargetValid)
 	{
@@ -182,7 +213,8 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 
 	GET(FakeBulletClass* const, pThis, ESI);
 
-	if (!BulletExtData::IsReallyAlive(pThis)) {
+	if (!BulletExtData::IsReallyAlive(pThis))
+	{
 		return ReturnFromFunction;
 	}
 
@@ -200,20 +232,21 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 			const auto pHouse = BulletExtData::GetHouse(pThis);
 			BulletExtContainer::Instance.Find(pThis)->OriginalTarget = pThis->Target;
 
-			constexpr auto copy_dvc = []<typename T>(std::vector<T>& dest, const DynamicVectorClass<T>&dvc) {
+			COMPILETIMEEVAL auto copy_dvc = []<typename T>(std::vector<T>&dest, const DynamicVectorClass<T>&dvc)
+			{
 				dest.resize(dvc.Count);
 				std::copy(dvc.begin(), dvc.end(), dest.begin());
 				return &dest;
 			};
 
 			void (*tryDetonate)(BulletClass*, TechnoClass*, WarheadTypeExtData*, HouseClass*)
-					= pWHExt->DetonateOnAllMapObjects_Full ? TryDetonateFull : TryDetonateDamageArea;
+				= pWHExt->DetonateOnAllMapObjects_Full ? TryDetonateFull : TryDetonateDamageArea;
 
 			auto& CurCopyArray = PhobosGlobal::Instance()->CurCopyArray[pThis->WH];
 
 			if ((pWHExt->DetonateOnAllMapObjects_AffectTargets & AffectedTarget::Aircraft) != AffectedTarget::None)
 			{
-				auto const aircraft = copy_dvc(CurCopyArray.Aircraft ,*AircraftClass::Array);
+				auto const aircraft = copy_dvc(CurCopyArray.Aircraft, *AircraftClass::Array);
 
 				for (auto pAircraft : *aircraft)
 					tryDetonate(pThis, pAircraft, pWHExt, pHouse);
@@ -221,7 +254,7 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 
 			if ((pWHExt->DetonateOnAllMapObjects_AffectTargets & AffectedTarget::Building) != AffectedTarget::None)
 			{
-				auto const buildings = copy_dvc(CurCopyArray.Building ,*BuildingClass::Array);
+				auto const buildings = copy_dvc(CurCopyArray.Building, *BuildingClass::Array);
 
 				for (auto pBuilding : *buildings)
 					tryDetonate(pThis, pBuilding, pWHExt, pHouse);
@@ -229,7 +262,7 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 
 			if ((pWHExt->DetonateOnAllMapObjects_AffectTargets & AffectedTarget::Infantry) != AffectedTarget::None)
 			{
-				auto const infantry = copy_dvc(CurCopyArray.Infantry ,*InfantryClass::Array);
+				auto const infantry = copy_dvc(CurCopyArray.Infantry, *InfantryClass::Array);
 
 				for (auto pInf : *infantry)
 					tryDetonate(pThis, pInf, pWHExt, pHouse);
@@ -237,7 +270,7 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 
 			if ((pWHExt->DetonateOnAllMapObjects_AffectTargets & AffectedTarget::Unit) != AffectedTarget::None)
 			{
-				auto const units = copy_dvc(CurCopyArray.Unit ,*UnitClass::Array);
+				auto const units = copy_dvc(CurCopyArray.Unit, *UnitClass::Array);
 
 				for (auto const pUnit : *units)
 					tryDetonate(pThis, pUnit, pWHExt, pHouse);
@@ -261,7 +294,7 @@ DEFINE_HOOK(0x469D1A, BulletClass_Logics_Debris_Checks, 0x6)
 
 	auto const pCell = pThis->GetCell();
 	const bool isLand = !pCell ? true :
-	pCell->LandType != LandType::Water || pCell->ContainsBridge();
+		pCell->LandType != LandType::Water || pCell->ContainsBridge();
 
 	if (!isLand && pThis->_GetWarheadTypeExtData()->Debris_Conventional.Get())
 		return SkipGameCode;

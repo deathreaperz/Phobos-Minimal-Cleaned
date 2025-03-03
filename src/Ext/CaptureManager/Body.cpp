@@ -1,5 +1,6 @@
 #include "Body.h"
 
+#include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
 #include <Ext/House/Body.h>
 #include <Ext/WarheadType/Body.h>
@@ -63,6 +64,8 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 					pNode->OriginalOwner->Defeated ?
 					HouseExtData::FindNeutral() : pNode->OriginalOwner;
 
+				TechnoExtContainer::Instance.Find(pTarget)->BeControlledThreatFrame = 0;
+
 				pTarget->SetOwningHouse(pOriginOwner, !bSilent);
 				pManager->DecideUnitFate(pTarget);
 				pTarget->MindControlledBy = nullptr;
@@ -83,7 +86,7 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 
 // new CaptureUnit function that inclued new features
 bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget,
-	bool bRemoveFirst, bool bSilent, AnimTypeClass* pControlledAnimType)
+	bool bRemoveFirst, bool bSilent, AnimTypeClass* pControlledAnimType, int threatDelay)
 {
 	if (pManager->CanCapture(pTarget))
 	{
@@ -101,6 +104,12 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget
 		{
 			auto pControlNode = GameCreate<ControlNode>(pTarget, pTarget->Owner, RulesClass::Instance->MindControlAttackLineFrames);
 			pManager->ControlNodes.AddItem(pControlNode);
+
+			if (threatDelay > 0)
+			{
+				TechnoExtContainer::Instance.Find(pTarget)->BeControlledThreatFrame = Unsorted::CurrentFrame() + threatDelay;
+			}
+
 			const auto pBld = cast_to<BuildingClass*, false>(pTarget);
 
 			if (pBld)
@@ -150,14 +159,14 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget
 }
 
 // Used For Replacing Vanilla Call function !
-bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTechno, bool bSilent)
+bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTechno, bool bSilent, int threatDelay)
 {
 	if (pTechno)
 	{
 		const auto Controller = pManager->Owner;
 		return CaptureExt::CaptureUnit(pManager, pTechno,
 		TechnoTypeExtContainer::Instance.Find(Controller->GetTechnoType())->MultiMindControl_ReleaseVictim,
-		bSilent, RulesClass::Instance->ControlledAnimationType);
+		bSilent, RulesClass::Instance->ControlledAnimationType, threatDelay);
 	}
 
 	return false;

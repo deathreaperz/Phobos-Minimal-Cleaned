@@ -11,7 +11,7 @@ struct SWStatus
 	bool PowerSourced; //1
 	bool Charging;
 
-	constexpr void FORCEINLINE reset()
+	COMPILETIMEEVAL void FORCEDINLINE reset()
 	{
 		Available = 0;
 		PowerSourced = 0;
@@ -41,7 +41,7 @@ class SWTypeExtData;
 class SuperExtData final
 {
 public:
-	static constexpr size_t Canary = 0x12311111;
+	static COMPILETIMEEVAL size_t Canary = 0x12311111;
 	using base_type = SuperClass;
 
 	base_type* AttachedToObject {};
@@ -60,7 +60,7 @@ public:
 
 	static void UpdateSuperWeaponStatuses(HouseClass* pHouse);
 
-	constexpr FORCEINLINE static size_t size_Of()
+	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(SuperExtData) -
 			(4u //AttachedToObject

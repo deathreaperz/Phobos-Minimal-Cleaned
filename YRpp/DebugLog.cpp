@@ -11,8 +11,7 @@ void GameDebugLog::HookLogEnd(DWORD addr, const char* pFormat, size_t size, long
 
 	if (time_i > 0)
 	{
-		fprintf(Debug::LogFile, "[%x] %s [%d] , Spend %d s\n", addr, pFormat, size, time_i);
-		Debug::Flush();
+		Debug::LogInfo("[{0:x}] {1} [{2}] , Spend {3} s", addr, pFormat, size, time_i);
 	}
 }
 
@@ -21,6 +20,5 @@ void GameDebugLog::HookLogStart(DWORD addr, const char* pFormat, size_t size)
 	if (!Debug::LogFileActive())
 		return;
 
-	fprintf(Debug::LogFile, "[%x] %s [%d] , Start\n", addr, pFormat, size);
-	Debug::Flush();
+	Debug::LogInfo("[{0:x}] {1} [{2}] , Start", addr, pFormat, size);
 }

@@ -23,6 +23,8 @@
 #include <Locomotor/JumpjetLocomotionClass.h>
 #include <Locomotor/HoverLocomotionClass.h>
 
+#include <Misc/DamageArea.h>
+
 #include "Header.h"
 
 //DEFINE_HOOK(0x7079A1, TechnoClass_Detach_HunterSeeker, 0x6)
@@ -267,7 +269,7 @@ DEFINE_HOOK(0x4B99A2, DropshipLoadout_WriteUnit, 0xA)
 	LEA_STACK(Point2D*, BaseCoords, STACK_OFFS(0x164, 0x14C));
 	LEA_STACK(Point2D*, AltCoords, STACK_OFFS(0x164, 0x144));
 
-	constexpr size_t StringLen = 256;
+	COMPILETIMEEVAL size_t StringLen = 256;
 
 	wchar_t pName[StringLen];
 	wchar_t pArmor[StringLen];
@@ -452,10 +454,10 @@ DEFINE_HOOK(0x4CF3D0, FlyLocomotionClass_sub_4CEFB0_HunterSeeker, 7)
 				pObject->ReceiveDamage(&damage, 0, pWeapon->Warhead, nullptr, true, true, nullptr);
 
 				// damage the map
-				auto const crd2 = pObject->GetCoords();
+				auto crd2 = pObject->GetCoords();
 				//WeaponTypeExtData::DetonateAt(pWeapon, crd2, pObject, true, pObject->Owner);
 				MapClass::FlashbangWarheadAt(pWeapon->Damage, RulesClass::Instance->C4Warhead, crd2);
-				MapClass::DamageArea(crd2, pWeapon->Damage, pObject, pWeapon->Warhead, true, pObject->Owner);
+				DamageArea::Apply(&crd2, pWeapon->Damage, pObject, pWeapon->Warhead, true, pObject->Owner);
 
 				R->EBX(0);
 				return 0x4CF5F2;

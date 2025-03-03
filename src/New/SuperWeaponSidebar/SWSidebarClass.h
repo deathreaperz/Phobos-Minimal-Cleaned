@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Utilities/PhobosMap.h>
-#include <string>
 #include <memory>
 #include <vector>
+
+#include <Base/Always.h>
 
 class SWColumnClass;
 class ToggleSWButtonClass;
@@ -25,7 +25,7 @@ public:
 	static bool IsEnabled();
 
 private:
-	inline static std::unique_ptr<SWSidebarClass> Instance;
+	OPTIONALINLINE static std::unique_ptr<SWSidebarClass> Instance;
 public:
 	static void Allocate()
 	{
@@ -53,5 +53,5 @@ public:
 	SWButtonClass* CurrentButton { nullptr };
 	ToggleSWButtonClass* ToggleButton { nullptr };
 
-	static inline CommandClass* Commands[10];
+	static OPTIONALINLINE CommandClass* Commands[10];
 };

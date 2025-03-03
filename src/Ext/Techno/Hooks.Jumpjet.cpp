@@ -65,10 +65,11 @@ DEFINE_HOOK(0x54C036, JumpjetLocomotionClass_State3_UpdateSensors, 0x7)
 	const auto pType = pLinkedTo->GetTechnoType();
 
 	if (pType->Sensors && pType->SensorsSight > 0
-		&& pLinkedTo->LastFlightMapCoords != currentCell) {
+		&& pLinkedTo->LastFlightMapCoords != currentCell)
+	{
 		pLinkedTo->RemoveSensorsAt(pLinkedTo->LastFlightMapCoords);
 
-		if(pLinkedTo->IsAlive)
+		if (pLinkedTo->IsAlive)
 			pLinkedTo->AddSensorsAt(currentCell);
 	}
 
@@ -77,7 +78,7 @@ DEFINE_HOOK(0x54C036, JumpjetLocomotionClass_State3_UpdateSensors, 0x7)
 
 #include <AircraftTrackerClass.h>
 
-DEFINE_HOOK(0x4CD64E , FlyLocomotionClass_MovementAI_UpdateSensors, 0xA)
+DEFINE_HOOK(0x4CD64E, FlyLocomotionClass_MovementAI_UpdateSensors, 0xA)
 {
 	GET(FlyLocomotionClass* const, pThis, ESI);
 	GET(CellStruct, currentCell, EDI);
@@ -85,10 +86,11 @@ DEFINE_HOOK(0x4CD64E , FlyLocomotionClass_MovementAI_UpdateSensors, 0xA)
 	const auto pLinkedTo = pThis->LinkedTo;
 	const auto pType = pLinkedTo->GetTechnoType();
 
-	if (pType->Sensors && pType->SensorsSight > 0) {
+	if (pType->Sensors && pType->SensorsSight > 0)
+	{
 		pLinkedTo->RemoveSensorsAt(pLinkedTo->LastFlightMapCoords);
 
-		if(pLinkedTo->IsAlive)
+		if (pLinkedTo->IsAlive)
 			pLinkedTo->AddSensorsAt(currentCell);
 	}
 
@@ -118,8 +120,10 @@ DEFINE_HOOK(0x54D138, JumpjetLocomotionClass_Movement_AI_SpeedModifiers, 0x6)
 {
 	GET(JumpjetLocomotionClass*, pThis, ESI);
 
-	if (auto const pLinked = pThis->LinkedTo ? pThis->LinkedTo : pThis->Owner) {
-		if (TechnoExtData::IsReallyTechno(pLinked) && pLinked->IsAlive) {
+	if (auto const pLinked = pThis->LinkedTo ? pThis->LinkedTo : pThis->Owner)
+	{
+		if (TechnoExtData::IsReallyTechno(pLinked) && pLinked->IsAlive)
+		{
 			const double multiplier = TechnoExtData::GetCurrentSpeedMultiplier(pLinked);
 			pThis->Speed = int(pLinked->GetTechnoType()->JumpjetData.Speed * multiplier);
 		}
@@ -134,12 +138,12 @@ DEFINE_HOOK(0x54CB0E, JumpjetLocomotionClass_State5_CrashRotation, 0x7)
 
 	bool bRotate = RulesExtData::Instance()->JumpjetCrash_Rotate;
 
-	if (const auto pOwner = pLoco->LinkedTo ? pLoco->LinkedTo : pLoco->Owner) {
+	if (const auto pOwner = pLoco->LinkedTo ? pLoco->LinkedTo : pLoco->Owner)
+	{
 		bRotate = TechnoTypeExtContainer::Instance.Find(pOwner->GetTechnoType())->JumpjetCrash_Rotate.Get(bRotate);
 	}
 
 	return bRotate ? 0 : 0x54CB3E;
-
 }
 
 //DEFINE_JUMP(LJMP, 0x54DCCF, 0x54DCE8);//JumpjetLocomotionClass_DrawMatrix_NoTiltCrashJumpjetHereBlyat
@@ -167,24 +171,25 @@ DEFINE_HOOK(0x70B649, TechnoClass_RigidBodyDynamics_NoTiltCrashBlyat, 0x6)
 // Just rewrite this completely to avoid headache
 Matrix3D* __stdcall JumpjetLocomotionClass_Draw_Matrix(ILocomotion* iloco, Matrix3D* ret, int* pIndex)
 {
-	__assume(iloco != nullptr);
 	auto const pThis = static_cast<JumpjetLocomotionClass*>(iloco);
 	auto linked = pThis->LinkedTo;
 	// no more TiltCrashJumpjet, do that above svp
-	bool&& onGround = pThis->NextState == JumpjetLocomotionClass::State::Grounded;
+	bool const onGround = pThis->NextState == JumpjetLocomotionClass::State::Grounded;
 	// Man, what can I say, you don't want to stick your rotor into the ground
 	auto slope_idx = MapClass::Instance->GetCellAt(linked->Location)->SlopeIndex;
+	// Only use LocomotionFacing for general Jumpjet to avoid the problem that ground units being lifted will turn to attacker weirdly.
+	auto curf = linked->IsAttackedByLocomotor ? &linked->PrimaryFacing : &pThis->Facing;
+	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(linked->GetTechnoType());
 
 	*ret = Game::VoxelRampMatrix[onGround ? slope_idx : 0];
-	auto curf = pThis->Facing.Current();
-	ret->RotateZ((float)curf.GetRadian<32>());
+	ret->RotateZ((float)curf->Current().GetRadian<32>());
 
 	float arf = linked->AngleRotatedForwards;
 	float ars = linked->AngleRotatedSideways;
 
 	if (Math::abs(ars) >= 0.005 || Math::abs(arf) >= 0.005)
 	{
-	if (pIndex) *pIndex = -1;
+		if (pIndex) *pIndex = -1;
 
 		if (onGround)
 		{
@@ -206,10 +211,46 @@ Matrix3D* __stdcall JumpjetLocomotionClass_Draw_Matrix(ILocomotion* iloco, Matri
 		}
 	}
 
-	if (pIndex && *pIndex != -1) {
+	else if (pTypeExt->JumpjetTilt.Get(RulesExtData::Instance()->JumpjetTilt)
+		&& !onGround && linked->IsAlive && linked->Health > 0 && !linked->IsAttackedByLocomotor)
+	{
+		constexpr auto maxTilt = static_cast<float>(Math::HalfPi / 2);
+		constexpr auto baseSpeed = 32;
+		constexpr auto baseTilt = Math::HalfPi / 4;
+
+		if (pThis->__currentSpeed > 0.0)
+		{
+			constexpr auto forwardBaseTilt = baseTilt / baseSpeed;
+			const auto forwardSpeedFactor = pThis->Speed * pTypeExt->JumpjetTilt_ForwardSpeedFactor;
+			const auto forwardAccelFactor = pThis->Acceleration * pTypeExt->JumpjetTilt_ForwardAccelFactor;
+			arf += static_cast<float>(MinImpl(32.0, forwardAccelFactor + forwardSpeedFactor) * forwardBaseTilt);
+
+			const auto& locoFace = pThis->Facing;
+
+			if (locoFace.Is_Rotating())
+			{
+				constexpr auto baseTurnRaw = 32768;
+				constexpr auto sidewaysBaseTilt = baseTilt / (baseTurnRaw * baseSpeed);
+				const auto sidewaysSpeedFactor = pThis->Speed * pTypeExt->JumpjetTilt_SidewaysSpeedFactor;
+				const auto sidewaysRotationFactor = static_cast<short>(locoFace.Difference().Raw) * pTypeExt->JumpjetTilt_SidewaysRotationFactor;
+				ars += std::clamp(static_cast<float>(sidewaysSpeedFactor * sidewaysRotationFactor * sidewaysBaseTilt), -maxTilt, maxTilt);
+			}
+		}
+
+		if (Math::abs(ars) >= 0.005 || Math::abs(arf) >= 0.005)
+		{
+			if (pIndex) *pIndex = -1;
+
+			ret->RotateX(ars);
+			ret->RotateY(arf);
+		}
+	}
+
+	if (pIndex && *pIndex != -1)
+	{
 		if (onGround) *pIndex = slope_idx + (*pIndex << 6);
 		*pIndex *= 32;
-		*pIndex |= curf.GetFacing<32>();
+		*pIndex |= curf->Current().GetFacing<32>();
 	}
 
 	return ret;
@@ -232,21 +273,6 @@ DEFINE_JUMP(VTABLE, 0x7ECD8C, MiscTools::to_DWORD(&JumpjetLocomotionClass_Draw_M
 //	return LocomotionClass::End_Piggyback(pLoco->Owner->Locomotor) ? 0x0 : 0x54DF13;
 //}
 
-//DEFINE_HOOK(0x518313, InfantryClass_ReceiveDamage_JumpjetExplode, 0x6)
-//{
-//	enum { NonJumpJet = 0x518362 ,  ContinueChecks = 0x51831D , SkipPlayExplode = 0x5185F1 };
-//	GET(InfantryClass*, pThis, ESI);
-//	GET(InfantryTypeClass*, pThisType, EAX);
-//
-//	if (pThisType->JumpJet) {
-//		return pThisType->Explodes || pThis->HasAbility(AbilityType::Explodes)
-//			? ContinueChecks : SkipPlayExplode;
-//		return ContinueChecks;
-//	}
-//
-//	return NonJumpJet;
-//}
-
 DEFINE_HOOK(0x54D208, JumpjetLocomotionClass_MovementAI_Wobbles, 0x5)
 {
 	enum
@@ -258,15 +284,18 @@ DEFINE_HOOK(0x54D208, JumpjetLocomotionClass_MovementAI_Wobbles, 0x5)
 	GET(JumpjetLocomotionClass* const, pThis, ESI);
 
 	//prevent float zero division error
-	if (pThis->LinkedTo->IsUnderEMP() || Math::abs(pThis->Wobbles) < 0.001f || isnan(pThis->Wobbles)) {
+	if (pThis->LinkedTo->Deactivated || pThis->LinkedTo->IsUnderEMP() || Math::abs(pThis->Wobbles) < 0.001f || isnan(pThis->Wobbles))
+	{
 		return NoWobble;
 	}
 
 	if (pThis->NoWobbles)
 		return NoWobble;
 
-	if (const auto pUnit = cast_to<UnitClass*, false>(pThis->LinkedTo ? pThis->LinkedTo : pThis->Owner)){
-		if(TechnoExtData::IsReallyTechno(pUnit) && pUnit->IsAlive) {
+	if (const auto pUnit = cast_to<UnitClass*, false>(pThis->LinkedTo ? pThis->LinkedTo : pThis->Owner))
+	{
+		if (TechnoExtData::IsReallyTechno(pUnit) && pUnit->IsAlive)
+		{
 			return pUnit->IsDeactivated() ? NoWobble : SetWobble;
 		}
 	}
@@ -358,19 +387,20 @@ namespace JumpjetRushHelpers
 int JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(Point2D location)
 {
 	CellClass* const pCell = MapClass::Instance->TryGetCellAt(CellStruct { short(location.X >> 8) , short(location.Y >> 8) });
-	if(!pCell)
+	if (!pCell)
 		return -1;
 
 	int height = pCell->GetFloorHeight({ location.X & 0xFF, location.Y & 0xFF });
-	ObjectClass* pObject = pCell->FirstObject;
 
-	for(auto pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject) {
-      if(auto pBld = cast_to<BuildingClass*, false>(pObject))  {
-        CoordStruct dim2 = CoordStruct::Empty;
-		pBld->Type->Dimension2(&dim2);
-	    return dim2.Z + height;
-	  }
-   }
+	for (auto pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject)
+	{
+		if (auto pBld = cast_to<BuildingClass*, false>(pObject))
+		{
+			CoordStruct dim2 = CoordStruct::Empty;
+			pBld->Type->Dimension2(&dim2);
+			return dim2.Z + height;
+		}
+	}
 
 	if (pCell->FindTechnoNearestTo(Point2D::Empty, false))
 		height += 85;
@@ -458,7 +488,7 @@ DEFINE_HOOK(0x54DAC4, JumpjetLocomotionClass_EndPiggyback_Blyat, 0x6)
 
 	pLinked->PrimaryFacing.Set_ROT(pType->ROT);
 
-	if (pType->SensorsSight)
+	if (pType->Sensors && pType->SensorsSight > 0)
 	{
 		pLinked->RemoveSensorsAt(pLinked->LastFlightMapCoords);
 		pLinked->RemoveSensorsAt(pLinked->GetMapCoords());

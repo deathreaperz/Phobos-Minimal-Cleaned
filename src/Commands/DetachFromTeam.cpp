@@ -6,7 +6,7 @@
 #include <Ext/Techno/Body.h>
 #include <Ext/House/Body.h>
 #include <Utilities/GeneralUtils.h>
-#include <Misc/Ares/Hooks/AresNetEvent.h>
+#include <Ext/Event/Body.h>
 
 const char* DetachFromTeamCommandClass::GetName() const
 {
@@ -30,16 +30,19 @@ const wchar_t* DetachFromTeamCommandClass::GetUIDescription() const
 
 void DetachFromTeamCommandClass::Execute(WWKey eInput) const
 {
-	if (this->CheckDebugDeactivated() || !ObjectClass::CurrentObjects->Count)
+	if (!ObjectClass::CurrentObjects->Count)
 		return;
 
-	ObjectClass::CurrentObjects->for_each([](ObjectClass* const object) {
-		if (FootClass* techno = flag_cast_to<FootClass*>(object)) {
-			if (techno->BelongsToATeam()) {
-				auto pTeam = techno->Team;
-				pTeam->RemoveMember(techno);
-				pTeam->Reacalculate();
-			}
-		}
-		});
+	ObjectClass::CurrentObjects->for_each([](ObjectClass* const object)
+ {
+	 if (FootClass* techno = flag_cast_to<FootClass*>(object))
+	 {
+		 if (techno->BelongsToATeam())
+		 {
+			 auto pTeam = techno->Team;
+			 pTeam->RemoveMember(techno);
+			 pTeam->Reacalculate();
+		 }
+	 }
+	});
 }

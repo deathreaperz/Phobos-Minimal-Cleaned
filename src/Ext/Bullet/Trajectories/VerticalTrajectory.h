@@ -31,8 +31,7 @@ public:
 
 	VerticalTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Vertical , pBullet , pType }
-	{
-	}
+	{ }
 
 	virtual ~VerticalTrajectory() = default;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }

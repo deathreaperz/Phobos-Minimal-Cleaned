@@ -122,7 +122,7 @@ void DroppodStateMachine::PlaceUnits(SuperClass* pSuper, double veterancy, Itera
 			}
 
 			// select a free cell the unit can enter
-			CellStruct tmpCell = MapClass::Instance->NearByLocation(cell, pType->SpeedType, -1,
+			CellStruct tmpCell = MapClass::Instance->NearByLocation(cell, pType->SpeedType, ZoneType::None,
 				pType->MovementZone, false, 1, 1, false, false, false, false, CellStruct::Empty, false, false);
 
 			CoordStruct crd = CellClass::Cell2Coord(tmpCell);

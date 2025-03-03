@@ -7,7 +7,7 @@ class HugeBar
 {
 private:
 
-	inline static std::vector<TechnoClass*> Technos;
+	OPTIONALINLINE static std::vector<TechnoClass*> Technos;
 
 public:
 
@@ -50,6 +50,7 @@ public:
 
 	HugeBar() = default;
 	HugeBar(DisplayInfoType infoType);
+	~HugeBar() = default;
 
 	void LoadFromINI(CCINIClass* pINI);
 
@@ -69,4 +70,13 @@ private:
 
 	template <typename T>
 	bool Serialize(T& stm);
+};
+
+template <>
+struct Savegame::ObjectFactory<HugeBar>
+{
+	std::unique_ptr<HugeBar> operator() (PhobosStreamReader& Stm) const
+	{
+		return std::make_unique<HugeBar>();
+	}
 };

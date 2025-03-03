@@ -43,7 +43,7 @@ void PaletteManager::CreateConvert()
 {
 	if (!this->Palette)
 	{
-		Debug::Log("[%s] Missing Palette Data ! \n", this->Name.data());
+		Debug::LogInfo("[{}] Missing Palette Data ! ", this->Name.data());
 		return;
 	}
 
@@ -84,7 +84,7 @@ void PaletteManager::LoadFromName(const char* PaletteName)
 	}
 	else
 	{
-		Debug::Log("[%s] Palette FailedToLoad ! \n", this->Name.data());
+		Debug::LogInfo("[{}] Palette FailedToLoad ! ", this->Name.data());
 		return;
 	}
 }
@@ -116,7 +116,7 @@ bool PaletteManager::LoadFromCachedName()
 		return true;
 	}
 
-	//Debug::Log("[%s] - [%s] Palette  FailedToLoad ! \n", this->Name.data(), this->CachedName.data());
+	//Debug::LogInfo("[%s] - [%s] Palette  FailedToLoad ! ", this->Name.data(), this->CachedName.data());
 	return false;
 }
 

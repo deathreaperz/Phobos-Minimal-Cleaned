@@ -28,7 +28,7 @@ public:
 	};
 
 	//global array
-	static constexpr constant_ptr<DynamicVectorClass<ColorScheme*>, 0xB054D0u> const Array{};
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<ColorScheme*>, 0xB054D0u> const Array{};
 
 	// Game uses a hash table to store color scheme vectors for extra palettes, this table can be iterated by calling this function.
 	static DynamicVectorClass<ColorScheme*>* __fastcall GetPaletteSchemesFromIterator(HashIterator* it)
@@ -124,4 +124,10 @@ public:
 	PROTECTED_PROPERTY(BYTE,     unknown_314[0x1C]);
 	int   MainShadeIndex;
 	PROTECTED_PROPERTY(BYTE,     unknown_334[0x8]);
+};
+
+struct SchemeNode
+{
+	char Name[256];
+	DynamicVectorClass<ColorScheme*>* Schemes;
 };

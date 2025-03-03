@@ -29,7 +29,7 @@ void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData
 				const auto bConvertStatus = TechnoExt_ExtData::ConvertToType(pTarget, pTo);
 
 				if (!bConvertStatus)
-					Debug::Log("Failed to ConvertType From[%x] To [%s]!\n", pFrm->ID, pTo->ID);
+					Debug::LogInfo("Failed to ConvertType From[{}] To [{}]!", pFrm->ID, pTo->ID);
 				else
 				{
 					if (SucceededAnim)
@@ -54,7 +54,7 @@ void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData
 			const auto bConvertStatus = TechnoExt_ExtData::ConvertToType(pTarget, pTo);
 
 			if (!bConvertStatus)
-				Debug::Log("Failed to ConvertType From[%x] To [%s]!\n", pCurType->ID, pTo->ID);
+				Debug::LogInfo("Failed to ConvertType From[{}] To [{}]!", pCurType->ID, pTo->ID);
 			else
 			{
 				if (SucceededAnim)
@@ -125,7 +125,7 @@ void TechnoTypeConvertData::Parse(bool useDevelopversion, std::vector<TechnoType
 					Parser<TechnoTypeClass*>::Parse(nSecondPair_1.c_str(), &list_value->To);
 					detail::getresult<AffectedHouse>(list_value->Eligible, nSecondPair_2, pSection, pKey, false);
 
-					//Debug::Log("parsing[%s]%s with 3 values [%s - %s - %s]\n", pSection , pKey , nFirst.c_str() , nSecondPair_1.c_str() , nSecondPair_2.c_str());
+					//Debug::LogInfo("parsing[%s]%s with 3 values [%s - %s - %s]", pSection , pKey , nFirst.c_str() , nSecondPair_1.c_str() , nSecondPair_2.c_str());
 				}
 				else
 				{
@@ -156,28 +156,34 @@ void TechnoTypeConvertData::Parse(bool useDevelopversion, std::vector<TechnoType
 		{
 			std::string base_("Convert");
 			base_ += std::to_string(i);
-			ValueableVector<TechnoTypeClass*> convertFrom;
-			Nullable<TechnoTypeClass*> convertTo;
-			Nullable<AffectedHouse> convertAffectedHouses;
-			convertFrom.Read(exINI, pSection, (base_ + ".From").c_str());
+			ValueableVector<TechnoTypeClass*> convertFrom {};
+			Nullable<TechnoTypeClass*> convertTo {};
+			Nullable<AffectedHouse> convertAffectedHouses {};
 			convertTo.Read(exINI, pSection, (base_ + ".To").c_str());
-			convertAffectedHouses.Read(exINI, pSection, (base_ + ".AffectedHouses").c_str());
 
-			if (!convertTo.isset())
+			if (!convertTo.isset() || !convertTo.Get())
 				break;
 
-			if (!convertAffectedHouses.isset())
-				convertAffectedHouses = AffectedHouse::All;
+			convertFrom.Read(exINI, pSection, (base_ + ".From").c_str());
+			convertAffectedHouses.Read(exINI, pSection, (base_ + ".AffectedHouses").c_str());
 
-			list.emplace_back(convertFrom, convertTo, convertAffectedHouses);
+			auto& back = list.emplace_back();
+
+			back.From = convertFrom;
+			back.To = convertTo;
+
+			back.Eligible = convertAffectedHouses.Get(AffectedHouse::All);
 		}
-		ValueableVector<TechnoTypeClass*> convertFrom;
-		Nullable<TechnoTypeClass*> convertTo;
-		Nullable<AffectedHouse> convertAffectedHouses;
+
+		ValueableVector<TechnoTypeClass*> convertFrom {};
+		Nullable<TechnoTypeClass*> convertTo {};
+		Nullable<AffectedHouse> convertAffectedHouses {};
+
 		convertFrom.Read(exINI, pSection, "Convert.From");
 		convertTo.Read(exINI, pSection, "Convert.To");
 		convertAffectedHouses.Read(exINI, pSection, "Convert.AffectedHouses");
-		if (convertTo.isset())
+
+		if (convertTo.isset() && convertTo.Get())
 		{
 			if (!convertAffectedHouses.isset())
 				convertAffectedHouses = AffectedHouse::All;

@@ -29,8 +29,7 @@ public:
 	BounceTrajectory() : PhobosTrajectory { TrajectoryFlag::Bounce } { }
 	BounceTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Bounce , pBullet , pType }
-	{
-	}
+	{ }
 	virtual ~BounceTrajectory() override = default;
 
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }

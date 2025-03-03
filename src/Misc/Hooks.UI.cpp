@@ -22,7 +22,7 @@ DEFINE_HOOK(0x777C41, UI_ApplyAppIcon, 0x9)
 
 	if (!Phobos::AppIconPath.empty())
 	{
-		Debug::Log("Applying AppIcon from \"%s\"\n", Phobos::AppIconPath.c_str());
+		Debug::LogInfo("Applying AppIcon from \"{}\"", Phobos::AppIconPath.c_str());
 		R->EAX(LoadImageA(instance, Phobos::AppIconPath.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
 	}
 	else
@@ -152,7 +152,6 @@ DEFINE_HOOK(0x4A25E3, CreditsClass_GraphicLogic_Additionals, 0x8)
 
 	if (Phobos::UI::WeedsCounter_Show && Phobos::Config::ShowWeedsCounter)
 	{
-		auto pSideExt = SideExtContainer::Instance.Find(SideClass::Array->GetItem(pPlayer->SideIndex));
 		wchar_t counter[0x20];
 		ColorStruct clrToolTip = pSideExt->Sidebar_WeedsCounter_Color.Get(Drawing::TooltipColor());
 
@@ -236,7 +235,7 @@ namespace BriefingTemp
 {
 	bool ShowBriefing = false;
 }
-FORCEINLINE void ShowBriefing()
+FORCEDINLINE void ShowBriefing()
 {
 	if (BriefingTemp::ShowBriefing)
 	{

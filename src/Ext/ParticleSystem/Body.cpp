@@ -161,7 +161,7 @@ void ParticleSystemExtData::UpdateSpark()
 		if (!pOwner->SparkSpawnFrames || pType->SpawnSparkPercentage > random->RandomDouble())
 		{
 			int cap = 0;
-			auto pHeld = this->HeldType;
+			//auto pHeld = this->HeldType;
 			if (pType->ParticleCap >= 0)
 				cap = pType->ParticleCap;
 
@@ -1175,14 +1175,25 @@ void ParticleSystemExtData::UpdateInAir()
 
 		for (auto pSys : *ParticleSystemClass::Array)
 		{
-			ParticleSystemExtContainer::Instance.Find(pSys)->UpdateInAir_Main(StopDrawing);
+			if (pSys->TimeToDie)
+				continue; //wee
+
+			auto pExt = ParticleSystemExtContainer::Instance.Find(pSys);
+
+			if (!pExt)
+				Debug::FatalError("ParticleSystem without Ext[%x]", pSys);
+
+			pExt->UpdateInAir_Main(StopDrawing);
 		}
 	}
 }
 
 void ParticleSystemExtData::InitializeConstant()
 {
-	if (auto pType = this->AttachedToObject->Type)
+	if (!this->AttachedToObject->Type)
+		Debug::FatalErrorAndExit("ParticleSystem [%x] doesnot have any Type !", this->AttachedToObject);
+
+	auto pType = this->AttachedToObject->Type;
 	{
 		if (!ParticleSystemTypeExtContainer::Instance.Find(pType)->ApplyOptimization || (size_t)pType->HoldsWhat >= ParticleTypeClass::Array->size())
 			return;
@@ -1249,7 +1260,7 @@ void ParticleSystemExtData::Serialize(T& Stm)
 		.Process(this->What)
 		.Process(this->OtherParticleData)
 		.Process(this->SmokeData)
-		.Process(this->HeldType, true)
+		.Process(this->HeldType)
 		.Process(this->AlphaIsLightFlash)
 		;
 }
@@ -1259,6 +1270,8 @@ void ParticleSystemExtData::Serialize(T& Stm)
 ParticleSystemExtContainer ParticleSystemExtContainer::Instance;
 // =============================
 // container hooks
+
+#include <Ext/Anim/Body.h>
 
 DEFINE_HOOK(0x62DF05, ParticleSystemClass_CTOR, 0x5)
 {
@@ -1270,6 +1283,18 @@ DEFINE_HOOK(0x62DF05, ParticleSystemClass_CTOR, 0x5)
 DEFINE_HOOK(0x62E26B, ParticleSystemClass_DTOR, 0x6)
 {
 	GET(ParticleSystemClass* const, pItem, ESI);
+
+	if (pItem->Owner && pItem->Owner->WhatAmI() == AnimClass::AbsID)
+	{
+		for (FakeAnimClass* anim : FakeAnimClass::AnimsWithAttachedParticles)
+		{
+			if (anim->_GetExtData()->AttachedSystem == pItem)
+			{
+				anim->_GetExtData()->AttachedSystem = nullptr;
+			}
+		}
+	}
+
 	ParticleSystemExtContainer::Instance.Remove(pItem);
 	return 0;
 }

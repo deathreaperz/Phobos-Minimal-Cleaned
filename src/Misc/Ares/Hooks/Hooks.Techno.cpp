@@ -29,6 +29,39 @@
 #include <SpawnManagerClass.h>
 #include <AirstrikeClass.h>
 
+DEFINE_HOOK(0x702DD6, TechnoClass_RegisterDestruction_Trigger, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(TechnoClass*, pAttacker, EDI);
+
+	if (pThis && pThis->IsAlive && pAttacker)
+	{
+		if (auto pTag = pThis->AttachedTag)
+		{
+			// 85
+			pTag->RaiseEvent((TriggerEvent)AresTriggerEvents::DestroyedByHouse, pThis, CellStruct::Empty, false, pAttacker->GetOwningHouse());
+		}
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x7032B0, TechnoClass_RegisterLoss_Trigger, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(HouseClass*, pAttacker, EDI);
+
+	if (pThis && pThis->IsAlive && pAttacker)
+	{
+		if (auto pTag = pThis->AttachedTag)
+		{
+			pTag->RaiseEvent((TriggerEvent)AresTriggerEvents::DestroyedByHouse, pThis, CellStruct::Empty, false, pAttacker);
+		}
+	}
+
+	return 0;
+}
+
 DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
@@ -114,7 +147,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 //		LEA_STACK(CoordStruct* , pFrom, 0xB4 - 0x1C);
 //		LEA_STACK(CoordStruct* , pBuffer, 0xB4 - 0x80);
 //
-//		Debug::Log("Railgun[%s]  From [%d %d %d] To [%d %d %d]\n", pWeapon->ID,
+//		Debug::LogInfo("Railgun[%s]  From [%d %d %d] To [%d %d %d]", pWeapon->ID,
 //			pFrom->X,
 //			pFrom->Y,
 //			pFrom->Z,
@@ -145,7 +178,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 //
 // 	//if (IsRailgun && Is_Aircraft(pThis))
 // 	//{
-// 		//Debug::Log("TechnoClass_FireAt Aircraft[%s] attempting to fire Railgun !\n", pThis->get_ID());
+// 		//Debug::LogInfo("TechnoClass_FireAt Aircraft[%s] attempting to fire Railgun !", pThis->get_ID());
 // 		//return 0x6FF274;
 // /	//}
 //
@@ -175,31 +208,6 @@ DEFINE_HOOK(0x70BE80, TechnoClass_ShouldSelfHealOneStep, 5)
 	return 0x70BF46;
 }
 
-// spark particle systems created at random intervals
-DEFINE_HOOK(0x6FAD49, TechnoClass_Update_SparkParticles, 8) // breaks the loop
-{
-	GET(TechnoClass*, pThis, ESI);
-	REF_STACK(DynamicVectorClass<ParticleSystemTypeClass const*>, Systems, 0x60);
-
-	auto pType = pThis->GetTechnoType();
-	auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-	if (auto it = pExt->ParticleSystems_DamageSparks.GetElements(pType->DamageParticleSystems))
-	{
-		auto allowAny = pExt->ParticleSystems_DamageSparks.HasValue();
-
-		for (auto pSystem : it)
-		{
-			if (allowAny || pSystem->BehavesLike == ParticleSystemTypeBehavesLike::Spark)
-			{
-				Systems.AddItem(pSystem);
-			}
-		}
-	}
-
-	return 0x6FADB3;
-}
-
 // customizable cloaking stages
 DEFINE_HOOK(0x7036EB, TechnoClass_Uncloak_CloakingStages, 6)
 {
@@ -217,21 +225,57 @@ DEFINE_HOOK(0x703A79, TechnoClass_VisualCharacter_CloakingStages, 0xA)
 	return 0x703A94;
 }
 
+#include <ExtraHeaders/StackVector.h>
+
 // make damage sparks customizable, using game setting as default.
-DEFINE_HOOK(0x6FACD9, TechnoClass_Update_DamageSparks, 6)
+DEFINE_HOOK(0x6FACD9, TechnoClass_AI_DamageSparks, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 
 	if (!pThis->SparkParticleSystem)
-		return 0x6FAF01;
+	{
+		auto _HPRatio = pThis->GetHealthPercentage();
 
-	GET(TechnoTypeClass*, pType, EBX);
+		if (!(_HPRatio >= RulesClass::Instance->ConditionYellow || pThis->GetHeight() <= -10))
+		{
+			auto pType = pThis->GetTechnoType();
+			const auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-	if (pThis->GetHealthPercentage() >= RulesClass::Instance->ConditionYellow || pThis->GetHeight() <= -10)
-		return 0x6FAF01;
+			if (pExt->DamageSparks.Get(pType->DamageSparks))
+			{
+				StackVector<ParticleSystemTypeClass*, 0x25> Systems {};
 
-	return TechnoTypeExtContainer::Instance.Find(pType)->DamageSparks.Get(pType->DamageSparks) ?
-		0x6FAD17 : 0x6FAF01;
+				if (auto it = pExt->ParticleSystems_DamageSparks.GetElements(pType->DamageParticleSystems))
+				{
+					auto allowAny = pExt->ParticleSystems_DamageSparks.HasValue();
+
+					for (auto pSystem : it)
+					{
+						if (allowAny || pSystem->BehavesLike == ParticleSystemTypeBehavesLike::Spark)
+						{
+							Systems->push_back(pSystem);
+						}
+					}
+				}
+
+				if (!Systems->empty())
+				{
+					const double _probability = _HPRatio >= RulesClass::Instance->ConditionRed ?
+						RulesClass::Instance->ConditionYellowSparkingProbability : RulesClass::Instance->ConditionRedSparkingProbability;
+					const auto _rand = ScenarioClass::Instance->Random.RandomDouble();
+
+					if (_rand < _probability)
+					{
+						CoordStruct _offs = pThis->Location + pType->GetParticleSysOffset();
+						pThis->SparkParticleSystem =
+							GameCreate<ParticleSystemClass>(Systems[ScenarioClass::Instance->Random.RandomFromMax(Systems->size() - 1)], _offs, nullptr, pThis);
+					}
+				}
+			}
+		}
+	}
+
+	return 0x6FAF01;
 }
 
 DEFINE_HOOK(0x70380A, TechnoClass_Cloak_CloakSound, 6)
@@ -296,7 +340,7 @@ DEFINE_HOOK(0x732C30, TechnoClass_IDMatches, 5)
 			}
 
 			// buildings are exempt if they can't undeploy
-			if (what == BuildingClass::AbsID && pType->UndeploysInto)
+			if (what == BuildingClass::AbsID && (pType->UndeploysInto || RulesExtData::Instance()->BuildingTypeSelectable))
 			{
 				match = true;
 				break;
@@ -354,18 +398,33 @@ DEFINE_HOOK(0x7327AA, TechnoClass_PlayerOwnedAliveAndNamed_GroupAs, 8)
 	return 0x7327B2;
 }
 
-// #912875: respect the remove flag for invalidating SpawnManager owners
-DEFINE_HOOK(0x707B19, TechnoClass_PointerGotInvalid_SpawnCloakOwner, 6)
+#include <CaptureManagerClass.h>
+
+DEFINE_HOOK(0x707B09, TechnoClass_PointerGotInvalid_SpawnCloakOwner, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(AbstractClass*, ptr, EBP);
 	GET_STACK(bool, remove, 0x28);
 
-	if (!pThis->SpawnManager || !remove && pThis->Owner == ptr)
-		return 0x707B29;
+	// issues 1002020, 896263, 895954: clear stale mind control pointer to prevent
+	// crashes when accessing properties of the destroyed controllers.
+	if (pThis->MindControlledBy == ptr)
+	{
+		pThis->MindControlledBy = nullptr;
+	}
 
-	R->ECX(pThis->SpawnManager);
-	return 0x707B23;
+	if (pThis->CaptureManager)
+	{
+		pThis->CaptureManager->DetachTarget(ptr);
+	}
+
+	// #912875: respect the remove flag for invalidating SpawnManager owners
+	if (pThis->SpawnManager && (pThis->Owner != ptr || !(!remove && pThis->Owner == ptr)))
+	{
+		pThis->SpawnManager->UnlinkPointer(ptr);
+	}
+
+	return 0x707B29;
 }
 
 void PlayEva(const char* pEva, CDTimerClass& nTimer, double nRate)
@@ -501,7 +560,7 @@ DEFINE_HOOK(0x6F6F20, TechnoClass_Put_BuildingLight, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 
-	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	//const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
 	if (R->Origin() == 0x6F6F20)
@@ -946,7 +1005,7 @@ DEFINE_HOOK(0x6FB1B5, TechnoClass_CreateGap_LargeGap, 7)
 DEFINE_HOOK(0x7014D5, TechnoClass_ChangeOwnership_Additional, 6)
 {
 	GET(TechnoClass* const, pThis, ESI);
-	//Debug::Log("ChangeOwnershipFor [%s]\n" , pThis->get_ID());
+	//Debug::LogInfo("ChangeOwnershipFor [%s]" , pThis->get_ID());
 
 	if (auto& pJammer = TechnoExtContainer::Instance.Find(pThis)->RadarJammer)
 	{
@@ -1092,7 +1151,7 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 	}
 	else
 	{
-		Debug::Log("Techno[%s] Init Without any ownership!\n", pType->ID);
+		Debug::LogInfo("Techno[{}] Init Without any ownership!", pType->ID);
 	}
 
 	// if override is in effect, do not create initial payload.
@@ -1261,21 +1320,6 @@ DEFINE_HOOK(0x6F661D, TechnoClass_DrawHealthBar_DestroyedBuilding_RedPip, 0x7)
 	return (pBld->Health <= 0 || pBld->IsRedHP()) ? 0x6F6628 : 0x6F6630;
 }
 
-// issues 1002020, 896263, 895954: clear stale mind control pointer to prevent
-// crashes when accessing properties of the destroyed controllers.
-DEFINE_HOOK(0x707B09, TechnoClass_PointerGotInvalid_ResetMindControl, 0x6)
-{
-	GET(TechnoClass*, pThis, ESI);
-	GET(void*, ptr, EBP);
-
-	if (pThis->MindControlledBy == ptr)
-	{
-		pThis->MindControlledBy = nullptr;
-	}
-
-	return 0;
-}
-
 //TechnoClass_GetActionOnObject_IvanBombsB
 DEFINE_JUMP(LJMP, 0x6FFF9E, 0x700006);
 
@@ -1382,67 +1426,6 @@ DEFINE_HOOK(0x7162B0, TechnoTypeClass_GetPipMax_MindControl, 0x6)
 
 	R->EAX(count);
 	return 0x7162BC;
-}
-
-// issue #895788: cells' high occupation flags are marked only if they
-// actually contains a bridge while unmarking depends solely on object
-// height above ground. this mismatch causes the cell to become blocked.
-DEFINE_HOOK(0x7441B0, UnitClass_MarkOccupationBits, 0x6)
-{
-	GET(UnitClass*, pThis, ECX);
-	GET_STACK(CoordStruct*, pCrd, 0x4);
-
-	CellClass* pCell = MapClass::Instance->GetCellAt(pCrd);
-	int height = MapClass::Instance->GetCellFloorHeight(pCrd) + Unsorted::BridgeHeight;
-	bool alt = (pCrd->Z >= height && pCell->ContainsBridge());
-
-	// remember which occupation bit we set
-	auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	pExt->AltOccupation = alt;
-
-	if (alt)
-	{
-		pCell->AltOccupationFlags |= 0x20;
-	}
-	else
-	{
-		pCell->OccupationFlags |= 0x20;
-	}
-
-	return 0x74420B;
-}
-
-DEFINE_HOOK(0x744210, UnitClass_UnmarkOccupationBits, 0x5)
-{
-	GET(UnitClass*, pThis, ECX);
-	GET_STACK(CoordStruct*, pCrd, 0x4);
-
-	enum { obNormal = 1, obAlt = 2 };
-
-	CellClass* pCell = MapClass::Instance->GetCellAt(pCrd);
-	int height = MapClass::Instance->GetCellFloorHeight(pCrd) + Unsorted::BridgeHeight;
-	int alt = (pCrd->Z >= height) ? obAlt : obNormal;
-
-	// also clear the last occupation bit, if set
-	auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	if (!pExt->AltOccupation.empty())
-	{
-		int lastAlt = pExt->AltOccupation ? obAlt : obNormal;
-		alt |= lastAlt;
-		pExt->AltOccupation.clear();
-	}
-
-	if (alt & obAlt)
-	{
-		pCell->AltOccupationFlags &= ~0x20;
-	}
-
-	if (alt & obNormal)
-	{
-		pCell->OccupationFlags &= ~0x20;
-	}
-
-	return 0x744260;
 }
 
 DEFINE_HOOK(0x6FE31C, TechnoClass_Fire_AllowDamage, 8)

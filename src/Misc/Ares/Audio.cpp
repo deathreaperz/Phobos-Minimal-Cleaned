@@ -26,7 +26,7 @@ struct LooseAudioFile
 class LooseAudioCache
 {
 public:
-	static std::vector<LooseAudioCache> Array;
+	static OPTIONALINLINE std::vector<LooseAudioCache> Array;
 
 	static int FindOrAllocateIndex(const char* Title)
 	{
@@ -56,19 +56,19 @@ public:
 		return -1;
 	}
 
-	static constexpr void AllocateNoCheck(const char* Title)
+	static COMPILETIMEEVAL void AllocateNoCheck(const char* Title)
 	{
 		Array.emplace_back(Title);
 	}
 
-	static inline LooseAudioCache* Find(int idx)
+	static OPTIONALINLINE LooseAudioCache* Find(int idx)
 	{
 		if ((size_t)idx > Array.size())
-			Debug::FatalErrorAndExit("Trying To Get LoseAudioCache with Index [%d] but the array size is only [%d]\n", idx, Array.size());
+			Debug::FatalErrorAndExit("Trying To Get LoseAudioCache with Index [%d] but the array size is only [%d]", idx, Array.size());
 		return &Array[idx];
 	}
 
-	static 	FileStruct GetFileStructFromIndex(int idx)
+	static FileStruct GetFileStructFromIndex(int idx)
 	{
 		auto iter = Find(idx);
 
@@ -119,32 +119,26 @@ public:
 		WavName += ".wav";
 	}
 
-	constexpr ~LooseAudioCache() = default;
+	~LooseAudioCache() = default;
+
 private:
 	std::string Name;
 	std::string WavName;
 	LooseAudioFile Data;
-
-	//LooseAudioCache(const LooseAudioCache&) = default;
-	//LooseAudioCache(LooseAudioCache&&) = default;
-	//LooseAudioCache& operator=(const LooseAudioCache& other) = default;
 };
-
-std::vector<LooseAudioCache> LooseAudioCache::Array;
 
 class AudioLuggage
 {
 public:
-	static AudioLuggage Instance;
 
 	class AudioBag
 	{
-		constexpr AudioBag(const AudioBag&) = delete;
-		constexpr AudioBag& operator=(const AudioBag& other) = delete;
+		COMPILETIMEEVAL AudioBag(const AudioBag&) = delete;
+		COMPILETIMEEVAL AudioBag& operator=(const AudioBag& other) = delete;
 	public:
 
-		constexpr AudioBag() = default;
-		constexpr ~AudioBag() = default;
+		COMPILETIMEEVAL AudioBag() = default;
+		COMPILETIMEEVAL ~AudioBag() = default;
 
 		explicit AudioBag(const char* pFilename) : AudioBag()
 		{
@@ -181,15 +175,15 @@ public:
 					{
 						if (Phobos::Otamaa::OutputAudioLogs)
 						{
-							Debug::Log("Reading [%s from %s] file with [%d] samples!.\n", filename.c_str(), pIndex.GetFileName(), headerIndex.numSamples);
+							Debug::LogInfo("Reading [{} from {}] file with [{}] samples!.", filename.c_str(), pIndex.GetFileName(), headerIndex.numSamples);
 						}
 
 						if (headerIndex.numSamples > 0)
 						{
 							this->Entries.resize(headerIndex.numSamples, {});
 
-							constexpr size_t const IdxEntrysize = sizeof(AudioIDXEntry);
-							constexpr size_t const readBytes = IdxEntrysize - 4;
+							COMPILETIMEEVAL size_t const IdxEntrysize = sizeof(AudioIDXEntry);
+							COMPILETIMEEVAL size_t const readBytes = IdxEntrysize - 4;
 
 							if (headerIndex.Magic == 1)
 							{
@@ -204,7 +198,7 @@ public:
 							else
 							{
 								auto const headerSize = headerIndex.numSamples * IdxEntrysize;
-								if (pIndex.ReadBytes(&this->Entries[0], static_cast<int>(headerSize)) != headerSize)
+								if (pIndex.ReadBytes(&this->Entries[0], static_cast<int>(headerSize)) != (int)headerSize)
 								{
 									return;
 								}
@@ -252,7 +246,7 @@ public:
 
 						if (Phobos::Otamaa::OutputAudioLogs)
 						{
-							Debug::Log("Replacing audio `%s` from : [%d - (%s - %s)] to : [%d - (%s - %s)].\n",
+							Debug::LogInfo("Replacing audio `{}` from : [{} - ({} - {})] to : [{} - ({} - {})].",
 								ent.Name,
 								idx,
 								file->FileName,
@@ -280,7 +274,7 @@ public:
 		int i = 0;
 		for (auto const& [entry, data] : map)
 		{
-			//Debug::Log("Samples[%d] Name [%s][%d , %d , %d ,  %d , %d]\n",
+			//Debug::LogInfo("Samples[%d] Name [%s][%d , %d , %d ,  %d , %d]",
 			//	i,
 			//	entry.Name,
 			//	entry.Offset,
@@ -297,12 +291,12 @@ public:
 		return Indexes;
 	}
 
-	constexpr void Append(const char* pFileBase)
+	COMPILETIMEEVAL void Append(const char* pFileBase)
 	{
 		this->Bags.emplace_back(pFileBase);
 	}
 
-	constexpr bool GetFileStruct(FileStruct& file, int idx, AudioIDXEntry*& sample)
+	COMPILETIMEEVAL bool GetFileStruct(FileStruct& file, int idx, AudioIDXEntry*& sample)
 	{
 		if (size_t(idx) < this->Files.size())
 		{
@@ -314,13 +308,13 @@ public:
 		return false;
 	}
 
-	constexpr CCFileClass* GetFileFromIndex(int idx)
+	COMPILETIMEEVAL CCFileClass* GetFileFromIndex(int idx)
 	{
 		return size_t(idx) < Files.size() ?
 			this->Files[idx].second : nullptr;
 	}
 
-	constexpr size_t TotalSampleSizes() const
+	COMPILETIMEEVAL size_t TotalSampleSizes() const
 	{
 		return this->Files.size();
 	}
@@ -331,6 +325,9 @@ private:
 
 	//contains linked real index of bags with files within
 	std::vector<std::pair<int, CCFileClass*>> Files;
+
+public:
+	static AudioLuggage Instance;
 };
 
 AudioLuggage AudioLuggage::Instance;
@@ -369,7 +366,7 @@ bool PlayWavWrapper(int HouseTypeIdx, size_t SampleIdx)
 
 	if (vec.empty() || vec[SampleIdx - 1].empty())
 	{
-		Debug::FatalErrorAndExit("Country [%s] Have Invalid Taunt Name Format [%s]\n",
+		Debug::FatalErrorAndExit("Country [%s] Have Invalid Taunt Name Format [%s]",
 		pExt->AttachedToObject->ID, vec[SampleIdx - 1].c_str());
 	}
 
@@ -488,7 +485,7 @@ DEFINE_HOOK(0x4064A0, VocClassData_AddSample, 6) // Complete rewrite of VocClass
 	GET(const char*, pSampleName, EDX);
 
 	if (!AudioIDXData::Instance())
-		Debug::FatalError("AudioIDXData is missing!\n");
+		Debug::FatalError("AudioIDXData is missing!");
 
 	if (pVoc->NumSamples == 0x20)
 	{
@@ -515,7 +512,7 @@ DEFINE_HOOK(0x4064A0, VocClassData_AddSample, 6) // Complete rewrite of VocClass
 
 			if (Phobos::Otamaa::OutputAudioLogs && idxSample == -1)
 			{
-				Debug::Log("Cannot Find [%s] sample!.\n", pSampleName);
+				Debug::LogInfo("Cannot Find [{}] sample!.", pSampleName);
 			}
 
 			// Set sample index or string pointer
@@ -537,7 +534,7 @@ DEFINE_HOOK(0x401640, AudioIndex_GetSampleInformation, 5)
 	if ((size_t)idxSample < AudioLuggage::Instance.TotalSampleSizes())
 	{
 		//const auto& pIdx = AudioIDXData::Instance()->Samples[idxSample];
-		//Debug::Log("SampleInfo [%s]\n", pIdx.Name.data());
+		//Debug::LogInfo("SampleInfo [%s]", pIdx.Name.data());
 		return 0x0;
 	}
 

@@ -128,7 +128,7 @@ DEFINE_HOOK(0x51DF38, InfantryClass_Remove, 0xA)
 	{
 		if (!pGarrison->Occupants.Remove<true>(pThis))
 		{
-			Debug::Log("Infantry %s was garrisoned in building %s, but building didn't find it. WTF?",
+			Debug::LogInfo("Infantry {} was garrisoned in building {}, but building didn't find it. WTF?",
 				pThis->Type->ID, pGarrison->Type->ID);
 		}
 	}
@@ -142,18 +142,6 @@ DEFINE_HOOK(0x51DFFD, InfantryClass_Put, 5)
 	TechnoExtContainer::Instance.Find(pThis)->GarrisonedIn = nullptr;
 	return 0;
 }
-
-// DEFINE_HOOK(0x518434, InfantryClass_ReceiveDamage_SkipDeathAnim, 7)
-// {
-// 	GET(InfantryClass*, pThis, ESI);
-// 	//GET_STACK(ObjectClass *, pAttacker, 0xE0);
-//
-// 	// there is not InfantryExt ExtMap yet!
-// 	// too much space would get wasted since there is only four bytes worth of data we need to store per object
-// 	// so those four bytes get stashed in Techno Map instead. they will get their own map if there's ever enough data to warrant it
-//
-// 	return TechnoExtContainer::Instance.Find(pThis)->GarrisonedIn ? 0x5185F1 : 0;
-// }
 
 DEFINE_HOOK(0x517D51, InfantryClass_Init_Academy, 6)
 {
@@ -212,7 +200,7 @@ DEFINE_HOOK(0x5203F7, InfantryClass_UpdateVehicleThief_Hijack, 5)
 
 	GET(InfantryClass*, pThis, ESI);
 	GET(FootClass*, pTarget, EDI);
-	TechnoExtData* pExt = TechnoExtContainer::Instance.Find(pThis);
+	//TechnoExtData* pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	bool finalize = TechnoExt_ExtData::PerformActionHijack(pThis, pTarget);
 	if (finalize)
@@ -601,7 +589,7 @@ DEFINE_HOOK(0x51EB48, InfantryClass_GetActionOnObject_IvanGrinder, 0xA)
 		{
 			if (!InputManagerClass::Instance->IsForceFireKeyPressed())
 			{
-				static constexpr BYTE return_grind[] = {
+				static COMPILETIMEEVAL BYTE return_grind[] = {
 					0x5F, 0x5E, 0x5D, // pop edi, esi and ebp
 					0xB8, 0x0B, 0x00, 0x00, 0x00, // eax = Action::Repair (not Action::Eaten)
 					0x5B, 0x83, 0xC4, 0x28, // esp += 0x28

@@ -11,7 +11,7 @@
 #include <string>
 
 class AbstractClass;
-static constexpr size_t AbstractExtOffset = 0x18;
+static COMPILETIMEEVAL size_t AbstractExtOffset = 0x18;
 
 template <class T>
 concept HasAbsID = requires(T) { T::AbsID; };
@@ -87,7 +87,7 @@ private:
 
 public:
 
-	//constexpr explicit Container(const char* pName) : SavingObject { nullptr }
+	//COMPILETIMEEVAL explicit Container(const char* pName) : SavingObject { nullptr }
 	//	, SavingStream { nullptr }
 	//	, Name { pName }
 	//{
@@ -95,40 +95,40 @@ public:
 
 	/*virtual ~Container() = default;*/
 
-	//constexpr inline auto GetName() const
+	//COMPILETIMEEVAL OPTIONALINLINE auto GetName() const
 	//{
 	//	return this->Name.data();
 	//}
 
-	constexpr inline base_type_ptr GetSavingObject() const
+	COMPILETIMEEVAL OPTIONALINLINE base_type_ptr GetSavingObject() const
 	{
 		return SavingObject;
 	}
 
-	constexpr inline IStream* GetStream() const
+	COMPILETIMEEVAL OPTIONALINLINE IStream* GetStream() const
 	{
 		return this->SavingStream;
 	}
 
-	constexpr FORCEINLINE void ClearExtAttribute(base_type_ptr key)
+	COMPILETIMEEVAL FORCEDINLINE void ClearExtAttribute(base_type_ptr key)
 	{
-		if constexpr (HasOffset<T>)
+		if COMPILETIMEEVAL(HasOffset<T>)
 			(*(uintptr_t*)((char*)key + T::ExtOffset)) = 0;
 		else
 			(*(uintptr_t*)((char*)key + AbstractExtOffset)) = 0;
 	}
 
-	constexpr FORCEINLINE void SetExtAttribute(base_type_ptr key, extension_type_ptr val)
+	COMPILETIMEEVAL FORCEDINLINE void SetExtAttribute(base_type_ptr key, extension_type_ptr val)
 	{
-		if constexpr (HasOffset<T>)
+		if COMPILETIMEEVAL(HasOffset<T>)
 			(*(uintptr_t*)((char*)key + T::ExtOffset)) = (uintptr_t)val;
 		else
 			(*(uintptr_t*)((char*)key + AbstractExtOffset)) = (uintptr_t)val;
 	}
 
-	constexpr FORCEINLINE extension_type_ptr GetExtAttribute(base_type_ptr key)
+	COMPILETIMEEVAL FORCEDINLINE extension_type_ptr GetExtAttribute(base_type_ptr key)
 	{
-		if constexpr (HasOffset<T>)
+		if COMPILETIMEEVAL(HasOffset<T>)
 			return (extension_type_ptr)(*(uintptr_t*)((char*)key + T::ExtOffset));
 		else
 			return (extension_type_ptr)(*(uintptr_t*)((char*)key + AbstractExtOffset));
@@ -141,7 +141,7 @@ public:
 		if (extension_type_ptr val = DLLCreate<extension_type>())
 		{
 			val->AttachedToObject = key;
-			if constexpr (CTORInitable<T>)
+			if COMPILETIMEEVAL(CTORInitable<T>)
 			{
 				if (!Phobos::Otamaa::DoingLoadGame)
 					val->InitializeConstant();
@@ -178,12 +178,12 @@ public:
 		return this->Allocate(key);
 	}
 
-	constexpr extension_type_ptr Find(base_type_ptr key)
+	COMPILETIMEEVAL extension_type_ptr Find(base_type_ptr key)
 	{
 		return this->GetExtAttribute(key);
 	}
 
-	constexpr extension_type_ptr TryFind(base_type_ptr key)
+	COMPILETIMEEVAL extension_type_ptr TryFind(base_type_ptr key)
 	{
 		if (!key)
 			return nullptr;
@@ -202,13 +202,13 @@ public:
 
 	void LoadFromINI(base_type_ptr key, CCINIClass* pINI, bool parseFailAddr)
 	{
-		if constexpr (CanLoadFromINIFile<T>)
+		if COMPILETIMEEVAL(CanLoadFromINIFile<T>)
 		{
 			if (extension_type_ptr ptr = this->TryFind(key))
 			{
 				if (!pINI)
 				{
-					//Debug::Log("[%s] LoadFrom INI Called WithInvalid CCINIClass ptr ! \n", typeid(T).name());
+					//Debug::LogInfo("[%s] LoadFrom INI Called WithInvalid CCINIClass ptr ! ", typeid(T).name());
 					return;
 				}
 
@@ -216,12 +216,12 @@ public:
 				{
 				case InitState::Blank:
 				{
-					if constexpr (Initable<T>)
+					if COMPILETIMEEVAL(Initable<T>)
 						ptr->Initialize();
 
 					ptr->Initialized = InitState::Inited;
 
-					if constexpr (CanLoadFromRulesFile<T>)
+					if COMPILETIMEEVAL(CanLoadFromRulesFile<T>)
 					{
 						if (pINI == CCINIClass::INI_Rules)
 						{
@@ -254,7 +254,7 @@ public:
 
 	void InvalidatePointerFor(base_type_ptr key, AbstractClass* const ptr, bool bRemoved)
 	{
-		if constexpr (ThisPointerInvalidationSubscribable<T>)
+		if COMPILETIMEEVAL(ThisPointerInvalidationSubscribable<T>)
 		{
 			if (Phobos::Otamaa::ExeTerminated)
 				return;
@@ -267,7 +267,7 @@ public:
 	void PrepareStream(base_type_ptr key, IStream* pStm)
 	{
 		static_assert(T::Canary < std::numeric_limits<size_t>::max(), "Canary Too Big !");
-		//Debug::Log("[PrepareStream] Next is %p of type '%s'\n", key, this->Name.data());
+		//Debug::LogInfo("[PrepareStream] Next is %p of type '%s'", key, this->Name.data());
 		this->SavingObject = key;
 		this->SavingStream = pStm;
 	}
@@ -275,34 +275,34 @@ public:
 	void SaveStatic()
 	{
 		auto obj = this->SavingObject;
-		//Debug::Log("[SaveStatic] For object %p as '%s Start\n", obj, this->Name.data());
+		//Debug::LogInfo("[SaveStatic] For object %p as '%s Start", obj, this->Name.data());
 		if (obj && this->SavingStream)
 		{
 			if (!this->Save(obj, this->SavingStream))
-				Debug::FatalErrorAndExit("[SaveStatic] Saving failed!\n");
+				Debug::FatalErrorAndExit("[SaveStatic] Saving failed!");
 		}
 
 		this->SavingObject = nullptr;
 		this->SavingStream = nullptr;
-		//Debug::Log("[SaveStatic] For object %p as '%s Done\n", obj, this->Name.data());
+		//Debug::LogInfo("[SaveStatic] For object %p as '%s Done", obj, this->Name.data());
 	}
 
 	bool LoadStatic()
 	{
 		auto obj = this->SavingObject;
-		//Debug::Log("[LoadStatic] For object %p as '%s Start\n", obj, this->Name.data());
+		//Debug::LogInfo("[LoadStatic] For object %p as '%s Start", obj, this->Name.data());
 		if (this->SavingObject && this->SavingStream)
 		{
 			if (!this->Load(obj, this->SavingStream))
 			{
-				//Debug::FatalErrorAndExit("[LoadStatic] Loading object %p as '%s failed!\n", obj, this->Name.data());
+				//Debug::FatalErrorAndExit("[LoadStatic] Loading object %p as '%s failed!", obj, this->Name.data());
 				return false;
 			}
 		}
 
 		this->SavingObject = nullptr;
 		this->SavingStream = nullptr;
-		//Debug::Log("[LoadStatic] For object %p as '%s Done\n", obj, this->Name.data());
+		//Debug::LogInfo("[LoadStatic] For object %p as '%s Done", obj, this->Name.data());
 		return true;
 	}
 
@@ -311,12 +311,12 @@ protected:
 	// override this method to do type-specific stuff
 	virtual bool Save(base_type_ptr key, IStream* pStm)
 	{
-		if constexpr (CanThisSaveToStream<T>)
+		if COMPILETIMEEVAL(CanThisSaveToStream<T>)
 		{
 			// this really shouldn't happen
 			if (!key)
 			{
-				//Debug::Log("[SaveKey] Attempted for a null pointer! WTF!\n");
+				//Debug::LogInfo("[SaveKey] Attempted for a null pointer! WTF!");
 				return false;
 			}
 
@@ -325,7 +325,7 @@ protected:
 
 			if (!buffer)
 			{
-				//Debug::Log("[SaveKey] Could not find value.\n");
+				//Debug::LogInfo("[SaveKey] Could not find value.");
 				return false;
 			}
 
@@ -342,24 +342,24 @@ protected:
 			// save the block
 			if (saver.WriteBlockToStream(pStm))
 			{
-				//Debug::Log("[SaveKey] Save used up 0x%X bytes\n", saver.Size());
+				//Debug::LogInfo("[SaveKey] Save used up 0x%X bytes", saver.Size());
 				return true;
 			}
 		}
 
-		//Debug::Log("[SaveKey] Failed to save data.\n");
+		//Debug::LogInfo("[SaveKey] Failed to save data.");
 		return false;
 	}
 
 	// override this method to do type-specific stuff
 	virtual bool Load(base_type_ptr key, IStream* pStm)
 	{
-		if constexpr (CanThisLoadFromStream<T>)
+		if COMPILETIMEEVAL(CanThisLoadFromStream<T>)
 		{
 			// this really shouldn't happen
 			if (!key)
 			{
-				//Debug::Log("[LoadKey] Attempted for a null pointer! WTF!\n");
+				//Debug::LogInfo("[LoadKey] Attempted for a null pointer! WTF!");
 				return false;
 			}
 
@@ -370,7 +370,7 @@ protected:
 			PhobosByteStream loader { 0 };
 			if (!loader.ReadBlockFromStream(pStm))
 			{
-				//Debug::Log("[LoadKey] Failed to read data from save stream?!\n");
+				//Debug::LogInfo("[LoadKey] Failed to read data from save stream?!");
 				return false;
 			}
 
@@ -393,7 +393,7 @@ protected:
 };
 
 //#define CONSTEXPR_NOCOPY_CLASS(containerT , name)\
-//constexpr ExtContainer() : Container<containerT> { ##name## } {}\
+//COMPILETIMEEVAL ExtContainer() : Container<containerT> { ##name## } {}\
 //virtual ~ExtContainer() override = default;\
 //private:\
 //ExtContainer(const ExtContainer&) = delete;\
@@ -401,7 +401,7 @@ protected:
 //ExtContainer& operator=(const ExtContainer& other) = delete;
 //
 //#define CONSTEXPR_NOCOPY_CLASSB(containerName , containerT , name)\
-//constexpr containerName() : Container<containerT> { ##name## } {}\
+//COMPILETIMEEVAL containerName() : Container<containerT> { ##name## } {}\
 //virtual ~containerName() override = default;\
 //private:\
 //containerName(const containerName&) = delete;\

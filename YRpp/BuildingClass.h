@@ -35,8 +35,8 @@ public:
 	static const AbstractType AbsID = AbstractType::Building;
 
 	//Static
-	static constexpr constant_ptr<DynamicVectorClass<BuildingClass*>, 0xA8EB40u> const Array{};
-	static constexpr inline DWORD vtable = 0x7E3EBC;
+	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<BuildingClass*>, 0xA8EB40u> const Array{};
+	static COMPILETIMEEVAL OPTIONALINLINE DWORD vtable = 0x7E3EBC;
 
 	//IPersist
 	virtual HRESULT __stdcall GetClassID(CLSID* pClassID) override JMP_STD(0x459E80);
@@ -77,7 +77,7 @@ public:
 	virtual void UpdateConstructionOptions() JMP_THIS(0x4456D0);
 	virtual void Draw(const Point2D& point, const RectangleStruct& rect) JMP_THIS(0x43DA80);
 	virtual DirStruct FireAngleTo(ObjectClass* pObject) const JMP_THIS(0x43ED40);
-	virtual void Destroy(DWORD dwUnused, TechnoClass* pTechno, bool NoSurvivor, CellStruct& cell) JMP_THIS(0x4415F0);
+	virtual void Destroy(DWORD dwUnused, TechnoClass* pTechno, bool NoSurvivor, const CellStruct* foundation) JMP_THIS(0x4415F0);
 	virtual bool TogglePrimaryFactory() JMP_THIS(0x448160);
 	virtual void SensorArrayActivate(CellStruct cell=CellStruct::Empty) JMP_THIS(0x455820);
 	virtual void SensorArrayDeactivate(CellStruct cell=CellStruct::Empty) JMP_THIS(0x4556D0);
@@ -236,7 +236,7 @@ public:
 		return false;
 	}
 
-	constexpr TechnoTypeClass* GetSecretProduction() const {
+	COMPILETIMEEVAL TechnoTypeClass* GetSecretProduction() const {
 		auto const pType = this->Type;
 
 		if (pType->SecretInfantry) {
@@ -341,7 +341,7 @@ public:
 	int DrawInfoTipAndSpiedSelection(Point2D* pLocation, RectangleStruct* pRect) const
 		{ JMP_THIS(0x43E7B0); }
 
-	inline std::array<BuildingTypeClass* ,4u> GetTypes() const {
+	OPTIONALINLINE std::array<BuildingTypeClass* ,4u> GetTypes() const {
 		return { this->Type , this->Upgrades[0] , this->Upgrades[1] , this->Upgrades[2] };
 	};
 

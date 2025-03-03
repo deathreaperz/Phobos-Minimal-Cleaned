@@ -12,7 +12,7 @@
 
 DEFINE_HOOK(0x6A9304, StripClass_GetTip_Handle, 9)
 {
-	GET(StripClass*, pThis, ECX);
+	//GET(StripClass*, pThis, ECX);
 	GET(int, buildableCount, EAX);
 
 	auto& cameo = MouseClassExt::TabCameos[MouseClass::Instance->ActiveTabIndex][buildableCount];
@@ -104,7 +104,7 @@ DEFINE_HOOK(0x6A9304, StripClass_GetTip_Handle, 9)
 #ifndef STRIPS
 
 #ifndef _newIpml
-static FORCEINLINE void DoStuffs(int idx, StripClass* pStrip, int height, int width, int y, SelectClass* pBegin)
+static FORCEDINLINE void DoStuffs(int idx, StripClass* pStrip, int height, int width, int y, SelectClass* pBegin)
 {
 	int MaxShown = SidebarClass::Instance->Func_6AC430();
 
@@ -248,8 +248,8 @@ DEFINE_HOOK(0x6a96d9, StripClass_Draw_Strip, 7)
 }
 #else
 
-static constexpr constant_ptr<SelectClass, 0xB07E80> const ButtonsPtr {};
-static constexpr constant_ptr<SelectClass, 0xB0B300> const Buttons_endPtr {};
+static COMPILETIMEEVAL constant_ptr<SelectClass, 0xB07E80> const ButtonsPtr {};
+static COMPILETIMEEVAL constant_ptr<SelectClass, 0xB0B300> const Buttons_endPtr {};
 
 DEFINE_HOOK(0x6ABFB2, sub_6ABD30_Strip2, 0x6)
 {
@@ -282,7 +282,7 @@ DEFINE_HOOK(0x6a96d9, StripClass_Draw_Strip, 7)
 DEFINE_HOOK(0x6AC02F, sub_6ABD30_Strip3, 0x8)
 {
 	GET_STACK(size_t, nCurIdx, 0x14);
-	constexpr int Offset = 0x3E8;
+	COMPILETIMEEVAL int Offset = 0x3E8;
 
 	for (int i = 0; i < 0xF0; ++i)
 		CCToolTip::Instance->Remove(i + Offset);
@@ -291,10 +291,11 @@ DEFINE_HOOK(0x6AC02F, sub_6ABD30_Strip3, 0x8)
 	{
 		for (size_t a = 0; a < nCurIdx; ++a)
 		{
-			CCToolTip::Instance->Add(ToolTip { a + Offset ,
+			ToolTip _temp { a + Offset ,
 				SidebarClass::SelectButtonCombined[a].Rect,
 					nullptr,
-				true });
+				true };
+			CCToolTip::Instance->Add(_temp);
 		}
 	}
 
@@ -431,7 +432,7 @@ DEFINE_HOOK(0x6A4EA5, SidebarClass_CameosList, 6)
 
 DEFINE_HOOK(0x6A6140, SidebarClass_FactoryLink_handle, 0x5)
 {
-	GET(SidebarClass*, pThis, ECX);
+	//GET(SidebarClass*, pThis, ECX);
 	GET_STACK(FactoryClass*, pFactory, 0x4);
 	GET_STACK(AbstractType, rtti, 0x8);
 	GET_STACK(int, typeIdx, 0xC);
@@ -505,7 +506,7 @@ DEFINE_HOOK(0x6A61B1, SidebarClass_SetFactoryForObject, 5)
 	return NotFound;
 }
 
-static constexpr NOINLINE BuildType* lower_bound(BuildType* first, int size, const BuildType& x)
+static COMPILETIMEEVAL NOINLINE BuildType* lower_bound(BuildType* first, int size, const BuildType& x)
 {
 	BuildType* it;
 	typename std::iterator_traits<BuildType*>::difference_type count, step;
@@ -692,17 +693,129 @@ DEFINE_HOOK(0x6A99BE, StripClass_Draw_BreakDrawLoop, 5)
 	return 0x6AA01C;
 }
 
+#include <Ext/Rules/Body.h>
+#include <Ext/TechnoType/Body.h>
+#include <Ext/Scenario/Body.h>
+#include <Ext/BuildingType/Body.h>
+
+DEFINE_HOOK(0x4F92DD, HouseClass_Update_RedrawSidebarWhenRecheckTechTree, 0x5)
+{
+	SidebarClass::Instance->SidebarBackgroundNeedsRedraw = true;
+	return 0;
+}
+
 DEFINE_HOOK(0x6A9B4F, StripClass_Draw_TestFlashFrame, 6)
 {
 	GET(int, CameoIndex, EAX);
+	GET(const bool, greyCameo, EBX);
+	GET(const int, destX, ESI);
+	GET(const int, destY, EBP);
+	GET_STACK(const RectangleStruct, boundingRect, STACK_OFFSET(0x48C, -0x3E0));
+	GET_STACK(TechnoTypeClass* const, pType, STACK_OFFSET(0x48C, -0x458));
 
 	R->EAX(Unsorted::CurrentFrame());
-	return (MouseClassExt::TabCameos[MouseClass::Instance->ActiveTabIndex]
+	if ((MouseClassExt::TabCameos[MouseClass::Instance->ActiveTabIndex]
 		[CameoIndex].FlashEndFrame > Unsorted::CurrentFrame
-		)
-		? 0x6A9B67
-		: 0x6A9BC5
-		;
+		))
+	{
+		return 0x6A9B67;
+	}
+
+	if (pType)
+	{
+		//DrawGreyCameoExtraCover
+
+		Point2D position { destX + 30, destY + 24 };
+		const auto pRulesExt = RulesExtData::Instance();
+		const auto frames = pRulesExt->Cameo_OverlayFrames.Get();
+
+		if (greyCameo) // Only draw extras over grey cameos
+		{
+			auto frame = frames.Y;
+			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+			if (pTypeExt->Cameo_AlwaysExist.Get(pRulesExt->Cameo_AlwaysExist))
+			{
+				auto& vec = ScenarioExtData::Instance()->OwnedExistCameoTechnoTypes;
+
+				if (vec.contains(pType))
+				{
+					if (const auto CameoPCX = pTypeExt->GreyCameoPCX.GetSurface())
+					{
+						auto drawRect = RectangleStruct { destX, destY, 60, 48 };
+						PCX::Instance->BlitToSurface(&drawRect, DSurface::Sidebar, CameoPCX);
+					}
+
+					frame = frames.Z;
+				}
+			}
+
+			if (frame >= 0)
+			{
+				ConvertClass* pConvert = FileSystem::PALETTE_PAL;
+				if (pRulesExt->Cameo_OverlayPalette && pRulesExt->Cameo_OverlayPalette->GetConvert<PaletteManager::Mode::Default>())
+					pConvert = pRulesExt->Cameo_OverlayPalette->GetConvert<PaletteManager::Mode::Default>();
+
+				DSurface::Sidebar->DrawSHP(
+					pConvert,
+					pRulesExt->Cameo_OverlayShapes,
+					frame,
+					&position,
+					&boundingRect,
+					BlitterFlags(0x600),
+					0, 0,
+					ZGradient::Ground,
+					1000, 0, 0, 0, 0, 0);
+			}
+		}
+
+		if (const auto pBuildingType = cast_to<BuildingTypeClass*, false>(pType)) // Only count owned buildings
+		{
+			const auto pHouse = HouseClass::CurrentPlayer();
+			auto count = BuildingTypeExtData::GetUpgradesAmount(pBuildingType, pHouse);
+
+			if (count == -1)
+				count = pHouse->CountOwnedAndPresent(pBuildingType);
+
+			if (count > 0)
+			{
+				if (frames.X >= 0)
+				{
+					ConvertClass* pConvert = FileSystem::PALETTE_PAL;
+					if (pRulesExt->Cameo_OverlayPalette && pRulesExt->Cameo_OverlayPalette->GetConvert<PaletteManager::Mode::Default>())
+						pConvert = pRulesExt->Cameo_OverlayPalette->GetConvert<PaletteManager::Mode::Default>();
+
+					DSurface::Sidebar->DrawSHP(
+						pConvert,
+						pRulesExt->Cameo_OverlayShapes,
+						frames.X,
+						&position,
+						&boundingRect,
+						BlitterFlags(0x600),
+						0, 0,
+						ZGradient::Ground,
+						1000, 0, 0, 0, 0, 0);
+				}
+
+				if (Phobos::Config::ShowBuildingStatistics
+					&& BuildingTypeExtContainer::Instance.Find(pBuildingType)->Cameo_ShouldCount.Get(pBuildingType->BuildCat != BuildCat::Combat || (pBuildingType->BuildLimit != INT_MAX))
+					)
+				{
+					GET_STACK(RectangleStruct, surfaceRect, STACK_OFFSET(0x48C, -0x438));
+
+					const COLORREF color = Drawing::RGB_To_Int(Drawing::TooltipColor);
+					const TextPrintType printType = TextPrintType::Background | TextPrintType::Right | TextPrintType::FullShadow | TextPrintType::Point8;
+					auto textPosition = Point2D { destX , destY + 1 };
+
+					wchar_t text[0x20];
+					swprintf_s(text, L"%d", count);
+					DSurface::Sidebar->DrawText_Old(text, &surfaceRect, &textPosition, color, 0, (DWORD)printType);
+				}
+			}
+		}
+	}
+
+	return 0x6A9BC5;
 }
 
 DEFINE_HOOK(0x6AAD2F, SelectClass_ProcessInput_LoadCameo1, 7)
@@ -867,28 +980,40 @@ DEFINE_HOOK(0x6AC67A, SidebarClass_FlashCameo_FixLimit, 5)
 	return 0x6AC71A;
 }
 
+#include <New/SuperWeaponSidebar/SWSidebarClass.h>
+
 bool NOINLINE RemoveCameo(BuildType* item)
 {
 	auto TechnoType = ObjectTypeClass::FetchTechnoType(item->ItemType, item->ItemIndex);
-	bool removeCameo = true;
+
 	if (TechnoType)
 	{
 		if (auto Factory = TechnoType->FindFactory(true, false, false, HouseClass::CurrentPlayer()))
 		{
-			removeCameo = Factory->Owner->CanBuild(TechnoType, false, true) == CanBuildResult::Unbuildable;
+			if (Factory->Owner->CanBuild(TechnoType, false, true) != CanBuildResult::Unbuildable)
+				return false;
 		}
 	}
 	else
 	{
-		auto& Supers = HouseClass::CurrentPlayer->Supers;
-		if (Supers.ValidIndex(item->ItemIndex))
+		const auto& supers = HouseClass::CurrentPlayer->Supers;
+
+		if (supers.ValidIndex(item->ItemIndex))
 		{
-			removeCameo = !Supers.Items[item->ItemIndex]->Granted;
+			if (!SWSidebarClass::IsEnabled())
+			{
+				if (supers[item->ItemIndex]->Granted)
+					return false;
+			}
+			else
+			{
+				if (supers[item->ItemIndex]->Granted && !SWSidebarClass::Global()->AddButton(item->ItemIndex))
+				{
+					return false;
+				}
+			}
 		}
 	}
-
-	if (!removeCameo)
-		return false;
 
 	if (item->CurrentFactory)
 	{
@@ -905,10 +1030,18 @@ bool NOINLINE RemoveCameo(BuildType* item)
 
 	if (item->ItemType == BuildingTypeClass::AbsID || item->ItemType == BuildingClass::AbsID)
 	{
-		MouseClass::Instance->CurrentBuilding = nullptr;
-		MouseClass::Instance->CurrentBuildingType = nullptr;
-		MouseClass::Instance->CurrentBuildingOwnerArrayIndex = 0xFFFFFFFF;
-		MouseClass::Instance->SetActiveFoundation(nullptr);
+		const auto pBldType = static_cast<BuildingTypeClass*>(TechnoType);
+		const auto pDisplay = DisplayClass::Instance();
+		const auto pCurType = cast_to<BuildingTypeClass*>(pDisplay->CurrentBuildingType);
+
+		if (!RulesExtData::Instance()->ExtendedBuildingPlacing || !pCurType
+			|| BuildingTypeExtData::IsSameBuildingType(pBldType, pCurType))
+		{
+			pDisplay->SetActiveFoundation(nullptr);
+			pDisplay->CurrentBuilding = nullptr;
+			pDisplay->CurrentBuildingType = nullptr;
+			pDisplay->CurrentBuildingOwnerArrayIndex = -1;
+		}
 	}
 
 	if (TechnoType)

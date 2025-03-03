@@ -24,13 +24,15 @@
 #include <Ext/SWType/NewSuperWeaponType/Reveal.h>
 
 #include <New/Entity/VerticalLaserClass.h>
-#include <Misc/Ares/Hooks/AresNetEvent.h>
+#include <Ext/Event/Body.h>
 
-// Wrapper for MapClass::DamageArea() that sets a pointer in WarheadTypeExt::ExtData that is used to figure 'intended' target of the Warhead detonation, if set and there's no CellSpread.
-DamageAreaResult WarheadTypeExtData::DamageAreaWithTarget(const CoordStruct& coords, int damage, TechnoClass* pSource, WarheadTypeClass* pWH, bool affectsTiberium, HouseClass* pSourceHouse, TechnoClass* pTarget)
+#include <Misc/DamageArea.h>
+
+// Wrapper for DamageArea::Apply() that sets a pointer in WarheadTypeExt::ExtData that is used to figure 'intended' target of the Warhead detonation, if set and there's no CellSpread.
+DamageAreaResult WarheadTypeExtData::DamageAreaWithTarget(CoordStruct coords, int damage, TechnoClass* pSource, WarheadTypeClass* pWH, bool affectsTiberium, HouseClass* pSourceHouse, TechnoClass* pTarget)
 {
 	this->IntendedTarget = pTarget;
-	auto result = MapClass::DamageArea(coords, damage, pSource, pWH, true, pSourceHouse);
+	auto result = DamageArea::Apply(&coords, damage, pSource, pWH, true, pSourceHouse);
 	this->IntendedTarget = nullptr;
 	return result;
 }
@@ -99,7 +101,7 @@ void WarheadTypeExtData::ApplyDirectional(BulletClass* pBullet, TechnoClass* pTa
 	//const int tarFacing = pTarget->PrimaryFacing.Current().GetValue<16>();
 	//int bulletFacing = BulletExtContainer::Instance.Find(pBullet)->InitialBulletDir.get().GetValue<16>();
 
-	//const int angle = abs(bulletFacing - tarFacing);
+	//const int angle = Math::abs(bulletFacing - tarFacing);
 	//auto frontField = 64 * this->DirectionalArmor_FrontField;
 	//auto backField = 64 * this->DirectionalArmor_BackField;
 
@@ -299,11 +301,6 @@ void WarheadTypeExtData::ApplyAttachTag(TechnoClass* pTarget) const
 		auto pTagType = TagTypeClass::FindOrAllocate(TagID);
 		pTarget->AttachTrigger(TagClass::GetInstance(pTagType));
 	}
-}
-
-void WarheadTypeExtData::ApplyUpgrade(HouseClass* pHouse, TechnoClass* pTarget) const
-{
-	TechnoTypeConvertData::ApplyConvert(this->ConvertsPair, pHouse, pTarget, this->Convert_SucceededAnim);
 }
 
 bool WarheadTypeExtData::applyPermaMC(HouseClass* const Owner, AbstractClass* const Target) const
@@ -540,7 +537,7 @@ static bool NOINLINE IsCellSpreadWH(WarheadTypeExtData* pData)
 		//pData->RemoveMindControl ||
 		//pData->Crit_Chance ||
 		pData->Shield_Break ||
-		(pData->Converts && !pData->ConvertsPair.empty()) ||
+		!pData->ConvertsPair.empty() ||
 		pData->Shield_Respawn_Duration > 0 ||
 		pData->Shield_SelfHealing_Duration > 0 ||
 		!pData->Shield_AttachTypes.empty() ||
@@ -563,7 +560,8 @@ static bool NOINLINE IsCellSpreadWH(WarheadTypeExtData* pData)
 		|| !pData->PhobosAttachEffects.AttachTypes.empty()
 		|| !pData->PhobosAttachEffects.RemoveTypes.empty()
 		|| !pData->PhobosAttachEffects.RemoveGroups.empty()
-
+		|| pData->BuildingSell
+		|| pData->BuildingUndeploy
 		;
 }
 
@@ -689,7 +687,7 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 		}
 		else if (auto pIntended = this->IntendedTarget)
 		{
-			if (coords.DistanceFrom(pIntended->GetCoords()) < Unsorted::LeptonsPerCell / 4)
+			if (coords.DistanceFrom(pIntended->GetCoords()) < double(Unsorted::LeptonsPerCell / 4))
 			{
 				this->DetonateOnOneUnit(pHouse, pIntended, damage, pOwner, pBullet, ThisbulletWasIntercepted);
 
@@ -798,8 +796,7 @@ void WarheadTypeExtData::DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTar
 		this->ApplyReloadAmmo(pTarget, this->ReloadAmmo);
 	}
 
-	if (this->Converts)
-		this->ApplyUpgrade(pHouse, pTarget);
+	TechnoTypeConvertData::ApplyConvert(this->ConvertsPair, pHouse, pTarget, this->Convert_SucceededAnim);
 
 	if (this->AttachTag)
 		this->ApplyAttachTag(pTarget);

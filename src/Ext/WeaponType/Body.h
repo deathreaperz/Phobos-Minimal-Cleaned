@@ -19,7 +19,7 @@
 class WeaponTypeExtData final
 {
 public:
-	static constexpr size_t Canary = 0x23222222;
+	static COMPILETIMEEVAL size_t Canary = 0x23222222;
 	using base_type = WeaponTypeClass;
 
 	base_type* AttachedToObject {};
@@ -34,6 +34,7 @@ public:
 	Valueable<bool> Strafing_SimulateBurst { false };
 	Nullable<bool> Strafing { };
 	Valueable<bool> Strafing_UseAmmoPerShot { false };
+	Nullable<int> Strafing_EndDelay {};
 
 	Valueable<AffectedTarget> CanTarget { AffectedTarget::All };
 	Valueable<AffectedHouse> CanTargetHouses { AffectedHouse::All };
@@ -132,6 +133,8 @@ public:
 	Valueable<bool> Bolt_Disable3 { false };
 	Valueable<int> Bolt_Arcs { 8 };
 
+	Valueable<int> Bolt_Duration { 17 };
+
 	Nullable<ParticleSystemTypeClass*> Bolt_ParticleSys {};
 	Valueable<int> Laser_Thickness { -1 };
 
@@ -172,18 +175,29 @@ public:
 	Valueable<bool> AttachEffect_Enable { false };
 	Valueable<int> NoRepeatFire {};
 
+	Nullable<PartialVector2D<int>> DelayedFire_Duration {};
+	Valueable<bool> DelayedFire_SkipInTransport {};
+	Valueable<AnimTypeClass*> DelayedFire_Animation {};
+	Nullable<AnimTypeClass*> DelayedFire_OpenToppedAnimation {};
+	Valueable<bool> DelayedFire_AnimIsAttached { true };
+	Valueable<bool> DelayedFire_CenterAnimOnFirer {};
+	Valueable<bool> DelayedFire_RemoveAnimOnNoDelay {};
+	Valueable<bool> DelayedFire_PauseFiringSequence {};
+	Valueable<bool> DelayedFire_OnlyOnInitialBurst {};
+	Nullable<CoordStruct> DelayedFire_AnimOffset {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
-	bool inline IsWave() const
+	bool OPTIONALINLINE IsWave() const
 	{
 		auto const pThis = this->AttachedToObject;
 		return this->Wave_IsLaser || this->Wave_IsBigLaser || pThis->IsSonic || pThis->IsMagBeam;
 	}
 
-	int inline GetProjectileRange() const
+	int OPTIONALINLINE GetProjectileRange() const
 	{
 		return this->ProjectileRange.Get();
 	}
@@ -191,7 +205,7 @@ public:
 	ColorStruct GetBeamColor() const;
 	bool HasRequiredAttachedEffects(TechnoClass* pTarget, TechnoClass* pFirer);
 
-	constexpr FORCEINLINE static size_t size_Of()
+	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(WeaponTypeExtData) -
 			(4u //AttachedToObject
@@ -203,8 +217,8 @@ private:
 
 public:
 
-	inline static int nOldCircumference { DiskLaserClass::Radius };
-	inline static PhobosMap<EBolt*, const WeaponTypeExtData*> boltWeaponTypeExt;
+	OPTIONALINLINE static int nOldCircumference { DiskLaserClass::Radius };
+	OPTIONALINLINE static PhobosMap<EBolt*, const WeaponTypeExtData*> boltWeaponTypeExt;
 
 	static int GetBurstDelay(WeaponTypeClass* pThis, int burstIndex);
 	static void DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarget, TechnoClass* pOwner, bool AddDamage, HouseClass* HouseInveoker);
@@ -248,27 +262,27 @@ public:
 	HRESULT __stdcall _Load(IStream* pStm);
 	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
 
-	FORCEINLINE WeaponTypeExtData* _GetExtData()
+	FORCEDINLINE WeaponTypeExtData* _GetExtData()
 	{
 		return *reinterpret_cast<WeaponTypeExtData**>(((DWORD)this) + AbstractExtOffset);
 	}
 
-	FORCEINLINE BulletTypeExtData* _GetBulletTypeExtData()
+	FORCEDINLINE BulletTypeExtData* _GetBulletTypeExtData()
 	{
 		return *reinterpret_cast<BulletTypeExtData**>(((DWORD)this->Projectile) + 0x2C4);
 	}
 
-	FORCEINLINE FakeBulletTypeClass* _GetBulletType()
+	FORCEDINLINE FakeBulletTypeClass* _GetBulletType()
 	{
 		return (FakeBulletTypeClass*)this->Projectile;
 	}
 
-	FORCEINLINE FakeWarheadTypeClass* _GetWarheadType()
+	FORCEDINLINE FakeWarheadTypeClass* _GetWarheadType()
 	{
 		return (FakeWarheadTypeClass*)this->Warhead;
 	}
 
-	FORCEINLINE WarheadTypeExtData* _GetWarheadTypeExtData()
+	FORCEDINLINE WarheadTypeExtData* _GetWarheadTypeExtData()
 	{
 		return *reinterpret_cast<WarheadTypeExtData**>(((DWORD)this->Warhead) + 0x1CC);
 	}

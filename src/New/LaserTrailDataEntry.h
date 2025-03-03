@@ -23,15 +23,13 @@ struct LaserTrailDataEntry
 		idxType { nIdx }
 		, FLH { nFlh }
 		, IsOnTurret { OnTur }
-	{
-	}
+	{ }
 
 	LaserTrailDataEntry() :
 		idxType { -1 }
 		, FLH { 0,0,0 }
 		, IsOnTurret { false }
-	{
-	}
+	{ }
 
 	~LaserTrailDataEntry() = default;
 	LaserTrailDataEntry(const LaserTrailDataEntry& other) = default;

@@ -53,7 +53,7 @@ const wchar_t* CSFLoader::GetDynamicString(const char* pLabelName, const wchar_t
 		swprintf_s(pData->Text, 101u, pPattern, pDefault);
 		if (Phobos::Otamaa::OutputMissingStrings)
 		{
-			Debug::Log("[CSFLoader] ***NO_STRING*** label \"%s\" with value \"%ls\".\n", pLabelName, pData->Text);
+			Debug::LogInfo("[CSFLoader] ***NO_STRING*** label \"{}\" with value \"{}\".", pLabelName, PhobosCRT::WideStringToString(pData->Text));
 		}
 	}
 

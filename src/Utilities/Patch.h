@@ -27,19 +27,18 @@ struct dllData
 	std::vector<module_export> Exports;
 	//std::vector<std::string> Patches;
 
-	constexpr dllData() = default;
+	COMPILETIMEEVAL dllData() = default;
 
-	constexpr dllData(const char* name, HMODULE handle, uintptr_t baseaddr, size_t size) : ModuleName { name }
+	COMPILETIMEEVAL dllData(const char* name, HMODULE handle, uintptr_t baseaddr, size_t size) : ModuleName { name }
 		, Handle { handle }
 		, BaseAddr { baseaddr }
 		, Size { size }
 		, Impors {}
 		, Exports {}
 		//	, Patches {}
-	{
-	}
+	{ }
 
-	constexpr ~dllData() = default;
+	COMPILETIMEEVAL ~dllData() = default;
 };
 
 // no more than 8 characters
@@ -60,25 +59,29 @@ struct NOVTABLE
 	static void ApplyStatic();
 	void Apply();
 
-	inline static std::vector<dllData> ModuleDatas {};
+	OPTIONALINLINE static std::vector<dllData> ModuleDatas {};
 
 	template<typename TFrom, typename To>
-	static inline void Apply(uintptr_t addrFrom, To toImpl, DWORD& protect_flag, DWORD ReadFlag = PAGE_READWRITE, size_t size = 4u)
+	static OPTIONALINLINE void Apply(uintptr_t addrFrom, To toImpl, DWORD& protect_flag, DWORD ReadFlag = PAGE_READWRITE, size_t size = 4u)
 	{
+		DWORD protect_flagb {};
 		if (VirtualProtect((LPVOID)addrFrom, size, ReadFlag, &protect_flag) == TRUE)
 		{
 			*reinterpret_cast<TFrom*>(addrFrom) = toImpl;
-			VirtualProtect((LPVOID)addrFrom, size, protect_flag, NULL);
+			VirtualProtect((LPVOID)addrFrom, size, protect_flag, &protect_flagb);
+			FlushInstructionCache(Game::hInstance, (LPVOID)addrFrom, size);
 		}
 	}
 
 	template<typename To>
-	static inline void Apply_withmemcpy(uintptr_t addrFrom, To toImpl, DWORD& protect_flag, DWORD ReadFlag = PAGE_READWRITE, size_t size = 4u)
+	static OPTIONALINLINE void Apply_withmemcpy(uintptr_t addrFrom, To toImpl, DWORD& protect_flag, DWORD ReadFlag = PAGE_READWRITE, size_t size = 4u)
 	{
+		DWORD protect_flagb {};
 		if (VirtualProtect((LPVOID)addrFrom, size, ReadFlag, &protect_flag) == TRUE)
 		{
 			std::memcpy((void*)addrFrom, toImpl, size);
-			VirtualProtect((LPVOID)addrFrom, size, protect_flag, NULL);
+			VirtualProtect((LPVOID)addrFrom, size, protect_flag, &protect_flagb);
+			FlushInstructionCache(Game::hInstance, (LPVOID)addrFrom, size);
 		}
 	}
 
@@ -86,7 +89,7 @@ struct NOVTABLE
 	 *  Get the memory address of a function.
 	 */
 	template<typename T>
-	static inline uintptr_t Get_Func_Address(T func)
+	static OPTIONALINLINE uintptr_t Get_Func_Address(T func)
 	{
 		return reinterpret_cast<uintptr_t>((void*&)func);
 	}
@@ -101,7 +104,7 @@ struct NOVTABLE
 	 *  So use these helpers to commit treason and adjust the pointer... I'm sorry...
 	 */
 	template<class T>
-	static FORCEINLINE T Adjust_Ptr(T ptr, int amount)
+	static FORCEDINLINE T Adjust_Ptr(T ptr, int amount)
 	{
 		uintptr_t rawptr = reinterpret_cast<uintptr_t>(ptr);
 		return reinterpret_cast<T>(rawptr + amount);
@@ -111,37 +114,37 @@ struct NOVTABLE
 	static void Apply_RAW(uintptr_t offset, size_t sz, BYTE* data);
 
 	template <size_t Size>
-	static FORCEINLINE void Apply_RAW(uintptr_t offset, const char(&str)[Size])
+	static FORCEDINLINE void Apply_RAW(uintptr_t offset, const char(&str)[Size])
 	{
 		PatchWrapper dummy { offset, Size, reinterpret_cast<BYTE*>(const_cast<char*>(str)) };
 	};
 
 	template <typename T>
-	static FORCEINLINE void Apply_TYPED(uintptr_t offset, std::initializer_list<T> data)
+	static FORCEDINLINE void Apply_TYPED(uintptr_t offset, std::initializer_list<T> data)
 	{
 		Patch::Apply_RAW(offset, data.size() * sizeof(T), const_cast<byte*>(reinterpret_cast<const byte*>(data.begin())));
 	};
 
 	static void Apply_LJMP(uintptr_t offset, uintptr_t pointer);
-	static FORCEINLINE void Apply_LJMP(uintptr_t offset, void* pointer)
+	static FORCEDINLINE void Apply_LJMP(uintptr_t offset, void* pointer)
 	{
 		Patch::Apply_LJMP(offset, reinterpret_cast<uintptr_t>(pointer));
 	};
 
 	static void Apply_CALL(uintptr_t offset, uintptr_t pointer);
-	static FORCEINLINE void Apply_CALL(uintptr_t offset, void* pointer)
+	static FORCEDINLINE void Apply_CALL(uintptr_t offset, void* pointer)
 	{
 		Patch::Apply_CALL(offset, reinterpret_cast<uintptr_t>(pointer));
 	};
 
 	static void Apply_CALL6(uintptr_t offset, uintptr_t pointer);
-	static FORCEINLINE void Apply_CALL6(uintptr_t offset, void* pointer)
+	static FORCEDINLINE void Apply_CALL6(uintptr_t offset, void* pointer)
 	{
 		Patch::Apply_CALL6(offset, reinterpret_cast<DWORD>(pointer));
 	};
 
 	static void Apply_VTABLE(uintptr_t offset, uintptr_t pointer);
-	static FORCEINLINE void Apply_VTABLE(uintptr_t offset, void* pointer)
+	static FORCEDINLINE void Apply_VTABLE(uintptr_t offset, void* pointer)
 	{
 		Patch::Apply_VTABLE(offset, reinterpret_cast<uintptr_t>(pointer));
 	};
@@ -151,7 +154,7 @@ struct NOVTABLE
 		Patch::Apply_TYPED<uintptr_t>(offset, { pointer });
 	};
 
-	static FORCEINLINE void Apply_OFFSET(uintptr_t offset, uintptr_t* pointer)
+	static FORCEDINLINE void Apply_OFFSET(uintptr_t offset, uintptr_t* pointer)
 	{
 		Patch::Apply_OFFSET(offset, reinterpret_cast<DWORD>(pointer));
 	};
@@ -164,7 +167,8 @@ struct NOVTABLE
 	static uintptr_t GetEATAddress(const char* moduleName, const char* funcName);
 	static uintptr_t GetIATAddress(const char* moduleName, const char* funcName);
 public:
-	inline static HANDLE CurrentProcess;
+	OPTIONALINLINE static HANDLE CurrentProcess;
+	OPTIONALINLINE static std::string WindowsVersion;
 };
 
 struct NOVTABLE

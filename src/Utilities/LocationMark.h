@@ -14,29 +14,26 @@ struct LocationMark
 	CoordStruct Location;
 	DirStruct Direction;
 
-	constexpr LocationMark(CoordStruct location, DirStruct direction) :
+	COMPILETIMEEVAL LocationMark(CoordStruct location, DirStruct direction) :
 		Location { location }
 		, Direction { direction }
-	{
-	}
+	{ }
 
-	constexpr LocationMark(DirStruct direction, CoordStruct location) :
+	COMPILETIMEEVAL LocationMark(DirStruct direction, CoordStruct location) :
 		Location { location }
 		, Direction { direction }
-	{
-	}
+	{ }
 
-	constexpr LocationMark() :
+	COMPILETIMEEVAL LocationMark() :
 		Location { 0,0,0 }
 		, Direction { }
-	{
-	}
+	{ }
 
-	constexpr LocationMark(const LocationMark& other) = default;
-	constexpr LocationMark& operator=(const LocationMark& other) = default;
-	constexpr ~LocationMark() = default;
+	COMPILETIMEEVAL LocationMark(const LocationMark& other) = default;
+	COMPILETIMEEVAL LocationMark& operator=(const LocationMark& other) = default;
+	COMPILETIMEEVAL ~LocationMark() = default;
 
-	constexpr inline bool IsValid() const
+	COMPILETIMEEVAL OPTIONALINLINE bool IsValid() const
 	{
 		return (Location != CoordStruct::Empty);
 	}
@@ -51,7 +48,7 @@ private:
 	template <typename T>
 	bool Serialize(T& Stm)
 	{
-		Debug::Log("Processing Element From LocationMark ! \n");
+		Debug::LogInfo("Processing Element From LocationMark ! ");
 		return Stm
 			.Process(Location)
 			.Process(Direction)

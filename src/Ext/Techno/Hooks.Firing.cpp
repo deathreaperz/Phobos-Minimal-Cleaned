@@ -56,7 +56,8 @@ DEFINE_HOOK(0x7413DD, UnitClass_Fire_RecoilForce, 0x6)
 
 #include <Ext/Infantry/Body.h>
 
-DEFINE_HOOK(0x6FF905, TechnoClass_FireAt_FireOnce, 0x6) {
+DEFINE_HOOK(0x6FF905, TechnoClass_FireAt_FireOnce, 0x6)
+{
 	GET(TechnoClass*, pThis, ESI);
 
 	if (auto const pInf = cast_to<InfantryClass*, false>(pThis))
@@ -170,7 +171,7 @@ DEFINE_HOOK(0x6FC3FE, TechnoClass_CanFire_Immunities, 0x6)
 {
 	enum { FireIllegal = 0x6FC86A, ContinueCheck = 0x6FC425 };
 
-	GET(TechnoClass*, pThis, ESI);
+	//GET(TechnoClass*, pThis, ESI);
 	GET(WarheadTypeClass*, pWarhead, EAX);
 	GET(TechnoClass*, pTarget, EBP);
 
@@ -197,14 +198,16 @@ DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 	GET(FakeWeaponTypeClass*, pWeapon, EDI);
 	GET_STACK(AbstractClass*, pTarget, STACK_OFFS(0x20, -0x4));
 
-	enum { FireIllegal = 0x6FCB7E, Continue = 0x0 , FireCant = 0x6FCD29 };
+	enum { FireIllegal = 0x6FCB7E, Continue = 0x0, FireCant = 0x6FCD29 };
 
 	auto const pObjectT = flag_cast_to<ObjectClass*, false>(pTarget);
 	auto const pTechnoT = flag_cast_to<TechnoClass*, false>(pTarget);
 	auto const pWeaponExt = pWeapon->_GetExtData();
 
-	if (pWeaponExt->NoRepeatFire > 0) {
-		if (pTechnoT) {
+	if (pWeaponExt->NoRepeatFire > 0)
+	{
+		if (pTechnoT)
+		{
 			const auto pTargetTechnoExt = TechnoExtContainer::Instance.Find(pTechnoT);
 
 			if ((Unsorted::CurrentFrame - pTargetTechnoExt->LastBeLockedFrame) < pWeaponExt->NoRepeatFire)
@@ -216,7 +219,8 @@ DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 		if (pTerrain->Type->Immune)
 			return FireIllegal;
 
-	if (pWeapon->Warhead->MakesDisguise && pObjectT) {
+	if (pWeapon->Warhead->MakesDisguise && pObjectT)
+	{
 		if (!DisguiseAllowed(TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType()), pObjectT->GetDisguise(true)))
 			return FireIllegal;
 	}
@@ -225,10 +229,12 @@ DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 	// gunners and opentopped together do not support temporals, because the gunner
 	// takes away the TemporalImUsing from the infantry, and thus it is missing
 	// when the infantry fires out of the opentopped vehicle
-	if (pWeapon->Warhead->Temporal && pThis->Transporter) {
+	if (pWeapon->Warhead->Temporal && pThis->Transporter)
+	{
 		auto const pType = pThis->Transporter->GetTechnoType();
-		if (pType->Gunner && pType->OpenTopped) {
-			if(!pThis->TemporalImUsing)
+		if (pType->Gunner && pType->OpenTopped)
+		{
+			if (!pThis->TemporalImUsing)
 				return FireCant;
 		}
 	}
@@ -251,7 +257,8 @@ DEFINE_HOOK(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 	auto const& [pTargetTechno, targetCell] = TechnoExtData::GetTargets(pObjectT, pTarget);
 
 	// AAOnly doesn't need to be checked if LandTargeting=1.
-	if (pThis->GetTechnoType()->LandTargeting != LandTargetingType::Land_not_okay && pWeapon->Projectile->AA && pTarget && !pTarget->IsInAir()) {
+	if (pThis->GetTechnoType()->LandTargeting != LandTargetingType::Land_not_okay && pWeapon->Projectile->AA && pTarget && !pTarget->IsInAir())
+	{
 		if (BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->AAOnly)
 			return FireIllegal;
 	}
@@ -358,7 +365,8 @@ DEFINE_HOOK(0x7012C0, TechnoClass_WeaponRange, 0x8) //4
 				{
 					int TWeaponRange = WeaponTypeExtData::GetRangeWithModifiers(pTWeapon->WeaponType, pPassenger);
 
-					if (TWeaponRange < smallestRange) {
+					if (TWeaponRange < smallestRange)
+					{
 						smallestRange = TWeaponRange;
 					}
 				}
@@ -375,7 +383,7 @@ DEFINE_HOOK(0x7012C0, TechnoClass_WeaponRange, 0x8) //4
 	{
 		result = pThisType->GuardRange;
 		if (result == 0)
-			Debug::Log("Warning ! , range of Aircraft[%s] return 0 result will cause Aircraft to stuck ! \n", pThis->get_ID());
+			Debug::LogInfo("Warning ! , range of Aircraft[{}] return 0 result will cause Aircraft to stuck ! ", pThis->get_ID());
 	}
 
 	R->EAX(result);
@@ -460,7 +468,6 @@ DEFINE_HOOK(0x6FC815, TechnoClass_CanFire_CellTargeting, 0x7)
 // 	return weaponPrimary;
 // }
 
-
 DEFINE_HOOK(0x51C1F1, InfantryClass_CanEnterCell_WallWeapon, 0x5)
 {
 	enum { SkipGameCode = 0x51C1FE };
@@ -485,18 +492,21 @@ DEFINE_HOOK(0x73F495, UnitClass_CanEnterCell_WallWeapon, 0x6)
 	return SkipGameCode;
 }
 
-DEFINE_HOOK(0x70095A, TechnoClass_WhatAction_WallWeapon, 0x6) {
+DEFINE_HOOK(0x70095A, TechnoClass_WhatAction_WallWeapon, 0x6)
+{
 	GET_STACK(OverlayTypeClass*, pOverlayTypeClass, STACK_OFFSET(0x2C, -0x18));
 	GET(TechnoClass*, pThis, ESI);
 	R->EAX(pThis->GetWeapon(TechnoExtData::GetWeaponIndexAgainstWall(pThis, pOverlayTypeClass)));
 	return 0;
 }
 
-namespace CellEvalTemp {
+namespace CellEvalTemp
+{
 	int weaponIndex;
 }
 
-DEFINE_HOOK(0x6F8C9D, TechnoClass_EvaluateCell_SetContext, 0x7) {
+DEFINE_HOOK(0x6F8C9D, TechnoClass_EvaluateCell_SetContext, 0x7)
+{
 	GET(int, weaponIndex, EAX);
 
 	CellEvalTemp::weaponIndex = weaponIndex;
@@ -525,15 +535,18 @@ DEFINE_HOOK(0x6FDDC0, TechnoClass_FireAt_Early, 0x6)
 	GET(TechnoClass*, pThis, ESI);
 	GET(AbstractClass*, pTarget, EDI);
 	GET(FakeWeaponTypeClass*, pWeapon, EBX);
+	GET_BASE(int, weaponIndex, 0xC);
 
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	if (pExt->AE.HasOnFireDiscardables) {
-		for (auto& attachEffect : pExt->PhobosAE) {
-				if(!attachEffect || attachEffect->ShouldBeDiscarded)
-					continue;
+	if (pExt->AE.HasOnFireDiscardables)
+	{
+		for (auto& attachEffect : pExt->PhobosAE)
+		{
+			if (!attachEffect || attachEffect->ShouldBeDiscarded)
+				continue;
 
-			if(GeneralUtils::Contains<DiscardCondition>(attachEffect->GetType()->DiscardOn ,DiscardCondition::Firing))
+			if (GeneralUtils::Contains<DiscardCondition>(attachEffect->GetType()->DiscardOn, DiscardCondition::Firing))
 				attachEffect->ShouldBeDiscarded = true;
 		}
 	}
@@ -544,22 +557,137 @@ DEFINE_HOOK(0x6FDDC0, TechnoClass_FireAt_Early, 0x6)
 	// 	pThis->DropOffParadropCargo();
 	// }
 
-	if (pWeapon) {
+	if (pWeapon)
+	{
 		auto pWeaponExt = pWeapon->_GetExtData();
-		if (const auto pTargetTechno = flag_cast_to<TechnoClass*>(pTarget)) {
-				auto const pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
-			if (pWeaponExt->NoRepeatFire > 0) {
+		if (const auto pTargetTechno = flag_cast_to<TechnoClass*>(pTarget))
+		{
+			auto const pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
+			if (pWeaponExt->NoRepeatFire > 0)
+			{
 				pTargetExt->LastBeLockedFrame = Unsorted::CurrentFrame;
 			}
 
-			if (pWeaponExt->AttachEffect_Enable) {
+			if (pWeaponExt->AttachEffect_Enable)
+			{
 				auto const info = &pWeaponExt->AttachEffects;
 				PhobosAttachEffectClass::Attach(pTargetTechno, pThis->Owner, pThis, pWeapon->Warhead, info);
 				PhobosAttachEffectClass::Detach(pTargetTechno, info);
 				PhobosAttachEffectClass::DetachByGroups(pTargetTechno, info);
 			}
 		}
+
+		auto& timer = pExt->DelayedFireTimer;
+
+		if (pExt->DelayedFireWeaponIndex >= 0 && pExt->DelayedFireWeaponIndex != weaponIndex)
+			pExt->ResetDelayedFireTimer();
+
+		if (pWeaponExt->DelayedFire_Duration.isset() && (!pThis->Transporter || !pWeaponExt->DelayedFire_SkipInTransport))
+		{
+			if (pThis->WhatAmI() == AbstractType::Infantry && pWeaponExt->DelayedFire_PauseFiringSequence)
+				return 0;
+
+			if (pWeapon->Burst <= 1 || !pWeaponExt->DelayedFire_OnlyOnInitialBurst || pThis->CurrentBurstIndex == 0)
+			{
+				if (timer.InProgress())
+					return 0x6FDE03;
+
+				if (!timer.HasStarted())
+				{
+					pExt->DelayedFireWeaponIndex = weaponIndex;
+					timer.Start(MaxImpl(GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->DelayedFire_Duration), 0));
+					auto pAnimType = pWeaponExt->DelayedFire_Animation;
+
+					if (pThis->Transporter && pWeaponExt->DelayedFire_OpenToppedAnimation.isset())
+						pAnimType = pWeaponExt->DelayedFire_OpenToppedAnimation;
+
+					pExt->CreateDelayedFireAnim(pAnimType, weaponIndex, pWeaponExt->DelayedFire_AnimIsAttached, pWeaponExt->DelayedFire_CenterAnimOnFirer,
+						pWeaponExt->DelayedFire_RemoveAnimOnNoDelay, pWeaponExt->DelayedFire_AnimOffset.isset(), pWeaponExt->DelayedFire_AnimOffset.Get());
+
+					return 0x6FDE03;
+				}
+				else
+				{
+					pExt->ResetDelayedFireTimer();
+				}
+			}
+		}
+	}
+	return 0x0;
+}
+
+DEFINE_HOOK(0x5206B7, InfantryClass_FiringAI_Entry, 0x6)
+{
+	GET(InfantryClass*, pThis, EBP);
+
+	if (!pThis->Target || !pThis->IsFiring)
+		TechnoExtContainer::Instance.Find(pThis)->FiringSequencePaused = false;
+
+	return 0;
+}
+
+DEFINE_HOOK(0x6FABC4, TechnoClass_AI_AnimationPaused, 0x6)
+{
+	enum { SkipGameCode = 0x6FAC31 };
+
+	GET(TechnoClass*, pThis, ESI);
+
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (pExt->FiringSequencePaused)
+		return SkipGameCode;
+
+	return 0;
+}
+
+DEFINE_HOOK(0x6FCDD2, TechnoClass_AssignTarget_Changed, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(AbstractClass*, pNewTarget, EDI);
+
+	if (!pNewTarget)
+	{
+		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+		pExt->ResetDelayedFireTimer();
 	}
 
-	return 0x0;
+	return 0;
+}
+
+DEFINE_HOOK(0x6FDD7D, TechnoClass_FireAt_UpdateWeaponType, 0x5)
+{
+	enum { CanNotFire = 0x6FDE03 };
+
+	GET(WeaponTypeClass*, pWeapon, EBX);
+	GET(TechnoClass*, pThis, ESI);
+
+	auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	{
+		if (pThis->CurrentBurstIndex && pWeapon != pExt->LastWeaponType && pTypeExt->RecountBurst.Get(RulesExtData::Instance()->RecountBurst))
+		{
+			if (pExt->LastWeaponType && pExt->LastWeaponType->Burst)
+			{
+				const auto ratio = static_cast<double>(pThis->CurrentBurstIndex) / pExt->LastWeaponType->Burst;
+				const auto rof = static_cast<int>(ratio * pExt->LastWeaponType->ROF * pExt->AE.ROFMultiplier) - (Unsorted::CurrentFrame - pThis->LastFireBulletFrame);
+
+				if (rof > 0)
+				{
+					pThis->ROF = rof;
+					pThis->DiskLaserTimer.Start(rof);
+					pThis->CurrentBurstIndex = 0;
+					pExt->LastWeaponType = pWeapon;
+
+					return CanNotFire;
+				}
+			}
+
+			pThis->CurrentBurstIndex = 0;
+		}
+
+		pExt->LastWeaponType = pWeapon;
+	}
+
+	return 0;
 }

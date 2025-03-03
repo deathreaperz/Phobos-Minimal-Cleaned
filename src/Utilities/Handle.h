@@ -6,19 +6,17 @@
 template <typename T, typename Deleter, T Default = T()>
 struct Handle
 {
-	constexpr Handle() noexcept = default;
+	COMPILETIMEEVAL Handle() noexcept = default;
 
-	constexpr explicit Handle(T value) noexcept
+	COMPILETIMEEVAL explicit Handle(T value) noexcept
 		: Value(value)
-	{
-	}
+	{ }
 
 	Handle(const Handle&) = delete;
 
-	constexpr Handle(Handle&& other) noexcept
+	COMPILETIMEEVAL Handle(Handle&& other) noexcept
 		: Value(other.release())
-	{
-	}
+	{ }
 
 	~Handle() noexcept
 	{
@@ -30,7 +28,7 @@ struct Handle
 		this->Value = Default;
 	}
 
-	constexpr void SetDestroyCondition(bool val)
+	COMPILETIMEEVAL void SetDestroyCondition(bool val)
 	{
 		this->destroy = val;
 	}
@@ -43,27 +41,27 @@ struct Handle
 		return *this;
 	}
 
-	constexpr explicit operator bool() const noexcept
+	COMPILETIMEEVAL explicit operator bool() const noexcept
 	{
 		return this->Value != Default;
 	}
 
-	constexpr operator T () const noexcept
+	COMPILETIMEEVAL operator T () const noexcept
 	{
 		return this->Value;
 	}
 
-	constexpr T get() const noexcept
+	COMPILETIMEEVAL T get() const noexcept
 	{
 		return this->Value;
 	}
 
-	constexpr T operator->() const noexcept
+	COMPILETIMEEVAL T operator->() const noexcept
 	{
 		return get();
 	}
 
-	constexpr T release() noexcept
+	COMPILETIMEEVAL T release() noexcept
 	{
 		return std::exchange(this->Value, Default);
 	}

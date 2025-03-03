@@ -145,20 +145,20 @@ DEFINE_HOOK(0x4F9A90, HouseClass_IsAlly_ObjectClass, 0x7)
 	return 0x4F9ADE;
 }
 
-DEFINE_HOOK(0x4F9A50, HouseClass_IsAlly_HouseClass, 0x6)
-{
-	GET_STACK(HouseClass*, pTarget, 0x4);
-	GET(HouseClass*, pThis, ECX);
-
-	bool result = false;
-	if (pTarget)
-	{
-		result = pThis->IsAlliedWith(pTarget->ArrayIndex);
-	}
-
-	R->AL(result);
-	return 0x4F9A8C;
-}
+//breaking stack ??
+// DEFINE_HOOK(0x4F9A50, HouseClass_IsAlly_HouseClass, 0x6)
+// {
+// 	GET_STACK(HouseClass*, pTarget, 0x4);
+// 	GET(HouseClass*, pThis, ECX);
+//
+// 	bool result = false;
+// 	if (pTarget) {
+// 		result = pThis->IsAlliedWith(pTarget->ArrayIndex);
+// 	}
+//
+// 	R->EAX(result);
+// 	return 0x4F9A8C;
+// }
 
 DEFINE_HOOK(0x4F9B0A, HouseClass_IsAlly_AbstractClass, 0x6)
 {
@@ -191,8 +191,8 @@ DEFINE_HOOK(0x4F9E10, HouseClass_MakeAlly_4, 0x8)
 
 DEFINE_HOOK(0x4F9E56, HouseClass_MakeAlly_5, 0x9)
 {
-	GET(HouseClass* , pHouse , EBP);
-	GET(HouseClass* , pHouse_2 , ESI);
+	GET(HouseClass*, pHouse, EBP);
+	GET(HouseClass*, pHouse_2, ESI);
 
 	if (!pHouse_2->IsAlliedWith(HouseClass::CurrentPlayer()))
 		return 0x4F9EBD;
@@ -243,7 +243,6 @@ DEFINE_HOOK(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 
 	if (const auto pTechno = flag_cast_to<TechnoClass*>(pTarget))
 	{
-
 		if (pTechno->IsCrashing || pTechno->IsSinking)
 			return 0x6F894F;
 
@@ -265,7 +264,6 @@ DEFINE_HOOK(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 		}
 		case AbstractType::Unit:
 		{
-
 			const auto pUnit = (UnitClass*)pTarget;
 
 			if (pUnit->DeathFrameCounter > 0)

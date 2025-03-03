@@ -31,8 +31,7 @@ public:
 
 	WaveTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Wave , pBullet , pType }
-	{
-	}
+	{ }
 
 	virtual ~WaveTrajectory() = default;
 	virtual void InvalidatePointer(AbstractClass* ptr, bool bRemoved) override { }

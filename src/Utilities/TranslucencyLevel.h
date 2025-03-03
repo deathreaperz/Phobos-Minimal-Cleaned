@@ -7,18 +7,57 @@
 class TranslucencyLevel
 {
 public:
-	constexpr TranslucencyLevel() noexcept = default;
+	COMPILETIMEEVAL TranslucencyLevel() noexcept = default;
 
-	constexpr TranslucencyLevel(int nInt)
+	COMPILETIMEEVAL TranslucencyLevel(int nInt)
 	{
 		*this = nInt;
 	}
 
-	constexpr TranslucencyLevel(const TranslucencyLevel& other) = default;
-	constexpr TranslucencyLevel& operator=(const TranslucencyLevel& other) = default;
-	constexpr ~TranslucencyLevel() = default;
+	COMPILETIMEEVAL TranslucencyLevel(int nInt, bool clamp)
+	{
+		if (clamp)
+		{
+			if (nInt >= 75)
+				nInt = 75;
+			else if (nInt >= 50)
+				nInt = 50;
+			else if (nInt >= 25)
+				nInt = 25;
+			else
+				nInt = 0;
+		}
 
-	constexpr TranslucencyLevel& operator = (int nInt)
+		*this = nInt;
+	}
+
+	COMPILETIMEEVAL TranslucencyLevel(const TranslucencyLevel& other) = default;
+	COMPILETIMEEVAL TranslucencyLevel& operator=(const TranslucencyLevel& other) = default;
+	COMPILETIMEEVAL ~TranslucencyLevel() = default;
+
+	COMPILETIMEEVAL int GetIntValue() const
+	{
+		int _result = 0;
+
+		switch (this->value)
+		{
+		case BlitterFlags::TransLucent75:
+			_result = 75;
+			break;
+		case BlitterFlags::TransLucent50:
+			_result = 50;
+			break;
+		case BlitterFlags::TransLucent25:
+			_result = 25;
+			break;
+		default:
+			break;
+		}
+
+		return _result;
+	}
+
+	COMPILETIMEEVAL TranslucencyLevel& operator = (int nInt)
 	{
 		switch (nInt)
 		{
@@ -40,12 +79,12 @@ public:
 		return *this;
 	}
 
-	constexpr operator BlitterFlags() const
+	COMPILETIMEEVAL operator BlitterFlags() const
 	{
 		return this->value;
 	}
 
-	constexpr BlitterFlags GetBlitterFlags() const
+	COMPILETIMEEVAL BlitterFlags GetBlitterFlags() const
 	{
 		return *this;
 	}
@@ -62,13 +101,13 @@ public:
 		return false;
 	}
 
-	inline bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	OPTIONALINLINE bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
 		Stm.Load(this->value);
 		return true;
 	}
 
-	inline bool Save(PhobosStreamWriter& Stm) const
+	OPTIONALINLINE bool Save(PhobosStreamWriter& Stm) const
 	{
 		Stm.Save(this->value);
 		return true;

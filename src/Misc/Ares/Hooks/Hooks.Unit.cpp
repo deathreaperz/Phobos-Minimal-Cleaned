@@ -25,6 +25,8 @@
 
 #include <New/Entity/FlyingStrings.h>
 
+#include <Misc/DamageArea.h>
+
 #include "Header.h"
 
 #include <InfantryClass.h>
@@ -770,7 +772,6 @@ DEFINE_HOOK(0x53C450, TechnoClass_CanBePermaMC, 5)
 	if (pThis && pThis->WhatAmI() != AbstractType::Building
 		&& !pThis->IsIronCurtained() && !pThis->IsInAir())
 	{
-		const auto TechnoExt = TechnoExtContainer::Instance.Find(pThis);
 		if (!TechnoExtData::IsPsionicsImmune(pThis) && !pThis->GetTechnoType()->BalloonHover)
 		{
 			// KillDriver check
@@ -880,7 +881,7 @@ std::pair<bool, int> HealActionProhibited(TechnoClass* pTarget, WeaponTypeClass*
 	const auto pThatShield = pThatTechnoExt->GetShield();
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
 
-	if constexpr (CheckKeyPress)
+	if COMPILETIMEEVAL(CheckKeyPress)
 	{
 		if (WWKeyboardClass::Instance->IsForceMoveKeyPressed())
 			return { true , -1 };
@@ -1253,7 +1254,7 @@ static void WhenCrushedBy(UnitClass* pCrusher, TechnoClass* pVictim)
 		if (pExt->WhenCrushed_Warhead_Full)
 			WarheadTypeExtData::DetonateAt(pWarhead, pVictim->GetCoords(), pVictim, damage, pVictim->GetOwningHouse());
 		else
-			MapClass::DamageArea(pVictim->GetCoords(), damage, pVictim, pWarhead, true, pVictim->GetOwningHouse());
+			DamageArea::Apply(&pVictim->GetCoords(), damage, pVictim, pWarhead, true, pVictim->GetOwningHouse());
 	}
 }
 
@@ -1503,12 +1504,6 @@ DEFINE_HOOK(0x700E47, TechnoClass_CanDeploySlashUnload_Immobile, 0xA)
 		? 0x700DCE : 0x700E59;
 }
 
-DEFINE_HOOK(0x7384BD, UnitClass_ReceiveDamage_OreMinerUnderAttack, 6)
-{
-	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFS(0x44, -0xC));
-	return !WarheadTypeExtContainer::Instance.Find(pWH)->Malicious || WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative ? 0x738535u : 0u;
-}
-
 DEFINE_HOOK(0x736135, UnitClass_Update_Deactivated, 6)
 {
 	GET(UnitClass*, pThis, ESI);
@@ -1560,7 +1555,7 @@ DEFINE_HOOK(0x739F21, UnitClass_UpdatePosition_Visceroid, 6)
 			pThis->Limbo();
 			CellClass* pCell = MapClass::Instance->GetCellAt(pDest->LastMapCoords);
 			pDest->UpdateThreatInCell(pCell);
-			Debug::Log(__FUNCTION__" Executed!\n");
+			Debug::LogInfo(__FUNCTION__" Executed!");
 			TechnoExtData::HandleRemove(pThis, nullptr, false, false);
 			return 0x73B0A5;
 		}

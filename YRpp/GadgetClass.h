@@ -23,11 +23,12 @@ enum class GadgetFlag : int
 	RightUp = 0x80,
 	Keyboard = 0x100
 };
+MAKE_ENUM_FLAGS(GadgetFlag);
 
 class NOVTABLE GadgetClass : public LinkClass
 {
 public:
-	static constexpr reference<GadgetClass*, 0x8B3E90> Focused {};
+	static COMPILETIMEEVAL reference<GadgetClass*, 0x8B3E90> Focused {};
 
 	//Destructor
 	virtual ~GadgetClass() RX;

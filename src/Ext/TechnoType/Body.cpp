@@ -83,7 +83,7 @@ VoxelStruct* TechnoTypeExtData::GetBarrelsVoxel(TechnoTypeClass* const pThis, in
 
 	if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->BarrelImageData.size())
 	{
-		Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%s] Is Bigger than BarrelData ! \n", pThis->ID, nAdditional);
+		Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%s] Is Bigger than BarrelData ! ", pThis->ID, nAdditional);
 		return nullptr;
 	}
 
@@ -102,7 +102,7 @@ VoxelStruct* TechnoTypeExtData::GetTurretsVoxel(TechnoTypeClass* const pThis, in
 	const auto nAdditional = (nIdx - TechnoTypeClass::MaxWeapons);
 	if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->TurretImageData.size())
 	{
-		Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%d]  Is Bigger than TurretData ! \n", pThis->ID, nAdditional);
+		Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%d]  Is Bigger than TurretData ! ", pThis->ID, nAdditional);
 		return nullptr;
 	}
 	return TechnoTypeExtContainer::Instance.Find(pThis)->TurretImageData.data() + nAdditional;
@@ -323,6 +323,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Interceptor_KeepIntact.Read(exINI, pSection, "Interceptor.KeepIntact");
 		this->Interceptor_ConsiderWeaponRange.Read(exINI, pSection, "Interceptor.ConsiderWaponRange");
 		this->Interceptor_OnlyTargetBullet.Read(exINI, pSection, "Interceptor.OnlyTargetBullet");
+		this->Interceptor_ApplyFirepowerMult.Read(exINI, pSection, "Interceptor.ApplyFirepowerMult");
 
 		this->Powered_KillSpawns.Read(exINI, pSection, "Powered.KillSpawns");
 		this->Spawn_LimitedRange.Read(exINI, pSection, "Spawner.LimitRange");
@@ -525,6 +526,11 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->TargetZoneScanType.Read(exINI, pSection, "TargetZoneScanType");
 
 		this->GrapplingAttack.Read(exINI, pSection, "Parasite.GrapplingAttack");
+
+		this->Cameo_AlwaysExist.Read(exINI, pSection, "Cameo.AlwaysExist");
+		this->Cameo_AuxTechnos.Read(exINI, pSection, "Cameo.AuxTechnos");
+		this->Cameo_NegTechnos.Read(exINI, pSection, "Cameo.NegTechnos");
+		this->UIDescription_Unbuildable.Read(exINI, pSection, "UIDescription.Unbuildable");
 
 #pragma region Otamaa
 		this->DontShake.Read(exINI, pSection, "DontShakeScreen");
@@ -788,7 +794,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			back->Cumulative.Read(exINI, pSection, "AttachEffect.Cumulative");
 			back->Animation.Read(exINI, pSection, "AttachEffect.Animation", true);
 			if (!back->Animation)
-				Debug::Log("Failed to find [%s] AE Anim[%s]\n", pSection, exINI.c_str());
+				Debug::LogInfo("Failed to find [{}] AE Anim[{}]", pSection, exINI.c_str());
 
 			back->Animation_ResetOnReapply.Read(exINI, pSection, "AttachEffect.AnimResetOnReapply");
 
@@ -1226,6 +1232,9 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->EVA_Combat.Read(exINI, pSection, "EVA.Combat");
 		this->CombatAlert.Read(exINI, pSection, "CombatAlert");
+		this->CombatAlert_UseFeedbackVoice.Read(exINI, pSection, "CombatAlert.UseFeedbackVoice");
+		this->CombatAlert_UseAttackVoice.Read(exINI, pSection, "CombatAlert.UseAttackVoice");
+		this->CombatAlert_UseEVA.Read(exINI, pSection, "CombatAlert.UseEVA");
 		this->CombatAlert_NotBuilding.Read(exINI, pSection, "CombatAlert.NotBuilding");
 		this->SubterraneanHeight.Read(exINI, pSection, "SubterraneanHeight");
 
@@ -1421,12 +1430,47 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->SuppressKillWeapons.Read(exINI, pSection, "SuppressKillWeapons");
 		this->SuppressKillWeapons_Types.Read(exINI, pSection, "SuppressKillWeapons.Types");
+
+		this->NoQueueUpToEnter.Read(exINI, pSection, "NoQueueUpToEnter");
+		this->NoQueueUpToUnload.Read(exINI, pSection, "NoQueueUpToUnload");
+
+		this->NoRearm_UnderEMP.Read(exINI, pSection, "NoRearm.UnderEMP");
+		this->NoRearm_Temporal.Read(exINI, pSection, "NoRearm.Temporal");
+		this->NoReload_UnderEMP.Read(exINI, pSection, "NoReload.UnderEMP");
+		this->NoReload_Temporal.Read(exINI, pSection, "NoReload.Temporal");
+
+		this->RateDown_Ammo.Read(exINI, pSection, "RateDown.Ammo");
+		this->RateDown_Delay.Read(exINI, pSection, "RateDown.Delay");
+		this->RateDown_Cover.Read(exINI, pSection, "RateDown.Cover");
+		this->RateDown_Reset.Read(exINI, pSection, "RateDown.Reset");
+
+		this->CanManualReload.Read(exINI, pSection, "CanManualReload");
+		this->CanManualReload_ResetROF.Read(exINI, pSection, "CanManualReload.ResetROF");
+		this->CanManualReload_DetonateWarhead.Read(exINI, pSection, "CanManualReload.DetonateWarhead");
+		this->CanManualReload_DetonateConsume.Read(exINI, pSection, "CanManualReload.DetonateConsume");
+		this->Power.Read(exINI, pSection, "Power");
+
+		// please dont @ me if you got some weird bug with this tag turn on
+		// @ the original author
+		// - Otamaa
+		this->BunkerableAnyway.Read(exINI, pSection, "BunkerableAnyway");
+
+		this->JumpjetTilt.Read(exINI, pSection, "JumpjetTilt");
+		this->JumpjetTilt_ForwardAccelFactor.Read(exINI, pSection, "JumpjetTilt.ForwardAccelFactor");
+		this->JumpjetTilt_ForwardSpeedFactor.Read(exINI, pSection, "JumpjetTilt.ForwardSpeedFactor");
+		this->JumpjetTilt_SidewaysRotationFactor.Read(exINI, pSection, "JumpjetTilt.SidewaysRotationFactor");
+		this->JumpjetTilt_SidewaysSpeedFactor.Read(exINI, pSection, "JumpjetTilt.SidewaysSpeedFactor");
+
+		this->NoTurret_TrackTarget.Read(exINI, pSection, "NoTurret.TrackTarget");
+		this->RecountBurst.Read(exINI, pSection, "RecountBurst");
 	}
 
 	// Art tags
 	if (pArtIni && pArtIni->GetSection(pArtSection))
 	{
 		INI_EX exArtINI(pArtIni);
+
+		this->GreyCameoPCX.Read(&CCINIClass::INI_Art, pArtSection, "GreyCameoPCX");
 
 		this->TurretOffset.Read(exArtINI, pArtSection, GameStrings::TurretOffset());
 
@@ -1497,7 +1541,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		if (shadow_indices_frame.size() != shadow_indices.size())
 		{
 			if (!shadow_indices_frame.empty())
-				Debug::Log("[Developer warning] %s ShadowIndices.Frame size (%d) does not match ShadowIndices size (%d) \n"
+				Debug::LogInfo("[Developer warning] {} ShadowIndices.Frame size ({}) does not match ShadowIndices size ({}) "
 					, pSection, shadow_indices_frame.size(), shadow_indices.size());
 
 			shadow_indices_frame.resize(shadow_indices.size(), -1);
@@ -1750,6 +1794,7 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Interceptor_KeepIntact)
 		.Process(this->Interceptor_ConsiderWeaponRange)
 		.Process(this->Interceptor_OnlyTargetBullet)
+		.Process(this->Interceptor_ApplyFirepowerMult)
 		.Process(this->GroupAs)
 		.Process(this->RadarJamRadius)
 		.Process(this->InhibitorRange)
@@ -1819,15 +1864,15 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->DestroyAnimSpecific)
 		.Process(this->NotHuman_RandomDeathSequence)
 		.Process(this->DefaultDisguise)
-		;
+		//;
 
-	//Debug::Log("%s AboutToLoad WeaponFLhA\n" , this->AttachedToObject->ID);
+	//Debug::LogInfo("%s AboutToLoad WeaponFLhA" , this->AttachedToObject->ID);
 	//Stm
 	//	.Process(this->WeaponBurstFLHs)
 	//	;
-	//Debug::Log("Done WeaponFLhA\n");
+	//Debug::LogInfo("Done WeaponFLhA");
 
-	Stm
+	//Stm
 		.Process(this->PassengerDeletionType)
 
 		.Process(this->OpenTopped_RangeBonus)
@@ -1922,21 +1967,24 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->ForceShield_Effect)
 		.Process(this->ForceShield_KillWarhead)
 		.Process(this->SellSound)
-		.Process(this->EVA_Sold);
-	//Debug::Log("AboutToLoad WeaponFLhB\n");
-	//Stm.Process(this->CrouchedWeaponBurstFLHs);
-	//Debug::Log("Done WeaponFLhB\n");
-	//Debug::Log("AboutToLoad WeaponFLhC\n");
-	//Stm.Process(this->DeployedWeaponBurstFLHs);
-	//Debug::Log("Done WeaponFLhC\n");
-	Stm.Process(this->AlternateFLHs)
+		.Process(this->EVA_Sold)
+		//;
+		//Debug::LogInfo("AboutToLoad WeaponFLhB");
+		//Stm.Process(this->CrouchedWeaponBurstFLHs);
+		//Debug::LogInfo("Done WeaponFLhB");
+		//Debug::LogInfo("AboutToLoad WeaponFLhC");
+		//Stm.Process(this->DeployedWeaponBurstFLHs);
+		//Debug::LogInfo("Done WeaponFLhC");
+		//Stm
+		.Process(this->AlternateFLHs)
 		.Process(this->Spawner_SpawnOffsets)
 
-		.Process(this->Spawner_SpawnOffsets_OverrideWeaponFLH);
+		.Process(this->Spawner_SpawnOffsets_OverrideWeaponFLH)
+		//;
 
-	//Debug::Log("AboutToLoad Otammaa\n");
+	//Debug::LogInfo("AboutToLoad Otammaa");
 #pragma region Otamaa
-	Stm
+		//Stm
 		.Process(this->FacingRotation_Disable)
 		.Process(this->FacingRotation_DisalbeOnEMP)
 		.Process(this->FacingRotation_DisalbeOnDeactivated)
@@ -2488,6 +2536,9 @@ void TechnoTypeExtData::Serialize(T& Stm)
 
 		.Process(this->EVA_Combat)
 		.Process(this->CombatAlert)
+		.Process(this->CombatAlert_UseFeedbackVoice)
+		.Process(this->CombatAlert_UseAttackVoice)
+		.Process(this->CombatAlert_UseEVA)
 		.Process(this->CombatAlert_NotBuilding)
 		.Process(this->SubterraneanHeight)
 
@@ -2537,6 +2588,43 @@ void TechnoTypeExtData::Serialize(T& Stm)
 
 		.Process(this->SuppressKillWeapons)
 		.Process(this->SuppressKillWeapons_Types)
+
+		.Process(this->NoQueueUpToEnter)
+		.Process(this->NoQueueUpToUnload)
+
+		.Process(this->NoRearm_UnderEMP)
+		.Process(this->NoRearm_Temporal)
+		.Process(this->NoReload_UnderEMP)
+		.Process(this->NoReload_Temporal)
+
+		.Process(this->RateDown_Ammo)
+		.Process(this->RateDown_Delay)
+		.Process(this->RateDown_Cover)
+		.Process(this->RateDown_Reset)
+
+		.Process(this->CanManualReload)
+		.Process(this->CanManualReload_ResetROF)
+		.Process(this->CanManualReload_DetonateWarhead)
+		.Process(this->CanManualReload_DetonateConsume)
+
+		.Process(this->Cameo_AlwaysExist)
+		.Process(this->Cameo_AuxTechnos)
+		.Process(this->Cameo_NegTechnos)
+		.Process(this->CameoCheckMutex)
+		.Process(this->UIDescription_Unbuildable)
+		.Process(this->GreyCameoPCX)
+
+		.Process(this->Power)
+		.Process(this->BunkerableAnyway)
+
+		.Process(this->JumpjetTilt)
+		.Process(this->JumpjetTilt_ForwardAccelFactor)
+		.Process(this->JumpjetTilt_ForwardSpeedFactor)
+		.Process(this->JumpjetTilt_SidewaysRotationFactor)
+		.Process(this->JumpjetTilt_SidewaysSpeedFactor)
+
+		.Process(this->NoTurret_TrackTarget)
+		.Process(this->RecountBurst)
 		;
 }
 
@@ -2549,7 +2637,7 @@ bool TechnoTypeExtContainer::Load(TechnoTypeClass* key, IStream* pStm)
 	// this really shouldn't happen
 	if (!key)
 	{
-		//Debug::Log("[LoadKey] Attempted for a null pointer! WTF!\n");
+		//Debug::LogInfo("[LoadKey] Attempted for a null pointer! WTF!");
 		return false;
 	}
 

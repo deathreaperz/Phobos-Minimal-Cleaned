@@ -34,7 +34,7 @@ namespace BoltTemp
 	const WeaponTypeExtData* pType = nullptr;
 }
 
-inline unsigned inline_02(ConvertClass* pConvert, int idx)
+OPTIONALINLINE unsigned inline_02(ConvertClass* pConvert, int idx)
 {
 	switch (pConvert->BytesPerPixel)
 	{
@@ -87,7 +87,7 @@ DEFINE_HOOK(0x4C1F33, EBolt_Draw_Colors, 7)
 DEFINE_HOOK(0x4C2C10, EboltClass_Cleanup, 0x5)
 {
 	GET(EBolt* const, pBolt, ECX);
-	Debug::Log("CleaningUp Ebot[%x]\n", pBolt);
+	Debug::LogInfo("CleaningUp Ebot[{}]", (void*)pBolt);
 	return 0x0;
 }
 

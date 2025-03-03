@@ -12,6 +12,9 @@
 #include <RocketStruct.h>
 #include <Locomotor/RocketLocomotionClass.h>
 
+#include "DamageArea.h"
+
+#ifdef NEW
 /*
 *	Original Backport code author : ZivDero
 *	Otamaa : do some modification to adapt YRpp
@@ -81,7 +84,6 @@ struct _KamikazetrackerClass
 		});
 
 		pThis->Nodes.Reset(std::distance(pThis->Nodes.begin(), removeIter));
-
 	}
 
 	static void __fastcall Clear(Kamikaze* pThis, DWORD)
@@ -100,7 +102,6 @@ struct _KamikazetrackerClass
 //DEFINE_JUMP(LJMP, 0x54E4D0, MiscTools::to_DWORD(&_KamikazetrackerClass::AI));
 //DEFINE_JUMP(LJMP, 0x54E590, MiscTools::to_DWORD(&_KamikazetrackerClass::Detach));
 //DEFINE_JUMP(LJMP, 0x54E6F0, MiscTools::to_DWORD(&_KamikazetrackerClass::Clear));
-
 
 /*
 *	Original Backport code author : CCHyper & ZivDero
@@ -320,12 +321,11 @@ struct _RocketLocomotionClass
 			pRocket->CurrentSpeed = 0.0;
 			pRocket->SpawnerIsElite = spawn_owner && spawn_owner->Veterancy.IsElite();
 
-			if (pRocket->MissionTimer.Percent_Expired() != 1.0) {
-
+			if (pRocket->MissionTimer.Percent_Expired() != 1.0)
+			{
 				const double pitch_initial = rocket->PitchInitial * Math::DEG90_AS_RAD;
 				const double pitch_final = rocket->PitchFinal * Math::DEG90_AS_RAD;
 				pRocket->CurrentPitch = float((pitch_final - pitch_initial) * pRocket->MissionTimer.Percent_Expired() + pitch_initial);
-
 			}
 			else
 			{
@@ -375,12 +375,13 @@ struct _RocketLocomotionClass
 		}
 		case RocketMissionState::Flight:
 		{
-
 			if (pAir->GetHeight() <= 0)
 			{
 				Explode(pRocket);
 				return false;
-			} else {
+			}
+			else
+			{
 				pRocket->CurrentSpeed += rocket->Acceleration;
 				pRocket->CurrentSpeed = std::min(pRocket->CurrentSpeed, static_cast<double>(pAirType->Speed));
 
@@ -399,7 +400,6 @@ struct _RocketLocomotionClass
 				}
 				else
 				{
-
 					if (pRocket->CurrentPitch > 0.0)
 					{
 						pRocket->CurrentPitch -= rocket->TurnRate;
@@ -440,7 +440,6 @@ struct _RocketLocomotionClass
 
 			if (pRocket->TrailerTimer.Expired())
 			{
-
 				if (auto pTakeOff = GetTakeOffAnim(pAirType))
 				{
 					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pTakeOff, pAir->Location, 2, 1, 0x600, -10),
@@ -496,7 +495,6 @@ struct _RocketLocomotionClass
 
 		if (pRocket->CurrentSpeed > 0.0)
 		{
-
 			Coordinate coord = Get_Next_Position(pRocket, pRocket->CurrentSpeed);
 
 			if (MapClass::Instance->IsWithinUsableArea(CellClass::Coord2Cell(coord), true))
@@ -528,7 +526,6 @@ public:
 
 		if (!RocketHasWeapon(pLinked, pRocketType, pThis->SpawnerIsElite, next))
 		{
-
 			CellStruct cell = CellClass::Coord2Cell(next);
 			const auto pCell = MapClass::Instance->GetCellAt(next);
 
@@ -547,7 +544,7 @@ public:
 
 			MapClass::FlashbangWarheadAt(damage, pWH, next, false, SpotlightFlags::None);
 			//setting ownership here will cause bug , better not
-			MapClass::DamageArea(next, damage, nullptr, pWH, true, nullptr);
+			DamageArea::Apply(&next, damage, nullptr, pWH, true, nullptr);
 		}
 
 		if (pLinked->IsAlive)
@@ -603,3 +600,236 @@ DEFINE_JUMP(VTABLE, 0x7F0B60, MiscTools::to_DWORD(&_RocketLocomotionClass::_Move
 DEFINE_JUMP(VTABLE, 0x7F0B40, MiscTools::to_DWORD(&_RocketLocomotionClass::_Draw_Matrix));
 DEFINE_JUMP(VTABLE, 0x7F0B9C, MiscTools::to_DWORD(&_RocketLocomotionClass::_Is_Moving_Now));
 DEFINE_JUMP(VTABLE, 0x7F0B5C, MiscTools::to_DWORD(&_RocketLocomotionClass::_Process));
+#else
+
+#pragma region RocketLocoHooks
+//TODO : Cmisl Hardcoded shit
+// 662496
+// 66235D
+
+//static DamageAreaResult FC _RocketLocomotionClass_DamageArea(
+//	CoordStruct* pCoord,
+//	int Damage,
+//	TechnoClass* Source,
+//	WarheadTypeClass* Warhead,
+//	bool AffectTiberium,
+//	HouseClass* SourceHouse //nullptr
+//
+//)
+//{
+//	HouseClass* pHouseOwner = Source ? Source->Owner : SourceHouse;
+//	return DamageArea::Apply
+//	(pCoord, Damage, Source, Warhead, Warhead->Tiberium, pHouseOwner);
+//}
+
+//DEFINE_JUMP(CALL, 0x6632C7, GET_OFFSET(_RocketLocomotionClass_DamageArea));
+
+#pragma region RocketLocoHooks
+
+#pragma region Process
+
+DEFINE_HOOK(0x6622E0, RocketLocomotionClass_ILocomotion_Process_CustomMissile, 6)
+{
+	GET(AircraftClass* const, pThis, ECX);
+
+	const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+
+	if (pExt->IsCustomMissile)
+	{
+		R->EAX(pExt->CustomMissileData.operator->());
+		return 0x66230A;
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x66238A, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff1, 5)
+{
+	GET(ILocomotion* const, pThis, ESI);
+
+	const auto pLocomotor = static_cast<RocketLocomotionClass* const>(pThis);
+	const auto pOwner = static_cast<AircraftClass* const>(pLocomotor->LinkedTo);
+	const auto pExt = TechnoTypeExtContainer::Instance.Find(pOwner->Type);
+
+	if (AnimTypeClass* pType = pExt->CustomMissileTakeoffAnim)
+	{
+		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pType, pOwner->Location, 2, 1, 0x600, -10, false),
+			pOwner->Owner,
+			nullptr,
+			pOwner,
+			true
+		);
+
+		return 0x6623F3;
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x662512, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff2, 5)
+{
+	GET(ILocomotion* const, pThis, ESI);
+
+	const auto pLocomotor = static_cast<RocketLocomotionClass* const>(pThis);
+	const auto pOwner = static_cast<AircraftClass* const>(pLocomotor->LinkedTo);
+	const auto pExt = TechnoTypeExtContainer::Instance.Find(pOwner->Type);
+
+	if (AnimTypeClass* pType = pExt->CustomMissileTakeoffAnim)
+	{
+		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pType, pOwner->Location, 2, 1, 0x600, -10, false),
+			pOwner->Owner,
+			nullptr,
+			pOwner,
+			true
+		);
+
+		return 0x66257B;
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x6627E5, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff3, 5)
+{
+	GET(ILocomotion* const, pThis, ESI);
+
+	const auto pLocomotor = static_cast<RocketLocomotionClass* const>(pThis);
+	const auto pOwner = static_cast<AircraftClass* const>(pLocomotor->LinkedTo);
+	const auto pExt = TechnoTypeExtContainer::Instance.Find(pOwner->Type);
+
+	if (AnimTypeClass* pType = pExt->CustomMissileTakeoffAnim)
+	{
+		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pType, pOwner->Location, 2, 1, 0x600, -10, false),
+			pOwner->Owner,
+			nullptr,
+			pOwner,
+			true
+		);
+
+		return 0x662849;
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x662D85, RocketLocomotionClass_ILocomotion_Process_CustomMissileTrailer, 6)
+{
+	GET(ILocomotion* const, pThis, ESI);
+
+	const auto pLocomotor = static_cast<RocketLocomotionClass* const>(pThis);
+
+	if (pLocomotor->TrailerTimer.Expired())
+	{
+		const auto pOwner = static_cast<AircraftClass* const>(pLocomotor->LinkedTo);
+		const auto pExt = TechnoTypeExtContainer::Instance.Find(pOwner->Type);
+
+		pLocomotor->TrailerTimer.Start(pExt->CustomMissileTrailerSeparation);
+
+		if (AnimTypeClass* pType = pExt->CustomMissileTrailerAnim)
+		{
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pType, pOwner->Location),
+				pOwner->Owner,
+				nullptr,
+				pOwner,
+				true
+			);
+		}
+
+		return 0x662E16;
+	}
+
+	return 0;
+}
+
+// new
+// SpawnerOwner may die when this processed , should store the data at SpawnManagerExt or something
+DEFINE_HOOK(0x662720, RocketLocomotionClass_ILocomotion_Process_Raise, 0x6)
+{
+	enum { Handled = 0x6624C8, Continue = 0x0 };
+
+	GET(RocketLocomotionClass* const, pThis, ESI);
+
+	if (const auto pAir = static_cast<AircraftClass* const>(pThis->Owner))
+	{
+		const auto pExt = TechnoTypeExtContainer::Instance.Find(pAir->Type);
+		if (pExt->IsCustomMissile.Get() && pAir->SpawnOwner)
+		{
+			if (!pExt->CustomMissileRaise.GetFromSpecificRank(pThis->SpawnerIsElite ? Rank::Elite : pAir->SpawnOwner->CurrentRanking))
+				return Handled;
+		}
+	}
+
+	return Continue;
+}
+#pragma endregion
+
+#pragma region Explode
+
+DEFINE_HOOK(0x66305A, RocketLocomotionClass_Explode_CustomMissile, 6)
+{
+	GET(AircraftTypeClass* const, pType, ECX);
+	GET(RocketLocomotionClass* const, pLocomotor, ESI);
+
+	LEA_STACK(WarheadTypeClass**, ppWarhead, 0x10);
+	LEA_STACK(RocketStruct**, ppRocketData, 0x14);
+
+	const auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+	if (pExt->IsCustomMissile)
+	{
+		*ppRocketData = pExt->CustomMissileData.operator->();
+
+		const bool isElite = pLocomotor->SpawnerIsElite;
+		*ppWarhead = (isElite ? pExt->CustomMissileEliteWarhead : pExt->CustomMissileWarhead);
+
+		return 0x6630DD;
+	}
+
+	return 0;
+}
+
+DEFINE_HOOK(0x663218, RocketLocomotionClass_Explode_CustomMissile2, 5)
+{
+	GET(RocketLocomotionClass* const, pThis, ESI);
+	REF_STACK(CoordStruct const, coords, STACK_OFFS(0x60, 0x18));
+
+	const auto pOwner = static_cast<AircraftClass* const>(pThis->LinkedTo);
+	const auto pExt = TechnoTypeExtContainer::Instance.Find(pOwner->Type);
+
+	if (pExt->IsCustomMissile)
+	{
+		if (auto const& pWeapon = pThis->SpawnerIsElite
+			? pExt->CustomMissileEliteWeapon : pExt->CustomMissileWeapon)
+		{
+			WeaponTypeExtData::DetonateAt(pWeapon, coords, pOwner, true, pOwner ? pOwner->Owner : nullptr);
+			return 0x6632CC;
+		}
+	}
+
+	GET(int, nDamage, EDI);
+	GET_STACK(WarheadTypeClass* const, pWH, STACK_OFFS(0x60, 0x50));
+	LEA_STACK(CellStruct* const, pCellStr, STACK_OFFS(0x60, 0x38));
+	const auto pCell = MapClass::Instance->GetCellAt(pCellStr);
+
+	if (auto pAnimType = MapClass::SelectDamageAnimation(nDamage, pWH, pCell->LandType, coords))
+	{
+		AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, coords, 0, 1, 0x2600, -15),
+			pOwner->Owner,
+			pOwner->Target ? pOwner->Target->GetOwningHouse() : nullptr,
+			pOwner,
+			true
+		);
+	}
+
+	//modifyng code below will cause missile to alive even after detonated
+	//this need to be fixed in a different way ,..
+	return 0x66328C;
+}
+
+#pragma endregion
+
+#pragma endregion
+
+#pragma endregion
+
+#endif

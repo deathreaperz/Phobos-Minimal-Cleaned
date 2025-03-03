@@ -31,8 +31,7 @@ struct SimulateBurst
 		, Flag { flipY }
 		, Index { 0 }
 		, Timer { fireData.SimulateBurstDelay }
-	{
-	}
+	{ }
 
 	SimulateBurst()
 		:WeaponType { nullptr }
@@ -47,8 +46,7 @@ struct SimulateBurst
 		, Flag {  }
 		, Index { 0 }
 		, Timer { }
-	{
-	}
+	{ }
 
 	~SimulateBurst() = default;
 
@@ -91,7 +89,7 @@ private:
 	template <typename T>
 	bool Serialize(T& Stm)
 	{
-		//Debug::Log("Processing Element From SimulateBurst ! \n");
+		//Debug::LogInfo("Processing Element From SimulateBurst ! ");
 
 		return Stm
 			.Process(WeaponType, true)
@@ -112,11 +110,11 @@ private:
 	}
 };
 
-//template <>
-//struct Savegame::ObjectFactory<SimulateBurst>
-//{
-//	std::unique_ptr<SimulateBurst> operator() (PhobosStreamReader& Stm) const
-//	{
-//		return std::make_unique<SimulateBurst>();
-//	}
-//};
+template <>
+struct Savegame::ObjectFactory<SimulateBurst>
+{
+	std::unique_ptr<SimulateBurst> operator() (PhobosStreamReader& Stm) const
+	{
+		return std::make_unique<SimulateBurst>();
+	}
+};

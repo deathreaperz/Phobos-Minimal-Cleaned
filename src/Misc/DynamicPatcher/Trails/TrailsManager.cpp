@@ -36,7 +36,7 @@ static bool CheckAndContruct(Tbase* pClass, TbaseType* pClassType, bool Clear = 
 		if (pType->Mode != TrailMode::NONE)
 		{
 			bool OnTurrent = false;
-			if constexpr (IsTechno) OnTurrent = pTrails.Onturrents;
+			if COMPILETIMEEVAL(IsTechno) OnTurrent = pTrails.Onturrents;
 
 			auto& pBackTrail = pExt->Trails.emplace_back(pType, pTrails.FLHs, OnTurrent);
 			pBackTrail.OnLandTypes = pTrails.OnLand;
@@ -216,7 +216,7 @@ void TrailsManager::Construct(ParticleClass* pOwner, bool IsConverted)
 template<typename T>
 void TrailsManager::AI(T* pOwner)
 {
-	Debug::Log(__FUNCTION__" %s Not have specified Function to use ! \n", typeid(T).name());
+	Debug::LogInfo(__FUNCTION__" {} Not have specified Function to use ! ", typeid(T).name());
 }
 
 template<>
@@ -277,7 +277,7 @@ template<>
 void TrailsManager::AI(VoxelAnimClass* pOwner)
 {
 	const auto pExt = VoxelAnimExtContainer::Instance.Find(pOwner);
-	const auto pTypeExt = VoxelAnimTypeExtContainer::Instance.Find(pOwner->Type);
+	//const auto pTypeExt = VoxelAnimTypeExtContainer::Instance.Find(pOwner->Type);
 	auto const pTechnoOwner = VoxelAnimExtData::GetTechnoOwner(pOwner);
 
 	for (auto& pTrails : pExt->Trails)
@@ -305,7 +305,7 @@ void TrailsManager::AI(ParticleClass* pOwner)
 template<typename T>
 void TrailsManager::Hide(T* pOwner)
 {
-	Debug::Log(__FUNCTION__" %s Not have specified Function to use ! \n", typeid(T).name());
+	Debug::LogInfo(__FUNCTION__" {} Not have specified Function to use ! ", typeid(T).name());
 }
 template<>
 void TrailsManager::Hide(TechnoClass* pOwner)
@@ -372,7 +372,7 @@ void TrailsManager::Hide(ParticleClass* pOwner)
 template<typename T>
 void TrailsManager::CleanUp(T* pOwner)
 {
-	Debug::Log(__FUNCTION__" %s Not have specified Function to use ! \n", typeid(T).name());
+	Debug::LogInfo(__FUNCTION__" {} Not have specified Function to use ! ", typeid(T).name());
 }
 
 template<>

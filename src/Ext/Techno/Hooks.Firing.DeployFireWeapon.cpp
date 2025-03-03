@@ -11,11 +11,15 @@ DEFINE_HOOK(0x5223B3, InfantryClass_Approach_Target_DeployFireWeapon, 0x6)
 	int weapon = pThis->Type->DeployFireWeapon;
 	if (pThis->Type->DeployFireWeapon == -1)
 	{
-		if (const auto pTarget = flag_cast_to<TechnoClass*>(pThis->Target)) {
-			if (pTarget->IsAlive) {
+		if (const auto pTarget = flag_cast_to<TechnoClass*>(pThis->Target))
+		{
+			if (pTarget->IsAlive)
+			{
 				weapon = pThis->SelectWeapon(pTarget);
 			}
-		} else if (pThis->Target && pThis->Target->WhatAmI() == CellClass::AbsID) {
+		}
+		else if (pThis->Target && pThis->Target->WhatAmI() == CellClass::AbsID)
+		{
 			weapon = pThis->SelectWeapon(pThis->Target);
 		}
 
@@ -32,9 +36,12 @@ DEFINE_HOOK(0x52190D, InfantryClass_WhatWeaponShouldIUse_DeployFireWeapon, 0x6) 
 	GET(InfantryTypeClass*, pThisType, ECX);
 	GET_STACK(AbstractClass*, pTarget, 0x8);
 
-	if (pThisType->DeployFireWeapon == -1) {
+	if (pThisType->DeployFireWeapon == -1)
+	{
 		R->EAX(pThis->TechnoClass::SelectWeapon(pTarget));
-	} else {
+	}
+	else
+	{
 		R->EAX(pThisType->DeployFireWeapon);
 	}
 
@@ -48,7 +55,8 @@ DEFINE_HOOK(0x6FF923, TechnoClass_FireaAt_FireOnce, 0x6)
 	GET(WeaponTypeClass*, pWeapon, EBX);
 
 	pThis->SetTarget(nullptr);
-	if (auto pUnit = cast_to<UnitClass*, false>(pThis)) {
+	if (auto pUnit = cast_to<UnitClass*, false>(pThis))
+	{
 		if (pUnit->Type->DeployFire
 			&& !pUnit->Type->IsSimpleDeployer
 			&& !pUnit->Deployed
@@ -82,7 +90,8 @@ DEFINE_HOOK(0x73DCEF, UnitClass_Mission_Unload_DeployFire, 0x6)
 
 			pThis->Fire(pThis->GetCell(), nWeapIdx);
 
-			if (pWeapon->WeaponType->FireOnce) {
+			if (pWeapon->WeaponType->FireOnce)
+			{
 				R->EBX(0);
 				return SetMissionGuard;
 			}
@@ -102,7 +111,7 @@ DEFINE_HOOK(0x741288, UnitClass_CanFire_DeployFire_DoNotErrorFacing, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+	//const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
 
 	if (pThis->Type->DeployFire
 		&& !pThis->Type->IsSimpleDeployer
@@ -161,8 +170,10 @@ DEFINE_HOOK(0x746CD0, UnitClass_SelectWeapon_Replacements, 0x6)
 	GET(UnitClass*, pThis, ECX);
 	GET_STACK(AbstractClass*, pTarget, 0x4);
 
-	if (pThis->Deployed && pThis->Type->DeployFire) {
-		if (pThis->Type->DeployFireWeapon != -1) {
+	if (pThis->Deployed && pThis->Type->DeployFire)
+	{
+		if (pThis->Type->DeployFireWeapon != -1)
+		{
 			R->EAX(pThis->Type->DeployFireWeapon);
 			return 0x746CFD;
 		}

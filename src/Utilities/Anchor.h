@@ -6,36 +6,35 @@
 class Anchor
 {
 public:
-	Valueable<HorizontalPosition> Horizontal { HorizontalPosition::Left };
-	Valueable<VerticalPosition>   Vertical { VerticalPosition::Top };
+	HorizontalPosition Horizontal { HorizontalPosition::Left };
+	VerticalPosition Vertical { VerticalPosition::Top };
 
 	Anchor() = default;
 	Anchor(HorizontalPosition hPos, VerticalPosition vPos)
 		: Horizontal { hPos }, Vertical { vPos }
-	{
-	}
+	{ }
 
 	Anchor(const Anchor& other) = default;
 	Anchor& operator=(const Anchor& other) = default;
 	~Anchor() = default;
 
 	// Maps enum values to offset relative to width
-	constexpr double GetRelativeOffsetHorizontal() const
+	COMPILETIMEEVAL double GetRelativeOffsetHorizontal() const
 	{
 		// Enum goes from 0 to 2 from left to right. Cast it and divide it
 		// by 2 and you get the percentage. Pretty clever huh? - Kerbiter
-		return (static_cast<double>(this->Horizontal.Get()) / 2.0);
+		return (static_cast<double>(this->Horizontal) / 2.0);
 	}
 
 	// Maps enum values to offset relative to height
-	constexpr double GetRelativeOffsetVertical() const
+	COMPILETIMEEVAL double GetRelativeOffsetVertical() const
 	{
 		// Same deal as with the left-right one - Kerbiter
-		return (static_cast<double>(this->Vertical.Get()) / 2.0);
+		return (static_cast<double>(this->Vertical) / 2.0);
 	}
 
 	// Get an anchor point for a freeform parallelogram
-	constexpr Point2D OffsetPosition(
+	COMPILETIMEEVAL Point2D OffsetPosition(
 		const Point2D& topLeft,
 		const Point2D& topRight,
 		const Point2D& bottomLeft
@@ -49,7 +48,7 @@ public:
 		return result;
 	}
 
-	constexpr Point2D OffsetPosition(const RectangleStruct& rect) const
+	COMPILETIMEEVAL Point2D OffsetPosition(const RectangleStruct& rect) const
 	{
 		return {
 			rect.X + static_cast<int>(rect.Width * this->GetRelativeOffsetHorizontal()),
@@ -57,7 +56,7 @@ public:
 		};
 	}
 
-	constexpr Point2D OffsetPosition(const LTRBStruct& ltrb) const
+	COMPILETIMEEVAL Point2D OffsetPosition(const LTRBStruct& ltrb) const
 	{
 		return {
 			ltrb.Left + static_cast<int>((ltrb.Right - ltrb.Left) * this->GetRelativeOffsetHorizontal()),

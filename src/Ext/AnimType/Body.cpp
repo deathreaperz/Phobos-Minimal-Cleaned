@@ -19,8 +19,8 @@ void AnimTypeExtData::Initialize()
 {
 	const char* pID = this->AttachedToObject->ID;
 
-	SpecialDraw = IS_SAME_STR_(pID, RING1_NAME);
-	IsInviso = IS_SAME_STR_(pID, INVISO_NAME);
+	SpecialDraw = IS_SAME_STR_(pID, GameStrings::Anim_RING1());
+	IsInviso = IS_SAME_STR_(pID, GameStrings::Anim_INVISO());
 }
 
 // AnimType Class is readed before Unit and weapon
@@ -204,7 +204,7 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->AdditionalHeight.Read(exINI, pID, "AdditionalHeight");
 	this->AltReport.Read(exINI, pID, "AltReport");
 
-	this->SpawnsData.Read(exINI, pID);
+	//this->SpawnsData.Read(exINI, pID);
 
 	this->VisibleTo.Read(exINI, pID, "VisibleTo");
 	this->VisibleTo_ConsiderInvokerAsOwner.Read(exINI, pID, "VisibleTo.ConsiderInvokerAsOwner");
@@ -215,7 +215,6 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	if (this->AttachedToObject->Translucent)
 	{
 		this->Translucent_Keyframes.Read(exINI, pID, "Translucent.%s", this->AttachedToObject->End);
-		this->Translucent_Keyframes.InterpolationMode = InterpolationMode::None;
 	}
 
 	this->CreateUnit_SpawnHeight.Read(exINI, pID, "CreateUnit.SpawnHeight");
@@ -262,7 +261,7 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 			&& (!pCell || !pCell->IsClearToMove(pUnit->SpeedType, false, false, ZoneType::None, pUnit->MovementZone, -1, isBridge)))
 		{
 			const auto nCell = MapClass::Instance->NearByLocation(CellClass::Coord2Cell(Location),
-				pUnit->SpeedType, -1, pUnit->MovementZone, isBridge, 1, 1, true,
+				pUnit->SpeedType, ZoneType::None, pUnit->MovementZone, isBridge, 1, 1, true,
 				false, false, isBridge, CellStruct::Empty, false, false);
 
 			pCell = MapClass::Instance->TryGetCellAt(nCell);
@@ -283,7 +282,7 @@ void AnimTypeExtData::CreateUnit_MarkCell(AnimClass* pThis)
 		const int zCoord = pTypeExt->CreateUnit_AlwaysSpawnOnGround ? INT32_MIN : baseHeight;
 		Location.Z = MaxImpl(MapClass::Instance->GetCellFloorHeight(Location) + bridgeZ, zCoord);
 
-		const auto pCellAfter = MapClass::Instance->GetCellAt(Location);
+		//const auto pCellAfter = MapClass::Instance->GetCellAt(Location);
 
 		if (!MapClass::Instance->IsWithinUsableArea(Location))
 			return;
@@ -325,7 +324,7 @@ static TechnoClass* CreateFoot(
 
 	const auto pCell = MapClass::Instance->GetCellAt(location);
 	const auto speedType = rtti != AbstractType::AircraftType ? pType->SpeedType : SpeedType::Wheel;
-	auto const mZone = rtti != AbstractType::AircraftType ? pType->MovementZone : MovementZone::Normal;
+	//auto const mZone = rtti != AbstractType::AircraftType ? pType->MovementZone : MovementZone::Normal;
 	const bool allowBridges = GroundType::Array[static_cast<int>(LandType::Clear)].Cost[static_cast<int>(speedType)] > 0.0;
 	const bool isBridge = allowBridges && pCell->ContainsBridge();
 	const bool inAir = location.Z >= Unsorted::CellHeight * 2;
@@ -484,7 +483,7 @@ void AnimTypeExtData::ValidateData()
 {
 	if (this->CreateUnit && this->CreateUnit->Strength == 0)
 	{
-		Debug::Log("AnimType[%s] With[%s] CreateUnit strength 0 !\n", this->AttachedToObject->ID, this->CreateUnit->ID);
+		Debug::LogInfo("AnimType[{}] With[{}] CreateUnit strength 0 !", this->AttachedToObject->ID, this->CreateUnit->ID);
 		this->CreateUnit = nullptr;
 		Debug::RegisterParserError();
 	}
@@ -638,7 +637,7 @@ void AnimTypeExtData::Serialize(T& Stm)
 
 		.Process(this->AdditionalHeight)
 		.Process(this->AltReport)
-		.Process(this->SpawnsData)
+		//.Process(this->SpawnsData)
 
 		.Process(this->CreateUnit_Scatter)
 		.Process(this->CreateUnit_AI_Scatter)

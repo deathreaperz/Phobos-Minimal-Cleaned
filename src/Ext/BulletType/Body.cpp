@@ -87,8 +87,7 @@ BulletClass* BulletTypeExtData::CreateBullet(AbstractClass* pTarget, TechnoClass
 BulletClass* BulletTypeExtData::CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner,
 	int damage, WarheadTypeClass* pWarhead, int speed, int range, bool bright, bool addDamage) const
 {
-	if (addDamage)
-		damage = (int)(damage * TechnoExtData::GetDamageMult(pOwner));
+	damage = (int)(TechnoExtData::GetDamageMult(pOwner, damage, !addDamage));
 
 	auto pBullet = this->AttachedToObject->CreateBullet(pTarget, pOwner, damage, pWarhead, speed, bright);
 
@@ -301,7 +300,7 @@ bool BulletTypeExtContainer::Load(BulletTypeClass* key, IStream* pStm)
 	// this really shouldn't happen
 	if (!key)
 	{
-		//Debug::Log("[LoadKey] Attempted for a null pointer! WTF!\n");
+		//Debug::LogInfo("[LoadKey] Attempted for a null pointer! WTF!");
 		return false;
 	}
 

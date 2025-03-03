@@ -51,12 +51,13 @@
 #include <New/Entity/FlyingStrings.h>
 
 #include <Misc/PhobosGlobal.h>
-
+#include <Misc/DamageArea.h>
 #include <Misc/Ares/EVAVoices.h>
 
 #include <strsafe.h>
 
-#include "AresNetEvent.h"
+#include  <Ext/Event/Body.h>
+
 #include "Classes/AresPoweredUnit.h"
 #include "Classes/AresJammer.h"
 
@@ -116,7 +117,7 @@ void StaticVars::LoadGlobalsConfig()
 	}
 }
 
-static constexpr std::array<std::pair<const char*, const char*>, 17u> const SubName =
+static COMPILETIMEEVAL std::array<std::pair<const char*, const char*>, 17u> const SubName =
 { {
 	{"NormalTurretWeapon" , "NormalTurretIndex"},
 	{"RepairTurretWeapon" , "RepairTurretIndex"} ,
@@ -375,7 +376,7 @@ void TechnoTypeExt_ExtData::LoadTurrets(TechnoTypeClass* pType, CCINIClass* pINI
 
 		if (*result < 0 || (pType->TurretCount > 0 && *result >= pType->TurretCount))
 		{
-			Debug::Log("Weapon %d on [%s] has an invalid turret index of %d.\n", i + 1, pSection, *result);
+			Debug::LogInfo("Weapon {} on [{}] has an invalid turret index of {}.", i + 1, pSection, *result);
 			//*result = 0; //avoid crash
 		}
 
@@ -400,7 +401,7 @@ int* TechnoTypeExt_ExtData::GetTurretWeaponIndex(TechnoTypeClass* pType, size_t 
 	if ((size_t)resultidx < vec->size())
 		return vec->data() + resultidx;
 
-	Debug::Log("Techno[%s] Trying to get AdditionalTurretWeaponIndex with out of bound index[%d]\n", pType->ID, idx);
+	Debug::LogInfo("Techno[{}] Trying to get AdditionalTurretWeaponIndex with out of bound index[{}]", pType->ID, idx);
 	return nullptr;
 }
 
@@ -412,7 +413,7 @@ WeaponStruct* TechnoTypeExt_ExtData::GetWeapon(TechnoTypeClass* pType, int const
 	if ((size_t)idx < Vectors->size())
 		return Vectors->data() + idx;
 
-	Debug::Log("Techno[%s] Trying to get AdditionalWeapon with out of bound index[%d]\n", pType->ID, idx);
+	Debug::LogInfo("Techno[{}] Trying to get AdditionalWeapon with out of bound index[{}]", pType->ID, idx);
 	return nullptr;
 }
 
@@ -426,7 +427,7 @@ void TechnoTypeExt_ExtData::ReadWeaponStructDatas(TechnoTypeClass* pType, CCINIC
 	const int additionalamount = pType->WeaponCount - TechnoTypeClass::MaxWeapons < 0 ? 0 : pType->WeaponCount - TechnoTypeClass::MaxWeapons;
 	auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-	//Debug::Log("Resize Additional Weapon [%s] [%d]\n", pSection, additionalamount);
+	//Debug::LogInfo("Resize Additional Weapon [%s] [%d]", pSection, additionalamount);
 
 	pExt->AdditionalWeaponDatas.resize(additionalamount);
 	pExt->AdditionalEliteWeaponDatas.resize(additionalamount);
@@ -434,12 +435,12 @@ void TechnoTypeExt_ExtData::ReadWeaponStructDatas(TechnoTypeClass* pType, CCINIC
 	pExt->AdditionalTurrentWeapon.resize(additionalamount);
 	pExt->Insignia_Weapon.resize(pType->WeaponCount);
 
-	//Debug::Log("After Resize Additional Weapon [%s] [%d- E %d]\n", pSection, pExt->AdditionalWeaponDatas.size() , pExt->AdditionalEliteWeaponDatas.size());
+	//Debug::LogInfo("After Resize Additional Weapon [%s] [%d- E %d]", pSection, pExt->AdditionalWeaponDatas.size() , pExt->AdditionalEliteWeaponDatas.size());
 
 	for (int i = 0; i < pType->WeaponCount; ++i)
 	{
 		const int NextIdx = i < TechnoTypeClass::MaxWeapons ? i : i - TechnoTypeClass::MaxWeapons;
-		//Debug::Log("Next Weapon Idx for [%s] [%d]\n", pSection, NextIdx);
+		//Debug::LogInfo("Next Weapon Idx for [%s] [%d]", pSection, NextIdx);
 
 		//char buffer[0x40];
 		//char bufferWeapon[0x40];
@@ -486,7 +487,7 @@ void TechnoExt_ExtData::AddPassengers(BuildingClass* const Grinder, TechnoClass*
 		nPass;
 		nPass = (FootClass*)nPass->NextObject)
 	{
-		const auto pType = nPass->GetTechnoType();
+		//const auto pType = nPass->GetTechnoType();
 
 		if (BuildingExtData::ReverseEngineer(Grinder, Vic))
 		{
@@ -1143,7 +1144,7 @@ bool TechnoExt_ExtData::PerformActionHijack(TechnoClass* pFrom, TechnoClass* con
 	if (const auto pThis = cast_to<InfantryClass*, false>(pFrom))
 	{
 		const auto pType = pThis->Type;
-		const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+		//const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
 		const auto action = TechnoExt_ExtData::GetActionHijack(pThis, pTarget);
@@ -1241,7 +1242,7 @@ bool TechnoExt_ExtData::PerformActionHijack(TechnoClass* pFrom, TechnoClass* con
 		// hook up the original mind-controller with the target #762
 		if (controller)
 		{
-			CaptureExt::CaptureUnit(controller->CaptureManager, pThis, true);
+			CaptureExt::CaptureUnit(controller->CaptureManager, pThis, true, 0);
 		}
 
 		// reboot the slave manager
@@ -1292,7 +1293,7 @@ bool TechnoExt_ExtData::FindAndTakeVehicle(FootClass* pThis)
 	if (!pInf->Type->VehicleThief && !pExt->CanDrive.Get(RulesExtData::Instance()->CanDrive))
 		return false;
 
-	const auto nDistanceMax = ScenarioClass::Instance->Random.RandomFromMax(128);
+	//const auto nDistanceMax = ScenarioClass::Instance->Random.RandomFromMax(128);
 
 	//this one iam not really sure how to implement it
 	//it seems Ares one do multiple item comparison before doing hijack ?
@@ -1396,7 +1397,7 @@ void TechnoExt_ExtData::KickOutClone(BuildingClass* pBuilding, TechnoTypeClass* 
 
 	if (pBuilding->KickOutUnit(Clone, CellStruct::Empty) != KickOutResult::Succeeded)
 	{
-		Debug::Log(__FUNCTION__" Called \n");
+		Debug::LogInfo(__FUNCTION__" Called ");
 		TechnoExtData::HandleRemove(Clone, nullptr, false, false);
 	}
 }
@@ -1458,7 +1459,7 @@ void TechnoExt_ExtData::KickOutClones(BuildingClass* pFactory, TechnoClass* cons
 			if (!CloneBuildingEligible(CloningVat, BuildingTypeExtContainer::Instance.Find(CloningVat->Type)->Cloning_RequirePower))
 				continue;
 
-			auto const BType = CloningVat->Type;
+			//auto const BType = CloningVat->Type;
 
 			auto ShouldClone = false;
 			if (!CloningSources.empty())
@@ -1490,7 +1491,7 @@ void TechnoExt_ExtData::InitWeapon(
 	bool IsFoot
 )
 {
-	constexpr auto const Note = "Constructing an instance of [%s]:\r\n"
+	COMPILETIMEEVAL auto const Note = "Constructing an instance of [%s]:\r"
 		"%s %s (slot %d) has no %s!";
 
 	if (!pWeapon->Projectile)
@@ -1584,7 +1585,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 			if (!TechnoExtData::EjectRandomly(pHijacker, pThis->Location, 144, Select))
 			{
 				pHijacker->RegisterDestruction(pKiller);
-				Debug::Log(__FUNCTION__" Hijacker Called \n");
+				Debug::LogInfo(__FUNCTION__" Hijacker Called ");
 				TechnoExtData::HandleRemove(pHijacker, pKiller, false, true);
 			}
 			else
@@ -1593,7 +1594,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 				if (auto const pController = pThis->MindControlledBy)
 				{
 					CaptureExt::FreeUnit(pController->CaptureManager, pThis, true);
-					CaptureExt::CaptureUnit(pController->CaptureManager, pHijacker, true);
+					CaptureExt::CaptureUnit(pController->CaptureManager, pHijacker, true, 0);
 					pHijacker->QueueMission(Mission::Guard, true); // override the fate the AI decided upon
 				}
 
@@ -1629,7 +1630,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 							if (!TechnoExtData::EjectRandomly(pPilot, pThis->Location, 144, Select))
 							{
 								pPilot->RegisterDestruction(pKiller);
-								Debug::Log(__FUNCTION__" Pilot Called \n");
+								Debug::LogInfo(__FUNCTION__" Pilot Called ");
 								TechnoExtData::HandleRemove(pPilot, pKiller, false, false);
 							}
 							else if (auto const pTag = pThis->AttachedTag)
@@ -1679,7 +1680,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 
 			// kill passenger, if not spawned
 			pPassenger->RegisterDestruction(pKiller);
-			Debug::Log(__FUNCTION__" Passengers Called \n");
+			Debug::LogInfo(__FUNCTION__" Passengers Called ");
 			TechnoExtData::HandleRemove(pPassenger, pKiller, false, false);
 		}
 	}
@@ -1955,8 +1956,8 @@ bool TechnoExt_ExtData::AcquireHunterSeekerTarget(TechnoClass* pThis)
 {
 	if (!pThis->Target)
 	{
-		StackVector<TechnoClass*, 256> preferredTargets;
-		StackVector<TechnoClass*, 256> randomTargets;
+		StackVector<TechnoClass*, 256> preferredTargets {};
+		StackVector<TechnoClass*, 256> randomTargets {};
 
 		// defaults if SW isn't set
 		auto pOwner = pThis->GetOwningHouse();
@@ -1985,11 +1986,6 @@ bool TechnoExt_ExtData::AcquireHunterSeekerTarget(TechnoClass* pThis)
 		{
 			// techno ineligible
 			if (i->Health < 0 || i->InLimbo || !i->IsAlive || i->IsCrashing || i->IsSinking)
-			{
-				continue;
-			}
-
-			if (!MapClass::Instance->IsWithinUsableArea(i->GetCoords()))
 				continue;
 
 			if (!i->Location.IsValid() || !i->InlineMapCoords().IsValid())
@@ -2381,7 +2377,7 @@ void TechnoExt_ExtData::InfiltratedBy(BuildingClass* EnteredBuilding, HouseClass
 	auto Owner = EnteredBuilding->Owner;
 	auto pTypeExt = BuildingTypeExtContainer::Instance.Find(EnteredBuilding->Type);
 	auto pBldExt = BuildingExtContainer::Instance.Find(EnteredBuilding);
-	static constexpr reference<bool, 0x884B8E> tootip_something {};
+	static COMPILETIMEEVAL reference<bool, 0x884B8E> tootip_something {};
 
 	bool raiseEva = false;
 	const bool IsOwnerControlledByCurrentPlayer = Owner->ControlledByCurrentPlayer();
@@ -2564,7 +2560,7 @@ void TechnoExt_ExtData::InfiltratedBy(BuildingClass* EnteredBuilding, HouseClass
 
 		if (pTypeExt->SpyEffect_UnReverseEngineer)
 		{
-			Debug::Log("Undoing all Reverse Engineering achieved by house %ls\n", Owner->UIName);
+			Debug::LogInfo("Undoing all Reverse Engineering achieved by house {}", Owner->Type->ID);
 			HouseExtContainer::Instance.Find(Owner)->Reversed.clear();
 			Owner->RecheckTechTree = true;
 
@@ -3078,7 +3074,7 @@ BuildingClass* TechnoExt_ExtData::CreateBuilding(
 
 		if (!res)
 		{
-			Debug::Log(__FUNCTION__" Called \n");
+			Debug::LogInfo(__FUNCTION__" Called ");
 			TechnoExtData::HandleRemove(pRet, nullptr, true, false);
 			pRet = nullptr;
 		}
@@ -3297,7 +3293,7 @@ std::pair<TechnoTypeClass*, AbstractType> NOINLINE GetOriginalType(TechnoClass* 
 	case AbstractType::Aircraft:
 		return { (TechnoTypeClass*)(((AircraftClass*)pThis)->Type), AbstractType::AircraftType };
 	default:
-		Debug::FatalErrorAndExit("%s is not FootClass, conversion not allowed\n", pToType->ID);
+		Debug::LogInfo("[{}] {} is not FootClass, conversion to [{}] not allowed", (void*)pThis, pToType->ID, pThis->get_ID());
 		return { nullptr, AbstractType::None };
 	}
 }
@@ -3326,12 +3322,16 @@ void NOINLINE SetType(TechnoClass* pThis, AbstractType rtti, TechnoTypeClass* pT
 bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeClass* pToType, bool AdjustHealth, bool IsChangeOwnership)
 {
 	const auto& [prevType, rtti] = GetOriginalType(pThis, pToType);
+
+	if (!prevType)
+		return false;
+
 	const auto pOldType = prevType;
-	Debug::Log("Attempt to convert TechnoType[%s] to [%s]\n", pOldType->ID, pToType->ID);
+	Debug::LogInfo("Attempt to convert TechnoType[{}] to [{}]", pOldType->ID, pToType->ID);
 
 	if (pToType->WhatAmI() != rtti || pOldType->Spawned != pToType->Spawned || pOldType->MissileSpawn != pToType->MissileSpawn)
 	{
-		Debug::Log("Incompatible types between %s and %s\n", pOldType->ID, pToType->ID);
+		Debug::LogInfo("Incompatible types between {} and {}", pOldType->ID, pToType->ID);
 		return false;
 	}
 
@@ -3463,16 +3463,16 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		// make sure it wont cause any problem here ,..
 		if (pOldType->Spawns)
 		{
-			if (pSpawnManager->SpawnType != pToType->Spawns)
+			if (pToType->Spawns && pSpawnManager->SpawnType != pToType->Spawns)
 				pSpawnManager->SpawnType = pToType->Spawns;
 
-			if (pToType->SpawnsNumber > 0)
+			if (pToType->SpawnsNumber > 0 && pSpawnManager->SpawnCount != pToType->SpawnsNumber)
 				pSpawnManager->SpawnCount = pToType->SpawnsNumber;
 
-			if (pToType->SpawnRegenRate > 0)
+			if (pToType->SpawnRegenRate > 0 && pSpawnManager->RegenRate != pToType->SpawnRegenRate)
 				pSpawnManager->RegenRate = pToType->SpawnRegenRate;
 
-			if (pToType->SpawnReloadRate > 0)
+			if (pToType->SpawnReloadRate > 0 && pSpawnManager->ReloadRate != pToType->SpawnReloadRate)
 				pSpawnManager->ReloadRate = pToType->SpawnReloadRate;
 		}
 	}
@@ -3539,7 +3539,6 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		pThis->CurrentWeaponNumber = 0;
 
 	const int TurretCount = (pToType->TurretCount > 0 ? pToType->TurretCount : 2);
-
 	if (pThis->CurrentTurretNumber >= TurretCount)
 		pThis->CurrentTurretNumber = 0;
 
@@ -3574,7 +3573,7 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 	}
 
 	//if (pThis->LocomotorSource) {
-	//	Debug::Log("Attempt to convert TechnoType[%s] to [%s] when the locomotor is currently manipulated , return\n", pOldType->ID, pToType->ID);
+	//	Debug::LogInfo("Attempt to convert TechnoType[%s] to [%s] when the locomotor is currently manipulated , return", pOldType->ID, pToType->ID);
 	//	return true;
 	//}
 	bool move = true;
@@ -3585,9 +3584,9 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		if (pOldType->Locomotor == CLSIDs::Teleport && pToType->Locomotor != CLSIDs::Teleport && pThis->WarpingOut)
 			TechnoExtContainer::Instance.Find(pThis)->HasRemainingWarpInDelay = true;
 
-		AbstractClass* pTarget = pThis->Target;
-		AbstractClass* pDest = pThis->ArchiveTarget;
-		Mission prevMission = pThis->GetCurrentMission();
+		//AbstractClass* pTarget = pThis->Target;
+		//AbstractClass* pDest = pThis->ArchiveTarget;
+		//Mission prevMission = pThis->GetCurrentMission();
 
 		// throw away the current locomotor and instantiate
 		// a new one of the default type for this unit.
@@ -3595,7 +3594,7 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		{
 			newLoco->Link_To_Object(pThis);
 			((FootClass*)pThis)->Locomotor = std::move(newLoco);
-			pThis->Override_Mission(prevMission, pTarget, pDest);
+			//pThis->Override_Mission(prevMission, pTarget, pDest);
 		}
 	}
 	else if (pOldType->Locomotor == CLSIDs::Jumpjet() && pToType->Locomotor == CLSIDs::Jumpjet() && !(pOldType->JumpjetData == pToType->JumpjetData))
@@ -3640,7 +3639,7 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		}
 	}
 
-	pThis->See(0u, 0u);
+	//pThis->See(0u,0u);
 
 	return true;
 }
@@ -3701,7 +3700,7 @@ void TechnoExt_ExtData::SpawnVisceroid(CoordStruct& crd, UnitTypeClass* pType, i
 
 				if (!created)
 				{
-					Debug::Log(__FUNCTION__" Called \n");
+					Debug::LogInfo(__FUNCTION__" Called ");
 					TechnoExtData::HandleRemove(pVisc, nullptr, true, true);
 				}
 			}
@@ -3909,8 +3908,6 @@ void TechnoExt_ExtData::Ares_technoUpdate(TechnoClass* pThis)
 		pThis->QueueMission(Mission::Harmless, true);
 	}
 }
-
-#include <New/Entity/FlyingStrings.h>
 
 void TechnoExt_ExtData::Ares_AddMoneyStrings(TechnoClass* pThis, bool forcedraw)
 {
@@ -4469,8 +4466,8 @@ bool FirewallFunctions::canLinkTo(BuildingClass* currentBuilding, BuildingClass*
 		return false;
 	}
 
-	BuildingTypeExtData* currentTypeExtData = BuildingTypeExtContainer::Instance.Find(currentBuilding->Type);
-	BuildingTypeExtData* targetTypeExtData = BuildingTypeExtContainer::Instance.Find(targetBuilding->Type);
+	//BuildingTypeExtData* currentTypeExtData = BuildingTypeExtContainer::Instance.Find(currentBuilding->Type);
+	//BuildingTypeExtData* targetTypeExtData = BuildingTypeExtContainer::Instance.Find(targetBuilding->Type);
 
 	// Firewalls
 	if (BuildingTypeExtContainer::Instance.Find(currentBuilding->Type)->Firestorm_Wall
@@ -4557,7 +4554,7 @@ void FirewallFunctions::BuildLines(BuildingClass* theBuilding, CellStruct select
 					}
 					else
 					{
-						Debug::Log(__FUNCTION__"Called!\n");
+						Debug::LogInfo(__FUNCTION__"Called!");
 						TechnoExtData::HandleRemove(tempBuilding, nullptr, true, true);
 					}
 				}
@@ -5576,7 +5573,7 @@ void AresJammer::Jam(BuildingClass* TargetBuilding)
 
 	jammMap.push_back_unique(this->AttachedToObject);
 
-	if (jammMap.size() == 1)
+	if (jammMap.size() >= 1)
 	{
 		TargetBuilding->Owner->RecheckRadar = true;
 	}
@@ -5626,11 +5623,11 @@ bool AresScriptExt::Handle(TeamClass* pTeam, ScriptActionNode* pTeamMission, boo
 	//	if(hi < Move_to_own_building_SearchType.size())
 	//		FindType = Move_to_own_building_SearchType[hi];
 	//
-	//	Debug::Log("Team[%x - %s] Executing MoveToOwnBuilding (%d)[hi %d(%s) , Lo %d(BldTypeMax %d)] \n" ,
+	//	Debug::LogInfo("Team[%x - %s] Executing MoveToOwnBuilding (%d)[hi %d(%s) , Lo %d(BldTypeMax %d)] " ,
 	//		pTeam , pTeam->get_ID() ,pTeamMission->Argument, hi , FindType , lo , BuildingTypeClass::Array->Count );
 	//
 	//}else
-	//	Debug::Log("Team[%x - %s] Executing [(Action)%d - (Argument)%d] \n" , pTeam , pTeam->get_ID() , pTeamMission->Action , pTeamMission->Argument);
+	//	Debug::LogInfo("Team[%x - %s] Executing [(Action)%d - (Argument)%d] " , pTeam , pTeam->get_ID() , pTeamMission->Action , pTeamMission->Argument);
 
 	switch (pTeamMission->Action)
 	{
@@ -5669,7 +5666,7 @@ bool AresScriptExt::Handle(TeamClass* pTeam, ScriptActionNode* pTeamMission, boo
 
 		if (lo > BuildingTypeClass::Array->Count)
 		{
-			Debug::FatalError("Team[%x - %s] Executing %d but the BuildingType Index is too big(%d of %d) !\n",
+			Debug::FatalError("Team[%x - %s] Executing %d but the BuildingType Index is too big(%d of %d) !",
 				pTeam, pTeam->get_ID(), pTeamMission->Action, lo, BuildingTypeClass::Array->Count);
 		}
 	}break;
@@ -5955,7 +5952,7 @@ bool AresWPWHExt::conductAbduction(WeaponTypeClass* pWeapon, TechnoClass* pOwner
 
 	if (!Target->Limbo())
 	{
-		Debug::FatalError("Abduction: Target unit %p (%s) could not be removed.\n", Target, Target->get_ID());
+		Debug::FatalError("Abduction: Target unit %p (%s) could not be removed.", Target, Target->get_ID());
 		return false;
 	}
 
@@ -6052,16 +6049,18 @@ bool AresWPWHExt::applyOccupantDamage(BulletClass* pThis)
 
 	if (fatalRate > 0.0 && Random.RandomDouble() < fatalRate)
 	{
+		pBuilding->Occupants.RemoveAt<true>(idxPoorBastard);
 		pPoorBastard->Destroyed(pThis->Owner);
 		pPoorBastard->UnInit();
-		pBuilding->Occupants.RemoveAt<true>(idxPoorBastard);
 		pBuilding->UpdateThreatInCell(pBuilding->GetCell());
+		pBuilding->NeedsRedraw = true;
 	}
 	else
 	{
-		auto const& multiplier = pBldTypeExt->UCDamageMultiplier.Get();
+		auto const& multiplier = pBldTypeExt->UCDamageMultiplier;
 		auto adjustedDamage = static_cast<int>(std::ceil(pThis->Health * multiplier));
-		pPoorBastard->ReceiveDamage(&adjustedDamage, 0, pThis->WH, pThis->Owner, false, true, pThis->GetOwningHouse());
+		if (pPoorBastard->ReceiveDamage(&adjustedDamage, 0, pThis->WH, pThis->Owner, false, true, pThis->GetOwningHouse()) == DamageState::NowDead)
+			pBuilding->NeedsRedraw = true;
 	}
 
 	if (pBuilding->FiringOccupantIndex >= pBuilding->GetOccupantCount())
@@ -6260,8 +6259,8 @@ bool AresTActionExt::LauchhChemMissile(TActionClass* pAction, HouseClass* pHouse
 	if (auto pBullet = pFind->Projectile->CreateBullet(MapClass::Instance->GetCellAt(nLoc), nullptr, pFind->Damage, pFind->Warhead, 20, false))
 	{
 		pBullet->SetWeaponType(pFind);
-		constexpr double nSin = gcem::sin(1.570748388432313);
-		constexpr double nCos = gcem::cos(-0.00009587672516830327);
+		COMPILETIMEEVAL double nSin = gcem::sin(1.570748388432313);
+		COMPILETIMEEVAL double nCos = gcem::cos(-0.00009587672516830327);
 
 		BulletExtContainer::Instance.Find(pBullet)->Owner = pHouse;
 		auto nCell = MapClass::Instance->Localsize_586AC0(&nLoc, false);
@@ -6311,7 +6310,7 @@ bool AresTActionExt::LightstormStrike(TActionClass* pAction, HouseClass* pHouse,
 
 bool AresTActionExt::MeteorStrike(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location)
 {
-	static constexpr reference<int, 0x842AFC, 5u> MeteorAddAmount {};
+	static COMPILETIMEEVAL reference<int, 0x842AFC, 5u> MeteorAddAmount {};
 
 	const auto pSmall = AnimTypeClass::Find(GameStrings::METSMALL);
 	const auto pBig = AnimTypeClass::Find(GameStrings::METLARGE);
@@ -6371,9 +6370,9 @@ bool AresTActionExt::PlayAnimAt(TActionClass* pAction, HouseClass* pHouse, Objec
 
 		if (MapClass::Instance->GetCellAt(nCoord)->ContainsBridge())
 			nCoord.Z += Unsorted::BridgeHeight;
-		//Debug::Log("Trigger %s - Tag %s PlayAnimAt at(%d %d %d) Anim[%s - %d]\n",
-		//	pAction->TriggerType ? pAction->TriggerType->get_ID() : NONE_STR,
-		//	pAction->TagType ? pAction->TagType->get_ID() : NONE_STR,
+		//Debug::LogInfo("Trigger %s - Tag %s PlayAnimAt at(%d %d %d) Anim[%s - %d]",
+		//	pAction->TriggerType ? pAction->TriggerType->get_ID() : GameStrings::NoneStr(),
+		//	pAction->TagType ? pAction->TagType->get_ID() : GameStrings::NoneStr(),
 		//	nCoord.X, nCoord.Y, nCoord.Z,
 		//	pAnimType->ID,
 		//	pAction->Value
@@ -6399,9 +6398,9 @@ bool AresTActionExt::DoExplosionAt(TActionClass* pAction, HouseClass* pHouse, Ob
 		if (pCell->ContainsBridge())
 			nCoord.Z += Unsorted::BridgeHeight;
 
-		//Debug::Log("Trigger %s - Tag %s DoExplosion at(%d %d %d) Weapon[%s] Warhead[%s]\n",
-		//	pAction->TriggerType ? pAction->TriggerType->get_ID() : NONE_STR ,
-		//	pAction->TagType ? pAction->TagType->get_ID() : NONE_STR,
+		//Debug::LogInfo("Trigger %s - Tag %s DoExplosion at(%d %d %d) Weapon[%s] Warhead[%s]",
+		//	pAction->TriggerType ? pAction->TriggerType->get_ID() : GameStrings::NoneStr() ,
+		//	pAction->TagType ? pAction->TagType->get_ID() : GameStrings::NoneStr(),
 		//	nCoord.X, nCoord.Y , nCoord.Z,
 		//	pWeaponType->ID,
 		//	pWeaponType->Warhead->ID
@@ -6415,7 +6414,7 @@ bool AresTActionExt::DoExplosionAt(TActionClass* pAction, HouseClass* pHouse, Ob
 		}
 
 		MapClass::FlashbangWarheadAt(pWeaponType->Damage, pWeaponType->Warhead, nCoord);
-		MapClass::DamageArea(&nCoord, pWeaponType->Damage, nullptr, pWeaponType->Warhead, true, pHouse);
+		DamageArea::Apply(&nCoord, pWeaponType->Damage, nullptr, pWeaponType->Warhead, true, pHouse);
 	}
 
 	return true;
@@ -7085,7 +7084,7 @@ void TunnelFuncs::KillFootClass(FootClass* pFoot, TechnoClass* pKiller)
 		return;
 
 	pFoot->RegisterDestruction(pKiller);
-	Debug::Log(__FUNCTION__" Called \n");
+	Debug::LogInfo(__FUNCTION__" Called ");
 	TechnoExtData::HandleRemove(pFoot, pKiller, false, false);
 }
 
@@ -7120,7 +7119,7 @@ void TunnelFuncs::EnterTunnel(std::vector<FootClass*>* pTunnelData, BuildingClas
 
 	if (!pFoot->Limbo())
 	{
-		Debug::Log("Techno[%s] Trying to enter Tunnel[%s] but failed ! \n", pFoot->get_ID(), pTunnel->get_ID());
+		Debug::LogInfo("Techno[{}] Trying to enter Tunnel[{}] but failed ! ", pFoot->get_ID(), pTunnel->get_ID());
 		return;
 	}
 
@@ -7349,7 +7348,7 @@ bool TunnelFuncs::UnloadOnce(FootClass* pFoot, BuildingClass* pTunnel, bool sile
 	}
 	else
 	{
-		const auto nNearby = MapClass::Instance->NearByLocation(nResult, pFootType->SpeedType, -1, MovementZone::None, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
+		const auto nNearby = MapClass::Instance->NearByLocation(nResult, pFootType->SpeedType, ZoneType::None, MovementZone::None, false, 1, 1, false, false, false, true, CellStruct::Empty, false, false);
 		nResultC = CellClass::Cell2Coord(nNearby);
 	}
 
@@ -7393,7 +7392,7 @@ bool AresHouseExt::CheckBasePlanSanity(HouseClass* const pThis)
 	auto const pType = pThis->Type;
 
 	auto const errorMsg = "AI House[%x] of country [%s] cannot build any object in "
-		"%s. The AI ain't smart enough for that.\n";
+		"%s. The AI ain't smart enough for that.";
 
 	// if you don't have a base unit buildable, how did you get to base
 	// planning? only through crates or map actions, so have to validate base
@@ -7407,7 +7406,7 @@ bool AresHouseExt::CheckBasePlanSanity(HouseClass* const pThis)
 	if (!canBuild)
 	{
 		AllIsWell = false;
-		Debug::FatalError(errorMsg, pType->ID, "BaseUnit");
+		Debug::FatalError(errorMsg, pType->ID, GameStrings::BaseUnit());
 	}
 
 	auto CheckList = [pThis, pType, idxParent, errorMsg, &AllIsWell](
@@ -7423,9 +7422,9 @@ bool AresHouseExt::CheckBasePlanSanity(HouseClass* const pThis)
 
 	// commented out lists that do not cause a crash, according to testers
 	//CheckList(make_iterator(pRules->Shipyard), "Shipyard");
-	CheckList(make_iterator(pRules->BuildPower), "BuildPower");
-	CheckList(make_iterator(pRules->BuildRefinery), "BuildRefinery");
-	CheckList(make_iterator(pRules->BuildWeapons), "BuildWeapons");
+	CheckList(make_iterator(pRules->BuildPower), GameStrings::BuildPower());
+	CheckList(make_iterator(pRules->BuildRefinery), GameStrings::BuildRefinery());
+	CheckList(make_iterator(pRules->BuildWeapons), GameStrings::BuildWeapons());
 	//CheckList(make_iterator(pRules->BuildConst), "BuildConst");
 	//CheckList(make_iterator(pRules->BuildBarracks), "BuildBarracks");
 	//CheckList(make_iterator(pRules->BuildTech), "BuildTech");
@@ -7465,19 +7464,19 @@ void AresHouseExt::UpdateTogglePower(HouseClass* pThis)
 		struct ExpendabilityStruct
 		{
 		private:
-			constexpr std::tuple<const int&, BuildingClass&> Tie() const
+			COMPILETIMEEVAL std::tuple<const int&, BuildingClass&> Tie() const
 			{
 				// compare with tie breaker to prevent desyncs
 				return std::tie(this->Value, *this->Building);
 			}
 
 		public:
-			constexpr bool operator < (const ExpendabilityStruct& rhs) const
+			COMPILETIMEEVAL bool operator < (const ExpendabilityStruct& rhs) const
 			{
 				return this->Tie() < rhs.Tie();
 			}
 
-			constexpr bool operator > (const ExpendabilityStruct& rhs) const
+			COMPILETIMEEVAL bool operator > (const ExpendabilityStruct& rhs) const
 			{
 				return this->Tie() > rhs.Tie();
 			}
@@ -7513,7 +7512,7 @@ void AresHouseExt::UpdateTogglePower(HouseClass* pThis)
 
 		// create a list of all buildings that can be powered down
 		// and give each building an expendability value
-		StackVector<ExpendabilityStruct, 4096> Buildings;
+		StackVector<ExpendabilityStruct, 4096> Buildings {};
 		//Buildings.reserve(pThis->Buildings.Count);
 
 		const auto HasLowPower = pThis->HasLowPower();
@@ -7666,7 +7665,7 @@ std::vector<TechnoTypeClass*> AresHouseExt::GetTypeList()
 
 	//remove any `BaseUnit` included
 	//base unit given for free then ?
-	types.remove_if([](TechnoTypeClass* pItem)
+	types.remove_all_if([](TechnoTypeClass* pItem)
  {
 	 for (int i = 0; i < RulesClass::Instance->BaseUnit.Count; ++i)
 	 {
@@ -7709,7 +7708,7 @@ int AresHouseExt::GetTotalCost(const Nullable<int>& fixed)
 
 		const int what = !types.size() ? 1 : types.size();
 		totalCost = (total_ + (what >> 1)) / what;
-		Debug::Log("Unit cost of %d derived from %u units totalling %d credits.\n", totalCost, what, total_);
+		Debug::LogInfo("Unit cost of {} derived from {} units totalling {} credits.", totalCost, what, total_);
 	}
 
 	return totalCost * GameModeOptionsClass::Instance->UnitCount;
@@ -8207,7 +8206,7 @@ Action MouseClassExt::ValidateShroudedAction(Action nAction)
 
 void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 {
-	Debug::Log("--------- Loading Ares global settings -----------\n");
+	Debug::LogInfo("--------- Loading Ares global settings -----------");
 
 	if (Ini)
 	{
@@ -8249,8 +8248,8 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 		uiColorText = ParseColorInt(section, "Color.Text", 0xFFFF);
 
 		// original color schemes
-		static constexpr reference<int, 0x8316A8, 0x9> const DefaultColors {};
-		constexpr std::string Slot_tags[] = {
+		static COMPILETIMEEVAL reference<int, 0x8316A8, 0x9> const DefaultColors {};
+		COMPILETIMEEVAL const char* Slot_tags[] = {
 			"Slot1", "Slot2", "Slot3", "Slot4",
 			"Slot5", "Slot6", "Slot7", "Slot8",
 			"Slot9", "Slot10", "Slot11", "Slot12",
@@ -8322,15 +8321,15 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 		crc.Add(ModVersion, strlen(ModVersion));
 		ModIdentifier = Ini->ReadInteger("VersionInfo", "Identifier", static_cast<int>(crc.GetValue()));
 
-		Debug::Log("Color count is %d\n", colorCount);
-		Debug::Log("Mod is %s (%s) with %X\n",
+		Debug::LogInfo("Color count is {}", colorCount);
+		Debug::LogInfo("Mod is {0} ({1}) with {2:x}",
 			ModName,
 			ModVersion,
 			ModIdentifier
 		);
 	}
 
-	Debug::Log("-------------------Complete ----------------------\n");
+	Debug::LogInfo("-------------------Complete ----------------------");
 }
 
 void AresGlobalData::ReadAresRA2MD()

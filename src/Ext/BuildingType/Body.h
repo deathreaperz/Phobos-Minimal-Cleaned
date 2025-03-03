@@ -29,11 +29,11 @@ class SuperClass;
 class BuildingTypeExtData final
 {
 public:
-	static constexpr size_t Canary = 0x23266666;
+	static COMPILETIMEEVAL size_t Canary = 0x23266666;
 	using base_type = BuildingTypeClass;
 
-	static constexpr size_t ExtOffset = 0xE24; //ares
-	//static constexpr size_t ExtOffset = 0x1794;
+	static COMPILETIMEEVAL size_t ExtOffset = 0xE24; //ares
+	//static COMPILETIMEEVAL size_t ExtOffset = 0x1794;
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -67,7 +67,7 @@ public:
 	Valueable<bool> Grinding_PlayDieSound { false };
 	Valueable<int> Grinding_Weapon_RequiredCredits { 0 };
 
-	Valueable<bool> PlacementPreview_Show { RulesExtData::Instance()->Building_PlacementPreview };
+	Nullable<bool> PlacementPreview_Show { };
 	Nullable<Theater_SHPStruct*> PlacementPreview_Shape {};
 	Nullable<int> PlacementPreview_ShapeFrame {};
 	Valueable<CoordStruct> PlacementPreview_Offset { {0, -15, 1} };
@@ -324,17 +324,34 @@ public:
 	// NextBuilding feature linked list
 	Valueable<BuildingTypeClass*> NextBuilding_Prev { nullptr };
 	Valueable<BuildingTypeClass*> NextBuilding_Next { nullptr };
-	int NextBuilding_CurrentHeapId;
+	int NextBuilding_CurrentHeapId { -1 };
+
+	Nullable<Point2D> BarracksExitCell {};
+
+	Valueable<bool> IsPrism { false };
+
+	Nullable<bool> AutoBuilding { };
+	Valueable<int> AutoBuilding_Gap { 1 };
+
+	Valueable<bool> LimboBuild { false };
+	Valueable<int> LimboBuildID { -1 };
+	Valueable<BuildingTypeClass*> LaserFencePost_Fence {};
+	Valueable<BuildingTypeClass*> PlaceBuilding_OnLand {};
+	Valueable<BuildingTypeClass*> PlaceBuilding_OnWater {};
+
+	Nullable<bool> Cameo_ShouldCount {};
+
+	Valueable<bool> IsAnimDelayedBurst { true };
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 
-	void CompleteInitialization() const;
+	void CompleteInitialization();
 
 	// Assuming SuperWeapon & SuperWeapon2 are used (for the moment)
-	constexpr int FORCEINLINE GetSuperWeaponCount() const
+	COMPILETIMEEVAL int FORCEDINLINE GetSuperWeaponCount() const
 	{
 		// The user should only use SuperWeapon and SuperWeapon2 if the attached sw count isn't bigger than 2
 		return 2 + this->SuperWeapons.size();
@@ -350,7 +367,7 @@ public:
 
 	void UpdateFoundationRadarShape();
 
-	constexpr FORCEINLINE static size_t size_Of()
+	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(BuildingTypeExtData) -
 			(4u //AttachedToObject
@@ -371,9 +388,9 @@ public:
 	template<BunkerSoundMode UpSound>
 	struct BunkerSound
 	{
-		constexpr void operator ()(BuildingClass* pThis)
+		COMPILETIMEEVAL void operator ()(BuildingClass* pThis)
 		{
-			if constexpr (UpSound == BunkerSoundMode::Up)
+			if COMPILETIMEEVAL(UpSound == BunkerSoundMode::Up)
 			{
 				const auto nSound = BuildingTypeExtContainer::Instance.Find(pThis->Type)->BunkerWallsUpSound.Get(RulesClass::Instance->BunkerWallsUpSound);
 				VocClass::PlayIndexAtPos(nSound, pThis->Location);
@@ -393,6 +410,17 @@ public:
 
 	static void __fastcall DrawPlacementGrid(Surface* Surface, ConvertClass* Pal, SHPStruct* SHP, int FrameIndex, const Point2D* const Position, const RectangleStruct* const Bounds, BlitterFlags Flags, int Remap, int ZAdjust, ZGradient ZGradientDescIndex, int Brightness, int TintColor, SHPStruct* ZShape, int ZShapeFrame, int XOffset, int YOffset);
 
+	static bool ShouldExistGreyCameo(TechnoTypeClass* pType);
+	static CanBuildResult CheckAlwaysExistCameo(TechnoTypeClass* pType, CanBuildResult canBuild);
+
+	static bool CheckOccupierCanLeave(HouseClass* pBuildingHouse, HouseClass* pOccupierHouse);
+	static bool CleanUpBuildingSpace(BuildingTypeClass* pBuildingType, CellStruct topLeftCell, HouseClass* pHouse, TechnoClass* pExceptTechno = nullptr);
+	static bool AutoPlaceBuilding(BuildingClass* pBuilding);
+	static bool BuildLimboBuilding(BuildingClass* pBuilding);
+	static void CreateLimboBuilding(BuildingClass* pBuilding, BuildingTypeClass* pType, HouseClass* pOwner, int ID);
+	static int CountOwnedNowWithDeployOrUpgrade(BuildingTypeClass* pBuilding, HouseClass* pHouse);
+
+	static bool IsSameBuildingType(BuildingTypeClass* pType1, BuildingTypeClass* pType2);
 private:
 	template <typename T>
 	void Serialize(T& Stm);
@@ -449,6 +477,8 @@ public:
 class FakeBuildingTypeClass : public BuildingTypeClass
 {
 public:
+
+	bool _CanUseWaypoint();
 
 	BuildingTypeExtData* _GetExtData()
 	{

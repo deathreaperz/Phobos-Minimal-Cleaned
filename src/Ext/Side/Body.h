@@ -12,7 +12,7 @@
 class SideExtData final
 {
 public:
-	static constexpr size_t Canary = 0x05B10501;
+	static COMPILETIMEEVAL size_t Canary = 0x05B10501;
 	using base_type = SideClass;
 
 	base_type* AttachedToObject {};
@@ -100,10 +100,11 @@ public:
 
 	Valueable<SHPStruct*> MouseShape { nullptr };
 
-	Valueable<SHPStruct*> SuperWeaponSidebar_CenterShape { };
-	Valueable<SHPStruct*> SuperWeaponSidebar_TopShape { };
-	Valueable<SHPStruct*> SuperWeaponSidebar_BottomShape { };
-	Valueable<SHPStruct*> SuperWeaponSidebar_ToggleShape { };
+	PhobosPCXFile SuperWeaponSidebar_OnPCX {};
+	PhobosPCXFile SuperWeaponSidebar_OffPCX {};
+	PhobosPCXFile SuperWeaponSidebar_TopPCX {};
+	PhobosPCXFile SuperWeaponSidebar_CenterPCX {};
+	PhobosPCXFile SuperWeaponSidebar_BottomPCX {};
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
@@ -149,19 +150,19 @@ public:
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
 
-	static constexpr SHPStruct* GetGraphicalTextImage()
+	static COMPILETIMEEVAL SHPStruct* GetGraphicalTextImage()
 	{
 		return SideExtData::s_GraphicalTextImage ?
 			SideExtData::s_GraphicalTextImage.get() : FileSystem::GRFXTXT_SHP;
 	}
 
-	static constexpr ConvertClass* GetGraphicalTextConvert()
+	static COMPILETIMEEVAL ConvertClass* GetGraphicalTextConvert()
 	{
 		return SideExtData::s_GraphicalTextConvert ?
 			SideExtData::s_GraphicalTextConvert : FileSystem::GRFXTXT_Convert;
 	}
 
-	constexpr FORCEINLINE static size_t size_Of()
+	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(SideExtData) -
 			(4u //AttachedToObject

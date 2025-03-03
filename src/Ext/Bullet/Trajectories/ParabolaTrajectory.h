@@ -62,8 +62,7 @@ public:
 	ParabolaTrajectory() : PhobosTrajectory { TrajectoryFlag::Parabola } { }
 	ParabolaTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Parabola, pBullet ,pType }
-	{
-	}
+	{ }
 
 	virtual ~ParabolaTrajectory() = default;
 

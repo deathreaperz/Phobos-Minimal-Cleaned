@@ -75,7 +75,7 @@ void MoviesList::Unlock(char const* const pFilename)
 
 void MoviesList::LoadListFromINI()
 {
-	Debug::Log("Reading %s\n", StaticVars::MovieMDINI.c_str());
+	Debug::LogInfo("Reading {}", StaticVars::MovieMDINI.c_str());
 
 	CCFileClass file { StaticVars::MovieMDINI.c_str() };
 
@@ -92,7 +92,7 @@ void MoviesList::LoadListFromINI()
 		{
 			char buffer[0x20];
 			auto const pKey = ini.GetKeyName(GameStrings::Movies(), i);
-			bool read = true;
+			//bool read = true;
 			if (int len = ini.ReadString(GameStrings::Movies(), pKey, Phobos::readDefval, buffer))
 			{
 				if (!this->FindMovie(buffer))

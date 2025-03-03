@@ -19,6 +19,8 @@
 #include <CoordStruct.h>
 #include <GameOptionsClass.h>
 
+#include <Misc/DamageArea.h>
+
 //std::vector<CellClass*> AnimExtData::AnimCellUpdater::Marked;
 void AnimExtData::OnInit(AnimClass* pThis, CoordStruct* pCoord)
 {
@@ -206,7 +208,7 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 	if (appliedDamage <= 0 || pThis->IsPlaying)
 		return  SkipDamage;
 
-	const CoordStruct nCoord = pExt->BackupCoords.has_value() ? pExt->BackupCoords.get() : pThis->GetCoords();
+	CoordStruct nCoord = pExt->BackupCoords.has_value() ? pExt->BackupCoords.get() : pThis->GetCoords();
 	const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->Owner : nullptr;
 
 	if (auto const pWeapon = pTypeExt->Weapon)
@@ -219,7 +221,7 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 		auto const pWarhead = pThis->Type->Warhead ? pThis->Type->Warhead :
 			!pTypeExt->IsInviso ? RulesClass::Instance->FlameDamage2 : RulesClass::Instance->C4Warhead;
 
-		const auto nDamageResult = static_cast<int>(appliedDamage * TechnoExtData::GetDamageMult(pInvoker, !pTypeExt->Damage_ConsiderOwnerVeterancy.Get()));
+		const auto nDamageResult = static_cast<int>(TechnoExtData::GetDamageMult(pInvoker, appliedDamage, !pTypeExt->Damage_ConsiderOwnerVeterancy.Get()));
 
 		if (pTypeExt->Warhead_Detonate.Get())
 		{
@@ -232,7 +234,7 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 			// Ares keep the `Source` nullptr so it can affect everything
 			// if the `Source` contains `OwnerObject` it will cause problem because the techno need `DamageSelf`
 			// in order to deal damage to itself ,..
-			MapClass::DamageArea(nCoord, nDamageResult, pInvoker, pWarhead, pWarhead->Tiberium, pOwner);
+			DamageArea::Apply(&nCoord, nDamageResult, pInvoker, pWarhead, pWarhead->Tiberium, pOwner);
 			//PhobosGlobal::Instance()->AnimAttachedto = nullptr;
 			MapClass::FlashbangWarheadAt(nDamageResult, pWarhead, nCoord);
 		}
@@ -333,7 +335,7 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 		{
 			AbstractClass* pTarget = AnimExtData::GetTarget(pThis);
 			TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis);
-			const auto nDamageResult = static_cast<int>(pWeapon->Damage * TechnoExtData::GetDamageMult(pInvoker, !pTypeExt->Damage_ConsiderOwnerVeterancy.Get()));
+			//const auto nDamageResult = static_cast<int>(TechnoExtData::GetDamageMult(pInvoker, pWeapon->Damage , !pTypeExt->Damage_ConsiderOwnerVeterancy.Get()));
 			const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->Owner : nullptr;
 
 			WeaponTypeExtData::DetonateAt(pWeapon, pTarget, pInvoker, pTypeExt->Damage_ConsiderOwnerVeterancy, pOwner);
@@ -406,10 +408,12 @@ void AnimExtData::CreateAttachedSystem()
 		pData->AttachedSystem.Get(),
 		nLoc,
 		pThis->GetCell(),
-		nullptr,
+		this->AttachedToObject,
 		CoordStruct::Empty,
 		pThis->GetOwningHouse()
 	));
+
+	FakeAnimClass::AnimsWithAttachedParticles.emplace_back((FakeAnimClass*)pThis);
 }
 
 //Modified from Ares
@@ -546,7 +550,8 @@ void AnimExtData::SpawnFireAnims(AnimClass* pThis)
 
 			auto const loopCount = ScenarioClass::Instance->Random.RandomRanged(1, 2);
 			auto const pAnim = GameCreate<AnimClass>(pType, newCoords, 0, loopCount, 0x600u, 0, false);
-			pAnim->Owner = pThis->Owner;
+
+			AnimExtData::SetAnimOwnerHouseKind(pAnim, pThis->Owner, nullptr, false, true);
 
 			if (attach && pThis->OwnerObject)
 				pAnim->SetOwnerObject(pThis->OwnerObject);
@@ -692,7 +697,8 @@ void AnimExtData::Serialize(T& Stm)
 		.Process(this->AttachedSystem, true)
 		.Process(this->ParentBuilding, true)
 		.Process(this->CreateUnitLocation)
-		.Process(this->SpawnsStatusData)
+		//.Process(this->SpawnsStatusData)
+		.Process(this->DelayedFireRemoveOnNoDelay)
 		;
 }
 
@@ -749,7 +755,7 @@ original_code:
 
 	if (this_ptr->UniqueID == -2)
 	{
-		Debug::Log("Anim[%s - %x] with some weird ID\n", this_ptr->Type->ID, this_ptr);
+		Debug::LogInfo("Anim[{} - {}] with some weird ID", this_ptr->Type->ID, this_ptr);
 	}
 
 	FakeAnimClass::ClearExtAttribute(this_ptr);
@@ -798,13 +804,15 @@ DEFINE_HOOK(0x422131, AnimClass_CTOR, 0x6)
 	if (Phobos::Otamaa::DoingLoadGame)
 		return 0x0;
 
+	PhobosGlobal::Instance()->LastAnimName = pItem->Type->ID;
+
 	// Do this here instead of using a duplicate hook in SyncLogger.cpp
 	if (!SyncLogger::HooksDisabled && pItem->UniqueID != -2)
 		SyncLogger::AddAnimCreationSyncLogEvent(CTORTemp::coords, CTORTemp::callerAddress);
 
 	if (pItem->UniqueID == -2)
 	{
-		Debug::Log("Anim[%s - %x] with some weird ID\n", pItem->Type->ID, pItem);
+		Debug::LogInfo("Anim[{} - {}] with some weird ID", pItem->Type->ID, (void*)pItem);
 	}
 
 	FakeAnimClass::ClearExtAttribute(pItem);
@@ -818,12 +826,19 @@ DEFINE_HOOK(0x422131, AnimClass_CTOR, 0x6)
 			val->CreateAttachedSystem();
 	}
 
+	PhobosGlobal::Instance()->LastAnimName.clear();
 	return 0;
 }
 
 DEFINE_HOOK(0x422A52, AnimClass_DTOR, 0x6)
 {
-	GET(AnimClass* const, pItem, ESI);
+	GET(AnimClass*, pItem, ESI);
+
+	FakeAnimClass::AnimsWithAttachedParticles.remove_all_if([pItem](FakeAnimClass* pAnim)
+ {
+	 return (FakeAnimClass*)pItem == pAnim;
+	});
+
 	FakeAnimClass::Remove(pItem);
 	return 0;
 }
@@ -884,11 +899,11 @@ HRESULT __stdcall FakeAnimClass::_Save(IStream* pStm, bool clearDirty)
 		// save the block
 		if (!saver.WriteBlockToStream(pStm))
 		{
-			//Debug::Log("[SaveGame] FakeAnimClass fail to write 0x%X block(s) to stream\n", saver.Size());
+			//Debug::LogInfo("[SaveGame] FakeAnimClass fail to write 0x%X block(s) to stream", saver.Size());
 			return -1;
 		}
 
-		//Debug::Log("[SaveGame] FakeAnimClass used up 0x%X bytes\n", saver.Size());
+		//Debug::LogInfo("[SaveGame] FakeAnimClass used up 0x%X bytes", saver.Size());
 	}
 
 	return res;
@@ -903,25 +918,28 @@ DEFINE_HOOK(0x425164, AnimClass_Detach, 0x6)
 	GET(AbstractClass*, target, EDI);
 	GET_STACK(bool, all, STACK_OFFS(0xC, -0x8));
 
+	R->EBX(0);
 	if (auto pExt = pThis->_GetExtData())
 		pExt->InvalidatePointer(target, all);
 
-	R->EBX(0);
+	if (pThis->Type == target)
+	{
+		Debug::LogInfo("Anim[0x{}] detaching Type[{}] Pointer ! ", (void*)pThis, pThis->Type->ID);
+		pThis->Type = nullptr;
+	}
 
 	if (pThis->OwnerObject == target && target)
 	{
 		auto const pTechno = flag_cast_to<TechnoClass*, false>(target);
+		if (!pTechno)
+			return 0x425174;
 
-		if (!pTechno || !TechnoExtContainer::Instance.Find(pTechno)->IsDetachingForCloak)
+		const auto pExt = TechnoExtContainer::Instance.Find(pTechno);
+
+		if (pExt && !pExt->IsDetachingForCloak)
 		{
 			return 0x425174;
 		}
-	}
-
-	if (pThis->Type == target)
-	{
-		Debug::Log("Anim[0x%x] detaching Type[%s] Pointer ! \n", pThis, pThis->Type->ID);
-		pThis->Type = nullptr;
 	}
 
 	return 0x4251B1;

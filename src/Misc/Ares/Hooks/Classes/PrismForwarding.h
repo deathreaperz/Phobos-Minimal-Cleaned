@@ -1,13 +1,14 @@
 #pragma once
 
 #include <Utilities/SavegameDef.h>
-#include <Ext/BuildingType/Body.h>
 
 class BuildingClass;
 class PrismForwardingData;
 class PrismForwarding
 {
 public:
+
+	static OPTIONALINLINE HelperedVector<PrismForwarding*> Array {};
 
 	BuildingClass* Owner;
 	HelperedVector<PrismForwarding*> Senders;		//the prism towers that are forwarding to this one
@@ -17,210 +18,44 @@ public:
 	int DamageReserve;					//current flat reservoir
 
 	// constructor
-	constexpr PrismForwarding() : Owner(nullptr),
+	PrismForwarding() : Owner(nullptr),
 		Senders(),
 		SupportTarget(nullptr),
 		PrismChargeDelay(0),
 		ModifierReserve(0.0),
 		DamageReserve(0)
 	{
+		Array.push_back(this);
 	}
 
-	constexpr ~PrismForwarding()
+	~PrismForwarding()
 	{
 		this->RemoveFromNetwork(true);
+		this->Owner = nullptr;
 		this->Senders.clear();
-	}
 
-	constexpr BuildingClass* GetOwner() const
-	{
-		return this->Owner;
-	}
-
-	constexpr PrismForwardingData* GetOwnerData() const
-	{
-		return BuildingTypeExtContainer::Instance.Find(this->Owner->Type)->PrismForwarding.AsPointer();
-	}
-
-	constexpr int AcquireSlaves_MultiStage(PrismForwarding* TargetTower, int stage, int chain, int& NetworkSize, int& LongestChain)
-	{
-		//get all slaves for a specific stage in the prism chain
-		//this is done for all sibling chains in parallel, so we prefer multiple short chains over one really long chain
-		//towers should be added in the following way:
-		// 1---2---4---6
-		// |        \
-		// |         7
-		// |
-		// 3---5--8
-		// as opposed to
-		// 1---2---3---4
-		// |          /
-		// |         5
-		// |
-		// 6---7--8
-		// ...which would not be as good.
-		int  countSlaves = 0;
-
-		if (stage == 0)
+		for (auto& pr : Array)
 		{
-			countSlaves += this->AcquireSlaves_SingleStage(TargetTower, stage, chain + 1, NetworkSize, LongestChain);
-		}
-		else
-		{
-			// do not think of using iterators or a ranged-for here. Senders grows and might reallocate.
-			for (auto& sender : TargetTower->Senders)
+			if (pr != this && pr->SupportTarget == this)
 			{
-				countSlaves += this->AcquireSlaves_MultiStage(sender, stage - 1, chain + 1, NetworkSize, LongestChain);
+				pr->SetSupportTarget(nullptr);
 			}
 		}
 
-		return countSlaves;
+		Array.remove(this);
 	}
 
+	void RemoveFromNetwork(bool bCease);
+	void SetSupportTarget(PrismForwarding* pTargetTower);
+	PrismForwardingData* GetOwnerData() const;
+	int AcquireSlaves_MultiStage(PrismForwarding* TargetTower, int stage, int chain, int& NetworkSize, int& LongestChain);
 	int AcquireSlaves_SingleStage(PrismForwarding* TargetTower, int stage, int chain, int& NetworkSize, int& LongestChain);
 	bool ValidateSupportTower(PrismForwarding* pTargetTower, PrismForwarding* pSlaveTower);
-
-	constexpr void SetChargeDelay(int LongestChain)
-	{
-		auto const ArrayLen = LongestChain + 1;
-		std::vector<DWORD> LongestCDelay(ArrayLen, 0);
-		std::vector<DWORD> LongestFDelay(ArrayLen, 0);
-
-		for (auto endChain = LongestChain; endChain >= 0; --endChain)
-		{
-			this->SetChargeDelay_Get(0, endChain, LongestChain, LongestCDelay.data(), LongestFDelay.data());
-		}
-
-		this->SetChargeDelay_Set(0, LongestCDelay.data(), LongestFDelay.data(), LongestChain);
-	}
-
-	constexpr void SetChargeDelay_Get(int chain, int endChain, int LongestChain, DWORD* LongestCDelay, DWORD* LongestFDelay)
-	{
-		auto const TargetTower = this->GetOwner();
-
-		if (chain == endChain)
-		{
-			if (chain != LongestChain)
-			{
-				auto const pTypeData = BuildingTypeExtContainer::Instance.Find(TargetTower->Type);
-				//update the delays for this chain
-				auto const thisDelay = pTypeData->PrismForwarding.ChargeDelay + LongestCDelay[chain + 1];
-				if (thisDelay > LongestCDelay[chain])
-				{
-					LongestCDelay[chain] = thisDelay;
-				}
-			}
-			if (TargetTower->DelayBeforeFiring > LongestFDelay[chain])
-			{
-				LongestFDelay[chain] = TargetTower->DelayBeforeFiring;
-			}
-		}
-		else
-		{
-			//ascend to the next chain
-			for (auto& SenderTower : this->Senders)
-			{
-				SenderTower->SetChargeDelay_Get(chain + 1, endChain, LongestChain, LongestCDelay, LongestFDelay);
-			}
-		}
-	}
-
-	constexpr void SetChargeDelay_Set(int chain, DWORD const* LongestCDelay, DWORD const* LongestFDelay, int LongestChain)
-	{
-		auto const pTargetTower = this->GetOwner();
-
-		this->PrismChargeDelay = (LongestFDelay[chain] - pTargetTower->DelayBeforeFiring) + LongestCDelay[chain];
-		pTargetTower->SupportingPrisms = (LongestChain - chain);
-
-		if (this->PrismChargeDelay == 0)
-		{
-			//no delay, so start animations now
-			if (pTargetTower->Type->GetBuildingAnim(BuildingAnimSlot::Special).Anim[0])
-			{ //only if it actually has a special anim
-				pTargetTower->DestroyNthAnim(BuildingAnimSlot::Active);
-				pTargetTower->Game_PlayNthAnim(BuildingAnimSlot::Special, !pTargetTower->IsGreenHP(), pTargetTower->GetOccupantCount() > 0, 0);
-			}
-		}
-
-		for (auto& Sender : this->Senders)
-		{
-			Sender->SetChargeDelay_Set(chain + 1, LongestCDelay, LongestFDelay, LongestChain);
-		}
-	}
-
-	constexpr void RemoveFromNetwork(bool bCease)
-	{
-		if (this->PrismChargeDelay || bCease)
-		{
-			//either hasn't started charging yet or animations have been reset so should go idle immediately
-			this->PrismChargeDelay = 0;
-			this->ModifierReserve = 0.0;
-			this->DamageReserve = 0;
-
-			auto pSlave = this->GetOwner();
-			pSlave->PrismStage = PrismChargeState::Idle;
-			pSlave->DelayBeforeFiring = 0;
-			//animations should be controlled by whatever incapacitated the tower so no need to mess with anims here
-		}
-
-		this->SetSupportTarget(nullptr);
-
-		//finally, remove all the preceding slaves from the network
-		for (int senderIdx = ((int)this->Senders.size()) - 1; senderIdx > 0; --senderIdx)
-		{
-			this->Senders[senderIdx]->RemoveFromNetwork(false);
-		}
-	}
-
-	constexpr void SetSupportTarget(PrismForwarding* pTargetTower)
-	{
-		// meet the new tower, same as the old tower
-		if (this->SupportTarget == pTargetTower)
-		{
-			return;
-		}
-
-		// if the target tower is already set, disconnect it by removing it from the old target tower's sender list
-		if (auto const pOldTarget = this->SupportTarget)
-		{
-			if (!pOldTarget->Senders.remove(this))
-			{
-				Debug::Log("PrismForwarding::SetSupportTarget: Old target tower (%p) did not consider this tower (%p) as its sender.\n",
-					pOldTarget->GetOwner(), this->GetOwner());
-			}
-		}
-
-		this->SupportTarget = pTargetTower;
-
-		// set the new tower as support target
-		if (pTargetTower)
-		{
-			pTargetTower->Senders.push_back_unique(this);
-		}
-	}
-
-	constexpr void RemoveAllSenders()
-	{
-		// disconnect all sender towers from their support target, which is me
-		for (auto senderIdx = ((int)this->Senders.size()) - 1; senderIdx > 0; senderIdx--)
-		{
-			this->Senders[senderIdx]->SetSupportTarget(nullptr);
-		}
-
-		// log if not all senders could be removed
-		if (this->Senders.size())
-		{
-			Debug::Log("PrismForwarding::RemoveAllSenders: Tower (%p) still has %d senders after removal completed.\n",
-				this->GetOwner(), this->Senders.size());
-
-			for (size_t i = 0; i < this->Senders.size(); ++i)
-			{
-				Debug::Log("Sender %03d: %p\n", i, this->Senders[i]->GetOwner());
-			}
-
-			this->Senders.clear();
-		}
-	}
+	void SetChargeDelay_Get(int chain, int endChain, int LongestChain, DWORD* LongestCDelay, DWORD* LongestFDelay);
+	void SetChargeDelay(int LongestChain);
+	void SetChargeDelay_Set(int chain, DWORD const* LongestCDelay, DWORD const* LongestFDelay, int LongestChain);
+	void RemoveAllSenders();
+	void InvalidatePointer(AbstractClass* ptr, bool bRemove);
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
@@ -249,15 +84,13 @@ public:
 			.Success() && Stm.RegisterChange(this)
 			;
 	}
+};
 
-	constexpr void InvalidatePointer(AbstractClass* ptr, bool bRemove)
+template <>
+struct Savegame::ObjectFactory<PrismForwarding>
+{
+	std::unique_ptr<PrismForwarding> operator() (PhobosStreamReader& Stm) const
 	{
-		if (bRemove && this->SupportTarget && this->SupportTarget->Owner == ptr)
-			this->SupportTarget = nullptr;
+		return std::make_unique<PrismForwarding>();
 	}
-
-public:
-	PrismForwarding(const PrismForwarding&) = delete;
-	PrismForwarding& operator = (const PrismForwarding&) = delete;
-	PrismForwarding& operator = (PrismForwarding&&) = delete;
 };

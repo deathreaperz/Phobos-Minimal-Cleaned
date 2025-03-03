@@ -1242,7 +1242,7 @@ void TechnoClass::SpillTiberium(int& value, int idx, CellClass* pCenter, Point2D
 	if (!pCenter)
 		return;
 
-	constexpr FacingType Neighbours[] = {
+	COMPILETIMEEVAL FacingType Neighbours[] = {
 		FacingType::NorthWest,
 		FacingType::East,
 		FacingType::NorthWest,

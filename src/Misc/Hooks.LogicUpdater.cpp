@@ -1,4 +1,5 @@
 #include <Ext/Anim/Body.h>
+#include <Ext/Aircraft/Body.h>
 #include <Ext/Techno/Body.h>
 #include <Ext/TechnoType/Body.h>
 #include <Ext/Building/Body.h>
@@ -130,6 +131,7 @@ DEFINE_HOOK(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 	//type may already change ,..
 	auto const pType = pThis->GetTechnoType();
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
 	const auto IsBuilding = pThis->WhatAmI() == BuildingClass::AbsID;
 	bool IsInLimboDelivered = false;
@@ -144,7 +146,7 @@ DEFINE_HOOK(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 	{
 		if (!pType->Spawned && !IsInLimboDelivered && !pThis->InLimbo)
 		{
-			Debug::Log("Techno[%x : %s] With Invalid Location ! , Removing ! \n", pThis, pThis->get_ID());
+			Debug::LogInfo("Techno[{} : {}] With Invalid Location ! , Removing ! ", (void*)pThis, pThis->get_ID());
 			TechnoExtData::HandleRemove(pThis, nullptr, false, false);
 			return retDead;
 		}
@@ -176,7 +178,7 @@ DEFINE_HOOK(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 	pExt->UpdateInterceptor();
 
 	//pExt->UpdateFireSelf();
-	//pExt->UpdateMobileRefinery();
+	pExt->UpdateMobileRefinery();
 	pExt->UpdateMCRangeLimit();
 	pExt->UpdateSpawnLimitRange();
 	pExt->UpdateEatPassengers();
@@ -195,6 +197,7 @@ DEFINE_HOOK(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 	}
 
 	pExt->DepletedAmmoActions();
+	pExt->UpdateGattlingRateDownReset();
 #endif
 
 	return Continue;
@@ -247,35 +250,40 @@ DEFINE_HOOK(0x6F9EAD, TechnoClass_AI_AfterAres, 0x7)
 
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	//const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
 #ifdef ENABLE_THESE
-	//PassengersFunctional::AI(pThis);
-	//SpawnSupportFunctional::AI(pThis);
+	PassengersFunctional::AI(pThis);
+	SpawnSupportFunctional::AI(pThis);
 
-	//pExt->MyWeaponManager.TechnoClass_Update_CustomWeapon(pThis);
+	pExt->MyWeaponManager.TechnoClass_Update_CustomWeapon(pThis);
 
-	//if(pThis->IsAlive)
-	//	GiftBoxFunctional::AI(pExt, pTypeExt);
+	if (pThis->IsAlive)
+		GiftBoxFunctional::AI(pExt, pTypeExt);
 
-	//if(pThis->IsAlive){
-		//auto it = std::remove_if(pExt->PaintBallStates.begin() , pExt->PaintBallStates.end() ,[pThis](auto& pb){
-		//		if(pb.second.timer.GetTimeLeft()) {
-		//			if (pThis->WhatAmI() == BuildingClass::AbsID) {
-		//				BuildingExtContainer::Instance.Find(static_cast<BuildingClass*>(pThis))->LighningNeedUpdate = true;
-		//			}
-		//			return false;
-		//		}
-		//
-		//	return true;
-		//});
+	if (pThis->IsAlive)
+	{
+		auto it = std::remove_if(pExt->PaintBallStates.begin(), pExt->PaintBallStates.end(), [pThis](auto& pb)
+{
+	if (pb.second.timer.GetTimeLeft())
+	{
+		if (pThis->WhatAmI() == BuildingClass::AbsID)
+		{
+			BuildingExtContainer::Instance.Find(static_cast<BuildingClass*>(pThis))->LighningNeedUpdate = true;
+		}
+		return false;
+	}
 
-		//pExt->PaintBallStates.erase(it);
+	return true;
+		});
 
-		//if (auto& pDSState = pExt->DamageSelfState) {
-		//	pDSState->TechnoClass_Update_DamageSelf(pThis);
-		//}
-	//}
+		pExt->PaintBallStates.erase(it);
+
+		if (auto& pDSState = pExt->DamageSelfState)
+		{
+			pDSState->TechnoClass_Update_DamageSelf(pThis);
+		}
+	}
 #endif
 	return pThis->IsAlive ? 0x6F9EBB : 0x6FAFFD;
 	//return 0x6F9EBB;
@@ -325,43 +333,12 @@ bool Spawned_Check_Destruction(AircraftClass* aircraft)
 	return false;
 }
 
-DEFINE_HOOK(0x414DA1, AircraftClass_AI_FootClass_AI, 0x7)
-{
-	GET(AircraftClass*, pThis, ESI);
+DEFINE_JUMP(CALL, 0x414DA3, MiscTools::to_DWORD(&FakeAircraftClass::_FootClass_Update_Wrapper));
 
-	auto pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
-
-#ifdef ENABLE_THESE
-	pExt->UpdateAircraftOpentopped();
-	//AircraftPutDataFunctional::AI(pExt, pTypeExt);
-	//AircraftDiveFunctional::AI(pExt, pTypeExt);
-	//FighterAreaGuardFunctional::AI(pExt, pTypeExt);
-
-	//if (pThis->IsAlive && pThis->SpawnOwner != nullptr)
-	//{
-	//
-	//	/**
-	//	 *  If we are close enough to our owner, delete us and return true
-	//	 *  to signal to the challer that we were deleted.
-	//	 */
-	//	if (Spawned_Check_Destruction(pThis))
-	//	{
-	//		pThis->UnInit();
-	//		return 0x414F99;
-	//	}
-	//}
-
-#endif
-	pThis->FootClass::Update();
-	return 0x414DA8;
-}
-
-DEFINE_HOOK(0x4DA698, FootClass_AI_IsMovingNow, 0x8)
+DEFINE_HOOK(0x4DA677, FootClass_AI_IsMovingNow, 0x6)
 {
 	GET(FootClass*, pThis, ESI);
-	GET8(bool, IsMovingNow, AL);
+	//GET8(bool, IsMovingNow, AL);
 
 	//if (auto pTeam = pThis->Team) {
 	//	if (pTeam->CurrentScript->CurrentMission == -1) {
@@ -375,10 +352,10 @@ DEFINE_HOOK(0x4DA698, FootClass_AI_IsMovingNow, 0x8)
 #ifdef ENABLE_THESE
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	// DriveDataFunctional::AI(pExt);
-	 //UpdateWebbed(pThis);
+	DriveDataFunctional::AI(pExt);
+	//UpdateWebbed(pThis);
 #endif
-	if (IsMovingNow)
+	if (pThis->Locomotor.GetInterfacePtr()->Is_Moving_Now())
 	{
 #ifdef ENABLE_THESE
 		// LaserTrails update routine is in TechnoClass::AI hook because TechnoClass::Draw
@@ -404,6 +381,7 @@ DEFINE_HOOK(0x71A88D, TemporalClass_AI_Add, 0x8) //0
 			pTarget->IsMouseHovering = false;
 
 		auto const pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
+		auto const pTargetTypeExt = TechnoTypeExtContainer::Instance.Find(pTarget->GetTechnoType());
 
 		if (const auto pShieldData = pTargetExt->GetShield())
 		{
@@ -419,6 +397,8 @@ DEFINE_HOOK(0x71A88D, TemporalClass_AI_Add, 0x8) //0
 			if (ae)
 				ae->AI_Temporal();
 		}
+
+		pTargetExt->UpdateRearmInTemporal();
 
 		if (auto pBldTarget = cast_to<BuildingClass*, false>(pTarget))
 		{

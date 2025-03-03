@@ -22,7 +22,7 @@ const wchar_t* ShowAnimNameCommandClass::GetUIName() const
 
 const wchar_t* ShowAnimNameCommandClass::GetUICategory() const
 {
-	return CATEGORY_DEVELOPMENT;
+	return CATEGORY_GUIDEBUG;
 }
 
 const wchar_t* ShowAnimNameCommandClass::GetUIDescription() const
@@ -67,7 +67,7 @@ void ShowAnimNameCommandClass::AI()
 
 			//if (auto const pTechnoOwnerObject = pTech->OwnerObject) {
 			//	if (!pTechnoOwnerObject->IsAlive || !pTechnoOwnerObject->IsOnMap)
-			//		Debug::Log("Anim [%s - %x] Attahed to DeadObject[%s - %x] , WTF ?\n", pTech->Type->ID , pTech , pTechnoOwnerObject->get_ID() , pTechnoOwnerObject);
+			//		Debug::LogInfo("Anim [%s - %x] Attahed to DeadObject[%s - %x] , WTF ?", pTech->Type->ID , pTech , pTechnoOwnerObject->get_ID() , pTechnoOwnerObject);
 			//}
 
 			std::wstring pText(sizeof(pTech->Type->ID) + 0x1, L'#');

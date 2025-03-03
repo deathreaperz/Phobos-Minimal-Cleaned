@@ -33,7 +33,7 @@ struct TrackerClass
 	int GetCount(int at) const
 	{
 		if ((size_t)at >= this->Items.size())
-			Debug::FatalError("Trying to acces out of bound tracker [%d of %d] !\n", at, this->Items.size());
+			Debug::FatalError("Trying to acces out of bound tracker [%d of %d] !", at, this->Items.size());
 
 		return this->Items[at];
 	}
@@ -41,7 +41,7 @@ struct TrackerClass
 	void Increment(int at)
 	{
 		if ((size_t)at >= this->Items.size())
-			Debug::FatalError("Trying to acces out of bound tracker [%d of %d] !\n", at, this->Items.size());
+			Debug::FatalError("Trying to acces out of bound tracker [%d of %d] !", at, this->Items.size());
 
 		++this->Items[at];
 	}
@@ -49,7 +49,7 @@ struct TrackerClass
 	void Decrement(int at)
 	{
 		if ((size_t)at >= this->Items.size())
-			Debug::FatalError("Trying to acces out of bound tracker [%d of %d] !\n", at, this->Items.size());
+			Debug::FatalError("Trying to acces out of bound tracker [%d of %d] !", at, this->Items.size());
 
 		--this->Items[at];
 	}

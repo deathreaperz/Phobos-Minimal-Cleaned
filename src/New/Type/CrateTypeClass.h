@@ -29,7 +29,7 @@ public:
 	{ }
 
 	static void ReadListFromINI(CCINIClass* pINI);
-	static void inline AddDefaults()
+	static void OPTIONALINLINE AddDefaults()
 	{
 		if (Array.empty())
 		{
@@ -37,7 +37,7 @@ public:
 
 			for (auto crate : Powerups::Effects)
 			{
-				Debug::Log("Creating default Crate of [%s]\n", crate);
+				Debug::LogInfo("Creating default Crate of [{}]", crate);
 				Allocate(crate);
 			}
 		}

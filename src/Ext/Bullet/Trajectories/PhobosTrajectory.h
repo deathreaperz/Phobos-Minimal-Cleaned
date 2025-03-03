@@ -20,6 +20,7 @@ enum class TrajectoryFlag : int
 	Disperse = 11,
 	Engrave = 12,
 	Parabola = 13,
+	Tracing = 14,
 	Count
 };
 
@@ -31,6 +32,7 @@ class PhobosTrajectoryType
 public:
 	TrajectoryFlag Flag { TrajectoryFlag::Invalid };
 	Nullable<Leptons> DetonationDistance { };
+	Valueable<double> Trajectory_Speed { 100.0 };
 
 	PhobosTrajectoryType(noinit_t) { }
 	PhobosTrajectoryType(TrajectoryFlag flag) : Flag { flag }
@@ -74,8 +76,7 @@ public:
 		, AttachedTo { pBullet }
 		, Type { type }
 		, DetonationDistance { 0 }
-	{
-	}
+	{ }
 
 	virtual ~PhobosTrajectory() = default;
 

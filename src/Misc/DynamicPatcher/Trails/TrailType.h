@@ -59,8 +59,7 @@ public:
 	{
 		ParticleTrailType()
 			:ParticleSystem { nullptr }
-		{
-		};
+		{ };
 
 		~ParticleTrailType() = default;
 

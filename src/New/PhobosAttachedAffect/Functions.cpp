@@ -92,9 +92,9 @@ void PhobosAEFunctions::UpdateAttachEffects(TechnoClass* pTechno)
 	auto const pThis = pTechno;
 	bool inTunnel = pExt->IsInTunnel || pExt->IsBurrowed;
 	bool markForRedraw = false;
-	StackVector<WeaponTypeClass*, 256> expireWeapons;
+	StackVector<WeaponTypeClass*, 256> expireWeapons {};
 
-	pExt->PhobosAE.remove_if([&](std::unique_ptr<PhobosAttachEffectClass>& attachEffect)
+	pExt->PhobosAE.remove_all_if([&](std::unique_ptr<PhobosAttachEffectClass>& attachEffect)
  {
 	 if (!attachEffect.get())
 	 {
@@ -218,10 +218,10 @@ void PhobosAEFunctions::UpdateSelfOwnedAttachEffects(TechnoClass* pTechno, Techn
 
 	if (!pExt->PhobosAE.empty())
 	{
-		StackVector<WeaponTypeClass*, 256> expireWeapons;
+		StackVector<WeaponTypeClass*, 256> expireWeapons {};
 
 		// Delete ones on old type and not on current.
-		pExt->PhobosAE.remove_if([&](std::unique_ptr<PhobosAttachEffectClass>& it)
+		pExt->PhobosAE.remove_all_if([&](std::unique_ptr<PhobosAttachEffectClass>& it)
  {
 	 if (!it.get())
 	 {
@@ -324,7 +324,7 @@ void PhobosAEFunctions::ApplyExpireWeapon(std::vector<WeaponTypeClass*>& expireW
 
 void PhobosAEFunctions::ApplyReflectDamage(TechnoClass* pThis, int* pDamage, TechnoClass* pAttacker, HouseClass* pAttacker_House, WarheadTypeClass* pWH)
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", pThis->GetThisClassName(), pThis->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", pThis->GetThisClassName(), pThis->get_ID());
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
 

@@ -15,10 +15,10 @@ public:
 		Count(0),
 		Capacity(capacity),
 		Nodes((T**)YRMemory::Allocate(sizeof(T*)* (capacity + 1))),
-		LMost(0),
-		RMost(-1)
+		LMost(0u),
+		RMost(0xffffffff)
 	{
-		if constexpr (!std::is_pointer<T>())
+		if COMPILETIMEEVAL (!std::is_pointer<T>())
 			memset(Nodes, 0, sizeof(T*) * (Count + 1));
 		else
 		{
@@ -38,7 +38,7 @@ public:
 
 	void Clear()
 	{
-		if constexpr (!std::is_pointer<T>())
+		if COMPILETIMEEVAL (!std::is_pointer<T>())
 			memset(Nodes, 0, sizeof(T*) * (Count + 1));
 		else
 		{

@@ -156,7 +156,7 @@ void CustomWeaponManager::SimulateBurstFireOnce(TechnoClass* pShooter, TechnoCla
 	CoordStruct targetPos = pTarget->GetCoords();
 	VelocityClass bulletVelocity {};
 	GetBulletVelocity(bulletVelocity, sourcePos, targetPos, pShooter, burst.Burst, burst.FireData.RadialAngle, burst.FireData.RadialFire, burst.Index);
-	const auto pBullet = Helpers_DP::FireBulletTo(pAttacker, pTarget, pWeapon, sourcePos, targetPos, bulletVelocity);
+	Helpers_DP::FireBulletTo(pAttacker, pTarget, pWeapon, sourcePos, targetPos, bulletVelocity);
 	burst.CountOne();
 }
 
@@ -167,7 +167,7 @@ TechnoClass* CustomWeaponManager::WhoIsShooter(TechnoClass* pAttacker) const
 
 void  CustomWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	this->simulateBurstQueue.remove_if([ptr, bRemoved](const auto& queue)
+	this->simulateBurstQueue.remove_all_if([ptr, bRemoved](const auto& queue)
  {
 	 return (queue.Target == ptr || queue.Shooter == ptr) && bRemoved;
 	});
@@ -202,7 +202,7 @@ bool FireWeaponManager::FireCustomWeapon(TechnoClass* pShooter, TechnoClass* pAt
 
 void FireWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	this->DelayFires.remove_if([ptr, bRemoved](const auto& queue)
+	this->DelayFires.remove_all_if([ptr, bRemoved](const auto& queue)
  {
 	 return queue.Target == ptr && bRemoved;
 	});

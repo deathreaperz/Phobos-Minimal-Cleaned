@@ -26,8 +26,7 @@ public:
 	ArcingTrajectory() : PhobosTrajectory { TrajectoryFlag::Arcing } { }
 	ArcingTrajectory(BulletClass* pBullet, PhobosTrajectoryType* pType) :
 		PhobosTrajectory { TrajectoryFlag::Arcing, pBullet ,pType }
-	{
-	}
+	{ }
 
 	virtual ~ArcingTrajectory() = default;
 

@@ -63,7 +63,7 @@ DEFINE_HOOK(0x736AFB, UnitClass_UpdateRotation_CheckTurnToForward, 0x6)
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	if (pExt->UnitIdleActionTimer.IsTicking() || pExt->UnitIdleActionGapTimer.IsTicking() || pExt->UnitIdleIsSelected)
-	   return ContinueGameCode;
+		return ContinueGameCode;
 
 	return SkipGameCode;
 }

@@ -16,7 +16,6 @@
 #include <Ext/BuildingType/Body.h>
 #include <Ext/BulletType/Body.h>
 #include <Ext/VoxelAnim/Body.h>
-#include <Ext/BuildingType/Body.h>
 #include <Ext/InfantryType/Body.h>
 #include <Ext/HouseType/Body.h>
 #include <Ext/WarheadType/Body.h>
@@ -26,6 +25,7 @@
 
 #include <Misc/PhobosGlobal.h>
 #include <Misc/Hooks.Otamaa.h>
+#include <Misc/DamageArea.h>
 
 #include <RadarEventClass.h>
 
@@ -142,7 +142,7 @@ DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
 			if (pFactory && pFactory->Object)
 			{
 				auto pProdType = TechnoExtContainer::Instance.Find(pFactory->Object)->Type;
-				const int nTotal = pFactory->CountTotal(pProdType);
+				//const int nTotal = pFactory->CountTotal(pProdType);
 				Point2D DrawCameoLoc = { pLocation->X , pLocation->Y + 45 };
 				const auto pProdTypeExt = TechnoTypeExtContainer::Instance.Find(pProdType);
 				RectangleStruct cameoRect {};
@@ -299,35 +299,6 @@ DEFINE_HOOK(0x445A72, BuildingClass_Remove_AIBaseNormal, 6)
 	GET(BuildingClass*, pThis, ESI);
 	R->EAX(TechnoExt_ExtData::IsBaseNormal(pThis));
 	return 0x445A94;
-}
-
-DEFINE_HOOK(0x442974, BuildingClass_ReceiveDamage_Malicious, 6)
-{
-	GET(BuildingClass*, pThis, ESI);
-	GET_STACK(WarheadTypeClass*, pWH, 0xA8);
-
-	if (WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative)
-		return 0x442980;
-
-	BuildingExtContainer::Instance.Find(pThis)->ReceiveDamageWarhead = pWH;
-	pThis->BuildingUnderAttack();
-
-	return 0x442980;
-}
-
-DEFINE_HOOK(0x44227E, BuildingClass_ReceiveDamage_Nonprovocative_DonotSetLAT, 0x6)
-{
-	GET(BuildingClass*, pThis, ESI);
-	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFSET(0x9C, 0xC));
-
-	if (WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative)
-		return 0x4422C1;
-
-	if (!R->EBP<AbstractClass*>())
-		return 0x4422C1;
-
-	R->AL(pThis->IsStrange());
-	return 0x44228C;
 }
 
 // replaces the UnitReload handling and makes each docker independent of all
@@ -507,7 +478,7 @@ DEFINE_HOOK(0x69281E, DisplayClass_ChooseAction_TogglePower, 0xA)
 	GET(TechnoClass*, pTarget, ESI);
 	REF_STACK(Action, action, STACK_OFFS(0x20, 0x10));
 
-	bool allowed = false;
+	//bool allowed = false;
 	action = Action::NoTogglePower;
 
 	if (auto pBld = cast_to<BuildingClass*>(pTarget))
@@ -607,7 +578,7 @@ DEFINE_HOOK(0x519FAF, InfantryClass_UpdatePosition_EngineerRepairsFriendly, 6)
 			TargetTypeExtData->RubbleIntactAnim
 		);
 
-		Debug::Log(__FUNCTION__" Called \n");
+		Debug::LogInfo(__FUNCTION__" Called ");
 		TechnoExtData::HandleRemove(Target, nullptr, false, false);
 
 		if (pRubble)
@@ -788,7 +759,7 @@ DEFINE_HOOK(0x44840B, BuildingClass_ChangeOwnership_Tech, 6)
 // not just the main building
 struct ProduceCashData
 {
-	static constexpr inline size_t count = 0x4;
+	static COMPILETIMEEVAL OPTIONALINLINE size_t count = 0x4;
 	std::array<int, count> CurrentProduceCashBudget {};
 	std::array<bool, count> IsCaptureOneTimeCashGiven {};
 	std::array<bool, count> IsBudgetDepleted {};
@@ -1110,7 +1081,7 @@ DEFINE_HOOK(0x4430E8, BuildingClass_Destroyed_SurvivourLog, 0x6)
 	const auto pInfID = pInf ? pInf->Type->Name : GameStrings::NoneStr();
 	const auto pOwnedID = pThis && pThis->Owner && pThis->Owner->Type ? pThis->Owner->Type->ID : GameStrings::NoneStr();
 
-	Debug::Log("[%x][%s - %s] Creating survivor type '%s' \n", pThis, pBldID, pOwnedID, pInfID);
+	Debug::LogInfo("[{}][{} - {}] Creating survivor type '{}' ", (void*)pThis, pBldID, pOwnedID, pInfID);
 	return 0x443109;
 }
 
@@ -1314,14 +1285,6 @@ DEFINE_HOOK(0x444D26, BuildingClass_KickOutUnit_ArmoryExitBug, 0x6)
 // BuildingClass_KickOutUnit_PreventClone
 DEFINE_JUMP(LJMP, 0x4449DF, 0x444A53);
 
-DEFINE_HOOK(0x44266B, BuildingClass_ReceiveDamage_Destroyed, 0x6)
-{
-	GET(BuildingClass*, pThis, ESI);
-	GET(TechnoClass*, pKiller, EBP);
-	pThis->Destroyed(pKiller);
-	return 0x0;
-}
-
 DEFINE_HOOK(0x4586D6, BuildingClass_KillOccupiers, 0x9)
 {
 	GET(TechnoClass*, pVictim, ECX);
@@ -1478,10 +1441,11 @@ void SetFreeUnitMission(UnitClass* pUnit)
 
 void SpawnFreeUnits(BuildingClass* pBuilding, int count)
 {
-	if (!count)
+	if (count <= 0)
 		return;
 
-	std::vector<bool> placements(count);
+	std::vector<bool> placements {};
+	placements.resize(count);
 
 	const auto pBldLoc = pBuilding->GetCoords();
 	const auto pBldCell = CellClass::Coord2Cell(pBldLoc);
@@ -1502,7 +1466,7 @@ void SpawnFreeUnits(BuildingClass* pBuilding, int count)
 			for (int i = 0; i < 2; ++i)
 			{
 				const auto pBldLoc_Cell = CellClass::Coord2Cell(pBuilding->Location);
-				int zone = MapClass::Instance->GetMapZone(pBldLoc_Cell, pUnit->Type->MovementZone, false);
+				auto zone = MapClass::Instance->GetMovementZoneType(pBldLoc_Cell, pUnit->Type->MovementZone, false);
 				auto nearbyLoc = MapClass::Instance->NearByLocation(pBldLoc_Cell,
 				pUnit->Type->SpeedType,
 				zone,
@@ -1901,7 +1865,10 @@ void WhenInfiltratesInto(FakeInfantryClass* pSpy, BuildingClass* pBuilding)
 				if (pSpy->_GetTypeExtData()->WhenInfiltrate_Warhead_Full)
 					WarheadTypeExtData::DetonateAt(pWarhead, pBuilding->GetCoords(), pSpy, damage, pSpy->Owner);
 				else
-					MapClass::DamageArea(pBuilding->GetCoords(), damage, pSpy, pWarhead, true, pSpy->Owner);
+				{
+					auto coord = pBuilding->GetCoords();
+					DamageArea::Apply(&coord, damage, pSpy, pWarhead, true, pSpy->Owner);
+				}
 			}
 		}
 	}
@@ -2278,27 +2245,12 @@ DEFINE_HOOK(0x456768, BuildingClass_DrawRadialIndicator_Always, 0x6)
 		0x456776 : 0x456962;
 }
 
-DEFINE_HOOK(0x4581CD, BuildingClass_UnloadOccupants_AllOccupantsHaveLeft, 6)
+DEFINE_HOOK_AGAIN(0x458729, BuildingClass_HandleOccupants, 6) //KillOccupiers_AllOccupantsKilled
+DEFINE_HOOK_AGAIN(0x4586CA, BuildingClass_HandleOccupants, 6) //KillOccupiers_EachOccupierKilled
+DEFINE_HOOK(0x4581CD, BuildingClass_HandleOccupants, 6) //UnloadOccupants_AllOccupantsHaveLeft
 {
 	GET(BuildingClass*, pBld, ESI);
 	TechnoExt_ExtData::EvalRaidStatus(pBld);
-	return 0;
-}
-
-DEFINE_HOOK(0x458729, BuildingClass_KillOccupiers_AllOccupantsKilled, 6)
-{
-	GET(BuildingClass*, pBld, ESI);
-	TechnoExt_ExtData::EvalRaidStatus(pBld);
-	return 0;
-}
-
-DEFINE_HOOK(0x4586CA, BuildingClass_KillOccupiers_EachOccupierKilled, 6)
-{
-	GET(BuildingClass*, pBld, ESI);
-	//GET(TechnoClass*, pKiller, EBP);
-	//GET(int, idxOccupant, EDI);
-	TechnoExt_ExtData::EvalRaidStatus(pBld);
-	//return 0x4586F0;
 	return 0;
 }
 
@@ -2374,7 +2326,7 @@ DEFINE_HOOK(0x457D58, BuildingClass_CanBeOccupied_SpecificOccupiers, 6)
 	GET(BuildingClass*, pThis, ESI);
 	GET(InfantryClass*, pInf, EDI);
 	BuildingTypeExtData* pBuildTypeExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
-	bool can_occupy = false;
+	//bool can_occupy = false;
 
 	if (!pBuildTypeExt->CanBeOccupiedBy(pInf))
 		return DisallowOccupy;
@@ -2414,8 +2366,7 @@ DEFINE_HOOK(0x52297F, InfantryClass_GarrisonBuilding_OccupierEntered, 5)
 	// change the building's owner and mark it as raided
 	// but only if that's even necessary - no need to raid urban combat buildings.
 	// 27.11.2010 changed to include fix for #1305
-	const bool isHuman = (SessionClass::Instance->GameMode != GameMode::Campaign) || !pBld->Owner->IsHumanPlayer || !pInf->Owner->IsHumanPlayer;
-	const bool differentOwners = (pBld->Owner != pInf->Owner) && isHuman;
+	const bool differentOwners = (pBld->Owner != pInf->Owner) && (SessionClass::Instance->GameMode != GameMode::Campaign) || !pBld->Owner->IsHumanPlayer || !pInf->Owner->IsHumanPlayer;
 	const bool ucBuilding = ((pBld->Type->TechLevel == -1) && pBld->Owner->IsNeutral());
 
 	if (differentOwners && !buildingExtData->OwnerBeforeRaid && !ucBuilding)

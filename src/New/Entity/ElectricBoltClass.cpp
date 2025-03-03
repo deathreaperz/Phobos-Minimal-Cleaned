@@ -118,8 +118,7 @@ void ElectricBoltClass::Plot_Bolt(CoordStruct& start, CoordStruct& end)
 			, Deviation {}
 			, StartZ {}
 			, EndZ {}
-		{
-		}
+		{ }
 
 		EBoltPlotStruct() = default;
 		~EBoltPlotStruct() = default;

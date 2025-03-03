@@ -29,14 +29,14 @@ DEFINE_HOOK(0x70BCDC, TechnoClass_GetTargetCoords_BuildingFix, 0x6)
 	GET(const AbstractClass* const, pTarget, ECX);
 	LEA_STACK(CoordStruct*, nCoord, 0x40 - 0x18);
 
-	if (const auto pBuilding = cast_to<const BuildingClass*, false>(pTarget)) {
+	if (const auto pBuilding = cast_to<const BuildingClass*, false>(pTarget))
+	{
 		//auto const& nTargetCoord = pBuilding->Type->TargetCoordOffset;
-		//Debug::Log("__FUNCTION__ Building  Target [%s] with TargetCoord %d , %d , %d \n", pBuilding->get_ID(), nTargetCoord.X , nTargetCoord.Y , nTargetCoord.Z);
+		//Debug::LogInfo("__FUNCTION__ Building  Target [%s] with TargetCoord %d , %d , %d ", pBuilding->get_ID(), nTargetCoord.X , nTargetCoord.Y , nTargetCoord.Z);
 		pBuilding->GetTargetCoords(nCoord);
 
 		R->EAX(nCoord);
 		return 0x70BCE6u;
-
 	}// else {
 	//	pTarget->GetCenterCoords(nCoord);
 	//}
@@ -61,7 +61,8 @@ DEFINE_HOOK(0x70C6AF, TechnoClass_Railgun_TargetCoords, 0x6)
 	{
 		auto const pCell = static_cast<CellClass*>(pTarget);
 		pCell->GetCoords(pBuffer);
-		if (pCell->ContainsBridge()) {
+		if (pCell->ContainsBridge())
+		{
 			pBuffer->Z += Unsorted::BridgeHeight;
 		}
 
@@ -79,21 +80,23 @@ DEFINE_HOOK(0x70C6AF, TechnoClass_Railgun_TargetCoords, 0x6)
 // Do not adjust map coordinates for railgun particles that are below cell coordinates.
 DEFINE_HOOK(0x62B897, ParticleClass_CTOR_RailgunCoordAdjust, 0x5)
 {
-	enum { SkipCoordAdjust = 0x62B8CB  ,Continue = 0x0};
+	enum { SkipCoordAdjust = 0x62B8CB, Continue = 0x0 };
 
 	GET(ParticleClass*, pThis, ESI);
 	const auto pParticleSys = pThis->ParticleSystem;
 	const auto pParticleTypeExt = ParticleTypeExtContainer::Instance.Find(pThis->Type);
 
-	if(pParticleSys
+	if (pParticleSys
 	&& (pParticleSys->Type->BehavesLike == ParticleSystemTypeBehavesLike::Railgun
 		|| pParticleSys->Type->BehavesLike == ParticleSystemTypeBehavesLike::Fire)
-	){
+	)
+	{
 		GET(CoordStruct*, pCoordBase, EDI);
-		LEA_STACK(CoordStruct* , pCoord, 0x10);
+		LEA_STACK(CoordStruct*, pCoord, 0x10);
 
 		//restore overriden instruction
-		if(!pParticleTypeExt->ReadjustZ) {
+		if (!pParticleTypeExt->ReadjustZ)
+		{
 			pCoord->X = pCoordBase->X;
 			pCoord->Y = pCoordBase->Y;
 			pCoord->Z = pCoordBase->Z;
@@ -255,9 +258,9 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 	GET(TechnoClass*, pThis, ESI);
 	GET(FakeWeaponTypeClass*, pWeapon, EBX);
 
-	REF_STACK(CoordStruct, crdSrc, STACK_OFFSET(0xB0, -0x6C));
-	REF_STACK(CoordStruct, crdTgt, STACK_OFFSET(0xB0, -0x28));
-	REF_STACK(CoordStruct, railgunCrrd_1, STACK_OFFSET(0xB0, -0x1C));
+	REF_STACK(CoordStruct, crdSrc, 0xB0 - 0x6C);
+	REF_STACK(CoordStruct, crdTgt, 0xB0 - 0x28);
+	REF_STACK(CoordStruct, railgunCrrd_1, 0xB0 - 0x1C);
 
 	GET_BASE(AbstractClass*, pOriginalTarget, 0x8);
 
@@ -274,23 +277,26 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 
 	R->Stack(0x10, &crdSrc);
 
-	if (pWeapon->UseFireParticles && !pThis->FireParticleSystem) {
+	if (pWeapon->UseFireParticles && !pThis->FireParticleSystem && pWeapon->AttachedParticleSystem)
+	{
 		pThis->FireParticleSystem = GameCreate<ParticleSystemClass>(
 			pWeapon->AttachedParticleSystem, crdSrc,
-			FireAtTemp::pObstacleCell  ? FireAtTemp::pObstacleCell : pOriginalTarget, pThis);
+			FireAtTemp::pObstacleCell ? FireAtTemp::pObstacleCell : pOriginalTarget, pThis);
 	}
 
-	if (pWeapon->UseSparkParticles && !pThis->SparkParticleSystem) {
+	if (pWeapon->UseSparkParticles && !pThis->SparkParticleSystem && pWeapon->AttachedParticleSystem)
+	{
 		pThis->SparkParticleSystem = GameCreate<ParticleSystemClass>(
 			pWeapon->AttachedParticleSystem, crdSrc,
 			FireAtTemp::pObstacleCell ? FireAtTemp::pObstacleCell : pOriginalTarget, pThis);
 	}
 
-	if (pWeapon->_GetExtData()->IsDetachedRailgun || (pWeapon->IsRailgun &&  !pThis->RailgunParticleSystem)) {
+	if (pWeapon->AttachedParticleSystem && (pWeapon->_GetExtData()->IsDetachedRailgun || (pWeapon->IsRailgun && !pThis->RailgunParticleSystem)))
+	{
 		auto coord = pThis->DealthParticleDamage(&railgunCrrd_1, &crdSrc, pOriginalTarget, pWeapon);
 		auto pRailgun = GameCreate<ParticleSystemClass>(
 			pWeapon->AttachedParticleSystem, &crdSrc,
-			nullptr, pThis , coord , nullptr);
+			nullptr, pThis, coord, nullptr);
 
 		if (!pWeapon->_GetExtData()->IsDetachedRailgun)
 			pThis->RailgunParticleSystem = pRailgun;
@@ -299,7 +305,8 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 	++pThis->CurrentBurstIndex;
 	int ROF = pThis->GetROF(weaponIdx);
 
-	if (pThis->Berzerk) {
+	if (pThis->Berzerk)
+	{
 		const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 		const double multiplier = pExt->BerserkROFMultiplier.Get(RulesExtData::Instance()->BerserkROFMultiplier);
 		ROF = static_cast<int>(ROF * multiplier);
@@ -316,48 +323,61 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 	AnimTypeClass* pFiringAnim = nullptr;
 	auto pWeaponExt = pWeapon->_GetExtData();
 
-	if (pThis->CanOccupyFire()) {
-		if (pWeaponExt->OccupantAnim_UseMultiple.Get() && !pWeaponExt->OccupantAnims.empty()) {
-			if(pWeaponExt->OccupantAnims.size() == 1) {
+	if (pThis->CanOccupyFire())
+	{
+		if (pWeaponExt->OccupantAnim_UseMultiple.Get() && !pWeaponExt->OccupantAnims.empty())
+		{
+			if (pWeaponExt->OccupantAnims.size() == 1)
+			{
 				pFiringAnim = pWeaponExt->OccupantAnims[0];
-			} else {
+			}
+			else
+			{
 				pFiringAnim = pWeaponExt->OccupantAnims[ScenarioClass::Instance->Random.RandomFromMax(pWeaponExt->OccupantAnims.size() - 1)];
 			}
-
-		} else {
+		}
+		else
+		{
 			pFiringAnim = pWeapon->OccupantAnim;
 		}
-
-	} else {
-
+	}
+	else
+	{
 		if (pWeapon->Anim.Count > 0)
 		{
 			int nIdx = -1;
 
 			if (pWeapon->Anim.Count == 1)
 				nIdx = 0;
-			else {
+			else
+			{
+				auto facing = &pThis->GetRealFacing();
 
-				auto& facing = pThis->GetRealFacing();
-
-				if (pWeapon->Anim.Count == 8) {
-					nIdx = (facing.GetFacing<8>() + 8 / 8) % 8;
+				if (pWeapon->Anim.Count == 8)
+				{
+					nIdx = (facing->GetFacing<8>() + 8 / 8) % 8;
 				}
-				else if (pWeapon->Anim.Count == 16) {
-					nIdx = (facing.GetFacing<16>() + 16 / 8) % 16;
+				else if (pWeapon->Anim.Count == 16)
+				{
+					nIdx = (facing->GetFacing<16>() + 16 / 8) % 16;
 				}
-				else if (pWeapon->Anim.Count == 32) {
-					nIdx = (facing.GetFacing<32>() + 32 / 8) % 32;
+				else if (pWeapon->Anim.Count == 32)
+				{
+					nIdx = (facing->GetFacing<32>() + 32 / 8) % 32;
 				}
-				else if (pWeapon->Anim.Count == 64) {
-					nIdx = (facing.GetFacing<64>() + 64 / 8) % 64;
-				} else {
+				else if (pWeapon->Anim.Count == 64)
+				{
+					nIdx = (facing->GetFacing<64>() + 64 / 8) % 64;
+				}
+				else
+				{
 					//only execute if the anim count is more than 1
 					const auto highest = Conversions::Int2Highest(pWeapon->Anim.Count);
 
 					// 2^highest is the frame count, 3 means 8 frames
-					if (highest >= 3) {
-						nIdx = facing.GetValue(highest, 1u << (highest - 3));
+					if (highest >= 3)
+					{
+						nIdx = facing->GetValue(highest, 1u << (highest - 3));
 					}
 
 					nIdx %= pWeapon->Anim.Count;
@@ -368,27 +388,38 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 		}
 	}
 
-	if (pWeapon->Report.Count > 0 && !pThis->GetTechnoType()->IsGattling) {
-		if (pWeapon->Report.Count == 1) {
+	if (pWeapon->Report.Count > 0 && !pThis->GetTechnoType()->IsGattling)
+	{
+		if (pWeapon->Report.Count == 1)
+		{
 			VocClass::PlayAt(pWeapon->Report[0], crdTgt, nullptr);
-		} else {
+		}
+		else
+		{
 			auto v116 = pThis->weapon_sound_randomnumber_3C8 % pWeapon->Report.Count;
 			VocClass::PlayAt(pWeapon->Report[v116], crdTgt, nullptr);
 		}
 	}
 
-	if (const auto pAnimType = pWeaponExt->Feedback_Anim.Get()) {
-			const auto nCoord = (pWeaponExt->Feedback_Anim_UseFLH ? crdSrc : pThis->GetCoords()) + pWeaponExt->Feedback_Anim_Offset; {
+	if (const auto pAnimType = pWeaponExt->Feedback_Anim.Get())
+	{
+		const auto nCoord = (pWeaponExt->Feedback_Anim_UseFLH ? crdSrc : pThis->GetCoords()) + pWeaponExt->Feedback_Anim_Offset;
+		{
 			auto pFeedBackAnim = GameCreate<AnimClass>(pAnimType, nCoord);
 			AnimExtData::SetAnimOwnerHouseKind(pFeedBackAnim, pThis->GetOwningHouse(), pThis->Target ? pThis->Target->GetOwningHouse() : nullptr, pThis, false);
 
-			if (pThis->WhatAmI() != BuildingClass::AbsID) {
+			if (pThis->WhatAmI() != BuildingClass::AbsID)
+			{
 				pFeedBackAnim->SetOwnerObject(pThis);
 			}
-			else {
-				if (pThis->GetOccupantCount() > 0) {
+			else
+			{
+				if (pThis->GetOccupantCount() > 0)
+				{
 					pFeedBackAnim->ZAdjust = -200;
-				} else {
+				}
+				else
+				{
 					auto rend = pThis->GetRenderCoords();
 					pFeedBackAnim->ZAdjust = (crdSrc.Y - rend.Y) / -4 >= 0 ? 0 : (crdSrc.Y - rend.Y) / -4;
 				}
@@ -396,7 +427,8 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 		}
 	}
 
-	if (!pThis->IsAlive) {
+	if (!pThis->IsAlive)
+	{
 		return 0x6FF92F;
 	}
 
@@ -407,17 +439,23 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 		if (pThis->WhatAmI() != BuildingClass::AbsID)
 		{
 			pFiring->SetOwnerObject(pThis);
-		} else {
-			if (pThis->GetOccupantCount() > 0) {
+		}
+		else
+		{
+			if (pThis->GetOccupantCount() > 0)
+			{
 				pFiring->ZAdjust = -200;
-			} else {
+			}
+			else
+			{
 				auto rend = pThis->GetRenderCoords();
 				pFiring->ZAdjust = (crdSrc.Y - rend.Y) / -4 >= 0 ? 0 : (crdSrc.Y - rend.Y) / -4;
 			}
 		}
 	}
 
-	if (!pThis->IsAlive) {
+	if (!pThis->IsAlive)
+	{
 		return 0x6FF92F;
 	}
 
@@ -437,17 +475,20 @@ DEFINE_HOOK(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 	//FeedbackWeapon
 	if (auto fbWeapon = pWeaponExt->FeedbackWeapon.Get())
 	{
-		if (!pThis->InOpenToppedTransport || fbWeapon->FireInTransport){
+		if (!pThis->InOpenToppedTransport || fbWeapon->FireInTransport)
+		{
 			WeaponTypeExtData::DetonateAt(fbWeapon, pThis, pThis, true, nullptr);
 			//pThis techno was die after after getting affect of FeedbackWeapon
 			//if the function not bail out , it will crash the game because the vtable is already invalid
-			if (!pThis->IsAlive) {
+			if (!pThis->IsAlive)
+			{
 				return 0x6FF92F;
-			  }
+			}
 		}
 	}
 
-	if(pWeapon->IsSonic){
+	if (pWeapon->IsSonic)
+	{
 		pThis->Wave = WaveExtData::Create(crdSrc, crdTgt, pThis, WaveType::Sonic, pOriginalTarget, pWeapon);
 	}
 
@@ -506,10 +547,11 @@ DEFINE_HOOK(0x6FF656, TechnoClass_FireAt_Additionals_End, 0xA)
 
 	//remove ammo rounds depending on weapon
 	TechnoExt_ExtData::DecreaseAmmo(pThis, pWeaponType);
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
 #ifndef PERFORMANCE_HEAVY
 	// Restore original target & coords
-	*pTargetCoords = FireAtTemp::originalTargetCoords;
+	* pTargetCoords = FireAtTemp::originalTargetCoords;
 	R->Base(8, FireAtTemp::pOriginalTarget);
 	pTarget = FireAtTemp::pOriginalTarget;
 	R->EDI(FireAtTemp::pOriginalTarget);
@@ -523,8 +565,6 @@ DEFINE_HOOK(0x6FF656, TechnoClass_FireAt_Additionals_End, 0xA)
 	//TechnoClass_FireAt_ToggleLaserWeaponIndex
 	if (pThis->WhatAmI() == BuildingClass::AbsID && pWeaponType->IsLaser)
 	{
-		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-
 		if (pExt->CurrentLaserWeaponIndex.empty())
 			pExt->CurrentLaserWeaponIndex = weaponIndex;
 		else

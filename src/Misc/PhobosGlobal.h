@@ -12,7 +12,7 @@ struct ColorsData
 	DWORD Berserk_Color;
 	bool Initialized;
 
-	constexpr void reset()
+	COMPILETIMEEVAL void reset()
 	{
 		Forceshield_Color = 0u;
 		IronCurtain_Color = 0u;
@@ -39,6 +39,7 @@ public:
 	std::vector<CellStruct> TempFoundationData1 { };
 	std::vector<CellStruct> TempFoundationData2 { };
 	HelperedVector<CellStruct> TempCoveredCellsData { };
+	std::string LastAnimName {};
 
 	struct CopyArray
 	{
@@ -69,7 +70,7 @@ public:
 				;
 		}
 
-		constexpr void clear()
+		COMPILETIMEEVAL void clear()
 		{
 			Aircraft.clear();
 			Building.clear();
@@ -121,12 +122,12 @@ public:
 		CellStruct From;
 		CellStruct To;
 
-		constexpr bool IsValid() const
+		COMPILETIMEEVAL bool IsValid() const
 		{
 			return Finder != nullptr;
 		}
 
-		constexpr void Clear()
+		COMPILETIMEEVAL void Clear()
 		{
 			Finder = nullptr;
 			From = CellStruct::Empty;
@@ -166,7 +167,7 @@ public:
 	static bool SaveGlobals(PhobosStreamWriter& stm);
 	static bool LoadGlobals(PhobosStreamReader& stm);
 
-	constexpr FORCEINLINE static PhobosGlobal* Instance()
+	COMPILETIMEEVAL FORCEDINLINE static PhobosGlobal* Instance()
 	{
 		return &GlobalObject;
 	}
@@ -186,6 +187,7 @@ public:
 			.Process(this->CurCopyArray)
 			.Process(this->ColorDatas)
 			.Process(this->LandTypeParseCounter)
+			.Process(this->LastAnimName)
 			.Success();
 	}
 };

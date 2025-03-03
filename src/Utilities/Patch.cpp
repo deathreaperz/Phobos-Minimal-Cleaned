@@ -46,10 +46,12 @@ void Patch::Apply()
 {
 	void* pAddress = (void*)this->offset;
 
-	DWORD protect_flag;
+	DWORD protect_flag {};
+	DWORD protect_flagb {};
 	VirtualProtect(pAddress, this->size, PAGE_EXECUTE_READWRITE, &protect_flag);
 	std::memcpy(pAddress, this->pData, this->size);
-	VirtualProtect(pAddress, this->size, protect_flag, nullptr);
+	VirtualProtect(pAddress, this->size, protect_flag, &protect_flagb);
+	FlushInstructionCache(Game::hInstance, (LPVOID)pAddress, size);
 }
 
 void Patch::Apply_RAW(uintptr_t offset, std::initializer_list<BYTE> data)
@@ -195,18 +197,18 @@ void Patch::PrintAllModuleAndBaseAddr()
 				MODULEINFO info = { 0 };
 				if (GetModuleInformation(Patch::CurrentProcess, hModules[i], &info, sizeof(info)))
 				{
+					DWORD_PTR image_base = (DWORD_PTR)hModules[i];
+					PIMAGE_DOS_HEADER dosHeaders = (PIMAGE_DOS_HEADER)image_base;
+					PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(image_base + dosHeaders->e_lfanew);
+					//void* image_base_void = (void*)image_base;
+
+					if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
+						continue; // The handle does not point to a valid module
+
 					_strlwr_s(moduleName);
 					moduleName[0] &= ~0x20; // LOL HACK to uppercase a letter
 
 					dllData& data = Patch::ModuleDatas.emplace_back(moduleName, hModules[i], (uintptr_t)info.lpBaseOfDll, (size_t)info.SizeOfImage);
-
-					DWORD_PTR image_base = (DWORD_PTR)data.Handle;
-					PIMAGE_DOS_HEADER dosHeaders = (PIMAGE_DOS_HEADER)image_base;
-					PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(image_base + dosHeaders->e_lfanew);
-					void* image_base_void = (void*)image_base;
-
-					if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
-						return; // The handle does not point to a valid module
 
 					if (ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size != 0)
 					{
@@ -349,7 +351,7 @@ uintptr_t Patch::GetEATAddress(const char* moduleName, const char* funcName)
 		}
 	}
 
-	return -1;
+	return 0xffffffff;
 }
 
 uintptr_t Patch::GetIATAddress(const char* moduleName, const char* funcName)
@@ -368,5 +370,5 @@ uintptr_t Patch::GetIATAddress(const char* moduleName, const char* funcName)
 		}
 	}
 
-	return -1;
+	return 0xffffffff;
 }

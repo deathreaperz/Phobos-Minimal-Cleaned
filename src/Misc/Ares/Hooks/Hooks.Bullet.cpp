@@ -54,14 +54,6 @@ DEFINE_HOOK(0x469467, BulletClass_DetonateAt_CanTemporalTarget, 0x5)
 	return 0x469AA4;
 }
 
-// #1708: this mofo was raising an event without checking whether
-// there is a valid tag. this is the only faulty call of this kind.
-DEFINE_HOOK(0x4692A2, BulletClass_DetonateAt_RaiseAttackedByHouse, 0x6)
-{
-	GET(ObjectClass* const, pVictim, EDI);
-	return pVictim->AttachedTag ? 0 : 0x4692BD;
-}
-
 // Overpowerer no longer just infantry
 DEFINE_HOOK(0x4693B0, BulletClass_DetonateAt_Overpower, 0x6)
 {
@@ -234,7 +226,7 @@ DEFINE_HOOK(0x46867F, BulletClass_SetMovement_Parachute, 5)
 
 	R->EBX<BulletClass*>(Bullet);
 	// if (!Bullet->Target) {
-	// 	Debug::Log("Bullet [%s - %x] Missing Target Pointer when Unlimbo! , Fallback To CreationCoord to Prevent Crash\n",
+	// 	Debug::LogInfo("Bullet [%s - %x] Missing Target Pointer when Unlimbo! , Fallback To CreationCoord to Prevent Crash",
 	// 		Bullet->get_ID(), Bullet);
 	//
 	// 	Bullet->Target = MapClass::Instance->GetCellAt(XYZ);
@@ -277,12 +269,12 @@ DEFINE_HOOK(0x468FFA, BulletClass_Fire_SplitsB, 6)
 		? 0x46909Au : 0x469008u;
 }
 
-//DEFINE_HOOK(0x469EBA, BulletClass_DetonateAt_Splits, 6)
-//{
-//	GET(BulletClass*, pThis, ESI);
-//	BulletExtData::ApplyAirburst(pThis);
-//	return 0x46A290;
-//}
+DEFINE_HOOK(0x469EBA, BulletClass_DetonateAt_Splits, 6)
+{
+	GET(BulletClass*, pThis, ESI);
+	BulletExtData::ApplyAirburst(pThis);
+	return 0x46A290;
+}
 
 DEFINE_HOOK(0x468000, BulletClass_GetAnimFrame, 6)
 {

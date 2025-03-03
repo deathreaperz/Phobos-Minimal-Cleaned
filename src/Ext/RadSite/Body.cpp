@@ -11,6 +11,8 @@ void RadSiteExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
 	AnnounceInvalidPointer(TechOwner, ptr, bRemoved);
 	AnnounceInvalidPointer(HouseOwner, ptr);
+
+	damageCounts.erase((BuildingClass*)ptr);
 }
 
 void RadSiteExtData::CreateInstance(CoordStruct const& nCoord, int spread, int amount, WeaponTypeExtData* pWeaponExt, TechnoClass* const pTech)
@@ -52,7 +54,7 @@ void RadSiteExtData::CreateLight()
 	const auto nRadcolor = this->Type->GetColor();
 
 	//if(Phobos::Otamaa::IsAdmin)
-	//	Debug::Log("RadSite [%s] CreateLight With Color [%d , %d , %d] \n", Type->Name.data(), nRadcolor.R, nRadcolor.G, nRadcolor.B);
+	//	Debug::LogInfo("RadSite [%s] CreateLight With Color [%d , %d , %d] ", Type->Name.data(), nRadcolor.R, nRadcolor.G, nRadcolor.B);
 
 	const auto nTintFactor = this->Type->GetTintFactor();
 	const auto nRadLevelFactor = pThis->RadLevel * this->Type->GetLightFactor();
@@ -210,6 +212,7 @@ void RadSiteExtData::Serialize(T& Stm)
 		.Process(this->HouseOwner, true)
 		.Process(this->NoOwner)
 		.Process(this->CreationFrame)
+		.Process(this->damageCounts)
 		;
 }
 
@@ -226,7 +229,7 @@ DEFINE_HOOK(0x65B243, RadSiteClass_CTOR, 0x6)
 	{
 		GET(RadSiteClass*, pThis, ESI);
 		RadSiteExtContainer::Instance.Allocate(pThis);
-		//PointerExpiredNotification::NotifyInvalidObject->Add(pThis);
+		PointerExpiredNotification::NotifyInvalidObject->Add(pThis);
 	}
 
 	return 0;
@@ -237,7 +240,7 @@ DEFINE_HOOK(0x65B344, RadSiteClass_DTOR, 0x6)
 	if (!Phobos::Otamaa::DisableCustomRadSite)
 	{
 		GET(RadSiteClass*, pThis, ESI);
-		//PointerExpiredNotification::NotifyInvalidObject->Remove(pThis);
+		PointerExpiredNotification::NotifyInvalidObject->Remove(pThis);
 		RadSiteExtContainer::Instance.Remove(pThis);
 	}
 

@@ -34,15 +34,6 @@ DEFINE_HOOK(0x46B1D6, BulletClass_DrawVXL_Palette, 0x6)
 	return 0x46B1F2;
 }
 
-DEFINE_HOOK(0x5F5A86, ObjectClass_SpawnParachuted_Animation_Bulet, 0x6)
-{
-	GET(RulesClass*, pRules, ECX);
-	GET(FakeBulletClass*, pBullet, ESI);
-
-	R->EDX(pBullet->_GetTypeExtData()->Parachute.Get(pRules->BombParachute));
-	return 0x5F5A8C;
-}
-
 #pragma region Otamaa
 
 //DEFINE_HOOK(0x469D12, BulletClass_Logics_CheckDoAirburst_MaxDebris, 0x8)
@@ -76,17 +67,18 @@ DEFINE_HOOK(0x469D3C, BulletClass_Logics_Debris, 0xA)
 			if (!pWarhead->DebrisMaximums[nCurIdx])
 				continue;
 
-				int nAmountToSpawn = Math::abs(int(ScenarioClass::Instance->Random.Random())) % pWarhead->DebrisMaximums[nCurIdx];
-				nAmountToSpawn = LessOrEqualTo(nAmountToSpawn, nTotalSpawn);
-				nTotalSpawn -= nAmountToSpawn;
+			int nAmountToSpawn = Math::abs(int(ScenarioClass::Instance->Random.Random())) % pWarhead->DebrisMaximums[nCurIdx];
+			nAmountToSpawn = LessOrEqualTo(nAmountToSpawn, nTotalSpawn);
+			nTotalSpawn -= nAmountToSpawn;
 
-				for (; nAmountToSpawn > 0; --nAmountToSpawn)
+			for (; nAmountToSpawn > 0; --nAmountToSpawn)
+			{
+				if (auto const pVoxelAnimType = nDebrisTypes[nCurIdx])
 				{
-					if (auto const pVoxelAnimType = nDebrisTypes[nCurIdx]){
-						auto pVoxAnim = GameCreate<VoxelAnimClass>(pVoxelAnimType, &nCoords, pOWner);
-						VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis->Owner;
-					}
+					auto pVoxAnim = GameCreate<VoxelAnimClass>(pVoxelAnimType, &nCoords, pOWner);
+					VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis->Owner;
 				}
+			}
 
 			if (nTotalSpawn <= 0)
 			{
@@ -154,7 +146,6 @@ static void  ManipulateLoco(FootClass* pFirer, AbstractClass* pTarget, BulletCla
 
 			if (auto pUnit = specific_cast<UnitClass*>(pTarget))
 			{
-
 				if (pFoot_T->RadioLinks.IsAllocated &&
 					pFoot_T->RadioLinks.IsInitialized &&
 					pFoot_T->RadioLinks.Items)

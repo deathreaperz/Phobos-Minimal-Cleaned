@@ -354,7 +354,7 @@ public:
 	}
 
 	AttachedAffects() :
-		Name { NONE_STR }
+		Name { GameStrings::NoneStr() }
 		, Type { nullptr }
 		, House { nullptr }
 		, Attacker { nullptr }
@@ -482,7 +482,7 @@ private:
 	template <typename T>
 	bool Serialize(T& Stm)
 	{
-		Debug::Log("Processing Element From AttachedAffects ! \n");
+		Debug::LogInfo("Processing Element From AttachedAffects ! ");
 		return Stm
 			.Process(Name)
 			.Process(Type)

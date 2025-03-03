@@ -41,9 +41,9 @@ void TurretAngle::OnUpdate()
 		LockTurretDir = bodyDir;
 		int bodyDirIndex = Helpers_DP::Dir2FacingIndex(bodyDir, 180) * 2;
 
-		auto const& [ChangeDefaultDir, newDefaultDir] = TryGetDefaultAngle(bodyDirIndex);
+		auto const [changeDefaultDir, newDefaultDir] = TryGetDefaultAngle(bodyDirIndex);
 
-		if (ChangeDefaultDir)
+		if (changeDefaultDir)
 		{
 			LockTurretDir = newDefaultDir;
 		}
@@ -129,14 +129,14 @@ void TurretAngle::OnUpdate()
 bool TurretAngle::DefaultAngleIsChange(DirStruct bodyDir)
 {
 	int bodyDirIndex = Helpers_DP::Dir2FacingIndex(bodyDir, 180) * 2;
-	auto const& [ChangeDefaultDir, newDefaultDir] = TryGetDefaultAngle(bodyDirIndex);
+	auto const [changeDefaultDir, newDefaultDir] = TryGetDefaultAngle(bodyDirIndex);
 
-	if (ChangeDefaultDir)
+	if (changeDefaultDir)
 	{
 		LockTurretDir = newDefaultDir;
 	}
 
-	return ChangeDefaultDir;
+	return changeDefaultDir;
 }
 
 std::pair<bool, DirStruct> TurretAngle::TryGetDefaultAngle(int& bodyDirIndex)

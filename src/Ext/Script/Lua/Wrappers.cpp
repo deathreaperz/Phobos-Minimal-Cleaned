@@ -138,7 +138,7 @@ struct LuaScript
 				State["_Unit_GetNextTeamMember"] = _Unit::GetNextTeamMember;
 			}
 		}catch(const sol::error& what) {
-			Debug::Log("Cannot Find [%s] File ! Reason (%s)\n", Lua_Name.c_str(), what.what());
+			Debug::LogInfo("Cannot Find [%s] File ! Reason (%s)", Lua_Name.c_str(), what.what());
 			State = nullptr;
 		}
 	}*/
@@ -165,7 +165,7 @@ bool LuaBridge::OnCalled(TeamClass* pTeam)
 
 			if (lua_isfunction(luascript.State.get(), -1) != 1)
 			{
-				Debug::Log("Lua [%s] Failed to call `OnExecute` Function ! Reason (function not found)\n", luascript.Lua_Name.c_str());
+				Debug::LogInfo("Lua [%s] Failed to call `OnExecute` Function ! Reason (function not found)", luascript.Lua_Name.c_str());
 				luascript.State.reset(nullptr);
 				return false;
 			}
@@ -233,7 +233,7 @@ DEFINE_HOOK(0x69192E, ScriptTypeClass_Read_INI_TeamMission, 0x7)
 	{
 		if (cur.Alternate == team)
 		{
-			Debug::Log("[%s]Replacing TMission[%d to %d]\n", pThis->ID, team, cur.Original);
+			Debug::LogInfo("[{}]Replacing TMission[{} to{}]", pThis->ID, team, cur.Original);
 			R->ECX(cur.Original);
 			return 0x0;
 		}
@@ -242,7 +242,7 @@ DEFINE_HOOK(0x69192E, ScriptTypeClass_Read_INI_TeamMission, 0x7)
 	if (team >= (int)TeamMissionType::count
 		&& team >= (int)AresScripts::count
 		&& team >= (int)PhobosScripts::count)
-		Debug::Log("[%s]contains unknow TMission[%d]\n", pThis->ID, team);
+		Debug::LogInfo("[{}]contains unknow TMission[{}]", pThis->ID, team);
 
 	return 0x0;
 }

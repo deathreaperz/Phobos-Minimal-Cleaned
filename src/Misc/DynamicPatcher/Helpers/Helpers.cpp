@@ -15,7 +15,7 @@
 
 void EffectHelpers::DrawBolt(CoordStruct sourcePos, CoordStruct targetPos, WeaponTypeClass* pWeapon)
 {
-	const auto pTypeExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+	//const auto pTypeExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
 #ifdef _Enable
 	if (pTypeExt->WeaponBolt_Data.isset())
 		ElectricBoltClass::Create(sourcePos, targetPos,
@@ -373,12 +373,12 @@ double Helpers_DP::GetROFMult(TechnoClass const* pTech)
 	return TechnoExtData::GetROFMult(pTech);
 }
 
-double Helpers_DP::GetDamageMult(TechnoClass* pTechno)
+double Helpers_DP::GetDamageMult(TechnoClass* pTechno, double damageIn)
 {
 	if (!pTechno || !pTechno->IsAlive)
 		return 1.0;
 
-	return TechnoExtData::GetDamageMult(pTechno);
+	return TechnoExtData::GetDamageMult(pTechno, damageIn);
 }
 
 DirStruct Helpers_DP::DirNormalized(int index, int facing)
@@ -591,7 +591,8 @@ Vector3D<float> Helpers_DP::ToVector3D(DirStruct& dir)
 Vector3D<float> Helpers_DP::GetForwardVector(TechnoClass* pTechno, bool getTurret)
 {
 	const auto facing = getTurret ? &pTechno->SecondaryFacing : &pTechno->PrimaryFacing;
-	return ToVector3D(facing->Current());
+	auto dir = facing->Current();
+	return ToVector3D(dir);
 }
 
 CoordStruct Helpers_DP::GetFLH(CoordStruct& source, CoordStruct& flh, DirStruct& dir, bool flip)
@@ -990,11 +991,11 @@ TechnoClass* Helpers_DP::CreateAndPutTechno(TechnoTypeClass* pType, HouseClass* 
 			}
 			else
 			{
-				Debug::Log("Gifbox - Failed To Place Techno [%s] ! \n", pType->ID);
+				Debug::LogInfo("Gifbox - Failed To Place Techno [{}] ! ", pType->ID);
 
 				if (pTechno)
 				{
-					Debug::Log(__FUNCTION__" Called \n");
+					Debug::LogInfo(__FUNCTION__" Called ");
 					TechnoExtData::HandleRemove(pTechno);
 				}
 			}
@@ -1092,7 +1093,7 @@ BulletClass* Helpers_DP::FireBullet(TechnoClass* pAttacker, AbstractClass* pTarg
 	if (!pWeapon)
 		return nullptr;
 
-	double fireMult = 1;
+	double _damageTotal = 1;
 
 	if (pAttacker && pAttacker->IsAlive && !pAttacker->IsCrashing && !pAttacker->IsSinking)
 	{
@@ -1105,10 +1106,10 @@ BulletClass* Helpers_DP::FireBullet(TechnoClass* pAttacker, AbstractClass* pTarg
 		}
 
 		// check Abilities FIREPOWER
-		fireMult = GetDamageMult(pAttacker);
+		_damageTotal = GetDamageMult(pAttacker, pWeapon->Damage);
 	}
 
-	int damage = static_cast<int>(pWeapon->Damage * fireMult);
+	int damage = static_cast<int>(_damageTotal);
 	auto pWH = pWeapon->Warhead;
 	int speed = pWeapon->GetWeaponSpeed(sourcePos, targetPos);
 	bool bright = pWeapon->Bright || pWH->Bright;

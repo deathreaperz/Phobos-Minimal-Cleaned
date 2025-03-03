@@ -40,7 +40,7 @@ void JumpTo4(LevitateLocomotionClass* pThis, float a2)
 
 void LevitateLocomotionClass::ProcessHovering()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto nInitialHeight = LinkedTo->GetHeight();
 	auto nInitialHeight_c1 = nInitialHeight;
 
@@ -245,7 +245,7 @@ bool LevitateLocomotionClass::IsLessSameThanProximityDistance(CoordStruct nCoord
 // Done
 void LevitateLocomotionClass::CalculateDir_Close(CoordStruct nTarget)
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto Coord = LinkedTo->GetCoords();
 	const auto TCoord = nTarget;
 	CoordStruct _remaining = Coord - TCoord;
@@ -301,7 +301,7 @@ void LevitateLocomotionClass::DirtoSomething(double dValue)
 
 void LevitateLocomotionClass::CalculateDir_Far(CoordStruct nTarget)
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto nCoord = LinkedTo->GetCoords();
 	CoordStruct _remaining = nCoord - nTarget;
 	DirStruct _dirCoord { (double)_remaining.Y , (double)_remaining.X };
@@ -383,7 +383,7 @@ void LevitateLocomotionClass::DoPhase3()
 
 void LevitateLocomotionClass::DoPhase4()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	if (CurrentVelocity < 0.01)
 	{
 		if (auto pTargetT = flag_cast_to<TechnoClass*>(LinkedTo->Target))
@@ -457,7 +457,7 @@ void LevitateLocomotionClass::DoPhase4()
 
 void LevitateLocomotionClass::DoPhase5(CoordStruct coord)
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	if ((int)coord.DistanceFromXY(LinkedTo->GetCoords()) >= 128)
 	{
 		if (this->IsLessSameThanProximityDistance(coord))
@@ -505,7 +505,7 @@ void LevitateLocomotionClass::DoPhase5(CoordStruct coord)
 
 void LevitateLocomotionClass::DoPhase6()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	if (auto pTargetT = flag_cast_to<TechnoClass*>(LinkedTo->Target))
 	{
 		if (pTargetT->IsAlive && pTargetT->IsOnMap)
@@ -569,7 +569,7 @@ void LevitateLocomotionClass::DoPhase6()
 
 void LevitateLocomotionClass::DoPhase7()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto nCoord = LinkedTo->GetCenterCoords();
 	const auto nCoordCell = CoordStruct { (nCoord.X * 256) + 128  , (nCoord.Y * 256) + 128 ,nCoord.Z };
 	const auto nDistance = (nCoordCell - LinkedTo->GetCoords()).LengthXY();
@@ -669,7 +669,7 @@ void LevitateLocomotionClass::DoPhase7()
 
 bool LevitateLocomotionClass::IsDestValid()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	if (const auto pNavT = flag_cast_to<TechnoClass*>(LinkedTo->Destination))
 	{
 		if (pNavT->IsAlive && pNavT->IsOnMap)
@@ -682,7 +682,7 @@ bool LevitateLocomotionClass::IsDestValid()
 
 bool LevitateLocomotionClass::IsTargetValid()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	if (const auto pNavT = flag_cast_to<TechnoClass*>(LinkedTo->Target))
 	{
 		if (pNavT->IsAlive && pNavT->IsOnMap)
@@ -694,7 +694,7 @@ bool LevitateLocomotionClass::IsTargetValid()
 
 void LevitateLocomotionClass::ProcessSomething()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto v39 = this->CurrentVelocity - this->CurrentSpeed;
 	if (v39 > 0.0)
 	{
@@ -824,7 +824,7 @@ void LevitateLocomotionClass::ProcessSomething()
 
 bool LevitateLocomotionClass::IsAdjentCellEligible(CoordStruct nArgsCoord)
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto nCoord = LinkedTo->GetCenterCoords();
 	const auto nCoordCell = MapClass::Instance->GetCellAt(nCoord);
 	const auto pCellInput = MapClass::Instance->GetCellAt(nArgsCoord);
@@ -878,7 +878,7 @@ bool LevitateLocomotionClass::IsAdjentCellEligible(CoordStruct nArgsCoord)
 
 bool __stdcall LevitateLocomotionClass::Process()
 {
-	//GameDebugLog::Log(__FUNCTION__" Called !  \n");
+	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	switch (this->State)
 	{
 	case 0u:

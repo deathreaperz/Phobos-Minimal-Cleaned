@@ -16,6 +16,8 @@ void PhobosGlobal::Clear()
 	pInstance->PathfindTechno.Clear();
 	pInstance->CurCopyArray.clear();
 	pInstance->LandTypeParseCounter = 0;
+
+	pInstance->LastAnimName.clear();
 }
 
 void PhobosGlobal::PointerGotInvalid(AbstractClass* ptr, bool removed)

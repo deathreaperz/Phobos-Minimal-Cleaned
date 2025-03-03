@@ -29,10 +29,10 @@ class IonBlastClass;
 class WarheadTypeExtData final
 {
 public:
-	static constexpr size_t Canary = 0x22242222;
+	static COMPILETIMEEVAL size_t Canary = 0x22242222;
 	using base_type = WarheadTypeClass;
 
-	static constexpr size_t ExtOffset = 0x1CC; //ares
+	static COMPILETIMEEVAL size_t ExtOffset = 0x1CC; //ares
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -224,8 +224,6 @@ public:
 	Valueable<bool> PermaMC { false };
 	ValueableIdx<VocClass> Sound { -1 };
 
-	Valueable<bool> Converts { false };
-
 	std::vector<TechnoTypeConvertData> ConvertsPair {};
 	Valueable<AnimTypeClass*> Convert_SucceededAnim { nullptr };
 
@@ -404,6 +402,16 @@ public:
 	Valueable<AffectedHouse> KillWeapon_AffectHouses { AffectedHouse::All };
 	ValueableVector<TechnoTypeClass*> KillWeapon_AffectTypes {};
 	ValueableVector<TechnoTypeClass*> KillWeapon_IgnoreTypes {};
+
+	Nullable<int> MindControl_ThreatDelay {};
+
+	Nullable<bool> MergeBuildingDamage {};
+
+	Valueable<bool> BuildingSell { false };
+	Valueable<bool> BuildingSell_IgnoreUnsellable { false };
+	Valueable<bool> BuildingUndeploy { false };
+	Valueable<bool> BuildingUndeploy_Leave { false };
+
 public:
 
 	void InitializeConstant();
@@ -434,11 +442,10 @@ private:
 	void ApplyDirectional(BulletClass* pBullet, TechnoClass* pTarget) const;
 
 	void applyWebby(TechnoClass* pTarget, HouseClass* pKillerHouse, TechnoClass* pKillerTech) const;
+
 	//Otamaa
 	void applyTransactMoney(TechnoClass* pOwner, HouseClass* pHouse, BulletClass* pBullet, CoordStruct const& coords) const;
 	void applyStealMoney(TechnoClass* const Owner, TechnoClass* const Target) const;
-
-	void ApplyUpgrade(HouseClass* pHouse, TechnoClass* pTarget) const;
 
 	//void DetonateOnAllUnits(HouseClass* pHouse, const CoordStruct coords, const float cellSpread, TechnoClass* pOwner);
 	void TransactOnOneUnit(TechnoClass* pTarget, TechnoClass* pOwner, int targets);
@@ -463,16 +470,16 @@ public:
 	void applyRelativeDamage(ObjectClass* pTarget, args_ReceiveDamage* pArgs) const;
 	bool GoBerzerkFor(FootClass* pVictim, int* damage) const;
 	bool ApplySuppressDeathWeapon(TechnoClass* pVictim) const;
-
+	void ApplyBuildingUndeploy(TechnoClass* pTarget);
 	void ApplyAttachEffects(TechnoClass* pTarget, HouseClass* pInvokerHouse, TechnoClass* pInvoker);
 	void GetCritChance(TechnoClass* pFirer, std::vector<double>& chances) const;
 
-	constexpr VersesData& GetVerses(Armor armor)
+	COMPILETIMEEVAL VersesData& GetVerses(Armor armor)
 	{
 		return this->Verses[static_cast<int>(armor)];
 	}
 
-	constexpr const VersesData& GetVerses(Armor armor) const
+	COMPILETIMEEVAL const VersesData& GetVerses(Armor armor) const
 	{
 		return this->Verses[static_cast<int>(armor)];
 	}
@@ -484,7 +491,7 @@ public:
 
 	AnimTypeClass* GetArmorHitAnim(int Armor);
 
-	constexpr FORCEINLINE static size_t size_Of()
+	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(WarheadTypeExtData) -
 			(4u //AttachedToObject
@@ -495,7 +502,7 @@ private:
 	template <typename T>
 	void Serialize(T& Stm);
 public:
-	inline static PhobosMap<IonBlastClass*, WarheadTypeExtData*> IonBlastExt;
+	OPTIONALINLINE static PhobosMap<IonBlastClass*, WarheadTypeExtData*> IonBlastExt;
 
 	static void DetonateAt(
 		WarheadTypeClass* pThis,
@@ -524,7 +531,7 @@ public:
 		HouseClass* pFiringHouse = nullptr
 	);
 
-	DamageAreaResult DamageAreaWithTarget(const CoordStruct& coords, int damage, TechnoClass* pSource, WarheadTypeClass* pWH, bool affectsTiberium, HouseClass* pSourceHouse, TechnoClass* pTarget);
+	DamageAreaResult DamageAreaWithTarget(CoordStruct coords, int damage, TechnoClass* pSource, WarheadTypeClass* pWH, bool affectsTiberium, HouseClass* pSourceHouse, TechnoClass* pTarget);
 
 	static void CreateIonBlast(WarheadTypeClass* pThis, const CoordStruct& coords);
 
@@ -551,12 +558,12 @@ public:
 	HRESULT __stdcall _Load(IStream* pStm);
 	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
 
-	WarheadTypeExtData* _GetExtData()
+	WarheadTypeExtData* _GetExtData() const
 	{
 		return *reinterpret_cast<WarheadTypeExtData**>(((DWORD)this) + WarheadTypeExtData::ExtOffset);
 	}
 
-	constexpr VersesData* GetVersesData(Armor armor)
+	COMPILETIMEEVAL VersesData* GetVersesData(Armor armor)
 	{
 		return this->_GetExtData()->Verses.data() + static_cast<size_t>(armor);
 	}

@@ -6,6 +6,8 @@
 #include <Ext/Anim/Body.h>
 #include <Ext/Building/Body.h>
 
+#include <Utilities/Macro.h>
+
 #include "Header.h"
 
 #include <Notifications.h>
@@ -210,7 +212,7 @@ DEFINE_HOOK(0x72590E, AnnounceInvalidPointer_Particle, 0x9)
 //	const auto radius = pType->Radius >> 3;
 //
 //	if (radius == 0)
-//		Debug::FatalError("[%s] Particle with 0 raius , please fix !\n", pType->ID);
+//		Debug::FatalError("[%s] Particle with 0 raius , please fix !", pType->ID);
 //
 //	R->EAX(radius);
 //	return 0x62EE48;
@@ -267,22 +269,25 @@ DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 
 	if (pTypeExt->DamageRange.Get() <= 0.0)
 	{
-		for (auto pOccupy = MapClass::Instance->GetCellAt(pThis->Location)->FirstObject; pOccupy; pOccupy = pOccupy->NextObject)
+		if (auto pCell = MapClass::Instance->TryGetCellAt(pThis->Location))
 		{
-			if (pOccupy && pOccupy->IsAlive && pOccupy->Health > 0)
+			for (auto pOccupy = pCell->FirstObject; pOccupy; pOccupy = pOccupy->NextObject)
 			{
-				if (auto pTechno = flag_cast_to<TechnoClass*, false>(pOccupy))
+				if (pOccupy->IsAlive && pOccupy->Health > 0)
 				{
-					if (pTechno->IsSinking || pTechno->IsCrashing || pTechno->TemporalTargetingMe)
-						continue;
+					if (auto pTechno = flag_cast_to<TechnoClass*, false>(pOccupy))
+					{
+						if (pTechno->IsSinking || pTechno->IsCrashing || pTechno->TemporalTargetingMe)
+							continue;
 
-					if (pTechno->WhatAmI() != BuildingClass::AbsID && TechnoExtData::IsChronoDelayDamageImmune(static_cast<FootClass*>(pTechno)))
-						continue;
+						if (pTechno->WhatAmI() != BuildingClass::AbsID && TechnoExtData::IsChronoDelayDamageImmune(static_cast<FootClass*>(pTechno)))
+							continue;
+					}
+
+					auto nX = Math::abs(pThis->Location.X - pOccupy->Location.X);
+					auto nY = Math::abs(pThis->Location.Y - pOccupy->Location.Y);
+					ParticleClass_Gas_Transmography(pOccupy, pAttacker, pOwner, Game::AdjustHeight(nX + nY), pOccupy->Location, pTypeExt, transmoOwner);
 				}
-
-				auto nX = Math::abs(pThis->Location.X - pOccupy->Location.X);
-				auto nY = Math::abs(pThis->Location.Y - pOccupy->Location.Y);
-				ParticleClass_Gas_Transmography(pOccupy, pAttacker, pOwner, Game::AdjustHeight(nX + nY), pOccupy->Location, pTypeExt, transmoOwner);
 			}
 		}
 	}
@@ -292,6 +297,12 @@ DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 
 		for (const auto pItem : pVec)
 		{
+			if (!pItem->IsAlive || pItem->Health <= 0)
+				continue;
+
+			if (pItem->IsSinking || pItem->IsCrashing || pItem->TemporalTargetingMe)
+				continue;
+
 			if (pItem->WhatAmI() != BuildingClass::AbsID && TechnoExtData::IsChronoDelayDamageImmune(static_cast<FootClass*>(pItem)))
 				continue;
 
@@ -449,4 +460,14 @@ DEFINE_HOOK(0x62FD60, ParticleSystemClass_Update, 0x9)
 
 	return Handled ? 0x62FE43 : 0;
 }
+
+//DEFINE_HOOK(0x62E15D, ParticleSystemClass_DTOR_NullType, 0x6)
+//{
+//	GET(ParticleSystemClass*, pThis, EDI);
+//	Debug::LogInfo("Detaching ParticleSystemClass [%x] Type of [%s]", pThis, pThis->Type->ID);
+//	return 0x0;
+//}
+
+//donot detach the type so we can identify bug
+DEFINE_JUMP(LJMP, 0x62E15D, 0x62E163);
 #endif

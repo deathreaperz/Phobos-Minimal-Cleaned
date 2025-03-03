@@ -13,7 +13,7 @@ void TerrainExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 		this->LighSource.release();
 	}
 
-	if (this->AttachedAnim == ptr)
+	if (this->AttachedAnim.get() == ptr)
 	{
 		this->AttachedAnim.release();
 	}
@@ -119,6 +119,7 @@ void TerrainExtData::Serialize(T& Stm)
 		.Process(this->Initialized)
 		.Process(this->LighSource, true)
 		.Process(this->AttachedAnim, true)
+		.Process(this->AttachedFireAnim, true)
 		.Process(this->Adjencentcells)
 		;
 }
@@ -157,7 +158,7 @@ DEFINE_HOOK(0x71BCA5, TerrainClass_CTOR_MoveAndAllocate, 0x5)
 
 		if (pItem->Type)
 		{
-			GeneralUtils::AdjacentCellsInRange(pExt->Adjencentcells, TerrainTypeExtContainer::Instance.Find(pItem->Type)->SpawnsTiberium_Range);
+			GeneralUtils::AdjacentCellsInRange(pExt->Adjencentcells, (short)TerrainTypeExtContainer::Instance.Find(pItem->Type)->SpawnsTiberium_Range);
 		}
 	}
 
@@ -235,3 +236,14 @@ void FakeTerrainClass::_Detach(AbstractClass* target, bool all)
 	this->TerrainClass::PointerExpired(target, all);
 }
 DEFINE_JUMP(VTABLE, 0x7F5254, MiscTools::to_DWORD(&FakeTerrainClass::_Detach));
+
+void FakeTerrainClass::_AnimPointerExpired(AnimClass* pAnim)
+{
+	auto pExt = this->_GetExtData();
+
+	if (pExt->AttachedFireAnim.get() == pAnim)
+	{
+		pExt->AttachedFireAnim.release();
+	}
+}
+DEFINE_JUMP(VTABLE, 0x7F528C, MiscTools::to_DWORD(&FakeTerrainClass::_AnimPointerExpired))

@@ -29,49 +29,49 @@ struct TriggerElementWeight
 	TeamCategory Category { TeamCategory::None };
 
 	//need to define a == operator so it can be used in array classes
-	constexpr bool operator==(const TriggerElementWeight& other) const
+	COMPILETIMEEVAL bool operator==(const TriggerElementWeight& other) const
 	{
 		return (Trigger == other.Trigger && Weight == other.Weight && Category == other.Category);
 	}
 
 	//unequality
-	constexpr bool operator!=(const TriggerElementWeight& other) const
+	COMPILETIMEEVAL bool operator!=(const TriggerElementWeight& other) const
 	{
 		return (Trigger != other.Trigger || Weight != other.Weight || Category == other.Category);
 	}
 
-	constexpr bool operator<(const TriggerElementWeight& other) const
+	COMPILETIMEEVAL bool operator<(const TriggerElementWeight& other) const
 	{
 		return (Weight < other.Weight);
 	}
 
-	constexpr bool operator<(const double other) const
+	COMPILETIMEEVAL bool operator<(const double other) const
 	{
 		return (Weight < other);
 	}
 
-	constexpr bool operator>(const TriggerElementWeight& other) const
+	COMPILETIMEEVAL bool operator>(const TriggerElementWeight& other) const
 	{
 		return (Weight > other.Weight);
 	}
 
-	constexpr bool operator>(const double other) const
+	COMPILETIMEEVAL bool operator>(const double other) const
 	{
 		return (Weight > other);
 	}
 
-	constexpr bool operator==(const double other) const
+	COMPILETIMEEVAL bool operator==(const double other) const
 	{
 		return (Weight == other);
 	}
 
-	constexpr bool operator!=(const double other) const
+	COMPILETIMEEVAL bool operator!=(const double other) const
 	{
 		return (Weight != other);
 	}
 };
 
-constexpr bool IsUnitAvailable(TechnoClass* pTechno, bool checkIfInTransportOrAbsorbed)
+COMPILETIMEEVAL bool IsUnitAvailable(TechnoClass* pTechno, bool checkIfInTransportOrAbsorbed)
 {
 	if (!pTechno)
 		return false;
@@ -82,10 +82,9 @@ constexpr bool IsUnitAvailable(TechnoClass* pTechno, bool checkIfInTransportOrAb
 		isAvailable &= !pTechno->Absorbed && !pTechno->Transporter;
 
 	return isAvailable;
-
 }
 
-constexpr bool IsValidTechno(TechnoClass* pTechno)
+COMPILETIMEEVAL bool IsValidTechno(TechnoClass* pTechno)
 {
 	if (!pTechno)
 		return false;
@@ -106,7 +105,7 @@ enum class ComparatorOperandTypes
 	LessThan, LessOrEqual, Equal, MoreOrEqual, More, NotSame
 };
 
-constexpr void ModifyOperand(bool& result, int counter, AITriggerConditionComparator& cond)
+COMPILETIMEEVAL void ModifyOperand(bool& result, int counter, AITriggerConditionComparator& cond)
 {
 	switch ((ComparatorOperandTypes)cond.ComparatorOperand)
 	{
@@ -441,7 +440,6 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			if (totalPercengates > 1.0 || totalPercengates <= 0.0)
 				splitTriggersByCategory = false;
 
-
 			if (splitTriggersByCategory)
 			{
 				int categoryDice = ScenarioClass::Instance->Random.RandomRanged(1, 100);
@@ -454,22 +452,22 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				if (percentageUnclassifiedTriggers > 0.0 && categoryDice <= unclassifiedValue)
 				{
 					validCategory = TeamCategory::Unclassified;
-					Debug::Log("New AI team category selection: dice %d <= %d (MIXED)\n", categoryDice, unclassifiedValue);
+					Debug::LogInfo("New AI team category selection: dice {} <= {} (MIXED)", categoryDice, unclassifiedValue);
 				}
 				else if (percentageGroundTriggers > 0.0 && categoryDice <= (unclassifiedValue + groundValue))
 				{
 					validCategory = TeamCategory::Ground;
-					Debug::Log("New AI team category selection: dice %d <= %d (mixed: %d%% + GROUND: %d%%)\n", categoryDice, (unclassifiedValue + groundValue), unclassifiedValue, groundValue);
+					Debug::LogInfo("New AI team category selection: dice {} <= {} (mixed: {}%% + GROUND: {}%%)", categoryDice, (unclassifiedValue + groundValue), unclassifiedValue, groundValue);
 				}
 				else if (percentageAirTriggers > 0.0 && categoryDice <= (unclassifiedValue + groundValue + airValue))
 				{
 					validCategory = TeamCategory::Air;
-					Debug::Log("New AI team category selection: dice %d <= %d (mixed: %d%% + ground: %d%% + AIR: %d%%)\n", categoryDice, (unclassifiedValue + groundValue + airValue), unclassifiedValue, groundValue, airValue);
+					Debug::LogInfo("New AI team category selection: dice {} <= {} (mixed: {}%% + ground: {}%% + AIR: {}%%)", categoryDice, (unclassifiedValue + groundValue + airValue), unclassifiedValue, groundValue, airValue);
 				}
 				else if (percentageNavalTriggers > 0.0 && categoryDice <= (unclassifiedValue + groundValue + airValue + navalValue))
 				{
 					validCategory = TeamCategory::Naval;
-					Debug::Log("New AI team category selection: dice %d <= %d (mixed: %d%% + ground: %d%% + air: %d%% + NAVAL: %d%%)\n", categoryDice, (unclassifiedValue + groundValue + airValue + navalValue), unclassifiedValue, groundValue, airValue, navalValue);
+					Debug::LogInfo("New AI team category selection: dice {} <= {} (mixed: {}%% + ground: {}%% + air: {}%% + NAVAL: {}%%)", categoryDice, (unclassifiedValue + groundValue + airValue + navalValue), unclassifiedValue, groundValue, airValue, navalValue);
 				}
 				else
 				{
@@ -485,7 +483,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		int parentCountrySideTypeIdx = pHouse->Type->FindParentCountry()->SideIndex;
 		int sideTypeIdx = parentCountrySideTypeIdx >= 0 ? parentCountrySideTypeIdx + 1 : pHouse->Type->SideIndex + 1; // Side indexes in AITriggers section are 1-based
-		int sideIdx = pHouse->SideIndex + 1; // Side indexes in AITriggers section are 1-based
+		//int sideIdx = pHouse->SideIndex + 1; // Side indexes in AITriggers section are 1-based
 
 		auto houseDifficulty = pHouse->AIDifficulty;
 		int minBaseDefenseTeams = RulesClass::Instance->MinimumAIDefensiveTeams[(int)houseDifficulty];
@@ -519,11 +517,11 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		bool hasReachedMaxTeamsLimit = (int)activeTeamsList.size() < maxTeamsLimit ? false : true;
 		bool hasReachedMaxDefensiveTeamsLimit = activeDefenseTeamsCount < defensiveTeamsLimit ? false : true;
 
-		/*Debug::Log("\n=====================\n[%s] ACTIVE TEAMS: %d / %d (of them, defensive teams: %d / %d)\n", pHouse->Type->ID, activeTeams, maxTeamsLimit, activeDefenseTeamsCount, defensiveTeamsLimit);
+		/*Debug::LogInfo("=====================[{}] ACTIVE TEAMS: {} / {} (of them, defensive teams: {} / {})", pHouse->Type->ID, activeTeams, maxTeamsLimit, activeDefenseTeamsCount, defensiveTeamsLimit);
 		for (auto team : activeTeamsList)
 		{
-			Debug::Log("[%s](%d) : %s%s\n", team->Type->ID, team->TotalObjects, team->Type->Name, team->Type->IsBaseDefense ? " -> is DEFENDER team" : "");
-			Debug::Log("    IsMoving: %d, IsFullStrength: %d, IsUnderStrength: %d\n", team->IsMoving, team->IsFullStrength, team->IsUnderStrength);
+			Debug::LogInfo("[{}]({}) : {}{}", team->Type->ID, team->TotalObjects, team->Type->Name, team->Type->IsBaseDefense ? " -> is DEFENDER team" : "");
+			Debug::LogInfo("    IsMoving: {}, IsFullStrength: {}, IsUnderStrength: {}", team->IsMoving, team->IsFullStrength, team->IsUnderStrength);
 			int i = 0;
 
 			for (auto entry : team->Type->TaskForce->Entries)
@@ -531,13 +529,13 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				if (entry.Type && entry.Amount > 0)
 				{
 					if (entry.Type)
-						Debug::Log("\t[%s]: %d / %d\n", entry.Type->ID, team->CountObjects[i], entry.Amount);
+						Debug::LogInfo("\t[{}]: {} / {}", entry.Type->ID, team->CountObjects[i], entry.Amount);
 				}
 
 				i++;
 			}
 		}
-		Debug::Log("\n=====================\n");*/
+		Debug::LogInfo("=====================");*/
 
 		// Check if the next team must be a defensive team
 		bool onlyPickDefensiveTeams = false;
@@ -548,11 +546,11 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			onlyPickDefensiveTeams = true;
 
 		if (hasReachedMaxDefensiveTeamsLimit)
-			Debug::Log("DEBUG: House [%s] (idx: %d) reached the MaximumAIDefensiveTeams value!\n", pHouse->Type->ID, pHouse->ArrayIndex);
+			Debug::LogInfo("DEBUG: House [{}] (idx: {}) reached the MaximumAIDefensiveTeams value!", pHouse->Type->ID, pHouse->ArrayIndex);
 
 		if (hasReachedMaxTeamsLimit)
 		{
-			Debug::Log("DEBUG: House [%s] (idx: %d) reached the TotalAITeamCap value!\n", pHouse->Type->ID, pHouse->ArrayIndex);
+			Debug::LogInfo("DEBUG: House [{}] (idx: {}) reached the TotalAITeamCap value!", pHouse->Type->ID, pHouse->ArrayIndex);
 			return true;
 		}
 
@@ -569,7 +567,6 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 				auto const pBuilding = static_cast<BuildingClass*>(pTechno);
 				if (pBuilding && pBuilding->Type->BridgeRepairHut)
 				{
-
 					CellStruct cell = pTechno->GetCell()->MapCoords;
 
 					if (MapClass::Instance->IsLinkedBridgeDestroyed(cell))
@@ -577,12 +574,9 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 					else
 						undamagedBridgesCount++;
 				}
-
-
 			}
 			else
 			{
-
 				auto const pFoot = static_cast<FootClass*>(pTechno);
 
 				if (!pFoot
@@ -622,7 +616,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			// Ignore the deactivated triggers
 			if (pTrigger->IsEnabled)
 			{
-					//pTrigger->OwnerHouseType;
+				//pTrigger->OwnerHouseType;
 				if (pTrigger->TechLevel > pHouse->StaticData.TechLevel)
 					continue;
 
@@ -822,7 +816,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 					// Analyze what kind of category is this main team if the feature is enabled
 					if (splitTriggersByCategory)
 					{
-						//Debug::Log("DEBUG: TaskForce [%s] members:\n", pTriggerTeam1Type->TaskForce->ID);
+						//Debug::LogInfo("DEBUG: TaskForce [{}] members:", pTriggerTeam1Type->TaskForce->ID);
 						// TaskForces are limited to 6 entries
 						for (int i = 0; i < 6; i++)
 						{
@@ -839,7 +833,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 								{
 									// This unit is from air category
 									entryIsCategory = TeamCategory::Air;
-									//Debug::Log("\t[%s](%d) is in AIR category.\n", entry.Type->ID, entry.Amount);
+									//Debug::LogInfo("\t[{}]({}) is in AIR category.", entry.Type->ID, entry.Amount);
 								}
 								else
 								{
@@ -853,7 +847,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 									{
 										// This unit is from naval category
 										entryIsCategory = TeamCategory::Naval;
-										//Debug::Log("\t[%s](%d) is in NAVAL category.\n", entry.Type->ID, entry.Amount);
+										//Debug::LogInfo("\t[{}]({}) is in NAVAL category.", entry.Type->ID, entry.Amount);
 									}
 
 									if (pTechnoTypeExt->ConsideredVehicle
@@ -862,7 +856,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 									{
 										// This unit is from ground category
 										entryIsCategory = TeamCategory::Ground;
-										//Debug::Log("\t[%s](%d) is in GROUND category.\n", entry.Type->ID, entry.Amount);
+										//Debug::LogInfo("\t[{}]({}) is in GROUND category.", entry.Type->ID, entry.Amount);
 									}
 								}
 
@@ -878,12 +872,12 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 							}
 						}
 
-						//Debug::Log("DEBUG: This team is a category %d (1:Ground, 2:Air, 3:Naval, 4:Mixed).\n", teamIsCategory);
+						//Debug::LogInfo("DEBUG: This team is a category {} (1:Ground, 2:Air, 3:Naval, 4:Mixed).", teamIsCategory);
 						// Si existe este valor y el team es MIXTO se sobreescribe el tipo de categoría
 						if (teamIsCategory == TeamCategory::Unclassified
 							&& mergeUnclassifiedCategoryWith >= 0)
 						{
-							//Debug::Log("DEBUG: MIXED category forced to work as category %d.\n", mergeUnclassifiedCategoryWith);
+							//Debug::LogInfo("DEBUG: MIXED category forced to work as category {}.", mergeUnclassifiedCategoryWith);
 							teamIsCategory = (TeamCategory)mergeUnclassifiedCategoryWith;
 						}
 					}
@@ -929,8 +923,10 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 							if (allObjectsCanBeBuiltOrRecruited && entry.Type && entry.Amount > 0)
 							{
 								auto iter = ownedRecruitables.get_key_iterator(entry.Type);
-								if(iter != ownedRecruitables.end()){
-									if ((iter->second) < entry.Amount) {
+								if (iter != ownedRecruitables.end())
+								{
+									if ((iter->second) < entry.Amount)
+									{
 										allObjectsCanBeBuiltOrRecruited = false;
 										break;
 									}
@@ -1006,30 +1002,30 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			switch (validCategory)
 			{
 			case TeamCategory::Ground:
-				Debug::Log("DEBUG: This time only will be picked GROUND teams.\n");
+				Debug::LogInfo("DEBUG: This time only will be picked GROUND teams.");
 				break;
 
 			case TeamCategory::Unclassified:
-				Debug::Log("DEBUG: This time only will be picked MIXED teams.\n");
+				Debug::LogInfo("DEBUG: This time only will be picked MIXED teams.");
 				break;
 
 			case TeamCategory::Naval:
-				Debug::Log("DEBUG: This time only will be picked NAVAL teams.\n");
+				Debug::LogInfo("DEBUG: This time only will be picked NAVAL teams.");
 				break;
 
 			case TeamCategory::Air:
-				Debug::Log("DEBUG: This time only will be picked AIR teams.\n");
+				Debug::LogInfo("DEBUG: This time only will be picked AIR teams.");
 				break;
 
 			default:
-				Debug::Log("DEBUG: This time teams categories are DISABLED.\n");
+				Debug::LogInfo("DEBUG: This time teams categories are DISABLED.");
 				break;
 			}
 		}
 
 		if (validTriggerCandidates.empty())
 		{
-			Debug::Log("DEBUG: [%s] (idx: %d) No valid triggers for now. A new attempt will be done later...\n", pHouse->Type->ID, pHouse->ArrayIndex);
+			Debug::LogInfo("DEBUG: [{}] (idx: {}) No valid triggers for now. A new attempt will be done later...", pHouse->Type->ID, pHouse->ArrayIndex);
 			return true;
 		}
 
@@ -1038,12 +1034,12 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			|| (validCategory == TeamCategory::Air && validTriggerCandidatesAirOnly.empty())
 			|| (validCategory == TeamCategory::Naval && validTriggerCandidatesNavalOnly.empty()))
 		{
-			Debug::Log("DEBUG: [%s] (idx: %d) No valid triggers of this category. A new attempt should be done later...\n", pHouse->Type->ID, pHouse->ArrayIndex);
+			Debug::LogInfo("DEBUG: [{}] (idx: {}) No valid triggers of this category. A new attempt should be done later...", pHouse->Type->ID, pHouse->ArrayIndex);
 
 			if (!isFallbackEnabled)
 				return true;
 
-			Debug::Log("... but fallback mode is enabled so now will be checked all available triggers.\n");
+			Debug::LogInfo("... but fallback mode is enabled so now will be checked all available triggers.");
 			validCategory = TeamCategory::None;
 		}
 
@@ -1056,13 +1052,13 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		{
 		case TeamCategory::None:
 			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeight) * 1.0;
-			/*Debug::Log("Weight Dice: %f\n", weightDice);
+			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
-			Debug::Log("DEBUG: Candidate AI triggers list:\n");
+			Debug::LogInfo("DEBUG: Candidate AI triggers list:");
 			for (TriggerElementWeight element : validTriggerCandidates)
 			{
-				Debug::Log("Weight: %f, [%s][%s]: %s\n", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
+				Debug::LogInfo("Weight: {}, [{}][{}]: {}", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
 			}*/
 
 			for (const auto& element : validTriggerCandidates)
@@ -1080,13 +1076,13 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		case TeamCategory::Ground:
 			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightGroundOnly) * 1.0;
-			/*Debug::Log("Weight Dice: %f\n", weightDice);
+			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
-			Debug::Log("DEBUG: Candidate AI triggers list:\n");
+			Debug::LogInfo("DEBUG: Candidate AI triggers list:");
 			for (TriggerElementWeight element : validTriggerCandidatesGroundOnly)
 			{
-				Debug::Log("Weight: %f, [%s][%s]: %s\n", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
+				Debug::LogInfo("Weight: {}, [{}][{}]: {}", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
 			}*/
 
 			for (const auto& element : validTriggerCandidatesGroundOnly)
@@ -1104,13 +1100,13 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		case TeamCategory::Unclassified:
 			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightUnclassifiedOnly) * 1.0;
-			/*Debug::Log("Weight Dice: %f\n", weightDice);
+			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
-			Debug::Log("DEBUG: Candidate AI triggers list:\n");
+			Debug::LogInfo("DEBUG: Candidate AI triggers list:");
 			for (TriggerElementWeight element : validTriggerCandidatesUnclassifiedOnly)
 			{
-				Debug::Log("Weight: %f, [%s][%s]: %s\n", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
+				Debug::LogInfo("Weight: {}, [{}][{}]: {}", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
 			}*/
 
 			for (const auto& element : validTriggerCandidatesUnclassifiedOnly)
@@ -1128,13 +1124,13 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		case TeamCategory::Naval:
 			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightNavalOnly) * 1.0;
-			/*Debug::Log("Weight Dice: %f\n", weightDice);
+			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
-			Debug::Log("DEBUG: Candidate AI triggers list:\n");
+			Debug::LogInfo("DEBUG: Candidate AI triggers list:");
 			for (TriggerElementWeight element : validTriggerCandidatesNavalOnly)
 			{
-				Debug::Log("Weight: %f, [%s][%s]: %s\n", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
+				Debug::LogInfo("Weight: {}, [{}][{}]: {}", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
 			}*/
 
 			for (const auto& element : validTriggerCandidatesNavalOnly)
@@ -1152,13 +1148,13 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		case TeamCategory::Air:
 			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightAirOnly) * 1.0;
-			/*Debug::Log("Weight Dice: %f\n", weightDice);
+			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
-			Debug::Log("DEBUG: Candidate AI triggers list:\n");
+			Debug::LogInfo("DEBUG: Candidate AI triggers list:");
 			for (TriggerElementWeight element : validTriggerCandidatesAirOnly)
 			{
-				Debug::Log("Weight: %f, [%s][%s]: %s\n", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
+				Debug::LogInfo("Weight: {}, [{}][{}]: {}", element.Weight, element.Trigger->ID, element.Trigger->Team1->ID, element.Trigger->Team1->Name);
 			}*/
 
 			for (const auto& element : validTriggerCandidatesAirOnly)
@@ -1180,7 +1176,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		if (!selectedTrigger)
 		{
-			Debug::Log("AI Team Selector: House [%s] (idx: %d) failed to select Trigger. A new attempt Will be done later...\n", pHouse->Type->ID, pHouse->ArrayIndex);
+			Debug::LogInfo("AI Team Selector: House [{}] (idx: {}) failed to select Trigger. A new attempt Will be done later...", pHouse->Type->ID, pHouse->ArrayIndex);
 			return true;
 		}
 
@@ -1192,7 +1188,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		}
 
 		// We have a winner trigger here
-		Debug::Log("AI Team Selector: House [%s] (idx: %d) selected trigger [%s].\n", pHouse->Type->ID, pHouse->ArrayIndex, selectedTrigger->ID);
+		Debug::LogInfo("AI Team Selector: House [{}] (idx: {}) selected trigger [{}].", pHouse->Type->ID, pHouse->ArrayIndex, selectedTrigger->ID);
 
 		// Team 1 creation
 		if (auto pTriggerTeam1Type = selectedTrigger->Team1)
@@ -1257,7 +1253,7 @@ DEFINE_HOOK(0x687C9B, ReadScenarioINI_AITeamSelector_PreloadValidTriggers, 0x7)
 	// For each house save a list with only AI Triggers that can be used
 	for (HouseClass* pHouse : *HouseClass::Array)
 	{
-		StackVector<int , 4096> list;
+		StackVector<int, 256> list {};
 		const int houseIdx = pHouse->ArrayIndex;
 		const int sideIdx = pHouse->SideIndex + 1;
 
@@ -1265,7 +1261,6 @@ DEFINE_HOOK(0x687C9B, ReadScenarioINI_AITeamSelector_PreloadValidTriggers, 0x7)
 		{
 			if (auto pTrigger = AITriggerTypeClass::Array->Items[i])
 			{
-
 				const int triggerHouse = pTrigger->HouseIndex;
 				const int triggerSide = pTrigger->SideIndex;
 
@@ -1275,7 +1270,7 @@ DEFINE_HOOK(0x687C9B, ReadScenarioINI_AITeamSelector_PreloadValidTriggers, 0x7)
 			}
 		}
 
-		Debug::Log("House %d [%s] could use %d AI triggers in this map.\n", pHouse->ArrayIndex, pHouse->Type->ID, list->size());
+		Debug::LogInfo("House {} [{}] could use {} AI triggers in this map.", pHouse->ArrayIndex, pHouse->Type->ID, list->size());
 	}
 
 	return 0;

@@ -165,8 +165,7 @@ WaveExtContainer WaveExtContainer::Instance;
 // container hooks
 //
 
-DEFINE_HOOK_AGAIN(0x75ED27, WaveClass_CTOR, 0x5)
-DEFINE_HOOK(0x75EA59, WaveClass_CTOR, 0x5)
+DEFINE_HOOK(0x75EA66, WaveClass_CTOR, 0x5)
 {
 	GET(WaveClass*, pItem, ESI);
 	WaveExtContainer::Instance.FindOrAllocate(pItem);
@@ -192,7 +191,7 @@ DEFINE_HOOK(0x75F704, WaveClass_Load_Suffix, 0x7)
 //write it before DVC<CellStruct>
 DEFINE_HOOK(0x75F7E7, WaveClass_Save_Suffix, 0x6)
 {
-	GET(HRESULT, nRes, EAX);
+	//GET(HRESULT, nRes, EAX);
 
 	WaveExtContainer::Instance.SaveStatic();
 

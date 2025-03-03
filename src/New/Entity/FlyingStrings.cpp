@@ -23,7 +23,7 @@ bool FlyingStrings::DrawAllowed(CoordStruct const& nCoords, Point2D& outPoint)
 	{
 		if (!pCell->IsFogged() && !pCell->IsShrouded())
 		{
-			auto& [_ret, _cond] = TacticalClass::Instance->GetCoordsToClientSituation(nCoords);
+			auto [_ret, _cond] = TacticalClass::Instance->GetCoordsToClientSituation(nCoords);
 			outPoint = _ret;
 			return _cond;
 		}
@@ -145,7 +145,7 @@ void FlyingStrings::AddNumberString(int amount, HouseClass* owner, AffectedHouse
 		const bool isPositive = amount > 0;
 		const wchar_t* sign_symbol = (sign && amount != 0) ? (isPositive ? L"+" : L"-") : L"";
 		wchar_t displayStr[0x20];
-		swprintf_s(displayStr, L"%ls%ls%d", sign_symbol, prefix, Math::abs(amount));
+		swprintf_s(displayStr, L"%ls%ls%d", sign_symbol, prefix ? prefix : Phobos::UI::CostLabel, Math::abs(amount));
 		Dimensions nDim {};
 		BitFont::Instance->GetTextDimension(displayStr, &nDim.Width, &nDim.Height, 120);
 		pixelOffset.X -= (nDim.Width / 2);
@@ -194,7 +194,7 @@ void FlyingStrings::DisplayDamageNumberString(int damage, DamageDisplayType type
 
 void FlyingStrings::UpdateAll()
 {
-	auto iter = std::remove_if(Data.begin(), Data.end(), [](FlyingStrings::Item& item)
+	Data.remove_all_if([](FlyingStrings::Item& item)
  {
 	 if (item.Text[0])
 	 {
@@ -213,7 +213,7 @@ void FlyingStrings::UpdateAll()
 					 pos.Y -= (Unsorted::CurrentFrame - item.CreationFrame);
 				 }
 
-				 Fancy_Text_Print_Wide_REF(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
+				 Simple_Text_Print_Wide(&tmp, item.Text, DSurface::Temp(), &bound, &pos, item.Color, 0, item.TextPrintType, 1);
 			 }
 		 }
 	 }
@@ -225,7 +225,4 @@ void FlyingStrings::UpdateAll()
 
 	 return false;
 	});
-
-	if (iter != Data.end())
-		Data.erase(iter, Data.end());
 }

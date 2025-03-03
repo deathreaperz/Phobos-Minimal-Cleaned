@@ -23,7 +23,7 @@ void ScenarioExtData::SaveVariablesToFile(bool isGlobal)
 
 	if (!pFile->Open(FileAccessMode::Write))
 	{
-		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, fileName);
+		Debug::LogInfo(__FUNCTION__" Failed to Open file {} for", fileName);
 		return;
 	}
 
@@ -54,7 +54,7 @@ void ScenarioExtData::LoadVariablesToFile(bool isGlobal)
 
 	if (!file.Open(FileAccessMode::ReadWrite))
 	{
-		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, fileName);
+		Debug::LogInfo(" {} Failed to Open file {} for", __FUNCTION__, fileName);
 		return;
 	}
 
@@ -78,14 +78,14 @@ PhobosMap<int, ExtendedVariable>* ScenarioExtData::GetVariables(bool IsGlobal)
 
 void ScenarioExtData::SetVariableToByID(const bool IsGlobal, int nIndex, char bState)
 {
-	//Debug::Log("%s , Executed !\n", __FUNCTION__);
+	//Debug::LogInfo("{} , Executed !", __FUNCTION__);
 
 	const auto dict = ScenarioExtData::GetVariables(IsGlobal);
 	auto itr = dict->tryfind(nIndex);
 
 	if (itr && itr->Value != bState)
 	{
-		//Debug::Log("[%d]SetVariableToByID %s - %d from [%d] to [%d]\n", (int)IsGlobal ,itr->Name , nIndex, itr->Value , bState);
+		//Debug::LogInfo("[{}]SetVariableToByID {} - {} from [{}] to [{}]", (int)IsGlobal ,itr->Name , nIndex, itr->Value , bState);
 		itr->Value = bState;
 		ScenarioClass::Instance->VariablesChanged = true;
 		if (!IsGlobal)
@@ -97,20 +97,20 @@ void ScenarioExtData::SetVariableToByID(const bool IsGlobal, int nIndex, char bS
 
 void ScenarioExtData::GetVariableStateByID(const bool IsGlobal, int nIndex, char* pOut)
 {
-	//Debug::Log("%s , Executed !\n", __FUNCTION__);
+	//Debug::LogInfo("{} , Executed !", __FUNCTION__);
 
 	const auto dict = ScenarioExtData::GetVariables(IsGlobal);
 
 	if (const auto itr = dict->tryfind(nIndex))
 		*pOut = static_cast<char>(itr->Value);
 	else
-		Debug::Log("Failed When Trying to Get [%d]Variables with Indx [%d] \n", (int)IsGlobal, nIndex);
+		Debug::LogInfo("Failed When Trying to Get [{}]Variables with Indx [{}] ", (int)IsGlobal, nIndex);
 }
 
 void ScenarioExtData::ReadVariables(const bool IsGlobal, CCINIClass* pINI)
 {
 	//auto const pString = IsGlobal ? "Global" : "Local";
-	//Debug::Log("%s , Executed For %s Variables !\n", __FUNCTION__, pString);
+	//Debug::LogInfo("{} , Executed For {} Variables !", __FUNCTION__, pString);
 
 	if (!IsGlobal) // Local variables need to be read again
 		ScenarioExtData::GetVariables(false)->clear();
@@ -136,7 +136,7 @@ void ScenarioExtData::ReadVariables(const bool IsGlobal, CCINIClass* pINI)
 			else
 				var.Value = 0;
 
-			//Debug::Log("ReadVariables [%s] result %s ! \n", var.Name, var.Value ? "True" : "False");
+			//Debug::LogInfo("ReadVariables [{}] result {} ! ", var.Name, var.Value ? "True" : "False");
 		}
 	}
 
@@ -191,13 +191,13 @@ void ScenarioExtData::ReadMissionMDINI()
 
 	if (!file.Exists())
 	{
-		Debug::Log(" %s Failed to Find file %s for\n", __FUNCTION__, file.FileName);
+		Debug::LogInfo(__FUNCTION__ " Failed to Find file {} for", file.FileName);
 		return;
 	}
 
 	if (!file.Open(FileAccessMode::ReadWrite))
 	{
-		Debug::Log(" %s Failed to Open file %s for\n", __FUNCTION__, file.FileName);
+		Debug::LogInfo(__FUNCTION__ " Failed to Open file {} for", file.FileName);
 		return;
 	}
 
@@ -240,7 +240,7 @@ void ScenarioExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 template <typename T>
 void ScenarioExtData::Serialize(T& Stm)
 {
-	//Debug::Log("Processing ScenarioExtData ! \n");
+	//Debug::LogInfo("Processing ScenarioExtData ! ");
 	Stm
 
 		.Process(SessionClass::Instance->Config)
@@ -264,8 +264,9 @@ void ScenarioExtData::Serialize(T& Stm)
 		//.Process(this->CurrentTint_Hashes)
 		.Process(this->AdjustLightingFix)
 
-		.Process(ShowBriefing)
-		.Process(BriefingTheme)
+		.Process(this->ShowBriefing)
+		.Process(this->BriefingTheme)
+		.Process(this->OwnedExistCameoTechnoTypes)
 		;
 }
 
@@ -337,7 +338,7 @@ DEFINE_HOOK(0x68945B, ScenarioClass_Save_Suffix, 0x8)
 	buffer->SaveToStream(writer);
 	//if (!
 	saver.WriteBlockToStream(ScenarioExtData::g_pStm)
-		//) Debug::Log("Faild To Write ScenarioExtData to the Stream ! ")
+		//) Debug::LogInfo("Faild To Write ScenarioExtData to the Stream ! ")
 		;
 
 	return 0;

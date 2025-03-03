@@ -54,7 +54,7 @@ DEFINE_HOOK(0x6F33CD, TechnoClass_WhatWeaponShouldIUse_ForceFire, 0x6)
 
 		if (pWeaponSecondary && !EnumFunctions::IsCellEligible(pCell, pPrimaryExt->CanTarget, true, true)
 			|| (pPrimaryExt->AttachEffect_CheckOnFirer && !pPrimaryExt->HasRequiredAttachedEffects(pThis, pThis)
-		))
+				))
 		{
 			R->EAX(1);
 			return UseWeaponIndex;
@@ -257,7 +257,7 @@ DEFINE_HOOK(0x6F3428, TechnoClass_WhatWeaponShouldIUse_ForceWeapon, 0x6)
 //	GET_STACK(uintptr_t, callerAddress, 0x0);
 //
 //	if(pTarget && Is_Techno(pTarget) && !static_cast<TechnoClass*>(pTarget)->IsAlive)
-//		Debug::Log("Caller[%x] InfantryClass_SelectWeapon[%s] Trying to target possibly dead Techno[%x] FromOwner [%s]\n", callerAddress, pThis->get_ID(), static_cast<TechnoClass*>(pTarget), static_cast<TechnoClass*>(pTarget)->align_154->OriginalHouseType->ID);
+//		Debug::LogInfo("Caller[%x] InfantryClass_SelectWeapon[%s] Trying to target possibly dead Techno[%x] FromOwner [%s]", callerAddress, pThis->get_ID(), static_cast<TechnoClass*>(pTarget), static_cast<TechnoClass*>(pTarget)->align_154->OriginalHouseType->ID);
 //
 //	return 0x0;
 //}
@@ -307,7 +307,7 @@ DEFINE_HOOK(0x6F36DB, TechnoClass_WhatWeaponShouldIUse, 0x8)
 	const auto pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
 
 	//if (!pTargetExt) {
-	//	Debug::Log("Caller[%x] Techno[%s] Trying to target possibly dead Techno[%x] FromOwner [%s]\n", calleraddr ,  pThis->get_ID(), pTargetTechno , pTargetTechno->align_154->OriginalHouseType->ID);
+	//	Debug::LogInfo("Caller[%x] Techno[%s] Trying to target possibly dead Techno[%x] FromOwner [%s]", calleraddr ,  pThis->get_ID(), pTargetTechno , pTargetTechno->align_154->OriginalHouseType->ID);
 	//	calleraddr = -1;
 	//	return OriginalCheck;
 	//}
@@ -332,7 +332,7 @@ DEFINE_HOOK(0x6F36DB, TechnoClass_WhatWeaponShouldIUse, 0x8)
 
 	const int nArmor = (int)TechnoExtData::GetArmor(pTargetTechno);
 	//if ((size_t)nArmor > ArmorTypeClass::Array.size())
-	//	Debug::Log(__FUNCTION__" Armor is more that avaible ArmorTypeClass \n");
+	//	Debug::LogInfo(__FUNCTION__" Armor is more that avaible ArmorTypeClass ");
 
 	const auto vsData_Secondary = &WarheadTypeExtContainer::Instance.Find(pSecondary->Warhead)->Verses[nArmor];
 
@@ -389,7 +389,7 @@ DEFINE_HOOK(0x6F3432, TechnoClass_WhatWeaponShouldIUse_Gattling, 0xA)
 	int oddWeaponIndex = 2 * pThis->CurrentGattlingStage;
 	int evenWeaponIndex = oddWeaponIndex + 1;
 	int chosenWeaponIndex = oddWeaponIndex;
-	int eligibleWeaponIndex = TechnoExtData::PickWeaponIndex(pThis, pTargetTechno, pTarget, oddWeaponIndex, evenWeaponIndex, true,true);
+	int eligibleWeaponIndex = TechnoExtData::PickWeaponIndex(pThis, pTargetTechno, pTarget, oddWeaponIndex, evenWeaponIndex, true, true);
 
 	if (eligibleWeaponIndex != -1)
 	{
@@ -412,7 +412,6 @@ DEFINE_HOOK(0x6F3432, TechnoClass_WhatWeaponShouldIUse_Gattling, 0xA)
 
 		if (!skipRemainingChecks)
 		{
-
 			if (Math::abs(
 				//GeneralUtils::GetWarheadVersusArmor(pWeaponOdd->Warhead , pTargetTechno->GetTechnoType()->Armor)
 				WarheadTypeExtContainer::Instance.Find(pWeaponOdd->Warhead)->GetVerses(
@@ -478,12 +477,17 @@ DEFINE_HOOK(0x51EAF2, TechnoClass_WhatAction_AllowAirstrike, 0x6)
 DEFINE_HOOK(0x70E1A0, TechnoClass_GetTurretWeapon_LaserWeapon, 0x5)
 {
 	GET(TechnoClass* const, pThis, ECX);
+	GET_STACK(DWORD, caller, 0x0);
+
+	if (!pThis)
+		Debug::FatalError("Caller %u ", caller);
 
 	if (pThis->WhatAmI() == BuildingClass::AbsID)
 	{
 		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
-		if (!pExt->CurrentLaserWeaponIndex.empty()) {
+		if (!pExt->CurrentLaserWeaponIndex.empty())
+		{
 			R->EAX(pThis->GetWeapon(pExt->CurrentLaserWeaponIndex));
 			return 0x70E1C8;
 		}

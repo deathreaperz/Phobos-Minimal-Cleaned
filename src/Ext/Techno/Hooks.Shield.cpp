@@ -1,4 +1,4 @@
- #include "Body.h"
+#include "Body.h"
 #include <SpecificStructures.h>
 
 #include <Utilities/Macro.h>
@@ -11,36 +11,6 @@
 #include <Ext/Anim/Body.h>
 
 #include <RadarEventClass.h>
-
-static int CalculateArmorMultipliers(TechnoClass* pThis, int damage, WarheadTypeClass* pWarhead)
-{
-	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	if (!pExt->AE.ArmorMultData.Enabled()) {
-		return static_cast<int>(damage / pExt->AE.ArmorMultData.Get(1.0, pWarhead));
-	}
-
-	return damage;
-}
-
-DEFINE_HOOK(0x6FDC87, TechnoClass_AdjustDamage_ArmorMultiplier, 0x6)
-{
-	GET(TechnoClass*, pTarget, EDI);
-	GET(int, damage, EAX);
-	GET_STACK(WeaponTypeClass*, pWeapon, STACK_OFFSET(0x18, 0x8));
-
-	R->EAX(CalculateArmorMultipliers(pTarget, damage, pWeapon->Warhead));
-	return 0;
-}
-DEFINE_HOOK(0x701966, TechnoClass_ReceiveDamage_ArmorMultiplier, 0x6)
-{
-	GET(TechnoClass*, pThis, ESI);
-	GET(int, damage, EAX);
-	GET_STACK(WarheadTypeClass*, pWarhead, STACK_OFFSET(0xC4, 0xC));
-	R->EAX(CalculateArmorMultipliers(pThis, damage, pWarhead));
-
-	return 0;
-}
 
 // namespace EvaluateObjectTemp
 // {
@@ -84,7 +54,7 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 
 					if (!pWHExt->CanRemoveParasytes_KickOut.Get() || coord == CoordStruct::Empty)
 					{
-						Debug::Log(__FUNCTION__"\n");
+						Debug::LogInfo(__FUNCTION__);
 						TechnoExtData::HandleRemove(parasyte, args->Attacker, false, false);
 					}
 					else
@@ -94,7 +64,7 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 
 						if (!parasyte->Unlimbo(coord, parasyte->PrimaryFacing.Current().GetDir()))
 						{
-							Debug::Log(__FUNCTION__"\n");
+							Debug::LogInfo(__FUNCTION__);
 							TechnoExtData::HandleRemove(parasyte, nullptr, false, false);
 							return;
 						}
@@ -120,103 +90,6 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 		}
 	}
 }
-
-//TODO : update , add the new tags problaby
-//the newer implementation is seems weird
-//https://github.com/Phobos-developers/Phobos/pull/1313
-static void applyCombatAlert(TechnoClass* pThis, args_ReceiveDamage* args) {
-	const auto pHouse = pThis->Owner;
-	const auto pWH = args->WH;
-	const auto pSourceHouse = args->SourceHouse;
-	const auto pType = pThis->GetTechnoType();
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-	if (!pType->Insignificant)
-	{
-		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(args->WH);
-
-		if (pTypeExt->CombatAlert.Get(RulesExtData::Instance()->CombatAlert) && pThis->IsOwnedByCurrentPlayer &&
-			*args->Damage > 1 && pThis->IsInPlayfield && !pWHExt->CombatAlert_Suppress.Get(!pWHExt->Malicious || pWHExt->Nonprovocative))
-		{
-			if (const auto pHouseExt = HouseExtContainer::Instance.TryFind(pHouse))
-			{
-				if (pHouse->IsControlledByHuman() && !pHouseExt->CombatAlertTimer.HasTimeLeft())
-				{
-					if (!RulesExtData::Instance()->CombatAlert_SuppressIfAllyDamage || !pHouse->IsAlliedWith(pSourceHouse))
-					{
-						if (((pThis->WhatAmI() != AbstractType::Building ||
-							pTypeExt->CombatAlert_NotBuilding) ||
-							!RulesExtData::Instance()->CombatAlert_IgnoreBuilding)
-						)
-						{
-							if (!RulesExtData::Instance()->CombatAlert_SuppressIfInScreen || pThis->IsOnMyView())
-							{
-								pHouseExt->CombatAlertTimer.Start(RulesExtData::Instance()->CombatAlert_Interval);
-								RadarEventClass::Create(RadarEventType::Combat, CellClass::Coord2Cell(pThis->GetCoords()));
-								if (RulesExtData::Instance()->CombatAlert_EVA)
-								{
-									VoxClass::PlayIndex(pTypeExt->EVA_Combat);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-// #issue 88 : shield logic
-// TODO : Emp reset shield
-DEFINE_HOOK(0x701900, TechnoClass_ReceiveDamage_Early, 0x6)
-{
-	GET(TechnoClass*, pThis, ECX);
-	REF_STACK(args_ReceiveDamage, args, 0x4);
-
-	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(args.WH);
-	auto pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	//pExt->LastDamageWH = args.WH;
-	pWHExt->ApplyDamageMult(pThis, &args);
-	//SkipAllReaction = false
-
-	TechnoExtData::ApplyKillWeapon(pThis, args.Attacker, args.WH);
-
-	if (!args.IgnoreDefenses) {
-
-		applyCombatAlert(pThis, &args);
-
-		if (auto pShieldData = pExt->GetShield()) {
-			pShieldData->OnReceiveDamage(&args);
-		}
-	}
-
-	return 0;
-}
-
-DEFINE_HOOK(0x7019D8, TechnoClass_ReceiveDamage_SkipLowDamageCheck, 0x5)
-{
-	enum { Continue = 0x0, SkipLowDamageCheck = 0x7019E3 };
-	GET(TechnoClass*, pThis, ESI);
-	GET(int*, pDamage, EBX);
-
-	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	if (pExt->SkipLowDamageCheck)
-	{
-		pExt->SkipLowDamageCheck = false;
-	}
-	else
-	{
-
-		// Restore overridden instructions
-		if (*pDamage < 1)
-			*pDamage = 1;
-	}
-
-	return SkipLowDamageCheck;
-}
-
 #undef REPLACE_ARMOR
 
 #include <Ext/Super/Body.h>
@@ -239,31 +112,35 @@ DEFINE_HOOK(0x6F6AC4, TechnoClass_Limbo_AfterRadioClassRemove, 0x5)
 	bool altered = false;
 
 	// Do not remove attached effects from undeploying buildings.
-	if (auto const pBuilding = cast_to<BuildingClass*, false>(pThis)) {
-		if ((pBuilding->Type->UndeploysInto && pBuilding->CurrentMission == Mission::Selling && pBuilding->MissionStatus == 2)) {
+	if (auto const pBuilding = cast_to<BuildingClass*, false>(pThis))
+	{
+		if ((pBuilding->Type->UndeploysInto && pBuilding->CurrentMission == Mission::Selling && pBuilding->MissionStatus == 2))
+		{
 			return 0;
 		}
 	}
 
-	pExt->PhobosAE.remove_if([&](auto& it){
+	pExt->PhobosAE.remove_all_if([&](auto& it)
+{
+	if (!it)
+		return true;
 
-		if(!it)
-			return true;
+	if ((it->GetType()->DiscardOn & DiscardCondition::Entry) != DiscardCondition::None)
+	{
+		altered = true;
 
-		if ((it->GetType()->DiscardOn & DiscardCondition::Entry) != DiscardCondition::None) {
-			altered = true;
+		if (it->GetType()->HasTint())
+			markForRedraw = true;
 
-			if (it->GetType()->HasTint())
-				markForRedraw = true;
-
-			if (it->ResetIfRecreatable()) {
-				return false;
-			}
-
-			return true;
+		if (it->ResetIfRecreatable())
+		{
+			return false;
 		}
 
-		return false;
+		return true;
+	}
+
+	return false;
 	});
 
 	if (altered)
@@ -307,7 +184,7 @@ DEFINE_HOOK(0x6F6AC4, TechnoClass_Limbo_AfterRadioClassRemove, 0x5)
 //
 //class AresScheme
 //{
-//	static inline ObjectClass* LinkedObj = nullptr;
+//	static OPTIONALINLINE ObjectClass* LinkedObj = nullptr;
 //public:
 //
 //	static void __cdecl Prefix(TechnoClass* pThis, ObjectClass* pObj, int nWeaponIndex)

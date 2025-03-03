@@ -37,7 +37,7 @@ void ParticleSystemTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFail
 		//these bug only happen on vanilla particle drawings
 		if (pThis->ParticleCap < 2 && !this->ApplyOptimization)
 		{
-			Debug::Log("ParticleSystem[%s] BehavesLike=Spark ParticleCap need to be more than 1 , fixing\n", pID);
+			Debug::LogInfo("ParticleSystem[{}] BehavesLike=Spark ParticleCap need to be more than 1 , fixing", pID);
 			pThis->ParticleCap = 2;
 		}
 		break;
@@ -48,7 +48,7 @@ void ParticleSystemTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFail
 	this->AdjustTargetCoordsOnRotation.Read(exINI, pID, "AdjustTargetCoordsOnRotation");
 
 	if (pThis->LightSize > 94)
-		Debug::Log("ParticleSystem[%s] with LightSize > 94 value [%d]\n", pID, pThis->LightSize);
+		Debug::LogInfo("ParticleSystem[{}] with LightSize > 94 value [{}]", pID, pThis->LightSize);
 }
 
 // =============================

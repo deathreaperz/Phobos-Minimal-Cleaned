@@ -68,7 +68,7 @@ struct BurstFLHBundle
 	std::vector<CoordStruct> Flh {};
 	std::vector<CoordStruct> EFlh {};
 
-	inline bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	OPTIONALINLINE bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
 		// support pointer to this type
 		return Stm
@@ -78,7 +78,7 @@ struct BurstFLHBundle
 			;
 	}
 
-	inline bool Save(PhobosStreamWriter& Stm) const
+	OPTIONALINLINE bool Save(PhobosStreamWriter& Stm) const
 	{
 		// remember this object address
 		return Stm
@@ -98,12 +98,12 @@ public:
 	using ImageVector = std::vector<VoxelStruct>;
 	using ColletiveCoordStructVectorData = std::array<std::vector<std::vector<CoordStruct>>*, 3u>;
 
-	static constexpr size_t Canary = 0x22544444;
+	static COMPILETIMEEVAL size_t Canary = 0x22544444;
 	using base_type = TechnoTypeClass;
 
-	//static constexpr size_t ExtOffset = 0x35C;
-	static constexpr size_t ExtOffset = 0x2FC;
-	//static constexpr size_t ExtOffset = 0xDF4;
+	//static COMPILETIMEEVAL size_t ExtOffset = 0x35C;
+	static COMPILETIMEEVAL size_t ExtOffset = 0x2FC;
+	//static COMPILETIMEEVAL size_t ExtOffset = 0xDF4;
 
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
@@ -113,7 +113,7 @@ public:
 	Valueable<bool> HealthBar_Hide { false };
 	Valueable<CSFText> UIDescription {};
 	Valueable<bool> LowSelectionPriority { false };
-	PhobosFixedString<0x20> GroupAs { NONE_STR2 };
+	PhobosFixedString<0x20> GroupAs { GameStrings::NoneStrb() };
 	Valueable<int> RadarJamRadius { 0 };
 	Nullable<int> InhibitorRange {};
 	Nullable<int> DesignatorRange {};
@@ -145,6 +145,7 @@ public:
 	Valueable<bool> Interceptor_KeepIntact { false };
 	Valueable<bool> Interceptor_ConsiderWeaponRange { false };
 	Valueable<bool> Interceptor_OnlyTargetBullet { false };
+	Valueable<bool> Interceptor_ApplyFirepowerMult { true };
 
 	Nullable<PartialVector3D<int>> TurretOffset {};
 	Valueable<bool> Powered_KillSpawns { false };
@@ -871,8 +872,8 @@ public:
 	Nullable<int> LandingDir {};
 
 	// new secret lab
-	DWORD Secret_RequiredHouses { 0xFFFFFFFF };
-	DWORD Secret_ForbiddenHouses { 0xFFFFFFFF };
+	DWORD Secret_RequiredHouses { 0xFFFFFFFFu };
+	DWORD Secret_ForbiddenHouses { 0u };
 
 	std::bitset<MaxHouseCount> RequiredStolenTech {};
 
@@ -970,6 +971,9 @@ public:
 
 	ValueableIdx<VoxClass> EVA_Combat { -1 };
 	Nullable<bool> CombatAlert {};
+	Nullable<bool> CombatAlert_UseFeedbackVoice {};
+	Nullable<bool> CombatAlert_UseAttackVoice {};
+	Nullable<bool> CombatAlert_UseEVA {};
 	Nullable<bool> CombatAlert_NotBuilding {};
 	Nullable<int> SubterraneanHeight {};
 
@@ -1027,6 +1031,44 @@ public:
 	Valueable<bool> SuppressKillWeapons { false };
 	ValueableVector<WeaponTypeClass*> SuppressKillWeapons_Types {};
 
+	Nullable<bool> NoQueueUpToEnter {};
+	Nullable<bool> NoQueueUpToUnload {};
+
+	Nullable<bool> NoRearm_UnderEMP {};
+	Nullable<bool> NoRearm_Temporal {};
+	Nullable<bool> NoReload_UnderEMP {};
+	Nullable<bool> NoReload_Temporal {};
+
+	Nullable<bool> Cameo_AlwaysExist {};
+	ValueableVector<TechnoTypeClass*> Cameo_AuxTechnos {};
+	ValueableVector<TechnoTypeClass*> Cameo_NegTechnos {};
+	bool CameoCheckMutex { false }; // Not read from ini
+	Valueable<CSFText> UIDescription_Unbuildable {};
+	PhobosPCXFile GreyCameoPCX {};
+
+	Valueable<int> RateDown_Ammo { -2 };
+	Valueable<int> RateDown_Delay {};
+	Valueable<int> RateDown_Cover {};
+	Valueable<bool> RateDown_Reset {};
+
+	Valueable<bool> CanManualReload { false };
+	Valueable<bool> CanManualReload_ResetROF { true };
+	Valueable<WarheadTypeClass*> CanManualReload_DetonateWarhead {};
+	Valueable<int> CanManualReload_DetonateConsume {};
+
+	Valueable<int> Power {};
+	Valueable<bool> BunkerableAnyway {};
+
+	Nullable<bool> JumpjetTilt {};
+	Valueable<double> JumpjetTilt_ForwardAccelFactor { 1.0 };
+	Valueable<double> JumpjetTilt_ForwardSpeedFactor { 1.0 };
+	Valueable<double> JumpjetTilt_SidewaysRotationFactor { 1.0 };
+	Valueable<double> JumpjetTilt_SidewaysSpeedFactor { 1.0 };
+
+	Nullable<bool> NoTurret_TrackTarget {};
+
+	Nullable<bool> RecountBurst {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromINIFile_Aircraft(CCINIClass* pINI);
 	void LoadFromINIFile_EvaluateSomeVariables(CCINIClass* pINI);
@@ -1045,7 +1087,7 @@ public:
 
 	void ApplyTurretOffset(Matrix3D* mtx, double factor);
 
-	constexpr FORCEINLINE static size_t size_Of()
+	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(TechnoTypeExtData) -
 			(4u //AttachedToObject
@@ -1056,8 +1098,8 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	static constexpr double TurretMultiOffsetDefaultMult { 1.0 };
-	static constexpr double TurretMultiOffsetOneByEightMult { 0.125 };
+	static COMPILETIMEEVAL double TurretMultiOffsetDefaultMult { 1.0 };
+	static COMPILETIMEEVAL double TurretMultiOffsetOneByEightMult { 0.125 };
 
 	// Ares 0.A
 	static const char* GetSelectionGroupID(ObjectTypeClass* pType);

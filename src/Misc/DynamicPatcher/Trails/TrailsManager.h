@@ -20,17 +20,16 @@ struct TrailData
 		, OnTileTypes { }
 		, FLHs { flh }
 		, Onturrents { nTur }
-	{
-	}
+	{ }
 
 	~TrailData() = default;
 
 	TrailData(const TrailData& other) = default;
 	TrailData& operator=(const TrailData& other) = default;
 
-	inline bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	OPTIONALINLINE bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
-		//Debug::Log("Processing Element From TrailData ! \n");
+		//Debug::LogInfo("Processing Element From TrailData ! ");
 		return Stm
 			.Process(CurrentType)
 			.Process(OnLand)
@@ -41,9 +40,9 @@ struct TrailData
 			;
 	}
 
-	inline bool Save(PhobosStreamWriter& Stm) const
+	OPTIONALINLINE bool Save(PhobosStreamWriter& Stm) const
 	{
-		//Debug::Log("Processing Element From TrailData ! \n");
+		//Debug::LogInfo("Processing Element From TrailData ! ");
 		return Stm
 			.Process(CurrentType)
 			.Process(OnLand)

@@ -6,6 +6,7 @@
 
 #include <Ext/Side/Body.h>
 #include <Ext/Surface/Body.h>
+#include <Ext/Scenario/Body.h>
 
 #include <Utilities/Cast.h>
 
@@ -33,24 +34,36 @@
 #include <New/SuperWeaponSidebar/SWButtonClass.h>
 
 #include <YRMath.h>
+#include <Phobos.h>
 
 PhobosToolTip PhobosToolTip::Instance;
-
-inline const wchar_t* GetUIDescription(TechnoTypeExtData* pData)
+bool PhobosToolTip::IsEnabled() const
 {
-	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription->empty()
-		? pData->UIDescription->Text
+	return Phobos::UI::ExtendedToolTips;
+}
+
+OPTIONALINLINE const wchar_t* PhobosToolTip::GetUIDescription(TechnoTypeExtData* pData) const
+{
+	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription.Get().empty()
+		? pData->UIDescription.Get().Text
 		: nullptr;
 }
 
-inline const wchar_t* GetUIDescription(SWTypeExtData* pData)
+OPTIONALINLINE const wchar_t* PhobosToolTip::GetUnbuildableUIDescription(TechnoTypeExtData* pData) const
 {
-	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription->empty()
-		? pData->UIDescription->Text
+	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription_Unbuildable.Get().empty()
+		? pData->UIDescription_Unbuildable.Get().Text
 		: nullptr;
 }
 
-inline int PhobosToolTip::GetBuildTime(TechnoTypeClass* pType) const
+OPTIONALINLINE const wchar_t* PhobosToolTip::GetUIDescription(SWTypeExtData* pData) const
+{
+	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription.Get().empty()
+		? pData->UIDescription.Get().Text
+		: nullptr;
+}
+
+OPTIONALINLINE int PhobosToolTip::GetBuildTime(TechnoTypeClass* pType) const
 {
 	// TechnoTypeClass only has 4 final classes :
 	// BuildingTypeClass, AircraftTypeClass, InfantryTypeClass and UnitTypeClass
@@ -87,11 +100,24 @@ inline int PhobosToolTip::GetBuildTime(TechnoTypeClass* pType) const
 	return MaxImpl(54, nTimeToBuild);
 }
 
-inline int PhobosToolTip::GetPower(TechnoTypeClass* pType) const
+OPTIONALINLINE int PhobosToolTip::GetPower(TechnoTypeClass* pType) const
 {
-	if (const auto pBldType = type_cast<BuildingTypeClass*>(pType))
+	switch (pType->WhatAmI())
+	{
+	case AbstractType::AircraftType:
+	case AbstractType::InfantryType:
+	case AbstractType::UnitType:
+	{
+		return TechnoTypeExtContainer::Instance.Find(pType)->Power;
+	}
+	case AbstractType::BuildingType:
+	{
+		auto pBldType = (BuildingTypeClass*)pType;
 		return pBldType->PowerBonus - pBldType->PowerDrain;
-
+	}
+	default:
+		break;
+	}
 	return 0;
 }
 
@@ -137,13 +163,13 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 		auto data = &Timers[pType];
 
 		if (data->m_buildtimeresult != nBuildTime)
-			Debug::FatalError("[%s] change BuildTime result from [%d] to [%d]!\n", pType->ID, data->m_buildtimeresult, nBuildTime);
+			Debug::FatalError("[%s] change BuildTime result from [%d] to [%d]!", pType->ID, data->m_buildtimeresult, nBuildTime);
 
 		if (data->m_second != nSec)
-			Debug::FatalError("[%s] change Second result from [%d] to [%d] [BuildTime %s]!\n", pType->ID, data->m_second, nSec, data->m_buildtimeresult);
+			Debug::FatalError("[%s] change Second result from [%d] to [%d] [BuildTime %s]!", pType->ID, data->m_second, nSec, data->m_buildtimeresult);
 
 		if (data->m_min != nMin)
-			Debug::FatalError("[%s] change Min result from [%d] to [%d]!\n", pType->ID, data->m_min, nMin);
+			Debug::FatalError("[%s] change Min result from [%d] to [%d]!", pType->ID, data->m_min, nMin);
 	}
 #endif
 	const int cost = pType->GetActualCost(HouseClass::CurrentPlayer);
@@ -165,8 +191,19 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 		oss << std::setw(1) << nPower;
 	}
 
-	if (auto pDesc = GetUIDescription(pData))
+	if (auto pDesc = this->GetUIDescription(pData))
 		oss << L"\n" << pDesc;
+
+	if (pData->Cameo_AlwaysExist.Get(RulesExtData::Instance()->Cameo_AlwaysExist))
+	{
+		auto& vec = ScenarioExtData::Instance()->OwnedExistCameoTechnoTypes;
+
+		if (vec.contains(pType))
+		{
+			if (auto pExDesc = this->GetUnbuildableUIDescription(pData))
+				oss << L"\n" << pExDesc;
+		}
+	}
 
 	this->TextBuffer = oss.str();
 }
@@ -285,20 +322,17 @@ DEFINE_HOOK(0x4AE51E, DisplayClass_GetToolTip_TacticalButton, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x72426F, ToolTipManager_ProcessMessage_TacticalButton, 0x5)
+DEFINE_HOOK(0x724247, ToolTipManager_ProcessMessage_SetDelayTimer, 0x6)
 {
-	if (SWSidebarClass::IsEnabled() && SWSidebarClass::Global()->CurrentButton)
-		R->EDX(0);
-
-	return 0;
+	return SWSidebarClass::IsEnabled() && SWSidebarClass::Global()->CurrentButton ? 0x72429E : 0;
 }
 
-DEFINE_HOOK(0x72428C, ToolTipManager_ProcessMessage_TacticalButton2, 0x5)
+DEFINE_HOOK(0x72428C, ToolTipManager_ProcessMessage_Redraw, 0x5)
 {
 	return SWSidebarClass::IsEnabled() && SWSidebarClass::Global()->CurrentButton ? 0x724297 : 0;
 }
 
-DEFINE_HOOK(0x724B2E, ToolTipManager_SetX_TacticalButtons, 0x6)
+DEFINE_HOOK(0x724B28, ToolTipManager_SetX_TacticalButtons, 0x6)
 {
 	if (SWSidebarClass::IsEnabled())
 	{
@@ -306,6 +340,7 @@ DEFINE_HOOK(0x724B2E, ToolTipManager_SetX_TacticalButtons, 0x6)
 		{
 			R->EDX(button->Rect.X + button->Rect.Width);
 			R->EAX(button->Rect.Y + 27);
+			return 0x724B2E;
 		}
 	}
 
@@ -486,7 +521,9 @@ DEFINE_HOOK(0x478FDC, CCToolTip_Draw2_FillRect, 0x5)
 	if (PhobosToolTip::Instance.IsCameo &&
 		Phobos::UI::AnchoredToolTips &&
 		PhobosToolTip::Instance.IsEnabled() &&
-		Phobos::Config::ToolTipDescriptions
+		Phobos::Config::ToolTipDescriptions &&
+		// If inspecting a cameo from the super weapon sidebar, "AnchoredToolTips=true" shouldn't apply.
+		!SWSidebarClass::Global()->CurrentButton
 	)
 	{
 		LEA_STACK(LTRBStruct*, a2, STACK_OFFSET(0x44, -0x20));

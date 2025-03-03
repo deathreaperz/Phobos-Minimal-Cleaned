@@ -13,7 +13,7 @@
 void PhobosAttachEffectClass::Initialize(PhobosAttachEffectTypeClass* pType, TechnoClass* pTechno, HouseClass* pInvokerHouse,
 	TechnoClass* pInvoker, AbstractClass* pSource, int durationOverride, int delay, int initialDelay, int recreationDelay)
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", pTechno->GetThisClassName(), pTechno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", pTechno->GetThisClassName(), pTechno->get_ID());
 	this->Duration = durationOverride != 0 ? durationOverride : pType->Duration;
 	this->DurationOverride = durationOverride;
 	this->Delay = delay;
@@ -52,7 +52,7 @@ void PhobosAttachEffectClass::AI()
 	if (!this->Techno || this->Techno->InLimbo || this->Techno->IsImmobilized || this->Techno->Transporter)
 		return;
 
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 
 	if (this->InitialDelay > 0)
 	{
@@ -128,7 +128,7 @@ void PhobosAttachEffectClass::AI()
 
 void PhobosAttachEffectClass::AI_Temporal()
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 
 	if (!this->IsUnderTemporal)
 	{
@@ -166,11 +166,11 @@ void PhobosAttachEffectClass::AI_Temporal()
 
 void PhobosAttachEffectClass::AnimCheck()
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 
 	if (!this->Type->Animation_HideIfAttachedWith.empty())
 	{
-		auto const pTechnoExt = TechnoExtContainer::Instance.Find(this->Techno);
+		//auto const pTechnoExt = TechnoExtContainer::Instance.Find(this->Techno);
 
 		if (PhobosAEFunctions::HasAttachedEffects(this->Techno, this->Type->Animation_HideIfAttachedWith, false, false, nullptr, nullptr, nullptr, nullptr))
 		{
@@ -222,7 +222,7 @@ bool PhobosAttachEffectClass::CanShowAnim() const
 
 void PhobosAttachEffectClass::OnlineCheck()
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 
 	if (!this->Type->Powered)
 		return;
@@ -272,7 +272,7 @@ void PhobosAttachEffectClass::OnlineCheck()
 
 void PhobosAttachEffectClass::CloakCheck()
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	const auto cloakState = this->Techno->CloakState;
 
 	this->IsCloaked = cloakState == CloakState::Cloaked || cloakState == CloakState::Cloaking;
@@ -283,7 +283,7 @@ void PhobosAttachEffectClass::CloakCheck()
 
 void PhobosAttachEffectClass::CreateAnim()
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	if (!this->Type)
 		return;
 
@@ -295,7 +295,7 @@ void PhobosAttachEffectClass::CreateAnim()
 			return;
 
 		const int count = PhobosAEFunctions::GetAttachedEffectCumulativeCount(this->Techno, this->Type);
-		//Debug::Log("AE[%s] cumulativeAnim [%d] from size[%d] \n", this->Type->Name.data(), count , this->Type->CumulativeAnimations.size());
+		//Debug::LogInfo("AE[%s] cumulativeAnim [%d] from size[%d] ", this->Type->Name.data(), count , this->Type->CumulativeAnimations.size());
 		pAnimType = this->Type->GetCumulativeAnimation(count);
 	}
 	else
@@ -324,7 +324,7 @@ void PhobosAttachEffectClass::CreateAnim()
 
 void PhobosAttachEffectClass::KillAnim()
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	if (this->Animation)
 	{
 		this->Animation.clear();
@@ -333,7 +333,7 @@ void PhobosAttachEffectClass::KillAnim()
 
 void PhobosAttachEffectClass::SetAnimationTunnelState(bool visible)
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	if (!this->IsInTunnel && !visible)
 		this->KillAnim();
 
@@ -342,7 +342,7 @@ void PhobosAttachEffectClass::SetAnimationTunnelState(bool visible)
 
 void PhobosAttachEffectClass::RefreshDuration(int durationOverride)
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	if (durationOverride)
 		this->Duration = durationOverride;
 	else
@@ -358,7 +358,7 @@ void PhobosAttachEffectClass::RefreshDuration(int durationOverride)
 
 bool PhobosAttachEffectClass::ResetIfRecreatable()
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	if (!this->IsSelfOwned() || this->RecreationDelay < 0)
 		return false;
 
@@ -374,7 +374,7 @@ bool PhobosAttachEffectClass::ShouldBeDiscardedNow() const
 	if (this->ShouldBeDiscarded)
 		return true;
 
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", this->Techno->GetThisClassName(), this->Techno->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	if (this->Type->DiscardOn_AbovePercent.isset() && this->Techno->GetHealthPercentage() >= this->Type->DiscardOn_AbovePercent.Get())
 		return true;
 
@@ -606,7 +606,7 @@ PhobosAttachEffectClass* PhobosAttachEffectClass::CreateAndAttach(PhobosAttachEf
 
 int PhobosAttachEffectClass::DetachTypes(TechnoClass* pTarget, AEAttachInfoTypeClass* attachEffectInfo, std::vector<PhobosAttachEffectTypeClass*> const& types)
 {
-	auto const pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
+	//auto const pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
 	int detachedCount = 0;
 	bool markForRedraw = false;
 	auto const& minCounts = attachEffectInfo->CumulativeRemoveMinCounts;
@@ -641,7 +641,7 @@ int PhobosAttachEffectClass::RemoveAllOfType(PhobosAttachEffectTypeClass* pType,
 	if (!pType || !pTarget)
 		return 0;
 
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", pTarget->GetThisClassName(), pTarget->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", pTarget->GetThisClassName(), pTarget->get_ID());
 	auto const pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
 	int detachedCount = 0;
 	int stackCount = -1;
@@ -655,9 +655,9 @@ int PhobosAttachEffectClass::RemoveAllOfType(PhobosAttachEffectTypeClass* pType,
 	if (pTargetExt->PhobosAE.begin() == pTargetExt->PhobosAE.end())
 		return 0;
 
-	StackVector<WeaponTypeClass*, 256> expireWeapons;
+	StackVector<WeaponTypeClass*, 256> expireWeapons {};
 
-	pTargetExt->PhobosAE.remove_if([&](auto& it)
+	pTargetExt->PhobosAE.remove_all_if([&](auto& it)
  {
 	 if (!it)
 		 return true;
@@ -706,7 +706,7 @@ int PhobosAttachEffectClass::RemoveAllOfType(PhobosAttachEffectTypeClass* pType,
 
 void PhobosAttachEffectClass::TransferAttachedEffects(TechnoClass* pSource, TechnoClass* pTarget)
 {
-	//Debug::Log(__FUNCTION__" Executed [%s - %s]\n", pTarget->GetThisClassName(), pTarget->get_ID());
+	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", pTarget->GetThisClassName(), pTarget->get_ID());
 	const auto pSourceExt = TechnoExtContainer::Instance.Find(pSource);
 	const auto pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
 
