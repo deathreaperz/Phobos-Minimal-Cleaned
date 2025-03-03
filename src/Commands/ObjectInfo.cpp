@@ -73,7 +73,9 @@ void Display(T& buffer)
 	}
 
 	MessageListClass::Instance->PrintMessage(Phobos::wideBuffer, 600, ColorIdx, true);
-	Debug::LogInfo("{}", buffer);
+	if (Debug::LogFileActive())
+		fprintf_s(Debug::LogFile, "%s", buffer);
+
 	buffer[0] = 0;
 }
 

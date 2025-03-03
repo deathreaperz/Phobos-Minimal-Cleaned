@@ -187,8 +187,6 @@ DEFINE_HOOK(0x71B824, TerrainClass_DTOR, 0x5)
 	return 0x71B845;
 }
 
-#include <Misc/Hooks.Otamaa.h>
-
 HRESULT __stdcall FakeTerrainClass::_Load(IStream* pStm)
 {
 	TerrainExtContainer::Instance.PrepareStream(this, pStm);
