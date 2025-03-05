@@ -114,11 +114,11 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 		//MovementZone movementZone = (MovementZone)(ExceptionInfo->ContextRecord->Ebp + 0x10);
 
 		//AstarClass , broken ptr
-		Debug::LogInfo("PathfindingCrash");
+		Debug::LogInfo("Pathfinding Crash\n");
 		break;
 	}
 	case 0x584DF7:
-		Debug::LogInfo("SubzoneTrackingCrash");
+		Debug::LogInfo("Subzone Tracking Crash\n");
 		break;
 		//case 0x755C7F:
 		//{
