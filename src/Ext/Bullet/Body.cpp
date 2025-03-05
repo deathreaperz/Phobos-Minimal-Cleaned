@@ -708,6 +708,9 @@ void BulletExtData::ApplyRadiationToCell(CoordStruct const& nCoord, int Spread, 
 
 	auto const it = RadSiteClass::Array->find_if([=](RadSiteClass* const pSite)
 {
+	if (pSite->RadTimeLeft <= 0)
+		return false;
+
 	auto const pRadExt = RadSiteExtContainer::Instance.Find(pSite);
 	if (pRadExt->Type != pRadType)
 		return false;
