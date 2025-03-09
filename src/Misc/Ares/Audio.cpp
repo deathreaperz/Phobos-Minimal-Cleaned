@@ -61,13 +61,12 @@ public:
 		Array.emplace_back(Title);
 	}
 
-    static OPTIONALINLINE LooseAudioCache* Find(int idx)
-    {
-        if (idx >= Array.size())
-            Debug::FatalErrorAndExit("Trying To Get LoseAudioCache with Index [%d] but the array size is only [%d]", idx, Array.size());
-        return &Array[idx];
-    }
-    
+	static OPTIONALINLINE LooseAudioCache* Find(int idx)
+	{
+		if ((size_t)idx > Array.size())
+			Debug::FatalErrorAndExit("Trying To Get LoseAudioCache with Index [%d] but the array size is only [%d]", idx, Array.size());
+		return &Array[idx];
+	}
 
 	static FileStruct GetFileStructFromIndex(int idx)
 	{

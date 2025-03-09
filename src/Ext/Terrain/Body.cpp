@@ -187,6 +187,8 @@ DEFINE_HOOK(0x71B824, TerrainClass_DTOR, 0x5)
 	return 0x71B845;
 }
 
+#include <Misc/Hooks.Otamaa.h>
+
 HRESULT __stdcall FakeTerrainClass::_Load(IStream* pStm)
 {
 	TerrainExtContainer::Instance.PrepareStream(this, pStm);
@@ -209,8 +211,8 @@ HRESULT __stdcall FakeTerrainClass::_Save(IStream* pStm, bool clearDirty)
 	return res;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F5240, MiscTools::to_DWORD(&FakeTerrainClass::_Load))
-DEFINE_JUMP(VTABLE, 0x7F5244, MiscTools::to_DWORD(&FakeTerrainClass::_Save))
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5240, FakeTerrainClass::_Load)
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5244, FakeTerrainClass::_Save)
 
 //DEFINE_HOOK(0x71CFD0, TerrainClass_Detach, 0x5)
 //{
@@ -226,14 +228,13 @@ DEFINE_JUMP(VTABLE, 0x7F5244, MiscTools::to_DWORD(&FakeTerrainClass::_Save))
 //
 //	return 0x71CFF7;
 //}
-#include <Misc/Hooks.Otamaa.h>
 
 void FakeTerrainClass::_Detach(AbstractClass* target, bool all)
 {
 	TerrainExtContainer::Instance.InvalidatePointerFor(this, target, all);
 	this->TerrainClass::PointerExpired(target, all);
 }
-DEFINE_JUMP(VTABLE, 0x7F5254, MiscTools::to_DWORD(&FakeTerrainClass::_Detach));
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5254, FakeTerrainClass::_Detach);
 
 void FakeTerrainClass::_AnimPointerExpired(AnimClass* pAnim)
 {
@@ -244,4 +245,4 @@ void FakeTerrainClass::_AnimPointerExpired(AnimClass* pAnim)
 		pExt->AttachedFireAnim.release();
 	}
 }
-DEFINE_JUMP(VTABLE, 0x7F528C, MiscTools::to_DWORD(&FakeTerrainClass::_AnimPointerExpired))
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F528C, FakeTerrainClass::_AnimPointerExpired)

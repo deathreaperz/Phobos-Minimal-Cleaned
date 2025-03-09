@@ -1056,7 +1056,7 @@ public:
 	Valueable<WarheadTypeClass*> CanManualReload_DetonateWarhead {};
 	Valueable<int> CanManualReload_DetonateConsume {};
 
-	Valueable<int> Power {};
+	Nullable<int> Power {};
 	Valueable<bool> BunkerableAnyway {};
 
 	Nullable<bool> JumpjetTilt {};

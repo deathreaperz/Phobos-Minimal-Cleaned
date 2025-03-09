@@ -120,14 +120,8 @@ void AresAE::Update(AresAEData* ae, TechnoClass* pTechno)
 			ae_.Duration = duration;
 		}
 
-		auto Iter = std::remove_if(ae->Data.begin(), ae->Data.end(), [](const auto& ae_)
- {
-	 return !ae_.Duration;
-		});
-
-		if (Iter != ae->Data.end())
+		if (ae->Data.remove_all_if([](const auto& ae_) { return !ae_.Duration; }))
 		{
-			ae->Data.erase(Iter, ae->Data.end());
 			AEProperties::Recalculate(pTechno);
 		}
 	}
@@ -168,19 +162,12 @@ bool AresAE::Remove(AresAEData* ae)
 	if (!ae->Data.empty())
 	{
 		ae->NeedToRecreateAnim = true;
-		for (auto& ae_ : ae->Data)
-			ae_.ClearAnim();
-
-		auto const it = std::remove_if(
-			ae->Data.begin(), ae->Data.end(),
-			[](auto const& Item)
+		if (fast_remove_if(ae->Data, [](auto& Item)
+			{
+				Item.ClearAnim();
+				return static_cast<bool>(Item.Type->DiscardOnEntry);
+			}))
 		{
-			return static_cast<bool>(Item.Type->DiscardOnEntry);
-		});
-
-		if (it != ae->Data.end())
-		{
-			ae->Data.erase(it, ae->Data.end());
 			return true;
 		}
 	}
@@ -197,24 +184,12 @@ void AresAE::Remove(AresAEData* ae, TechnoClass* pTechno)
 void AresAE::RemoveSpecific(AresAEData* ae, TechnoClass* pTechno, AbstractTypeClass* pRemove)
 {
 	ae->Isset = 0;
-
-	if (!ae->Data.empty())
-	{
-		bool changes = false;
-
-		const auto iter = std::remove_if(ae->Data.begin(), ae->Data.end(), [pRemove](const auto& ae_)
+	if (ae->Data.remove_all_if([pRemove](const auto& ae_)
 		{
 			return ae_.Type->Owner == pRemove;
-		});
-
-		if (iter != ae->Data.end())
-		{
-			changes = true;
-			ae->Data.erase(iter, ae->Data.end());
-		}
-
-		if (changes)
-			AEProperties::Recalculate(pTechno);
+		}))
+	{
+		AEProperties::Recalculate(pTechno);
 	}
 }
 

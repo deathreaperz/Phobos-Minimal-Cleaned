@@ -107,7 +107,7 @@ static	void __fastcall DrawShape_VeinHole
 	 , TintColor, ZShape, ZShapeFrame, XOffset, YOffset);
 }
 
-DEFINE_JUMP(CALL, 0x74D5BC, MiscTools::to_DWORD(&DrawShape_VeinHole));
+DEFINE_FUNCTION_JUMP(CALL, 0x74D5BC, DrawShape_VeinHole);
 
 DEFINE_HOOK(0x4AD097, DisplayClass_ReadINI_add, 0x6)
 {
@@ -376,7 +376,7 @@ static bool __fastcall AircraftTypeClass_CanUseWaypoint(AircraftTypeClass* pThis
 	return !pThis->Spawned;
 }
 
-DEFINE_JUMP(VTABLE, 0x7E2908, MiscTools::to_DWORD(&AircraftTypeClass_CanUseWaypoint));
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E2908, AircraftTypeClass_CanUseWaypoint);
 
 DEFINE_HOOK(0x4B050B, DriveLocomotionClass_Process_Cargo, 0x5)
 {
@@ -1437,7 +1437,7 @@ CoordStruct* FakeUnitClass::_GetFLH(CoordStruct* buffer, int wepon, CoordStruct 
 	return this->TechnoClass::GetFLH(buffer, wepon, base);
 }
 
-DEFINE_JUMP(VTABLE, 0x7F5D20, MiscTools::to_DWORD(&FakeUnitClass::_GetFLH));
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5D20, FakeUnitClass::_GetFLH);
 
 // issue #895788: cells' high occupation flags are marked only if they
 // actually contains a bridge while unmarking depends solely on object
@@ -1490,8 +1490,8 @@ void FakeUnitClass::_ClearOccupyBit(CoordStruct* pCrd)
 	}
 }
 
-DEFINE_JUMP(VTABLE, 0x7F5D64, MiscTools::to_DWORD(&FakeUnitClass::_ClearOccupyBit));
-DEFINE_JUMP(VTABLE, 0x7F5D60, MiscTools::to_DWORD(&FakeUnitClass::_SetOccupyBit));
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5D64, FakeUnitClass::_ClearOccupyBit);
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5D60, FakeUnitClass::_SetOccupyBit);
 
 DEFINE_HOOK(0x47257C, CaptureManagerClass_TeamChooseAction_Random, 0x6)
 {
@@ -1985,14 +1985,14 @@ DEFINE_HOOK(0x4DBF01, FootClass_SetOwningHouse_FixArgs, 0x6)
 	return 0x4DBF0F;
 }
 
-DEFINE_JUMP(LJMP, 0x722440, MiscTools::to_DWORD(&FakeTiberiumClass::__Spread));
-DEFINE_JUMP(LJMP, 0x7228B0, MiscTools::to_DWORD(&FakeTiberiumClass::__RecalcSpreadData));
-DEFINE_JUMP(LJMP, 0x722AF0, MiscTools::to_DWORD(&FakeTiberiumClass::__QueueSpreadAt));
-DEFINE_JUMP(LJMP, 0x722F00, MiscTools::to_DWORD(&FakeTiberiumClass::__Growth));
-DEFINE_JUMP(LJMP, 0x7233A0, MiscTools::to_DWORD(&FakeTiberiumClass::__RecalcGrowthData));
-DEFINE_JUMP(LJMP, 0x7235A0, MiscTools::to_DWORD(&FakeTiberiumClass::__QueueGrowthAt));
+DEFINE_FUNCTION_JUMP(LJMP, 0x722440, FakeTiberiumClass::__Spread);
+DEFINE_FUNCTION_JUMP(LJMP, 0x7228B0, FakeTiberiumClass::__RecalcSpreadData);
+DEFINE_FUNCTION_JUMP(LJMP, 0x722AF0, FakeTiberiumClass::__QueueSpreadAt);
+DEFINE_FUNCTION_JUMP(LJMP, 0x722F00, FakeTiberiumClass::__Growth);
+DEFINE_FUNCTION_JUMP(LJMP, 0x7233A0, FakeTiberiumClass::__RecalcGrowthData);
+DEFINE_FUNCTION_JUMP(LJMP, 0x7235A0, FakeTiberiumClass::__QueueGrowthAt);
 
-DEFINE_JUMP(LJMP, 0x483780, MiscTools::to_DWORD(&FakeCellClass::_SpreadTiberium));
+DEFINE_FUNCTION_JUMP(LJMP, 0x483780, FakeCellClass::_SpreadTiberium);
 
 DEFINE_HOOK(0x71C84D, TerrainClass_AI_Animated, 0x6)
 {
@@ -2825,8 +2825,8 @@ DEFINE_HOOK(0x456724, BuildingClass_GetRangeOfRadial_WeaponRange, 0x6)
 	return 0x45672A;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F5DA0, MiscTools::to_DWORD(&FakeObjectClass::_DrawRadialIndicator))
-DEFINE_JUMP(VTABLE, 0x7EB188, MiscTools::to_DWORD(&FakeObjectClass::_DrawRadialIndicator))
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5DA0, FakeObjectClass::_DrawRadialIndicator)
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7EB188, FakeObjectClass::_DrawRadialIndicator)
 
 //Patches TechnoClass::Kill_Cargo/KillPassengers (push ESI -> push EBP)
 //Fixes recursive passenger kills not being accredited
@@ -3092,7 +3092,7 @@ static void __fastcall IonBlastDrawAll()
 	VeinholeMonsterClass::DrawAll();
 	IonBlastClass::DrawAll();
 }
-DEFINE_JUMP(CALL, 0x6D4656, MiscTools::to_DWORD(&IonBlastDrawAll))
+DEFINE_FUNCTION_JUMP(CALL, 0x6D4656, IonBlastDrawAll)
 
 #ifdef _Enable
 static void __fastcall LaserDrawclassDrawAll()
@@ -3101,7 +3101,7 @@ static void __fastcall LaserDrawclassDrawAll()
 	EBolt::DrawAll();
 	ElectricBoltManager::Draw_All();
 }
-DEFINE_JUMP(CALL, 0x6D4669, MiscTools::to_DWORD(&LaserDrawclassDrawAll))
+DEFINE_FUNCTION_JUMP(CALL, 0x6D4669, LaserDrawclassDrawAll))
 #endif
 
 //DEFINE_HOOK(0x6D4669, TacticalClass_Render_Addition, 0x5)
@@ -5752,7 +5752,7 @@ DEFINE_HOOK(0x6D4B50, PrintOnTactical, 0x6)
 //}
 //
 //DEFINE_JUMP(LJMP, 0x530B61, 0x530B76);
-//DEFINE_JUMP(LJMP, 0x530D05, GET_OFFSET(ret___));
+//DEFINE_FUNCTION_JUMP(LJMP, 0x530D05, GET_OFFSET(ret___));
 
 template<DWORD addr, DWORD addr_ptr>
 struct MixBundle
@@ -8171,7 +8171,7 @@ public:
 	}
 };
 
-DEFINE_JUMP(CALL, 0x4CBC31, MiscTools::to_DWORD(&FakeAStarPathFinderClass::__AStarClass__Find_Path))
+DEFINE_FUNCTION_JUMP(CALL, 0x4CBC31, FakeAStarPathFinderClass::__AStarClass__Find_Path)
 
 DEFINE_HOOK(0x42C2A7, AStarClass_FindHierarcial_Entry, 0x5)
 {
@@ -8435,7 +8435,7 @@ void FakeBuildingClass::_Spawn_Refinery_Smoke_Particles()
 	}
 }
 
-DEFINE_JUMP(VTABLE, 0x7E4324, MiscTools::to_DWORD(&FakeBuildingClass::_Spawn_Refinery_Smoke_Particles));
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E4324, FakeBuildingClass::_Spawn_Refinery_Smoke_Particles);
 
 /*
 *	NPExt TODO :
@@ -9030,7 +9030,7 @@ bool FakeUnitClass::_Paradrop(CoordStruct* pCoords)
 	return true;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F5D58, MiscTools::to_DWORD(&FakeUnitClass::_Paradrop));
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5D58, FakeUnitClass::_Paradrop);
 
 DEFINE_HOOK(0x444DC9, BuildingClass_KickOutUnit_Barracks, 0x9)
 {
@@ -10813,459 +10813,474 @@ public:
 	}
 };
 
-DEFINE_JUMP(LJMP, 0x6CFD40, MiscTools::to_DWORD(&FakeTabClass::_GetShapeButton2));
-DEFINE_JUMP(LJMP, 0x6D1200, MiscTools::to_DWORD(&FakeTabClass::_ShowAdvCommand));
-DEFINE_JUMP(LJMP, 0x6D14F0, MiscTools::to_DWORD(&FakeTabClass::_HideAdvCommand));
-DEFINE_JUMP(LJMP, 0x6D0F70, MiscTools::to_DWORD(&FakeTabClass::_DestroyCommandBarShapes));
-DEFINE_JUMP(LJMP, 0x6D0F10, MiscTools::to_DWORD(&FakeTabClass::_InitCommandBarShapes));
-DEFINE_JUMP(LJMP, 0x6D04A0, MiscTools::to_DWORD(&FakeTabClass::_AddButtons));
-DEFINE_JUMP(LJMP, 0x6D04D0, MiscTools::to_DWORD(&FakeTabClass::_RemoveButtons));
-DEFINE_JUMP(LJMP, 0x6D0FD0, MiscTools::to_DWORD(&FakeTabClass::InitAdvCommand));
+DEFINE_FUNCTION_JUMP(LJMP, 0x6CFD40, FakeTabClass::_GetShapeButton2));
+	DEFINE_FUNCTION_JUMP(LJMP, 0x6D1200, FakeTabClass::_ShowAdvCommand));
+	DEFINE_FUNCTION_JUMP(LJMP, 0x6D14F0, FakeTabClass::_HideAdvCommand));
+	DEFINE_FUNCTION_JUMP(LJMP, 0x6D0F70, FakeTabClass::_DestroyCommandBarShapes));
+	DEFINE_FUNCTION_JUMP(LJMP, 0x6D0F10, FakeTabClass::_InitCommandBarShapes));
+	DEFINE_FUNCTION_JUMP(LJMP, 0x6D04A0, FakeTabClass::_AddButtons));
+	DEFINE_FUNCTION_JUMP(LJMP, 0x6D04D0, FakeTabClass::_RemoveButtons));
+	DEFINE_FUNCTION_JUMP(LJMP, 0x6D0FD0, FakeTabClass::InitAdvCommand));
 
-DEFINE_HOOK(0x6D02C0, InitForHouse_RemoveInline, 0x5)
-{
-	FakeTabClass::_InitCommandBarShapes();
-	return 0x6D0304;
-}
-
-DEFINE_HOOK(0x6D1780, TabClass_noticeSink_Planning_TurnOn, 0x7)
-{
-	GET(int, index, EAX);
-	if (auto pShape = FakeTabClass::_GetShapeButton(index))
-		pShape->TurnOn();
-
-	return 0x6D17AC;
-}
-
-DEFINE_HOOK(0x6D17BE, TabClass_noticeSink_Planning_TurnOff, 0x7)
-{
-	GET(int, index, ECX);
-	if (auto pShape = FakeTabClass::_GetShapeButton(index))
-		pShape->TurnOff();
-
-	return 0x6D17EA;
-}
-
-DEFINE_HOOK(0x6D078C, TabClass_AI_Planning, 0x7)
-{
-	GET(int, index, ECX);
-	R->EAX(FakeTabClass::_GetShapeButton(index));
-	return 0x6D07AB;
-}
-
-DEFINE_HOOK(0x67468B, RulesClass_AdcancedCommandBar_Parse, 0x6)
-{
-	GET(CCINIClass*, pINI, EBX);
-	GET(const char*, pSection, EDI);
-	FakeTabClass::_ParseButtonList(pINI, pSection);
-	return 0x674710;
-}
-
-DEFINE_HOOK(0x6D05CB, TabClass_Activate_RemoveInline, 0x6)
-{
-	GET(FakeTabClass*, pThis, EDI);
-	pThis->_HideAdvCommand();
-	return 0x6D0639;
-}
-
-DEFINE_HOOK(0x6D1674, TabClass_ToggleThumb_RemoveInline, 0x6)
-{
-	GET(FakeTabClass*, pThis, EDI);
-	pThis->_HideAdvCommand();
-	return 0x6D16E2;
-}
-
-DEFINE_HOOK(0x6D0D5A, TabClass_DrawIt_DrawCommandBar2, 0x5)
-{
-	GET(int, index, EAX);
-	R->ESI(FakeTabClass::_GetShapeButton(index));
-	return 0x6D0D6B;
-}
-
-DEFINE_HOOK(0x6D0A87, TabClass_DrawIt_DrawCommandBar1, 0x5)
-{
-	GET(int, index, EAX);
-	R->EAX(FakeTabClass::_GetShapeButton(index));
-	return 0x6D0A97;
-}
-
-bool WhiteColorSearchedG = false;
-int ColorIdxG = 5;
-
-DEFINE_HOOK(0x6D07E4, TabClass_AI_AdditionalAffect, 0x6)
-{
-	GET(int, index, EAX);
-	if (index == 11)
+	DEFINE_HOOK(0x6D02C0, InitForHouse_RemoveInline, 0x5)
 	{
-		if (!WhiteColorSearchedG)
-		{
-			const auto WhiteIndex = ColorScheme::FindIndex("White", 53);
+		FakeTabClass::_InitCommandBarShapes();
+		return 0x6D0304;
+	}
 
-			if (WhiteIndex != -1)
+	DEFINE_HOOK(0x6D1780, TabClass_noticeSink_Planning_TurnOn, 0x7)
+	{
+		GET(int, index, EAX);
+		if (auto pShape = FakeTabClass::_GetShapeButton(index))
+			pShape->TurnOn();
+
+		return 0x6D17AC;
+	}
+
+	DEFINE_HOOK(0x6D17BE, TabClass_noticeSink_Planning_TurnOff, 0x7)
+	{
+		GET(int, index, ECX);
+		if (auto pShape = FakeTabClass::_GetShapeButton(index))
+			pShape->TurnOff();
+
+		return 0x6D17EA;
+	}
+
+	DEFINE_HOOK(0x6D078C, TabClass_AI_Planning, 0x7)
+	{
+		GET(int, index, ECX);
+		R->EAX(FakeTabClass::_GetShapeButton(index));
+		return 0x6D07AB;
+	}
+
+	DEFINE_HOOK(0x67468B, RulesClass_AdcancedCommandBar_Parse, 0x6)
+	{
+		GET(CCINIClass*, pINI, EBX);
+		GET(const char*, pSection, EDI);
+		FakeTabClass::_ParseButtonList(pINI, pSection);
+		return 0x674710;
+	}
+
+	DEFINE_HOOK(0x6D05CB, TabClass_Activate_RemoveInline, 0x6)
+	{
+		GET(FakeTabClass*, pThis, EDI);
+		pThis->_HideAdvCommand();
+		return 0x6D0639;
+	}
+
+	DEFINE_HOOK(0x6D1674, TabClass_ToggleThumb_RemoveInline, 0x6)
+	{
+		GET(FakeTabClass*, pThis, EDI);
+		pThis->_HideAdvCommand();
+		return 0x6D16E2;
+	}
+
+	DEFINE_HOOK(0x6D0D5A, TabClass_DrawIt_DrawCommandBar2, 0x5)
+	{
+		GET(int, index, EAX);
+		R->ESI(FakeTabClass::_GetShapeButton(index));
+		return 0x6D0D6B;
+	}
+
+	DEFINE_HOOK(0x6D0A87, TabClass_DrawIt_DrawCommandBar1, 0x5)
+	{
+		GET(int, index, EAX);
+		R->EAX(FakeTabClass::_GetShapeButton(index));
+		return 0x6D0A97;
+	}
+
+	bool WhiteColorSearchedG = false;
+	int ColorIdxG = 5;
+
+	DEFINE_HOOK(0x6D07E4, TabClass_AI_AdditionalAffect, 0x6)
+	{
+		GET(int, index, EAX);
+		if (index == 11)
+		{
+			if (!WhiteColorSearchedG)
 			{
-				ColorIdxG = WhiteIndex;
+				const auto WhiteIndex = ColorScheme::FindIndex("White", 53);
+
+				if (WhiteIndex != -1)
+				{
+					ColorIdxG = WhiteIndex;
+				}
+
+				WhiteColorSearchedG = true;
 			}
 
-			WhiteColorSearchedG = true;
+			MessageListClass::Instance->PrintMessage(L"Hello world!", 600, ColorIdxG, true);
+			return 0x6D0827;
 		}
 
-		MessageListClass::Instance->PrintMessage(L"Hello world!", 600, ColorIdxG, true);
-		return 0x6D0827;
+		return 0x0;
 	}
-
-	return 0x0;
-}
 #endif
 
-DEFINE_HOOK(0x5F5A56, ObjectClass_ParachuteAnim, 0x7)
-{
-	GET(CoordStruct*, pCoord, EDI);
-	GET(ObjectClass*, pThis, ESI);
-
-	AnimClass* pParach = nullptr;
-
-	if (auto pBullet = cast_to<BulletClass*, false>(pThis))
+	DEFINE_HOOK(0x5F5A56, ObjectClass_ParachuteAnim, 0x7)
 	{
-		auto pParach_type = ((FakeBulletClass*)pBullet)->_GetTypeExtData()->Parachute.Get(RulesClass::Instance->BombParachute);
+		GET(CoordStruct*, pCoord, EDI);
+		GET(ObjectClass*, pThis, ESI);
 
-		pParach = GameCreate<AnimClass>(pParach_type, pCoord, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false);
-	}
-	else
-	{
-		auto coord = *pCoord;
-		coord.Z += 75;
-		auto pParach_type = RulesClass::Instance->Parachute;
+		AnimClass* pParach = nullptr;
 
-		if (const auto pTechno = flag_cast_to<TechnoClass*, false>(pThis))
+		if (auto pBullet = cast_to<BulletClass*, false>(pThis))
 		{
-			auto pType = pTechno->GetTechnoType();
-			auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+			auto pParach_type = ((FakeBulletClass*)pBullet)->_GetTypeExtData()->Parachute.Get(RulesClass::Instance->BombParachute);
 
-			if (pTypeExt->IsBomb)
-				pThis->IsABomb = true;
+			pParach = GameCreate<AnimClass>(pParach_type, pCoord, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false);
+		}
+		else
+		{
+			auto coord = *pCoord;
+			coord.Z += 75;
+			auto pParach_type = RulesClass::Instance->Parachute;
 
-			pParach_type = pTypeExt->ParachuteAnim ? pTypeExt->ParachuteAnim : HouseExtData::GetParachuteAnim(pTechno->Owner);
+			if (const auto pTechno = flag_cast_to<TechnoClass*, false>(pThis))
+			{
+				auto pType = pTechno->GetTechnoType();
+				auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+				if (pTypeExt->IsBomb)
+					pThis->IsABomb = true;
+
+				pParach_type = pTypeExt->ParachuteAnim ? pTypeExt->ParachuteAnim : HouseExtData::GetParachuteAnim(pTechno->Owner);
+			}
+
+			pParach = GameCreate<AnimClass>(pParach_type, coord);
 		}
 
-		pParach = GameCreate<AnimClass>(pParach_type, coord);
+		R->EDI(pParach);
+		return 0x5F5AF1;
 	}
 
-	R->EDI(pParach);
-	return 0x5F5AF1;
-}
+	//DEFINE_HOOK(0x4D3920, FootClass_FindPath_Speed_Zero, 0x5)
+	//{
+	//	GET(FootClass* , pThis , ECX);
+	//
+	//	if(pThis->GetTechnoType()->Speed == 0){
+	//		R->EAX(false);
+	//		return 0x4D399C;
+	//	}
+	//
+	//	return 0x0;
+	//}
 
-//DEFINE_HOOK(0x4D3920, FootClass_FindPath_Speed_Zero, 0x5)
-//{
-//	GET(FootClass* , pThis , ECX);
-//
-//	if(pThis->GetTechnoType()->Speed == 0){
-//		R->EAX(false);
-//		return 0x4D399C;
-//	}
-//
-//	return 0x0;
-//}
-
-DEFINE_HOOK(0x687000, ScenarioClass_CheckEmptyUIName, 0x5)
-{
-	if (!strlen(ScenarioClass::Instance->UIName))
+	DEFINE_HOOK(0x687000, ScenarioClass_CheckEmptyUIName, 0x5)
 	{
-		sprintf_s(ScenarioClass::Instance->UIName, "MISSINGMAPUINAME");
-		const auto name = PhobosCRT::StringToWideString(ScenarioClass::Instance->FileName);
-		swprintf_s(ScenarioClass::Instance->UINameLoaded, L"%ls Missing UI Name", name.c_str());
+		if (!strlen(ScenarioClass::Instance->UIName))
+		{
+			sprintf_s(ScenarioClass::Instance->UIName, "MISSINGMAPUINAME");
+			const auto name = PhobosCRT::StringToWideString(ScenarioClass::Instance->FileName);
+			swprintf_s(ScenarioClass::Instance->UINameLoaded, L"%ls Missing UI Name", name.c_str());
+		}
+
+		return 0x0;
 	}
 
-	return 0x0;
-}
-
-DEFINE_HOOK(0x6F9C80, TechnoClass_GreatestThread_DeadTechno, 0x9)
-{
-	GET(TechnoClass*, pThis, ESI);
-
-	auto pTechno = TechnoClass::Array->Items[R->EBX<int>()];
-
-	if (!pTechno->IsAlive)
+	DEFINE_HOOK(0x6F9C80, TechnoClass_GreatestThread_DeadTechno, 0x9)
 	{
-		Debug::LogInfo("TechnoClass::GreatestThread Found DeadTechno[{} - {}] on TechnoArray!", (void*)pTechno, pTechno->get_ID());
-		return  0x6F9D93; // next
+		GET(TechnoClass*, pThis, ESI);
+
+		auto pTechno = TechnoClass::Array->Items[R->EBX<int>()];
+
+		if (!pTechno->IsAlive)
+		{
+			Debug::LogInfo("TechnoClass::GreatestThread Found DeadTechno[{} - {}] on TechnoArray!", (void*)pTechno, pTechno->get_ID());
+			return  0x6F9D93; // next
+		}
+
+		R->ECX(pThis->Owner);
+		R->EDI(pTechno);
+		return 0x6F9C89;//contunye
 	}
 
-	R->ECX(pThis->Owner);
-	R->EDI(pTechno);
-	return 0x6F9C89;//contunye
-}
-
-DEFINE_HOOK(0x6F91EC, TechnoClass_GreatestThreat_DeadTechnoInsideTracker, 0x6)
-{
-	GET(TechnoClass*, pTrackerTechno, EBP);
-
-	if (!pTrackerTechno->IsAlive)
+	DEFINE_HOOK(0x6F91EC, TechnoClass_GreatestThreat_DeadTechnoInsideTracker, 0x6)
 	{
-		Debug::LogInfo("Found DeadTechno[{} - {}] on AircraftTracker!", (void*)pTrackerTechno, pTrackerTechno->get_ID());
-		return 0x6F9377; // next
+		GET(TechnoClass*, pTrackerTechno, EBP);
+
+		if (!pTrackerTechno->IsAlive)
+		{
+			Debug::LogInfo("Found DeadTechno[{} - {}] on AircraftTracker!", (void*)pTrackerTechno, pTrackerTechno->get_ID());
+			return 0x6F9377; // next
+		}
+
+		return 0x0;//contunye
 	}
 
-	return 0x0;//contunye
-}
-
-DEFINE_HOOK(0x6F89D1, TechnoClass_EvaluateCell_DeadTechno, 0x6)
-{
-	GET(ObjectClass*, pCellObj, EDI);
-
-	if (pCellObj && !pCellObj->IsAlive)
-		pCellObj = nullptr;
-
-	R->EDI(pCellObj);
-
-	return 0x0;
-}
-
-DEFINE_HOOK(0x51C251, InfantryClass_CanEnterCell_InvalidObject, 0x8)
-{
-	GET(ObjectClass*, pCellObj, ESI);
-
-	if (!pCellObj->IsAlive)
+	DEFINE_HOOK(0x6F89D1, TechnoClass_EvaluateCell_DeadTechno, 0x6)
 	{
-		return 0x51C78F;
+		GET(ObjectClass*, pCellObj, EDI);
+
+		if (pCellObj && !pCellObj->IsAlive)
+			pCellObj = nullptr;
+
+		R->EDI(pCellObj);
+
+		return 0x0;
 	}
 
-	return R->ESI() == R->EBP() ? 0x51C70F : 0x51C259;
-}
-
-DEFINE_HOOK(0x417CC0, AircraftClass_WhatAction_caller, 0x5)
-{
-	GET(AircraftClass*, pThis, ECX);
-	GET_STACK(DWORD, caller, 0);
-
-	if (!pThis->IsAlive)
-		Debug::LogInfo(__FUNCTION__" DeadTechno[{}] is used , called from [{}]", (void*)pThis, caller);
-
-	return 0x0;
-}
-
-DEFINE_HOOK_AGAIN(0x7BBAF0, XSurface_Func_check, 0x5)
-DEFINE_HOOK(0x7BB350, XSurface_Func_check, 0x6)
-{
-	GET(XSurface*, pThis, ECX);
-	GET_STACK(uintptr_t, caller, 0x0);
-
-	if (!pThis || VTable::Get(pThis) != XSurface::vtable)
+	DEFINE_HOOK(0x51C251, InfantryClass_CanEnterCell_InvalidObject, 0x8)
 	{
-		Debug::LogInfo("XSurface Invalid caller [0x{0:x}]!!", caller);
+		GET(ObjectClass*, pCellObj, ESI);
+
+		if (!pCellObj->IsAlive)
+		{
+			return 0x51C78F;
+		}
+
+		return R->ESI() == R->EBP() ? 0x51C70F : 0x51C259;
 	}
 
-	return 0x0;
-}
+	DEFINE_HOOK(0x417CC0, AircraftClass_WhatAction_caller, 0x5)
+	{
+		GET(AircraftClass*, pThis, ECX);
+		GET_STACK(DWORD, caller, 0);
 
-DEFINE_HOOK(0x6B770D, SpawnManagerClass_AI_doSomething_crashAtRandomAddr, 0x7)
-{
-	GET(int, pIndex, EBX);
-	GET(SpawnManagerClass*, pThis, ESI);
+		if (!pThis->IsAlive)
+			Debug::LogInfo(__FUNCTION__" DeadTechno[{}] is used , called from [{}]", (void*)pThis, caller);
 
-	auto& con = pThis->SpawnedNodes;
-
-	con[pIndex]->Unit->SetTarget(pThis->Target);
-	con[pIndex]->Unit->QueueMission(Mission::Attack, 0);
-
-	return 0x6B795A;
-}
-
-DEFINE_HOOK(0x6B7793, SpawnManagerClass_AI_doSomething_crashAtRandomAddrB, 0x7)
-{
-	GET(SpawnManagerClass*, pThis, ESI);
-	GET(TechnoClass*, pSpawnee, EDI);
-	LEA_STACK(CellStruct*, OwnerCellBuffer, 0x24);
-	LEA_STACK(CellStruct*, SpawnerCellBuffer, 0x28);
-
-	pThis->Owner->GetMapCoords(OwnerCellBuffer);
-
-	if (!pSpawnee->IsAlive)
-		Debug::LogError("SpawManager[{}] Trying to use dead techno !", (void*)pThis);
-
-	pSpawnee->GetMapCoords(SpawnerCellBuffer);
-
-	R->EAX(OwnerCellBuffer);
-	R->EBP(SpawnerCellBuffer);
-	return 0x6B77B4;
-}
-
-/*DEFINE_HOOK(0x4F671D, HouseClass_CanAffordBase_GetBuildingEmpty, 0x5) {
-	GET(HouseClass*, pThis, ESI);
-	GET(BuildingTypeClass*, pBldType, EAX);
-
-	if (!pBldType) {
-		Debug::FatalErrorAndExit("Cannot Find Any suitable building from BuildWeapons [Count %d] for House[%x - %s]", RulesClass::Instance->BuildWeapons.Count, pThis, pThis->get_ID());
+		return 0x0;
 	}
 
-	return 0x0;
-}*/
+	//DEFINE_HOOK_AGAIN(0x7BBAF0, XSurface_Func_check, 0x5)
+	//DEFINE_HOOK(0x7BB350, XSurface_Func_check, 0x6) {
+	   // GET(XSurface*, pThis, ECX);
+	   // GET_STACK(uintptr_t, caller, 0x0);
 
-//DEFINE_HOOK(0x6D32DB, TacticalClass_RenderOverlay_missingPointer, 0x6)
-//{
-   // GET(TacticalClass*, pThis, EDI);
+	   // if (!pThis || VTable::Get(pThis) != XSurface::vtable){
+	   //	 Debug::LogInfo("XSurface Invalid caller [0x{0:x}]!!", caller);
+	   // }
 
-   // if (!pThis){
-   //	 Debug::LogError("EDI register is nullptr ??");
-   //	 R->EDI(TacticalClass::Instance());
-   // }
+	   // return 0x0;
+	//}
 
-   // return 0x0;
-//}
+	//DEFINE_HOOK(0x6B770D, SpawnManagerClass_AI_doSomething_crashAtRandomAddr, 0x7) {
+	   // GET(int, pIndex, EBX);
+	   // GET(SpawnManagerClass*, pThis, ESI);
+
+	   // auto& con = pThis->SpawnedNodes;
+
+	   // con[pIndex]->Unit->SetTarget(pThis->Target);
+	   // con[pIndex]->Unit->QueueMission(Mission::Attack, 0);
+
+	   // return 0x6B795A;
+	//}
+
+	//DEFINE_HOOK(0x6B7793, SpawnManagerClass_AI_doSomething_crashAtRandomAddrB, 0x7)
+	//{
+	   // GET(SpawnManagerClass*, pThis, ESI);
+	   // GET(TechnoClass*, pSpawnee, EDI);
+	   // LEA_STACK(CellStruct*, OwnerCellBuffer, 0x24);
+	   // LEA_STACK(CellStruct*, SpawnerCellBuffer, 0x28);
+
+	   // pThis->Owner->GetMapCoords(OwnerCellBuffer);
+
+	   // if (!pSpawnee->IsAlive)
+	   //	 Debug::LogError("SpawManager[{}] Trying to use dead techno !", (void*)pThis);
+
+	   // pSpawnee->GetMapCoords(SpawnerCellBuffer);
+
+	   // R->EAX(OwnerCellBuffer);
+	   // R->EBP(SpawnerCellBuffer);
+	   // return 0x6B77B4;
+
+	//}
+
+	/*DEFINE_HOOK(0x4F671D, HouseClass_CanAffordBase_GetBuildingEmpty, 0x5) {
+		GET(HouseClass*, pThis, ESI);
+		GET(BuildingTypeClass*, pBldType, EAX);
+
+		if (!pBldType) {
+			Debug::FatalErrorAndExit("Cannot Find Any suitable building from BuildWeapons [Count %d] for House[%x - %s]", RulesClass::Instance->BuildWeapons.Count, pThis, pThis->get_ID());
+		}
+
+		return 0x0;
+	}*/
+
+	//DEFINE_HOOK(0x6D32DB, TacticalClass_RenderOverlay_missingPointer, 0x6)
+	//{
+	   // GET(TacticalClass*, pThis, EDI);
+
+	   // if (!pThis){
+	   //	 Debug::LogError("EDI register is nullptr ??");
+	   //	 R->EDI(TacticalClass::Instance());
+	   // }
+
+	   // return 0x0;
+	//}
 #include <Ext/RadSite/Body.h>
 
-void ApplyRadDamage(RadSiteClass* pRad, TechnoClass* pObj, CellClass* pCell)
-{
-	if (pObj->IsAlive && !pObj->InLimbo && pObj->Health > 0 && !pObj->TemporalTargetingMe && !TechnoExtData::IsRadImmune(pObj))
+	void ApplyRadDamage(RadSiteClass* pRad, TechnoClass* pObj, CellClass* pCell)
 	{
-		const auto pRadExt = RadSiteExtContainer::Instance.Find(pRad);
-
-		RadTypeClass* pRadType =// pRadExt ? pRadExt->Type :
-			RadTypeClass::Array[0].get();
-
-		switch (pObj->WhatAmI())
-
+		if (pObj->IsAlive && !pObj->InLimbo && pObj->Health > 0 && !pObj->TemporalTargetingMe && !TechnoExtData::IsRadImmune(pObj))
 		{
-		case AbstractType::Unit:
-		case AbstractType::Aircraft:
-		case AbstractType::Infantry:
-		{
-			FootClass* pFoot = static_cast<FootClass*>(pObj);
-			UnitClass* pUnit = cast_to<UnitClass*, false>(pObj);
+			const auto pRadExt = RadSiteExtContainer::Instance.Find(pRad);
 
-			if ((pUnit && pUnit->DeathFrameCounter > 0) || !RadSiteClass::Array->Count)
-				return;
+			RadTypeClass* pRadType =// pRadExt ? pRadExt->Type :
+				RadTypeClass::Array[0].get();
 
-			if (pObj->IsSinking || pObj->IsCrashing)
-				return;
+			switch (pObj->WhatAmI())
 
-			if (pObj->IsInAir())
-				return;
-
-			if (pObj->GetTechnoType()->Immune)
-				return;
-
-			if (pObj->IsBeingWarpedOut() || TechnoExtData::IsChronoDelayDamageImmune(pFoot))
-				return;
-
-			const int RadApplicationDelay = RulesExtData::Instance()->UseGlobalRadApplicationDelay ? pRadType->GetApplicationDelay() : RulesClass::Instance->RadApplicationDelay;
-			if ((RadApplicationDelay <= 0)
-				|| (Unsorted::CurrentFrame % RadApplicationDelay))
-				return;
-
-			const double orDistance = pRad->BaseCell.DistanceFrom(pCell->MapCoords);
-
-			// for more precise dmg calculation
-			const double nRadLevel = pRadExt->GetRadLevelAt(orDistance);
-			if (nRadLevel <= 0.0 || !pRadType->GetWarhead())
-				return;
-
-			const int damage = static_cast<int>(nRadLevel * pRadType->GetLevelFactor());
-
-			if (damage == 0)
-				return;
-
-			pRadExt->ApplyRadiationDamage(pObj, damage, static_cast<int>(orDistance));
-		}
-
-		break;
-		case AbstractType::Building:
-		{
-			BuildingClass* pBld = static_cast<BuildingClass*>(pObj);
-
-			if (!pObj->BeingWarpedOut && !pBld->Type->Immune)
 			{
-				auto nCurCoord = pObj->InlineMapCoords();
-				int maxDamageCount = pRadType->GetBuildingDamageMaxCount();
+			case AbstractType::Unit:
+			case AbstractType::Aircraft:
+			case AbstractType::Infantry:
+			{
+				FootClass* pFoot = static_cast<FootClass*>(pObj);
+				UnitClass* pUnit = cast_to<UnitClass*, false>(pObj);
 
-				for (auto pFoundation = pBld->GetFoundationData(false); *pFoundation != CellStruct::EOL; ++pFoundation)
+				if ((pUnit && pUnit->DeathFrameCounter > 0) || !RadSiteClass::Array->Count)
+					return;
+
+				if (pObj->IsSinking || pObj->IsCrashing)
+					return;
+
+				if (pObj->IsInAir())
+					return;
+
+				if (pObj->GetTechnoType()->Immune)
+					return;
+
+				if (pObj->IsBeingWarpedOut() || TechnoExtData::IsChronoDelayDamageImmune(pFoot))
+					return;
+
+				const int RadApplicationDelay = RulesExtData::Instance()->UseGlobalRadApplicationDelay ? pRadType->GetApplicationDelay() : RulesClass::Instance->RadApplicationDelay;
+				if ((RadApplicationDelay <= 0)
+					|| (Unsorted::CurrentFrame % RadApplicationDelay))
+					return;
+
+				const double orDistance = pRad->BaseCell.DistanceFrom(pCell->MapCoords);
+
+				// for more precise dmg calculation
+				const double nRadLevel = pRadExt->GetRadLevelAt(orDistance);
+				if (nRadLevel <= 0.0 || !pRadType->GetWarhead())
+					return;
+
+				const int damage = static_cast<int>(nRadLevel * pRadType->GetLevelFactor());
+
+				if (damage == 0)
+					return;
+
+				pRadExt->ApplyRadiationDamage(pObj, damage, static_cast<int>(orDistance));
+			}
+
+			break;
+			case AbstractType::Building:
+			{
+				BuildingClass* pBld = static_cast<BuildingClass*>(pObj);
+
+				if (!pObj->BeingWarpedOut && !pBld->Type->Immune)
 				{
-					const auto nLoc = nCurCoord + (*pFoundation);
+					auto nCurCoord = pObj->InlineMapCoords();
+					int maxDamageCount = pRadType->GetBuildingDamageMaxCount();
 
-					if (maxDamageCount <= 0 || pRadExt->damageCounts[pBld] < maxDamageCount)
+					for (auto pFoundation = pBld->GetFoundationData(false); *pFoundation != CellStruct::EOL; ++pFoundation)
 					{
-						const int delay = RulesExtData::Instance()->UseGlobalRadApplicationDelay ? pRadType->GetBuildingApplicationDelay() : RulesExtData::Instance()->RadApplicationDelay_Building;
+						const auto nLoc = nCurCoord + (*pFoundation);
 
-						if ((delay <= 0) || (Unsorted::CurrentFrame % delay))
-							continue;
+						if (maxDamageCount <= 0 || pRadExt->damageCounts[pBld] < maxDamageCount)
+						{
+							const int delay = RulesExtData::Instance()->UseGlobalRadApplicationDelay ? pRadType->GetBuildingApplicationDelay() : RulesExtData::Instance()->RadApplicationDelay_Building;
 
-						const double orDistance = pRad->BaseCell.DistanceFrom(nLoc);
-						const auto nRadLevel = pRadExt->GetRadLevelAt(orDistance);
+							if ((delay <= 0) || (Unsorted::CurrentFrame % delay))
+								continue;
 
-						if (nRadLevel == 0.0 || !pRadType->GetWarhead())
-							continue;
+							const double orDistance = pRad->BaseCell.DistanceFrom(nLoc);
+							const auto nRadLevel = pRadExt->GetRadLevelAt(orDistance);
 
-						const auto damage = static_cast<int>((nRadLevel)*pRadType->GetLevelFactor());
+							if (nRadLevel == 0.0 || !pRadType->GetWarhead())
+								continue;
 
-						if (maxDamageCount > 0)
-							pRadExt->damageCounts[pBld]++;
+							const auto damage = static_cast<int>((nRadLevel)*pRadType->GetLevelFactor());
 
-						if (damage == 0)
-							continue;
+							if (maxDamageCount > 0)
+								pRadExt->damageCounts[pBld]++;
 
-						if (pRadExt->ApplyRadiationDamage(pBld, damage, static_cast<int>(orDistance)) == RadSiteExtData::DamagingState::Dead)
-							return;
+							if (damage == 0)
+								continue;
+
+							if (pRadExt->ApplyRadiationDamage(pBld, damage, static_cast<int>(orDistance)) == RadSiteExtData::DamagingState::Dead)
+								return;
+						}
 					}
 				}
 			}
-		}
 
-		break;
-		default:
 			break;
+			default:
+				break;
+			}
 		}
 	}
-}
 
-DEFINE_HOOK(0x65B8DC, RadSiteClass_AI_DealDamageOnArea, 0x6)
-{
-	GET(RadSiteClass*, pThis, ESI);
-
-	if (!Phobos::Otamaa::DisableCustomRadSite && pThis->RadTimeLeft)
+	DEFINE_HOOK(0x65B8C8, RadSiteClass_AI_cond, 0x5)
 	{
-		CellSpreadIterator<CellClass>{}(pThis->BaseCell, (short)pThis->Spread, [pThis](CellClass* pCell)
-{
-	if (auto pBld = pCell->GetBuilding())
-	{
-		ApplyRadDamage(pThis, pBld, pCell);
-	}
-	else if (auto pObj = pCell->Cell_Occupier())
-	{
-		if (auto pTech = flag_cast_to<TechnoClass*, false>(pObj))
-			ApplyRadDamage(pThis, pTech, pCell);
-	}
+		GET(RadSiteClass*, pThis, ESI);
 
-	return true;
-	   });
-	}
+		if (pThis->RadTimeLeft <= 0 || pThis->RadLevel <= 0)
+		{
+			if (auto pCell = MapClass::Instance->TryGetCellAt(pThis->BaseCell))
+			{
+				CellExtContainer::Instance.Find(pCell)->RadSites.remove(pThis);
+			}
+			return 0x65B8D3;
+		}
 
-	return 0x0;
-}
+		if (!Phobos::Otamaa::DisableCustomRadSite)
+		{
+			CellSpreadIterator<CellClass>{}(pThis->BaseCell, (short)pThis->Spread, [pThis](CellClass* pCell)
+	 {
+			 if (auto pObj = pCell->Cell_Occupier())
+			 {
+				 if (auto pTech = flag_cast_to<TechnoClass*, false>(pObj))
+					 ApplyRadDamage(pThis, pTech, pCell);
+			 }
 
-DEFINE_HOOK(0x6B7867, SpawnManagerClass_AI_MoveTo7ifDies, 0x6)
-{
-	GET(SpawnManagerClass*, pThis, ESI);
-	GET(TechnoClass*, pSpawnee, EDI);
-	GET(int, idx, EBX);
+			 return true;
+		   });
+		}
 
-	if (!pSpawnee)
-	{
-		pThis->SpawnedNodes.Items[idx]->Status = SpawnNodeStatus::Dead;
-		return 0x6B727F;
+		return 0x65B8DC;
 	}
 
-	return 0x0;
-}
-
-DEFINE_HOOK(0x6B71E7, SpawnManagerClass_Manage_AlreadyNull, 0xA)
-{
-	GET(SpawnNode*, pNode, EDX);
-
-	if (pNode->Unit && pNode->Unit->IsAlive)
+	DEFINE_HOOK(0x6B7867, SpawnManagerClass_AI_MoveTo7ifDies, 0x6)
 	{
-		pNode->Unit->UnInit();
+		GET(SpawnManagerClass*, pThis, ESI);
+		GET(TechnoClass*, pSpawnee, EDI);
+		GET(int, idx, EBX);
+
+		if (!pSpawnee)
+		{
+			pThis->SpawnedNodes.Items[idx]->Status = SpawnNodeStatus::Dead;
+			return 0x6B727F;
+		}
+
+		return 0x0;
 	}
 
-	return 0x6B71F1;
-}
+	DEFINE_HOOK(0x6B71E7, SpawnManagerClass_Manage_AlreadyNull, 0xA)
+	{
+		GET(SpawnNode*, pNode, EDX);
 
-//DEFINE_PATCH_TYPED(BYTE, 0x6B78EA, 0x89 , 0x45 , 0x00 ,0x90, 0x90 );
+		if (pNode->Unit && pNode->Unit->IsAlive)
+		{
+			pNode->Unit->UnInit();
+		}
+
+		return 0x6B71F1;
+	}
+
+	// Fix 0x007BAEA1 crash
+
+	DEFINE_HOOK(0x7BAE60, BSurface_GetPixel, 0x5)
+	{
+		GET(BSurface*, pSurface, ECX);
+		GET_STACK(Point2D*, pPoint, 0x4);
+
+		if (pPoint->X > pSurface->Width || pPoint->Y > pSurface->Height)
+			*pPoint = Point2D::Empty;
+
+		return 0;
+	}
+	//DEFINE_PATCH_TYPED(BYTE, 0x6B78EA, 0x89 , 0x45 , 0x00 ,0x90, 0x90 );

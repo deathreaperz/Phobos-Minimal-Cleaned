@@ -22,87 +22,87 @@ static const void* const disptab[NUM_OPCODES] = {
 * *
 #endif
 
-#define L_OP_MOVE 0
-#define L_OP_LOADI 1
-#define L_OP_LOADF 2
-#define L_OP_LOADK 3
-#define L_OP_LOADKX 4
-#define L_OP_LOADFALSE 5
-#define L_OP_LFALSESKIP 6
-#define L_OP_LOADTRUE 7
-#define L_OP_LOADNIL 8
-#define L_OP_GETUPVAL 9
-#define L_OP_SETUPVAL 10
-#define L_OP_GETTABUP 11
-#define L_OP_GETTABLE 12
-#define L_OP_GETI 13
-#define L_OP_GETFIELD 14
-#define L_OP_SETTABUP 15
-#define L_OP_SETTABLE 16
-#define L_OP_SETI 17
-#define L_OP_SETFIELD 18
-#define L_OP_NEWTABLE 19
-#define L_OP_SELF 20
-#define L_OP_ADDI 21
-#define L_OP_ADDK 22
-#define L_OP_SUBK 23
-#define L_OP_MULK 24
-#define L_OP_MODK 25
-#define L_OP_POWK 26
-#define L_OP_DIVK 27
-#define L_OP_IDIVK 28
-#define L_OP_BANDK 29
-#define L_OP_BORK 30
-#define L_OP_BXORK 31
-#define L_OP_SHRI 32
-#define L_OP_SHLI 33
-#define L_OP_ADD 34
-#define L_OP_SUB 35
-#define L_OP_MUL 36
-#define L_OP_MOD 37
-#define L_OP_POW 38
-#define L_OP_DIV 39
-#define L_OP_IDIV 40
-#define L_OP_BAND 41
-#define L_OP_BOR 42
-#define L_OP_BXOR 43
-#define L_OP_SHL 44
-#define L_OP_SHR 45
-#define L_OP_MMBIN 46
-#define L_OP_MMBINI 47
-#define L_OP_MMBINK 48
-#define L_OP_UNM 49
-#define L_OP_BNOT 50
-#define L_OP_NOT 51
-#define L_OP_LEN 52
-#define L_OP_CONCAT 53
-#define L_OP_CLOSE 54
-#define L_OP_TBC 55
-#define L_OP_JMP 56
-#define L_OP_EQ 57
-#define L_OP_LT 58
-#define L_OP_LE 59
-#define L_OP_EQK 60
-#define L_OP_EQI 61
-#define L_OP_LTI 62
-#define L_OP_LEI 63
-#define L_OP_GTI 64
-#define L_OP_GEI 65
-#define L_OP_TEST 66
-#define L_OP_TESTSET 67
-#define L_OP_CALL 68
-#define L_OP_TAILCALL 69
-#define L_OP_RETURN 70
-#define L_OP_RETURN0 71
-#define L_OP_RETURN1 72
-#define L_OP_FORLOOP 73
-#define L_OP_FORPREP 74
-#define L_OP_TFORPREP 75
-#define L_OP_TFORCALL 76
-#define L_OP_TFORLOOP 77
-#define L_OP_SETLIST 78
-#define L_OP_CLOSURE 79
-#define L_OP_VARARG 80
-#define L_OP_VARARGPREP 81
-#define L_OP_EXTRAARG 82
+&& L_OP_MOVE,
+&& L_OP_LOADI,
+&& L_OP_LOADF,
+&& L_OP_LOADK,
+&& L_OP_LOADKX,
+&& L_OP_LOADFALSE,
+&& L_OP_LFALSESKIP,
+&& L_OP_LOADTRUE,
+&& L_OP_LOADNIL,
+&& L_OP_GETUPVAL,
+&& L_OP_SETUPVAL,
+&& L_OP_GETTABUP,
+&& L_OP_GETTABLE,
+&& L_OP_GETI,
+&& L_OP_GETFIELD,
+&& L_OP_SETTABUP,
+&& L_OP_SETTABLE,
+&& L_OP_SETI,
+&& L_OP_SETFIELD,
+&& L_OP_NEWTABLE,
+&& L_OP_SELF,
+&& L_OP_ADDI,
+&& L_OP_ADDK,
+&& L_OP_SUBK,
+&& L_OP_MULK,
+&& L_OP_MODK,
+&& L_OP_POWK,
+&& L_OP_DIVK,
+&& L_OP_IDIVK,
+&& L_OP_BANDK,
+&& L_OP_BORK,
+&& L_OP_BXORK,
+&& L_OP_SHRI,
+&& L_OP_SHLI,
+&& L_OP_ADD,
+&& L_OP_SUB,
+&& L_OP_MUL,
+&& L_OP_MOD,
+&& L_OP_POW,
+&& L_OP_DIV,
+&& L_OP_IDIV,
+&& L_OP_BAND,
+&& L_OP_BOR,
+&& L_OP_BXOR,
+&& L_OP_SHL,
+&& L_OP_SHR,
+&& L_OP_MMBIN,
+&& L_OP_MMBINI,
+&& L_OP_MMBINK,
+&& L_OP_UNM,
+&& L_OP_BNOT,
+&& L_OP_NOT,
+&& L_OP_LEN,
+&& L_OP_CONCAT,
+&& L_OP_CLOSE,
+&& L_OP_TBC,
+&& L_OP_JMP,
+&& L_OP_EQ,
+&& L_OP_LT,
+&& L_OP_LE,
+&& L_OP_EQK,
+&& L_OP_EQI,
+&& L_OP_LTI,
+&& L_OP_LEI,
+&& L_OP_GTI,
+&& L_OP_GEI,
+&& L_OP_TEST,
+&& L_OP_TESTSET,
+&& L_OP_CALL,
+&& L_OP_TAILCALL,
+&& L_OP_RETURN,
+&& L_OP_RETURN0,
+&& L_OP_RETURN1,
+&& L_OP_FORLOOP,
+&& L_OP_FORPREP,
+&& L_OP_TFORPREP,
+&& L_OP_TFORCALL,
+&& L_OP_TFORLOOP,
+&& L_OP_SETLIST,
+&& L_OP_CLOSURE,
+&& L_OP_VARARG,
+&& L_OP_VARARGPREP,
+&& L_OP_EXTRAARG
 };

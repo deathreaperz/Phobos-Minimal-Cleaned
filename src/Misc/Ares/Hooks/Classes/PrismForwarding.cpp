@@ -19,9 +19,12 @@ void PrismForwarding::InvalidatePointer(AbstractClass* ptr, bool bRemove)
 void PrismForwarding::RemoveAllSenders()
 {
 	// disconnect all sender towers from their support target, which is me
-	for (auto sender : this->Senders)
+	for (auto senderIdx = this->Senders.size(); senderIdx; senderIdx--)
 	{
-		sender->SetSupportTarget(nullptr);
+		if (auto const& NextTower = this->Senders[senderIdx - 1])
+		{
+			NextTower->SetSupportTarget(nullptr);
+		}
 	}
 
 	// log if not all senders could be removed
@@ -39,7 +42,7 @@ void PrismForwarding::RemoveAllSenders()
 	}
 }
 
-void PrismForwarding::SetChargeDelay_Set(int chain, DWORD const* LongestCDelay, DWORD const* LongestFDelay, int LongestChain)
+void PrismForwarding::SetChargeDelay_Set(int chain, std::vector<DWORD>& LongestCDelay, std::vector<DWORD>& LongestFDelay, int LongestChain)
 {
 	auto const pTargetTower = this->Owner;
 
@@ -70,13 +73,13 @@ void PrismForwarding::SetChargeDelay(int LongestChain)
 
 	for (auto endChain = LongestChain; endChain >= 0; --endChain)
 	{
-		this->SetChargeDelay_Get(0, endChain, LongestChain, LongestCDelay.data(), LongestFDelay.data());
+		this->SetChargeDelay_Get(0, endChain, LongestChain, LongestCDelay, LongestFDelay);
 	}
 
-	this->SetChargeDelay_Set(0, LongestCDelay.data(), LongestFDelay.data(), LongestChain);
+	this->SetChargeDelay_Set(0, LongestCDelay, LongestFDelay, LongestChain);
 }
 
-void PrismForwarding::SetChargeDelay_Get(int chain, int endChain, int LongestChain, DWORD* LongestCDelay, DWORD* LongestFDelay)
+void PrismForwarding::SetChargeDelay_Get(int chain, int endChain, int LongestChain, std::vector<DWORD>& LongestCDelay, std::vector<DWORD>& LongestFDelay)
 {
 	auto const TargetTower = this->Owner;
 
@@ -151,8 +154,13 @@ void PrismForwarding::RemoveFromNetwork(bool bCease)
 	this->SetSupportTarget(nullptr);
 
 	//finally, remove all the preceding slaves from the network
-	for (auto& send : this->Senders)
-		send->RemoveFromNetwork(false);
+	for (auto senderIdx = this->Senders.size(); senderIdx; --senderIdx)
+	{
+		if (auto const& NextTower = this->Senders[senderIdx - 1])
+		{
+			NextTower->RemoveFromNetwork(false);
+		}
+	}
 }
 
 int PrismForwarding::AcquireSlaves_SingleStage(PrismForwarding* TargetTower, int stage, int chain, int& NetworkSize, int& LongestChain)
@@ -181,7 +189,8 @@ int PrismForwarding::AcquireSlaves_SingleStage(PrismForwarding* TargetTower, int
 		}
 	};
 
-	CoordStruct MyPosition, curPosition;
+	CoordStruct MyPosition {};
+	CoordStruct curPosition {};
 	TargetTower->Owner->GetRenderCoords(&MyPosition);
 
 	//first, find eligible towers
@@ -197,8 +206,7 @@ int PrismForwarding::AcquireSlaves_SingleStage(PrismForwarding* TargetTower, int
 			{
 				SlaveTower->GetRenderCoords(&curPosition);
 				int Distance = static_cast<int>(MyPosition.DistanceFrom(curPosition));
-				PrismTargetData pd = { pSlve.get(), Distance };
-				EligibleTowers->push_back(pd);
+				EligibleTowers->emplace_back(pSlve.get(), Distance);
 			}
 		}
 	}
@@ -225,7 +233,7 @@ int PrismForwarding::AcquireSlaves_SingleStage(PrismForwarding* TargetTower, int
 		++iFeeds;
 		++NetworkSize;
 
-		CoordStruct FLH;
+		CoordStruct FLH {};
 		TargetTower->Owner->GetFLH(&FLH, 0, CoordStruct::Empty);
 		eligible.Tower->Owner->DelayBeforeFiring = eligible.Tower->Owner->Type->DelayedFireDelay;
 		eligible.Tower->Owner->PrismStage = PrismChargeState::Slave;
@@ -359,9 +367,9 @@ int PrismForwarding::AcquireSlaves_MultiStage(PrismForwarding* TargetTower, int 
 	else
 	{
 		// do not think of using iterators or a ranged-for here. Senders grows and might reallocate.
-		for (auto sender : TargetTower->Senders)
+		for (size_t senderIdx = 0u; senderIdx < TargetTower->Senders.size(); ++senderIdx)
 		{
-			countSlaves += this->AcquireSlaves_MultiStage(sender, stage - 1, chain + 1, NetworkSize, LongestChain);
+			countSlaves += this->AcquireSlaves_MultiStage(TargetTower->Senders[senderIdx], stage - 1, chain + 1, NetworkSize, LongestChain);
 		}
 	}
 

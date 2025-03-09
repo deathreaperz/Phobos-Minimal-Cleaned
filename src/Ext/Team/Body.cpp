@@ -6,7 +6,7 @@
 
 void TeamExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	AnnounceInvalidPointer(TeamLeader, ptr, bRemoved);
+	AnnounceInvalidPointer(TeamLeader, ptr , bRemoved);
 	AnnounceInvalidPointer(LastFoundSW, ptr);
 	AnnounceInvalidPointer(PreviousScript, ptr);
 }
@@ -438,6 +438,7 @@ DEFINE_HOOK(0x6E8ECB, TeamClass_DTOR, 0x7)
 
 HRESULT __stdcall FakeTeamClass::_Load(IStream* pStm)
 {
+
 	TeamExtContainer::Instance.PrepareStream(this, pStm);
 	HRESULT res = this->TeamClass::Load(pStm);
 
@@ -449,6 +450,7 @@ HRESULT __stdcall FakeTeamClass::_Load(IStream* pStm)
 
 HRESULT __stdcall FakeTeamClass::_Save(IStream* pStm, bool clearDirty)
 {
+
 	TeamExtContainer::Instance.PrepareStream(this, pStm);
 	HRESULT res = this->TeamClass::Save(pStm, clearDirty);
 
@@ -458,24 +460,24 @@ HRESULT __stdcall FakeTeamClass::_Save(IStream* pStm, bool clearDirty)
 	return res;
 }
 
-DEFINE_JUMP(VTABLE, 0x7F4744, MiscTools::to_DWORD(&FakeTeamClass::_Load))
-DEFINE_JUMP(VTABLE, 0x7F4748, MiscTools::to_DWORD(&FakeTeamClass::_Save))
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F4744, FakeTeamClass::_Load)
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F4748, FakeTeamClass::_Save)
 
-DEFINE_HOOK(0x6EAE60, TeamClass_Detach, 0x7)
-{
-	GET(TeamClass*, pThis, ECX);
-	GET_STACK(AbstractClass*, target, 0x4);
-	GET_STACK(bool, all, 0x8);
+ DEFINE_HOOK(0x6EAE60, TeamClass_Detach, 0x7)
+ {
+ 	GET(TeamClass*, pThis, ECX);
+ 	GET_STACK(AbstractClass*, target, 0x4);
+ 	GET_STACK(bool, all, 0x8);
 
-	TeamExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
+ 	TeamExtContainer::Instance.InvalidatePointerFor(pThis, target, all);
 
-	//return pThis->Target == target ? 0x6EAECC : 0x6EAECF;
-	return 0x0;
-}
+ 	//return pThis->Target == target ? 0x6EAECC : 0x6EAECF;
+ 	return 0x0;
+ }
 
 //void __fastcall TeamClass_Detach_Wrapper(TeamClass* pThis ,DWORD , AbstractClass* target , bool all)\
 //{
 //	TeamExtContainer::Instance.InvalidatePointerFor(pThis , target , all);
 //	pThis->TeamClass::PointerExpired(target , all);
 //}
-//DEFINE_JUMP(VTABLE, 0x7F4758, GET_OFFSET(TeamClass_Detach_Wrapper))
+//DEFINE_FUNCTION_JUMP(VTABLE, 0x7F4758, GET_OFFSET(TeamClass_Detach_Wrapper))

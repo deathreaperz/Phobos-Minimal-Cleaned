@@ -183,52 +183,24 @@ DEFINE_HOOK(0x4A8EB0, DisplayClass_BuildingProximityCheck_Override, 0x5)
 	return 0x4A9063;
 }
 
-COMPILETIMEEVAL FORCEDINLINE void CountPower(HouseClass* pHouse)
+template<typename Arr>
+void CountPowerOf(HouseClass* pHouse, CounterClass<GameAllocator<int>>& counter)
 {
-	if (pHouse->ActiveAircraftTypes.IsAllocated)
+	if (counter.IsAllocated)
 	{
-		for (int a = 0; a < pHouse->ActiveAircraftTypes.Capacity; ++a)
+		for (int a = 0; a < counter.Capacity; ++a)
 		{
-			if (pHouse->ActiveAircraftTypes.Items[a] > 0)
+			if (counter.Items[a] > 0)
 			{
-				const auto pExt = TechnoTypeExtContainer::Instance.Find(AircraftTypeClass::Array->Items[a]);
+				const auto pExt = TechnoTypeExtContainer::Instance.Find(Arr::Array->Items[a]);
 
-				if (pExt->Power > 0)
-					pHouse->PowerOutput += pExt->Power * pHouse->ActiveAircraftTypes.Items[a];
-				else
-					pHouse->PowerDrain -= pExt->Power * pHouse->ActiveAircraftTypes.Items[a];
-			}
-		}
-	}
-
-	if (pHouse->ActiveInfantryTypes.IsAllocated)
-	{
-		for (int i = 0; i < pHouse->ActiveInfantryTypes.Capacity; ++i)
-		{
-			if (pHouse->ActiveInfantryTypes.Items[i] > 0)
-			{
-				const auto pExt = TechnoTypeExtContainer::Instance.Find(InfantryTypeClass::Array->Items[i]);
-
-				if (pExt->Power > 0)
-					pHouse->PowerOutput += pExt->Power * pHouse->ActiveInfantryTypes.Items[i];
-				else
-					pHouse->PowerDrain -= pExt->Power * pHouse->ActiveInfantryTypes.Items[i];
-			}
-		}
-	}
-
-	if (pHouse->ActiveUnitTypes.IsAllocated)
-	{
-		for (int u = 0; u < pHouse->ActiveUnitTypes.Capacity; ++u)
-		{
-			if (pHouse->ActiveUnitTypes.Items[u] > 0)
-			{
-				const auto pExt = TechnoTypeExtContainer::Instance.Find(UnitTypeClass::Array->Items[u]);
-
-				if (pExt->Power > 0)
-					pHouse->PowerOutput += pExt->Power * pHouse->ActiveUnitTypes.Items[u];
-				else
-					pHouse->PowerDrain -= pExt->Power * pHouse->ActiveUnitTypes.Items[u];
+				if (pExt->Power.isset())
+				{
+					if (pExt->Power > 0)
+						pHouse->PowerOutput += pExt->Power * counter.Items[a];
+					else
+						pHouse->PowerDrain -= pExt->Power * counter.Items[a];
+				}
 			}
 		}
 	}
@@ -248,7 +220,14 @@ DEFINE_HOOK(0x502A80, HouseClass_RegisterGain, 0x8)
 DEFINE_HOOK(0x508D8D, HouseClass_UpdatePower_Techno, 0x6)
 {
 	GET(HouseClass*, pThis, ESI);
-	CountPower(pThis);
+
+	if (Phobos::Config::UnitPowerDrain)
+	{
+		CountPowerOf<AircraftTypeClass>(pThis, pThis->ActiveAircraftTypes);
+		CountPowerOf<InfantryTypeClass>(pThis, pThis->ActiveInfantryTypes);
+		CountPowerOf<UnitTypeClass>(pThis, pThis->ActiveUnitTypes);
+	}
+
 	return 0x0;
 }
 #else

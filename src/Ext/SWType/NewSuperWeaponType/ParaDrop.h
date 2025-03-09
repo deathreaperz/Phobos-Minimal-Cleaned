@@ -26,6 +26,6 @@ public:
 protected:
 	TStateMachine* newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, CellClass* pTarget)
 	{
-		return static_cast<TStateMachine*>(SWStateMachine::Register(std::make_unique<TStateMachine>(Deferment, XY, pSuper, this, pTarget)));
+		return SWStateMachine::Register<TStateMachine>(Deferment, XY, pSuper, this, pTarget);
 	}
 };

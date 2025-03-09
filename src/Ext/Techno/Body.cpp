@@ -1988,6 +1988,7 @@ void TechnoExtData::SendPlane(AircraftTypeClass* Aircraft, size_t Amount, HouseC
  * Object should NOT be placed on the map (->Limbo() it or don't Put in the first place)
  * otherwise Bad Things (TM) will happen. Again.
  */
+#pragma optimize("", off )
 bool TechnoExtData::CreateWithDroppod(FootClass* Object, const CoordStruct& XYZ)
 {
 	auto MyCell = MapClass::Instance->GetCellAt(XYZ);
@@ -2009,7 +2010,7 @@ bool TechnoExtData::CreateWithDroppod(FootClass* Object, const CoordStruct& XYZ)
 		if (!Object->InLimbo)
 		{
 			Object->See(0, 0);
-			Object->QueueMission(Object->Owner && Object->Owner->IsControlledByHuman() ? Mission::Area_Guard : Mission::Hunt, 0);
+			Object->QueueMission(Object->Owner && Object->Owner->IsControlledByHuman() ? Mission::Area_Guard : Mission::Hunt, true);
 			Object->NextMission();
 			return true;
 		}
@@ -2017,6 +2018,7 @@ bool TechnoExtData::CreateWithDroppod(FootClass* Object, const CoordStruct& XYZ)
 		return false;
 	}
 }
+#pragma optimize("", on )
 
 bool TechnoExtData::TargetFootAllowFiring(TechnoClass* pThis, TechnoClass* pTarget, WeaponTypeClass* pWeapon)
 {
@@ -4674,12 +4676,10 @@ void TechnoExtData::UpdateMobileRefinery()
 
 void TechnoExtData::UpdateRevengeWeapons()
 {
-	auto iter = std::remove_if(this->RevengeWeapons.begin(), this->RevengeWeapons.end(), [](TimedWarheadValue<WeaponTypeClass*>& item)
-{
-	return item.Timer.Expired();
+	this->RevengeWeapons.remove_all_if([](TimedWarheadValue<WeaponTypeClass*>& item)
+ {
+	 return item.Timer.Expired();
 	});
-
-	this->RevengeWeapons.erase(iter, this->RevengeWeapons.end());
 }
 
 void TechnoExtData::UpdateAircraftOpentopped()

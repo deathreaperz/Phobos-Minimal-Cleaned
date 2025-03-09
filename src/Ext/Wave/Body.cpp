@@ -67,15 +67,15 @@ WORD const src, WORD& dest, int const intensity, WaveClass* const pWave, WaveCol
 	Drawing::WordToColorStruct(src, modified);
 
 	// ugly hack to fix byte wraparound problems
-	auto const upcolor = [&modified, &colorDatas, &intensity]
+	auto const upcolor = [&modified, &colorDatas , &intensity]
 	(int Point3D::* intentmember, BYTE ColorStruct::* member)
-		{
-			auto const component = std::clamp(modified.*member
-				+ ((intensity * colorDatas->Intent_Color.*intentmember * modified.*member) >> 16)
-				+ ((intensity * colorDatas->Color.*member) >> 8), 0, 255);
+	{
+		auto const component = std::clamp(modified.*member
+			+ ((intensity * colorDatas->Intent_Color.*intentmember * modified.*member) >> 16)
+			+ ((intensity * colorDatas->Color.*member) >> 8), 0, 255);
 
-			modified.*member = static_cast<BYTE>(component);
-		};
+		modified.*member = static_cast<BYTE>(component);
+	};
 
 	upcolor(&Point3D::X, &ColorStruct::R);
 	upcolor(&Point3D::Y, &ColorStruct::G);
@@ -198,7 +198,7 @@ DEFINE_HOOK(0x75F7E7, WaveClass_Save_Suffix, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x75ED57, WaveClass_DTOR, 0x6)
+DEFINE_HOOK_AGAIN(0x75ED57 , WaveClass_DTOR, 0x6)
 DEFINE_HOOK(0x763226, WaveClass_DTOR, 0x6)
 {
 	GET(WaveClass*, pItem, EDI);
@@ -229,10 +229,10 @@ DEFINE_HOOK(0x763226, WaveClass_DTOR, 0x6)
 
 #include <Misc/Hooks.Otamaa.h>
 
-void FakeWaveClass::_Detach(AbstractClass* target, bool all)\
+void FakeWaveClass::_Detach(AbstractClass* target , bool all)\
 {
 	//WaveExtContainer::Instance.InvalidatePointerFor(pThis , target , all);
-	this->WaveClass::PointerExpired(target, all);
+	this->WaveClass::PointerExpired(target , all);
 }
 
-DEFINE_JUMP(VTABLE, 0x7F6C1C, MiscTools::to_DWORD(&FakeWaveClass::_Detach))
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F6C1C, FakeWaveClass::_Detach)

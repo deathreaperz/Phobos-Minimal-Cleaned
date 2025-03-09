@@ -13,7 +13,7 @@ std::vector<const char*> SW_Protect::GetTypeString() const
 bool SW_Protect::HandleThisType(SuperWeaponType type) const
 {
 	return (type == SuperWeaponType::IronCurtain) ||
-		(type == SuperWeaponType::ForceShield);
+			(type == SuperWeaponType::ForceShield);
 }
 
 bool SW_Protect::CanFireAt(const TargetingData* pTargeting, const CellStruct& cell, bool manual) const
@@ -82,22 +82,22 @@ bool SW_Protect::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 		// protect everything in range
 		Helpers::Alex::DistinctCollector<TechnoClass*> items;
 		Helpers::Alex::for_each_in_rect_or_range<TechnoClass>(Coords, range.WidthOrRange, range.Height, items);
-		items.apply_function_for_each([=](TechnoClass* pTechno)
- {
-	 // we shouldn't do anything
-	 if (pTechno->IsImmobilized || pTechno->IsBeingWarpedOut())
-		 return true;
+		items.apply_function_for_each([=](TechnoClass* pTechno) {
 
-	 // is this thing affected at all?
-	 if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner))
-		 return true;
+			// we shouldn't do anything
+			if (pTechno->IsImmobilized || pTechno->IsBeingWarpedOut())
+				return true;
 
-	 if (!pData->IsTechnoAffected(pTechno))
-		 return true;
+			// is this thing affected at all?
+			if (!pData->IsHouseAffected(pThis->Owner, pTechno->Owner))
+				return true;
 
-	 // protect this techno
-	 pTechno->IronCurtain(duration, pThis->Owner, pData->Protect_IsForceShield);
-	 return true;
+			if (!pData->IsTechnoAffected(pTechno))
+				return true;
+
+			// protect this techno
+			pTechno->IronCurtain(duration, pThis->Owner, pData->Protect_IsForceShield);
+			return true;
 		});
 	}
 
@@ -128,6 +128,7 @@ void SW_Protect::Initialize(SWTypeExtData* pData)
 
 		pData->CursorType = int(MouseCursorType::ForceShield);
 		pData->NoCursorType = int(MouseCursorType::NoForceShield);
+
 	}
 	else
 	{
@@ -170,12 +171,10 @@ AnimTypeClass* SW_Protect::GetAnim(const SWTypeExtData* pData) const
 
 SWRange SW_Protect::GetRange(const SWTypeExtData* pData) const
 {
-	if (!pData->SW_Range->empty())
-	{
+	if (!pData->SW_Range->empty()) {
 		return pData->SW_Range;
 	}
-	else if (pData->AttachedToObject->Type == SuperWeaponType::ForceShield)
-	{
+	else if (pData->AttachedToObject->Type == SuperWeaponType::ForceShield) {
 		return { RulesClass::Instance->ForceShieldRadius };
 	}
 

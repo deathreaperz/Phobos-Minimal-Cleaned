@@ -17,18 +17,17 @@ bool SW_GeneticMutator::Activate(SuperClass* pThis, const CellStruct& Coords, bo
 		auto pFirer = this->GetFirer(pThis, Coords, false);
 		const auto nDeferement = pData->SW_Deferment.Get(-1);
 
-		if (nDeferement <= 0)
-		{
+		if (nDeferement <= 0) {
 			auto const damage = GetDamage(pData);
 			auto range = GetRange(pData);
 			CellClass* Cell = MapClass::Instance->GetCellAt(Coords);
 			auto const pWarhead = GetWarhead(pData);
-			GeneticMutatorStateMachine::ApplyGeneticMutator(pFirer, pThis, pData, this, Cell->GetCoordsWithBridge(), Coords, pWarhead, range, damage);
-		}
-		else
-		{
+			auto cell_str = Cell->GetCoordsWithBridge();
+			GeneticMutatorStateMachine::ApplyGeneticMutator(pFirer, pThis, pData, this, cell_str, Coords, pWarhead, range, damage);
+		} else {
 			this->newStateMachine(nDeferement, Coords, pThis, pFirer);
 		}
+
 	}
 
 	return true;
@@ -56,6 +55,7 @@ void SW_GeneticMutator::Initialize(SWTypeExtData* pData)
 void SW_GeneticMutator::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 {
 	const char* section = pData->get_ID();
+
 
 	INI_EX exINI(pINI);
 	pData->Mutate_Explosion.Read(exINI, section, "Mutate.Explosion");
@@ -143,44 +143,45 @@ void GeneticMutatorStateMachine::ApplyGeneticMutator(TechnoClass* pFirer, SuperC
 		// ranged approach
 		items.apply_function_for_each([=](InfantryClass* pInf) -> bool
  {
-	 if (!pInf->IsAlive || pInf->IsCrashing || pInf->IsSinking || pInf->InLimbo)
-		 return true;
 
-	 // is this thing affected at all?
-	 if (!pData->IsHouseAffected(pSuper->Owner, pInf->Owner))
-	 {
-		 return true;
-	 }
+			 if (!pInf->IsAlive || pInf->IsCrashing || pInf->IsSinking || pInf->InLimbo)
+				 return true;
 
-	 if (!pData->IsTechnoAffected(pInf))
-	 {
-		 // even if it makes little sense, we do this.
-		 // infantry handling is hardcoded and thus
-		 // this checks water and land cells.
-		 return true;
-	 }
+			 // is this thing affected at all?
+			 if (!pData->IsHouseAffected(pSuper->Owner, pInf->Owner))
+			 {
+				 return true;
+			 }
 
-	 InfantryTypeClass* pType = pInf->Type;
+			 if (!pData->IsTechnoAffected(pInf))
+			 {
+				 // even if it makes little sense, we do this.
+				 // infantry handling is hardcoded and thus
+				 // this checks water and land cells.
+				 return true;
+			 }
 
-	 // quick ways out
-	 if (pType->Cyborg && pData->Mutate_IgnoreCyborg)
-	 {
-		 return true;
-	 }
+			 InfantryTypeClass* pType = pInf->Type;
 
-	 if (pType->NotHuman && pData->Mutate_IgnoreNotHuman)
-	 {
-		 return true;
-	 }
+			 // quick ways out
+			 if (pType->Cyborg && pData->Mutate_IgnoreCyborg)
+			 {
+				 return true;
+			 }
 
-	 // destroy or mutate
-	 int damage = pType->Strength;
-	 bool kill = (pType->Natural && pData->Mutate_KillNatural);
-	 auto pWH = kill ? RulesClass::Instance->C4Warhead : pWarhead;
+			 if (pType->NotHuman && pData->Mutate_IgnoreNotHuman)
+			 {
+				 return true;
+			 }
 
-	 pInf->ReceiveDamage(&damage, 0, pWH, pFirer, true, false, pSuper->Owner);
+			 // destroy or mutate
+			 int damage = pType->Strength;
+			 bool kill = (pType->Natural && pData->Mutate_KillNatural);
+			 auto pWH = kill ? RulesClass::Instance->C4Warhead : pWarhead;
 
-	 return true;
+			 pInf->ReceiveDamage(&damage, 0, pWH, pFirer, true, false, pSuper->Owner);
+
+			 return true;
 		});
 	}
 }

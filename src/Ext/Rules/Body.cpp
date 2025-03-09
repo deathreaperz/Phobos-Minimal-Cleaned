@@ -51,7 +51,8 @@ void RulesExtData::Remove(RulesClass* pThis)
 }
 
 void RulesExtData::Initialize()
-{ }
+{
+}
 
 void RulesExtData::ReplaceVoxelLightSources()
 {
@@ -76,17 +77,18 @@ void RulesExtData::ReplaceVoxelLightSources()
 }
 
 void RulesExtData::LoadVeryEarlyBeforeAnyData(RulesClass* pRules, CCINIClass* pINI)
-{ }
+{
+}
 
 void RulesExtData::LoadEndOfAudioVisual(RulesClass* pRules, CCINIClass* pINI)
 {
 	INI_EX iniEX(pINI);
 	auto pData = RulesExtData::Instance();
 
-	Nullable<double> Shield_ConditionGreen_d;
-	Nullable<double> Shield_ConditionYellow_d;
-	Nullable<double> Shield_ConditionRed_d;
-	Nullable<double> ConditionYellow_Terrain_d;
+	Nullable<double> Shield_ConditionGreen_d {};
+	Nullable<double> Shield_ConditionYellow_d {};
+	Nullable<double> Shield_ConditionRed_d {};
+	Nullable<double> ConditionYellow_Terrain_d {};
 
 	Shield_ConditionGreen_d.Read(iniEX, GameStrings::AudioVisual(), "Shield.ConditionGreen");// somewhat never used , man
 	Shield_ConditionYellow_d.Read(iniEX, GameStrings::AudioVisual(), "Shield.ConditionYellow");
@@ -162,8 +164,7 @@ void RulesExtData::s_LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 		Data->HugeBar_Config.push_back(std::move(std::make_unique<HugeBar>(DisplayInfoType::Shield)));
 	}
 
-	for (auto& huge_bar : Data->HugeBar_Config)
-	{
+	for (auto& huge_bar : Data->HugeBar_Config) {
 		huge_bar->LoadFromINI(pINI);
 	}
 
@@ -214,7 +215,7 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 	pData->CombatAlert_MakeAVoice.Read(iniEX, GameStrings::AudioVisual, "CombatAlert.MakeAVoice");
 	pData->CombatAlert_IgnoreBuilding.Read(iniEX, GameStrings::AudioVisual, "CombatAlert.IgnoreBuilding");
 	pData->CombatAlert_EVA.Read(iniEX, GameStrings::AudioVisual, "CombatAlert.EVA");
-	pData->CombatAlert_UseFeedbackVoice.Read(iniEX, GameStrings::AudioVisual, "CombatAlert.UseFeedbackVoice");
+	pData->CombatAlert_UseFeedbackVoice.Read(iniEX,GameStrings::AudioVisual, "CombatAlert.UseFeedbackVoice");
 	pData->CombatAlert_UseAttackVoice.Read(iniEX, GameStrings::AudioVisual, "CombatAlert.UseAttackVoice");
 	pData->CombatAlert_SuppressIfInScreen.Read(iniEX, GameStrings::AudioVisual, "CombatAlert.SuppressIfInScreen");
 	pData->CombatAlert_Interval.Read(iniEX, GameStrings::AudioVisual, "CombatAlert.Interval");
@@ -289,12 +290,11 @@ static bool NOINLINE IsVanillaDummy(const char* ID)
 #include <Ext/SWType/NewSuperWeaponType/NewSWType.h>
 
 template<typename T>
-static COMPILETIMEEVAL void FillSecrets(DynamicVectorClass<T>& secrets)
-{
-	for (auto Option : secrets)
-	{
+static COMPILETIMEEVAL void FillSecrets(DynamicVectorClass<T>& secrets) {
+
+	for(auto Option : secrets){
 		RulesExtData::Instance()->Secrets.emplace_back(Option);
-		Debug::LogInfo("Adding [{} - {}] onto Global Secrets pool", Option->ID, Option->GetThisClassName());
+		Debug::LogInfo("Adding [{} - {}] onto Global Secrets pool" , Option->ID, Option->GetThisClassName());
 	}
 }
 
@@ -307,7 +307,7 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 
 		Crews[i] = pExt->GetCrew();
 		// remove all types that cannot paradrop
-		if (pExt->ParaDropTypes.HasValue() && !pExt->ParaDropTypes.empty())
+		if (pExt->ParaDropTypes.HasValue())
 			Helpers::Alex::remove_non_paradroppables(pExt->ParaDropTypes, SideClass::Array->Items[i]->ID, "ParaDrop.Types");
 	}
 
@@ -435,6 +435,7 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		{
 			if (auto pHVA = pItem->MainVoxel.HVA)
 			{
+
 				auto shadowIdx = pItem->ShadowIndex;
 				auto layerCount = pHVA->LayerCount;
 
@@ -576,6 +577,7 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		if ((pItem->IsRailgun || pExt->IsDetachedRailgun || pItem->UseSparkParticles || pItem->UseFireParticles)
 				&& !pItem->AttachedParticleSystem)
 		{
+
 			Debug::LogInfo("Weapon[{}] is an Railgun/Detached Railgun/UseSparkParticles/UseFireParticles but it missing AttachedParticleSystem", pItem->ID);
 			Debug::RegisterParserError();
 
@@ -626,18 +628,13 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		}
 	}
 
-	for (auto pBullet : *BulletTypeClass::Array)
-	{
-		//if(PhobosTrajectoryType::TrajectoryValidation(pBullet))
-		//	Debug::RegisterParserError();
+	for (auto pBullet : *BulletTypeClass::Array) {
 
 		auto pExt = BulletTypeExtContainer::Instance.Find(pBullet);
-		{
-			if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke)
-			{
-				Debug::LogInfo("Bullet[{}] With AttachedSystem[{}] is not BehavesLike=Smoke!", pBullet->ID, pExt->AttachedSystem->ID);
-				Debug::RegisterParserError();
-			}
+
+		if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke) {
+			Debug::LogInfo("Bullet[{}] With AttachedSystem[{}] is not BehavesLike=Smoke!", pBullet->ID, pExt->AttachedSystem->ID);
+			Debug::RegisterParserError();
 		}
 	}
 
@@ -645,15 +642,12 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 	{
 		auto pExt = HouseTypeExtContainer::Instance.Find(pHouse);
 
-		{
 			// remove all types that cannot paradrop
 
-			if (!pExt->ParaDropTypes.empty())
-				Helpers::Alex::remove_non_paradroppables(pExt->ParaDropTypes, pHouse->ID, "ParaDrop.Types");
+		Helpers::Alex::remove_non_paradroppables(pExt->ParaDropTypes, pHouse->ID, "ParaDrop.Types");
 
-			if (pExt->StartInMultiplayer_Types.HasValue() && !pExt->StartInMultiplayer_Types.empty())
-				Helpers::Alex::remove_non_paradroppables(pExt->StartInMultiplayer_Types, pHouse->ID, "StartInMultiplayer.Types");
-		}
+		if (pExt->StartInMultiplayer_Types.HasValue())
+			Helpers::Alex::remove_non_paradroppables(pExt->StartInMultiplayer_Types, pHouse->ID, "StartInMultiplayer.Types");
 	}
 
 	for (auto pSuper : *SuperWeaponTypeClass::Array)
@@ -678,36 +672,21 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 				TechnoTypeExtContainer::Instance.Find(pTech)->Linked_SW.push_back(pSuper);
 			}
 
-			if (!pSuperExt->SW_AuxBuildings.empty())
-			{
-				pSuperExt->SW_AuxBuildings.erase(std::remove_if(pSuperExt->SW_AuxBuildings.begin(), pSuperExt->SW_AuxBuildings.end(), [](BuildingTypeClass* pItem) -> bool
-					{ return !pItem; }), pSuperExt->SW_AuxBuildings.end());
-			}
+			fast_remove_if(pSuperExt->SW_AuxBuildings ,[](BuildingTypeClass* pItem)	{ return !pItem; } );
+			fast_remove_if(pSuperExt->SW_NegBuildings ,[](BuildingTypeClass* pItem)	{ return !pItem; } );
+		
+			Helpers::Alex::remove_non_paradroppables(pSuperExt->DropPod_Types, pSuper->ID, "DropPod.Types");
 
-			if (!pSuperExt->SW_NegBuildings.empty())
-			{
-				pSuperExt->SW_NegBuildings.erase(std::remove_if(pSuperExt->SW_NegBuildings.begin(), pSuperExt->SW_NegBuildings.end(), [](BuildingTypeClass* pItem) -> bool
-					{ return !pItem; }), pSuperExt->SW_NegBuildings.end());
-			}
-
-			if (!pSuperExt->DropPod_Types.empty())
-				Helpers::Alex::remove_non_paradroppables(pSuperExt->DropPod_Types, pSuper->ID, "DropPod.Types");
-
-			for (auto& para : pSuperExt->ParaDropDatas)
-			{
-				for (auto& pVec : para.second)
-				{
-					if (!pVec.Types.empty())
+			for (auto& para : pSuperExt->ParaDropDatas) {
+				for (auto& pVec : para.second) {
 						Helpers::Alex::remove_non_paradroppables(pVec.Types, pSuper->ID, "ParaDrop.Types");
 				}
 			}
 		}
 	}
 
-	for (auto pAnim : *AnimTypeClass::Array)
-	{
-		if (!pAnim->GetImage())
-		{
+	for (auto pAnim : *AnimTypeClass::Array) {
+		if (!pAnim->GetImage()) {
 			Debug::LogInfo("Anim[{}] Has no proper Image!", pAnim->ID);
 			Debug::RegisterParserError();
 		}
@@ -742,6 +721,7 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 {
 	if (pINI == CCINIClass::INI_Rules())
 	{
+
 		//Load All the default value here
 		this->ElectricDeath = AnimTypeClass::FindOrAllocate("ELECTRO");
 		this->DefaultParaPlane = AircraftTypeClass::FindOrAllocate(GameStrings::PDPLANE());
@@ -800,7 +780,7 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	this->NoReload_Temporal.Read(exINI, GameStrings::General, "NoReload.Temporal");
 
 	this->AttackMindControlledDelay.Read(exINI, GameStrings::General, "AttackMindControlledDelay");
-
+	
 	this->MergeBuildingDamage.Read(exINI, GameStrings::CombatDamage, "MergeBuildingDamage");
 	this->ExpandBuildingQueue.Read(exINI, GameStrings::General, "ExpandBuildingQueue");
 	this->EnablePowerSurplus.Read(exINI, GameStrings::AI, "EnablePowerSurplus");
@@ -950,14 +930,8 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	this->NukeWarheadName.Read(exINI.GetINI(), GameStrings::SpecialWeapons(), "NukeWarhead");
 	this->AI_AutoSellHealthRatio.Read(exINI, GameStrings::General(), "AI.AutoSellHealthRatio");
 
-	if (Phobos::Config::EnableBuildingPlacementPreview)
-	{
-		this->Building_PlacementPreview.Read(exINI, GameStrings::AudioVisual(), "ShowBuildingPlacementPreview");
-		this->Building_PlacementPreview.Read(exINI, GameStrings::AudioVisual(), "PlacementPreview");
-
-		if (this->Building_PlacementPreview != Phobos::Config::EnableBuildingPlacementPreview)
-			this->Building_PlacementPreview = Phobos::Config::EnableBuildingPlacementPreview;
-	}
+	this->Building_PlacementPreview.Read(exINI, GameStrings::AudioVisual(), "ShowBuildingPlacementPreview");
+	this->Building_PlacementPreview.Read(exINI, GameStrings::AudioVisual(), "PlacementPreview");
 
 	this->PlacementGrid_TranslucencyWithPreview.Read(exINI, GameStrings::AudioVisual, "PlacementGrid.TranslucencyWithPreview");
 	this->DisablePathfindFailureLog.Read(exINI, GameStrings::General(), "DisablePathfindFailureLog");
@@ -1087,10 +1061,9 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	this->CloakHeight.Read(exINI, GameStrings::General(), "CloakHeight");
 
-	if (Phobos::Config::ShowFlashOnSelecting)
-	{
+	if(Phobos::Config::ShowFlashOnSelecting){
 		this->SelectFlashTimer.Read(exINI, GameStrings::AudioVisual, "SelectFlashTimer");
-		this->SelectFlashTimer.Read(exINI, GameStrings::AudioVisual, "SelectionFlashDuration");
+		this->SelectFlashTimer.Read(exINI, GameStrings::AudioVisual , "SelectionFlashDuration");
 	}
 
 	this->WarheadParticleAlphaImageIsLightFlash.Read(exINI, GameStrings::AudioVisual, "WarheadParticleAlphaImageIsLightFlash");
@@ -1109,7 +1082,8 @@ void RulesExtData::LoadEarlyOptios(RulesClass* pThis, CCINIClass* pINI)
 { }
 
 void RulesExtData::LoadEarlyBeforeColor(RulesClass* pThis, CCINIClass* pINI)
-{ }
+{
+}
 
 bool RulesExtData::DetailsCurrentlyEnabled()
 {
@@ -1134,7 +1108,8 @@ void RulesExtData::LoadBeforeGeneralData(RulesClass* pThis, CCINIClass* pINI)
 }
 
 void RulesExtData::LoadAfterAllLogicData(RulesClass* pThis, CCINIClass* pINI)
-{ }
+{
+}
 
 // =============================
 // load / save
@@ -1153,6 +1128,7 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(Phobos::Misc::CustomGS)
 		.Process(Phobos::Config::ApplyShadeCountFix)
 		.Process(Phobos::Otamaa::CompatibilityMode)
+		.Process(Phobos::Config::UnitPowerDrain)
 
 		.Process(this->Pips_Shield)
 		.Process(this->Pips_Shield_Buildings)
@@ -1528,6 +1504,7 @@ void RulesExtData::Serialize(T& Stm)
 		;
 
 	MyPutData.Serialize(Stm);
+
 }
 
 // =============================
@@ -1546,7 +1523,7 @@ DEFINE_HOOK(0x667A30, RulesClass_DTOR, 0x5)
 {
 	GET(RulesClass*, pItem, ECX);
 
-	if (!Phobos::Otamaa::ExeTerminated)
+	if(!Phobos::Otamaa::ExeTerminated)
 		RulesExtData::Remove(pItem);
 
 	return 0;
@@ -1594,16 +1571,17 @@ DEFINE_HOOK(0x678841, RulesClass_Load_Suffix, 0x7)
 DEFINE_HOOK(0x675205, RulesClass_Save_Suffix, 0x8)
 {
 	auto buffer = RulesExtData::Instance();
-	/* 5 extra boolean that added to the save
+	/* 7 extra boolean that added to the save
 		.Process(Phobos::Config::ArtImageSwap)
 		.Process(Phobos::Otamaa::DisableCustomRadSite)
 		.Process(Phobos::Config::ShowTechnoNamesIsActive)
 		.Process(Phobos::Misc::CustomGS)
 		.Process(Phobos::Config::ApplyShadeCountFix)
 		.Process(Phobos::Otamaa::CompatibilityMode)
+		.Process(Phobos::Config::UnitPoweDrain)
 	*/
 	// negative 4 for the AttachedToObjectPointer , it doesnot get S/L
-	PhobosByteStream saver((sizeof(RulesExtData) - 4u) + (6 * (sizeof(bool))));
+	PhobosByteStream saver((sizeof(RulesExtData) - 4u) + (7 * (sizeof(bool))));
 	PhobosStreamWriter writer(saver);
 
 	writer.Save(RulesExtData::Canary);
@@ -1649,8 +1627,8 @@ DEFINE_HOOK(0x668D86, RulesData_Process_PreFillTypeListData, 0x6)
 	}
 
 	RulesExtData::Instance()->DefautBulletType = BulletTypeClass::FindOrAllocate(DEFAULT_STR2);
-	if (!RulesExtData::Instance()->DefautBulletType)
-		Debug::FatalError("Uneable to Allocate {} BulletType ! ", DEFAULT_STR2);
+	if(!RulesExtData::Instance()->DefautBulletType)
+		Debug::FatalError("Uneable to Allocate {} BulletType ! " , DEFAULT_STR2);
 
 	for (int nn = 0; nn < pINI->GetKeyCount("WeaponTypes"); ++nn)
 	{
@@ -1684,18 +1662,17 @@ void FakeRulesClass::_ReadColors(CCINIClass* pINI)
 
 void FakeRulesClass::_ReadGeneral(CCINIClass* pINI)
 {
+
 	RulesExtData::LoadBeforeGeneralData(this, pINI);
 	this->Read_General(pINI);
 	RocketTypeClass::ReadListFromINI(pINI);
 
-	SideClass::Array->for_each([pINI](SideClass* pSide)
- {
-	 SideExtContainer::Instance.LoadFromINI(pSide, pINI, !pINI->GetSection(pSide->ID));
+	SideClass::Array->for_each([pINI](SideClass* pSide) {
+		SideExtContainer::Instance.LoadFromINI(pSide, pINI, !pINI->GetSection(pSide->ID));
 	});
 
-	HouseTypeClass::Array->for_each([pINI](HouseTypeClass* pHouse)
- {
-	 HouseTypeExtContainer::Instance.LoadFromINI(pHouse, pINI, !pINI->GetSection(pHouse->ID));
+	HouseTypeClass::Array->for_each([pINI](HouseTypeClass* pHouse) {
+		HouseTypeExtContainer::Instance.LoadFromINI(pHouse, pINI, !pINI->GetSection(pHouse->ID));
 	});
 
 	// All TypeClass Created but not yet read INI
@@ -1708,23 +1685,19 @@ void FakeRulesClass::_ReadGeneral(CCINIClass* pINI)
 	// add more if needed , it will double the error log at some point
 	// but it will take care some of missing stuffs that previously loaded late
 
-	for (auto pWeapon : *WeaponTypeClass::Array)
-	{
+	for (auto pWeapon : *WeaponTypeClass::Array) {
 		pWeapon->LoadFromINI(pINI);
 	}
 
-	for (auto pBullet : *BulletTypeClass::Array)
-	{
+	for (auto pBullet : *BulletTypeClass::Array) {
 		pBullet->LoadFromINI(pINI);
 	}
 
-	for (auto pWarhead : *WarheadTypeClass::Array)
-	{
+	for (auto pWarhead : *WarheadTypeClass::Array) {
 		pWarhead->LoadFromINI(pINI);
 	}
 
-	for (auto pAnims : *AnimTypeClass::Array)
-	{
+	for (auto pAnims : *AnimTypeClass::Array) {
 		pAnims->LoadFromINI(pINI);
 	}
 
@@ -1732,15 +1705,14 @@ void FakeRulesClass::_ReadGeneral(CCINIClass* pINI)
 	this->Read_Difficulties(pINI);
 	RulesExtData::LoadAfterAllLogicData(this, pINI);
 
-	for (auto pTib : *TiberiumClass::Array)
-	{
+	for (auto pTib : *TiberiumClass::Array) {
 		//Debug::LogInfo("Reading Tiberium[{}] Configurations!", pTib->ID);
 		pTib->LoadFromINI(pINI);
 	}
 }
 
-DEFINE_JUMP(CALL, 0x668BFE, MiscTools::to_DWORD(&FakeRulesClass::_ReadColors));
-DEFINE_JUMP(CALL, 0x668EE8, MiscTools::to_DWORD(&FakeRulesClass::_ReadGeneral));
+DEFINE_FUNCTION_JUMP(CALL, 0x668BFE, FakeRulesClass::_ReadColors);
+DEFINE_FUNCTION_JUMP(CALL, 0x668EE8, FakeRulesClass::_ReadGeneral);
 DEFINE_JUMP(LJMP, 0x668EED, 0x668F6A);
 
 DEFINE_HOOK(0x6744E4, RulesClass_ReadJumpjetControls_Extra, 0x7)
@@ -1779,10 +1751,8 @@ DEFINE_HOOK(0x683E21, ScenarioClass_StartScenario_LogHouses, 0x5)
 {
 	Debug::LogInfo("Scenario Map Name [{}] ", SessionClass::IsCampaign() || ScenarioExtData::Instance()->OriginalFilename->empty() ? SessionClass::Instance->ScenarioFilename : ScenarioExtData::Instance()->OriginalFilename->c_str());
 
-	if (auto pPlayerSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex))
-	{
-		if (auto pSideMouse = SideExtContainer::Instance.Find(pPlayerSide)->MouseShape)
-		{
+	if (auto pPlayerSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex)) {
+		if (auto pSideMouse = SideExtContainer::Instance.Find(pPlayerSide)->MouseShape) {
 			GameDelete<true, true>(std::exchange(MouseClass::ShapeData(), pSideMouse));
 		}
 	}
@@ -1824,6 +1794,7 @@ DEFINE_PATCH_TYPED(BYTE, 0x669193
 
 DEFINE_HOOK(0x685005, Game_InitData_GlobalParticleSystem, 0x5)
 {
+
 	GET(ParticleSystemClass*, pMem, ESI);
 
 	const auto pGlobalType = RulesExtData::Instance()->DefaultGlobalParticleInstance;

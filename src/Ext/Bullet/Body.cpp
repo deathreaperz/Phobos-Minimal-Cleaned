@@ -696,41 +696,38 @@ void BulletExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 		this->AttachedSystem = nullptr;
 }
 
-void BulletExtData::ApplyRadiationToCell(CoordStruct const& nCoord, int Spread, int RadLevel)
-{
-	if (!MapClass::Instance->IsWithinUsableArea(nCoord))
-		return;
+#include <Ext/Cell/Body.h>
 
+void BulletExtData::ApplyRadiationToCell(CellClass* pCell, int Spread, int RadLevel)
+{
 	const auto pThis = this->AttachedToObject;
 	const auto pWeapon = pThis->GetWeaponType();
 	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
 	const auto pRadType = pWeaponExt->RadType.Get(RadTypeClass::Array.begin()->get());
+	auto const pCellExt = CellExtContainer::Instance.Find(pCell);
 
-	auto const it = RadSiteClass::Array->find_if([=](RadSiteClass* const pSite)
-{
-	if (pSite->RadTimeLeft <= 0)
-		return false;
+	auto const it = pCellExt->RadSites.find_if([=](RadSiteClass* const pSite)
+ {
+	 if (pSite->RadTimeLeft <= 0)
+		 return false;
 
-	auto const pRadExt = RadSiteExtContainer::Instance.Find(pSite);
-	if (pRadExt->Type != pRadType)
-		return false;
+	 auto const pRadExt = RadSiteExtContainer::Instance.Find(pSite);
+	 if (pRadExt->Type != pRadType)
+		 return false;
 
-	if (pSite->BaseCell != CellClass::Coord2Cell(nCoord))
-		return false;
+	 if (Spread != pSite->Spread)
+		 return false;
 
-	if (Spread != pSite->Spread)
-		return false;
+	 if (pWeapon != pRadExt->Weapon)
+		 return false;
 
-	if (pWeapon != pRadExt->Weapon)
-		return false;
+	 if (pRadExt->TechOwner && pThis->Owner)
+		 return pRadExt->TechOwner == pThis->Owner;
 
-	if (pRadExt->TechOwner && pThis->Owner)
-		return pRadExt->TechOwner == pThis->Owner;
+	 return true;
+	});
 
-	return true;
-		});
-
-	if (it != RadSiteClass::Array->end())
+	if (it != pCellExt->RadSites.end())
 	{
 		const auto nMax = pRadType->GetLevelMax();
 		const auto nCurrent = (*it)->GetCurrentRadLevel();
@@ -745,7 +742,7 @@ void BulletExtData::ApplyRadiationToCell(CoordStruct const& nCoord, int Spread, 
 		return;
 	}
 
-	RadSiteExtData::CreateInstance(nCoord, Spread, RadLevel, pWeaponExt, pThis->Owner);
+	RadSiteExtData::CreateInstance(pCell, Spread, RadLevel, pWeaponExt, pThis->Owner);
 }
 
 void BulletExtData::InitializeLaserTrails()
@@ -996,8 +993,8 @@ HRESULT __stdcall FakeBulletClass::_Save(IStream* pStm, bool clearDirty)
 	return res;
 }
 
-DEFINE_JUMP(VTABLE, 0x7E46F8, MiscTools::to_DWORD(&FakeBulletClass::_Load))
-DEFINE_JUMP(VTABLE, 0x7E46FC, MiscTools::to_DWORD(&FakeBulletClass::_Save))
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E46F8, FakeBulletClass::_Load)
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E46FC, FakeBulletClass::_Save)
 
 void FakeBulletClass::_Detach(AbstractClass* target, bool all)
 {
@@ -1005,5 +1002,5 @@ void FakeBulletClass::_Detach(AbstractClass* target, bool all)
 	this->BulletClass::PointerExpired(target, all);
 }
 
-DEFINE_JUMP(VTABLE, 0x7E470C, MiscTools::to_DWORD(&FakeBulletClass::_Detach))
-DEFINE_JUMP(VTABLE, 0x7E4744, MiscTools::to_DWORD(&FakeBulletClass::_AnimPointerExpired))
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E470C, FakeBulletClass::_Detach)
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E4744, FakeBulletClass::_AnimPointerExpired)

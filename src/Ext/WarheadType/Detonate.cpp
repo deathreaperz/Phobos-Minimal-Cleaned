@@ -1032,6 +1032,8 @@ void WarheadTypeExtData::ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, Tec
 	else if (this->Crit_ExtraDamage.size() > level)
 		damage = Crit_ExtraDamage[level];
 
+	damage = static_cast<int>(TechnoExtData::GetDamageMult(pOwner, damage, !this->Crit_ExtraDamage_ApplyFirepowerMult));
+
 	if (this->Crit_Warhead)
 		WarheadTypeExtData::DetonateAt(this->Crit_Warhead.Get(), pTarget, pOwner, damage, pHouse);
 	else

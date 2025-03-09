@@ -55,8 +55,7 @@ public:
 
 	~TeamExtData() noexcept
 	{
-		if (!Phobos::Otamaa::ExeTerminated)
-		{
+		if(!Phobos::Otamaa::ExeTerminated) {
 			GameDelete<true, true>(PreviousScript);
 		}
 
@@ -95,19 +94,15 @@ public:
 	TeamExtData* AllocateUnchecked(TeamClass* key)
 	{
 		TeamExtData* val = nullptr;
-		if (!Pool.empty())
-		{
+		if (!Pool.empty()) {
 			val = Pool.front();
 			Pool.erase(Pool.begin());
 			//re-init
-		}
-		else
-		{
+		} else {
 			val = DLLAllocWithoutCTOR<TeamExtData>();
 		}
 
-		if (val)
-		{
+		if (val) {
 			val->TeamExtData::TeamExtData();
 			val->AttachedToObject = key;
 			return val;
@@ -165,10 +160,10 @@ public:
 	HRESULT __stdcall _Load(IStream* pStm);
 	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
 
-	TeamExtData* _GetExtData()
-	{
+	TeamExtData* _GetExtData() {
 		return *reinterpret_cast<TeamExtData**>(this->unknown_18);
 	}
+
 };
 
 static_assert(sizeof(FakeTeamClass) == sizeof(TeamClass), "Invalid Size !");

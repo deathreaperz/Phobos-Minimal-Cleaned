@@ -756,29 +756,28 @@ namespace Helpers
 		OPTIONALINLINE void remove_non_paradroppables(std::vector<TechnoTypeClass*>& types, const char* section, const char* key)
 		{
 			// remove all types that aren't either infantry or unit types
+			fast_remove_if(types, [section, key](TechnoTypeClass* pItem) -> bool
+ {
+	 if (!pItem)
+	 {
+		 Debug::INIParseFailed(section, key, pItem->ID, "Invalid types are removed.");
+		 return true;
+	 }
 
-			types.erase(std::remove_if(types.begin(), types.end(), [section, key](TechnoTypeClass* pItem) -> bool
-				{
-					if (!pItem)
-					{
-						Debug::INIParseFailed(section, key, pItem->ID, "Invalid types are removed.");
-						return true;
-					}
+	 if (!is_any_of(pItem->WhatAmI(), AbstractType::InfantryType, AbstractType::UnitType))
+	 {
+		 Debug::INIParseFailed(section, key, pItem->ID, "Only InfantryTypes and UnitTypes are supported.");
+		 return true;
+	 }
 
-					if (!is_any_of(pItem->WhatAmI(), AbstractType::InfantryType, AbstractType::UnitType))
-					{
-						Debug::INIParseFailed(section, key, pItem->ID, "Only InfantryTypes and UnitTypes are supported.");
-						return true;
-					}
+	 if (pItem->Strength <= 0)
+	 {
+		 Debug::INIParseFailed(section, key, pItem->ID, "0 Strength types are removed.");
+		 return true;
+	 }
 
-					if (pItem->Strength <= 0)
-					{
-						Debug::INIParseFailed(section, key, pItem->ID, "0 Strength types are removed.");
-						return true;
-					}
-
-					return false;
-				}), types.end());
+	 return false;
+				});
 		}
 
 		//! Invokes an action for every element that suffices a predicate.

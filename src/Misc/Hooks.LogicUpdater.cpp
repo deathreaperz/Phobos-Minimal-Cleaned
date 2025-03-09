@@ -263,7 +263,7 @@ DEFINE_HOOK(0x6F9EAD, TechnoClass_AI_AfterAres, 0x7)
 
 	if (pThis->IsAlive)
 	{
-		auto it = std::remove_if(pExt->PaintBallStates.begin(), pExt->PaintBallStates.end(), [pThis](auto& pb)
+		pExt->PaintBallStates.erase_all_if([pThis](auto& pb)
 {
 	if (pb.second.timer.GetTimeLeft())
 	{
@@ -276,8 +276,6 @@ DEFINE_HOOK(0x6F9EAD, TechnoClass_AI_AfterAres, 0x7)
 
 	return true;
 		});
-
-		pExt->PaintBallStates.erase(it);
 
 		if (auto& pDSState = pExt->DamageSelfState)
 		{
@@ -333,7 +331,7 @@ bool Spawned_Check_Destruction(AircraftClass* aircraft)
 	return false;
 }
 
-DEFINE_JUMP(CALL, 0x414DA3, MiscTools::to_DWORD(&FakeAircraftClass::_FootClass_Update_Wrapper));
+DEFINE_FUNCTION_JUMP(CALL, 0x414DA3, FakeAircraftClass::_FootClass_Update_Wrapper);
 
 DEFINE_HOOK(0x4DA677, FootClass_AI_IsMovingNow, 0x6)
 {

@@ -3340,7 +3340,7 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 
 	// Detach CLEG targeting
 	if (pThis->TemporalImUsing && pThis->TemporalImUsing->Target)
-		pThis->TemporalImUsing->Detach();
+		pThis->TemporalImUsing->LetGo();
 
 	HouseClass* const pOwner = pThis->Owner;
 
@@ -5907,7 +5907,7 @@ bool AresWPWHExt::conductAbduction(WeaponTypeClass* pWeapon, TechnoClass* pOwner
 	// if this unit is currently in a state of temporal flux, get it back to our time-frame
 	if (Target->TemporalTargetingMe)
 	{
-		Target->TemporalTargetingMe->Detach();
+		Target->TemporalTargetingMe->LetGo();
 	}
 
 	//if the target is spawned, detach it from it's spawner

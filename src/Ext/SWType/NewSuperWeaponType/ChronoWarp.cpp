@@ -14,29 +14,27 @@ SuperWeaponFlags SW_ChronoWarp::Flags(const SWTypeExtData* pData) const
 	return SuperWeaponFlags::NoAnim | SuperWeaponFlags::NoEvent | SuperWeaponFlags::PostClick;
 }
 
-void KillCargo(TechnoClass* pTech, HouseClass* killer)
+void KillCargo(TechnoClass* pTech , HouseClass* killer)
 {
-	if (auto pBuilding = cast_to<BuildingClass*, false>(pTech))
-	{
-		for (auto& pOcc : pBuilding->Occupants)
-		{
+	if(auto pBuilding = cast_to<BuildingClass*, false>(pTech)) {
+		for(auto& pOcc : pBuilding->Occupants) {
 			pOcc->RegisterKill(killer);
 			pOcc->UnInit();
-			TechnoExtContainer::Instance.Find(pOcc)->GarrisonedIn = nullptr;
-		}
+				TechnoExtContainer::Instance.Find(pOcc)->GarrisonedIn = nullptr;
+			}
 		pBuilding->Occupants.Count = 0;
 	}
 
 	const auto pFoot = flag_cast_to<FootClass*, false>(pTech);
 
-	while (pTech->Passengers.GetFirstPassenger())
+	while(pTech->Passengers.GetFirstPassenger())
 	{
 		FootClass* pPassenger = pFoot ? pFoot->RemoveFirstPassenger() : pTech->Passengers.RemoveFirstPassenger();
 
-		if (pPassenger->Team)
+		if(pPassenger->Team)
 			pPassenger->Team->RemoveMember(pPassenger);
 
-		KillCargo(pPassenger, killer);
+		KillCargo(pPassenger , killer);
 		pPassenger->RegisterKill(killer);
 		pPassenger->UnInit();
 	}
@@ -92,16 +90,14 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 	auto range = NewSWType::GetNewSWType(pSourceSWExt)->GetRange(pSourceSWExt);
 	Helpers::Alex::DistinctCollector<TechnoClass*> items;
 	Helpers::Alex::for_each_in_rect_or_range<TechnoClass>(pSource->ChronoMapCoords, range.WidthOrRange, range.Height, items);
-	items.apply_function_for_each([pThis, pSourceSWExt, pSource, Coords, &RegisteredBuildings](TechnoClass* const pTechno) -> bool
+	items.apply_function_for_each( [pThis, pSourceSWExt, pSource, Coords, &RegisteredBuildings](TechnoClass* const pTechno) -> bool
 	{
 		// is this thing affected at all?
-		if (!pSourceSWExt->IsHouseAffected(pThis->Owner, pTechno->Owner))
-		{
+		if (!pSourceSWExt->IsHouseAffected(pThis->Owner, pTechno->Owner)) {
 			return true;
 		}
 
-		if (!pSourceSWExt->IsTechnoAffected(pTechno))
-		{
+		if (!pSourceSWExt->IsTechnoAffected(pTechno)) {
 			return true;
 		}
 
@@ -154,6 +150,7 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 
 		// some quick exclusion criteria
 		if (pTechno->IsImmobilized
+			|| pTechno->TemporalTargetingMe
 			|| pTechno->IsInAir()
 			|| pTechno->IsBeingWarpedOut()
 			|| pTechno->IsWarpingIn())
@@ -162,21 +159,18 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 		}
 
 		// unwarpable unit
-		if (TechnoExtData::IsUnwarpable(pTechno) && !pSourceSWExt->Chronosphere_AffectUnwarpable)
-		{
+		if (TechnoExtData::IsUnwarpable(pTechno) && !pSourceSWExt->Chronosphere_AffectUnwarpable) {
 			return true;
 		}
 
 		// iron curtained units
-		if (pTechno->IsIronCurtained() && !pSourceSWExt->Chronosphere_AffectIronCurtain)
-		{
+		if (pTechno->IsIronCurtained() && !pSourceSWExt->Chronosphere_AffectIronCurtain) {
 			return true;
 		}
 
 		// if this is a newly produced unit that still is in its
 		// weapons factory, this skips it.
-		if (TechnoExtData::IsInWarfactory(pTechno, true))
-		{
+		if (TechnoExtData::IsInWarfactory(pTechno, true)) {
 			return true;
 		}
 
@@ -237,7 +231,7 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 			if (pBld->LightSource)
 			{
 				pBld->LightSource->Deactivate();
-				GameDelete<true, false>(std::exchange(pBld->LightSource, nullptr));
+				GameDelete<true, false>(std::exchange(pBld->LightSource , nullptr));
 			}
 
 			// shut down cloak generation
@@ -254,8 +248,8 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 		auto const coordsUnitSource = pTechno->GetCoords();
 		auto const cellUnitTarget = pTechno->GetCell()->MapCoords - pSource->ChronoMapCoords + Coords;
 
-		if (pSourceSWExt->Chronosphere_KillCargo)
-			KillCargo(pTechno, false);
+		if(pSourceSWExt->Chronosphere_KillCargo)
+			KillCargo(pTechno , false);
 
 		if (auto const pFoot = flag_cast_to<FootClass*, false>(pTechno))
 		{
@@ -264,7 +258,7 @@ bool SW_ChronoWarp::Activate(SuperClass* pThis, const CellStruct& Coords, bool I
 			auto const pCellUnitTarget = MapClass::Instance->GetCellAt(cellUnitTarget);
 			auto const offset = Coords - pSource->ChronoMapCoords;
 			auto const coordsUnitTarget = pCellUnitTarget->FixHeight(
-				coordsUnitSource + CoordStruct { offset.X * 256, offset.Y * 256, 0 });
+				coordsUnitSource + CoordStruct{offset.X * 256, offset.Y * 256, 0});
 
 			// clean up the unit's current cell
 			pFoot->Locomotor->Mark_All_Occupation_Bits(0);
@@ -332,8 +326,7 @@ bool SW_ChronoWarp::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBui
 	// get the previous super weapon
 	SuperClass* pSource = pBuilding->Owner->Supers.GetItemOrDefault(HouseExtContainer::Instance.Find(pBuilding->Owner)->SWLastIndex);
 
-	if (!pSource)
-	{
+	if(!pSource) {
 		if (!this->IsLaunchsiteAlive(pBuilding))
 			return false;
 
@@ -343,7 +336,7 @@ bool SW_ChronoWarp::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBui
 		return this->IsSWTypeAttachedToThis(pData, pBuilding);
 	}
 
-	return SWTypeExtContainer::Instance.Find(pSource->Type)->GetNewSWType()->IsLaunchSite(pData, pBuilding);
+	return SWTypeExtContainer::Instance.Find(pSource->Type)->GetNewSWType()->IsLaunchSite(pData , pBuilding);
 }
 
 void ChronoWarpStateMachine::Update()
@@ -447,12 +440,9 @@ void ChronoWarpStateMachine::Update()
 
 void ChronoWarpStateMachine::InvalidatePointer(AbstractClass* ptr, bool remove)
 {
-	if (remove)
-	{
-		for (int i = 0; i < (int)this->Buildings.size(); ++i)
-		{
-			if (this->Buildings[i].building == ptr)
-			{
+	if (remove) {
+		for (int i = 0; i < (int)this->Buildings.size(); ++i) {
+			if (this->Buildings[i].building == ptr) {
 				this->Buildings.erase(this->Buildings.begin() + i);
 				break;
 			}
