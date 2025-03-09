@@ -57,7 +57,7 @@ void SW_SpyPlane::LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI)
 
 	INI_EX exINI(pINI);
 
-	pData->SpyPlanes_TypeIndex.Read(exINI ,section , "SpyPlane.Type");
+	pData->SpyPlanes_TypeIndex.Read(exINI, section, "SpyPlane.Type");
 	pData->SpyPlanes_Count.Read(exINI, section, "SpyPlane.Count");
 	pData->SpyPlanes_Mission.Read(exINI, section, "SpyPlane.Mission");
 	pData->SpyPlanes_Rank.Read(exINI, section, "SpyPlane.Rank");
@@ -76,13 +76,15 @@ bool SW_SpyPlane::IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuild
 
 void SpyPlaneStateMachine::Update()
 {
-	if (this->Finished()) {
+	if (this->Finished())
+	{
 		auto pData = this->GetTypeExtData();
 
 		pData->PrintMessage(pData->Message_Activate, this->Super->Owner);
 
 		auto const sound = pData->SW_ActivationSound.Get(-1);
-		if (sound != -1) {
+		if (sound != -1)
+		{
 			VocClass::PlayGlobal(sound, Panning::Center, 1.0);
 		}
 
@@ -92,7 +94,6 @@ void SpyPlaneStateMachine::Update()
 
 void SpyPlaneStateMachine::SendSpyPlane(SuperClass* pSuper, SWTypeExtData* pData, NewSWType* pNewType, CellClass* target)
 {
-
 	const auto Default = HouseExtData::GetSpyPlane(pSuper->Owner);
 
 	const auto& PlaneIdxes = pData->SpyPlanes_TypeIndex;

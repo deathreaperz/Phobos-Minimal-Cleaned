@@ -270,7 +270,6 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 				pDefArmor != ArmorTypeClass::Array[ArmorTypeClass::Array.size()].get();
 				pDefArmor = ArmorTypeClass::Array[pDefArmor->DefaultTo].get())
 			{
-
 				if (auto pFallback = hitAnim[ArmorTypeClass::Array[i]->DefaultTo])
 					hitAnim[i] = pFallback;
 
@@ -296,7 +295,6 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Remover_Anim.Read(exINI, pSection, "Remover.Anim");
 	this->PermaMC.Read(exINI, pSection, "MindControl.Permanent");
 	this->Sound.Read(exINI, pSection, GameStrings::Sound());
-
 
 	TechnoTypeConvertData::Parse(Phobos::Otamaa::CompatibilityMode, this->ConvertsPair, exINI, pSection, "ConvertsPair");
 	this->Convert_SucceededAnim.Read(exINI, pSection, "ConvertsAnim");
@@ -540,7 +538,6 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	for (size_t i = 0; ; i++)
 	{
-
 		std::string base("SpawnsCrate");
 		std::string base_Num = base + std::to_string(i);
 
@@ -568,7 +565,6 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->PenetratesIronCurtain.Read(exINI, pSection, "PenetratesIronCurtain");
 	this->PenetratesForceShield.Read(exINI, pSection, "PenetratesForceShield");
 
-
 	this->SuppressRevengeWeapons.Read(exINI, pSection, "SuppressRevengeWeapons");
 	this->SuppressRevengeWeapons_Types.Read(exINI, pSection, "SuppressRevengeWeapons.Types");
 	this->SuppressReflectDamage.Read(exINI, pSection, "SuppressReflectDamage");
@@ -593,6 +589,11 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->BuildingSell_IgnoreUnsellable.Read(exINI, pSection, "BuildingSell.IgnoreUnsellable");
 	this->BuildingUndeploy.Read(exINI, pSection, "BuildingUndeploy");
 	this->BuildingUndeploy_Leave.Read(exINI, pSection, "BuildingUndeploy.Leave");
+
+	this->ScorcScorchChance.Read(exINI, pSection, "ScorcScorchChance");
+	this->CraterChance.Read(exINI, pSection, "CraterChance");
+	this->CellAnimChance.Read(exINI, pSection, "CellAnimChance");
+	this->CellAnim.Read(exINI, pSection, "CellAnim");
 }
 
 //https://github.com/Phobos-developers/Phobos/issues/629
@@ -806,8 +807,8 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool S
 	return Bypass;
 }
 
-bool WarheadTypeExtData::CanAffectInvulnerable(TechnoClass* pTarget) const {
-
+bool WarheadTypeExtData::CanAffectInvulnerable(TechnoClass* pTarget) const
+{
 	if (!pTarget || !pTarget->IsIronCurtained())
 		return true;
 
@@ -845,7 +846,6 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, int damageIn, int d
 	}
 
 	return true;
-
 }
 
 FullMapDetonateResult WarheadTypeExtData::EligibleForFullMapDetonation(TechnoClass* pTechno, HouseClass* pOwner) const
@@ -937,7 +937,6 @@ void WarheadTypeExtData::applyWebby(TechnoClass* pTarget, HouseClass* pKillerHou
 			// is already on.
 			if (newValue > 0)
 			{
-
 				// set new length and reset the anim ownership
 				pInf->ParalysisTimer.Start(newValue);
 
@@ -1097,17 +1096,19 @@ bool WarheadTypeExtData::GoBerzerkFor(FootClass* pVictim, int* damage) const
 
 		if (oldValue <= 0)
 		{
-			if (newValue > 0) {
+			if (newValue > 0)
+			{
 				pVictim->GoBerzerkFor(newValue);
 			}
 		}
 		else
 		{
-
-			if (newValue > 0) {
+			if (newValue > 0)
+			{
 				pVictim->GoBerzerkFor(newValue);
-			} else {
-
+			}
+			else
+			{
 				auto const nLeft = pVictim->BerzerkDurationLeft - newValue;
 				if (nLeft <= 0)
 				{
@@ -1115,7 +1116,9 @@ bool WarheadTypeExtData::GoBerzerkFor(FootClass* pVictim, int* damage) const
 					pVictim->Berzerk = false;
 					pVictim->SetTarget(nullptr);
 					TechnoExtData::SetMissionAfterBerzerk(pVictim);
-				} else {
+				}
+				else
+				{
 					pVictim->BerzerkDurationLeft -= nLeft;
 				}
 			}
@@ -1189,8 +1192,8 @@ void WarheadTypeExtData::DetonateAt(
 {
 	BulletTypeClass* pType = BulletTypeExtData::GetDefaultBulletType();
 
-	if(!pType)
-		Debug::FatalError("Uneable to Fetch %s BulletType ! " , DEFAULT_STR2);
+	if (!pType)
+		Debug::FatalError("Uneable to Fetch %s BulletType ! ", DEFAULT_STR2);
 
 	//if (pThis->NukeMaker)
 	//{
@@ -1239,7 +1242,6 @@ void WarheadTypeExtData::applyEMP(WarheadTypeClass* pWH, const CoordStruct& coor
 
 	if (pWHExt->EMP_Duration)
 		AresEMPulse::CreateEMPulse(pWH, coords, source);
-
 }
 
 // =============================
@@ -1583,6 +1585,11 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->BuildingSell_IgnoreUnsellable)
 		.Process(this->BuildingUndeploy)
 		.Process(this->BuildingUndeploy_Leave)
+
+		.Process(this->ScorcScorchChance)
+		.Process(this->CraterChance)
+		.Process(this->CellAnimChance)
+		.Process(this->CellAnim)
 		;
 
 	PaintBallData.Serialize(Stm);
@@ -1607,7 +1614,8 @@ void WarheadTypeExtData::GetCritChance(TechnoClass* pFirer, std::vector<double>&
 		std::vector<AEProperties::ExtraCrit::CritDataOut> valids;
 		pExt->AE.ExtraCrit.FillEligible(this->AttachedToObject, valids);
 
-		for (auto& curChances : chances) {
+		for (auto& curChances : chances)
+		{
 			curChances = AEProperties::ExtraCrit::Count(curChances, valids);
 		}
 	}
@@ -1629,10 +1637,10 @@ bool WarheadTypeExtData::ApplySuppressDeathWeapon(TechnoClass* pVictim) const
 	auto const absType = pVictim->WhatAmI();
 	auto const pVictimType = pVictim->GetTechnoType();
 
-	if (!this->SuppressDeathWeapon_Exclude.Contains(pVictimType)) {
-
-		if (this->SuppressDeathWeapon.Contains(pVictimType)){
-
+	if (!this->SuppressDeathWeapon_Exclude.Contains(pVictimType))
+	{
+		if (this->SuppressDeathWeapon.Contains(pVictimType))
+		{
 			if (absType == UnitClass::AbsID && !this->SuppressDeathWeapon_Vehicles)
 				return false;
 
@@ -1649,7 +1657,8 @@ bool WarheadTypeExtData::ApplySuppressDeathWeapon(TechnoClass* pVictim) const
 	return false;
 }
 
-void WarheadTypeExtData::ApplyBuildingUndeploy(TechnoClass* pTarget) {
+void WarheadTypeExtData::ApplyBuildingUndeploy(TechnoClass* pTarget)
+{
 	const auto pBuilding = cast_to<BuildingClass*>(pTarget);
 
 	if (!pBuilding || !pBuilding->IsAlive || pBuilding->Health <= 0 || !pBuilding->IsOnMap || pBuilding->InLimbo)
@@ -1659,7 +1668,6 @@ void WarheadTypeExtData::ApplyBuildingUndeploy(TechnoClass* pTarget) {
 
 	if (this->BuildingSell)
 	{
-
 		if ((pBuilding->CanBeSold() && !pBuilding->IsStrange()) || this->BuildingSell_IgnoreUnsellable)
 			pBuilding->Sell(1);
 
@@ -1682,14 +1690,12 @@ void WarheadTypeExtData::ApplyBuildingUndeploy(TechnoClass* pTarget) {
 
 	// Offset of undeployment on large-scale buildings
 	if (width > 2 || height > 2)
-		cell += CellStruct{ 1, 1 };
+		cell += CellStruct { 1, 1 };
 
 	if (this->BuildingUndeploy_Leave)
 	{
-
 		const auto pHouse = pBuilding->Owner;
 		const auto pItems = Helpers::Alex::getCellSpreadItems(pBuilding->GetCoords(), 20);
-
 
 		// Divide the surrounding units into 16 directions and record their costs
 
@@ -1701,19 +1707,15 @@ void WarheadTypeExtData::ApplyBuildingUndeploy(TechnoClass* pTarget) {
 
 			if ((!pHouse || !pHouse->IsAlliedWith(pItem)) && pItem->IsArmed())
 				record[pBuilding->GetDirectionOverObject(pItem).GetValue<4>()] += pItem->GetTechnoType()->Cost;
-
 		}
-
 
 		int costs = 0;
 		int dir = 0;
-
 
 		// Starting from 16, prevent negative numbers
 
 		for (int i = 16; i < 32; ++i)
 		{
-
 			int newCosts = 0;
 
 			// Assign weights to values in the direction
@@ -1727,48 +1729,37 @@ void WarheadTypeExtData::ApplyBuildingUndeploy(TechnoClass* pTarget) {
 			for (int j = -7; j < 8; ++j)
 				newCosts += ((8 - Math::abs(j)) * record[(i + j) & 15]);
 
-
-
 			// Record the direction with the highest weight
 
 			if (newCosts > costs)
 			{
-
 				dir = (i - 16);
 				costs = newCosts;
 			}
 		}
-
 
 		// If there is no threat in the surrounding area, randomly select one side
 
 		if (!costs)
 			dir = ScenarioClass::Instance->Random.RandomRanged(0, 15);
 
-
 		// Reverse the direction and convert it into radians
 
 		const double radian = -(((dir - 4) / 16.0) * Math::TwoPi);
-
 
 		// Base on a location about 14 grids away
 
 		cell.X -= static_cast<short>(14 * Math::cos(radian));
 		cell.Y += static_cast<short>(14 * Math::sin(radian));
 
-
 		// Find a location where the conyard can be deployed
 		const auto newCell = MapClass::Instance->NearByLocation(cell, pType->UndeploysInto->SpeedType, ZoneType::None, pType->UndeploysInto->MovementZone, false, (width + 2), (height + 2), false, false, false, false, CellStruct::Empty, false, false);
-
 
 		// If it can find a more suitable location, go to the new one
 		if (newCell != CellStruct::Empty)
 
 			cell = newCell;
-
 	}
-
-
 
 	if (const auto pCell = MapClass::Instance->TryGetCellAt(cell))
 		pBuilding->SetArchiveTarget(pCell);
@@ -1821,7 +1812,6 @@ DEFINE_HOOK(0x75E5C8, WarheadTypeClass_SDDTOR, 0x6)
 
 HRESULT __stdcall FakeWarheadTypeClass::_Load(IStream* pStm)
 {
-
 	WarheadTypeExtContainer::Instance.PrepareStream(this, pStm);
 	HRESULT res = this->WarheadTypeClass::Load(pStm);
 
@@ -1833,7 +1823,6 @@ HRESULT __stdcall FakeWarheadTypeClass::_Load(IStream* pStm)
 
 HRESULT __stdcall FakeWarheadTypeClass::_Save(IStream* pStm, bool clearDirty)
 {
-
 	WarheadTypeExtContainer::Instance.PrepareStream(this, pStm);
 	HRESULT res = this->WarheadTypeClass::Save(pStm, clearDirty);
 

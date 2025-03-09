@@ -67,7 +67,7 @@ void DroppodStateMachine::Update()
 {
 	if (this->Finished())
 	{
-		SendDroppods(this->Super , this->GetTypeExtData() , this->Type , this->Coords);
+		SendDroppods(this->Super, this->GetTypeExtData(), this->Type, this->Coords);
 	}
 }
 
@@ -76,7 +76,8 @@ void DroppodStateMachine::SendDroppods(SuperClass* pSuper, SWTypeExtData* pData,
 	pData->PrintMessage(pData->Message_Activate, pSuper->Owner);
 
 	auto const sound = pData->SW_ActivationSound.Get(-1);
-	if (sound != -1) {
+	if (sound != -1)
+	{
 		VocClass::PlayGlobal(sound, Panning::Center, 1.0);
 	}
 
@@ -86,7 +87,8 @@ void DroppodStateMachine::SendDroppods(SuperClass* pSuper, SWTypeExtData* pData,
 		: RulesExtData::Instance()->DropPodTypes;
 
 	// quick way out
-	if (Types.empty()) {
+	if (Types.empty())
+	{
 		return;
 	}
 
@@ -96,16 +98,16 @@ void DroppodStateMachine::SendDroppods(SuperClass* pSuper, SWTypeExtData* pData,
 	DroppodStateMachine::PlaceUnits(pSuper, pData->DropPod_Veterancy.Get(), Types, cMin, cMax, loc, false);
 }
 
-void DroppodStateMachine::PlaceUnits(SuperClass* pSuper , double veterancy , Iterator<TechnoTypeClass*> const Types, int cMin ,int cMax , const CellStruct& Coords, bool retries)
+void DroppodStateMachine::PlaceUnits(SuperClass* pSuper, double veterancy, Iterator<TechnoTypeClass*> const Types, int cMin, int cMax, const CellStruct& Coords, bool retries)
 {
 	const auto pData = SWTypeExtContainer::Instance.Find(pSuper->Type);
 	// three times more tries than units to place.
 	const int count = ScenarioClass::Instance->Random.RandomRanged(cMin, cMax);
 	CellStruct cell = Coords;
-	std::vector<std::pair<bool , int>> Succeededs(count , {false , pData->Droppod_RetryCount });
+	std::vector<std::pair<bool, int>> Succeededs(count, { false , pData->Droppod_RetryCount });
 	const bool needRandom = Types.size() > 1;
 
-	for (auto&[status , retrycount] : Succeededs)
+	for (auto& [status, retrycount] : Succeededs)
 	{
 		if (!status && retrycount)
 		{
@@ -127,9 +129,12 @@ void DroppodStateMachine::PlaceUnits(SuperClass* pSuper , double veterancy , Ite
 
 			// let the locomotor take care of the rest
 			TechnoExtContainer::Instance.Find(pFoot)->LinkedSW = pSuper;
-			if (TechnoExtData::CreateWithDroppod(pFoot, crd)) {
+			if (TechnoExtData::CreateWithDroppod(pFoot, crd))
+			{
 				status = true;
-			} else {
+			}
+			else
+			{
 				--retrycount;
 			}
 
@@ -139,7 +144,6 @@ void DroppodStateMachine::PlaceUnits(SuperClass* pSuper , double veterancy , Ite
 
 			for (int j = 0; j < 8; ++j)
 			{
-
 				// get the direction in an overly verbose way
 				FacingType dir = FacingType(((j + rnd) % 8) & 7);
 
