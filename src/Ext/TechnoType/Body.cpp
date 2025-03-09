@@ -1463,6 +1463,8 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->NoTurret_TrackTarget.Read(exINI, pSection, "NoTurret.TrackTarget");
 		this->RecountBurst.Read(exINI, pSection, "RecountBurst");
+
+		this->AirstrikeLineColor.Read(exINI, pSection, "AirstrikeLineColor");
 	}
 
 	// Art tags
@@ -2500,7 +2502,6 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Convert_Scipt_Prereq)
 		.Process(this->LargeVisceroid)
 		.Process(this->DropPodProp)
-		.Process(this->LaserTargetColor)
 		.Process(this->VoicePickup)
 		.Process(this->CrateGoodie_RerollChance)
 		.Process(this->Destroyed_CrateType)
@@ -2625,6 +2626,9 @@ void TechnoTypeExtData::Serialize(T& Stm)
 
 		.Process(this->NoTurret_TrackTarget)
 		.Process(this->RecountBurst)
+
+		.Process(this->LaserTargetColor)
+		.Process(this->AirstrikeLineColor)
 		;
 }
 
