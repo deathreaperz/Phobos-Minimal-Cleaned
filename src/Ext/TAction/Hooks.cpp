@@ -305,7 +305,6 @@ DEFINE_HOOK(0x6DE189, TActionClass_MakeEnemy, 0x6)
 
 	return OK;
 }
-
 // Bugfix, #issue 429: Retint map script disables RGB settings on light source
 // Author: secsome
 //DEFINE_HOOK_AGAIN(0x6E2F47, TActionClass_Retint_LightSourceFix, 0x3) // Blue

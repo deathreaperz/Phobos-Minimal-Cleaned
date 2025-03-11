@@ -1071,6 +1071,9 @@ public:
 
 	Nullable<ColorStruct> AirstrikeLineColor {};
 
+	Nullable<int> InitialSpawnsNumber {};
+	ValueableVector<AircraftTypeClass*> Spawns_Queue {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromINIFile_Aircraft(CCINIClass* pINI);
 	void LoadFromINIFile_EvaluateSomeVariables(CCINIClass* pINI);

@@ -1408,6 +1408,8 @@ void ScriptExtData::Mission_Attack_List1Random(TeamClass* pTeam, bool repeatActi
 	//);
 }
 
+#include <Ext/BulletType/Body.h>
+
 void ScriptExtData::CheckUnitTargetingCapabilities(TechnoClass* pTechno, bool& hasAntiGround, bool& hasAntiAir, bool agentMode)
 {
 	if (!pTechno || !pTechno->IsAlive)
@@ -1418,7 +1420,9 @@ void ScriptExtData::CheckUnitTargetingCapabilities(TechnoClass* pTechno, bool& h
 	if ((pWeaponPrimary && pWeaponPrimary->Projectile->AA) || (pWeaponSecondary && pWeaponSecondary->Projectile->AA))
 		hasAntiAir = true;
 
-	if ((pWeaponPrimary && pWeaponPrimary->Projectile->AG) || (pWeaponSecondary && pWeaponSecondary->Projectile->AG) || agentMode)
+	if ((agentMode
+		|| (pWeaponPrimary && pWeaponPrimary->Projectile->AG && !BulletTypeExtContainer::Instance.Find(pWeaponPrimary->Projectile)->AAOnly)
+		|| (pWeaponSecondary && pWeaponSecondary->Projectile->AG && !BulletTypeExtContainer::Instance.Find(pWeaponPrimary->Projectile)->AAOnly)))
 		hasAntiGround = true;
 }
 

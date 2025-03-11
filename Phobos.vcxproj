@@ -132,6 +132,7 @@
     <ClCompile Include="src\Ext\SmudgeType\Body.cpp" />
     <ClCompile Include="src\Ext\SmudgeType\Hooks.cpp" />
     <ClCompile Include="src\Ext\SpawnManager\Body.cpp" />
+    <ClCompile Include="src\Ext\SpawnManager\Hooks.cpp" />
     <ClCompile Include="src\Ext\Super\Body.cpp" />
     <ClCompile Include="src\Ext\Surface\Body.cpp" />
     <ClCompile Include="src\Ext\SWType\Hook.ShortTimer.cpp" />
@@ -359,7 +360,6 @@
     <ClCompile Include="src\Misc\PNGFile.cpp" />
     <ClCompile Include="src\Misc\RetryDialog.cpp" />
     <ClCompile Include="src\Misc\Selection.cpp" />
-    <ClCompile Include="src\Misc\Spawner\AutoSave.cpp" />
     <ClCompile Include="src\Misc\Spawner\Bugfixes.cpp" />
     <ClCompile Include="src\Misc\Spawner\Chats.cpp" />
     <ClCompile Include="src\Misc\Spawner\DisableEdgeScrolling.cpp" />
@@ -558,7 +558,6 @@
     <ClInclude Include="src\Misc\Multithread.h" />
     <ClInclude Include="src\Misc\PhobosToolTip.h" />
     <ClInclude Include="src\Misc\PNGFile.h" />
-    <ClInclude Include="src\Misc\Spawner\AutoSave.h" />
     <ClInclude Include="src\Misc\SyncLogging.h" />
     <ClInclude Include="src\Misc\Vinifera\BlowfishEngine.h" />
     <ClInclude Include="src\New\Entity\MissingCameoData.h" />

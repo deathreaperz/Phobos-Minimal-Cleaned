@@ -162,7 +162,7 @@ public:
 	PathfindLastData PathfindTechno { };
 	ColorsData ColorDatas { };
 	int LandTypeParseCounter { };
-
+	bool Disappear_removed { false };
 public:
 	static bool SaveGlobals(PhobosStreamWriter& stm);
 	static bool LoadGlobals(PhobosStreamReader& stm);
@@ -188,6 +188,7 @@ public:
 			.Process(this->ColorDatas)
 			.Process(this->LandTypeParseCounter)
 			.Process(this->LastAnimName)
+			.Process(this->Disappear_removed)
 			.Success();
 	}
 };
