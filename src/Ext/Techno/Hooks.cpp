@@ -806,6 +806,8 @@ DEFINE_HOOK(0x736480, UnitClass_AI_KeepTargetOnMove, 0x6)
 		}
 	}
 
+	pExt->UpdateGattlingRateDownReset();
+
 	return 0;
 }
 

@@ -6338,7 +6338,7 @@ bool AresTActionExt::MeteorStrike(TActionClass* pAction, HouseClass* pHouse, Obj
 		CoordStruct nAnimLoc { nRandX + nCoord.X ,nRandY + nCoord.Y ,nCoord.Z };
 
 		AnimTypeClass* pSelected = pBig;
-		int nRandHere = abs(ScenarioClass::Instance->Random.Random()) & 0x80000001;
+		int nRandHere = Math::abs(ScenarioClass::Instance->Random.Random()) & 0x80000001;
 		bool v13 = nRandHere == 0;
 		if (nRandHere < 0)
 		{
@@ -7512,8 +7512,8 @@ void AresHouseExt::UpdateTogglePower(HouseClass* pThis)
 
 		// create a list of all buildings that can be powered down
 		// and give each building an expendability value
-		StackVector<ExpendabilityStruct, 4096> Buildings {};
-		//Buildings.reserve(pThis->Buildings.Count);
+		std::vector<ExpendabilityStruct> Buildings {};
+		Buildings.reserve(pThis->Buildings.Count);
 
 		const auto HasLowPower = pThis->HasLowPower();
 
@@ -7529,7 +7529,7 @@ void AresHouseExt::UpdateTogglePower(HouseClass* pThis)
 				// power, we look for builidings that are disabled
 				if (pBld->StuffEnabled == HasLowPower)
 				{
-					Buildings->emplace_back(pBld, GetExpendability(pBld));
+					Buildings.emplace_back(pBld, GetExpendability(pBld));
 				}
 			}
 		}
@@ -7539,10 +7539,10 @@ void AresHouseExt::UpdateTogglePower(HouseClass* pThis)
 		if (HasLowPower)
 		{
 			// most expendable building first
-			std::sort(Buildings->begin(), Buildings->end(), std::greater<>());
+			std::sort(Buildings.begin(), Buildings.end(), std::greater<>());
 
 			// turn off the expendable buildings until power is restored
-			for (const auto& item : Buildings.container())
+			for (const auto& item : Buildings)
 			{
 				auto Drain = item.Building->Type->PowerDrain;
 
@@ -7558,10 +7558,10 @@ void AresHouseExt::UpdateTogglePower(HouseClass* pThis)
 		else
 		{
 			// least expendable building first
-			std::sort(Buildings->begin(), Buildings->end(), std::less<>());
+			std::sort(Buildings.begin(), Buildings.end(), std::less<>());
 
 			// turn on as many of them as possible
-			for (const auto& item : Buildings.container())
+			for (const auto& item : Buildings)
 			{
 				auto Drain = item.Building->Type->PowerDrain;
 				if (Surplus - Drain >= 0)

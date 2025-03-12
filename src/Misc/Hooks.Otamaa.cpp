@@ -145,24 +145,6 @@ DEFINE_HOOK(0x5D736E, MultiplayGameMode_GenerateInitForces, 0x6)
 	return (R->EAX<int>() > 0) ? 0x0 : 0x5D743E;
 }
 
-DEFINE_HOOK_AGAIN(0x46684A, BulletClass_AI_TrailerInheritOwner, 0x5)
-DEFINE_HOOK(0x466886, BulletClass_AI_TrailerInheritOwner, 0x5)
-{
-	GET(BulletClass* const, pThis, EBP);
-	//GET_STACK(CoordStruct, nCoord, STACK_OFFS(0x1AC, 0x184));
-
-	//Eax is discarded anyway
-	auto const pExt = BulletExtContainer::Instance.Find(pThis);
-	AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pThis->Type->Trailer, pThis->Location, 1, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false),
-		pThis->Owner ? pThis->Owner->GetOwningHouse() : (pExt->Owner) ? pExt->Owner : nullptr,
-		pThis->Target ? pThis->Target->GetOwningHouse() : nullptr,
-		pThis->Owner,
-		false
-	);
-
-	return 0x4668BD;
-}
-
 // DEFINE_HOOK(0x6FF394, TechnoClass_FireAt_FeedbackAnim, 0x8)
 // {
 // 	enum { CreateMuzzleAnim = 0x6FF39C, SkipCreateMuzzleAnim = 0x6FF43F };
@@ -11273,3 +11255,49 @@ DEFINE_FUNCTION_JUMP(LJMP, 0x6CFD40, FakeTabClass::_GetShapeButton2));
 
 	// Fix 0x007BAEA1 crash
 	//DEFINE_PATCH_TYPED(BYTE, 0x6B78EA, 0x89 , 0x45 , 0x00 ,0x90, 0x90 );
+
+	DEFINE_HOOK(0x451932, BuildingClass_AnimLogic_Ownership, 0x5)
+	{
+		GET(BuildingClass*, pThis, ESI);
+		GET(int, _X, ECX);
+		GET(int, _Y, EDX);
+		GET(int, _Z, EAX);
+		GET(int, animIdx, EBP);
+		GET_STACK(int, delay, 0x48);
+
+		CoordStruct coord { _X , _Y , _Z };
+		auto const pTypeExt = AnimTypeExtContainer::Instance.Find(AnimTypeClass::Array->Items[animIdx]);
+
+		auto pAnim = GameCreate<AnimClass>(AnimTypeClass::Array->Items[animIdx], coord, delay, 1, AnimFlag::AnimFlag_200 | AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_1000, 0, 0);
+		if (!pTypeExt->NoOwner)
+		{
+			((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pThis;
+			pAnim->SetHouse(pThis->Owner);
+		}
+
+		((FakeAnimClass*)pAnim)->_GetExtData()->ParentBuilding = pThis;
+		R->EBP(pAnim);
+		return 0x45197B;
+	}
+
+	DEFINE_HOOK(0x466834, BulletClass_AI_TrailerAnim, 0x6)
+	{
+		GET(BulletClass* const, pThis, EBP);
+		const int delay = pThis->Type->ScaledSpawnDelay ? pThis->Type->ScaledSpawnDelay : pThis->Type->SpawnDelay;
+
+		if (delay < 0)
+			return 0x4668BD;
+
+		if (!(Unsorted::CurrentFrame % delay))
+		{
+			auto const pExt = BulletExtContainer::Instance.Find(pThis);
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pThis->Type->Trailer, pThis->Location, 1, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, false),
+				pThis->Owner ? pThis->Owner->GetOwningHouse() : (pExt->Owner) ? pExt->Owner : nullptr,
+				pThis->Target ? pThis->Target->GetOwningHouse() : nullptr,
+				false,
+				false
+			);
+		}
+
+		return 0x4668BD;
+	}

@@ -49,6 +49,7 @@ void Debug::DeactivateLogger()
 	{
 		fclose(Debug::LogFile);
 		Debug::LogFile = nullptr;
+		Debug::LogEnabled = false;
 	}
 }
 

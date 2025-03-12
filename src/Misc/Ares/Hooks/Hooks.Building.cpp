@@ -681,10 +681,18 @@ DEFINE_FUNCTION_JUMP(VTABLE, 0x7E4290, FakeBuildingClass::_SetOwningHouse);
 
 DEFINE_HOOK(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
 {
-	GET(FootClass* const, pThis, ESI);
+	GET(BuildingClass* const, pThis, ESI);
 	GET(HouseClass* const, pNewOwner, EDI);
 	//GET_STACK(bool const, bAnnounce, 0x58 + 0x8); // this thing already used
 	//discarded
+	for (auto& anim : pThis->Anims)
+	{
+		if (anim)
+		{
+			anim->SetHouse(pNewOwner);
+		}
+	}
+
 	pThis->TechnoClass::SetOwningHouse(pNewOwner, Bld_ChangeOwnerAnnounce);
 	return 0x448BED;
 }
@@ -2432,11 +2440,16 @@ DEFINE_HOOK(0x4524A3, BuildingClass_DisableThings, 6)
 // check every frame
 DEFINE_HOOK(0x43FE69, BuildingClass_Update_SensorArray, 0xA)
 {
-	GET(BuildingClass*, pThis, ESI);
+	GET(FakeBuildingClass*, pThis, ESI);
 	TechnoExt_ExtData::UpdateSensorArray(pThis);
-	const auto pExt = BuildingExtContainer::Instance.Find(pThis);
+
+	const auto pTechnoExt = pThis->_GetTechnoExtData();
+	const auto pExt = pThis->_GetExtData();
 	pExt->DisplayIncomeString();
 	pExt->UpdatePoweredKillSpawns();
+
+	pTechnoExt->UpdateGattlingRateDownReset();
+
 	pExt->UpdateAutoSellTimer();
 	pExt->UpdateSpyEffecAnimDisplay();
 
