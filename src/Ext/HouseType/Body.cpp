@@ -206,10 +206,8 @@ void HouseTypeExtData::Initialize()
 
 void HouseTypeExtData::InheritSettings(HouseTypeClass* pThis)
 {
-	if (auto ParentCountry = pThis->FindParentCountry())
-	{
-		if (const auto ParentData = HouseTypeExtContainer::Instance.Find(ParentCountry))
-		{
+	if (auto ParentCountry = pThis->FindParentCountry()) {
+		if (const auto ParentData = HouseTypeExtContainer::Instance.Find(ParentCountry)) {
 			this->SurvivorDivisor = ParentData->SurvivorDivisor;
 			this->Crew = ParentData->Crew;
 			this->Engineer = ParentData->Engineer;
@@ -306,8 +304,7 @@ void HouseTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->LoadTextColor.Read(exINI, pSection, "LoadScreenText.Color");
 }
 
-void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI)
-{
+void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI) {
 	auto pThis = this->AttachedToObject;
 	const char* pSection = pThis->ID;
 
@@ -371,17 +368,14 @@ void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI)
 	this->TauntFileName.Read(exINI, pSection, "File.Taunt");
 	COMPILETIMEEVAL char digits[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 
-	if (!this->TauntFileName->empty())
-	{
+	if (!this->TauntFileName->empty()) {
 		const auto nPos = this->TauntFileName->find("~~");
 		this->TauntFile.clear();
 
-		if (nPos != std::string::npos)
-		{
+		if (nPos != std::string::npos) {
 			this->TauntFile.resize((sizeof(digits) - 1), this->TauntFileName.Get());
 
-			for (size_t i = 0; i < this->TauntFile.size(); ++i)
-			{
+			for (size_t i = 0; i < this->TauntFile.size(); ++i) {
 				this->TauntFile[i][nPos] = digits[0];
 				this->TauntFile[i][nPos + 1] = digits[i + 1];
 
@@ -402,8 +396,7 @@ void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI)
 
 Iterator<BuildingTypeClass*> HouseTypeExtData::GetPowerplants() const
 {
-	if (!this->Powerplants.empty())
-	{
+	if (!this->Powerplants.empty()) {
 		return this->Powerplants;
 	}
 
@@ -434,19 +427,16 @@ int HouseTypeExtData::PickRandomCountry()
 {
 	DiscreteDistributionClass<int, DllAllocator<DistributionObject<int>>> items;
 
-	for (int i = 0; i < HouseTypeClass::Array->Count; i++)
-	{
+	for (int i = 0; i < HouseTypeClass::Array->Count; i++) {
 		HouseTypeClass* pCountry = HouseTypeClass::Array->Items[i];
-		if (pCountry->Multiplay)
-		{
+		if (pCountry->Multiplay) {
 			items.Add(i,
-			HouseTypeExtContainer::Instance.Find(pCountry)->RandomSelectionWeight);
+				HouseTypeExtContainer::Instance.Find(pCountry)->RandomSelectionWeight);
 		}
 	}
 
 	int ret = 0;
-	if (!items.Select(ScenarioClass::Instance->Random, &ret))
-	{
+	if (!items.Select(ScenarioClass::Instance->Random, &ret)) {
 		Debug::FatalErrorAndExit("No countries eligible for random selection!");
 	}
 
@@ -518,18 +508,17 @@ bool HouseTypeExtContainer::Load(HouseTypeClass* key, IStream* pStm)
 
 	auto ptr = HouseTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (!ptr)
-	{
+	if (!ptr) {
 		ptr = HouseTypeExtContainer::Instance.Map.insert_unchecked(key, this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
 	this->SetExtAttribute(key, ptr);
 
-	PhobosByteStream loader { 0 };
+	PhobosByteStream loader{ 0 };
 	if (loader.ReadBlockFromStream(pStm))
 	{
-		PhobosStreamReader reader { loader };
+		PhobosStreamReader reader{ loader };
 		if (reader.Expect(HouseTypeExtData::Canary)
 			&& reader.RegisterChange(ptr))
 		{
@@ -553,10 +542,9 @@ DEFINE_HOOK(0x511643, HouseTypeClass_CTOR, 0x5)
 
 	auto ptr = HouseTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (!ptr)
-	{
+	if (!ptr) {
 		ptr = HouseTypeExtContainer::Instance.Map.insert_unchecked(pItem,
-			  HouseTypeExtContainer::Instance.AllocateUnchecked(pItem));
+			HouseTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
 	HouseTypeExtContainer::Instance.ClearExtAttribute(pItem);

@@ -406,10 +406,10 @@ void FighterAreaGuard::OnUpdate()
 												if (pTech->GetHeight() > 10)
 													bounsRange = nDataType.GuardRange;
 
-												const auto nDummy = CoordStruct { 0, 0, height };
+												const auto nDummy = CoordStruct{ 0, 0, height };
 												if ((coords - nDummy).DistanceFrom(dest)
-												<= (nDataType.GuardRange * 256 + bounsRange) &&
-													 !IsBuilding)
+													<= (nDataType.GuardRange * 256 + bounsRange) &&
+													!IsBuilding)
 												{
 													pDummy = pTech;
 													break;
@@ -528,7 +528,7 @@ bool FighterAreaGuard::SetupDestination(CoordStruct& dest)
 		CoordStruct location = pTechno->GetCoords();
 		DirStruct sourceDir = Helpers_DP::Point2Dir(location, dest);
 		double sourceRad = sourceDir.GetRadian();
-		CoordStruct flh = CoordStruct { pTypeExt->MyFighterData.GuardRadius * 256, 0, 0 };
+		CoordStruct flh = CoordStruct{ pTypeExt->MyFighterData.GuardRadius * 256, 0, 0 };
 		destList.clear();
 
 		const bool clockwise = pTypeExt->MyFighterData.Randomwise
@@ -638,12 +638,12 @@ bool FighterAreaGuard::CheckTarget(TechnoClass* pTarget)
 		return false;
 
 	if (pTarget->InLimbo
-				|| !pTarget->IsAlive
-				|| !pTarget->Health
-				|| pTarget->IsSinking
-				|| pTarget->IsCrashing
-				|| pTarget->TemporalTargetingMe
-				|| pTarget->BeingWarpedOut
+		|| !pTarget->IsAlive
+		|| !pTarget->Health
+		|| pTarget->IsSinking
+		|| pTarget->IsCrashing
+		|| pTarget->TemporalTargetingMe
+		|| pTarget->BeingWarpedOut
 		)
 	{
 		return false;

@@ -7,16 +7,14 @@
 
 #include <Utilities/Macro.h>
 
-BulletTypeClass* BulletTypeExtData::GetDefaultBulletType()
-{
+BulletTypeClass* BulletTypeExtData::GetDefaultBulletType() {
 	if (!RulesExtData::Instance()->DefautBulletType)
 		RulesExtData::Instance()->DefautBulletType = BulletTypeClass::Find(DEFAULT_STR2);
 
 	return RulesExtData::Instance()->DefautBulletType;
 }
 
-CoordStruct BulletTypeExtData::CalculateInaccurate(BulletTypeClass* pBulletType)
-{
+CoordStruct BulletTypeExtData::CalculateInaccurate(BulletTypeClass* pBulletType) {
 	if (pBulletType->Inaccurate)
 	{
 		const auto pTypeExt = BulletTypeExtContainer::Instance.Find(pBulletType);
@@ -45,10 +43,8 @@ const ConvertClass* BulletTypeExtData::GetBulletConvert()
 	else
 	{
 		ConvertClass* pConvert = nullptr;
-		if (const auto pAnimType = AnimTypeClass::Find(this->AttachedToObject->ImageFile))
-		{
-			if (const auto pConvertData = AnimTypeExtContainer::Instance.Find(pAnimType)->Palette)
-			{
+		if (const auto pAnimType = AnimTypeClass::Find(this->AttachedToObject->ImageFile)) {
+			if (const auto pConvertData = AnimTypeExtContainer::Instance.Find(pAnimType)->Palette) {
 				pConvert = pConvertData->GetConvert<PaletteManager::Mode::Temperate>();
 			}
 		}
@@ -194,22 +190,19 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->AttachedSystem.Read(exINI, pSection, "AttachedSystem");
 		this->ReturnWeapon.Read(exINI, pSection, "ReturnWeapon", true);
 
-		if (pThis->Inviso)
-		{
+		if (pThis->Inviso) {
 			trailReaded = true;
 			this->LaserTrail_Types.Read(exINI, pSection, "LaserTrail.Types");
 			this->Trails.Read(exINI, pSection, false);
 		}
 	}
 
-	if (pArtInI && pArtInI->GetSection(pArtSection))
-	{
+	if (pArtInI && pArtInI->GetSection(pArtSection)) {
 		INI_EX exArtINI(pArtInI);
 
 		//LineTrailData::LoadFromINI(this->LineTrailData, exArtINI, pArtSection);
 		this->Parachute.Read(exArtINI, pArtSection, GameStrings::Parachute());
-		if (!trailReaded)
-		{
+		if (!trailReaded) {
 			this->LaserTrail_Types.Read(exArtINI, pArtSection, "LaserTrail.Types");
 			this->Trails.Read(exArtINI, pArtSection, false);
 		}
@@ -306,18 +299,17 @@ bool BulletTypeExtContainer::Load(BulletTypeClass* key, IStream* pStm)
 
 	auto ptr = BulletTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (!ptr)
-	{
+	if (!ptr) {
 		ptr = BulletTypeExtContainer::Instance.Map.insert_unchecked(key, this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
 	this->SetExtAttribute(key, ptr);
 
-	PhobosByteStream loader { 0 };
+	PhobosByteStream loader{ 0 };
 	if (loader.ReadBlockFromStream(pStm))
 	{
-		PhobosStreamReader reader { loader };
+		PhobosStreamReader reader{ loader };
 		if (reader.Expect(BulletTypeExtData::Canary)
 			&& reader.RegisterChange(ptr))
 		{
@@ -339,10 +331,9 @@ DEFINE_HOOK(0x46BDD9, BulletTypeClass_CTOR, 0x5)
 
 	auto ptr = BulletTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (!ptr)
-	{
+	if (!ptr) {
 		ptr = BulletTypeExtContainer::Instance.Map.insert_unchecked(pItem,
-			  BulletTypeExtContainer::Instance.AllocateUnchecked(pItem));
+			BulletTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
 	BulletTypeExtContainer::Instance.SetExtAttribute(pItem, ptr);

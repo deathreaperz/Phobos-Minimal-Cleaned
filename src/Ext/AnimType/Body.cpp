@@ -158,7 +158,7 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 				cur;
 				cur = strtok_s(nullptr, Phobos::readDelims, &context))
 			{
-				int buffer { 1 };
+				int buffer{ 1 };
 				if (Parser<int>::TryParse(cur, &buffer))
 					this->SpawnsMultiple_amouts[nCount] = buffer;
 
@@ -212,8 +212,7 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->DetachOnCloak.Read(exINI, pID, "DetachOnCloak");
 	this->Translucency_Cloaked.Read(exINI, pID, "Translucency.Cloaked");
 
-	if (this->AttachedToObject->Translucent)
-	{
+	if (this->AttachedToObject->Translucent) {
 		this->Translucent_Keyframes.Read(exINI, pID, "Translucent.%s", this->AttachedToObject->End);
 	}
 
@@ -336,19 +335,16 @@ static TechnoClass* CreateFoot(
 
 		pTechno->OnBridge = isBridge;
 
-		if (rtti != AbstractType::AircraftType && parachuteIfInAir && !alwaysOnGround && inAir)
-		{
+		if (rtti != AbstractType::AircraftType && parachuteIfInAir && !alwaysOnGround && inAir) {
 			parachuted = true;
 			success = pTechno->SpawnParachuted(location);
 		}
-		else if (!pCell->GetBuilding() || !checkPathfinding)
-		{
+		else if (!pCell->GetBuilding() || !checkPathfinding) {
 			++Unsorted::ScenarioInit;
 			success = pTechno->Unlimbo(location, facing);
 			--Unsorted::ScenarioInit;
 		}
-		else
-		{
+		else {
 			success = pTechno->Unlimbo(location, facing);
 		}
 
@@ -406,8 +402,7 @@ static TechnoClass* CreateFoot(
 
 			return pTechno;
 		}
-		else
-		{
+		else {
 			TechnoExtData::HandleRemove(pTechno);
 		}
 	}
@@ -440,7 +435,7 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 		else if (pTypeExt->CreateUnit_RandomFacing)
 			primaryFacing = ScenarioClass::Instance->Random.RandomRangedSpecific<DirType>(DirType::Min, DirType::Max);
 
-		std::optional<DirType> secondaryFacing {};
+		std::optional<DirType> secondaryFacing{};
 		bool Scatter = false;
 		Mission missionAI = Mission::None;
 
@@ -467,10 +462,8 @@ void AnimTypeExtData::CreateUnit_Spawn(AnimClass* pThis)
 			pTypeExt->CreateUnit_SpawnParachutedInAir,
 			pTypeExt->CreateUnit_AlwaysSpawnOnGround,
 			missionAI
-		))
-		{
-			if (auto pSpawnAnim = pTypeExt->CreateUnit_SpawnAnim)
-			{
+		)) {
+			if (auto pSpawnAnim = pTypeExt->CreateUnit_SpawnAnim) {
 				auto pCreateUnitAnim = GameCreate<AnimClass>(pSpawnAnim, pAnimExt->CreateUnitLocation);
 				pCreateUnitAnim->Owner = decidedOwner;
 				((FakeAnimClass*)pCreateUnitAnim)->_GetExtData()->Invoker = AnimExtData::GetTechnoInvoker(pThis);
@@ -506,9 +499,9 @@ void AnimTypeExtData::ProcessDestroyAnims(FootClass* pThis, TechnoClass* pKiller
 	if (pWH)
 	{
 		for (auto walk = pTypeExt->DestroyAnimSpecific.begin();
-			 walk != pTypeExt->DestroyAnimSpecific.end();
-			 ++walk
-		)
+			walk != pTypeExt->DestroyAnimSpecific.end();
+			++walk
+			)
 		{
 			if (walk->first == pWH)
 			{

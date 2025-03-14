@@ -14,11 +14,9 @@ LightConvertClass* IsometricTileTypeExtData::GetLightConvert(IsometricTileTypeCl
 	const char* ConverName = "ISO_X.PAL";
 	BytePalette* pISOPal = &FileSystem::ISOx_PAL;
 
-	if (pOvrl)
-	{
+	if (pOvrl) {
 		auto pExt = IsometricTileTypeExtContainer::Instance.Find(pOvrl);
-		if (pExt->Palette)
-		{
+		if (pExt->Palette) {
 			ConverName = pExt->Palette->Name.c_str();
 			pISOPal = pExt->Palette->Palette.get();
 		}

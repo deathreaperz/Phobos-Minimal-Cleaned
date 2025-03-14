@@ -43,7 +43,7 @@ void CustomWeaponManager::Update(TechnoClass* pAttacker)
 						&& pTargetTech && !Helpers_DP::IsDeadOrInvisible(pTargetTech)
 						&& (!burst->FireData.CheckRange || InRange(pShooter, pTarget, burst->WeaponType)) &&
 						(!pAttacker->Transporter || (pWeaponType->FireInTransport || burst->FireData.OnlyFireInTransport))
-					)
+						)
 					{
 						SimulateBurstFire(pShooter, pAttacker, pTarget, pWeaponType, burst.get());
 					}
@@ -140,7 +140,7 @@ void GetBulletVelocity(VelocityClass& nVel, CoordStruct& sourcePos, CoordStruct&
 {
 	if (radialFire)
 	{
-		RadialFireHelper radialFireHelper { pShooter, burst, radial };
+		RadialFireHelper radialFireHelper{ pShooter, burst, radial };
 		nVel = radialFireHelper.GetBulletVelocity(idx);
 	}
 	else
@@ -154,7 +154,7 @@ void CustomWeaponManager::SimulateBurstFireOnce(TechnoClass* pShooter, TechnoCla
 	// Pointer<TechnoClass> pShooter = WhoIsShooter(pShooter);
 	CoordStruct sourcePos = Helpers_DP::GetFLHAbsoluteCoords(pShooter, burst->FLH, true, burst->FlipY);
 	CoordStruct targetPos = pTarget->GetCoords();
-	VelocityClass bulletVelocity {};
+	VelocityClass bulletVelocity{};
 	GetBulletVelocity(bulletVelocity, sourcePos, targetPos, pShooter, burst->Burst, burst->FireData.RadialAngle, burst->FireData.RadialFire, burst->Index);
 	Helpers_DP::FireBulletTo(pAttacker, pTarget, pWeapon, sourcePos, targetPos, bulletVelocity);
 	burst->CountOne();
@@ -167,10 +167,9 @@ TechnoClass* CustomWeaponManager::WhoIsShooter(TechnoClass* pAttacker) const
 
 void  CustomWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	this->simulateBurstQueue.remove_all_if([ptr, bRemoved](const auto& queue)
- {
-	 return bRemoved && (queue->Target == ptr || queue->Shooter == ptr);
-	});
+	this->simulateBurstQueue.remove_all_if([ptr, bRemoved](const auto& queue) {
+		return bRemoved && (queue->Target == ptr || queue->Shooter == ptr);
+		});
 }
 
 void FireWeaponManager::Clear()
@@ -202,10 +201,9 @@ bool FireWeaponManager::FireCustomWeapon(TechnoClass* pShooter, TechnoClass* pAt
 
 void FireWeaponManager::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	this->DelayFires.remove_all_if([ptr, bRemoved](const auto& queue)
- {
-	 return bRemoved && queue->Target == ptr;
-	});
+	this->DelayFires.remove_all_if([ptr, bRemoved](const auto& queue) {
+		return bRemoved && queue->Target == ptr;
+		});
 
 	CWeaponManager.InvalidatePointer(ptr, bRemoved);
 }

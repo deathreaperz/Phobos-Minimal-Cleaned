@@ -37,28 +37,23 @@ DEFINE_HOOK(0x469150, BulletClass_Logics_ApplyRadiation, 0x5)
 {
 	enum { Handled = 0x46920B, Continue = 0x0 };
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		GET(BulletClass* const, pThis, ESI);
-		GET_BASE(CoordStruct*, pCoords, 0x8);
-		GET(WeaponTypeClass*, pWeapon, ECX);
-		GET(int, nAmount, EDI);
+	GET(BulletClass* const, pThis, ESI);
+	GET_BASE(CoordStruct*, pCoords, 0x8);
+	GET(WeaponTypeClass*, pWeapon, ECX);
+	GET(int, nAmount, EDI);
 
-		if (!MapClass::Instance->IsWithinUsableArea(*pCoords))
-			return Handled;
+	if (!MapClass::Instance->IsWithinUsableArea(*pCoords))
+		return Handled;
 
-		const auto pCell = MapClass::Instance->TryGetCellAt(*pCoords);
+	const auto pCell = MapClass::Instance->TryGetCellAt(*pCoords);
 
-		if (!pCell)
-		{
-			return Handled;
-		}
-
-		BulletExtContainer::Instance.Find(pThis)->ApplyRadiationToCell(pCell, static_cast<int>(pWeapon->Warhead->CellSpread), nAmount);
-
+	if (!pCell) {
 		return Handled;
 	}
-	return Continue;
+
+	BulletExtContainer::Instance.Find(pThis)->ApplyRadiationToCell(pCell, static_cast<int>(pWeapon->Warhead->CellSpread), nAmount);
+
+	return Handled;
 }
 
 //unused function , safeguard
@@ -66,26 +61,21 @@ DEFINE_HOOK(0x46ADE0, BulletClass_ApplyRadiation_NoBullet, 0x5)
 {
 	enum { Handled = 0x46AE5E, Continue = 0x0 };
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		GET(BulletClass* const, pThis, ECX);
-		GET_STACK(CellStruct, location, 0x4);
-		GET_STACK(int, spread, 0x8);
-		GET_STACK(int, amount, 0xC);
+	GET(BulletClass* const, pThis, ECX);
+	GET_STACK(CellStruct, location, 0x4);
+	GET_STACK(int, spread, 0x8);
+	GET_STACK(int, amount, 0xC);
 
-		const auto pCell = MapClass::Instance->TryGetCellAt(location);
+	const auto pCell = MapClass::Instance->TryGetCellAt(location);
 
-		if (!pCell)
-			return Handled;
-
-		if (!pThis)
-			Debug::FatalError(__FUNCTION__" require BulletClass !\n");
-
-		BulletExtContainer::Instance.Find(pThis)->ApplyRadiationToCell(pCell, spread, amount);
+	if (!pCell)
 		return Handled;
-	}
 
-	return Continue;
+	if (!pThis)
+		Debug::FatalError(__FUNCTION__" require BulletClass !\n");
+
+	BulletExtContainer::Instance.Find(pThis)->ApplyRadiationToCell(pCell, spread, amount);
+	return Handled;
 }
 
 // Fix for desolator
@@ -93,55 +83,48 @@ DEFINE_HOOK(0x5213B4, InfantryClass_AIDeployment_CheckRad, 0x7)
 {
 	enum { FireCheck = 0x5213F4, SetMissionRate = 0x521484, Continue = 0x0 };
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
+	GET(InfantryClass*, pThis, ESI);
+	int radLevel = 0;
+	int weaponRadLevel = 0;
+
+	if (const auto pWeaponStruct = pThis->GetDeployWeapon())
 	{
-		GET(InfantryClass*, pThis, ESI);
-		int radLevel = 0;
-		int weaponRadLevel = 0;
-
-		if (const auto pWeaponStruct = pThis->GetDeployWeapon())
+		if (const auto pWeapon = pWeaponStruct->WeaponType)
 		{
-			if (const auto pWeapon = pWeaponStruct->WeaponType)
+			const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+			const auto currentCoord = pThis->InlineMapCoords();
+			if (const auto pCell = MapClass::Instance->TryGetCellAt(currentCoord))
 			{
-				const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
-				const auto currentCoord = pThis->InlineMapCoords();
-				if (const auto pCell = MapClass::Instance->TryGetCellAt(currentCoord))
-				{
-					auto pCellExt = CellExtContainer::Instance.Find(pCell);
+				auto pCellExt = CellExtContainer::Instance.Find(pCell);
 
-					auto const it = pCellExt->RadSites.find_if([=](auto const pPair)
- {
-	 auto const pRadExt = RadSiteExtContainer::Instance.Find(pPair);
+				auto const it = pCellExt->RadSites.find_if([=](auto const pPair) {
+					auto const pRadExt = RadSiteExtContainer::Instance.Find(pPair);
 
-	 if (pRadExt->Type != pWeaponExt->RadType)
-		 return false;
+					if (pRadExt->Type != pWeaponExt->RadType)
+						return false;
 
-	 if (static_cast<int>(pWeapon->Warhead->CellSpread) != pPair->Spread)
-		 return false;
+					if (static_cast<int>(pWeapon->Warhead->CellSpread) != pPair->Spread)
+						return false;
 
-	 if (pWeapon != pRadExt->Weapon)
-		 return false;
+					if (pWeapon != pRadExt->Weapon)
+						return false;
 
-	 if (pRadExt->TechOwner)
-		 return pRadExt->TechOwner == pThis;
+					if (pRadExt->TechOwner)
+						return pRadExt->TechOwner == pThis;
 
-	 return true;
+					return true;
 					});
 
-					if (it != pCellExt->RadSites.end())
-					{
-						radLevel = static_cast<int>(RadSiteExtContainer::Instance.Find((*it))->GetRadLevelAt(currentCoord));
-					}
+				if (it != pCellExt->RadSites.end()) {
+					radLevel = static_cast<int>((*it)->GetCurrentRadLevel());
 				}
-
-				weaponRadLevel = pWeapon->RadLevel;
 			}
-		}
 
-		return (!radLevel || (radLevel < (weaponRadLevel / 3))) ? FireCheck : SetMissionRate;
+			weaponRadLevel = pWeapon->RadLevel;
+		}
 	}
 
-	return Continue;
+	return (!radLevel || (radLevel < (weaponRadLevel / 3))) ? FireCheck : SetMissionRate;
 }
 
 // Fix for desolator unable to fire his deploy weapon when cloaked
@@ -283,49 +266,34 @@ DEFINE_HOOK(0x65B843, RadSiteClass_AI_LevelDelay, 0x6)
 {
 	enum { SetTimer = 0x65B849, Continue = 0x0 };
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		GET_RADSITE(ESI, GetLevelDelay());
-		R->ECX(output);
-		return SetTimer;
-	}
-
-	return Continue;
+	GET_RADSITE(ESI, GetLevelDelay());
+	R->ECX(output);
+	return SetTimer;
 }
 
 DEFINE_HOOK(0x65B8B9, RadSiteClass_AI_LightDelay, 0x6)
 {
 	enum { SetTimer = 0x65B8BF, Continue = 0x0 };
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		GET_RADSITE(ESI, GetLightDelay());
-		R->ECX(output);
-		return SetTimer;
-	}
-
-	return Continue;
+	GET_RADSITE(ESI, GetLightDelay());
+	R->ECX(output);
+	return SetTimer;
 }
 
 DEFINE_HOOK(0x65BB67, RadSite_Deactivate, 0x6)
 {
 	enum { DevideValue = 0x65BB6D, Continue = 0x0 };
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		GET_RADSITE(ECX, GetLevelDelay());
-		GET(int, val, EAX);
+	GET_RADSITE(ECX, GetLevelDelay());
+	GET(int, val, EAX);
 
-		if (output <= 0)
-			output = 1;
+	if (output <= 0)
+		output = 1;
 
-		R->EAX(val / output);
-		R->EDX(val % output);
+	R->EAX(val / output);
+	R->EDX(val % output);
 
-		return DevideValue;
-	}
-
-	return Continue;
+	return DevideValue;
 }
 
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7F0858, FakeRadSiteClass::__GetAltCoords);

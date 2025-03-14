@@ -35,7 +35,7 @@ void TechnoExtData::DrawParasitedPips(TechnoClass* pThis, Point2D* pLocation, Re
 
 		int pipFrame = 4;
 
-		Point2D position { pLocation->X + xOffset, pLocation->Y + yOffset };
+		Point2D position{ pLocation->X + xOffset, pLocation->Y + yOffset };
 
 		auto flags = BlitterFlags::bf_400 | BlitterFlags::Centered;
 

@@ -17,8 +17,7 @@ TiberiumClass* CellExtData::GetTiberium(CellClass* pCell)
 
 int CellExtData::GetOverlayIndex(CellClass* pCell, TiberiumClass* pTiberium)
 {
-	if (pTiberium)
-	{
+	if (pTiberium) {
 		return (pCell->SlopeIndex > 0) ?
 			(pCell->SlopeIndex + pTiberium->Image->ArrayIndex + pTiberium->NumImages - 1) : (pTiberium->Image->ArrayIndex + pCell->MapCoords.X * pCell->MapCoords.Y % pTiberium->NumImages)
 			;
@@ -29,10 +28,8 @@ int CellExtData::GetOverlayIndex(CellClass* pCell, TiberiumClass* pTiberium)
 
 int CellExtData::GetOverlayIndex(CellClass* pCell)
 {
-	if (pCell->OverlayTypeIndex != -1)
-	{
-		if (const auto pTiberium = TiberiumClass::Find(pCell->OverlayTypeIndex))
-		{
+	if (pCell->OverlayTypeIndex != -1) {
+		if (const auto pTiberium = TiberiumClass::Find(pCell->OverlayTypeIndex)) {
 			return (pCell->SlopeIndex > 0) ?
 				(pCell->SlopeIndex + pTiberium->Image->ArrayIndex + pTiberium->NumImages - 1) : (pTiberium->Image->ArrayIndex + pCell->MapCoords.X * pCell->MapCoords.Y % pTiberium->NumImages);
 		}
@@ -47,28 +44,23 @@ int CellExtData::GetOverlayIndex(CellClass* pCell)
 
 int FakeCellClass::_GetTiberiumType()
 {
-	if (this->OverlayTypeIndex == -1)
-	{
+	if (this->OverlayTypeIndex == -1) {
 		return -1;
 	}
 
 	auto pOverlay = OverlayTypeClass::Array->Items[this->OverlayTypeIndex];
-	if (!pOverlay->Tiberium || TiberiumClass::Array->Count <= 0)
-	{
+	if (!pOverlay->Tiberium || TiberiumClass::Array->Count <= 0) {
 		return -1;
 	}
 
-	for (auto pTib : *TiberiumClass::Array)
-	{
+	for (auto pTib : *TiberiumClass::Array) {
 		const auto v5 = pTib->Image->ArrayIndex;
-		if (this->OverlayTypeIndex >= v5 && this->OverlayTypeIndex < (v5 + pTib->NumImages))
-		{
+		if (this->OverlayTypeIndex >= v5 && this->OverlayTypeIndex < (v5 + pTib->NumImages)) {
 			return pTib->ArrayIndex;
 		}
 
 		int NumImages = pTib->NumImages;
-		if (this->OverlayTypeIndex >= NumImages + v5 && this->OverlayTypeIndex < v5 + NumImages + pTib->SlopeFrames)
-		{
+		if (this->OverlayTypeIndex >= NumImages + v5 && this->OverlayTypeIndex < v5 + NumImages + pTib->SlopeFrames) {
 			return pTib->ArrayIndex;
 		}
 	}
@@ -88,10 +80,10 @@ bool FakeCellClass::_SpreadTiberium(bool force)
 	if (!force)
 	{
 		if (tib_ == -1
-			  || this->OverlayData <= tib_ / 2
-			  || this->SlopeIndex
-			  || TiberiumClass::Array->Items[tib_]->SpreadPercentage < 0.00001
-			  || this->FirstObject)
+			|| this->OverlayData <= tib_ / 2
+			|| this->SlopeIndex
+			|| TiberiumClass::Array->Items[tib_]->SpreadPercentage < 0.00001
+			|| this->FirstObject)
 		{
 			return false;
 		}
@@ -228,23 +220,19 @@ void FakeCellClass::_Invalidate(AbstractClass* ptr, bool removed)
 
 	if (removed)
 	{
-		if (ptr == static_cast<void*>(this->AltObject))
-		{
+		if (ptr == static_cast<void*>(this->AltObject)) {
 			Debug::LogInfo("Cell {} - at ( {} . {} ) with Invalud Alt Obj {}", (void*)this, this->MapCoords.X, this->MapCoords.Y, (void*)this->AltObject);
 		}
 
-		if (ptr == static_cast<void*>(this->FirstObject))
-		{
+		if (ptr == static_cast<void*>(this->FirstObject)) {
 			Debug::LogInfo("Cell {} - at ( {} . {} ) with Invalud Obj {}", (void*)this, this->MapCoords.X, this->MapCoords.Y, (void*)this->FirstObject);
 		}
 
-		if (ptr == static_cast<void*>(pExt->IncomingUnit))
-		{
+		if (ptr == static_cast<void*>(pExt->IncomingUnit)) {
 			Debug::LogInfo("Cell {} - at ( {} . {} ) with Invalud IncomingObj {}", (void*)this, this->MapCoords.X, this->MapCoords.Y, (void*)this->FirstObject);
 		}
 
-		if (ptr == static_cast<void*>(pExt->IncomingUnitAlt))
-		{
+		if (ptr == static_cast<void*>(pExt->IncomingUnitAlt)) {
 			Debug::LogInfo("Cell {} - at ( {} . {} ) with Invalud IncomingAltObj {}", (void*)this, this->MapCoords.X, this->MapCoords.Y, (void*)this->FirstObject);
 		}
 	}
@@ -253,14 +241,14 @@ void FakeCellClass::_Invalidate(AbstractClass* ptr, bool removed)
 // ============================ =
 // load / save
 template <typename T>
-void CellExtData::Serialize(T& Stm)
-{
+void CellExtData::Serialize(T& Stm) {
 	Stm
 		.Process(this->Initialized)
 		.Process(this->NewPowerups)
 		.Process(this->IncomingUnit)
 		.Process(this->IncomingUnitAlt)
 		.Process(this->RadSites)
+		.Process(this->RadLevels)
 		;
 }
 

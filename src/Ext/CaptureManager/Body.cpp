@@ -41,8 +41,7 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 
 			if (pTarget == pNode->Unit)
 			{
-				if (pTarget->MindControlRingAnim)
-				{
+				if (pTarget->MindControlRingAnim) {
 					GameDelete<true, false>(pTarget->MindControlRingAnim);
 					//pTarget->MindControlRingAnim->TimeToDie = true;
 					//pTarget->MindControlRingAnim->UnInit();
@@ -105,15 +104,13 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget
 			auto pControlNode = GameCreate<ControlNode>(pTarget, pTarget->Owner, RulesClass::Instance->MindControlAttackLineFrames);
 			pManager->ControlNodes.AddItem(pControlNode);
 
-			if (threatDelay > 0)
-			{
+			if (threatDelay > 0) {
 				TechnoExtContainer::Instance.Find(pTarget)->BeControlledThreatFrame = Unsorted::CurrentFrame() + threatDelay;
 			}
 
 			const auto pBld = cast_to<BuildingClass*, false>(pTarget);
 
-			if (pBld)
-			{
+			if (pBld) {
 				BuildingExtContainer::Instance.Find(pBld)->BeignMCEd = true;
 			}
 
@@ -147,8 +144,7 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTarget
 			}
 			else
 			{
-				if (pBld)
-				{
+				if (pBld) {
 					BuildingExtContainer::Instance.Find(pBld)->BeignMCEd = false;
 				}
 			}
@@ -165,8 +161,8 @@ bool CaptureExt::CaptureUnit(CaptureManagerClass* pManager, TechnoClass* pTechno
 	{
 		const auto Controller = pManager->Owner;
 		return CaptureExt::CaptureUnit(pManager, pTechno,
-		TechnoTypeExtContainer::Instance.Find(Controller->GetTechnoType())->MultiMindControl_ReleaseVictim,
-		bSilent, RulesClass::Instance->ControlledAnimationType, threatDelay);
+			TechnoTypeExtContainer::Instance.Find(Controller->GetTechnoType())->MultiMindControl_ReleaseVictim,
+			bSilent, RulesClass::Instance->ControlledAnimationType, threatDelay);
 	}
 
 	return false;

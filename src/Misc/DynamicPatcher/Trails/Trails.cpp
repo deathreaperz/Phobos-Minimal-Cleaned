@@ -21,8 +21,7 @@ void UniversalTrail::DrawAnimTrail(CoordStruct& sourcePos, HouseClass* pHouse, T
 		auto pAnim = GameCreate<AnimClass>(animType, sourcePos);
 		auto const pTypeExt = AnimTypeExtContainer::Instance.Find(animType);
 
-		if (!pTypeExt->NoOwner)
-		{
+		if (!pTypeExt->NoOwner) {
 			const auto Owner = pTypeExt->GetAnimOwnerHouseKind();
 
 			if ((Owner == OwnerHouseKind::Invoker && pAnimInvoker) || (Owner == OwnerHouseKind::Victim && pHouseVictim))
@@ -32,8 +31,7 @@ void UniversalTrail::DrawAnimTrail(CoordStruct& sourcePos, HouseClass* pHouse, T
 				if (!pAnim->Owner || pAnim->Owner != newOwner)
 				{
 					pAnim->SetHouse(newOwner);
-					if (pAnim->Type->MakeInfantry > -1 || pTypeExt->CreateUnit)
-					{
+					if (pAnim->Type->MakeInfantry > -1 || pTypeExt->CreateUnit) {
 						pAnim->LightConvert = ColorScheme::Array->Items[newOwner->ColorSchemeIndex]->LightConvert;
 					}
 

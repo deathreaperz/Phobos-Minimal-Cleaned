@@ -130,8 +130,7 @@ CellClass* AresTrajectoryHelper::FindFirstObstacle(
 {
 	const bool isSUbjecttoObs = AresTrajectoryHelper::SubjectToObstacles(const_cast<BulletTypeClass*>(pType));
 
-	if (AresTrajectoryHelper::SubjectToAnything(pType, pTypeExt) || isSUbjecttoObs)
-	{
+	if (AresTrajectoryHelper::SubjectToAnything(pType, pTypeExt) || isSUbjecttoObs) {
 		auto const cellTarget = CellClass::Coord2Cell(crdTarget);
 		auto const pCellTarget = MapClass::Instance->GetCellAt(cellTarget);
 

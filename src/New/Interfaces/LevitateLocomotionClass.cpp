@@ -49,7 +49,7 @@ void LevitateLocomotionClass::ProcessHovering()
 		const auto nCoord = LinkedTo->GetCenterCoords();
 		const auto nZ = MapClass::Instance->GetCellFloorHeight(nCoord);
 		const CellStruct nAdjentCoord = CellSpread::AdjacentCell[(((unsigned char)LinkedTo->PathDirections[0]) & 7)];
-		const auto nDestCoord = nCoord + CoordStruct { (int)nAdjentCoord.X, (int)nAdjentCoord.Y,0 };
+		const auto nDestCoord = nCoord + CoordStruct{ (int)nAdjentCoord.X, (int)nAdjentCoord.Y,0 };
 
 		if (!(MapClass::Instance->GetCellFloorHeight(nDestCoord) <= nZ))
 		{
@@ -113,16 +113,14 @@ void LevitateLocomotionClass::DoPhase1()
 				this->Delta.X = 0;
 				this->State = 5;
 			}
-			else
-			{
+			else {
 				if (LevitateLocomotionClass::IsCloseEnough(nTargetCoord))
 					this->CalculateDir_Close(nTargetCoord);
 				else
 					this->CalculateDir_Far(nTargetCoord);
 			}
 
-			if (this->State)
-			{
+			if (this->State) {
 				if (LinkedTo->IsPathBlocked)
 					LinkedTo->IsPathBlocked = false;
 
@@ -135,8 +133,7 @@ void LevitateLocomotionClass::DoPhase1()
 		LinkedTo->SetTarget(nullptr);
 	}
 
-	if (LinkedTo->Destination)
-	{
+	if (LinkedTo->Destination) {
 		const auto pTargetNav = flag_cast_to<TechnoClass*>(LinkedTo->Destination);
 
 		if (!pTargetNav || !pTargetNav->IsAlive || !pTargetNav->IsOnMap)
@@ -145,14 +142,12 @@ void LevitateLocomotionClass::DoPhase1()
 			auto Mission = LinkedTo->GetCurrentMission();
 			if (Mission != Mission::Sticky && Mission != Mission::Sleep)
 			{
-				if (ScenarioClass::Instance->Random.RandomDouble() < 0.01)
-				{
+				if (ScenarioClass::Instance->Random.RandomDouble() < 0.01) {
 					DirtoSomething(ScenarioClass::Instance->Random.RandomDouble() * Math::TwoPi);
 				}
 			}
 
-			if (this->State)
-			{
+			if (this->State) {
 				if (LinkedTo->IsPathBlocked)
 					LinkedTo->IsPathBlocked = false;
 
@@ -190,10 +185,8 @@ void LevitateLocomotionClass::DoPhase1()
 	}
 
 	auto Mission = LinkedTo->GetCurrentMission();
-	if (Mission != Mission::Sticky && Mission != Mission::Sleep)
-	{
-		if (ScenarioClass::Instance->Random.RandomDouble() < 0.01)
-		{
+	if (Mission != Mission::Sticky && Mission != Mission::Sleep) {
+		if (ScenarioClass::Instance->Random.RandomDouble() < 0.01) {
 			DirtoSomething(ScenarioClass::Instance->Random.RandomDouble() * Math::TwoPi);
 		}
 	}
@@ -249,7 +242,7 @@ void LevitateLocomotionClass::CalculateDir_Close(CoordStruct nTarget)
 	const auto Coord = LinkedTo->GetCoords();
 	const auto TCoord = nTarget;
 	CoordStruct _remaining = Coord - TCoord;
-	DirStruct _dirCoord { (double)_remaining.Y , (double)_remaining.X };
+	DirStruct _dirCoord{ (double)_remaining.Y , (double)_remaining.X };
 	const auto nMath_2 = _dirCoord.GetRadian<65536>();
 	const auto nMath_3 = Math::sin((float)nMath_2);
 	const auto nMath_4 = Math::cos((float)nMath_2);
@@ -290,7 +283,7 @@ void LevitateLocomotionClass::DirtoSomething(double dValue)
 	CurrentVelocity = Delta.Y * Delta.Y + Delta.X * Delta.X;
 	auto nCenter = LinkedTo->GetCoords();
 	const auto pSys = GameCreate<ParticleSystemClass>(RulesExtData::Instance()->DefaultGlobalParticleInstance, nCenter);
-	auto nEmpty = CoordStruct { 0,0,0 };
+	auto nEmpty = CoordStruct{ 0,0,0 };
 	const auto pParticle = pSys->SpawnHeldParticle(&nCenter, &nEmpty);
 	pParticle->GasVelocity.X = (int)(nCos * -16.0);
 	pParticle->GasVelocity.Y = (int)(nSin * 16.0);
@@ -304,22 +297,19 @@ void LevitateLocomotionClass::CalculateDir_Far(CoordStruct nTarget)
 	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto nCoord = LinkedTo->GetCoords();
 	CoordStruct _remaining = nCoord - nTarget;
-	DirStruct _dirCoord { (double)_remaining.Y , (double)_remaining.X };
+	DirStruct _dirCoord{ (double)_remaining.Y , (double)_remaining.X };
 	DirtoSomething(_dirCoord.GetRadian<65536>());
 }
 
 void LevitateLocomotionClass::DoPhase3()
 {
-	if (LinkedTo->Target)
-	{
+	if (LinkedTo->Target) {
 		const auto pTargetT = flag_cast_to<TechnoClass*>(LinkedTo->Target);
 
 		if (pTargetT && pTargetT->IsAlive && pTargetT->IsOnMap)
 		{
-			if (CurrentVelocity >= Characteristic.Vel_Max_WhenPissedOff)
-			{
-				if (this->IsLessSameThanProximityDistance(pTargetT->GetCoords()))
-				{
+			if (CurrentVelocity >= Characteristic.Vel_Max_WhenPissedOff) {
+				if (this->IsLessSameThanProximityDistance(pTargetT->GetCoords())) {
 					return;
 				}
 			}
@@ -333,8 +323,7 @@ void LevitateLocomotionClass::DoPhase3()
 		LinkedTo->SetTarget(nullptr);
 	}
 
-	if (LinkedTo->Destination)
-	{
+	if (LinkedTo->Destination) {
 		const auto pNavT = flag_cast_to<TechnoClass*>(LinkedTo->Destination);
 
 		if (pNavT && pNavT->IsAlive && pNavT->IsOnMap)
@@ -372,8 +361,7 @@ void LevitateLocomotionClass::DoPhase3()
 		Delta.Y = 0.0;
 		State = 0;
 
-		if (!LinkedTo->IsPathBlocked)
-		{
+		if (!LinkedTo->IsPathBlocked) {
 			LinkedTo->IsPathBlocked = true;
 
 			LinkedTo->UnmarkAllOccupationBits(LinkedTo->GetCoords());
@@ -571,7 +559,7 @@ void LevitateLocomotionClass::DoPhase7()
 {
 	//GameDebugLog::Log(__FUNCTION__" Called !  ");
 	const auto nCoord = LinkedTo->GetCenterCoords();
-	const auto nCoordCell = CoordStruct { (nCoord.X * 256) + 128  , (nCoord.Y * 256) + 128 ,nCoord.Z };
+	const auto nCoordCell = CoordStruct{ (nCoord.X * 256) + 128  , (nCoord.Y * 256) + 128 ,nCoord.Z };
 	const auto nDistance = (nCoordCell - LinkedTo->GetCoords()).LengthXY();
 
 	if (nDistance < 5)
@@ -673,7 +661,9 @@ bool LevitateLocomotionClass::IsDestValid()
 	if (const auto pNavT = flag_cast_to<TechnoClass*>(LinkedTo->Destination))
 	{
 		if (pNavT->IsAlive && pNavT->IsOnMap)
-		{ return true; }
+		{
+			return true;
+		}
 		LinkedTo->Destination = nullptr;
 	}
 
@@ -686,7 +676,9 @@ bool LevitateLocomotionClass::IsTargetValid()
 	if (const auto pNavT = flag_cast_to<TechnoClass*>(LinkedTo->Target))
 	{
 		if (pNavT->IsAlive && pNavT->IsOnMap)
-		{ return true; }
+		{
+			return true;
+		}
 		LinkedTo->SetTarget(nullptr);
 	}
 	return false;
@@ -735,7 +727,7 @@ void LevitateLocomotionClass::ProcessSomething()
 		return;
 	}
 
-	CoordStruct nDeltaMod {};
+	CoordStruct nDeltaMod{};
 	if (!this->IsAdjentCellEligible(nDeltaCoord))
 	{
 		if (nDeltaCoord.X <= 0)
@@ -810,7 +802,7 @@ void LevitateLocomotionClass::ProcessSomething()
 
 	auto const nRender_Coord = LinkedTo->GetCenterCoords();
 	auto const nRender_coord_trans =
-		CoordStruct { ((nRender_Coord.X / 256) << 8) + 128 , ((nRender_Coord.Y / 256) << 8) + 128 , nRender_Coord.Z };
+		CoordStruct{ ((nRender_Coord.X / 256) << 8) + 128 , ((nRender_Coord.Y / 256) << 8) + 128 , nRender_Coord.Z };
 
 	JumpTo4(this, (float)GetFacingVal(nRender_Coord, nRender_coord_trans));
 
@@ -870,8 +862,7 @@ bool LevitateLocomotionClass::IsAdjentCellEligible(CoordStruct nArgsCoord)
 			bObjectIsFoot = (pObj->AbstractFlags & AbstractFlags::Foot) != AbstractFlags::None;
 
 		pObj = pObj->NextObject;
-	}
-	while (bObjectIsFoot);
+	} while (bObjectIsFoot);
 
 	return bObjectIsFoot;
 }

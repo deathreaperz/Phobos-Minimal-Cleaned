@@ -132,10 +132,12 @@ bool ArcingTrajectory::OnAI()
 }
 
 void ArcingTrajectory::OnAIPreDetonate()
-{ }
+{
+}
 
 void ArcingTrajectory::OnAIVelocity(VelocityClass* pSpeed, VelocityClass* pPosition)
-{ }
+{
+}
 
 TrajectoryCheckReturnType ArcingTrajectory::OnAITargetCoordCheck(CoordStruct& coords)
 {

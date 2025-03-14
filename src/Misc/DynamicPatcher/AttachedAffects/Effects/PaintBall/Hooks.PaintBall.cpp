@@ -11,12 +11,10 @@
 #include <InfantryClass.h>
 
 // Gets tint colors for invulnerability, airstrike laser target and berserk, depending on parameters.
-COMPILETIMEEVAL void InitializeColors()
-{
+COMPILETIMEEVAL void InitializeColors() {
 	auto g_instance = PhobosGlobal::Instance();
 
-	if (!g_instance->ColorDatas.Initialized)
-	{
+	if (!g_instance->ColorDatas.Initialized) {
 		g_instance->ColorDatas.Initialized = true;
 		g_instance->ColorDatas.Forceshield_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->ForceShieldColor);
 		g_instance->ColorDatas.IronCurtain_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->IronCurtainColor);
@@ -33,8 +31,7 @@ int ApplyTintColor(TechnoClass* pThis, bool invulnerability, bool airstrike, boo
 
 	if (invulnerability && pThis->IsIronCurtained())
 		tintColor |= pThis->ProtectType == ProtectTypes::ForceShield ? g_instance->ColorDatas.Forceshield_Color : g_instance->ColorDatas.IronCurtain_Color;
-	if (airstrike && pThis->Airstrike && pThis->Airstrike->Target == pThis)
-	{
+	if (airstrike && pThis->Airstrike && pThis->Airstrike->Target == pThis) {
 		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Airstrike->Owner->GetTechnoType());
 		if (pTypeExt->LaserTargetColor.isset())
 			tintColor |= GeneralUtils::GetColorFromColorAdd(pTypeExt->LaserTargetColor);
@@ -116,10 +113,8 @@ void ApplyCustomTint(TechnoClass* pThis, int* tintColor, int* intensity)
 			*intensity += static_cast<int>(pTypeExt->Tint_Intensity * 1000);
 	}
 
-	if (pExt->AE.HasTint)
-	{
-		for (auto const& attachEffect : pExt->PhobosAE)
-		{
+	if (pExt->AE.HasTint) {
+		for (auto const& attachEffect : pExt->PhobosAE) {
 			if (!attachEffect)
 				continue;
 

@@ -28,11 +28,11 @@ void ParticleSystemExtData::UpdateLocations()
 		Data.vel.X += Data.velB.X;
 		Data.vel.Y += Data.velB.Y;
 
-		CoordStruct nCoordBeforeZ { (int)Data.vel.X , (int)Data.vel.Y , (int)Data.vel.Z };
+		CoordStruct nCoordBeforeZ{ (int)Data.vel.X , (int)Data.vel.Y , (int)Data.vel.Z };
 		Data.vel.Z = (Data.velB.Z - gravity) + Data.vel.Z;
 
 		CoordStruct nVelBCoord = { (int)Data.velB.X , (int)Data.velB.Y , (int)Data.velB.Z };
-		CoordStruct nCoord { (int)Data.vel.X , (int)Data.vel.Y , (int)Data.vel.Z };
+		CoordStruct nCoord{ (int)Data.vel.X , (int)Data.vel.Y , (int)Data.vel.Z };
 
 		auto const pCell = MapClass::Instance->GetCellAt(nCoord);
 		const auto nZOffs = pCell->GetFloorHeight({ nCoord.X , nCoord.Y });
@@ -83,15 +83,13 @@ void ParticleSystemExtData::UpdateLocations()
 
 void ParticleSystemExtData::UpdateState()
 {
-	this->OtherParticleData.remove_all_if([](const auto& data)
- {
-	 return data.Empty;
-	});
+	this->OtherParticleData.remove_all_if([](const auto& data) {
+		return data.Empty;
+		});
 
-	this->SmokeData.remove_all_if([](const auto& data)
- {
-	 return data.DeleteOnStateLimit;
-	});
+	this->SmokeData.remove_all_if([](const auto& data) {
+		return data.DeleteOnStateLimit;
+		});
 }
 
 void ParticleSystemExtData::UpdateColor()
@@ -176,7 +174,7 @@ void ParticleSystemExtData::UpdateSpark()
 				auto nVelX = random->RandomFromMax(this->HeldType->XVelocity);
 				auto nVelY = random->RandomFromMax(this->HeldType->YVelocity);
 				auto nVelZ = this->HeldType->MinZVelocity + random->RandomFromMax(this->HeldType->ZVelocityRange);
-				Vector3D<float> nVels { (float)nVelX  , (float)nVelY ,(float)nVelZ };
+				Vector3D<float> nVels{ (float)nVelX  , (float)nVelY ,(float)nVelZ };
 				auto nVelsMag = nVels.Length();
 				auto nSpawnDir = pOwner->Type->SpawnDirection + nVels;
 				auto nSpawnDirMag = nSpawnDir.Length();
@@ -243,7 +241,7 @@ void ParticleSystemExtData::UpdateRailgun()
 
 		pOwnerObj->TimeToDie = true;
 		auto nDifferenceLength = (int)nDifferenct.Length();
-		auto nMaxXY = (int)(Point2D { nDifferenct.X , nDifferenct.Y }.Length());
+		auto nMaxXY = (int)(Point2D{ nDifferenct.X , nDifferenct.Y }.Length());
 		auto nMagNeg = -nDifferenceLength;
 		auto nMagCopy = nDifferenceLength >= nDifferenct.Z ?
 			nDifferenct.Z : nDifferenceLength;
@@ -261,7 +259,7 @@ void ParticleSystemExtData::UpdateRailgun()
 
 		auto nASin = Math::asin(double(nMagCopy / nDifferenceLength));
 		auto nACos = Math::acos(nMaxXYCopy / nMaxXY);
-		Matrix3D mtx {};
+		Matrix3D mtx{};
 		mtx.MakeIdentity();
 		mtx.RotateZ(nDifferenct.Y > 0 ? nACos : -nACos);
 		mtx.RotateX(nASin);
@@ -284,7 +282,7 @@ void ParticleSystemExtData::UpdateRailgun()
 			const double v91 = double((float)i / (double)nDecidedsize);
 			const auto radians = v91 * nDifferenceLength * nSpinDelta;
 
-			Vector3D<float> nDummy {
+			Vector3D<float> nDummy{
 				0.0f,
 				Math::cos(radians) ,
 				Math::sin(radians)
@@ -295,7 +293,7 @@ void ParticleSystemExtData::UpdateRailgun()
 			//============== LerpCoords
 			const auto  val__ = 1.0 - v91;
 
-			CoordStruct nDummy_d {
+			CoordStruct nDummy_d{
 			int((nTargetLoc.X * val__)
 				+ (nParticleLoc.X * v91)
 				+ (ScenarioClass::Instance->Random.RandomDouble_Closest() * nPositionPerturbationCoefficient + nResult.X * nSpiralRadius))
@@ -311,7 +309,7 @@ void ParticleSystemExtData::UpdateRailgun()
 			//=====================
 
 			//============= MovementPerturbationCoeff
-			Vector3D<float> nMovementDummy {
+			Vector3D<float> nMovementDummy{
 				float((ScenarioClass::Instance->Random.RandomDouble_Closest() * nMovementPerturbationCoefficient) + nResult.X),
 				float((ScenarioClass::Instance->Random.RandomDouble_Closest() * nMovementPerturbationCoefficient) + nResult.Y),
 				float((ScenarioClass::Instance->Random.RandomDouble_Closest() * nMovementPerturbationCoefficient) + nResult.Z)
@@ -437,14 +435,14 @@ void  ParticleSystemExtData::UpdateRailgun()
 			const float curVal = float((double)i / (float)ParticlePerCoords);
 			const double radians = curVal * differeceCoordsLXYZLength * pThis->Type->SpiralDeltaPerCoord;
 
-			Vector3D<float> first_ {
+			Vector3D<float> first_{
 				0 , Math::cos(radians) ,Math::sin(radians)
 			};
 
-			Vector3D<float> mtx_mult {};
+			Vector3D<float> mtx_mult{};
 			Matrix3D::MatrixMultiply(&mtx_mult, &mtx, &first_);
 
-			const Vector3D<float> PositionPerturbation_ {
+			const Vector3D<float> PositionPerturbation_{
 				float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->PositionPerturbationCoefficient
 				+ (first_.X * pThis->Type->SpiralRadius))
 
@@ -458,7 +456,7 @@ void  ParticleSystemExtData::UpdateRailgun()
 			auto CoordSturct_Lerp = [](const CoordStruct* CurrentCoord, const CoordStruct* TargetCoord, float factor)
 				{
 					auto t_neg = 1.0 - factor;
-					return CoordStruct {
+					return CoordStruct{
 						(int)((double)TargetCoord->X * factor + (double)CurrentCoord->X * t_neg)
 						,(int)((double)TargetCoord->Y * factor + (double)CurrentCoord->Y * t_neg)
 						,(int)((double)TargetCoord->Z * factor + (double)CurrentCoord->Z * t_neg)
@@ -467,10 +465,10 @@ void  ParticleSystemExtData::UpdateRailgun()
 
 			//lerp result stored as Vel
 			CoordStruct lerp = CoordSturct_Lerp(&pThis->Location, &pThis->TargetCoords, curVal);
-			lerp += CoordStruct { (int)PositionPerturbation_.X , (int)PositionPerturbation_.Y , (int)PositionPerturbation_.Z };
+			lerp += CoordStruct{ (int)PositionPerturbation_.X , (int)PositionPerturbation_.Y , (int)PositionPerturbation_.Z };
 
 			auto Data = &this->OtherParticleData[i]; // .emplace_back();
-			Vector3D<float> MovementPerturbation {
+			Vector3D<float> MovementPerturbation{
 				float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->MovementPerturbationCoefficient)
 				, float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->MovementPerturbationCoefficient)
 				, float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->MovementPerturbationCoefficient)
@@ -559,7 +557,7 @@ void ParticleSystemExtData::UpdateWindDirection()
 		{
 			if (!rand->RandomFromMax(3))
 			{
-				Point2D velBXY { (int)smoke.velB.X , (int)smoke.velB.Y };
+				Point2D velBXY{ (int)smoke.velB.X , (int)smoke.velB.Y };
 				auto randDir = rand->RandomRanged(-1, 1);
 
 				if (rand->RandomBool())
@@ -646,8 +644,7 @@ void ParticleSystemExtData::UpdateSmoke()
 
 	FootClass* Owner_obj = flag_cast_to<FootClass*>(pOwnerObj_Owner);
 
-	if (Owner_obj)
-	{
+	if (Owner_obj) {
 		auto coords = pOwnerObj_Owner->GetCoords();
 		CoordStruct SpawnDistance = coords + pOwnerObj->SpawnDistanceToOwner;
 		pOwnerObj->SetLocation(SpawnDistance);
@@ -694,7 +691,7 @@ void ParticleSystemExtData::UpdateSmoke()
 				auto range = pOwnerObjType->SpawnRadius + 1;
 				auto rand_x = rand->RandomRanged(-range, range);
 				auto rand_y = rand->RandomRanged(-range, range);
-				auto Loc = CoordStruct { rand_x , rand_y  , 10 } + pOwnerObj->Location;
+				auto Loc = CoordStruct{ rand_x , rand_y  , 10 } + pOwnerObj->Location;
 				auto movement = &this->SmokeData.emplace_back();
 				movement->vel = Loc;
 				auto v47 = MapClass::Instance->GetCellFloorHeight(Loc);
@@ -763,7 +760,7 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis)
 		}
 
 		const auto ParticlePerCoords = differeceCoordsLXYZLength * pThis->Type->ParticlesPerCoord;
-		Matrix3D mtx {};
+		Matrix3D mtx{};
 		mtx.MakeIdentity();
 		const auto acos = Math::acos((double)Difference_X / (double)differeceCoordsLXYLength);
 		mtx.PreRotateZ(acos < 0 ? -acos : acos);
@@ -775,13 +772,13 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis)
 		{
 			float curVal = float((double)i / (float)ParticlePerCoords);
 
-			Vector3D<float> first_ {
+			Vector3D<float> first_{
 				0 , Math::cos((double)curVal) ,Math::sin((double)curVal)
 			};
 
 			Vector3D<float> mtx_mult = Matrix3D::MatrixMultiply(&mtx, first_);
 
-			const Vector3D<float> PositionPerturbation_ {
+			const Vector3D<float> PositionPerturbation_{
 				float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->PositionPerturbationCoefficient
 				+ (first_.X * pThis->Type->SpiralRadius))
 
@@ -795,7 +792,7 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis)
 			auto CoordSturct_Lerp = [](const CoordStruct* CurrentCoord, const CoordStruct* TargetCoord, float factor)
 				{
 					auto t_neg = 1.0 - factor;
-					return CoordStruct {
+					return CoordStruct{
 						(int)((double)TargetCoord->X * factor + (double)CurrentCoord->X * t_neg)
 						,(int)((double)TargetCoord->Y * factor + (double)CurrentCoord->Y * t_neg)
 						,(int)((double)TargetCoord->Z * factor + (double)CurrentCoord->Z * t_neg)
@@ -804,13 +801,13 @@ void Railgun_AI_Vanilla_Test(ParticleSystemClass* pThis)
 
 			//lerp result stored as Vel
 			CoordStruct lerp = CoordSturct_Lerp(&pThis->Location, &pThis->TargetCoords, curVal);
-			lerp += CoordStruct { (int)PositionPerturbation_.X , (int)PositionPerturbation_.Y , (int)PositionPerturbation_.Z };
+			lerp += CoordStruct{ (int)PositionPerturbation_.X , (int)PositionPerturbation_.Y , (int)PositionPerturbation_.Z };
 
 			pThis->Particles.AddItem(GameCreate<ParticleClass>(ParticleTypeClass::Array->Items[pThis->Type->HoldsWhat], &lerp, &lerp, pThis));
 			auto partilce = *pThis->Particles.back();
 			Vector3D<float>* vel = &partilce->Spark10C;
 			partilce->Spark10C = mtx_mult;
-			Vector3D<float> MovementPerturbation {
+			Vector3D<float> MovementPerturbation{
 				float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->MovementPerturbationCoefficient)
 				, float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->MovementPerturbationCoefficient)
 				, float(ScenarioClass::Instance->Random.RandomDouble_Closest() * pThis->Type->MovementPerturbationCoefficient)
@@ -1209,8 +1206,7 @@ void ParticleSystemExtData::InitializeConstant()
 
 			if (nBehave == bIsZero)
 			{
-				if (!nBehave)
-				{
+				if (!nBehave) {
 					this->What = Behave::Smoke;
 					return;
 				}
@@ -1284,12 +1280,9 @@ DEFINE_HOOK(0x62E26B, ParticleSystemClass_DTOR, 0x6)
 {
 	GET(ParticleSystemClass* const, pItem, ESI);
 
-	if (pItem->Owner && pItem->Owner->WhatAmI() == AnimClass::AbsID)
-	{
-		for (FakeAnimClass* anim : FakeAnimClass::AnimsWithAttachedParticles)
-		{
-			if (anim->_GetExtData()->AttachedSystem == pItem)
-			{
+	if (pItem->Owner && pItem->Owner->WhatAmI() == AnimClass::AbsID) {
+		for (FakeAnimClass* anim : FakeAnimClass::AnimsWithAttachedParticles) {
+			if (anim->_GetExtData()->AttachedSystem == pItem) {
 				anim->_GetExtData()->AttachedSystem = nullptr;
 			}
 		}

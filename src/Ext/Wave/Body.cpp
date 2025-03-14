@@ -58,12 +58,12 @@ WaveClass* WaveExtData::Create(CoordStruct nFrom, CoordStruct nTo, TechnoClass* 
 }
 
 bool WaveExtData::ModifyWaveColor(
-WORD const src, WORD& dest, int const intensity, WaveClass* const pWave, WaveColorData const* colorDatas)
+	WORD const src, WORD& dest, int const intensity, WaveClass* const pWave, WaveColorData const* colorDatas)
 {
 	if (!colorDatas->Color && !colorDatas->Intent_Color.IsValid())
 		return false;
 
-	ColorStruct modified {};
+	ColorStruct modified{};
 	Drawing::WordToColorStruct(src, modified);
 
 	// ugly hack to fix byte wraparound problems

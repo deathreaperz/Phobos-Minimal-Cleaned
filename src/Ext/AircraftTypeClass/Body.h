@@ -2,8 +2,7 @@
 
 #include <AircraftTypeClass.h>
 
-class FakeAircraftTypeClass : public AircraftTypeClass
-{
+class FakeAircraftTypeClass : public AircraftTypeClass {
 public:
 	bool _CanAttackMove() { return true; };
 };

@@ -2,7 +2,7 @@
 
 void BuildSpeedBonus::Read(INI_EX& parser, const char* pSection)
 {
-	Nullable<double> nBuff {};
+	Nullable<double> nBuff{};
 	nBuff.Read(parser, pSection, "BuildSpeedBonus.Aircraft");
 
 	if (nBuff.isset() && nBuff.Get() != 0.000)

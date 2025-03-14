@@ -8223,13 +8223,13 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 		auto const section = "UISettings";
 
 		auto const ReadColor = [&Ini, section2, ParseColorInt]
-		(
-			const std::string& name,
-			ColorData& value,
-			int colorRGB,
-			const char* defTooltip,
-			const char* defColorScheme
-		)
+			(
+				const std::string& name,
+				ColorData& value,
+				int colorRGB,
+				const char* defTooltip,
+				const char* defColorScheme
+			)
 			{
 				// load the tooltip string
 
@@ -8244,89 +8244,89 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 				value.selectedIndex = -1;
 			};
 
-		// menu colors. the color of labels, button texts, list items, stuff and others
-		uiColorText = ParseColorInt(section, "Color.Text", 0xFFFF);
+			// menu colors. the color of labels, button texts, list items, stuff and others
+			uiColorText = ParseColorInt(section, "Color.Text", 0xFFFF);
 
-		// original color schemes
-		static COMPILETIMEEVAL reference<int, 0x8316A8, 0x9> const DefaultColors {};
-		COMPILETIMEEVAL const char* Slot_tags[] = {
-			"Slot1", "Slot2", "Slot3", "Slot4",
-			"Slot5", "Slot6", "Slot7", "Slot8",
-			"Slot9", "Slot10", "Slot11", "Slot12",
-			"Slot13", "Slot14", "Slot15", "Slot16"
-		};
+			// original color schemes
+			static COMPILETIMEEVAL reference<int, 0x8316A8, 0x9> const DefaultColors {};
+			COMPILETIMEEVAL const char* Slot_tags[] = {
+				"Slot1", "Slot2", "Slot3", "Slot4",
+				"Slot5", "Slot6", "Slot7", "Slot8",
+				"Slot9", "Slot10", "Slot11", "Slot12",
+				"Slot13", "Slot14", "Slot15", "Slot16"
+			};
 
-		ReadColor("Observer", Colors[0], DefaultColors[8], GameStrings::STT_PlayerColorObserver, GameStrings::LightGrey);
-		ReadColor(Slot_tags[0], Colors[1], DefaultColors[0], GameStrings::STT_PlayerColorGold, GameStrings::LightGold);
-		ReadColor(Slot_tags[1], Colors[2], DefaultColors[1], GameStrings::STT_PlayerColorRed, GameStrings::DarkRed);
-		ReadColor(Slot_tags[2], Colors[3], DefaultColors[2], GameStrings::STT_PlayerColorBlue, "DarkBlue");
-		ReadColor(Slot_tags[3], Colors[4], DefaultColors[3], GameStrings::STT_PlayerColorGreen, "DarkGreen");
-		ReadColor(Slot_tags[4], Colors[5], DefaultColors[4], GameStrings::STT_PlayerColorOrange, "Orange");
-		ReadColor(Slot_tags[5], Colors[6], DefaultColors[5], GameStrings::STT_PlayerColorSkyBlue, "DarkSky");
-		ReadColor(Slot_tags[6], Colors[7], DefaultColors[6], GameStrings::STT_PlayerColorPurple, "Purple");
-		ReadColor(Slot_tags[7], Colors[8], DefaultColors[7], GameStrings::STT_PlayerColorPink, "Magenta");
+			ReadColor("Observer", Colors[0], DefaultColors[8], GameStrings::STT_PlayerColorObserver, GameStrings::LightGrey);
+			ReadColor(Slot_tags[0], Colors[1], DefaultColors[0], GameStrings::STT_PlayerColorGold, GameStrings::LightGold);
+			ReadColor(Slot_tags[1], Colors[2], DefaultColors[1], GameStrings::STT_PlayerColorRed, GameStrings::DarkRed);
+			ReadColor(Slot_tags[2], Colors[3], DefaultColors[2], GameStrings::STT_PlayerColorBlue, "DarkBlue");
+			ReadColor(Slot_tags[3], Colors[4], DefaultColors[3], GameStrings::STT_PlayerColorGreen, "DarkGreen");
+			ReadColor(Slot_tags[4], Colors[5], DefaultColors[4], GameStrings::STT_PlayerColorOrange, "Orange");
+			ReadColor(Slot_tags[5], Colors[6], DefaultColors[5], GameStrings::STT_PlayerColorSkyBlue, "DarkSky");
+			ReadColor(Slot_tags[6], Colors[7], DefaultColors[6], GameStrings::STT_PlayerColorPurple, "Purple");
+			ReadColor(Slot_tags[7], Colors[8], DefaultColors[7], GameStrings::STT_PlayerColorPink, "Magenta");
 
-		// additional color schemes so just increasing Count will produce nice colors
-		ReadColor(Slot_tags[8], Colors[9], 0xEF5D94, "STT:PlayerColorLilac", "NeonBlue");
-		ReadColor(Slot_tags[9], Colors[10], 0xE7FF73, "STT:PlayerColorLightBlue", "LightBlue");
-		ReadColor(Slot_tags[10], Colors[11], 0x63EFFF, "STT:PlayerColorLime", GameStrings::Yellow);
-		ReadColor(Slot_tags[11], Colors[12], 0x5AC308, "STT:PlayerColorTeal", GameStrings::Green);
-		ReadColor(Slot_tags[12], Colors[13], 0x0055BD, "STT:PlayerColorBrown", GameStrings::Red);
-		ReadColor(Slot_tags[13], Colors[14], 0x808080, "STT:PlayerColorCharcoal", GameStrings::Grey);
+			// additional color schemes so just increasing Count will produce nice colors
+			ReadColor(Slot_tags[8], Colors[9], 0xEF5D94, "STT:PlayerColorLilac", "NeonBlue");
+			ReadColor(Slot_tags[9], Colors[10], 0xE7FF73, "STT:PlayerColorLightBlue", "LightBlue");
+			ReadColor(Slot_tags[10], Colors[11], 0x63EFFF, "STT:PlayerColorLime", GameStrings::Yellow);
+			ReadColor(Slot_tags[11], Colors[12], 0x5AC308, "STT:PlayerColorTeal", GameStrings::Green);
+			ReadColor(Slot_tags[12], Colors[13], 0x0055BD, "STT:PlayerColorBrown", GameStrings::Red);
+			ReadColor(Slot_tags[13], Colors[14], 0x808080, "STT:PlayerColorCharcoal", GameStrings::Grey);
 
-		// blunt stuff
-		ReadColor(Slot_tags[14], Colors[15], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
-		ReadColor(Slot_tags[15], Colors[16], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
+			// blunt stuff
+			ReadColor(Slot_tags[14], Colors[15], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
+			ReadColor(Slot_tags[15], Colors[16], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
 
-		uiColorTextButton = ParseColorInt(section, "Color.Button.Text", uiColorText);
-		uiColorTextRadio = ParseColorInt(section, "Color.Radio.Text", uiColorText);
-		uiColorTextCheckbox = ParseColorInt(section, "Color.Checkbox.Text", uiColorText);
-		uiColorTextLabel = ParseColorInt(section, "Color.Label.Text", uiColorText);
-		uiColorTextList = ParseColorInt(section, "Color.List.Text", uiColorText);
-		uiColorTextCombobox = ParseColorInt(section, "Color.Combobox.Text", uiColorText);
-		uiColorTextGroupbox = ParseColorInt(section, "Color.Groupbox.Text", uiColorText);
-		uiColorTextSlider = ParseColorInt(section, "Color.Slider.Text", uiColorText);
-		uiColorTextEdit = ParseColorInt(section, "Color.Edit.Text", uiColorText);
-		uiColorTextObserver = ParseColorInt(section, "Color.Observer.Text", 0xEEEEEE);
-		uiColorCaret = ParseColorInt(section, "Color.Caret", 0xFFFF);
-		uiColorSelection = ParseColorInt(section, "Color.Selection", 0xFF);
-		uiColorSelectionCombobox = ParseColorInt(section, "Color.Combobox.Selection", uiColorSelection);
-		uiColorSelectionList = ParseColorInt(section, "Color.List.Selection", uiColorSelection);
-		uiColorSelectionObserver = ParseColorInt(section, "Color.Observer.Selection", 0x626262);
-		uiColorBorder1 = ParseColorInt(section, "Color.Border1", 0xC5BEA7);
-		uiColorBorder2 = ParseColorInt(section, "Color.Border2", 0x807A68);
-		uiColorDisabled = ParseColorInt(section, "Color.Disabled", 0x9F);
-		uiColorDisabledLabel = ParseColorInt(section, "Color.Label.Disabled", uiColorDisabled);
-		uiColorDisabledCombobox = ParseColorInt(section, "Color.Combobox.Disabled", uiColorDisabled);
-		uiColorDisabledSlider = ParseColorInt(section, "Color.Slider.Disabled", uiColorDisabled);
-		uiColorDisabledButton = ParseColorInt(section, "Color.Button.Disabled", 0xA7);
-		uiColorDisabledCheckbox = ParseColorInt(section, "Color.Checkbox.Disabled", uiColorDisabled);
-		uiColorDisabledList = ParseColorInt(section, "Color.List.Disabled", uiColorDisabled);
-		uiColorDisabledObserver = ParseColorInt(section, "Color.Observer.Disabled", 0x8F8F8F);
+			uiColorTextButton = ParseColorInt(section, "Color.Button.Text", uiColorText);
+			uiColorTextRadio = ParseColorInt(section, "Color.Radio.Text", uiColorText);
+			uiColorTextCheckbox = ParseColorInt(section, "Color.Checkbox.Text", uiColorText);
+			uiColorTextLabel = ParseColorInt(section, "Color.Label.Text", uiColorText);
+			uiColorTextList = ParseColorInt(section, "Color.List.Text", uiColorText);
+			uiColorTextCombobox = ParseColorInt(section, "Color.Combobox.Text", uiColorText);
+			uiColorTextGroupbox = ParseColorInt(section, "Color.Groupbox.Text", uiColorText);
+			uiColorTextSlider = ParseColorInt(section, "Color.Slider.Text", uiColorText);
+			uiColorTextEdit = ParseColorInt(section, "Color.Edit.Text", uiColorText);
+			uiColorTextObserver = ParseColorInt(section, "Color.Observer.Text", 0xEEEEEE);
+			uiColorCaret = ParseColorInt(section, "Color.Caret", 0xFFFF);
+			uiColorSelection = ParseColorInt(section, "Color.Selection", 0xFF);
+			uiColorSelectionCombobox = ParseColorInt(section, "Color.Combobox.Selection", uiColorSelection);
+			uiColorSelectionList = ParseColorInt(section, "Color.List.Selection", uiColorSelection);
+			uiColorSelectionObserver = ParseColorInt(section, "Color.Observer.Selection", 0x626262);
+			uiColorBorder1 = ParseColorInt(section, "Color.Border1", 0xC5BEA7);
+			uiColorBorder2 = ParseColorInt(section, "Color.Border2", 0x807A68);
+			uiColorDisabled = ParseColorInt(section, "Color.Disabled", 0x9F);
+			uiColorDisabledLabel = ParseColorInt(section, "Color.Label.Disabled", uiColorDisabled);
+			uiColorDisabledCombobox = ParseColorInt(section, "Color.Combobox.Disabled", uiColorDisabled);
+			uiColorDisabledSlider = ParseColorInt(section, "Color.Slider.Disabled", uiColorDisabled);
+			uiColorDisabledButton = ParseColorInt(section, "Color.Button.Disabled", 0xA7);
+			uiColorDisabledCheckbox = ParseColorInt(section, "Color.Checkbox.Disabled", uiColorDisabled);
+			uiColorDisabledList = ParseColorInt(section, "Color.List.Disabled", uiColorDisabled);
+			uiColorDisabledObserver = ParseColorInt(section, "Color.Observer.Disabled", 0x8F8F8F);
 
-		// read the mod's version info
-		if (Ini->ReadString("VersionInfo", GameStrings::Name, Phobos::readDefval, Phobos::readBuffer, std::size(ModName)))
-		{
-			PhobosCRT::strCopy(ModName, Phobos::readBuffer);
-		}
+			// read the mod's version info
+			if (Ini->ReadString("VersionInfo", GameStrings::Name, Phobos::readDefval, Phobos::readBuffer, std::size(ModName)))
+			{
+				PhobosCRT::strCopy(ModName, Phobos::readBuffer);
+			}
 
-		if (Ini->ReadString("VersionInfo", "Version", Phobos::readDefval, Phobos::readBuffer, std::size(ModVersion)))
-		{
-			PhobosCRT::strCopy(ModVersion, Phobos::readBuffer);
-		}
+			if (Ini->ReadString("VersionInfo", "Version", Phobos::readDefval, Phobos::readBuffer, std::size(ModVersion)))
+			{
+				PhobosCRT::strCopy(ModVersion, Phobos::readBuffer);
+			}
 
-		AresSafeChecksummer crc;
-		crc.Add(ModName, strlen(ModName));
-		crc.Commit();
-		crc.Add(ModVersion, strlen(ModVersion));
-		ModIdentifier = Ini->ReadInteger("VersionInfo", "Identifier", static_cast<int>(crc.GetValue()));
+			AresSafeChecksummer crc;
+			crc.Add(ModName, strlen(ModName));
+			crc.Commit();
+			crc.Add(ModVersion, strlen(ModVersion));
+			ModIdentifier = Ini->ReadInteger("VersionInfo", "Identifier", static_cast<int>(crc.GetValue()));
 
-		Debug::LogInfo("Color count is {}", colorCount);
-		Debug::LogInfo("Mod is {0} ({1}) with {2:x}",
-			ModName,
-			ModVersion,
-			ModIdentifier
-		);
+			Debug::LogInfo("Color count is {}", colorCount);
+			Debug::LogInfo("Mod is {0} ({1}) with {2:x}",
+				ModName,
+				ModVersion,
+				ModIdentifier
+			);
 	}
 
 	Debug::LogInfo("-------------------Complete ----------------------");

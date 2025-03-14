@@ -42,25 +42,21 @@ bool OverlayTypeExtContainer::Load(OverlayTypeClass* key, IStream* pStm)
 
 	auto ptr = OverlayTypeExtContainer::Instance.Map.get_or_default(key);
 
-	if (!ptr)
-	{
+	if (!ptr) {
 		ptr = OverlayTypeExtContainer::Instance.Map.insert_unchecked(key,
-			  this->AllocateUnchecked(key));
+			this->AllocateUnchecked(key));
 	}
 
 	this->ClearExtAttribute(key);
 	this->SetExtAttribute(key, ptr);
 
-	PhobosByteStream loader { 0 };
-	if (loader.ReadBlockFromStream(pStm))
-	{
-		PhobosStreamReader reader { loader };
+	PhobosByteStream loader{ 0 };
+	if (loader.ReadBlockFromStream(pStm)) {
+		PhobosStreamReader reader{ loader };
 		if (reader.Expect(OverlayTypeExtData::Canary)
-			&& reader.RegisterChange(ptr))
-		{
+			&& reader.RegisterChange(ptr)) {
 			ptr->LoadFromStream(reader);
-			if (reader.ExpectEndOfBlock())
-			{
+			if (reader.ExpectEndOfBlock()) {
 				return true;
 			}
 		}
@@ -78,10 +74,9 @@ DEFINE_HOOK(0x5FE3A2, OverlayTypeClass_CTOR, 0x5)
 
 	auto ptr = OverlayTypeExtContainer::Instance.Map.get_or_default(pItem);
 
-	if (!ptr)
-	{
+	if (!ptr) {
 		ptr = OverlayTypeExtContainer::Instance.Map.insert_unchecked(pItem,
-			  OverlayTypeExtContainer::Instance.AllocateUnchecked(pItem));
+			OverlayTypeExtContainer::Instance.AllocateUnchecked(pItem));
 	}
 
 	OverlayTypeExtContainer::Instance.SetExtAttribute(pItem, ptr);

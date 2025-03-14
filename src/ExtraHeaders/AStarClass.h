@@ -47,8 +47,7 @@ struct AStarQueueNodeHierarchical
 	int Number;
 };
 
-struct PathType
-{
+struct PathType {
 	CellStruct Start;                // Starting cell number.
 	int Cost;                    // Accumulated terrain cost.
 	int Length;                // Command string length.
@@ -67,8 +66,7 @@ struct PriorityQueueClass_AStarHierarchical
 	void* MaxNodePointer;
 	void* MinNodePointer;
 
-	void Heapify(bool shortitems = true)
-	{
+	void Heapify(bool shortitems = true) {
 		JMP_THIS(0x42DCA0);
 	}
 };
@@ -77,7 +75,7 @@ struct PriorityQueueClass_AStarHierarchical
 class AStarPathFinderClass
 {
 public:
-	static COMPILETIMEEVAL reference<AStarPathFinderClass, 0x87E8B8> const Instance {};
+	static COMPILETIMEEVAL reference<AStarPathFinderClass, 0x87E8B8> const Instance{};
 
 	AStarPathFinderClass() JMP_THIS(0x42A6D0);
 	~AStarPathFinderClass() JMP_THIS(0x42A900);

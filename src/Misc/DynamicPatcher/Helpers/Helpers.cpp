@@ -19,12 +19,12 @@ void EffectHelpers::DrawBolt(CoordStruct sourcePos, CoordStruct targetPos, Weapo
 #ifdef _Enable
 	if (pTypeExt->WeaponBolt_Data.isset())
 		ElectricBoltClass::Create(sourcePos, targetPos,
-		pTypeExt->WeaponBolt_Data.Get(), 0,
-		pTypeExt->Bolt_ParticleSys.Get(RulesClass::Instance->DefaultSparkSystem), false);
+			pTypeExt->WeaponBolt_Data.Get(), 0,
+			pTypeExt->Bolt_ParticleSys.Get(RulesClass::Instance->DefaultSparkSystem), false);
 	else
 
 	{
-		BoltType type {};
+		BoltType type{};
 		type.IsAlternateColor = pWeapon->IsAlternateColor;
 
 		if (pTypeExt->Bolt_Color1.isset())
@@ -106,7 +106,7 @@ void Helpers_DP::DrawBulletEffect(WeaponTypeClass* pWeapon, CoordStruct& sourceP
 
 VelocityClass Helpers_DP::GetBulletVelocity(CoordStruct sourcePos, CoordStruct targetPos)
 {
-	CoordStruct bulletFLH { 1, 0, 0 };
+	CoordStruct bulletFLH{ 1, 0, 0 };
 	DirStruct bulletDir = Helpers_DP::Point2Dir(sourcePos, targetPos);
 	const Vector3D<float> bulletV = Helpers_DP::GetFLHAbsoluteOffset(bulletFLH, bulletDir, CoordStruct::Empty);
 	return { static_cast<double>(bulletV.X) , static_cast<double>(bulletV.Y) , static_cast<double>(bulletV.Z) };
@@ -212,8 +212,8 @@ CoordStruct Helpers_DP::GetForwardCoords(Vector3D<float> const& sourceV, Vector3
 
 CoordStruct Helpers_DP::GetForwardCoords(CoordStruct sourcePos, CoordStruct targetPos, double speed, double dist)
 {
-	Vector3D<int> source { sourcePos.X  ,sourcePos.Y , sourcePos.Z };
-	Vector3D<int> target { targetPos.X  ,targetPos.Y , targetPos.Z };
+	Vector3D<int> source{ sourcePos.X  ,sourcePos.Y , sourcePos.Z };
+	Vector3D<int> target{ targetPos.X  ,targetPos.Y , targetPos.Z };
 	return Helpers_DP::GetForwardCoords(source, target, speed, dist);
 }
 
@@ -224,7 +224,7 @@ VelocityClass Helpers_DP::GetVelocity(BulletClass* pBullet)
 
 VelocityClass Helpers_DP::GetVelocity(CoordStruct const& sourcePos, CoordStruct const& targetPos, int speed)
 {
-	VelocityClass velocity { (double)(targetPos.X - sourcePos.X), (double)(targetPos.Y - sourcePos.Y), (double)(targetPos.Z - sourcePos.Z) };
+	VelocityClass velocity{ (double)(targetPos.X - sourcePos.X), (double)(targetPos.Y - sourcePos.Y), (double)(targetPos.Z - sourcePos.Z) };
 	velocity *= speed / targetPos.DistanceFrom(sourcePos);
 	return velocity;
 }
@@ -248,7 +248,7 @@ VelocityClass Helpers_DP::RecalculateVelocityClass(BulletClass* pBullet, CoordSt
 
 VelocityClass Helpers_DP::RecalculateVelocityClass(BulletClass* pBullet, CoordStruct const& sourcePos, CoordStruct const& targetPos)
 {
-	VelocityClass velocity { (double)(targetPos.X - sourcePos.X), (double)(targetPos.Y - sourcePos.Y), (double)(targetPos.Z - sourcePos.Z) };
+	VelocityClass velocity{ (double)(targetPos.X - sourcePos.X), (double)(targetPos.Y - sourcePos.Y), (double)(targetPos.Z - sourcePos.Z) };
 	velocity *= pBullet->Speed / targetPos.DistanceFrom(sourcePos);
 	pBullet->Velocity = velocity;
 	pBullet->SourceCoords = sourcePos;
@@ -280,7 +280,7 @@ Vector3D<float> Helpers_DP::GetFLHAbsoluteOffset(CoordStruct& flh, DirStruct& di
 
 VelocityClass Helpers_DP::GetVelocityClass(CoordStruct sourcePos, CoordStruct targetPos)
 {
-	CoordStruct bulletFLH { 1, 0, 0 };
+	CoordStruct bulletFLH{ 1, 0, 0 };
 	DirStruct bulletDir = Helpers_DP::Point2Dir(sourcePos, targetPos);
 	const Vector3D<float> bulletV = Helpers_DP::GetFLHAbsoluteOffset(bulletFLH, bulletDir, CoordStruct::Empty);
 	return { static_cast<double>(bulletV.X) , static_cast<double>(bulletV.Y) , static_cast<double>(bulletV.Z) };
@@ -300,7 +300,7 @@ CoordStruct Helpers_DP::GetFLHAbsoluteCoords(CoordStruct source, CoordStruct& fl
 
 DirStruct Helpers_DP::Facing(BulletClass* pBullet, CoordStruct& location)
 {
-	CoordStruct velocity = CoordStruct { (int)pBullet->Velocity.X, (int)pBullet->Velocity.Y, (int)pBullet->Velocity.Z };
+	CoordStruct velocity = CoordStruct{ (int)pBullet->Velocity.X, (int)pBullet->Velocity.Y, (int)pBullet->Velocity.Z };
 	CoordStruct forwardLocation = location + velocity;
 	return Helpers_DP::Point2Dir(location, forwardLocation);
 }
@@ -308,7 +308,7 @@ DirStruct Helpers_DP::Facing(BulletClass* pBullet, CoordStruct& location)
 DirStruct Helpers_DP::Facing(VoxelAnimClass* pVoxelAnim, CoordStruct& location)
 {
 	auto const& pBounce = pVoxelAnim->Bounce;
-	CoordStruct velocity = CoordStruct { (int)pBounce.Velocity.X, (int)pBounce.Velocity.Y, (int)pBounce.Velocity.Z };
+	CoordStruct velocity = CoordStruct{ (int)pBounce.Velocity.X, (int)pBounce.Velocity.Y, (int)pBounce.Velocity.Z };
 	CoordStruct forwardLocation = location + velocity;
 	return Helpers_DP::Point2Dir(location, forwardLocation);
 }
@@ -316,7 +316,7 @@ DirStruct Helpers_DP::Facing(VoxelAnimClass* pVoxelAnim, CoordStruct& location)
 DirStruct Helpers_DP::Facing(AnimClass* pAnim, CoordStruct& location)
 {
 	auto const& pBounce = pAnim->Bounce;
-	CoordStruct velocity = CoordStruct { (int)pBounce.Velocity.X, (int)pBounce.Velocity.Y, (int)pBounce.Velocity.Z };
+	CoordStruct velocity = CoordStruct{ (int)pBounce.Velocity.X, (int)pBounce.Velocity.Y, (int)pBounce.Velocity.Z };
 	CoordStruct forwardLocation = location + velocity;
 	return Helpers_DP::Point2Dir(location, forwardLocation);
 }
@@ -497,7 +497,7 @@ CoordStruct Helpers_DP::GetFLHAbsoluteCoords(TechnoClass* pTechno, const CoordSt
 	{
 		if (FootClass* pFoot = (FootClass*)pTechno)
 		{
-			CoordStruct nBuffer { 0,0,0 };
+			CoordStruct nBuffer{ 0,0,0 };
 			int speed = 0;
 			if (pFoot->Locomotor.GetInterfacePtr()->Is_Moving() && (speed = pFoot->GetCurrentSpeed()) > 0)
 			{
@@ -531,7 +531,7 @@ CoordStruct Helpers_DP::GetFLHAbsoluteCoords(TechnoClass* pTechno, const CoordSt
 Vector3D<float> Helpers_DP::GetFLHOffset(Matrix3D& matrix3D, CoordStruct& flh)
 {
 	matrix3D.Translate(static_cast<float>(flh.X), static_cast<float>(flh.Y), static_cast<float>(flh.Z));
-	Vector3D<float> result {};
+	Vector3D<float> result{};
 	Matrix3D::MatrixMultiply(&result, &matrix3D, &Vector3D<float>::Empty);
 	result.Y *= -1;
 	return result;
@@ -607,7 +607,7 @@ CoordStruct Helpers_DP::GetFLH(CoordStruct& source, CoordStruct& flh, DirStruct&
 		double xL = flip ? flh.Y : -flh.Y * Math::sin(radians);
 		double yL = flip ? flh.Y : -flh.Y * Math::cos(radians);
 
-		CoordStruct nZFLHBuff {
+		CoordStruct nZFLHBuff{
 			static_cast<int>(xF) + static_cast<int>(xL) ,
 			static_cast<int>(yF) + static_cast<int>(yL) ,
 			flh.Z
@@ -642,14 +642,13 @@ CoordStruct Helpers_DP::GetFLHAbsoluteCoords(ObjectClass* pObject, CoordStruct& 
 
 LocationMark Helpers_DP::GetRelativeLocation(ObjectClass* pOwner, OffsetData data, CoordStruct offset)
 {
-	if (!offset.IsValid())
-	{
+	if (!offset.IsValid()) {
 		offset = data.Offset;
 	}
 
 	if (data.IsOnWorld)
 	{
-		DirStruct targetDir = DirStruct { 0 };
+		DirStruct targetDir = DirStruct{ 0 };
 		CoordStruct targetPos = Helpers_DP::GetFLHAbsoluteCoords(pOwner->Location, offset, targetDir);
 		return { targetDir , targetPos };
 	}
@@ -668,7 +667,7 @@ LocationMark Helpers_DP::GetRelativeLocation(ObjectClass* pOwner, OffsetData dat
 			{
 				auto pBullet = static_cast<BulletClass*>(pOwner);
 				// 增加抛射体偏移值取下一帧所在实际位置
-				CoordStruct velocity { (int)pBullet->Velocity.X , (int)pBullet->Velocity.Y , (int)pBullet->Velocity.Z };
+				CoordStruct velocity{ (int)pBullet->Velocity.X , (int)pBullet->Velocity.Y , (int)pBullet->Velocity.Z };
 				CoordStruct sourcePos = pOwner->Location + velocity;
 				// 获取面向
 				DirStruct targetDir = Helpers_DP::Point2Dir(sourcePos, pBullet->TargetCoords);
@@ -686,12 +685,11 @@ std::optional<DirStruct> Helpers_DP::GetRelativeDir(ObjectClass* pOwner, int dir
 	if (!isOnWorld)
 	{
 		// 绑定世界坐标，朝向固定北向
-		return DirStruct {};
+		return DirStruct{};
 	}
 	else
 	{
-		if (pOwner->AbstractFlags & AbstractFlags::Techno)
-		{
+		if (pOwner->AbstractFlags & AbstractFlags::Techno) {
 			return Helpers_DP::GetDirectionRelative(static_cast<TechnoClass*>(pOwner), dir, isOnTurret);
 		}
 
@@ -712,7 +710,7 @@ std::optional<DirStruct> Helpers_DP::GetRelativeDir(ObjectClass* pOwner, int dir
 			// 增加抛射体偏移值取下一帧所在实际位置
 			CoordStruct sourcePos = pOwner->Location;
 			auto const pBullet = static_cast<BulletClass*>(pOwner);
-			CoordStruct nvel { (int)pBullet->Velocity.X ,(int)pBullet->Velocity.Y , (int)pBullet->Velocity.Z };
+			CoordStruct nvel{ (int)pBullet->Velocity.X ,(int)pBullet->Velocity.Y , (int)pBullet->Velocity.Z };
 			sourcePos += nvel;
 			// 获取面向
 			return Helpers_DP::Point2Dir(sourcePos, pBullet->TargetCoords);
@@ -734,8 +732,7 @@ DirStruct Helpers_DP::GetDirectionRelative(TechnoClass* pMaster, int dir, bool i
 		double targetRad = targetDir.GetRadian();
 		DirStruct sourceDir = pMaster->PrimaryFacing.Current();
 
-		if (auto const pLoco = locomotion_cast<JumpjetLocomotionClass*>(pFoot->Locomotor))
-		{
+		if (auto const pLoco = locomotion_cast<JumpjetLocomotionClass*>(pFoot->Locomotor)) {
 			sourceDir = pLoco->Facing.Current();
 		}
 
@@ -831,8 +828,7 @@ bool Helpers_DP::CanDamageMe(TechnoClass* pTechno, int damage, int distanceFromE
 			) < 0.001)
 				return false;
 
-			if (effectsRequireDamage || data->EffectsRequireDamage)
-			{
+			if (effectsRequireDamage || data->EffectsRequireDamage) {
 				return realDamage != 0;
 			}
 		}
@@ -845,8 +841,7 @@ CoordStruct Helpers_DP::RandomOffset(int min, int max)
 {
 	const double r = ScenarioClass::Instance->Random.RandomRanged(min, max);
 
-	if (r > 0)
-	{
+	if (r > 0) {
 		const double theta = ScenarioClass::Instance->Random.RandomDouble() * 2 * Math::PI;
 		return { (int)(r * Math::cos(theta)) ,(int)(r * Math::sin(theta)) , 0 };
 	}
@@ -876,25 +871,22 @@ CoordStruct Helpers_DP::GetInaccurateOffset(float scatterMin, float scatterMax)
 }
 
 VelocityClass Helpers_DP::GetBulletArcingVelocity(const CoordStruct& sourcePos, CoordStruct& targetPos,
-			double speed, int gravity, bool lobber, bool inaccurate, float scatterMin, float scatterMax,
-			int zOffset, ArcingVelocityData& outData)
+	double speed, int gravity, bool lobber, bool inaccurate, float scatterMin, float scatterMax,
+	int zOffset, ArcingVelocityData& outData)
 {
 	// 不精确
-	if (inaccurate)
-	{
+	if (inaccurate) {
 		targetPos += GetInaccurateOffset(scatterMin, scatterMax);
 	}
 
 	// 不潜地
 	outData.m_TargetCell = MapClass::Instance->TryGetCellAt(targetPos);
-	if (outData.m_TargetCell)
-	{
+	if (outData.m_TargetCell) {
 		targetPos.Z = outData.m_TargetCell->GetCoordsWithBridge().Z;
 	}
 
 	// 重算抛物线弹道
-	if (gravity == 0)
-	{
+	if (gravity == 0) {
 		gravity = RulesClass::Instance->Gravity;
 	}
 
@@ -913,19 +905,17 @@ VelocityClass Helpers_DP::GetBulletArcingVelocity(const CoordStruct& sourcePos, 
 		return  { 0.0 , 0.0 , (double)gravity };
 	}
 
-	if (outData.m_RealSpeed == 0.0)
-	{
+	if (outData.m_RealSpeed == 0.0) {
 		outData.m_RealSpeed = Math::sqrt(outData.m_StraightDistance * gravity * 1.2);
 	}
 
 	// 高抛弹道
-	if (lobber)
-	{
+	if (lobber) {
 		outData.m_RealSpeed = (int)(outData.m_RealSpeed * 0.5);
 	}
 
 	double vZ = (zDiff * outData.m_RealSpeed) / outData.m_StraightDistance + 0.5 * gravity * outData.m_StraightDistance / outData.m_RealSpeed;
-	VelocityClass v { (double)(tempTargetPos.X - tempSourcePos.X), (double)(tempTargetPos.Y - tempSourcePos.Y), 0.0 };
+	VelocityClass v{ (double)(tempTargetPos.X - tempSourcePos.X), (double)(tempTargetPos.Y - tempSourcePos.Y), 0.0 };
 	v *= outData.m_RealSpeed / outData.m_StraightDistance;
 	v.Z = vZ;
 	return v;
@@ -933,7 +923,7 @@ VelocityClass Helpers_DP::GetBulletArcingVelocity(const CoordStruct& sourcePos, 
 
 CoordStruct Helpers_DP::GetFLHAbsoluteCoords(TechnoClass* pTechno, CoordStruct& flh, bool isOnTurret, int flipY, bool nextFrame)
 {
-	CoordStruct turretOffset {};
+	CoordStruct turretOffset{};
 	auto const pType = pTechno->GetTechnoType();
 
 	if (isOnTurret)
@@ -961,19 +951,15 @@ TechnoClass* Helpers_DP::CreateAndPutTechno(TechnoTypeClass* pType, HouseClass* 
 		{
 			const auto occFlags = pCell->OccupationFlags;
 
-			if (!bPathfinding)
-			{
+			if (!bPathfinding) {
 				pTechno->OnBridge = pCell->ContainsBridge();
 				++Unsorted::ScenarioInit;
 				UnlimboSuccess = pTechno->Unlimbo(pCell->GetCoordsWithBridge(), DirType::East);
 				--Unsorted::ScenarioInit;
 			}
-			else
-			{
-				if (pType->WhatAmI() == BuildingTypeClass::AbsID)
-				{
-					if (!pCell->CanThisExistHere(pType->SpeedType, static_cast<BuildingTypeClass*>(pType), pHouse))
-					{
+			else {
+				if (pType->WhatAmI() == BuildingTypeClass::AbsID) {
+					if (!pCell->CanThisExistHere(pType->SpeedType, static_cast<BuildingTypeClass*>(pType), pHouse)) {
 						location = MapClass::Instance->GetRandomCoordsNear(location, 0, false);
 						pCell = MapClass::Instance->GetCellAt(location);
 					}
@@ -1013,7 +999,7 @@ void Helpers_DP::FireWeaponTo(TechnoClass* pShooter, TechnoClass* pAttacker, Abs
 	if (!pTarget)
 		return;
 
-	CoordStruct targetPos {};
+	CoordStruct targetPos{};
 	if (auto const pFoot = flag_cast_to<FootClass*>(pTarget))
 		targetPos = CellClass::Cell2Coord(pFoot->GetDestinationMapCoords());
 	else
@@ -1024,19 +1010,17 @@ void Helpers_DP::FireWeaponTo(TechnoClass* pShooter, TechnoClass* pAttacker, Abs
 
 	// radial fire
 	int burst = pWeapon->Burst;
-	RadialFireHelper radialFireHelper { pShooter, burst, splitAngle };
+	RadialFireHelper radialFireHelper{ pShooter, burst, splitAngle };
 	int flipY = -1;
 
 	for (int i = 0; i < burst; i++)
 	{
-		VelocityClass bulletVelocity { };
-		if (radialFire)
-		{
+		VelocityClass bulletVelocity{ };
+		if (radialFire) {
 			flipY = (i < burst / 2.0f) ? -1 : 1;
 			bulletVelocity = radialFireHelper.GetBulletVelocity(i);
 		}
-		else
-		{
+		else {
 			flipY *= -1;
 		}
 

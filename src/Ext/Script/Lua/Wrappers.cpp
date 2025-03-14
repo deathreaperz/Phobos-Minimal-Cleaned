@@ -105,10 +105,10 @@ struct _TechnoExtData
 
 struct LuaScript
 {
-	int Number {};
-	std::string Name {};
-	std::string Lua_Name {};
-	unique_luastate State {};
+	int Number{};
+	std::string Name{};
+	std::string Lua_Name{};
+	unique_luastate State{};
 
 	/*void Initialize(int number, const char* name)
 	{
@@ -145,12 +145,11 @@ struct LuaScript
 };
 
 //static std::vector<LuaScript> LuaScripts {};
-struct PairOfNumbers
-{
+struct PairOfNumbers {
 	int Original;
 	int Alternate;
 };
-static std::vector<PairOfNumbers> SriptNumbers {};
+static std::vector<PairOfNumbers> SriptNumbers{};
 
 bool LuaBridge::OnCalled(TeamClass* pTeam)
 {
@@ -193,8 +192,7 @@ void LuaBridge::InitScriptLuaList(unique_luastate& sol_state)
 	if (luaL_dofile(L, filename.c_str()) == LUA_OK)
 	{
 		lua_getglobal(L, "Scripts");
-		if (lua_istable(L, -1))
-		{
+		if (lua_istable(L, -1)) {
 			const size_t scriptSize = (size_t)lua_rawlen(L, -1);
 			SriptNumbers.resize(scriptSize);
 			for (size_t i = 0; i < scriptSize; i++)
@@ -224,15 +222,12 @@ void LuaBridge::InitScriptLuaList(unique_luastate& sol_state)
 
 #include <Ext/Script/Body.h>
 
-DEFINE_HOOK(0x69192E, ScriptTypeClass_Read_INI_TeamMission, 0x7)
-{
+DEFINE_HOOK(0x69192E, ScriptTypeClass_Read_INI_TeamMission, 0x7) {
 	GET(ScriptTypeClass*, pThis, ESI);
 	GET(int, team, ECX);
 
-	for (auto& cur : SriptNumbers)
-	{
-		if (cur.Alternate == team)
-		{
+	for (auto& cur : SriptNumbers) {
+		if (cur.Alternate == team) {
 			Debug::LogInfo("[{}]Replacing TMission[{} to{}]", pThis->ID, team, cur.Original);
 			R->ECX(cur.Original);
 			return 0x0;

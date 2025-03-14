@@ -82,8 +82,7 @@ DEFINE_HOOK(0x417FF1, AircraftClass_Mission_Attack_StrafeShots, 0x6)
 
 	int weaponIndex = pExt->CurrentAircraftWeaponIndex;
 
-	if (weaponIndex < 0)
-	{
+	if (weaponIndex < 0) {
 		pExt->CurrentAircraftWeaponIndex = weaponIndex = pThis->SelectWeapon(pThis->Target);
 	}
 
@@ -100,12 +99,9 @@ DEFINE_HOOK(0x417FF1, AircraftClass_Mission_Attack_StrafeShots, 0x6)
 
 	int count = pWeaponExt->Strafing_Shots.Get(5);
 
-	if (count > 5)
-	{
-		if (pThis->MissionStatus == (int)AirAttackStatus::FireAtTarget3_Strafe)
-		{
-			if ((count - 3 - pExt->ShootCount) > 0)
-			{
+	if (count > 5) {
+		if (pThis->MissionStatus == (int)AirAttackStatus::FireAtTarget3_Strafe) {
+			if ((count - 3 - pExt->ShootCount) > 0) {
 				pThis->MissionStatus = (int)AirAttackStatus::FireAtTarget2_Strafe;
 			}
 		}
@@ -401,15 +397,13 @@ static FORCEDINLINE bool CheckSpyPlaneCameraCount(AircraftClass* pThis, WeaponTy
 	return true;
 }
 
-DEFINE_HOOK(0x41564C, AircraftClass_Mission_SpyPlaneApproach_MaxCount, 0x6)
-{
+DEFINE_HOOK(0x41564C, AircraftClass_Mission_SpyPlaneApproach_MaxCount, 0x6) {
 	GET(AircraftClass*, pThis, ESI);
 	GET(int, range, EBX);
 
 	const auto pPrimary = pThis->GetWeapon(0);
 
-	if (range <= pPrimary->WeaponType->Range.value)
-	{
+	if (range <= pPrimary->WeaponType->Range.value) {
 		if (!CheckSpyPlaneCameraCount(pThis, pPrimary->WeaponType))
 			return 0x41570C;
 
@@ -437,8 +431,7 @@ DEFINE_HOOK(0x4157D3, AircraftClass_Mission_SpyPlaneOverfly_MaxCount, 0x6)
 
 	const auto pPrimary = pThis->GetWeapon(0);
 
-	if (range <= pPrimary->WeaponType->Range.value)
-	{
+	if (range <= pPrimary->WeaponType->Range.value) {
 		if (!CheckSpyPlaneCameraCount(pThis, pPrimary->WeaponType))
 			return 0x415863;
 
@@ -462,8 +455,7 @@ DEFINE_HOOK(0x41A96C, AircraftClass_Mission_AreaGuard, 0x6)
 
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	if (pExt->MyFighterData)
-	{
+	if (pExt->MyFighterData) {
 		pExt->MyFighterData->StartAreaGuard();
 		return SkipGameCode;
 	}
@@ -513,7 +505,7 @@ DEFINE_HOOK(0x416A0A, AircraftClass_Mission_Move_SmoothMoving, 0x5)
 	if (!pType->AirportBound || pThis->Airstrike || pThis->Spawned)
 		return 0;
 
-	const int distance = int(Point2D { pCoords->X, pCoords->Y }.DistanceFrom(Point2D { pThis->Location.X, pThis->Location.Y }));
+	const int distance = int(Point2D{ pCoords->X, pCoords->Y }.DistanceFrom(Point2D{ pThis->Location.X, pThis->Location.Y }));
 
 	if (distance > MaxImpl((pType->SlowdownDistance >> 1), (2048 / pType->ROT)))
 		return (R->Origin() == 0x4168C7 ? ContinueMoving1 : ContinueMoving2);
@@ -573,11 +565,9 @@ DEFINE_HOOK(0x414D36, AircraftClass_Update_ClearTargetIfNoAmmo, 0x6)
 
 	GET(AircraftClass* const, pThis, ESI);
 
-	if (RulesExtData::Instance()->ExpandAircraftMission)
-	{
+	if (RulesExtData::Instance()->ExpandAircraftMission) {
 		if (!pThis->Spawned && !pThis->Airstrike &&
-			!pThis->Ammo && !SessionClass::IsCampaign())
-		{
+			!pThis->Ammo && !SessionClass::IsCampaign()) {
 			if (TeamClass* const pTeam = pThis->Team)
 				pTeam->LiberateMember(pThis);
 
@@ -590,8 +580,7 @@ DEFINE_HOOK(0x414D36, AircraftClass_Update_ClearTargetIfNoAmmo, 0x6)
 
 AbstractClass* FakeAircraftClass::_GreatestThreat(ThreatType threatType, CoordStruct* pSelectCoords, bool onlyTargetHouseEnemy)
 {
-	if (RulesExtData::Instance()->ExpandAircraftMission)
-	{
+	if (RulesExtData::Instance()->ExpandAircraftMission) {
 		if (WeaponTypeClass* const pPrimaryWeapon = this->GetWeapon(0)->WeaponType)
 			threatType |= pPrimaryWeapon->AllowedThreats();
 
@@ -605,8 +594,7 @@ AbstractClass* FakeAircraftClass::_GreatestThreat(ThreatType threatType, CoordSt
 #include <Misc/DynamicPatcher/Techno/AircraftDive/AircraftDiveFunctional.h>
 #include <Misc/DynamicPatcher/Techno/AircraftPut/AircraftPutDataFunctional.h>
 
-void FakeAircraftClass::_FootClass_Update_Wrapper()
-{
+void FakeAircraftClass::_FootClass_Update_Wrapper() {
 	auto pExt = TechnoExtContainer::Instance.Find(this);
 
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(this->Type);

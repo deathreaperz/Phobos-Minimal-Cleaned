@@ -6,8 +6,7 @@
 // load / save
 
 template <typename T>
-void TemporalExtData::Serialize(T& Stm)
-{
+void TemporalExtData::Serialize(T& Stm) {
 	Stm
 		.Process(this->Initialized)
 		;

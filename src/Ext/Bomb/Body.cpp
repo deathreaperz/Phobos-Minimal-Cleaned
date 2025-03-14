@@ -9,8 +9,7 @@
 // load / save
 
 template <typename T>
-void BombExtData::Serialize(T& Stm)
-{
+void BombExtData::Serialize(T& Stm) {
 	Stm
 		.Process(this->Initialized)
 		.Process(this->Weapon, true)

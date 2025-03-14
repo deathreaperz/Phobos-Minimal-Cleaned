@@ -11,15 +11,15 @@
 #include <Misc/Spawner/ProtocolZero.h>
 #include <IPXManagerClass.h>
 
-EventExt::ManualReload::ManualReload(TechnoClass* pTechno) : Who { pTechno }
-{ }
+EventExt::ManualReload::ManualReload(TechnoClass* pTechno) : Who{ pTechno }
+{
+}
 
 void EventExt::ManualReload::Raise(TechnoClass* pTechno)
 {
-	EventClass Event {};
+	EventClass Event{};
 
-	if (pTechno->Owner->ArrayIndex >= 0)
-	{
+	if (pTechno->Owner->ArrayIndex >= 0) {
 		Event.Type = AsEventType();
 		Event.HouseIndex = byte(pTechno->Owner->ArrayIndex);
 	}
@@ -56,12 +56,13 @@ void EventExt::ManualReload::Respond(EventClass* Event)
 }
 
 EventExt::TrenchRedirectClick::TrenchRedirectClick(CellStruct* target, BuildingClass* source)
-	: TargetCell { target }, Source { source }
-{ }
+	: TargetCell{ target }, Source{ source }
+{
+}
 
 void EventExt::TrenchRedirectClick::Raise(BuildingClass* Source, CellStruct* Target)
 {
-	EventClass Event {};
+	EventClass Event{};
 
 	if (Source->Owner->ArrayIndex >= 0)
 	{
@@ -95,8 +96,9 @@ int EventExt::ProtocolZero::WorstMaxAhead = 24;
 unsigned char EventExt::ProtocolZero::MaxLatencyLevel = 0xff;
 
 EventExt::ProtocolZero::ProtocolZero(char maxahead, uint8_t latencylevel)
-	: MaxAhead { maxahead }, LatencyLevel { latencylevel }
-{ }
+	: MaxAhead{ maxahead }, LatencyLevel{ latencylevel }
+{
+}
 
 void EventExt::ProtocolZero::Raise()
 {
@@ -113,7 +115,7 @@ void EventExt::ProtocolZero::Raise()
 	if (ipxResponseTime <= -1)
 		return;
 
-	EventClass event {};
+	EventClass event{};
 	event.Type = ProtocolZero::AsEventType();
 	event.HouseIndex = (char)HouseClass::CurrentPlayer->ArrayIndex;
 	event.Frame = currentFrame + Game::Network::MaxAhead;
@@ -182,7 +184,7 @@ void EventExt::ProtocolZero::Respond(EventClass* Event)
 
 void EventExt::FirewallToggle::Raise(HouseClass* Source)
 {
-	EventClass Event {};
+	EventClass Event{};
 
 	Event.Type = AsEventType();
 	Event.HouseIndex = byte(Source->ArrayIndex);

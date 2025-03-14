@@ -51,7 +51,8 @@ void RulesExtData::Remove(RulesClass* pThis)
 }
 
 void RulesExtData::Initialize()
-{ }
+{
+}
 
 void RulesExtData::ReplaceVoxelLightSources()
 {
@@ -76,17 +77,18 @@ void RulesExtData::ReplaceVoxelLightSources()
 }
 
 void RulesExtData::LoadVeryEarlyBeforeAnyData(RulesClass* pRules, CCINIClass* pINI)
-{ }
+{
+}
 
 void RulesExtData::LoadEndOfAudioVisual(RulesClass* pRules, CCINIClass* pINI)
 {
 	INI_EX iniEX(pINI);
 	auto pData = RulesExtData::Instance();
 
-	Nullable<double> Shield_ConditionGreen_d {};
-	Nullable<double> Shield_ConditionYellow_d {};
-	Nullable<double> Shield_ConditionRed_d {};
-	Nullable<double> ConditionYellow_Terrain_d {};
+	Nullable<double> Shield_ConditionGreen_d{};
+	Nullable<double> Shield_ConditionYellow_d{};
+	Nullable<double> Shield_ConditionRed_d{};
+	Nullable<double> ConditionYellow_Terrain_d{};
 
 	Shield_ConditionGreen_d.Read(iniEX, GameStrings::AudioVisual(), "Shield.ConditionGreen");// somewhat never used , man
 	Shield_ConditionYellow_d.Read(iniEX, GameStrings::AudioVisual(), "Shield.ConditionYellow");
@@ -142,10 +144,7 @@ void RulesExtData::s_LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	TrailType::LoadFromINIList(&CCINIClass::INI_Art.get());
 
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-	{
-		RadTypeClass::LoadFromINIOnlyTheList(pINI);
-	}
+	RadTypeClass::LoadFromINIOnlyTheList(pINI);
 
 	ShieldTypeClass::LoadFromINIOnlyTheList(pINI);
 	HoverTypeClass::LoadFromINIOnlyTheList(pINI);
@@ -162,8 +161,7 @@ void RulesExtData::s_LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 		Data->HugeBar_Config.push_back(std::move(std::make_unique<HugeBar>(DisplayInfoType::Shield)));
 	}
 
-	for (auto& huge_bar : Data->HugeBar_Config)
-	{
+	for (auto& huge_bar : Data->HugeBar_Config) {
 		huge_bar->LoadFromINI(pINI);
 	}
 
@@ -289,10 +287,8 @@ static bool NOINLINE IsVanillaDummy(const char* ID)
 #include <Ext/SWType/NewSuperWeaponType/NewSWType.h>
 
 template<typename T>
-static COMPILETIMEEVAL void FillSecrets(DynamicVectorClass<T>& secrets)
-{
-	for (auto Option : secrets)
-	{
+static COMPILETIMEEVAL void FillSecrets(DynamicVectorClass<T>& secrets) {
+	for (auto Option : secrets) {
 		RulesExtData::Instance()->Secrets.emplace_back(Option);
 		Debug::LogInfo("Adding [{} - {}] onto Global Secrets pool", Option->ID, Option->GetThisClassName());
 	}
@@ -345,7 +341,7 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		if (pItem->Sight < 0)
 		{
 			Debug::LogInfo("TechnoType[{} - {}] , registered with less than 0 Sight , Fixing.",
-			pItem->ID, myClassName);
+				pItem->ID, myClassName);
 			Debug::RegisterParserError();
 			pItem->Sight = 0;
 		}
@@ -376,8 +372,8 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		if (pItem->DebrisTypes.Count > 0 && pItem->DebrisMaximums.Count < pItem->DebrisTypes.Count)
 		{
 			Debug::LogInfo("TechnoType[{} - {}] DebrisMaximums items count is less than"
-			" DebrisTypes items count it will fail when the index counter reached DebrisMaximus items count"
-			, pItem->ID, myClassName
+				" DebrisTypes items count it will fail when the index counter reached DebrisMaximus items count"
+				, pItem->ID, myClassName
 			);
 			Debug::RegisterParserError();
 		}
@@ -527,7 +523,7 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 			{
 				pBExt->CloningFacility = false;
 				Debug::LogInfo("[{}] cannot have both CloningFacility= and Factory=.",
-				pItem->ID);
+					pItem->ID);
 			}
 
 			const auto  techLevel = pItem->TechLevel;
@@ -543,8 +539,8 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 						? "Combat" : "Infrastructure";
 
 					Debug::LogInfo("Building Type [{}] does not have a valid BuildCat set!"
-							   "It was reset to {}, but you should really specify it "
-							   "explicitly.", pBType->ID, catName);
+						"It was reset to {}, but you should really specify it "
+						"explicitly.", pBType->ID, catName);
 					Debug::RegisterParserError();
 				}
 			}
@@ -574,7 +570,7 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		const auto pExt = WeaponTypeExtContainer::Instance.Find(pItem);
 
 		if ((pItem->IsRailgun || pExt->IsDetachedRailgun || pItem->UseSparkParticles || pItem->UseFireParticles)
-				&& !pItem->AttachedParticleSystem)
+			&& !pItem->AttachedParticleSystem)
 		{
 			Debug::LogInfo("Weapon[{}] is an Railgun/Detached Railgun/UseSparkParticles/UseFireParticles but it missing AttachedParticleSystem", pItem->ID);
 			Debug::RegisterParserError();
@@ -626,12 +622,10 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		}
 	}
 
-	for (auto pBullet : *BulletTypeClass::Array)
-	{
+	for (auto pBullet : *BulletTypeClass::Array) {
 		auto pExt = BulletTypeExtContainer::Instance.Find(pBullet);
 
-		if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke)
-		{
+		if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke) {
 			Debug::LogInfo("Bullet[{}] With AttachedSystem[{}] is not BehavesLike=Smoke!", pBullet->ID, pExt->AttachedSystem->ID);
 			Debug::RegisterParserError();
 		}
@@ -652,7 +646,7 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 	for (auto pSuper : *SuperWeaponTypeClass::Array)
 	{
 		const auto pSuperExt = SWTypeExtContainer::Instance.Find(pSuper);
-		Nullable<MouseCursor> _Temp_MouseCursor {};
+		Nullable<MouseCursor> _Temp_MouseCursor{};
 
 		{
 			//if (auto pNew = pSuperExt->GetNewSWType()) {
@@ -676,20 +670,16 @@ DEFINE_HOOK(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 
 			Helpers::Alex::remove_non_paradroppables(pSuperExt->DropPod_Types, pSuper->ID, "DropPod.Types");
 
-			for (auto& para : pSuperExt->ParaDropDatas)
-			{
-				for (auto& pVec : para.second)
-				{
+			for (auto& para : pSuperExt->ParaDropDatas) {
+				for (auto& pVec : para.second) {
 					Helpers::Alex::remove_non_paradroppables(pVec.Types, pSuper->ID, "ParaDrop.Types");
 				}
 			}
 		}
 	}
 
-	for (auto pAnim : *AnimTypeClass::Array)
-	{
-		if (!pAnim->GetImage())
-		{
+	for (auto pAnim : *AnimTypeClass::Array) {
+		if (!pAnim->GetImage()) {
 			Debug::LogInfo("Anim[{}] Has no proper Image!", pAnim->ID);
 			Debug::RegisterParserError();
 		}
@@ -711,10 +701,7 @@ void RulesExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	CursorTypeClass::AddDefaults();
 	CrateTypeClass::AddDefaults();
 	ArmorTypeClass::AddDefaults();
-
-	if (!Phobos::Otamaa::DisableCustomRadSite)
-		RadTypeClass::AddDefaults();
-
+	RadTypeClass::AddDefaults();
 	GenericPrerequisite::AddDefaults();
 	HoverTypeClass::AddDefaults();
 	ShieldTypeClass::AddDefaults();
@@ -834,7 +821,7 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	if (pINI->ReadString("GlobalControls", "AllowBypassBuildLimit", "", Phobos::readBuffer) > 0)
 	{
-		bool temp[3] {};
+		bool temp[3]{};
 		for (int i = 0; i < (int)Parser<bool, 3>::Parse(Phobos::readBuffer, temp); ++i)
 		{
 			int diffIdx = 2 - i; // remapping so that HouseClass::AIDifficulty can be used as an index
@@ -1064,8 +1051,7 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	this->CloakHeight.Read(exINI, GameStrings::General(), "CloakHeight");
 
-	if (Phobos::Config::ShowFlashOnSelecting)
-	{
+	if (Phobos::Config::ShowFlashOnSelecting) {
 		this->SelectFlashTimer.Read(exINI, GameStrings::AudioVisual, "SelectFlashTimer");
 		this->SelectFlashTimer.Read(exINI, GameStrings::AudioVisual, "SelectionFlashDuration");
 	}
@@ -1083,10 +1069,12 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 }
 
 void RulesExtData::LoadEarlyOptios(RulesClass* pThis, CCINIClass* pINI)
-{ }
+{
+}
 
 void RulesExtData::LoadEarlyBeforeColor(RulesClass* pThis, CCINIClass* pINI)
-{ }
+{
+}
 
 bool RulesExtData::DetailsCurrentlyEnabled()
 {
@@ -1111,7 +1099,8 @@ void RulesExtData::LoadBeforeGeneralData(RulesClass* pThis, CCINIClass* pINI)
 }
 
 void RulesExtData::LoadAfterAllLogicData(RulesClass* pThis, CCINIClass* pINI)
-{ }
+{
+}
 
 // =============================
 // load / save
@@ -1125,7 +1114,7 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->Initialized)
 
 		.Process(Phobos::Config::ArtImageSwap)
-		.Process(Phobos::Otamaa::DisableCustomRadSite)
+
 		.Process(Phobos::Config::ShowTechnoNamesIsActive)
 		.Process(Phobos::Misc::CustomGS)
 		.Process(Phobos::Config::ApplyShadeCountFix)
@@ -1575,7 +1564,6 @@ DEFINE_HOOK(0x675205, RulesClass_Save_Suffix, 0x8)
 	auto buffer = RulesExtData::Instance();
 	/* 7 extra boolean that added to the save
 		.Process(Phobos::Config::ArtImageSwap)
-		.Process(Phobos::Otamaa::DisableCustomRadSite)
 		.Process(Phobos::Config::ShowTechnoNamesIsActive)
 		.Process(Phobos::Misc::CustomGS)
 		.Process(Phobos::Config::ApplyShadeCountFix)
@@ -1583,7 +1571,7 @@ DEFINE_HOOK(0x675205, RulesClass_Save_Suffix, 0x8)
 		.Process(Phobos::Config::UnitPoweDrain)
 	*/
 	// negative 4 for the AttachedToObjectPointer , it doesnot get S/L
-	PhobosByteStream saver((sizeof(RulesExtData) - 4u) + (7 * (sizeof(bool))));
+	PhobosByteStream saver((sizeof(RulesExtData) - 4u) + (6 * (sizeof(bool))));
 	PhobosStreamWriter writer(saver);
 
 	writer.Save(RulesExtData::Canary);
@@ -1668,15 +1656,13 @@ void FakeRulesClass::_ReadGeneral(CCINIClass* pINI)
 	this->Read_General(pINI);
 	RocketTypeClass::ReadListFromINI(pINI);
 
-	SideClass::Array->for_each([pINI](SideClass* pSide)
- {
-	 SideExtContainer::Instance.LoadFromINI(pSide, pINI, !pINI->GetSection(pSide->ID));
-	});
+	SideClass::Array->for_each([pINI](SideClass* pSide) {
+		SideExtContainer::Instance.LoadFromINI(pSide, pINI, !pINI->GetSection(pSide->ID));
+		});
 
-	HouseTypeClass::Array->for_each([pINI](HouseTypeClass* pHouse)
- {
-	 HouseTypeExtContainer::Instance.LoadFromINI(pHouse, pINI, !pINI->GetSection(pHouse->ID));
-	});
+	HouseTypeClass::Array->for_each([pINI](HouseTypeClass* pHouse) {
+		HouseTypeExtContainer::Instance.LoadFromINI(pHouse, pINI, !pINI->GetSection(pHouse->ID));
+		});
 
 	// All TypeClass Created but not yet read INI
 	//	RulesClass::Initialized = true;
@@ -1688,23 +1674,19 @@ void FakeRulesClass::_ReadGeneral(CCINIClass* pINI)
 	// add more if needed , it will double the error log at some point
 	// but it will take care some of missing stuffs that previously loaded late
 
-	for (auto pWeapon : *WeaponTypeClass::Array)
-	{
+	for (auto pWeapon : *WeaponTypeClass::Array) {
 		pWeapon->LoadFromINI(pINI);
 	}
 
-	for (auto pBullet : *BulletTypeClass::Array)
-	{
+	for (auto pBullet : *BulletTypeClass::Array) {
 		pBullet->LoadFromINI(pINI);
 	}
 
-	for (auto pWarhead : *WarheadTypeClass::Array)
-	{
+	for (auto pWarhead : *WarheadTypeClass::Array) {
 		pWarhead->LoadFromINI(pINI);
 	}
 
-	for (auto pAnims : *AnimTypeClass::Array)
-	{
+	for (auto pAnims : *AnimTypeClass::Array) {
 		pAnims->LoadFromINI(pINI);
 	}
 
@@ -1712,8 +1694,7 @@ void FakeRulesClass::_ReadGeneral(CCINIClass* pINI)
 	this->Read_Difficulties(pINI);
 	RulesExtData::LoadAfterAllLogicData(this, pINI);
 
-	for (auto pTib : *TiberiumClass::Array)
-	{
+	for (auto pTib : *TiberiumClass::Array) {
 		//Debug::LogInfo("Reading Tiberium[{}] Configurations!", pTib->ID);
 		pTib->LoadFromINI(pINI);
 	}
@@ -1759,33 +1740,31 @@ DEFINE_HOOK(0x683E21, ScenarioClass_StartScenario_LogHouses, 0x5)
 {
 	Debug::LogInfo("Scenario Map Name [{}] ", SessionClass::IsCampaign() || ScenarioExtData::Instance()->OriginalFilename->empty() ? SessionClass::Instance->ScenarioFilename : ScenarioExtData::Instance()->OriginalFilename->c_str());
 
-	if (auto pPlayerSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex))
-	{
-		if (auto pSideMouse = SideExtContainer::Instance.Find(pPlayerSide)->MouseShape)
-		{
+	if (auto pPlayerSide = SideClass::Array->GetItemOrDefault(ScenarioClass::Instance->PlayerSideIndex)) {
+		if (auto pSideMouse = SideExtContainer::Instance.Find(pPlayerSide)->MouseShape) {
 			GameDelete<true, true>(std::exchange(MouseClass::ShapeData(), pSideMouse));
 		}
 	}
 
 	HouseClass::Array->for_each([](HouseClass* it)
- {
-	 const auto pType = HouseTypeClass::Array->GetItemOrDefault(it->Type->ArrayIndex);
-	 Debug::LogInfo("Player Name: {} IsCurrentPlayer: {}; ColorScheme: {}({}); ID: {}; HouseType: {}; Edge: {}; StartingAllies: {}; Startspot: {},{}; Visionary: {}; MapIsClear: {}; Money: {}",
-	 it->PlainName ? it->PlainName : GameStrings::NoneStr(),
-	 it->IsHumanPlayer,
-	 ColorScheme::Array->Items[it->ColorSchemeIndex]->ID,
-	 it->ColorSchemeIndex,
-	 it->ArrayIndex,
-	 pType ? pType->Name : GameStrings::NoneStr(),
-	 (int)it->Edge,
-	 (int)it->StartingAllies.data,
-	 it->StartingCell.X,
-	 it->StartingCell.Y,
-	 (bool)it->Visionary,
-	 it->MapIsClear,
-	 it->Available_Money()
-	 );
-	});
+		{
+			const auto pType = HouseTypeClass::Array->GetItemOrDefault(it->Type->ArrayIndex);
+			Debug::LogInfo("Player Name: {} IsCurrentPlayer: {}; ColorScheme: {}({}); ID: {}; HouseType: {}; Edge: {}; StartingAllies: {}; Startspot: {},{}; Visionary: {}; MapIsClear: {}; Money: {}",
+				it->PlainName ? it->PlainName : GameStrings::NoneStr(),
+				it->IsHumanPlayer,
+				ColorScheme::Array->Items[it->ColorSchemeIndex]->ID,
+				it->ColorSchemeIndex,
+				it->ArrayIndex,
+				pType ? pType->Name : GameStrings::NoneStr(),
+				(int)it->Edge,
+				(int)it->StartingAllies.data,
+				it->StartingCell.X,
+				it->StartingCell.Y,
+				(bool)it->Visionary,
+				it->MapIsClear,
+				it->Available_Money()
+			);
+		});
 
 	//Debug::LogInfo(GameStrings::Init_Commands);
 	//CommandClass::InitCommand();
@@ -1814,7 +1793,7 @@ DEFINE_HOOK(0x685005, Game_InitData_GlobalParticleSystem, 0x5)
 	if (pGlobalType->Lifetime != -1)
 		Debug::FatalErrorAndExit("DefaultGlobalParticleInstance[{}] Lifetime must be -1 , otherwise it will crash the game !", pGlobalType->ID);
 
-	COMPILETIMEEVAL CoordStruct dummycoord { 2688  , 2688  , 0 };
+	COMPILETIMEEVAL CoordStruct dummycoord{ 2688  , 2688  , 0 };
 	pMem->ParticleSystemClass::ParticleSystemClass(pGlobalType.Get(), dummycoord, nullptr, nullptr, CoordStruct::Empty, nullptr);
 	R->EAX(pMem);
 	return 0x685040;

@@ -27,8 +27,7 @@ DEFINE_HOOK(0x550F47, LaserDrawClass_DrawInHouseColor_BetterDrawing, 0x5) //0
 	GET_STACK(int, currentThickness, 0x5C)
 
 		double mult = 1.0;
-	if (pThis->Thickness > 1)
-	{
+	if (pThis->Thickness > 1) {
 		double falloffStep = 1.0 / pThis->Thickness;
 		double falloffMult = GeneralUtils::SecsomeFastPow(1.0 - falloffStep, currentThickness);
 		mult = (1.0 - falloffStep * currentThickness) * falloffMult;

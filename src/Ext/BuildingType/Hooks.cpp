@@ -43,8 +43,7 @@ DEFINE_HOOK(0x45387A, BuildingClass_FireOffset_Replace_MuzzleFix, 0x6) // A
 {
 	GET(FakeBuildingClass*, pThis, ESI);
 
-	if (pThis->Type->MaxNumberOccupants > 10)
-	{
+	if (pThis->Type->MaxNumberOccupants > 10) {
 		R->EDX(pThis->_GetTypeExtData()->OccupierMuzzleFlashes.data() + pThis->FiringOccupantIndex);
 	}
 
@@ -55,8 +54,7 @@ DEFINE_HOOK(0x458623, BuildingClass_KillOccupiers_Replace_MuzzleFix, 0x7)
 {
 	GET(FakeBuildingClass*, pThis, ESI);
 
-	if (pThis->Type->MaxNumberOccupants > 10)
-	{
+	if (pThis->Type->MaxNumberOccupants > 10) {
 		GET(int, nFiringIndex, EDI);
 		R->ECX(pThis->_GetTypeExtData()->OccupierMuzzleFlashes.data() + nFiringIndex);
 	}
@@ -84,11 +82,11 @@ DEFINE_HOOK(0x47EFAE, CellClass_Draw_It_MakePlacementGridTranparent, 0x6)
 bool FORCEDINLINE CanBePlacedHere(DisplayClass* pThis, BuildingTypeClass* pBld, int nHouse, CellStruct* pPlace, CellStruct* pTry)
 {
 	if (nHouse != HouseClass::CurrentPlayer->ArrayIndex
-	  || Unsorted::ArmageddonMode
-	  || !pPlace
-	  || !pTry->IsValid()
-	  || !pBld
-	  || pBld->WhatAmI() != BuildingTypeClass::AbsID)
+		|| Unsorted::ArmageddonMode
+		|| !pPlace
+		|| !pTry->IsValid()
+		|| !pBld
+		|| pBld->WhatAmI() != BuildingTypeClass::AbsID)
 	{
 		return true;
 	}
@@ -117,12 +115,12 @@ bool FORCEDINLINE CanBePlacedHere(DisplayClass* pThis, BuildingTypeClass* pBld, 
 			{
 				do
 				{
-					CellStruct coord { (short)xpos  , (short)ypos };
+					CellStruct coord{ (short)xpos  , (short)ypos };
 
 					if ((short)xpos < cellx
-					  || (short)xpos >= cellx + width_2
-					  || (short)ypos < celly_1
-					  || (short)ypos >= (int)height + celly_1)
+						|| (short)xpos >= cellx + width_2
+						|| (short)ypos < celly_1
+						|| (short)ypos >= (int)height + celly_1)
 					{
 						auto cellofcoord = MapClass::Instance->GetCellAt(coord);
 						if (auto base = cellofcoord->GetBuilding())
@@ -143,15 +141,12 @@ bool FORCEDINLINE CanBePlacedHere(DisplayClass* pThis, BuildingTypeClass* pBld, 
 								goto continue_bld;
 
 							auto owner = base->Owner;
-							if (owner->ArrayIndex == nHouse && base->Type->BaseNormal && !BuildingExtContainer::Instance.Find(base)->IsFromSW)
-							{
+							if (owner->ArrayIndex == nHouse && base->Type->BaseNormal && !BuildingExtContainer::Instance.Find(base)->IsFromSW) {
 								retval = 1;
 							}
 
-							if (GameModeOptionsClass::Instance->BuildOffAlly && owner->IsAlliedWith(HouseClass::Array->Items[nHouse]))
-							{
-								if (base->Type->EligibileForAllyBuilding)
-								{
+							if (GameModeOptionsClass::Instance->BuildOffAlly && owner->IsAlliedWith(HouseClass::Array->Items[nHouse])) {
+								if (base->Type->EligibileForAllyBuilding) {
 									retval = 1;
 								}
 							}
@@ -160,20 +155,17 @@ bool FORCEDINLINE CanBePlacedHere(DisplayClass* pThis, BuildingTypeClass* pBld, 
 				continue_bld:
 					ymax1 = ymax;
 					++ypos;
-				}
-				while (ypos < (int)ymax);
+				} while (ypos < (int)ymax);
 				xmax = xmax_org;
 			}
 			++xpos;
-		}
-		while (xpos < xmax);
+		} while (xpos < xmax);
 	}
 	return retval;
 }
 #ifndef Original
 
-DEFINE_HOOK(0x4A8EB0, DisplayClass_BuildingProximityCheck_Override, 0x5)
-{
+DEFINE_HOOK(0x4A8EB0, DisplayClass_BuildingProximityCheck_Override, 0x5) {
 	GET(DisplayClass*, pThis, ECX);
 	GET_STACK(BuildingTypeClass*, pObj, 0x4);
 	GET_STACK(int, house, 0x8);
@@ -184,18 +176,13 @@ DEFINE_HOOK(0x4A8EB0, DisplayClass_BuildingProximityCheck_Override, 0x5)
 }
 
 template<typename Arr>
-void CountPowerOf(HouseClass* pHouse, CounterClass<GameAllocator<int>>& counter)
-{
-	if (counter.IsAllocated)
-	{
-		for (int a = 0; a < counter.Capacity; ++a)
-		{
-			if (counter.Items[a] > 0)
-			{
+void CountPowerOf(HouseClass* pHouse, CounterClass<GameAllocator<int>>& counter) {
+	if (counter.IsAllocated) {
+		for (int a = 0; a < counter.Capacity; ++a) {
+			if (counter.Items[a] > 0) {
 				const auto pExt = TechnoTypeExtContainer::Instance.Find(Arr::Array->Items[a]);
 
-				if (pExt->Power.isset())
-				{
+				if (pExt->Power.isset()) {
 					if (pExt->Power > 0)
 						pHouse->PowerOutput += pExt->Power * counter.Items[a];
 					else
@@ -221,8 +208,7 @@ DEFINE_HOOK(0x508D8D, HouseClass_UpdatePower_Techno, 0x6)
 {
 	GET(HouseClass*, pThis, ESI);
 
-	if (Phobos::Config::UnitPowerDrain)
-	{
+	if (Phobos::Config::UnitPowerDrain) {
 		CountPowerOf<AircraftTypeClass>(pThis, pThis->ActiveAircraftTypes);
 		CountPowerOf<InfantryTypeClass>(pThis, pThis->ActiveInfantryTypes);
 		CountPowerOf<UnitTypeClass>(pThis, pThis->ActiveUnitTypes);

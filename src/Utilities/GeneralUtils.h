@@ -65,9 +65,11 @@ public:
 			Idx = ScenarioClass::Instance->Random.RandomFromMax(count - 1);
 		else
 		{
-			if (count >= 8)
+			Idx = count - 1;
+			if (count >= 8 && count % 2 == 0)
 			{
-				Idx = count % 2 == 0 ? Idx *= static_cast<int>(facing / 256.0) : count;
+				Idx *= static_cast<int>(facing / 256.0);
+				Idx %= count;
 			}
 		}
 	}

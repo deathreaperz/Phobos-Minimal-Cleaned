@@ -8,19 +8,16 @@
 
 void TerrainExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
-	if (this->LighSource.get() == ptr)
-	{
+	if (this->LighSource.get() == ptr) {
 		this->LighSource.release();
 	}
 
-	if (this->AttachedAnim.get() == ptr)
-	{
+	if (this->AttachedAnim.get() == ptr) {
 		this->AttachedAnim.release();
 	}
 }
 
-bool TerrainExtData::CanMoveHere(TechnoClass* pThis, TerrainClass* pTerrain)
-{
+bool TerrainExtData::CanMoveHere(TechnoClass* pThis, TerrainClass* pTerrain) {
 	const auto pExt = TerrainTypeExtContainer::Instance.Find(pTerrain->Type);
 
 	if (pExt->IsPassable)
@@ -148,16 +145,13 @@ DEFINE_HOOK(0x71BCA5, TerrainClass_CTOR_MoveAndAllocate, 0x5)
 
 	auto pExt = TerrainExtContainer::Instance.FindOrAllocate(pItem);
 
-	if (pCoord->IsValid())
-	{
+	if (pCoord->IsValid()) {
 		//vtable may not instantiated
-		if (!pItem->TerrainClass::Unlimbo(CellClass::Cell2Coord(*pCoord), static_cast<DirType>(0)))
-		{
+		if (!pItem->TerrainClass::Unlimbo(CellClass::Cell2Coord(*pCoord), static_cast<DirType>(0))) {
 			pItem->ObjectClass::UnInit();
 		}
 
-		if (pItem->Type)
-		{
+		if (pItem->Type) {
 			GeneralUtils::AdjacentCellsInRange(pExt->Adjencentcells, (short)TerrainTypeExtContainer::Instance.Find(pItem->Type)->SpawnsTiberium_Range);
 		}
 	}
@@ -177,8 +171,7 @@ DEFINE_HOOK(0x71B824, TerrainClass_DTOR, 0x5)
 			pItem->AnnounceExpiredPointer();
 	}
 
-	if (auto pExt = TerrainExtContainer::Instance.TryFind(pItem))
-	{
+	if (auto pExt = TerrainExtContainer::Instance.TryFind(pItem)) {
 		delete pExt;
 		TerrainExtContainer::Instance.ClearExtAttribute(pItem);
 		//PointerExpiredNotification::NotifyInvalidObject->Remove(pItem);
@@ -236,12 +229,10 @@ void FakeTerrainClass::_Detach(AbstractClass* target, bool all)
 }
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5254, FakeTerrainClass::_Detach);
 
-void FakeTerrainClass::_AnimPointerExpired(AnimClass* pAnim)
-{
+void FakeTerrainClass::_AnimPointerExpired(AnimClass* pAnim) {
 	auto pExt = this->_GetExtData();
 
-	if (pExt->AttachedFireAnim.get() == pAnim)
-	{
+	if (pExt->AttachedFireAnim.get() == pAnim) {
 		pExt->AttachedFireAnim.release();
 	}
 }

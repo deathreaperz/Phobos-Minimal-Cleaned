@@ -1,7 +1,6 @@
 #include "Body.h"
 
-void VoxelAnimTypeExtData::Initialize()
-{
+void VoxelAnimTypeExtData::Initialize() {
 	LaserTrail_Types.reserve(1);
 	SplashList.reserve(RulesClass::Instance->SplashList.Count);
 }

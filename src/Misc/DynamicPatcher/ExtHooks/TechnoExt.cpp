@@ -208,8 +208,7 @@ DEFINE_HOOK(0x6FDD50, TechnoClass_FireAt_PreFire, 0x6)
 	return 0x0;
 }
 
-static WeaponStruct* __fastcall GetWeapon_(TechnoClass* pTech, void*, int idx)
-{
+static WeaponStruct* __fastcall GetWeapon_(TechnoClass* pTech, void*, int idx) {
 	return pTech->GetWeapon(TechnoExtContainer::Instance.Find(pTech)->CurrentWeaponIdx);
 }
 DEFINE_FUNCTION_JUMP(CALL6, 0x6FDD69, GetWeapon_);
@@ -220,10 +219,8 @@ DEFINE_HOOK(0x6F6CA0, TechnoClass_Unlimbo_Early, 0x7)
 	GET_STACK(CoordStruct*, pCoord, (0x4));
 	//GET_STACK(DirType, faceDir, (0x8));
 
-	auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	{
-		auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-		{
+	auto pExt = TechnoExtContainer::Instance.Find(pThis); {
+		auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType()); {
 			DamageSelfState::OnPut(pExt->DamageSelfState, pTypeExt->DamageSelfData);
 			GiftBoxFunctional::Init(pExt, pTypeExt);
 			AircraftPutDataFunctional::OnPut(pExt, pTypeExt, pCoord);
@@ -243,26 +240,20 @@ WeaponTypeClass* GetWeaponType(TechnoClass* pThis, int which)
 {
 	WeaponTypeClass* pBuffer = nullptr;
 
-	if (which == -1)
-	{
+	if (which == -1) {
 		auto const pType = pThis->GetTechnoType();
 
-		if (pType->TurretCount > 0)
-		{
-			if (auto const pCurWeapon = pThis->GetWeapon(pThis->CurrentGattlingStage))
-			{
+		if (pType->TurretCount > 0) {
+			if (auto const pCurWeapon = pThis->GetWeapon(pThis->CurrentGattlingStage)) {
 				pBuffer = pCurWeapon->WeaponType;
 			}
 		}
-		else
-		{
-			if (auto const pPriStruct = pThis->GetWeapon(0))
-			{
+		else {
+			if (auto const pPriStruct = pThis->GetWeapon(0)) {
 				pBuffer = pPriStruct->WeaponType;
 			}
 
-			if (auto const pSecStruct = pThis->GetWeapon(1))
-			{
+			if (auto const pSecStruct = pThis->GetWeapon(1)) {
 				pBuffer = pSecStruct->WeaponType;
 			}
 		}
@@ -284,14 +275,12 @@ DEFINE_HOOK(0x6F9039, TechnoClass_Greatest_Threat_GuardRange, 0x9)
 	auto const pTypeGuardRange = pTechno->GetTechnoType()->GuardRange;
 	auto nGuarRange = pTypeGuardRange == -1 ? 512 : pTypeGuardRange;
 
-	if (auto pPri = GetWeaponType(pTechno, 0))
-	{
+	if (auto pPri = GetWeaponType(pTechno, 0)) {
 		if (pPri->Range > nGuarRange)
 			nGuarRange = pPri->Range;
 	}
 
-	if (auto pSec = GetWeaponType(pTechno, 1))
-	{
+	if (auto pSec = GetWeaponType(pTechno, 1)) {
 		if (pSec->Range > nGuarRange)
 			nGuarRange = pSec->Range;
 	}

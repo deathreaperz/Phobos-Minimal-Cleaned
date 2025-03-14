@@ -49,10 +49,8 @@ void AresAE::UpdateTempoal(AresAEData* ae, TechnoClass* pTechno)
 	if (!ae->NeedToRecreateAnim)
 	{
 		ae->NeedToRecreateAnim = true;
-		for (auto& ae_ : ae->Data)
-		{
-			if (ae_.Type->TemporalHidesAnim)
-			{
+		for (auto& ae_ : ae->Data) {
+			if (ae_.Type->TemporalHidesAnim) {
 				ae_.ClearAnim();
 			}
 		}
@@ -70,12 +68,9 @@ void AresAE::Update(AresAEData* ae, TechnoClass* pTechno)
 	{
 		const auto state = pTechno->CloakState;
 
-		if (state == CloakState::Cloaked || state == CloakState::Cloaking)
-		{
-			if (!ae->NeedToRecreateAnim)
-			{
-				for (auto& ae_ : ae->Data)
-				{
+		if (state == CloakState::Cloaked || state == CloakState::Cloaking) {
+			if (!ae->NeedToRecreateAnim) {
+				for (auto& ae_ : ae->Data) {
 					ae_.ClearAnim();
 				}
 
@@ -98,20 +93,16 @@ void AresAE::Update(AresAEData* ae, TechnoClass* pTechno)
 			auto duration = ae_.Duration;
 
 			auto const isOwnType = (pEffectType->Owner == pType);
-			if (isOwnType && pTechno->Deactivated)
-			{
+			if (isOwnType && pTechno->Deactivated) {
 				duration = 0;
 			}
 
-			if (duration > 0)
-			{
+			if (duration > 0) {
 				--duration;
 			}
 
-			if (!duration)
-			{
-				if (isOwnType)
-				{
+			if (!duration) {
+				if (isOwnType) {
 					ae->Isset = false;
 					ae->InitialDelay = pEffectType->Delay;
 				}
@@ -120,8 +111,7 @@ void AresAE::Update(AresAEData* ae, TechnoClass* pTechno)
 			ae_.Duration = duration;
 		}
 
-		if (ae->Data.remove_all_if([](const auto& ae_) { return !ae_.Duration; }))
-		{
+		if (ae->Data.remove_all_if([](const auto& ae_) { return !ae_.Duration; })) {
 			AEProperties::Recalculate(pTechno);
 		}
 	}
@@ -134,8 +124,7 @@ void AresAE::Update(AresAEData* ae, TechnoClass* pTechno)
 		if (dur)
 		{
 			int delay = ae->InitialDelay;
-			if (delay == 0x7FFFFFFF)
-			{
+			if (delay == 0x7FFFFFFF) {
 				delay = pAETypeType->InitialDelay;
 			}
 
@@ -162,12 +151,10 @@ bool AresAE::Remove(AresAEData* ae)
 	if (!ae->Data.empty())
 	{
 		ae->NeedToRecreateAnim = true;
-		if (fast_remove_if(ae->Data, [](auto& Item)
-			{
-				Item.ClearAnim();
-				return static_cast<bool>(Item.Type->DiscardOnEntry);
-			}))
-		{
+		if (fast_remove_if(ae->Data, [](auto& Item) {
+			Item.ClearAnim();
+			return static_cast<bool>(Item.Type->DiscardOnEntry);
+			})) {
 			return true;
 		}
 	}
@@ -184,11 +171,9 @@ void AresAE::Remove(AresAEData* ae, TechnoClass* pTechno)
 void AresAE::RemoveSpecific(AresAEData* ae, TechnoClass* pTechno, AbstractTypeClass* pRemove)
 {
 	ae->Isset = 0;
-	if (ae->Data.remove_all_if([pRemove](const auto& ae_)
-		{
-			return ae_.Type->Owner == pRemove;
-		}))
-	{
+	if (ae->Data.remove_all_if([pRemove](const auto& ae_) {
+		return ae_.Type->Owner == pRemove;
+		})) {
 		AEProperties::Recalculate(pTechno);
 	}
 }
@@ -209,8 +194,7 @@ bool AresAE::Attach(AresAttachEffectTypeClass* pType, TechnoClass* pTargetTechno
 		{
 			it->Duration = it->Type->Duration;
 
-			if (pType->AnimType && pType->AnimResetOnReapply)
-			{
+			if (pType->AnimType && pType->AnimResetOnReapply) {
 				it->CreateAnim(pTargetTechno);
 			}
 
@@ -278,8 +262,7 @@ void AresAE::ReplaceAnim(TechnoClass* pTechno, AnimClass* pNewAnim)
 	pNewAnim->SetOwnerObject(pTechno);
 	pNewAnim->RemainingIterations = 0xffffffff;
 
-	if (auto pInvoker = this->Invoker)
-	{
+	if (auto pInvoker = this->Invoker) {
 		pNewAnim->Owner = pInvoker;
 	}
 
@@ -291,8 +274,8 @@ void AresAE::CreateAnim(TechnoClass* pTechno)
 	const auto state = pTechno->CloakState;
 
 	if (state != CloakState::Cloaked
-	&& state != CloakState::Cloaking
-	&& (!pTechno->TemporalTargetingMe || !this->Type->TemporalHidesAnim))
+		&& state != CloakState::Cloaking
+		&& (!pTechno->TemporalTargetingMe || !this->Type->TemporalHidesAnim))
 	{
 		if (auto pType = this->Type->AnimType)
 		{

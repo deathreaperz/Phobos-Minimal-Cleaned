@@ -8,8 +8,7 @@ void DamageSelfType::Read(INI_EX& parser, const char* pSection)
 {
 	detail::read(Enable, parser, pSection, "SelfDamaging");
 
-	if (Enable)
-	{
+	if (Enable) {
 		detail::read(DeactiveWhenCivilian, parser, pSection, "SelfDamaging.DeactiveWhenCivilian");
 		detail::read(Warhead, parser, pSection, "SelfDamaging.Warhead");
 		if (!Warhead)
@@ -26,8 +25,7 @@ void DamageSelfType::Read(INI_EX& parser, const char* pSection)
 
 void DamageSelfState::OnPut(std::unique_ptr<DamageSelfState>& pState, const DamageSelfType& DData)
 {
-	if (DData.Enable)
-	{
+	if (DData.Enable) {
 		pState = std::make_unique<DamageSelfState>(DData.ROF, DData);
 	}
 }
@@ -55,8 +53,7 @@ void DamageSelfState::PlayWHAnim(ObjectClass* pObj, int realDamage, WarheadTypeC
 	CoordStruct location = pObj->GetCoords();
 	LandType landType = LandType::Clear;
 
-	if (auto pCell = MapClass::Instance->GetCellAt(location))
-	{
+	if (auto pCell = MapClass::Instance->GetCellAt(location)) {
 		landType = pCell->LandType;
 	}
 

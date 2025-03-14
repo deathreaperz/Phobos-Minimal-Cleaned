@@ -5,10 +5,8 @@
 
 void ReadFacingDirMult(std::array<Point2D, (size_t)FacingType::Count>& arr, INI_EX& exINI, const char* pID, const int* beginX, const int* beginY)
 {
-	for (size_t i = 0; i < arr.size(); ++i)
-	{
-		if (!detail::read(arr[i], exINI, pID, (std::string("FacingDirectionMult") + std::to_string(i)).c_str()))
-		{
+	for (size_t i = 0; i < arr.size(); ++i) {
+		if (!detail::read(arr[i], exINI, pID, (std::string("FacingDirectionMult") + std::to_string(i)).c_str())) {
 			arr[i].X = *(beginX + i);
 			arr[i].Y = *(beginY + i);
 		}
@@ -35,8 +33,7 @@ void ParticleSystemTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFail
 	break;
 	case ParticleSystemTypeBehavesLike::Spark:
 		//these bug only happen on vanilla particle drawings
-		if (pThis->ParticleCap < 2 && !this->ApplyOptimization)
-		{
+		if (pThis->ParticleCap < 2 && !this->ApplyOptimization) {
 			Debug::LogInfo("ParticleSystem[{}] BehavesLike=Spark ParticleCap need to be more than 1 , fixing", pID);
 			pThis->ParticleCap = 2;
 		}

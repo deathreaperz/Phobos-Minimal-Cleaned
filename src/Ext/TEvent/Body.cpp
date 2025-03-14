@@ -251,8 +251,7 @@ bool TEventExtData::CellHasAnyTechnoTypeFromListTEvent(TEventClass* pThis, Objec
 		return false;
 
 	int desiredListIdx = -1;
-	if (sscanf_s(pThis->String, "%d", &desiredListIdx) <= 0 || desiredListIdx < 0)
-	{
+	if (sscanf_s(pThis->String, "%d", &desiredListIdx) <= 0 || desiredListIdx < 0) {
 		Debug::LogInfo("Error in event {}. The parameter 2 '{}' isn't a valid index value for [AITargetTypes]",
 			static_cast<int>(pThis->EventKind),
 			pThis->String
@@ -268,14 +267,11 @@ bool TEventExtData::CellHasAnyTechnoTypeFromListTEvent(TEventClass* pThis, Objec
 
 	bool found = false;
 
-	if (auto const pTechno = flag_cast_to<TechnoClass*, false>(pObject))
-	{
+	if (auto const pTechno = flag_cast_to<TechnoClass*, false>(pObject)) {
 		auto const pTechnoType = pTechno->GetTechnoType();
 
-		for (const auto& pDesiredItem : RulesExtData::Instance()->AITargetTypesLists[desiredListIdx])
-		{
-			if (pDesiredItem == pTechnoType)
-			{
+		for (const auto& pDesiredItem : RulesExtData::Instance()->AITargetTypesLists[desiredListIdx]) {
+			if (pDesiredItem == pTechnoType) {
 				HouseClass* pHouse = GetHouse(pThis->Value, pEventHouse);
 
 				if (pHouse && pTechno->Owner != pHouse)
@@ -292,12 +288,10 @@ bool TEventExtData::CellHasAnyTechnoTypeFromListTEvent(TEventClass* pThis, Objec
 
 bool TEventExtData::CellHasTechnoTypeTEvent(TEventClass* pThis, ObjectClass* pObject, HouseClass* pEventHouse)
 {
-	if (pObject)
-	{
+	if (pObject) {
 		const auto pDesiredType = TechnoTypeClass::Find(pThis->String);
 
-		if (!pDesiredType)
-		{
+		if (!pDesiredType) {
 			Debug::LogInfo("Error in event {}. The parameter 2 '{}' isn't a valid Techno ID",
 				static_cast<int>(pThis->EventKind),
 				pThis->String
@@ -305,14 +299,11 @@ bool TEventExtData::CellHasTechnoTypeTEvent(TEventClass* pThis, ObjectClass* pOb
 			return false;
 		}
 
-		if (auto const pTechno = flag_cast_to<TechnoClass*, false>(pObject))
-		{
+		if (auto const pTechno = flag_cast_to<TechnoClass*, false>(pObject)) {
 			auto const pTechnoType = pTechno->GetTechnoType();
 
-			if (pDesiredType == pTechnoType)
-			{
-				if (HouseClass* pHouse = GetHouse(pThis->Value, pEventHouse))
-				{
+			if (pDesiredType == pTechnoType) {
+				if (HouseClass* pHouse = GetHouse(pThis->Value, pEventHouse)) {
 					return pTechno->Owner == pHouse;
 				}
 
@@ -329,8 +320,7 @@ bool TEventExtData::VariableCheck(TEventClass* pThis)
 {
 	const auto nVar = ScenarioExtData::GetVariables(IsGlobal);
 
-	if (auto itr = nVar->tryfind(pThis->Value))
-	{
+	if (auto itr = nVar->tryfind(pThis->Value)) {
 		// We uses TechnoName for our operator number
 		int nOpt = atoi(pThis->String);
 		return _Pr()(itr->Value, nOpt);

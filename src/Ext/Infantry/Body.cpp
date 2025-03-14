@@ -65,11 +65,11 @@ HRESULT __stdcall FakeInfantryClass::_Load(IStream* pStm)
 		if (!buffer)
 			return -1;
 
-		PhobosByteStream loader { 0 };
+		PhobosByteStream loader{ 0 };
 		if (!loader.ReadBlockFromStream(pStm))
 			return -1;
 
-		PhobosStreamReader reader { loader };
+		PhobosStreamReader reader{ loader };
 		if (!reader.Expect(InfantryExtData::Canary))
 			return -1;
 
@@ -94,8 +94,8 @@ HRESULT __stdcall FakeInfantryClass::_Save(IStream* pStm, bool clearDirty)
 		InfantryExtData* const buffer = InfantryExtContainer::Instance.GetExtAttribute(this);
 
 		// write the current pointer, the size of the block, and the canary
-		PhobosByteStream saver { InfantryExtData::size_Of() };
-		PhobosStreamWriter writer { saver };
+		PhobosByteStream saver{ InfantryExtData::size_Of() };
+		PhobosStreamWriter writer{ saver };
 
 		writer.Save(InfantryExtData::Canary);
 		writer.Save(buffer);

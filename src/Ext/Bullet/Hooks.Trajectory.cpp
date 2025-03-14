@@ -24,9 +24,9 @@ DEFINE_HOOK(0x4666F7, BulletClass_AI_Trajectories, 0x6)
 		return 0x467FEE;
 	}
 
-	if (pTraj)
+	if (!PhobosTrajectory::BlockDrawTrail(pTraj))
 	{
-		if (pExt->LaserTrails.size())
+		if (!pExt->LaserTrails.empty())
 		{
 			CoordStruct futureCoords
 			{

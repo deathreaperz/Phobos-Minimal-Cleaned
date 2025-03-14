@@ -67,8 +67,7 @@ DEFINE_HOOK(0x649851, WaitForPlayers_OnlineOptimizations, 0x5)
  //	, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90
  //);
 
-DEFINE_HOOK(0x5F5893, ObjectClass_Mark_Unessesarycalls, 0x5)
-{
+DEFINE_HOOK(0x5F5893, ObjectClass_Mark_Unessesarycalls, 0x5) {
 	return R->EBX<int>() == 1 ? 0x5F58EC : 0x5F58E7;
 }
 
@@ -141,8 +140,7 @@ DEFINE_HOOK(0x454174, BuildingClass_Load_SwizzleLighsource, 0xA)
 DEFINE_HOOK(0x50C8F4, HouseClass_Flag_To_Chear_Disable, 0x5)
 {
 	if ((SessionClass::Instance->GameMode == GameMode::LAN && !Game::LANTaunts)
-		|| (SessionClass::Instance->GameMode == GameMode::Internet && !Game::WOLTaunts))
-	{
+		|| (SessionClass::Instance->GameMode == GameMode::Internet && !Game::WOLTaunts)) {
 		return 0x50C910;
 	}
 

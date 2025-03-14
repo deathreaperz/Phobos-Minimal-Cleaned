@@ -16,8 +16,7 @@ bool SW_Battery::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 	auto pHouseExt = HouseExtContainer::Instance.Find(pThis->Owner);
 
 	//this check prevent same SW activated multiple times
-	if (!pHouseExt->Batteries.contains(pThis))
-	{
+	if (!pHouseExt->Batteries.contains(pThis)) {
 		pHouseExt->Batteries.push_back(pThis);
 
 		pThis->Owner->RecheckPower = true;
