@@ -60,7 +60,7 @@ const wchar_t* CSFLoader::GetDynamicString(const char* pLabelName, const wchar_t
 	return pData->Text;
 }
 
-DEFINE_HOOK(0x7349cf, StringTable_ParseFile_Buffer, 7)
+ASMJIT_PATCH(0x7349cf, StringTable_ParseFile_Buffer, 7)
 {
 	LEA_STACK(CCFileClass*, pFile, 0x28);
 
@@ -86,14 +86,14 @@ DEFINE_HOOK(0x7349cf, StringTable_ParseFile_Buffer, 7)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x7346D0, CSF_LoadBaseFile, 6)
+ASMJIT_PATCH(0x7346D0, CSF_LoadBaseFile, 6)
 {
 	StringTable::IsLoaded = true;
 	CSFLoader::CSFCount = 0;
 	return 0;
 }
 
-DEFINE_HOOK(0x734823, CSF_AllocateMemory, 6)
+ASMJIT_PATCH(0x734823, CSF_AllocateMemory, 6)
 {
 	//aaaah... finally, some serious hax :)
 	//we don't allocate memory by the amount of labels in the base CSF,
@@ -107,7 +107,7 @@ DEFINE_HOOK(0x734823, CSF_AllocateMemory, 6)
 	return 0x7348BC;
 }
 
-DEFINE_HOOK(0x734A5F, CSF_AddOrOverrideLabel, 5)
+ASMJIT_PATCH(0x734A5F, CSF_AddOrOverrideLabel, 5)
 {
 	if (CSFLoader::CSFCount > 0)
 	{
@@ -159,14 +159,14 @@ DEFINE_HOOK(0x734A5F, CSF_AddOrOverrideLabel, 5)
 	return 0;
 }
 
-DEFINE_HOOK(0x734A97, CSF_SetIndex, 6)
+ASMJIT_PATCH(0x734A97, CSF_SetIndex, 6)
 {
 	R->EDX(StringTable::Labels());
 	R->ECX(CSFLoader::CSFCount > 0 ? CSFLoader::NextValueIndex : R->Stack32(0x18));
 	return 0x734AA1;
 }
 
-DEFINE_HOOK(0x6BD886, CSF_LoadExtraFiles, 5)
+ASMJIT_PATCH(0x6BD886, CSF_LoadExtraFiles, 5)
 {
 	std::string _ares = "ares";
 
@@ -191,7 +191,7 @@ DEFINE_HOOK(0x6BD886, CSF_LoadExtraFiles, 5)
 	return 0x6BD88B;
 }
 
-DEFINE_HOOK(0x734E83, CSF_LoadString_1, 6)
+ASMJIT_PATCH(0x734E83, CSF_LoadString_1, 6)
 {
 	GET(const char*, pName, EBX);
 
@@ -204,7 +204,7 @@ DEFINE_HOOK(0x734E83, CSF_LoadString_1, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x734EC2, CSF_LoadString_2, 7)
+ASMJIT_PATCH(0x734EC2, CSF_LoadString_2, 7)
 {
 	GET(const char*, pName, EBX);
 	R->EAX(CSFLoader::GetDynamicString(pName, L"MISSING:'%hs'", pName));

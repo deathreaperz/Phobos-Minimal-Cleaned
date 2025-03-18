@@ -10,7 +10,7 @@
 #include <Misc/PhobosToolTip.h>
 #include <Ext/SWType/Body.h>
 
-DEFINE_HOOK(0x6A9304, StripClass_GetTip_Handle, 9)
+ASMJIT_PATCH(0x6A9304, StripClass_GetTip_Handle, 9)
 {
 	//GET(StripClass*, pThis, ECX);
 	GET(int, buildableCount, EAX);
@@ -130,7 +130,7 @@ static FORCEDINLINE void DoStuffs(int idx, StripClass* pStrip, int height, int w
 	}
 }
 
-DEFINE_HOOK(0x6A8220, StripClass_Initialize, 7)
+ASMJIT_PATCH(0x6A8220, StripClass_Initialize, 7)
 {
 	GET(StripClass*, pThis, ECX);
 	GET_STACK(int, nIdx, 0x4);
@@ -222,7 +222,7 @@ int __fastcall SidebarClass_6AC430(SidebarClass*)
 //	}
 //}
 
-DEFINE_HOOK(0x6ABFB2, sub_6ABD30_Strip2, 0x6)
+ASMJIT_PATCH(0x6ABFB2, sub_6ABD30_Strip2, 0x6)
 {
 	enum
 	{
@@ -238,7 +238,7 @@ DEFINE_HOOK(0x6ABFB2, sub_6ABD30_Strip2, 0x6)
 		ContinueLoop : BreakLoop;
 }
 
-DEFINE_HOOK(0x6a96d9, StripClass_Draw_Strip, 7)
+ASMJIT_PATCH(0x6a96d9, StripClass_Draw_Strip, 7)
 {
 	GET(StripClass*, pThis, EDI);
 	GET(int, idx_first, ECX);
@@ -251,7 +251,7 @@ DEFINE_HOOK(0x6a96d9, StripClass_Draw_Strip, 7)
 static COMPILETIMEEVAL constant_ptr<SelectClass, 0xB07E80> const ButtonsPtr {};
 static COMPILETIMEEVAL constant_ptr<SelectClass, 0xB0B300> const Buttons_endPtr {};
 
-DEFINE_HOOK(0x6ABFB2, sub_6ABD30_Strip2, 0x6)
+ASMJIT_PATCH(0x6ABFB2, sub_6ABD30_Strip2, 0x6)
 {
 	enum
 	{
@@ -268,7 +268,7 @@ DEFINE_HOOK(0x6ABFB2, sub_6ABD30_Strip2, 0x6)
 }
 
 //duuunno
-DEFINE_HOOK(0x6a96d9, StripClass_Draw_Strip, 7)
+ASMJIT_PATCH(0x6a96d9, StripClass_Draw_Strip, 7)
 {
 	GET(DWORD*, pSomething, EDI);
 	GET(int, idx_first, ECX);
@@ -279,7 +279,7 @@ DEFINE_HOOK(0x6a96d9, StripClass_Draw_Strip, 7)
 
 #endif
 
-DEFINE_HOOK(0x6AC02F, sub_6ABD30_Strip3, 0x8)
+ASMJIT_PATCH(0x6AC02F, sub_6ABD30_Strip3, 0x8)
 {
 	GET_STACK(size_t, nCurIdx, 0x14);
 	COMPILETIMEEVAL int Offset = 0x3E8;
@@ -302,7 +302,7 @@ DEFINE_HOOK(0x6AC02F, sub_6ABD30_Strip3, 0x8)
 	return 0x6AC0A7;
 }
 
-DEFINE_HOOK(0x6a9822, StripClass_Draw_Power, 5)
+ASMJIT_PATCH(0x6a9822, StripClass_Draw_Power, 5)
 {
 	GET(FactoryClass*, pFactory, ECX);
 
@@ -320,7 +320,7 @@ DEFINE_HOOK(0x6a9822, StripClass_Draw_Power, 5)
 	return 0x6A9827;
 }
 
-DEFINE_HOOK(0x6A83E0, StripClass_DisableInput, 6)
+ASMJIT_PATCH(0x6A83E0, StripClass_DisableInput, 6)
 {
 	for (auto begin = SidebarClass::SelectButtonCombined.begin();
 		begin != SidebarClass::SelectButtonCombined.end();
@@ -330,7 +330,7 @@ DEFINE_HOOK(0x6A83E0, StripClass_DisableInput, 6)
 	return 0x6A8415;
 }
 
-DEFINE_HOOK(0x6A8330, StripClass_EnableInput, 5)
+ASMJIT_PATCH(0x6A8330, StripClass_EnableInput, 5)
 {
 	GET(StripClass*, pThis, ECX);
 
@@ -348,27 +348,27 @@ DEFINE_HOOK(0x6A8330, StripClass_EnableInput, 5)
 	return 0x6A83DA;
 }
 
-DEFINE_HOOK(0x6ABF44, sub_6ABD30_Strip1, 0x5)
+ASMJIT_PATCH(0x6ABF44, sub_6ABD30_Strip1, 0x5)
 {
 	R->ESI(SidebarClass::SelectButtonCombined.begin());
 	return 0x6ABF49;
 }
 
-DEFINE_HOOK(0x6A7EEE, sub_6A7D70_Strip1, 0x6)
+ASMJIT_PATCH(0x6A7EEE, sub_6A7D70_Strip1, 0x6)
 {
 	GET(SidebarClass*, pThis, ESI);
 	pThis->Tabs[pThis->ActiveTabIndex].Func_6A93F0_GScreenAddButton();
 	return 0x6A7F9F;
 }
 
-DEFINE_HOOK(0x6A801C, sub_6A7D70_Strip2, 0x6)
+ASMJIT_PATCH(0x6A801C, sub_6A7D70_Strip2, 0x6)
 {
 	GET(SidebarClass*, pThis, ESI);
 	pThis->Tabs[pThis->ActiveTabIndex].Deactivate();
 	return 0x6A8061;
 }
 
-DEFINE_HOOK(0x6A64C9, SidebarClass_AddCameo_Strip, 6)
+ASMJIT_PATCH(0x6A64C9, SidebarClass_AddCameo_Strip, 6)
 {
 	GET(SidebarClass*, pThis, EBX);
 	GET(int, nStrip, EDI);
@@ -376,35 +376,35 @@ DEFINE_HOOK(0x6A64C9, SidebarClass_AddCameo_Strip, 6)
 	return 0x6A65D6;
 }
 
-DEFINE_HOOK(0x6A75B9, SidebarClass_SetActiveTab_Strip1, 6)
+ASMJIT_PATCH(0x6A75B9, SidebarClass_SetActiveTab_Strip1, 6)
 {
 	GET(SidebarClass*, pThis, EBP);
 	pThis->Tabs[pThis->ActiveTabIndex].Func_6A94B0_GScreenRemoveButton();
 	return 0x6A7602;
 }
 
-DEFINE_HOOK(0x6A7619, SidebarClass_SetActiveTab_Strip2, 6)
+ASMJIT_PATCH(0x6A7619, SidebarClass_SetActiveTab_Strip2, 6)
 {
 	GET(SidebarClass*, pThis, EBP);
 	pThis->Tabs[pThis->ActiveTabIndex].Func_6A93F0_GScreenAddButton();
 	return 0x6A76CA;
 }
 
-DEFINE_HOOK(0x6A793F, SidebarClass_Update_Strip1, 6)
+ASMJIT_PATCH(0x6A793F, SidebarClass_Update_Strip1, 6)
 {
 	GET(SidebarClass*, pThis, ESI);
 	pThis->Tabs[pThis->ActiveTabIndex].Func_6A94B0_GScreenRemoveButton();
 	return 0x6A7988;
 }
 
-DEFINE_HOOK(0x6A79A0, SidebarClass_Update_Strip2, 6)
+ASMJIT_PATCH(0x6A79A0, SidebarClass_Update_Strip2, 6)
 {
 	GET(SidebarClass*, pThis, ESI);
 	pThis->Tabs[pThis->ActiveTabIndex].Func_6A93F0_GScreenAddButton();
 	return 0x6A7A51;
 }
 
-DEFINE_HOOK(0x6A93F0, StripClass_Activate, 6)
+ASMJIT_PATCH(0x6A93F0, StripClass_Activate, 6)
 {
 	GET(StripClass*, pThis, ECX);
 	pThis->AllowedToDraw = true;
@@ -412,7 +412,7 @@ DEFINE_HOOK(0x6A93F0, StripClass_Activate, 6)
 	return 0x6A94A0;
 }
 
-DEFINE_HOOK(0x6A94B0, StripClass_Deactivate, 6)
+ASMJIT_PATCH(0x6A94B0, StripClass_Deactivate, 6)
 {
 	GET(StripClass*, pThis, ECX);
 	pThis->AllowedToDraw = false;
@@ -423,14 +423,13 @@ DEFINE_HOOK(0x6A94B0, StripClass_Deactivate, 6)
 
 #ifndef CAMEOS_
 
-DEFINE_HOOK_AGAIN(0x6A4FD8, SidebarClass_CameosList, 6)
-DEFINE_HOOK(0x6A4EA5, SidebarClass_CameosList, 6)
+ASMJIT_PATCH(0x6A4EA5, SidebarClass_CameosList, 6)
 {
 	MouseClassExt::ClearCameos();
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x6A4FD8, SidebarClass_CameosList, 6)
 
-DEFINE_HOOK(0x6A6140, SidebarClass_FactoryLink_handle, 0x5)
+ASMJIT_PATCH(0x6A6140, SidebarClass_FactoryLink_handle, 0x5)
 {
 	//GET(SidebarClass*, pThis, ECX);
 	GET_STACK(FactoryClass*, pFactory, 0x4);
@@ -458,7 +457,7 @@ DEFINE_HOOK(0x6A6140, SidebarClass_FactoryLink_handle, 0x5)
 	return 0x6A6215;
 }
 
-DEFINE_HOOK(0x6A633D, SidebarClass_AddCameo_TabIndex, 0x5)
+ASMJIT_PATCH(0x6A633D, SidebarClass_AddCameo_TabIndex, 0x5)
 {
 	enum { AlreadyExists = 0x6A65FF, NewlyAdded = 0x6A63FD };
 
@@ -481,7 +480,7 @@ DEFINE_HOOK(0x6A633D, SidebarClass_AddCameo_TabIndex, 0x5)
 	return NewlyAdded;
 }
 
-DEFINE_HOOK(0x6A61B1, SidebarClass_SetFactoryForObject, 5)
+ASMJIT_PATCH(0x6A61B1, SidebarClass_SetFactoryForObject, 5)
 {
 	enum { Found = 0x6A6210, NotFound = 0x6A61E6 };
 
@@ -530,7 +529,7 @@ static COMPILETIMEEVAL NOINLINE BuildType* lower_bound(BuildType* first, int siz
 	return first;
 }
 
-DEFINE_HOOK(0x6A8710, StripClass_AddCameo_ReplaceItAll, 6)
+ASMJIT_PATCH(0x6A8710, StripClass_AddCameo_ReplaceItAll, 6)
 {
 	GET(StripClass*, pTab, ECX);
 	GET_STACK(AbstractType, ItemType, 0x4);
@@ -561,7 +560,7 @@ DEFINE_HOOK(0x6A8710, StripClass_AddCameo_ReplaceItAll, 6)
 }
 
 // pointer #1
-DEFINE_HOOK(0x6A8D1C, StripClass_MouseMove_GetCameos1, 7)
+ASMJIT_PATCH(0x6A8D1C, StripClass_MouseMove_GetCameos1, 7)
 {
 	GET(int, CameoCount, EAX);
 
@@ -577,7 +576,7 @@ DEFINE_HOOK(0x6A8D1C, StripClass_MouseMove_GetCameos1, 7)
 }
 
 // pointer #2
-DEFINE_HOOK(0x6A8DB5, StripClass_MouseMove_GetCameos2, 8)
+ASMJIT_PATCH(0x6A8DB5, StripClass_MouseMove_GetCameos2, 8)
 {
 	GET(int, CameoCount, EAX);
 	GET(StripClass*, pTab, EBX);
@@ -595,7 +594,7 @@ DEFINE_HOOK(0x6A8DB5, StripClass_MouseMove_GetCameos2, 8)
 }
 
 // pointer #3
-DEFINE_HOOK(0x6A8F6C, StripClass_MouseMove_GetCameos3, 9)
+ASMJIT_PATCH(0x6A8F6C, StripClass_MouseMove_GetCameos3, 9)
 {
 	GET(StripClass*, pTab, ESI);
 
@@ -612,7 +611,7 @@ DEFINE_HOOK(0x6A8F6C, StripClass_MouseMove_GetCameos3, 9)
 	return 0x6A8F7C;
 }
 
-DEFINE_HOOK(0x6A9747, StripClass_Draw_GetCameo, 6)
+ASMJIT_PATCH(0x6A9747, StripClass_Draw_GetCameo, 6)
 {
 	GET(int, CameoIndex, ECX);
 
@@ -631,7 +630,7 @@ DEFINE_HOOK(0x6A9747, StripClass_Draw_GetCameo, 6)
 		;
 }
 
-DEFINE_HOOK(0x6A95C8, StripClass_Draw_Status, 8)
+ASMJIT_PATCH(0x6A95C8, StripClass_Draw_Status, 8)
 {
 	GET(int, CameoIndex, EAX);
 
@@ -643,7 +642,7 @@ DEFINE_HOOK(0x6A95C8, StripClass_Draw_Status, 8)
 	return 0x6A95D3;
 }
 
-DEFINE_HOOK(0x6A9866, StripClass_Draw_Status_1, 8)
+ASMJIT_PATCH(0x6A9866, StripClass_Draw_Status_1, 8)
 {
 	GET(int, CameoIndex, ECX);
 
@@ -655,7 +654,7 @@ DEFINE_HOOK(0x6A9866, StripClass_Draw_Status_1, 8)
 		;
 }
 
-DEFINE_HOOK(0x6A9886, StripClass_Draw_Status_2, 8)
+ASMJIT_PATCH(0x6A9886, StripClass_Draw_Status_2, 8)
 {
 	GET(int, CameoIndex, EAX);
 
@@ -674,7 +673,7 @@ DEFINE_HOOK(0x6A9886, StripClass_Draw_Status_2, 8)
 	return 0x6A9893;
 }
 
-DEFINE_HOOK(0x6A9EBA, StripClass_Draw_Status_3, 8)
+ASMJIT_PATCH(0x6A9EBA, StripClass_Draw_Status_3, 8)
 {
 	GET(int, CameoIndex, EAX);
 
@@ -687,7 +686,7 @@ DEFINE_HOOK(0x6A9EBA, StripClass_Draw_Status_3, 8)
 		;
 }
 
-DEFINE_HOOK(0x6A99BE, StripClass_Draw_BreakDrawLoop, 5)
+ASMJIT_PATCH(0x6A99BE, StripClass_Draw_BreakDrawLoop, 5)
 {
 	R->Stack8(0x12, 0);
 	return 0x6AA01C;
@@ -698,13 +697,13 @@ DEFINE_HOOK(0x6A99BE, StripClass_Draw_BreakDrawLoop, 5)
 #include <Ext/Scenario/Body.h>
 #include <Ext/BuildingType/Body.h>
 
-DEFINE_HOOK(0x4F92DD, HouseClass_Update_RedrawSidebarWhenRecheckTechTree, 0x5)
+ASMJIT_PATCH(0x4F92DD, HouseClass_Update_RedrawSidebarWhenRecheckTechTree, 0x5)
 {
 	SidebarClass::Instance->SidebarBackgroundNeedsRedraw = true;
 	return 0;
 }
 
-DEFINE_HOOK(0x6A9B4F, StripClass_Draw_TestFlashFrame, 6)
+ASMJIT_PATCH(0x6A9B4F, StripClass_Draw_TestFlashFrame, 6)
 {
 	GET(int, CameoIndex, EAX);
 	GET(const bool, greyCameo, EBX);
@@ -818,7 +817,7 @@ DEFINE_HOOK(0x6A9B4F, StripClass_Draw_TestFlashFrame, 6)
 	return 0x6A9BC5;
 }
 
-DEFINE_HOOK(0x6AAD2F, SelectClass_ProcessInput_LoadCameo1, 7)
+ASMJIT_PATCH(0x6AAD2F, SelectClass_ProcessInput_LoadCameo1, 7)
 {
 	GET(int, CameoIndex, ESI);
 
@@ -846,7 +845,7 @@ DEFINE_HOOK(0x6AAD2F, SelectClass_ProcessInput_LoadCameo1, 7)
 	return 0x6AAD66;
 }
 
-DEFINE_HOOK(0x6AB0B0, SelectClass_ProcessInput_LoadCameo2, 8)
+ASMJIT_PATCH(0x6AB0B0, SelectClass_ProcessInput_LoadCameo2, 8)
 {
 	GET(int, CameoIndex, ESI);
 
@@ -858,21 +857,21 @@ DEFINE_HOOK(0x6AB0B0, SelectClass_ProcessInput_LoadCameo2, 8)
 	return 0x6AB0BE;
 }
 
-DEFINE_HOOK(0x6AB49D, SelectClass_ProcessInput_FixOffset1, 7)
+ASMJIT_PATCH(0x6AB49D, SelectClass_ProcessInput_FixOffset1, 7)
 {
 	R->EDI<void*>(nullptr);
 	R->ECX<void*>(nullptr);
 	return 0x6AB4A4;
 }
 
-DEFINE_HOOK(0x6AB4E8, SelectClass_ProcessInput_FixOffset2, 7)
+ASMJIT_PATCH(0x6AB4E8, SelectClass_ProcessInput_FixOffset2, 7)
 {
 	R->ECX<int>(R->Stack<int>(0x14));
 	R->EDX<void*>(nullptr);
 	return 0x6AB4EF;
 }
 
-DEFINE_HOOK(0x6AB577, SelectClass_ProcessInput_FixOffset3, 7)
+ASMJIT_PATCH(0x6AB577, SelectClass_ProcessInput_FixOffset3, 7)
 {
 	GET(int, CameoIndex, ESI);
 	GET_STACK(FactoryClass*, SavedFactory, 0x18);
@@ -904,26 +903,26 @@ DEFINE_HOOK(0x6AB577, SelectClass_ProcessInput_FixOffset3, 7)
 	return 0x6AB5C6;
 }
 
-DEFINE_HOOK(0x6AB620, SelectClass_ProcessInput_FixOffset4, 7)
+ASMJIT_PATCH(0x6AB620, SelectClass_ProcessInput_FixOffset4, 7)
 {
 	R->ECX<void*>(nullptr);
 	return 0x6AB627;
 }
 
-DEFINE_HOOK(0x6AB741, SelectClass_ProcessInput_FixOffset5, 7)
+ASMJIT_PATCH(0x6AB741, SelectClass_ProcessInput_FixOffset5, 7)
 {
 	R->EDX<void*>(nullptr);
 	return 0x6AB748;
 }
 
-DEFINE_HOOK(0x6AB802, SelectClass_ProcessInput_FixOffset6, 8)
+ASMJIT_PATCH(0x6AB802, SelectClass_ProcessInput_FixOffset6, 8)
 {
 	GET(int, CameoIndex, EAX);
 	MouseClassExt::TabCameos[MouseClass::Instance->ActiveTabIndex][CameoIndex].Status = 1;
 	return 0x6AB814;
 }
 
-DEFINE_HOOK(0x6AB825, SelectClass_ProcessInput_FixOffset7, 5)
+ASMJIT_PATCH(0x6AB825, SelectClass_ProcessInput_FixOffset7, 5)
 {
 	R->ECX<int>(R->EBP<int>());
 	R->EDX<void*>(nullptr);
@@ -931,19 +930,19 @@ DEFINE_HOOK(0x6AB825, SelectClass_ProcessInput_FixOffset7, 5)
 	return 0x6AB82A;
 }
 
-DEFINE_HOOK(0x6AB920, SelectClass_ProcessInput_FixOffset8, 7)
+ASMJIT_PATCH(0x6AB920, SelectClass_ProcessInput_FixOffset8, 7)
 {
 	R->ECX<void*>(nullptr);
 	return 0x6AB927;
 }
 
-DEFINE_HOOK(0x6AB92F, SelectClass_ProcessInput_FixOffset9, 7)
+ASMJIT_PATCH(0x6AB92F, SelectClass_ProcessInput_FixOffset9, 7)
 {
 	R->EBX<byte*>(R->EBX<byte*>() + 0x6C);
 	return 0x6AB936;
 }
 
-DEFINE_HOOK(0x6ABBCB, StripClass_AbandonCameosFromFactory_GetPointer1, 7)
+ASMJIT_PATCH(0x6ABBCB, StripClass_AbandonCameosFromFactory_GetPointer1, 7)
 {
 	GET(int, BuildableCount, EAX);
 	GET(StripClass*, pTab, ESI);
@@ -960,7 +959,7 @@ DEFINE_HOOK(0x6ABBCB, StripClass_AbandonCameosFromFactory_GetPointer1, 7)
 	return 0x6ABBD2;
 }
 
-DEFINE_HOOK(0x6AC67A, SidebarClass_FlashCameo_FixLimit, 5)
+ASMJIT_PATCH(0x6AC67A, SidebarClass_FlashCameo_FixLimit, 5)
 {
 	GET(int const, typeIdx, ESI);
 	GET(AbstractType const, absType, EAX);
@@ -1064,7 +1063,7 @@ bool NOINLINE RemoveCameo(BuildType* item)
 	return true;
 }
 
-DEFINE_HOOK(0x6aa600, StripClass_RecheckCameos, 5)
+ASMJIT_PATCH(0x6aa600, StripClass_RecheckCameos, 5)
 {
 	GET(StripClass*, pThis, ECX);
 

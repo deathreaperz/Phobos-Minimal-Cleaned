@@ -1,7 +1,7 @@
 #include <Ext/TechnoType/Body.h>
 
 #ifdef debug_these
-DEFINE_HOOK(0x6FC32B, TechnoClass_CanFire_NoWeapon, 0x8)
+ASMJIT_PATCH(0x6FC32B, TechnoClass_CanFire_NoWeapon, 0x8)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(WeaponStruct*, pWeaponstruct, EAX);
@@ -21,7 +21,7 @@ DEFINE_HOOK(0x6FC32B, TechnoClass_CanFire_NoWeapon, 0x8)
 	//return 0x6FC339;
 }
 
-DEFINE_HOOK(0x709992, TechnoClass_TargetSomethingNearby_NoWeapon, 0x6)
+ASMJIT_PATCH(0x709992, TechnoClass_TargetSomethingNearby_NoWeapon, 0x6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(TechnoClass*, pTarget, EDI);
@@ -41,7 +41,7 @@ DEFINE_HOOK(0x709992, TechnoClass_TargetSomethingNearby_NoWeapon, 0x6)
 	return 0x70999C;
 }
 
-DEFINE_HOOK(0x6F7CD5, TechnoClass_EvalueateObj_NoWeapon, 0x6)
+ASMJIT_PATCH(0x6F7CD5, TechnoClass_EvalueateObj_NoWeapon, 0x6)
 {
 	GET(ObjectClass*, pTarget, ESI);
 	GET(TechnoClass*, pThis, EDI);
@@ -58,7 +58,7 @@ DEFINE_HOOK(0x6F7CD5, TechnoClass_EvalueateObj_NoWeapon, 0x6)
 	return 0x6F7CDB;
 }
 
-DEFINE_HOOK(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
+ASMJIT_PATCH(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
 {
 	GET(TechnoClass*, pThis, EDI);
 	GET(TechnoClass*, pTarget, ESI);
@@ -74,7 +74,7 @@ DEFINE_HOOK(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
 }
 #endif
 
-//DEFINE_HOOK(0x7431EE, UnitClass_GreatestThreat_GattlingWeaponError, 0x9)
+//ASMJIT_PATCH(0x7431EE, UnitClass_GreatestThreat_GattlingWeaponError, 0x9)
 //{
 //	GET(UnitClass*, pThis, ESI);
 //
@@ -92,7 +92,7 @@ DEFINE_HOOK(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
 //DEFINE_JUMP(LJMP, 0x5F5896, 0x5F58E1);
 
 // //uhh , unit without ownership should not allowed to deploy to prevent this kind of stupid crashes ,..
-// DEFINE_HOOK(0x739698, UnitClass_TryToDeploy_Verify, 0x5)
+// ASMJIT_PATCH(0x739698, UnitClass_TryToDeploy_Verify, 0x5)
 // {
 // 	GET(UnitClass*, pThis, EBP);
 //
@@ -106,7 +106,7 @@ DEFINE_HOOK(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
 // 	return 0x7396A5;
 // }
 
-//DEFINE_HOOK(0x6F49D2, TechnoClass_Reveal_ThisOwnerMissing, 0x6)
+//ASMJIT_PATCH(0x6F49D2, TechnoClass_Reveal_ThisOwnerMissing, 0x6)
 //{
 //	GET(TechnoClass*, pThis, ESI);
 //
@@ -132,7 +132,7 @@ DEFINE_HOOK(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
 //	return 0x6F497E;
 //}
 
-//DEFINE_HOOK(0x4104C0, AbstractClass_Center_nullptrbuffer, 0xA)
+//ASMJIT_PATCH(0x4104C0, AbstractClass_Center_nullptrbuffer, 0xA)
 //{
 //	GET_STACK(CoordStruct*, pCoord, 0x4);
 //
@@ -144,13 +144,13 @@ DEFINE_HOOK(0x70CE90, TechnoClass_Coef_checkForTechno, 0x6)
 
 //this got checked already before call , so yeah
 // no worry
-//DEFINE_HOOK(0x70CD1C, TechnoClass_Coef_CheckTarget, 0xA)
+//ASMJIT_PATCH(0x70CD1C, TechnoClass_Coef_CheckTarget, 0xA)
 //{
 //	GET_BASE(ObjectClass*, pTarget, 0x8);
 //	return pTarget ? 0x0 : 0x70CD39;
 //}
 
-DEFINE_HOOK(0x5D6BF1, MultiplayerGameMode_SetBaseSpawnCell_CheckAvail, 0x5)
+ASMJIT_PATCH(0x5D6BF1, MultiplayerGameMode_SetBaseSpawnCell_CheckAvail, 0x5)
 {
 	struct ScenStruct
 	{
@@ -201,7 +201,7 @@ DEFINE_HOOK(0x5D6BF1, MultiplayerGameMode_SetBaseSpawnCell_CheckAvail, 0x5)
 	return 0x5D6C41;
 }
 
-DEFINE_HOOK(0x70F820, TechnoClass_GetOriginalOwner_ValidateCaptureManager, 0x6)
+ASMJIT_PATCH(0x70F820, TechnoClass_GetOriginalOwner_ValidateCaptureManager, 0x6)
 {
 	GET(TechnoClass* const, pThis, ECX);
 
@@ -224,7 +224,7 @@ DEFINE_HOOK(0x70F820, TechnoClass_GetOriginalOwner_ValidateCaptureManager, 0x6)
 	return 0x70F84E;
 }
 
-DEFINE_HOOK(0x65DC11, Do_Reinforcement_ValidateHouse, 0x6)
+ASMJIT_PATCH(0x65DC11, Do_Reinforcement_ValidateHouse, 0x6)
 {
 	GET(FootClass* const, pReinforcee, EBP);
 
@@ -242,14 +242,14 @@ DEFINE_HOOK(0x65DC11, Do_Reinforcement_ValidateHouse, 0x6)
 	return 0x65DC2B;
 }
 
-//DEFINE_HOOK(0x6A8420, SortsBefore_whocaall, 0x5)
+//ASMJIT_PATCH(0x6A8420, SortsBefore_whocaall, 0x5)
 //{
 //	GET_STACK(DWORD, caller, 0x0);
 //	Debug::LogInfo(__FUNCTION__" Caller[%x]!",caller);
 //	return 0x0;
 //}
 //
-//DEFINE_HOOK(0x6A844D, SortsBefore, 0x8)
+//ASMJIT_PATCH(0x6A844D, SortsBefore, 0x8)
 //{
 //	GET_STACK(TechnoTypeClass*, pResultFirst, 0x14);
 //	GET(int, indexq, EDI);
@@ -289,7 +289,7 @@ DEFINE_HOOK(0x65DC11, Do_Reinforcement_ValidateHouse, 0x6)
 //	bool Allocated { false };
 //};
 //
-//DEFINE_STRONG_HOOK(0x4AD33E, DisplayClass_ReadINI_IsoMapPack5_Limit, 0x5)
+//ASMJIT_PATCH(0x4AD33E, DisplayClass_ReadINI_IsoMapPack5_Limit, 0x5)
 //{
 //	LEA_STACK(XSurface*, pSurface, 0x134 - 0x124);
 //	Game::CallBack();
@@ -302,7 +302,7 @@ DEFINE_HOOK(0x65DC11, Do_Reinforcement_ValidateHouse, 0x6)
 //}
 
 //BounceClass* ptr = nullptr;
-//DEFINE_HOOK(0x423939, AnimClass_Bounce_Update_Probe, 0x6)
+//ASMJIT_PATCH(0x423939, AnimClass_Bounce_Update_Probe, 0x6)
 //{
 //	GET(AnimClass*, pThis, EBP);
 //
@@ -313,7 +313,7 @@ DEFINE_HOOK(0x65DC11, Do_Reinforcement_ValidateHouse, 0x6)
 //	return 0x0;
 //}
 
-DEFINE_HOOK(0x43A002, Bounclass_Update_FixCrash, 0x9)
+ASMJIT_PATCH(0x43A002, Bounclass_Update_FixCrash, 0x9)
 {
 	GET(int, ramp, EAX);
 	//GET_STACK(BounceClass* , pThis , 0x24);

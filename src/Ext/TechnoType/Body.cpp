@@ -1239,7 +1239,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->SubterraneanHeight.Read(exINI, pSection, "SubterraneanHeight");
 
 		this->Spawner_RecycleRange.Read(exINI, pSection, "Spawner.RecycleRange");
-		this->Spawner_RecycleFLH.Read(exINI, pSection, "Spawner.FLH");
+		this->Spawner_RecycleFLH.Read(exINI, pSection, "Spawner.RecycleCoord");
 		this->Spawner_RecycleOnTurret.Read(exINI, pSection, "Spawner.RecycleOnTurret");
 		this->Spawner_RecycleAnim.Read(exINI, pSection, "Spawner.RecycleAnim");
 
@@ -2680,7 +2680,7 @@ bool TechnoTypeExtContainer::Load(TechnoTypeClass* key, IStream* pStm)
 // =============================
 // container hooks
 
-DEFINE_HOOK(0x711835, TechnoTypeClass_CTOR, 0x5)
+ASMJIT_PATCH(0x711835, TechnoTypeClass_CTOR, 0x5)
 {
 	GET(TechnoTypeClass*, pItem, ESI);
 
@@ -2697,7 +2697,7 @@ DEFINE_HOOK(0x711835, TechnoTypeClass_CTOR, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x711AE0, TechnoTypeClass_DTOR, 0x5)
+ASMJIT_PATCH(0x711AE0, TechnoTypeClass_DTOR, 0x5)
 {
 	GET(TechnoTypeClass*, pItem, ECX);
 
@@ -2710,8 +2710,7 @@ DEFINE_HOOK(0x711AE0, TechnoTypeClass_DTOR, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x716DC0, TechnoTypeClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x7162F0, TechnoTypeClass_SaveLoad_Prefix, 0x6)
+ASMJIT_PATCH(0x7162F0, TechnoTypeClass_SaveLoad_Prefix, 0x6)
 {
 	GET_STACK(TechnoTypeClass*, pItem, 0x4);
 	GET_STACK(IStream*, pStm, 0x8);
@@ -2719,26 +2718,25 @@ DEFINE_HOOK(0x7162F0, TechnoTypeClass_SaveLoad_Prefix, 0x6)
 	TechnoTypeExtContainer::Instance.PrepareStream(pItem, pStm);
 
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x716DC0, TechnoTypeClass_SaveLoad_Prefix, 0x5)
 
 // S/L very early so we properly trigger `Load3DArt` without need to reconstruct the ExtData !
 
-DEFINE_HOOK(0x716429, TechnoTypeClass_Load_Suffix, 0x6)
+ASMJIT_PATCH(0x716429, TechnoTypeClass_Load_Suffix, 0x6)
 {
 	TechnoTypeExtContainer::Instance.LoadStatic();
 
 	return 0;
 }
 
-DEFINE_HOOK(0x716DDE, TechnoTypeClass_Save_Suffix, 0x6)
+ASMJIT_PATCH(0x716DDE, TechnoTypeClass_Save_Suffix, 0x6)
 {
 	TechnoTypeExtContainer::Instance.SaveStatic();
 
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x716132, TechnoTypeClass_LoadFromINI, 0x5) // this should make the techno unusable ? becase the game will return false when it
-DEFINE_HOOK(0x716123, TechnoTypeClass_LoadFromINI, 0x5)
+ASMJIT_PATCH(0x716123, TechnoTypeClass_LoadFromINI, 0x5)
 {
 	GET(TechnoTypeClass*, pItem, EBP);
 	GET_STACK(CCINIClass*, pINI, 0x380);
@@ -2754,10 +2752,10 @@ DEFINE_HOOK(0x716123, TechnoTypeClass_LoadFromINI, 0x5)
 	TechnoTypeExtContainer::Instance.LoadFromINI(pItem, pINI, R->Origin() == 0x716132);
 
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x716132, TechnoTypeClass_LoadFromINI, 0x5) // this should make the techno unusable ? becase the game will return false when it
 
 ////hook before stuffs got pop-ed to remove crash possibility
-//DEFINE_HOOK(0x41CD74, AircraftTypeClass_LoadFromINI, 0x6)
+//ASMJIT_PATCH(0x41CD74, AircraftTypeClass_LoadFromINI, 0x6)
 //{
 //	GET(AircraftTypeClass*, pItem, ESI);
 //	GET(CCINIClass* const, pINI, EBX);

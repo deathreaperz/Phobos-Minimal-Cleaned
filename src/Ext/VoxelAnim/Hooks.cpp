@@ -18,7 +18,7 @@
 
 #include <Misc/DynamicPatcher/Trails/TrailsManager.h>
 
-DEFINE_HOOK(0x74A70E, VoxelAnimClass_AI_Additional, 0x6) // C
+ASMJIT_PATCH(0x74A70E, VoxelAnimClass_AI_Additional, 0x6) // C
 {
 	GET(VoxelAnimClass* const, pThis, EBX);
 
@@ -46,7 +46,7 @@ DEFINE_HOOK(0x74A70E, VoxelAnimClass_AI_Additional, 0x6) // C
 
 #pragma region Otamaa
 
-DEFINE_HOOK(0x74A021, VoxelAnimClass_AI_Expired, 0x6)
+ASMJIT_PATCH(0x74A021, VoxelAnimClass_AI_Expired, 0x6)
 {
 	enum { SkipGameCode = 0x74A22A };
 
@@ -113,7 +113,7 @@ DEFINE_HOOK(0x74A021, VoxelAnimClass_AI_Expired, 0x6)
 	return SkipGameCode;
 }
 
-DEFINE_HOOK(0x74A83C, VoxelAnimClass_BounceAnim, 0x5) // A
+ASMJIT_PATCH(0x74A83C, VoxelAnimClass_BounceAnim, 0x5) // A
 {
 	GET(VoxelAnimClass*, pThis, EBX);
 

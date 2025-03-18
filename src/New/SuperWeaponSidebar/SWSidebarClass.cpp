@@ -191,7 +191,7 @@ bool SWSidebarClass::IsEnabled()
 }
 // Hooks
 
-DEFINE_HOOK(0x692419, DisplayClass_ProcessClickCoords_SWSidebar, 0x7)
+ASMJIT_PATCH(0x692419, DisplayClass_ProcessClickCoords_SWSidebar, 0x7)
 {
 	enum { Nothing = 0x6925FC };
 
@@ -203,7 +203,7 @@ DEFINE_HOOK(0x692419, DisplayClass_ProcessClickCoords_SWSidebar, 0x7)
 	return toggleButton && toggleButton->IsHovering ? Nothing : 0;
 }
 
-DEFINE_HOOK(0x4F92FB, HouseClass_UpdateTechTree_SWSidebar, 0x7)
+ASMJIT_PATCH(0x4F92FB, HouseClass_UpdateTechTree_SWSidebar, 0x7)
 {
 	enum { SkipGameCode = 0x4F9302 };
 
@@ -253,7 +253,7 @@ DEFINE_HOOK(0x4F92FB, HouseClass_UpdateTechTree_SWSidebar, 0x7)
 	return SkipGameCode;
 }
 
-DEFINE_HOOK(0x6A6316, SidebarClass_AddCameo_SuperWeapon_SWSidebar, 0x6)
+ASMJIT_PATCH(0x6A6316, SidebarClass_AddCameo_SuperWeapon_SWSidebar, 0x6)
 {
 	enum { ReturnFalse = 0x6A65FF };
 
@@ -271,7 +271,7 @@ DEFINE_HOOK(0x6A6316, SidebarClass_AddCameo_SuperWeapon_SWSidebar, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x6A5082, SidebarClass_Init_Clear_InitializeSWSidebar, 0x5)
+ASMJIT_PATCH(0x6A5082, SidebarClass_Init_Clear_InitializeSWSidebar, 0x5)
 {
 	if (!SWSidebarClass::Global())
 		SWSidebarClass::Allocate();
@@ -280,7 +280,7 @@ DEFINE_HOOK(0x6A5082, SidebarClass_Init_Clear_InitializeSWSidebar, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x6A5839, SidebarClass_Init_IO_InitializeSWSidebar, 0x5)
+ASMJIT_PATCH(0x6A5839, SidebarClass_Init_IO_InitializeSWSidebar, 0x5)
 {
 	if (!Phobos::UI::SuperWeaponSidebar || Unsorted::ArmageddonMode || ScenarioClass::Instance->PlayerSideIndex < 0)
 		return 0;
@@ -329,7 +329,7 @@ DEFINE_HOOK(0x6A5839, SidebarClass_Init_IO_InitializeSWSidebar, 0x5)
 }
 
 // Shortcuts keys hooks
-//DEFINE_HOOK(0x533E69, UnknownClass_sub_533D20_LoadKeyboardCodeFromINI, 0x6)
+//ASMJIT_PATCH(0x533E69, UnknownClass_sub_533D20_LoadKeyboardCodeFromINI, 0x6)
 //{
 //	GET(CommandClass*, pCommand, ESI);
 //	GET(int, key, EDI);
@@ -347,7 +347,7 @@ DEFINE_HOOK(0x6A5839, SidebarClass_Init_IO_InitializeSWSidebar, 0x5)
 //	return 0;
 //}
 
-//DEFINE_HOOK(0x5FB992, UnknownClass_sub_5FB320_SaveKeyboardCodeToINI, 0x6)
+//ASMJIT_PATCH(0x5FB992, UnknownClass_sub_5FB320_SaveKeyboardCodeToINI, 0x6)
 //{
 //	GET(CommandClass*, pCommand, ECX);
 //	GET(int, key, EAX);

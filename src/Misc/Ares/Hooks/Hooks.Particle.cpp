@@ -79,21 +79,21 @@ void Particle_Web_AI(ParticleClass* pThis)
 	}
 }
 
-//DEFINE_HOOK(0x6453D7, ParticleTypeClass_ReadINI_BehavesLike_A, 0x5)
+//ASMJIT_PATCH(0x6453D7, ParticleTypeClass_ReadINI_BehavesLike_A, 0x5)
 //{
 //	LEA_STACK(const char*, pResult, 0x14);
 //	R->EBX(ParticleTypeClass::BehavesFromString(pResult));
 //	return 0x6453FF;
 //}
 //
-//DEFINE_HOOK(0x644423, ParticleSystemTypeClass_ReadINI_BehavesLike_A, 0x8)
+//ASMJIT_PATCH(0x644423, ParticleSystemTypeClass_ReadINI_BehavesLike_A, 0x8)
 //{
 //	LEA_STACK(const char*, pResult, 0x20);
 //	R->EAX(ParticleSystemTypeClass::BehavesFromString(pResult));
 //	return 0x644461;
 //}
 
-//DEFINE_HOOK(0x6458D7, ParticleTypeClass_ReadINI_BehavesLike_B, 0x6)
+//ASMJIT_PATCH(0x6458D7, ParticleTypeClass_ReadINI_BehavesLike_B, 0x6)
 //{
 //	GET(const char*, pResult, EBX);
 //
@@ -134,7 +134,7 @@ void Particle_Web_AI(ParticleClass* pThis)
 //	return 0x6458FF;
 //}
 
-//DEFINE_HOOK(0x644857, ParticleSystemTypeClass_ReadINI_BehavesLike_B, 0x6)
+//ASMJIT_PATCH(0x644857, ParticleSystemTypeClass_ReadINI_BehavesLike_B, 0x6)
 //{
 //	GET(const char*, pResult, EBX);
 //
@@ -175,7 +175,7 @@ void Particle_Web_AI(ParticleClass* pThis)
 //	return 0x64487F;
 //}
 
-DEFINE_HOOK(0x62FCF0, ParticleSytemClass_FireDirectioon_AI_DirMult, 0x7)
+ASMJIT_PATCH(0x62FCF0, ParticleSytemClass_FireDirectioon_AI_DirMult, 0x7)
 {
 	GET(int, facing, EAX);
 	GET(ParticleSystemClass*, pThis, ESI);
@@ -186,7 +186,7 @@ DEFINE_HOOK(0x62FCF0, ParticleSytemClass_FireDirectioon_AI_DirMult, 0x7)
 }
 
 #ifndef PARTICLESTUFFSOVERRIDE
-DEFINE_HOOK(0x72590E, AnnounceInvalidPointer_Particle, 0x9)
+ASMJIT_PATCH(0x72590E, AnnounceInvalidPointer_Particle, 0x9)
 {
 	GET(AbstractType, nWhat, EBX);
 
@@ -206,7 +206,7 @@ DEFINE_HOOK(0x72590E, AnnounceInvalidPointer_Particle, 0x9)
 		0x725917 : 0x7259DA;
 }
 
-//DEFINE_HOOK(0x62EE3F, ParticleClass_SmokeAI_ZeroRadius, 0x6)
+//ASMJIT_PATCH(0x62EE3F, ParticleClass_SmokeAI_ZeroRadius, 0x6)
 //{
 //	GET(ParticleTypeClass*, pType, EDX);
 //	const auto radius = pType->Radius >> 3;
@@ -218,7 +218,7 @@ DEFINE_HOOK(0x72590E, AnnounceInvalidPointer_Particle, 0x9)
 //	return 0x62EE48;
 //}
 
-//DEFINE_HOOK(0x62C2C2, ParticleClass_Update_Gas_Damage, 6)
+//ASMJIT_PATCH(0x62C2C2, ParticleClass_Update_Gas_Damage, 6)
 //{
 // 	GET(ParticleClass*, pParticle, EBP);
 // 	GET(ObjectClass*, pTarget, ESI);
@@ -259,7 +259,7 @@ static void ParticleClass_Gas_Transmography(ObjectClass* pItem, TechnoClass* pAt
 	}
 }
 
-DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
+ASMJIT_PATCH(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 {
 	GET(ParticleClass*, pThis, EBP);
 	auto pTypeExt = ParticleTypeExtContainer::Instance.Find(pThis->Type);
@@ -315,7 +315,7 @@ DEFINE_HOOK(0x62C23D, ParticleClass_Update_Gas_DamageRange, 6)
 	return 0x62C313;
 }
 
-DEFINE_HOOK(0x62D015, ParticleClass_Draw_Palette, 6)
+ASMJIT_PATCH(0x62D015, ParticleClass_Draw_Palette, 6)
 {
 	GET(ParticleClass*, pThis, EDI);
 
@@ -330,7 +330,7 @@ DEFINE_HOOK(0x62D015, ParticleClass_Draw_Palette, 6)
 	return 0x62D01B;
 }
 
-DEFINE_HOOK(0x62CCB8, ParticleClass_Update_Fire, 7)
+ASMJIT_PATCH(0x62CCB8, ParticleClass_Update_Fire, 7)
 {
 	GET(ParticleClass*, pThis, ESI);
 
@@ -373,7 +373,7 @@ DEFINE_HOOK(0x62CCB8, ParticleClass_Update_Fire, 7)
 	return 0x62CE14;
 }
 
-DEFINE_HOOK(0x6D9427, TacticalClass_DrawUnits_ParticleSystems, 9)
+ASMJIT_PATCH(0x6D9427, TacticalClass_DrawUnits_ParticleSystems, 9)
 {
 	GET(Layer, layer, EAX);
 
@@ -390,7 +390,7 @@ DEFINE_HOOK(0x6D9427, TacticalClass_DrawUnits_ParticleSystems, 9)
 // Fixed position and layer of info tip and reveal production cameo on selected building
 // Author: Belonit
 // Call DrawInfoTipAndSpiedSelection in new location
-DEFINE_HOOK(0x6D9781, Tactical_RenderLayers_DrawInfoTipAndSpiedSelection, 0x5)
+ASMJIT_PATCH(0x6D9781, Tactical_RenderLayers_DrawInfoTipAndSpiedSelection, 0x5)
 {
 	GET(TechnoClass*, pThis, EBX);
 	GET(Point2D*, pLocation, EAX);
@@ -410,7 +410,7 @@ DEFINE_HOOK(0x6D9781, Tactical_RenderLayers_DrawInfoTipAndSpiedSelection, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x62E380, ParticleSystemClass_SpawnParticle, 0xA)
+ASMJIT_PATCH(0x62E380, ParticleSystemClass_SpawnParticle, 0xA)
 {
 	GET(ParticleSystemClass*, pThis, ECX);
 
@@ -418,7 +418,7 @@ DEFINE_HOOK(0x62E380, ParticleSystemClass_SpawnParticle, 0xA)
 		? 0x62E428 : 0;
 }
 
-DEFINE_HOOK(0x62E2AD, ParticleSystemClass_Draw, 6)
+ASMJIT_PATCH(0x62E2AD, ParticleSystemClass_Draw, 6)
 {
 	GET(ParticleSystemClass*, pThis, EDI);
 	GET(ParticleSystemTypeClass*, pThisType, EAX);
@@ -436,7 +436,7 @@ DEFINE_HOOK(0x62E2AD, ParticleSystemClass_Draw, 6)
 	return 0x62E2B3;
 }
 
-//DEFINE_HOOK(0x62CE40, ParticleClass_Update_Add, 0x9)
+//ASMJIT_PATCH(0x62CE40, ParticleClass_Update_Add, 0x9)
 //{
 //	GET(ParticleClass*, pThis, ECX);
 //
@@ -447,7 +447,7 @@ DEFINE_HOOK(0x62E2AD, ParticleSystemClass_Draw, 6)
 //	return 0x0;
 //}
 
-DEFINE_HOOK(0x62FD60, ParticleSystemClass_Update, 0x9)
+ASMJIT_PATCH(0x62FD60, ParticleSystemClass_Update, 0x9)
 {
 	GET(ParticleSystemClass*, pThis, ECX);
 
@@ -461,7 +461,7 @@ DEFINE_HOOK(0x62FD60, ParticleSystemClass_Update, 0x9)
 	return Handled ? 0x62FE43 : 0;
 }
 
-//DEFINE_HOOK(0x62E15D, ParticleSystemClass_DTOR_NullType, 0x6)
+//ASMJIT_PATCH(0x62E15D, ParticleSystemClass_DTOR_NullType, 0x6)
 //{
 //	GET(ParticleSystemClass*, pThis, EDI);
 //	Debug::LogInfo("Detaching ParticleSystemClass [%x] Type of [%s]", pThis, pThis->Type->ID);

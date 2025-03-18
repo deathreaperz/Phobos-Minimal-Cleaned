@@ -8,7 +8,7 @@
 #include <TeamClass.h>
 #include <HouseClass.h>
 
-DEFINE_HOOK(0x6EBB86, TeamClass_MoveToFocus_IsInStray, 0x6)
+ASMJIT_PATCH(0x6EBB86, TeamClass_MoveToFocus_IsInStray, 0x6)
 {
 	GET(FootClass*, pFoot, ESI);
 	GET(TeamClass*, pThis, EBP);
@@ -25,7 +25,7 @@ DEFINE_HOOK(0x6EBB86, TeamClass_MoveToFocus_IsInStray, 0x6)
 	return 0x6EBB91;
 }
 
-DEFINE_HOOK(0x6EBE69, TeamClass_MoveToFocus_SetDestination, 0xA)
+ASMJIT_PATCH(0x6EBE69, TeamClass_MoveToFocus_SetDestination, 0xA)
 {
 	GET(FootClass*, pFoot, ESI);
 
@@ -38,7 +38,7 @@ DEFINE_HOOK(0x6EBE69, TeamClass_MoveToFocus_SetDestination, 0xA)
 		0x6EBE9C : 0x6EBE82;
 }
 
-DEFINE_HOOK(0x6EBEDB, TeamClass_MoveToFocus_BalloonHover, 0xA)
+ASMJIT_PATCH(0x6EBEDB, TeamClass_MoveToFocus_BalloonHover, 0xA)
 {
 	GET(FootClass*, pFoot, ESI);
 
@@ -69,7 +69,7 @@ DEFINE_HOOK(0x6EBEDB, TeamClass_MoveToFocus_BalloonHover, 0xA)
 #include <Ext/SWType/Body.h>
 #include <Ext/Super/Body.h>
 
-DEFINE_HOOK(0x509E00, HouseClass_LS_RemoveTargetLimitIfAvaible, 0x6)
+ASMJIT_PATCH(0x509E00, HouseClass_LS_RemoveTargetLimitIfAvaible, 0x6)
 {
 	//GET(HouseClass*, pThis, ESI);
 	GET_STACK(FakeSuperClass*, pSuper, 0x4); // we know that this is LS ?
@@ -82,7 +82,7 @@ DEFINE_HOOK(0x509E00, HouseClass_LS_RemoveTargetLimitIfAvaible, 0x6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x4FAD64, HouseClass_SpecialWeapon_Update, 0x7)
+ASMJIT_PATCH(0x4FAD64, HouseClass_SpecialWeapon_Update, 0x7)
 {
 	GET(HouseClass*, pThis, EDI);
 	GET(FakeBuildingClass*, pThat, ESI);
@@ -107,7 +107,7 @@ DEFINE_HOOK(0x4FAD64, HouseClass_SpecialWeapon_Update, 0x7)
 //	, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90
 //);
 
-DEFINE_HOOK(0x50A23A, HouseClass_Target_Dominator, 0x6)
+ASMJIT_PATCH(0x50A23A, HouseClass_Target_Dominator, 0x6)
 {
 	GET(HouseClass*, pThis, EDI);
 	GET(TechnoClass*, pThat, ESI);
@@ -115,7 +115,7 @@ DEFINE_HOOK(0x50A23A, HouseClass_Target_Dominator, 0x6)
 	return pThis->IsAlliedWith(pThat->Owner) ? 0x50A292 : 0x50A278;
 }
 
-DEFINE_HOOK(0x50A04B, HouseClass_Target_GenericMutator, 0x7)
+ASMJIT_PATCH(0x50A04B, HouseClass_Target_GenericMutator, 0x7)
 {
 	GET(HouseClass*, pThis, EBX);
 	GET(TechnoClass*, pThat, ESI);
@@ -123,32 +123,32 @@ DEFINE_HOOK(0x50A04B, HouseClass_Target_GenericMutator, 0x7)
 	return pThis->IsAlliedWith(pThat->Owner) ? 0x50A096 : 0x50A087;
 }
 
-DEFINE_HOOK(0x5094F9, HouseClass_AdjustThreats, 0x6)
+ASMJIT_PATCH(0x5094F9, HouseClass_AdjustThreats, 0x6)
 {
 	return R->EBX<HouseClass*>()->IsAlliedWith(R->ESI<HouseClass*>()) ? 0x5095B6 : 0x509532;
 }
 
-DEFINE_HOOK(0x4F9432, HouseClass_Attacked, 0x6)
+ASMJIT_PATCH(0x4F9432, HouseClass_Attacked, 0x6)
 {
 	return R->EDI<HouseClass*>()->IsAlliedWith(R->EAX<HouseClass*>()) ? 0x4F9474 : 0x4F9478;
 }
 
-DEFINE_HOOK(0x4FBD1C, HouseClass_DoesEnemyBuildingExist, 0x6)
+ASMJIT_PATCH(0x4FBD1C, HouseClass_DoesEnemyBuildingExist, 0x6)
 {
 	return R->ESI<HouseClass*>()->IsAlliedWith(R->EAX<HouseClass*>()) ? 0x4FBD57 : 0x4FBD47;
 }
 
-DEFINE_HOOK(0x5003BA, HouseClass_FindJuicyTarget, 0x6)
+ASMJIT_PATCH(0x5003BA, HouseClass_FindJuicyTarget, 0x6)
 {
 	return R->EDI<HouseClass*>()->IsAlliedWith(R->EAX<HouseClass*>()) ? 0x5003F7 : 0x5004B1;
 }
 
-DEFINE_HOOK(0x5047F5, HouseClass_UpdateAngetNodes, 0x6)
+ASMJIT_PATCH(0x5047F5, HouseClass_UpdateAngetNodes, 0x6)
 {
 	return R->EAX<HouseClass*>()->IsAlliedWith(R->EDX<HouseClass*>()) ? 0x504826 : 0x504820;
 }
 
-DEFINE_HOOK(0x4F9A90, HouseClass_IsAlly_ObjectClass, 0x7)
+ASMJIT_PATCH(0x4F9A90, HouseClass_IsAlly_ObjectClass, 0x7)
 {
 	GET_STACK(TechnoClass*, pTarget, 0x4);
 	GET(HouseClass*, pThis, ECX);
@@ -164,7 +164,7 @@ DEFINE_HOOK(0x4F9A90, HouseClass_IsAlly_ObjectClass, 0x7)
 }
 
 //breaking stack ??
-// DEFINE_HOOK(0x4F9A50, HouseClass_IsAlly_HouseClass, 0x6)
+// ASMJIT_PATCH(0x4F9A50, HouseClass_IsAlly_HouseClass, 0x6)
 // {
 // 	GET_STACK(HouseClass*, pTarget, 0x4);
 // 	GET(HouseClass*, pThis, ECX);
@@ -178,7 +178,7 @@ DEFINE_HOOK(0x4F9A90, HouseClass_IsAlly_ObjectClass, 0x7)
 // 	return 0x4F9A8C;
 // }
 
-DEFINE_HOOK(0x4F9B0A, HouseClass_IsAlly_AbstractClass, 0x6)
+ASMJIT_PATCH(0x4F9B0A, HouseClass_IsAlly_AbstractClass, 0x6)
 {
 	GET(HouseClass*, pThis, ESI);
 	GET(HouseClass*, pThat, EAX);
@@ -187,27 +187,27 @@ DEFINE_HOOK(0x4F9B0A, HouseClass_IsAlly_AbstractClass, 0x6)
 	return 0x4F9B43;
 }
 
-DEFINE_HOOK(0x501548, HouseClass_IsAllowedToAlly_1, 0x6)
+ASMJIT_PATCH(0x501548, HouseClass_IsAllowedToAlly_1, 0x6)
 {
 	return R->ESI<HouseClass*>()->IsAlliedWith(R->EDI<HouseClass*>()) ? 0x501575 : 0x50157C;
 }
 
-DEFINE_HOOK(0x5015F2, HouseClass_IsAllowedToAlly_2, 0x6)
+ASMJIT_PATCH(0x5015F2, HouseClass_IsAllowedToAlly_2, 0x6)
 {
 	return 0x501628 - (int)R->ESI<HouseClass*>()->IsAlliedWith(R->EAX<HouseClass*>());
 }
 
-DEFINE_HOOK(0x4F9D01, HouseClass_MakeAlly_3, 0x6)
+ASMJIT_PATCH(0x4F9D01, HouseClass_MakeAlly_3, 0x6)
 {
 	return R->ESI<HouseClass*>()->IsAlliedWith(R->EAX<HouseClass*>()) ? 0x4F9D34 : 0x4F9D40;
 }
 
-DEFINE_HOOK(0x4F9E10, HouseClass_MakeAlly_4, 0x8)
+ASMJIT_PATCH(0x4F9E10, HouseClass_MakeAlly_4, 0x8)
 {
 	return R->EBP<HouseClass*>()->IsAlliedWith(R->ESI<HouseClass*>()) ? 0x4F9E49 : 0x4F9EC9;
 }
 
-DEFINE_HOOK(0x4F9E56, HouseClass_MakeAlly_5, 0x9)
+ASMJIT_PATCH(0x4F9E56, HouseClass_MakeAlly_5, 0x9)
 {
 	GET(HouseClass*, pHouse, EBP);
 	GET(HouseClass*, pHouse_2, ESI);
@@ -312,11 +312,11 @@ BuildingClass* __fastcall Find_Enemy_Building(
 
 BuildingClass* __fastcall Find_Own_Building(
 		BuildingTypeClass* type,
-		HouseClass* house,
+		HouseClass* unused,
 		TechnoClass* attacker,
 		int find_type)
 {
-	if (house->Buildings.Count <= 0 || !attacker)
+	if (!attacker || attacker->Owner->Buildings.Count <= 0)
 	{
 		return nullptr;
 	}
@@ -324,54 +324,51 @@ BuildingClass* __fastcall Find_Own_Building(
 	int v30 = -1;
 	BuildingClass* last = nullptr;
 
-	for (auto& pBld : house->Buildings)
+	for (auto& pBld : attacker->Owner->Buildings)
 	{
-		if (pBld->Type != type)
-			continue;
-
-		if (pBld->InLimbo || BuildingExtContainer::Instance.Find(pBld)->LimboID != -1)
-			continue;
-
 		int v10 = -1;
 
-		switch (find_type)
+		if (pBld->Type == type)
 		{
-		case 0:
-		{
-			auto coord = pBld->GetCoords();
-			auto cell = CellClass::Coord2Cell(coord);
-			v10 = -1 - MapClass::Instance->GetThreatPosed(cell, attacker->Owner);
+			if (!pBld->InLimbo && BuildingExtContainer::Instance.Find(pBld)->LimboID <= -1)
+			{
+				switch (find_type)
+				{
+				case 0:
+				{
+					auto coord = pBld->GetCoords();
+					v10 = -1 - MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
 
-			break;
-		}
-		case 1:
-		{
-			auto coord = pBld->GetCoords();
-			auto cell = CellClass::Coord2Cell(coord);
-			v10 = MapClass::Instance->GetThreatPosed(cell, attacker->Owner);
+					break;
+				}
+				case 1:
+				{
+					auto coord = pBld->GetCoords();
+					v10 = MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
 
-			break;
-		}
-		case 2:
-		{
-			v10 = -1 - (int)(attacker->Location - pBld->Location).Length();
-			break;
-		}
-		case 3:
-		{
-			v10 = (int)(attacker->Location - pBld->Location).Length();
-			break;
-		}
-		default:
-			break;
+					break;
+				}
+				case 2:
+				{
+					v10 = -1 - (int)(pBld->Location - attacker->Location).Length();
+					break;
+				}
+				case 3:
+				{
+					v10 = (int)(pBld->Location - attacker->Location).Length();
+					break;
+				}
+				default:
+					break;
+				}
+			}
 		}
 
 		if (v10 > v30)
 		{
 			v30 = v10;
+			last = pBld;
 		}
-
-		last = pBld;
 	}
 
 	return last;
@@ -383,7 +380,7 @@ DEFINE_FUNCTION_JUMP(CALL, 0x6EFFAF, Find_Enemy_Building)
 DEFINE_FUNCTION_JUMP(CALL, 0x6EE693, Find_Own_Building)
 #else
 
-DEFINE_HOOK(0x6EEC6D, FindTargetBuilding_LimboDelivered, 0x6)
+ASMJIT_PATCH(0x6EEC6D, FindTargetBuilding_LimboDelivered, 0x6)
 {
 	enum { advance = 0x6EA38C, ret = 0x0 };
 	GET(BuildingClass*, pBuilding, ESI);
@@ -395,7 +392,7 @@ DEFINE_HOOK(0x6EEC6D, FindTargetBuilding_LimboDelivered, 0x6)
 		advance : ret;
 }
 
-DEFINE_HOOK(0x6EEEF2, FindOwnBuilding_LimboDelivered, 0xA)
+ASMJIT_PATCH(0x6EEEF2, FindOwnBuilding_LimboDelivered, 0xA)
 {
 	enum { advance = 0x6EF0D7, ret = 0x0 };
 	GET(BuildingClass*, pBuilding, ESI);
@@ -409,7 +406,7 @@ DEFINE_HOOK(0x6EEEF2, FindOwnBuilding_LimboDelivered, 0xA)
 
 #endif
 
-DEFINE_HOOK(0x6EA192, TeamClass_Regroup_LimboDelivered, 0x6)
+ASMJIT_PATCH(0x6EA192, TeamClass_Regroup_LimboDelivered, 0x6)
 {
 	enum { advance = 0x6EA38C, ret = 0x0 };
 	GET(BuildingClass*, pBuilding, ESI);
@@ -421,7 +418,7 @@ DEFINE_HOOK(0x6EA192, TeamClass_Regroup_LimboDelivered, 0x6)
 		advance : ret;
 }
 
-DEFINE_HOOK(0x6EE8D9, TeamClass_Scout_LimboDelivered, 0x9)
+ASMJIT_PATCH(0x6EE8D9, TeamClass_Scout_LimboDelivered, 0x9)
 {
 	enum { advance = 0x6EE928, ret = 0x0 };
 	GET(BuildingClass**, pBuilding, ESI);
@@ -433,7 +430,7 @@ DEFINE_HOOK(0x6EE8D9, TeamClass_Scout_LimboDelivered, 0x9)
 		advance : ret;
 }
 
-DEFINE_HOOK(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
+ASMJIT_PATCH(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 {
 	GET(ObjectClass*, pTarget, ESI);
 

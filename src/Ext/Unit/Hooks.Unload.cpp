@@ -32,13 +32,13 @@ void UnitDeployConvertHelpers::RemoveDeploying(REGISTERS* R)
 	R->AL(false);
 }
 
-DEFINE_HOOK(0x73FFE6, UnitClass_WhatAction_RemoveDeploying, 0xA)
+ASMJIT_PATCH(0x73FFE6, UnitClass_WhatAction_RemoveDeploying, 0xA)
 {
 	UnitDeployConvertHelpers::RemoveDeploying(R);
 	return 0x73FFF0;
 }
 
-DEFINE_HOOK(0x730C70, DeployClass_Execute_RemoveDeploying, 0xA)
+ASMJIT_PATCH(0x730C70, DeployClass_Execute_RemoveDeploying, 0xA)
 {
 	GET(TechnoClass*, pThis, ESI);
 
@@ -51,7 +51,7 @@ DEFINE_HOOK(0x730C70, DeployClass_Execute_RemoveDeploying, 0xA)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x739C70, UnitClass_ToggleDeployState_ChangeAmmo, 0xA) // deploying
+ASMJIT_PATCH(0x739C70, UnitClass_ToggleDeployState_ChangeAmmo, 0xA) // deploying
 {
 	GET(UnitClass*, pThis, ESI);
 	auto const pThisExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
@@ -64,7 +64,7 @@ DEFINE_HOOK(0x739C70, UnitClass_ToggleDeployState_ChangeAmmo, 0xA) // deploying
 	return 0x0;
 }
 
-DEFINE_HOOK(0x739E6E, UnitClass_ToggleSimpleDeploy_ChangeAmmo, 0xA) // undeploying
+ASMJIT_PATCH(0x739E6E, UnitClass_ToggleSimpleDeploy_ChangeAmmo, 0xA) // undeploying
 {
 	GET(UnitClass*, pThis, ESI);
 	auto const pThisExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
@@ -78,7 +78,7 @@ DEFINE_HOOK(0x739E6E, UnitClass_ToggleSimpleDeploy_ChangeAmmo, 0xA) // undeployi
 	return 0x0;
 }
 
-DEFINE_HOOK(0x73DE78, UnitClass_Unload_ChangeAmmo, 0x6) // converters
+ASMJIT_PATCH(0x73DE78, UnitClass_Unload_ChangeAmmo, 0x6) // converters
 {
 	GET(UnitClass*, pThis, ESI);
 

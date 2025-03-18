@@ -29,14 +29,14 @@
 
 #include <RadarEventClass.h>
 
-DEFINE_HOOK(0x446EE2, BuildingClass_Place_InitialPayload, 6)
+ASMJIT_PATCH(0x446EE2, BuildingClass_Place_InitialPayload, 6)
 {
 	GET(BuildingClass* const, pThis, EBP);
 	TechnoExtContainer::Instance.Find(pThis)->CreateInitialPayload();
 	return 0;
 }
 
-DEFINE_HOOK(0x44D760, BuildingClass_Destroyed_UnitLost, 7)
+ASMJIT_PATCH(0x44D760, BuildingClass_Destroyed_UnitLost, 7)
 {
 	GET(BuildingClass*, pThis, ECX);
 	GET_STACK(ObjectClass*, pKiller, 0x4);
@@ -64,7 +64,7 @@ DEFINE_HOOK(0x44D760, BuildingClass_Destroyed_UnitLost, 7)
 	return 0x44D7C9;
 }
 
-DEFINE_HOOK(0x451330, BuildingClass_GetCrewCount, 0xA)
+ASMJIT_PATCH(0x451330, BuildingClass_GetCrewCount, 0xA)
 {
 	GET(BuildingClass*, pThis, ECX);
 
@@ -95,7 +95,7 @@ DEFINE_HOOK(0x451330, BuildingClass_GetCrewCount, 0xA)
 	return 0x4513CD;
 }
 
-DEFINE_HOOK(0x44EB10, BuildingClass_GetCrew, 9)
+ASMJIT_PATCH(0x44EB10, BuildingClass_GetCrew, 9)
 {
 	GET(BuildingClass*, pThis, ECX);
 
@@ -108,7 +108,7 @@ DEFINE_HOOK(0x44EB10, BuildingClass_GetCrew, 9)
 
 #include <Ext/SWType/Body.h>
 
-DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
+ASMJIT_PATCH(0x43E7B0, BuildingClass_DrawVisible, 5)
 {
 	GET(BuildingClass*, pThis, ECX);
 	GET_STACK(Point2D*, pLocation, 0x4);
@@ -242,14 +242,14 @@ DEFINE_HOOK(0x43E7B0, BuildingClass_DrawVisible, 5)
 	return 0x43E8F2;
 }
 
-DEFINE_HOOK(0x452218, BuildingClass_Enable_Temporal_Factories, 6)
+ASMJIT_PATCH(0x452218, BuildingClass_Enable_Temporal_Factories, 6)
 {
 	GET(BuildingClass*, pThis, ECX);
 	TechnoExt_ExtData::UpdateFactoryQueues(pThis);
 	return 0;
 }
 
-DEFINE_HOOK(0x442D1B, BuildingClass_Init_Academy, 6)
+ASMJIT_PATCH(0x442D1B, BuildingClass_Init_Academy, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -269,7 +269,7 @@ DEFINE_HOOK(0x442D1B, BuildingClass_Init_Academy, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x43FE8E, BuildingClass_Update_Reload, 6)
+ASMJIT_PATCH(0x43FE8E, BuildingClass_Update_Reload, 6)
 {
 	GET(BuildingClass*, B, ESI);
 
@@ -280,21 +280,21 @@ DEFINE_HOOK(0x43FE8E, BuildingClass_Update_Reload, 6)
 	return 0x43FEBE;
 }
 
-DEFINE_HOOK(0x440C08, BuildingClass_Put_AIBaseNormal, 6)
+ASMJIT_PATCH(0x440C08, BuildingClass_Put_AIBaseNormal, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	R->EAX(TechnoExt_ExtData::IsBaseNormal(pThis));
 	return 0x440C2C;
 }
 
-DEFINE_HOOK(0x456370, BuildingClass_UnmarkBaseSpace_AIBaseNormal, 6)
+ASMJIT_PATCH(0x456370, BuildingClass_UnmarkBaseSpace_AIBaseNormal, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	R->EAX(TechnoExt_ExtData::IsBaseNormal(pThis));
 	return 0x456394;
 }
 
-DEFINE_HOOK(0x445A72, BuildingClass_Remove_AIBaseNormal, 6)
+ASMJIT_PATCH(0x445A72, BuildingClass_Remove_AIBaseNormal, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	R->EAX(TechnoExt_ExtData::IsBaseNormal(pThis));
@@ -305,7 +305,7 @@ DEFINE_HOOK(0x445A72, BuildingClass_Remove_AIBaseNormal, 6)
 // others. this means planes don't have to wait one more ReloadDelay because
 // the first docker triggered repair mission while the other dockers arrive
 // too late and need to be put to sleep first.
-DEFINE_HOOK(0x44C844, BuildingClass_MissionRepair_Reload, 6)
+ASMJIT_PATCH(0x44C844, BuildingClass_MissionRepair_Reload, 6)
 {
 	GET(BuildingClass* const, pThis, EBP);
 	auto const pExt = BuildingExtContainer::Instance.Find(pThis);
@@ -399,7 +399,7 @@ DEFINE_HOOK(0x44C844, BuildingClass_MissionRepair_Reload, 6)
 	return 0x44C968;
 }
 
-DEFINE_HOOK(0x444DBC, BuildingClass_KickOutUnit_Infantry, 5)
+ASMJIT_PATCH(0x444DBC, BuildingClass_KickOutUnit_Infantry, 5)
 {
 	GET(TechnoClass*, Production, EDI);
 	GET(BuildingClass*, Factory, ESI);
@@ -415,7 +415,7 @@ DEFINE_HOOK(0x444DBC, BuildingClass_KickOutUnit_Infantry, 5)
 	return 0;
 }
 
-DEFINE_HOOK(0x4445F6, BuildingClass_KickOutUnit_Clone_NonNavalUnit, 5)
+ASMJIT_PATCH(0x4445F6, BuildingClass_KickOutUnit_Clone_NonNavalUnit, 5)
 {
 	GET(TechnoClass*, Production, EDI);
 	GET(BuildingClass*, Factory, ESI);
@@ -431,7 +431,7 @@ DEFINE_HOOK(0x4445F6, BuildingClass_KickOutUnit_Clone_NonNavalUnit, 5)
 	return 0x444971;
 }
 
-DEFINE_HOOK(0x44441A, BuildingClass_KickOutUnit_Clone_NavalUnit, 6)
+ASMJIT_PATCH(0x44441A, BuildingClass_KickOutUnit_Clone_NavalUnit, 6)
 {
 	GET(TechnoClass*, Production, EDI);
 	GET(BuildingClass*, Factory, ESI);
@@ -441,7 +441,7 @@ DEFINE_HOOK(0x44441A, BuildingClass_KickOutUnit_Clone_NavalUnit, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x4444E2, BuildingClass_KickOutUnit_FindAlternateKickout, 6)
+ASMJIT_PATCH(0x4444E2, BuildingClass_KickOutUnit_FindAlternateKickout, 6)
 {
 	GET(BuildingClass*, Src, ESI);
 	GET(BuildingClass*, Tst, EBP);
@@ -461,7 +461,7 @@ DEFINE_HOOK(0x4444E2, BuildingClass_KickOutUnit_FindAlternateKickout, 6)
 }
 
 // copy the remaining EMP duration to the unit when undeploying a building.
-DEFINE_HOOK(0x44A04C, BuildingClass_Destruction_CopyEMPDuration, 6)
+ASMJIT_PATCH(0x44A04C, BuildingClass_Destruction_CopyEMPDuration, 6)
 {
 	GET(TechnoClass*, pBuilding, EBP);
 	GET(TechnoClass*, pUnit, EBX);
@@ -473,7 +473,7 @@ DEFINE_HOOK(0x44A04C, BuildingClass_Destruction_CopyEMPDuration, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x69281E, DisplayClass_ChooseAction_TogglePower, 0xA)
+ASMJIT_PATCH(0x69281E, DisplayClass_ChooseAction_TogglePower, 0xA)
 {
 	GET(TechnoClass*, pTarget, ESI);
 	REF_STACK(Action, action, STACK_OFFS(0x20, 0x10));
@@ -503,7 +503,7 @@ DEFINE_HOOK(0x69281E, DisplayClass_ChooseAction_TogglePower, 0xA)
 	return 0x69289B;
 }
 
-DEFINE_HOOK(0x474E8E, INIClass_GetMovementZone, 5)
+ASMJIT_PATCH(0x474E8E, INIClass_GetMovementZone, 5)
 {
 	GET_STACK(const char*, Section, 0x2C);
 	GET_STACK(const char*, Key, 0x30);
@@ -512,7 +512,7 @@ DEFINE_HOOK(0x474E8E, INIClass_GetMovementZone, 5)
 	return 0;
 }
 
-DEFINE_HOOK(0x477007, INIClass_GetSpeedType, 8)
+ASMJIT_PATCH(0x477007, INIClass_GetSpeedType, 8)
 {
 	if (R->EAX() == -1)
 	{
@@ -536,7 +536,7 @@ DEFINE_HOOK(0x477007, INIClass_GetSpeedType, 8)
 	return 0;
 }
 
-DEFINE_HOOK(0x441F12, BuildingClass_Destroy_RubbleYell, 6)
+ASMJIT_PATCH(0x441F12, BuildingClass_Destroy_RubbleYell, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -561,7 +561,7 @@ DEFINE_HOOK(0x441F12, BuildingClass_Destroy_RubbleYell, 6)
 }
 
 // #664: Advanced Rubble - reconstruction part: Reconstruction
-DEFINE_HOOK(0x519FAF, InfantryClass_UpdatePosition_EngineerRepairsFriendly, 6)
+ASMJIT_PATCH(0x519FAF, InfantryClass_UpdatePosition_EngineerRepairsFriendly, 6)
 {
 	GET(InfantryClass*, pThis, ESI);
 	GET(BuildingClass*, Target, EDI);
@@ -608,7 +608,7 @@ DEFINE_HOOK(0x519FAF, InfantryClass_UpdatePosition_EngineerRepairsFriendly, 6)
 	return Target->Type->Repairable ? 0 : 0x519FB9;
 }
 
-DEFINE_HOOK(0x459ed0, BuildingClass_GetUIName, 6)
+ASMJIT_PATCH(0x459ed0, BuildingClass_GetUIName, 6)
 {
 	GET(BuildingClass*, pBld, ECX);
 
@@ -633,7 +633,7 @@ DEFINE_HOOK(0x459ed0, BuildingClass_GetUIName, 6)
 	return 0x459ED9;
 }
 
-DEFINE_HOOK(0x44e2b0, BuildingClass_Mi_Unload_LargeGap, 6)
+ASMJIT_PATCH(0x44e2b0, BuildingClass_Mi_Unload_LargeGap, 6)
 {
 	GET(BuildingClass*, pBld, EBP);
 
@@ -657,7 +657,7 @@ DEFINE_HOOK(0x44e2b0, BuildingClass_Mi_Unload_LargeGap, 6)
 	return 0x44E371;
 }
 
-DEFINE_HOOK(0x4566d5, BuildingClass_GetRangeOfRadial_LargeGap, 6)
+ASMJIT_PATCH(0x4566d5, BuildingClass_GetRangeOfRadial_LargeGap, 6)
 {
 	GET(BuildingClass*, pBld, ESI);
 
@@ -667,7 +667,7 @@ DEFINE_HOOK(0x4566d5, BuildingClass_GetRangeOfRadial_LargeGap, 6)
 }
 
 bool Bld_ChangeOwnerAnnounce;
-DEFINE_HOOK(0x448260, BuildingClass_SetOwningHouse_ContextSet, 0x8)
+ASMJIT_PATCH(0x448260, BuildingClass_SetOwningHouse_ContextSet, 0x8)
 {
 	GET(BuildingClass*, pThis, ECX);
 	GET_STACK(bool, announce, 0x8);
@@ -679,7 +679,7 @@ DEFINE_HOOK(0x448260, BuildingClass_SetOwningHouse_ContextSet, 0x8)
 
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7E4290, FakeBuildingClass::_SetOwningHouse);
 
-DEFINE_HOOK(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
+ASMJIT_PATCH(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	GET(HouseClass* const, pNewOwner, EDI);
@@ -697,7 +697,7 @@ DEFINE_HOOK(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
 	return 0x448BED;
 }
 
-DEFINE_HOOK(0x44840B, BuildingClass_ChangeOwnership_Tech, 6)
+ASMJIT_PATCH(0x44840B, BuildingClass_ChangeOwnership_Tech, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	GET(HouseClass*, pNewOwner, EBX);
@@ -940,7 +940,7 @@ struct ProduceCashData
 */
 
 // support oil derrick logic on building upgrades
-DEFINE_HOOK(0x4409F4, BuildingClass_Put_ProduceCash, 6)
+ASMJIT_PATCH(0x4409F4, BuildingClass_Put_ProduceCash, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	GET(BuildingClass*, pToUpgrade, EDI);
@@ -981,7 +981,7 @@ DEFINE_HOOK(0x4409F4, BuildingClass_Put_ProduceCash, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x4482BD, BuildingClass_ChangeOwnership_ProduceCash, 6)
+ASMJIT_PATCH(0x4482BD, BuildingClass_ChangeOwnership_ProduceCash, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	GET(HouseClass*, pNewOwner, EBX);
@@ -1032,7 +1032,7 @@ DEFINE_HOOK(0x4482BD, BuildingClass_ChangeOwnership_ProduceCash, 6)
 	return 0x4482FC;
 }
 
-DEFINE_HOOK(0x43FD2C, BuildingClass_Update_ProduceCash, 6)
+ASMJIT_PATCH(0x43FD2C, BuildingClass_Update_ProduceCash, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -1080,7 +1080,7 @@ DEFINE_HOOK(0x43FD2C, BuildingClass_Update_ProduceCash, 6)
 
 // #1156943: they check for type, and for the instance, yet
 // the Log call uses the values as if nothing happened.
-DEFINE_HOOK(0x4430E8, BuildingClass_Destroyed_SurvivourLog, 0x6)
+ASMJIT_PATCH(0x4430E8, BuildingClass_Destroyed_SurvivourLog, 0x6)
 {
 	GET(BuildingClass* const, pThis, EDI);
 	GET(InfantryClass* const, pInf, ESI);
@@ -1094,7 +1094,7 @@ DEFINE_HOOK(0x4430E8, BuildingClass_Destroyed_SurvivourLog, 0x6)
 }
 
 /* #183 - cloakable on Buildings and Aircraft */
-DEFINE_HOOK(0x442CE0, BuildingClass_Init_Cloakable, 0x6)
+ASMJIT_PATCH(0x442CE0, BuildingClass_Init_Cloakable, 0x6)
 {
 	GET(BuildingClass*, Item, ESI);
 
@@ -1107,7 +1107,7 @@ DEFINE_HOOK(0x442CE0, BuildingClass_Init_Cloakable, 0x6)
 }
 
 // if this is a radar, drop the new owner from the bitfield
-DEFINE_HOOK(0x448D95, BuildingClass_ChangeOwnership_OldSpy2, 0x8)
+ASMJIT_PATCH(0x448D95, BuildingClass_ChangeOwnership_OldSpy2, 0x8)
 {
 	GET(HouseClass* const, newOwner, EDI);
 	GET(BuildingClass*, pThis, ESI);
@@ -1120,8 +1120,7 @@ DEFINE_HOOK(0x448D95, BuildingClass_ChangeOwnership_OldSpy2, 0x8)
 	return 0x448DB9;
 }
 
-DEFINE_HOOK_AGAIN(0x4557BC, BuildingClass_SensorArray_BuildingRedraw, 0x6)
-DEFINE_HOOK(0x455923, BuildingClass_SensorArray_BuildingRedraw, 0x6)
+ASMJIT_PATCH(0x455923, BuildingClass_SensorArray_BuildingRedraw, 0x6)
 {
 	GET(CellClass* const, pCell, ESI);
 
@@ -1136,11 +1135,11 @@ DEFINE_HOOK(0x455923, BuildingClass_SensorArray_BuildingRedraw, 0x6)
 	}
 
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x4557BC, BuildingClass_SensorArray_BuildingRedraw, 0x6)
 
 // capture and mind-control support: deactivate the array for the original
 // owner, then activate it a few instructions later for the new owner.
-DEFINE_HOOK(0x448B70, BuildingClass_ChangeOwnership_SensorArrayA, 0x6)
+ASMJIT_PATCH(0x448B70, BuildingClass_ChangeOwnership_SensorArrayA, 0x6)
 {
 	GET(BuildingClass*, pBld, ESI);
 
@@ -1152,7 +1151,7 @@ DEFINE_HOOK(0x448B70, BuildingClass_ChangeOwnership_SensorArrayA, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x448C3E, BuildingClass_ChangeOwnership_SensorArrayB, 0x6)
+ASMJIT_PATCH(0x448C3E, BuildingClass_ChangeOwnership_SensorArrayB, 0x6)
 {
 	GET(BuildingClass*, pBld, ESI);
 
@@ -1165,7 +1164,7 @@ DEFINE_HOOK(0x448C3E, BuildingClass_ChangeOwnership_SensorArrayB, 0x6)
 }
 
 // remove sensor on destruction
-DEFINE_HOOK(0x4416A2, BuildingClass_Destroy_SensorArray, 0x6)
+ASMJIT_PATCH(0x4416A2, BuildingClass_Destroy_SensorArray, 0x6)
 {
 	GET(BuildingClass*, pBld, ESI);
 
@@ -1178,7 +1177,7 @@ DEFINE_HOOK(0x4416A2, BuildingClass_Destroy_SensorArray, 0x6)
 }
 
 // sensor arrays show SensorsSight instead of CloakRadiusInCells
-DEFINE_HOOK(0x4566F9, BuildingClass_GetRangeOfRadial_SensorArray, 0x6)
+ASMJIT_PATCH(0x4566F9, BuildingClass_GetRangeOfRadial_SensorArray, 0x6)
 {
 	GET(BuildingClass* const, pThis, ESI);
 
@@ -1193,7 +1192,7 @@ DEFINE_HOOK(0x4566F9, BuildingClass_GetRangeOfRadial_SensorArray, 0x6)
 
 // #1156943: they check for type, and for the instance, yet
 // the Log call uses the values as if nothing happened.
-// DEFINE_HOOK(0x4430E8, BuildingClass_Demolish_LogCrash, 0x6)
+// ASMJIT_PATCH(0x4430E8, BuildingClass_Demolish_LogCrash, 0x6)
 // {
 // 	GET(BuildingClass* const, pThis, EDI);
 // 	GET(InfantryClass* const, pInf, ESI);
@@ -1208,7 +1207,7 @@ DEFINE_HOOK(0x4566F9, BuildingClass_GetRangeOfRadial_SensorArray, 0x6)
 //BuildingClass_Destroy
 DEFINE_JUMP(LJMP, 0x441D25, 0x441D37);
 
-DEFINE_HOOK(0x451E40, BuildingClass_DestroyNthAnim_Destroy, 0x7)
+ASMJIT_PATCH(0x451E40, BuildingClass_DestroyNthAnim_Destroy, 0x7)
 {
 	GET(BuildingClass*, pThis, ECX);
 	GET_STACK(int, AnimState, 0x4);
@@ -1234,7 +1233,7 @@ DEFINE_HOOK(0x451E40, BuildingClass_DestroyNthAnim_Destroy, 0x7)
 	return 0x451E93;
 }
 
-DEFINE_HOOK(0x451A28, BuildingClass_PlayAnim_Destroy, 0x7)
+ASMJIT_PATCH(0x451A28, BuildingClass_PlayAnim_Destroy, 0x7)
 {
 	//GET(BuildingClass* const , pThis , ESI);
 
@@ -1244,7 +1243,7 @@ DEFINE_HOOK(0x451A28, BuildingClass_PlayAnim_Destroy, 0x7)
 	return 0x451A2F;
 }
 
-DEFINE_HOOK(0x458E1E, BuildingClass_GetOccupyRangeBonus_Demacroize, 0xA)
+ASMJIT_PATCH(0x458E1E, BuildingClass_GetOccupyRangeBonus_Demacroize, 0xA)
 {
 	auto v1 = R->EDI<int>();
 	if (v1 >= R->EAX<int>())
@@ -1255,7 +1254,7 @@ DEFINE_HOOK(0x458E1E, BuildingClass_GetOccupyRangeBonus_Demacroize, 0xA)
 }
 
 // restore pip count for tiberium storage (building and house)
-DEFINE_HOOK(0x44D755, BuildingClass_GetPipFillLevel_Tiberium, 0x6)
+ASMJIT_PATCH(0x44D755, BuildingClass_GetPipFillLevel_Tiberium, 0x6)
 {
 	GET(BuildingClass* const, pThis, ECX);
 	GET(BuildingTypeClass* const, pType, ESI);
@@ -1275,15 +1274,15 @@ DEFINE_HOOK(0x44D755, BuildingClass_GetPipFillLevel_Tiberium, 0x6)
 }
 
 // #814: force sidebar repaint for standard spy effects
-// DEFINE_HOOK_AGAIN(0x4574D2, BuildingClass_Infiltrate_Standard, 0x6)
-// DEFINE_HOOK(0x457533, BuildingClass_Infiltrate_Standard, 0x6)
+// ASMJIT_PATCH_AGAIN(0x4574D2, BuildingClass_Infiltrate_Standard, 0x6)
+// ASMJIT_PATCH(0x457533, BuildingClass_Infiltrate_Standard, 0x6)
 // {
 // 	MouseClass::Instance->SidebarNeedsRepaint();
 // 	return R->Origin() + 6;
 // }
 
 // infantry exiting hospital get their focus reset, but not for armory
-DEFINE_HOOK(0x444D26, BuildingClass_KickOutUnit_ArmoryExitBug, 0x6)
+ASMJIT_PATCH(0x444D26, BuildingClass_KickOutUnit_ArmoryExitBug, 0x6)
 {
 	GET(BuildingTypeClass* const, pType, EDX);
 	R->AL(pType->Hospital || pType->Armory);
@@ -1293,7 +1292,7 @@ DEFINE_HOOK(0x444D26, BuildingClass_KickOutUnit_ArmoryExitBug, 0x6)
 // BuildingClass_KickOutUnit_PreventClone
 DEFINE_JUMP(LJMP, 0x4449DF, 0x444A53);
 
-DEFINE_HOOK(0x4586D6, BuildingClass_KillOccupiers, 0x9)
+ASMJIT_PATCH(0x4586D6, BuildingClass_KillOccupiers, 0x9)
 {
 	GET(TechnoClass*, pVictim, ECX);
 	GET(TechnoClass*, pKiller, EBP);
@@ -1302,7 +1301,7 @@ DEFINE_HOOK(0x4586D6, BuildingClass_KillOccupiers, 0x9)
 }
 
 // do not crash if the EMP cannon primary has no Report sound
-DEFINE_HOOK(0x44D4CA, BuildingClass_Mi_Missile_NoReport, 0x9)
+ASMJIT_PATCH(0x44D4CA, BuildingClass_Mi_Missile_NoReport, 0x9)
 {
 	GET(TechnoTypeClass* const, pType, EAX);
 	GET(WeaponTypeClass* const, pWeapon, EBP);
@@ -1313,7 +1312,7 @@ DEFINE_HOOK(0x44D4CA, BuildingClass_Mi_Missile_NoReport, 0x9)
 
 // for yet unestablished reasons a unit might not be present.
 // maybe something triggered the KickOutHospitalArmory
-DEFINE_HOOK(0x44BB1B, BuildingClass_Mi_Repair_Promote, 0x6)
+ASMJIT_PATCH(0x44BB1B, BuildingClass_Mi_Repair_Promote, 0x6)
 {
 	//GET(BuildingClass*, pThis, EBP);
 	GET(TechnoClass* const, pTrainee, EAX);
@@ -1321,7 +1320,7 @@ DEFINE_HOOK(0x44BB1B, BuildingClass_Mi_Repair_Promote, 0x6)
 }
 
 // remember that this building ejected its survivors already
-DEFINE_HOOK(0x44A8A2, BuildingClass_Mi_Selling_Crew, 0xA)
+ASMJIT_PATCH(0x44A8A2, BuildingClass_Mi_Selling_Crew, 0xA)
 {
 	GET(BuildingClass*, pThis, EBP);
 	pThis->NoCrew = BuildingTypeExtContainer::Instance.Find(pThis->Type)->SpawnCrewOnlyOnce;
@@ -1331,7 +1330,7 @@ DEFINE_HOOK(0x44A8A2, BuildingClass_Mi_Selling_Crew, 0xA)
 // #1156943, #1156937: replace the engineer check, because they were smart
 // enough to use the pointer right before checking whether it's null, and
 // even if it isn't, they build a possible infinite loop.
-DEFINE_HOOK(0x44A5F0, BuildingClass_Mi_Selling_EngineerFreeze, 0x6)
+ASMJIT_PATCH(0x44A5F0, BuildingClass_Mi_Selling_EngineerFreeze, 0x6)
 {
 	GET(BuildingClass* const, pThis, EBP);
 	GET(InfantryTypeClass*, pType, ESI);
@@ -1363,7 +1362,7 @@ DEFINE_HOOK(0x44A5F0, BuildingClass_Mi_Selling_EngineerFreeze, 0x6)
 
 // prevent invisible mcvs, which shouldn't happen any more as the sell/move
 // hack is fixed. thus this one is a double unnecessity
-DEFINE_HOOK(0x449FF8, BuildingClass_Mi_Selling_PutMcv, 7)
+ASMJIT_PATCH(0x449FF8, BuildingClass_Mi_Selling_PutMcv, 7)
 {
 	GET(UnitClass* const, pUnit, EBX);
 	GET(DirType, facing, EAX);
@@ -1388,7 +1387,7 @@ DEFINE_HOOK(0x449FF8, BuildingClass_Mi_Selling_PutMcv, 7)
 // start after free unit checks 0x446B16
 //FreeUnit end 0x446EE2
 
-DEFINE_HOOK(0x45EE30, BuildingTypeClass_GetActualCost_FreeUnitCount, 0x6)
+ASMJIT_PATCH(0x45EE30, BuildingTypeClass_GetActualCost_FreeUnitCount, 0x6)
 {
 	GET(BuildingTypeClass*, pThis, EBX);
 	GET(HouseClass*, pHouse, EBP);
@@ -1404,7 +1403,7 @@ DEFINE_HOOK(0x45EE30, BuildingTypeClass_GetActualCost_FreeUnitCount, 0x6)
 	return 0x45EE45;
 }
 
-DEFINE_HOOK(0x45EDA3, BuildingClass_GetCost_FreeUnitCount, 0x6)
+ASMJIT_PATCH(0x45EDA3, BuildingClass_GetCost_FreeUnitCount, 0x6)
 {
 	GET(BuildingTypeClass*, pThis, EBX);
 
@@ -1500,7 +1499,7 @@ void SpawnFreeUnits(BuildingClass* pBuilding, int count)
 	}
 }
 
-DEFINE_HOOK(0x446B16, BuildingClass_Place_FreeUnits, 0x7)
+ASMJIT_PATCH(0x446B16, BuildingClass_Place_FreeUnits, 0x7)
 {
 	GET(BuildingClass* const, pThis, EBP);
 	SpawnFreeUnits(pThis, BuildingTypeExtContainer::Instance.Find(pThis->Type)->FreeUnit_Count);
@@ -1511,21 +1510,21 @@ DEFINE_HOOK(0x446B16, BuildingClass_Place_FreeUnits, 0x7)
 // if the status changes, animations might start to play that aren't
 // supposed to play because the building requires an Engineer which
 // didn't capture the building yet.
-DEFINE_HOOK(0x4467D6, BuildingClass_Place_NeedsEngineer, 0x6)
+ASMJIT_PATCH(0x4467D6, BuildingClass_Place_NeedsEngineer, 0x6)
 {
 	GET(BuildingClass* const, pThis, EBP);
 	R->AL(pThis->Type->Powered || pThis->Type->NeedsEngineer && !pThis->HasEngineer);
 	return 0x4467DC;
 }
 
-DEFINE_HOOK(0x454BF7, BuildingClass_UpdatePowered_NeedsEngineer, 0x6)
+ASMJIT_PATCH(0x454BF7, BuildingClass_UpdatePowered_NeedsEngineer, 0x6)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	R->CL(pThis->Type->Powered || pThis->Type->NeedsEngineer && !pThis->HasEngineer);
 	return 0x454BFD;
 }
 
-DEFINE_HOOK(0x451A54, BuildingClass_PlayAnim_NeedsEngineer, 0x6)
+ASMJIT_PATCH(0x451A54, BuildingClass_PlayAnim_NeedsEngineer, 0x6)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	R->CL(pThis->Type->Powered || pThis->Type->NeedsEngineer && !pThis->HasEngineer);
@@ -1540,21 +1539,21 @@ DEFINE_JUMP(LJMP, 0x451132, 0x451145);
 DEFINE_JUMP(LJMP, 0x44656D, 0x446580);
 
 // EMP'd power plants don't produce power
-DEFINE_HOOK(0x44E855, BuildingClass_PowerProduced_EMP, 0x6)
+ASMJIT_PATCH(0x44E855, BuildingClass_PowerProduced_EMP, 0x6)
 {
 	GET(BuildingClass* const, pBld, ESI);
 	return ((pBld->EMPLockRemaining > 0) ? 0x44E873 : 0);
 }
 
 // removing hardcoded references to GAWALL and NAWALL as part of #709
-DEFINE_HOOK(0x440709, BuildingClass_Unlimbo_RemoveHarcodedWall, 0x6)
+ASMJIT_PATCH(0x440709, BuildingClass_Unlimbo_RemoveHarcodedWall, 0x6)
 {
 	GET(CellClass* const, Cell, EDI);
 	const int idxOverlay = Cell->OverlayTypeIndex;
 	return idxOverlay != -1 && OverlayTypeClass::Array->Items[idxOverlay]->Wall ? 0x44071A : 0x440725;
 }
 
-DEFINE_HOOK(0x45E416, BuildingTypeClass_CTOR_Initialize, 0x6)
+ASMJIT_PATCH(0x45E416, BuildingTypeClass_CTOR_Initialize, 0x6)
 {
 	GET(BuildingTypeClass*, pThis, ESI);
 
@@ -1569,7 +1568,7 @@ DEFINE_HOOK(0x45E416, BuildingTypeClass_CTOR_Initialize, 0x6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x4456E5, BuildingClass_UpdateConstructionOptions_ExcludeDisabled, 0x6)
+ASMJIT_PATCH(0x4456E5, BuildingClass_UpdateConstructionOptions_ExcludeDisabled, 0x6)
 {
 	GET(BuildingClass* const, pBld, ECX);
 
@@ -1643,7 +1642,7 @@ DEFINE_HOOK(0x4456E5, BuildingClass_UpdateConstructionOptions_ExcludeDisabled, 0
 //	return true;
 //}
 
-DEFINE_HOOK(0x73A1BC, UnitClass_UpdatePosition_EnteredGrinder, 0x7)
+ASMJIT_PATCH(0x73A1BC, UnitClass_UpdatePosition_EnteredGrinder, 0x7)
 {
 	GET(UnitClass* const, Vehicle, EBP);
 	GET(BuildingClass* const, Grinder, EBX);
@@ -1681,7 +1680,7 @@ DEFINE_HOOK(0x73A1BC, UnitClass_UpdatePosition_EnteredGrinder, 0x7)
 	return 0;
 }
 
-DEFINE_HOOK(0x5198AD, InfantryClass_UpdatePosition_EnteredGrinder, 0x6)
+ASMJIT_PATCH(0x5198AD, InfantryClass_UpdatePosition_EnteredGrinder, 0x6)
 {
 	GET(InfantryClass* const, Infantry, ESI);
 	GET(BuildingClass* const, Grinder, EBX);
@@ -1711,7 +1710,7 @@ DEFINE_HOOK(0x5198AD, InfantryClass_UpdatePosition_EnteredGrinder, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x7004AD, TechnoClass_GetActionOnObject_Saboteur, 0x6)
+ASMJIT_PATCH(0x7004AD, TechnoClass_GetActionOnObject_Saboteur, 0x6)
 {
 	// this is known to be InfantryClass, and Infiltrate is yes
 	GET(InfantryClass* const, pThis, ESI);
@@ -1726,7 +1725,7 @@ DEFINE_HOOK(0x7004AD, TechnoClass_GetActionOnObject_Saboteur, 0x6)
 	return infiltratable ? 0x700531u : 0x700536u;
 }
 
-DEFINE_HOOK(0x51EE6B, InfantryClass_GetActionOnObject_Saboteur, 6)
+ASMJIT_PATCH(0x51EE6B, InfantryClass_GetActionOnObject_Saboteur, 6)
 {
 	enum
 	{
@@ -1761,7 +1760,7 @@ DEFINE_HOOK(0x51EE6B, InfantryClass_GetActionOnObject_Saboteur, 6)
 	return Notinfiltratable;
 }
 
-DEFINE_HOOK(0x51E635, InfantryClass_GetActionOnObject_EngineerOverFriendlyBuilding, 5)
+ASMJIT_PATCH(0x51E635, InfantryClass_GetActionOnObject_EngineerOverFriendlyBuilding, 5)
 {
 	enum
 	{
@@ -1785,7 +1784,7 @@ DEFINE_HOOK(0x51E635, InfantryClass_GetActionOnObject_EngineerOverFriendlyBuildi
 	return ((R->EAX<DWORD>() & 0x4000) != 0) ? DontRepair : DoRepair;
 }
 
-DEFINE_HOOK(0x51FA82, InfantryClass_GetActionOnCell_EngineerRepairable, 6)
+ASMJIT_PATCH(0x51FA82, InfantryClass_GetActionOnCell_EngineerRepairable, 6)
 {
 	GET(BuildingTypeClass* const, pBuildingType, EBP);
 	R->AL(BuildingTypeExtContainer::Instance.Find(pBuildingType)
@@ -1793,7 +1792,7 @@ DEFINE_HOOK(0x51FA82, InfantryClass_GetActionOnCell_EngineerRepairable, 6)
 	return 0x51FA88;
 }
 
-DEFINE_HOOK(0x51E4ED, InfantryClass_GetActionOnObject_EngineerRepairable, 6)
+ASMJIT_PATCH(0x51E4ED, InfantryClass_GetActionOnObject_EngineerRepairable, 6)
 {
 	GET(BuildingClass* const, pBuilding, ESI);
 	R->CL(BuildingTypeExtContainer::Instance.Find(pBuilding->Type)
@@ -1801,7 +1800,7 @@ DEFINE_HOOK(0x51E4ED, InfantryClass_GetActionOnObject_EngineerRepairable, 6)
 	return 0x51E4F3;
 }
 
-DEFINE_HOOK(0x51B2CB, InfantryClass_SetTarget_Saboteur, 0x6)
+ASMJIT_PATCH(0x51B2CB, InfantryClass_SetTarget_Saboteur, 0x6)
 {
 	GET(InfantryClass*, pThis, ESI);
 	GET(ObjectClass* const, pTarget, EDI);
@@ -1817,7 +1816,7 @@ DEFINE_HOOK(0x51B2CB, InfantryClass_SetTarget_Saboteur, 0x6)
 	return 0x51B33F;
 }
 
-DEFINE_HOOK(0x51A521, InfantryClass_UpdatePosition_ApplyC4, 0xA)
+ASMJIT_PATCH(0x51A521, InfantryClass_UpdatePosition_ApplyC4, 0xA)
 {
 	enum { RetFail = 0x51A59D, RetSucceeded = 0x51A65D };
 
@@ -1832,7 +1831,7 @@ DEFINE_HOOK(0x51A521, InfantryClass_UpdatePosition_ApplyC4, 0xA)
 
 /* #633 - spy building infiltration */
 // wrapper around the entire function
-DEFINE_HOOK(0x4571E0, BuildingClass_Infiltrate, 5)
+ASMJIT_PATCH(0x4571E0, BuildingClass_Infiltrate, 5)
 {
 	GET(BuildingClass*, EnteredBuilding, ECX);
 	GET_STACK(HouseClass*, Enterer, 0x4);
@@ -1881,7 +1880,7 @@ void WhenInfiltratesInto(FakeInfantryClass* pSpy, BuildingClass* pBuilding)
 	}
 }
 
-DEFINE_HOOK(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
+ASMJIT_PATCH(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
 {
 	enum
 	{
@@ -1933,7 +1932,7 @@ DEFINE_HOOK(0x519FF8, InfantryClass_UpdatePosition_Saboteur, 6)
 	return SkipInfiltrate;
 }
 
-DEFINE_HOOK(0x7376D9, UnitClass_ReceivedRadioCommand_DockUnload_Facing, 5)
+ASMJIT_PATCH(0x7376D9, UnitClass_ReceivedRadioCommand_DockUnload_Facing, 5)
 {
 	GET(UnitClass* const, pUnit, ESI);
 	GET(DirStruct* const, nCurrentFacing, EAX);
@@ -1948,7 +1947,7 @@ DEFINE_HOOK(0x7376D9, UnitClass_ReceivedRadioCommand_DockUnload_Facing, 5)
 	return 0x73770C;
 }
 
-DEFINE_HOOK(0x73DF66, UnitClass_Mi_Unload_DockUnload_Facing, 5)
+ASMJIT_PATCH(0x73DF66, UnitClass_Mi_Unload_DockUnload_Facing, 5)
 {
 	GET(UnitClass* const, pUnit, ESI);
 	GET(DirStruct* const, nCurrentFacing, EAX);
@@ -1963,7 +1962,7 @@ DEFINE_HOOK(0x73DF66, UnitClass_Mi_Unload_DockUnload_Facing, 5)
 	return 0x73DFB0;
 }
 
-DEFINE_HOOK(0x43CA80, BuildingClass_ReceivedRadioCommand_DockUnloadCell, 7)
+ASMJIT_PATCH(0x43CA80, BuildingClass_ReceivedRadioCommand_DockUnloadCell, 7)
 {
 	GET(CellStruct* const, pCell, EAX);
 	GET(BuildingClass* const, pThis, ESI);
@@ -1975,28 +1974,28 @@ DEFINE_HOOK(0x43CA80, BuildingClass_ReceivedRadioCommand_DockUnloadCell, 7)
 	return 0x43CA8D;
 }
 
-DEFINE_HOOK(0x73E013, UnitClass_Mi_Unload_DockUnloadCell1, 6)
+ASMJIT_PATCH(0x73E013, UnitClass_Mi_Unload_DockUnloadCell1, 6)
 {
 	GET(UnitClass* const, pThis, ESI);
 	R->EAX(TechnoExt_ExtData::BuildingUnload(pThis));
 	return 0x73E05F;
 }
 
-DEFINE_HOOK(0x73E17F, UnitClass_Mi_Unload_DockUnloadCell2, 6)
+ASMJIT_PATCH(0x73E17F, UnitClass_Mi_Unload_DockUnloadCell2, 6)
 {
 	GET(UnitClass* const, pThis, ESI);
 	R->EAX(TechnoExt_ExtData::BuildingUnload(pThis));
 	return 0x73E1CB;
 }
 
-DEFINE_HOOK(0x73E2BF, UnitClass_Mi_Unload_DockUnloadCell3, 6)
+ASMJIT_PATCH(0x73E2BF, UnitClass_Mi_Unload_DockUnloadCell3, 6)
 {
 	GET(UnitClass* const, pThis, ESI);
 	R->EAX(TechnoExt_ExtData::BuildingUnload(pThis));
 	return 0x73E30B;
 }
 
-DEFINE_HOOK(0x741BDB, UnitClass_SetDestination_DockUnloadCell, 7)
+ASMJIT_PATCH(0x741BDB, UnitClass_SetDestination_DockUnloadCell, 7)
 {
 	GET(UnitClass* const, pThis, EBP);
 	R->EAX(TechnoExt_ExtData::BuildingUnload(pThis));
@@ -2018,7 +2017,7 @@ DEFINE_HOOK(0x741BDB, UnitClass_SetDestination_DockUnloadCell, 7)
 
 // the game specifically hides tiberium building pips. allow them, but
 // take care they don't show up for the original game
-DEFINE_HOOK(0x709B4E, TechnoClass_DrawPipscale_SkipSkipTiberium, 6)
+ASMJIT_PATCH(0x709B4E, TechnoClass_DrawPipscale_SkipSkipTiberium, 6)
 {
 	GET(TechnoClass* const, pThis, EBP);
 
@@ -2036,7 +2035,7 @@ DEFINE_HOOK(0x709B4E, TechnoClass_DrawPipscale_SkipSkipTiberium, 6)
 	return showTiberium ? 0x709B6E : 0x70A980;
 }
 
-DEFINE_HOOK(0x44F7A0, BuildingClass_UpdateDisplayTo, 6)
+ASMJIT_PATCH(0x44F7A0, BuildingClass_UpdateDisplayTo, 6)
 {
 	GET(BuildingClass*, B, ECX);
 	TechnoExt_ExtData::UpdateDisplayTo(B);
@@ -2044,7 +2043,7 @@ DEFINE_HOOK(0x44F7A0, BuildingClass_UpdateDisplayTo, 6)
 }
 
 // if this is a radar, change the owner's house bitfields responsible for radar reveals
-DEFINE_HOOK(0x44161C, BuildingClass_Destroy_OldSpy1, 6)
+ASMJIT_PATCH(0x44161C, BuildingClass_Destroy_OldSpy1, 6)
 {
 	GET(BuildingClass*, B, ESI);
 	B->DisplayProductionTo.Clear();
@@ -2053,7 +2052,7 @@ DEFINE_HOOK(0x44161C, BuildingClass_Destroy_OldSpy1, 6)
 }
 
 // if this is a radar, change the owner's house bitfields responsible for radar reveals
-DEFINE_HOOK(0x448312, BuildingClass_ChangeOwnership_OldSpy1, 0xA)
+ASMJIT_PATCH(0x448312, BuildingClass_ChangeOwnership_OldSpy1, 0xA)
 {
 	GET(HouseClass*, newOwner, EBX);
 	GET(BuildingClass*, B, ESI);
@@ -2067,7 +2066,7 @@ DEFINE_HOOK(0x448312, BuildingClass_ChangeOwnership_OldSpy1, 0xA)
 	return 0x4483A0;
 }
 
-DEFINE_HOOK(0x455DA0, BuildingClass_IsFactory_CloningFacility, 6)
+ASMJIT_PATCH(0x455DA0, BuildingClass_IsFactory_CloningFacility, 6)
 {
 	GET(BuildingClass*, pThis, ECX);
 
@@ -2080,7 +2079,7 @@ DEFINE_HOOK(0x455DA0, BuildingClass_IsFactory_CloningFacility, 6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x4444B3, BuildingClass_KickOutUnit_NoAlternateKickout, 6)
+ASMJIT_PATCH(0x4444B3, BuildingClass_KickOutUnit_NoAlternateKickout, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	return pThis->Type->Factory == AbstractType::None
@@ -2088,7 +2087,7 @@ DEFINE_HOOK(0x4444B3, BuildingClass_KickOutUnit_NoAlternateKickout, 6)
 		? 0x4452C5 : 0x0;
 }
 
-DEFINE_HOOK(0x446366, BuildingClass_Place_Academy, 6)
+ASMJIT_PATCH(0x446366, BuildingClass_Place_Academy, 6)
 {
 	GET(BuildingClass*, pThis, EBP);
 
@@ -2100,7 +2099,7 @@ DEFINE_HOOK(0x446366, BuildingClass_Place_Academy, 6)
 	return 0x446382;
 }
 
-DEFINE_HOOK(0x445905, BuildingClass_Remove_Academy, 6)
+ASMJIT_PATCH(0x445905, BuildingClass_Remove_Academy, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -2114,7 +2113,7 @@ DEFINE_HOOK(0x445905, BuildingClass_Remove_Academy, 6)
 	return 0x445946;
 }
 
-DEFINE_HOOK(0x448AB2, BuildingClass_ChangeOwnership_UnregisterFunction, 6)
+ASMJIT_PATCH(0x448AB2, BuildingClass_ChangeOwnership_UnregisterFunction, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -2129,7 +2128,7 @@ DEFINE_HOOK(0x448AB2, BuildingClass_ChangeOwnership_UnregisterFunction, 6)
 	return 0x448AC8;
 }
 
-DEFINE_HOOK(0x4491D5, BuildingClass_ChangeOwnership_RegisterFunction, 6)
+ASMJIT_PATCH(0x4491D5, BuildingClass_ChangeOwnership_RegisterFunction, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -2145,14 +2144,14 @@ DEFINE_HOOK(0x4491D5, BuildingClass_ChangeOwnership_RegisterFunction, 6)
 	return 0x4491F1;
 }
 
-DEFINE_HOOK(0x44D8A1, BuildingClass_UnloadPassengers_Unload, 6)
+ASMJIT_PATCH(0x44D8A1, BuildingClass_UnloadPassengers_Unload, 6)
 {
 	GET(BuildingClass*, B, EBP);
 	TechnoExt_ExtData::KickOutHospitalArmory(B);
 	return 0;
 }
 
-DEFINE_HOOK(0x446AAF, BuildingClass_Place_SkipFreeUnits, 6)
+ASMJIT_PATCH(0x446AAF, BuildingClass_Place_SkipFreeUnits, 6)
 {
 	// allow free units and non-separate aircraft to be created
 	// only once.
@@ -2169,7 +2168,7 @@ DEFINE_HOOK(0x446AAF, BuildingClass_Place_SkipFreeUnits, 6)
 }
 
 // #665: Raidable Buildings - prevent raided buildings from being sold while raided
-DEFINE_HOOK(0x4494D2, BuildingClass_IsSellable, 6)
+ASMJIT_PATCH(0x4494D2, BuildingClass_IsSellable, 6)
 {
 	enum { Sellable = 0x449532, Unsellable = 0x449536, Undecided = 0 };
 	GET(BuildingClass*, pThis, ESI);
@@ -2178,7 +2177,7 @@ DEFINE_HOOK(0x4494D2, BuildingClass_IsSellable, 6)
 	return BuildingExtContainer::Instance.Find(pThis)->OwnerBeforeRaid ? Unsellable : Undecided;
 }
 
-DEFINE_HOOK(0x449518, BuildingClass_IsSellable_FirestormWall, 6)
+ASMJIT_PATCH(0x449518, BuildingClass_IsSellable_FirestormWall, 6)
 {
 	enum { CheckHouseFireWallActive = 0x449522, ReturnFalse = 0x449536 };
 	//GET(BuildingClass*, pThis, ESI);
@@ -2187,7 +2186,7 @@ DEFINE_HOOK(0x449518, BuildingClass_IsSellable_FirestormWall, 6)
 	return BuildingTypeExtContainer::Instance.Find(pType)->Firestorm_Wall ? CheckHouseFireWallActive : ReturnFalse;
 }
 
-DEFINE_HOOK(0x44E550, BuildingClass_Mi_Open_GateDown, 6)
+ASMJIT_PATCH(0x44E550, BuildingClass_Mi_Open_GateDown, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	R->ECX(BuildingTypeExtContainer::Instance.Find(pThis->Type)->GateDownSound
@@ -2195,7 +2194,7 @@ DEFINE_HOOK(0x44E550, BuildingClass_Mi_Open_GateDown, 6)
 	return 0x44E556;
 }
 
-DEFINE_HOOK(0x44E61E, BuildingClass_Mi_Open_GateUp, 6)
+ASMJIT_PATCH(0x44E61E, BuildingClass_Mi_Open_GateUp, 6)
 {
 	GET(DWORD, offset, ESI);
 	const auto pThis = reinterpret_cast<BuildingClass*>(offset - 0x9C);
@@ -2204,14 +2203,14 @@ DEFINE_HOOK(0x44E61E, BuildingClass_Mi_Open_GateUp, 6)
 	return 0x44E624;
 }
 
-DEFINE_HOOK(0x4509B4, BuildingClass_UpdateRepair_Funds, 7)
+ASMJIT_PATCH(0x4509B4, BuildingClass_UpdateRepair_Funds, 7)
 {
 	GET(BuildingClass*, pThis, ESI);
 	return !pThis->Owner->IsControlledByHuman() || RulesExtData::Instance()->RepairStopOnInsufficientFunds
 		? 0x0 : 0x4509BB;
 }
 
-DEFINE_HOOK(0x4521C8, BuildingClass_Disable_Temporal_Factories, 6)
+ASMJIT_PATCH(0x4521C8, BuildingClass_Disable_Temporal_Factories, 6)
 {
 	GET(BuildingClass*, pThis, ECX);
 
@@ -2224,7 +2223,7 @@ DEFINE_HOOK(0x4521C8, BuildingClass_Disable_Temporal_Factories, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x4566B0, BuildingClass_GetRangeOfRadial_Radius, 6)
+ASMJIT_PATCH(0x4566B0, BuildingClass_GetRangeOfRadial_Radius, 6)
 {
 	enum
 	{
@@ -2242,7 +2241,7 @@ DEFINE_HOOK(0x4566B0, BuildingClass_GetRangeOfRadial_Radius, 6)
 	return SetVal;
 }
 
-DEFINE_HOOK(0x456768, BuildingClass_DrawRadialIndicator_Always, 0x6)
+ASMJIT_PATCH(0x456768, BuildingClass_DrawRadialIndicator_Always, 0x6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -2252,16 +2251,15 @@ DEFINE_HOOK(0x456768, BuildingClass_DrawRadialIndicator_Always, 0x6)
 		0x456776 : 0x456962;
 }
 
-DEFINE_HOOK_AGAIN(0x458729, BuildingClass_HandleOccupants, 6) //KillOccupiers_AllOccupantsKilled
-DEFINE_HOOK_AGAIN(0x4586CA, BuildingClass_HandleOccupants, 6) //KillOccupiers_EachOccupierKilled
-DEFINE_HOOK(0x4581CD, BuildingClass_HandleOccupants, 6) //UnloadOccupants_AllOccupantsHaveLeft
+ASMJIT_PATCH(0x4581CD, BuildingClass_HandleOccupants, 6) //UnloadOccupants_AllOccupantsHaveLeft
 {
 	GET(BuildingClass*, pBld, ESI);
 	TechnoExt_ExtData::EvalRaidStatus(pBld);
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x458729, BuildingClass_HandleOccupants, 6) //KillOccupiers_AllOccupantsKilled
+ASMJIT_PATCH_AGAIN(0x4586CA, BuildingClass_HandleOccupants, 6) //KillOccupiers_EachOccupierKilled
 
-DEFINE_HOOK(0x441f2c, BuildingClass_Destroy_KickOutOfRubble, 5)
+ASMJIT_PATCH(0x441f2c, BuildingClass_Destroy_KickOutOfRubble, 5)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -2273,28 +2271,28 @@ DEFINE_HOOK(0x441f2c, BuildingClass_Destroy_KickOutOfRubble, 5)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x465A48, BuildingTypeClass_GetBuildup_BuildupTime, 5)
+ASMJIT_PATCH(0x465A48, BuildingTypeClass_GetBuildup_BuildupTime, 5)
 {
 	GET(BuildingTypeClass*, pThis, ESI);
 	BuildingTypeExtData::UpdateBuildupFrames(pThis);
 	return 0x465AAE;
 }
 
-DEFINE_HOOK(0x45EAA5, BuildingTypeClass_LoadArt_BuildupTime, 6)
+ASMJIT_PATCH(0x45EAA5, BuildingTypeClass_LoadArt_BuildupTime, 6)
 {
 	GET(BuildingTypeClass*, pThis, ESI);
 	BuildingTypeExtData::UpdateBuildupFrames(pThis);
 	return 0x45EB3A;
 }
 
-DEFINE_HOOK(0x45F2B4, BuildingTypeClass_Load2DArt_BuildupTime, 5)
+ASMJIT_PATCH(0x45F2B4, BuildingTypeClass_Load2DArt_BuildupTime, 5)
 {
 	GET(BuildingTypeClass*, pThis, EBP);
 	BuildingTypeExtData::UpdateBuildupFrames(pThis);
 	return 0x45F310;
 }
 
-DEFINE_HOOK(0x447a63, BuildingClass_QueueImageAnim_Sell, 6)
+ASMJIT_PATCH(0x447a63, BuildingClass_QueueImageAnim_Sell, 6)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	GET_BASE(int, frames, 0x8);
@@ -2312,7 +2310,7 @@ DEFINE_HOOK(0x447a63, BuildingClass_QueueImageAnim_Sell, 6)
 	return 0x447A6C;
 }
 
-DEFINE_HOOK(0x459C03, BuildingClass_CanBeSelectedNow_MassSelectable, 6)
+ASMJIT_PATCH(0x459C03, BuildingClass_CanBeSelectedNow_MassSelectable, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
@@ -2326,7 +2324,7 @@ DEFINE_HOOK(0x459C03, BuildingClass_CanBeSelectedNow_MassSelectable, 6)
 	return 0x459C12;
 }
 
-DEFINE_HOOK(0x457D58, BuildingClass_CanBeOccupied_SpecificOccupiers, 6)
+ASMJIT_PATCH(0x457D58, BuildingClass_CanBeOccupied_SpecificOccupiers, 6)
 {
 	enum { AllowOccupy = 0x457DD5, DisallowOccupy = 0x457DA3 };
 
@@ -2359,7 +2357,7 @@ DEFINE_HOOK(0x457D58, BuildingClass_CanBeOccupied_SpecificOccupiers, 6)
 	return DisallowOccupy;
 }
 
-DEFINE_HOOK(0x52297F, InfantryClass_GarrisonBuilding_OccupierEntered, 5)
+ASMJIT_PATCH(0x52297F, InfantryClass_GarrisonBuilding_OccupierEntered, 5)
 {
 	GET(InfantryClass*, pInf, ESI);
 	GET(BuildingClass*, pBld, EBP);
@@ -2385,7 +2383,7 @@ DEFINE_HOOK(0x52297F, InfantryClass_GarrisonBuilding_OccupierEntered, 5)
 	return 0;
 }
 
-DEFINE_HOOK(0x455828, BuildingClass_SensorArrayActivate, 8)
+ASMJIT_PATCH(0x455828, BuildingClass_SensorArrayActivate, 8)
 {
 	GET(BuildingClass*, pBld, ECX);
 	auto pExt = BuildingExtContainer::Instance.Find(pBld);
@@ -2399,7 +2397,7 @@ DEFINE_HOOK(0x455828, BuildingClass_SensorArrayActivate, 8)
 	return 0x45596F;
 }
 
-DEFINE_HOOK(0x4556E1, BuildingClass_SensorArrayDeactivate, 7)
+ASMJIT_PATCH(0x4556E1, BuildingClass_SensorArrayDeactivate, 7)
 {
 	GET(BuildingClass*, pBld, ECX);
 	auto pExt = BuildingExtContainer::Instance.Find(pBld);
@@ -2421,16 +2419,16 @@ DEFINE_HOOK(0x4556E1, BuildingClass_SensorArrayDeactivate, 7)
 
 // powered state changed
 // ???
-DEFINE_HOOK_AGAIN(0x454B5F, BuildingClass_UpdatePowered_SensorArray, 6)
-DEFINE_HOOK(0x4549F8, BuildingClass_UpdatePowered_SensorArray, 6)
+
+ASMJIT_PATCH(0x4549F8, BuildingClass_UpdatePowered_SensorArray, 6)
 {
 	GET(BuildingClass*, pBld, ESI);
 	TechnoExt_ExtData::UpdateSensorArray(pBld);
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x454B5F, BuildingClass_UpdatePowered_SensorArray, 6)
 
 // something changed to the worse, like toggle power
-DEFINE_HOOK(0x4524A3, BuildingClass_DisableThings, 6)
+ASMJIT_PATCH(0x4524A3, BuildingClass_DisableThings, 6)
 {
 	GET(BuildingClass*, pBld, EDI);
 	TechnoExt_ExtData::UpdateSensorArray(pBld);
@@ -2438,7 +2436,7 @@ DEFINE_HOOK(0x4524A3, BuildingClass_DisableThings, 6)
 }
 
 // check every frame
-DEFINE_HOOK(0x43FE69, BuildingClass_Update_SensorArray, 0xA)
+ASMJIT_PATCH(0x43FE69, BuildingClass_Update_SensorArray, 0xA)
 {
 	GET(FakeBuildingClass*, pThis, ESI);
 	TechnoExt_ExtData::UpdateSensorArray(pThis);
@@ -2469,14 +2467,14 @@ DEFINE_HOOK(0x43FE69, BuildingClass_Update_SensorArray, 0xA)
 	return 0;
 }
 
-DEFINE_HOOK(0x454BDC, BuildingClass_UpdatePowered_LargeGap, 7)
+ASMJIT_PATCH(0x454BDC, BuildingClass_UpdatePowered_LargeGap, 7)
 {
 	GET(BuildingTypeClass*, pType, ECX);
 	R->EDX(TechnoTypeExtContainer::Instance.Find(pType)->GapRadiusInCells.Get());
 	return 0x454BE3;
 }
 
-DEFINE_HOOK(0x43FB6D, BuildingClass_Update_LaserFencePost, 6)
+ASMJIT_PATCH(0x43FB6D, BuildingClass_Update_LaserFencePost, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 
@@ -2486,7 +2484,7 @@ DEFINE_HOOK(0x43FB6D, BuildingClass_Update_LaserFencePost, 6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x445F80, BuildingClass_Place, 5)
+ASMJIT_PATCH(0x445F80, BuildingClass_Place, 5)
 {
 	GET(BuildingClass*, pThis, ECX);
 
@@ -2501,21 +2499,21 @@ DEFINE_HOOK(0x445F80, BuildingClass_Place, 5)
 
 // make temporal weapons play nice with power toggle.
 // previously, power state was set to true unconditionally.
-DEFINE_HOOK(0x452287, BuildingClass_GoOnline_TogglePower, 6)
+ASMJIT_PATCH(0x452287, BuildingClass_GoOnline_TogglePower, 6)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	BuildingExtContainer::Instance.Find(pThis)->TogglePower_HasPower = true;
 	return 0;
 }
 
-DEFINE_HOOK(0x452393, BuildingClass_GoOffline_TogglePower, 7)
+ASMJIT_PATCH(0x452393, BuildingClass_GoOffline_TogglePower, 7)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	BuildingExtContainer::Instance.Find(pThis)->TogglePower_HasPower = false;
 	return 0;
 }
 
-DEFINE_HOOK(0x452210, BuildingClass_Enable_TogglePower, 7)
+ASMJIT_PATCH(0x452210, BuildingClass_Enable_TogglePower, 7)
 {
 	GET(BuildingClass* const, pThis, ECX);
 	pThis->HasPower = BuildingExtContainer::Instance.Find(pThis)->TogglePower_HasPower;

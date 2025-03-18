@@ -543,7 +543,7 @@ SideExtContainer SideExtContainer::Instance;
 // =============================
 // container hooks
 
-DEFINE_HOOK(0x6A4600, SideClass_CTOR, 0x6)
+ASMJIT_PATCH(0x6A4600, SideClass_CTOR, 0x6)
 {
 	GET(SideClass*, pItem, ESI);
 	GET(int, nIdx, EAX);
@@ -554,7 +554,7 @@ DEFINE_HOOK(0x6A4600, SideClass_CTOR, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x6A499F, SideClass_SDDTOR, 0x6)
+ASMJIT_PATCH(0x6A499F, SideClass_SDDTOR, 0x6)
 {
 	GET(SideClass*, pItem, ESI);
 
@@ -562,8 +562,7 @@ DEFINE_HOOK(0x6A499F, SideClass_SDDTOR, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK_AGAIN(0x6A48A0, SideClass_SaveLoad_Prefix, 0x5)
-DEFINE_HOOK(0x6A4780, SideClass_SaveLoad_Prefix, 0x6)
+ASMJIT_PATCH(0x6A4780, SideClass_SaveLoad_Prefix, 0x6)
 {
 	GET_STACK(SideClass*, pItem, 0x4);
 	GET_STACK(IStream*, pStm, 0x8);
@@ -571,22 +570,22 @@ DEFINE_HOOK(0x6A4780, SideClass_SaveLoad_Prefix, 0x6)
 	SideExtContainer::Instance.PrepareStream(pItem, pStm);
 
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x6A48A0, SideClass_SaveLoad_Prefix, 0x5)
 
-DEFINE_HOOK(0x6A488B, SideClass_Load_Suffix, 0x6)
+ASMJIT_PATCH(0x6A488B, SideClass_Load_Suffix, 0x6)
 {
 	SideExtContainer::Instance.LoadStatic();
 
 	return 0;
 }
 
-DEFINE_HOOK(0x6A48FC, SideClass_Save_Suffix, 0x5)
+ASMJIT_PATCH(0x6A48FC, SideClass_Save_Suffix, 0x5)
 {
 	SideExtContainer::Instance.SaveStatic();
 	return 0;
 }
 
-//DEFINE_HOOK(0x679A10, SideClass_LoadAllFromINI, 0x5)
+//ASMJIT_PATCH(0x679A10, SideClass_LoadAllFromINI, 0x5)
 //{
 //	GET_STACK(CCINIClass*, pINI, 0x4);
 

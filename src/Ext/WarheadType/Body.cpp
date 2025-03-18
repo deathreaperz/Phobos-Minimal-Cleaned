@@ -590,9 +590,14 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->BuildingUndeploy.Read(exINI, pSection, "BuildingUndeploy");
 	this->BuildingUndeploy_Leave.Read(exINI, pSection, "BuildingUndeploy.Leave");
 
-	this->ScorcScorchChance.Read(exINI, pSection, "ScorchChance");
+	this->ScorchChance.Read(exINI, pSection, "ScorchChance");
 	this->CraterChance.Read(exINI, pSection, "CraterChance");
 	this->CellAnimChance.Read(exINI, pSection, "CellAnimChance");
+
+	this->ScorchPercentAtMax.Read(exINI, pSection, "ScorchPercentAtMax");
+	this->CraterPercentAtMax.Read(exINI, pSection, "CraterPercentAtMax");
+	this->CellAnimPercentAtMax.Read(exINI, pSection, "CellAnimPercentAtMax");
+
 	this->CellAnim.Read(exINI, pSection, "CellAnim");
 }
 
@@ -1586,9 +1591,12 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->BuildingUndeploy)
 		.Process(this->BuildingUndeploy_Leave)
 
-		.Process(this->ScorcScorchChance)
+		.Process(this->ScorchChance)
+		.Process(this->ScorchPercentAtMax)
 		.Process(this->CraterChance)
+		.Process(this->CraterPercentAtMax)
 		.Process(this->CellAnimChance)
+		.Process(this->CellAnimPercentAtMax)
 		.Process(this->CellAnim)
 		;
 
@@ -1795,14 +1803,14 @@ void WarheadTypeExtContainer::Clear()
 // =============================
 // container hooks
 
-DEFINE_HOOK(0x75D1A9, WarheadTypeClass_CTOR, 0x7)
+ASMJIT_PATCH(0x75D1A9, WarheadTypeClass_CTOR, 0x7)
 {
 	GET(WarheadTypeClass*, pItem, EBP);
 	WarheadTypeExtContainer::Instance.Allocate(pItem);
 	return 0;
 }
 
-DEFINE_HOOK(0x75E5C8, WarheadTypeClass_SDDTOR, 0x6)
+ASMJIT_PATCH(0x75E5C8, WarheadTypeClass_SDDTOR, 0x6)
 {
 	GET(WarheadTypeClass*, pItem, ESI);
 	WarheadTypeExtContainer::Instance.Remove(pItem);
@@ -1836,8 +1844,8 @@ DEFINE_FUNCTION_JUMP(VTABLE, 0x7F6B44, FakeWarheadTypeClass::_Load)
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7F6B48, FakeWarheadTypeClass::_Save)
 
 // is return not valid
-DEFINE_HOOK_AGAIN(0x75DEAF, WarheadTypeClass_LoadFromINI, 0x5)
-DEFINE_HOOK(0x75DEA0, WarheadTypeClass_LoadFromINI, 0x5)
+
+ASMJIT_PATCH(0x75DEA0, WarheadTypeClass_LoadFromINI, 0x5)
 {
 	GET(WarheadTypeClass*, pItem, ESI);
 	GET_STACK(CCINIClass*, pINI, 0x150);
@@ -1847,4 +1855,4 @@ DEFINE_HOOK(0x75DEA0, WarheadTypeClass_LoadFromINI, 0x5)
 	//0x75DE9A do net set isOrganic here , just skip it to next adrress to execute ares hook
 	return// R->Origin() == 0x75DE9A ? 0x75DEA0 :
 		0;
-}
+}ASMJIT_PATCH_AGAIN(0x75DEAF, WarheadTypeClass_LoadFromINI, 0x5)

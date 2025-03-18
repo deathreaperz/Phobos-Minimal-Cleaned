@@ -191,6 +191,71 @@ static void NOINLINE Spawn_Flames_And_Smudges(const CellStruct& cell, double sco
 	}
 }
 
+static void NOINLINE Damage_Overlay(CellClass* pCurCell,
+	CellStruct center,
+	WarheadTypeClass* pWarhead,
+	int distance,
+	int damage,
+	TechnoClass* pSource,
+	HouseClass* pHouse,
+	bool do_chain_reaction
+)
+{
+	if (pCurCell->OverlayTypeIndex > -1)
+	{
+		auto pOvelay = OverlayTypeClass::Array->Items[pCurCell->OverlayTypeIndex];
+		if (pOvelay->ChainReaction && (!pOvelay->Tiberium || pWarhead->Tiberium) && do_chain_reaction)
+		{// hook up the area damage delivery with chain reactions
+			pCurCell->ChainReaction();
+			pCurCell->ReduceTiberium(damage / 10);
+		}
+
+		if (pOvelay->Wall)
+		{
+			if (pWarhead->WallAbsoluteDestroyer)
+			{
+				pCurCell->ReduceWall();
+			}
+			else if (pWarhead->Wall || (pWarhead->Wood && pOvelay->Armor == Armor::Wood))
+			{
+				pCurCell->ReduceWall(damage);
+			}
+		}
+
+		if (pCurCell->OverlayTypeIndex == -1)
+		{
+			TechnoClass::ClearWhoTargetingThis(pCurCell);
+		}
+
+		if (pOvelay->IsVeinholeMonster)
+		{
+			if (VeinholeMonsterClass* veinhole = VeinholeMonsterClass::GetVeinholeMonsterAt(&pCurCell->MapCoords))
+			{
+				if (!veinhole->InLimbo && veinhole->IsAlive && ((int)distance <= 0))
+				{
+					int nDamage = damage;
+					if (veinhole->ReceiveDamage(&nDamage,
+						(int)center.DistanceFrom(veinhole->MonsterCell),
+						const_cast<WarheadTypeClass*>(pWarhead),
+						pSource,
+						false,
+						false,
+						pSource && !pHouse ? pSource->Owner : pHouse
+					) == DamageState::NowDead)
+					{
+						Debug::LogInfo("Veinhole at [%d %d] Destroyed!", veinhole->MonsterCell.X, veinhole->MonsterCell.Y);
+
+						if (pCurCell->OverlayTypeIndex == -1)
+						{
+							TechnoClass::ClearWhoTargetingThis(pCurCell);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 static PhobosMap<BuildingClass*, double> MergedDamage {};
 static DynamicVectorClass<ObjectClass*, DllAllocator<ObjectClass*>> Targets;
 static DynamicVectorClass<DamageGroup*, DllAllocator<DamageGroup*>> Handled;
@@ -200,7 +265,7 @@ static DynamicVectorClass<DamageGroup*, DllAllocator<DamageGroup*>> Handled;
 DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 		int damage,
 		TechnoClass* pSource,
-		const WarheadTypeClass* const pWarhead,
+		WarheadTypeClass* pWarhead,
 		bool affectTiberium,
 		HouseClass* pHouse)
 {
@@ -329,62 +394,14 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 				if (MapClass::Instance->CoordinatesLegal(cellhere))
 				{
 					auto cur_cellCoord = pCurCell->GetCoords();
+					auto spawn_distance = cellhere.DistanceFrom(cell);
+					Damage_Overlay(pCurCell, cell, pWarhead, spawn_distance, damage, pSource, pHouse, affectTiberium);
 
-					if (pCurCell->OverlayTypeIndex > -1)
-					{
-						auto pOvelay = OverlayTypeClass::Array->Items[pCurCell->OverlayTypeIndex];
-						if (pOvelay->ChainReaction && (!pOvelay->Tiberium || pWarhead->Tiberium) && affectTiberium)
-						{// hook up the area damage delivery with chain reactions
-							pCurCell->ChainReaction();
-							pCurCell->ReduceTiberium(damage / 10);
-						}
+					auto scorch_chance = std::clamp(Math::PercentAtMax(pWHExt->ScorchChance.Get(), spreadLept, spawn_distance, pWHExt->ScorchPercentAtMax.Get()), 0.0, 1.0);
+					auto crater_chance = std::clamp(Math::PercentAtMax(pWHExt->CraterChance.Get(), spreadLept, spawn_distance, pWHExt->CraterPercentAtMax.Get()), 0.0, 1.0);
+					auto cellanim_chance = std::clamp(Math::PercentAtMax(pWHExt->CellAnimChance.Get(), spreadLept, spawn_distance, pWHExt->CellAnimPercentAtMax.Get()), 0.0, 1.0);
 
-						if (pOvelay->Wall)
-						{
-							if (pWarhead->WallAbsoluteDestroyer)
-							{
-								pCurCell->ReduceWall();
-							}
-							else if (pWarhead->Wall || (pWarhead->Wood && pOvelay->Armor == Armor::Wood))
-							{
-								pCurCell->ReduceWall(damage);
-							}
-						}
-
-						if (pCurCell->OverlayTypeIndex == -1)
-						{
-							TechnoClass::ClearWhoTargetingThis(pCurCell);
-						}
-
-						if (pOvelay->IsVeinholeMonster)
-						{
-							if (VeinholeMonsterClass* veinhole = VeinholeMonsterClass::GetVeinholeMonsterAt(&cellhere))
-							{
-								if (!veinhole->InLimbo && veinhole->IsAlive && ((int)veinhole->MonsterCell.DistanceFrom(pCell->MapCoords) <= 0))
-								{
-									int nDamage = damage;
-									if (veinhole->ReceiveDamage(&nDamage,
-										(int)cur_cellCoord.DistanceFrom(CellClass::Cell2Coord(veinhole->MonsterCell)),
-										const_cast<WarheadTypeClass*>(pWarhead),
-										pSource,
-										false,
-										false,
-										pSource && !pHouse ? pSource->Owner : pHouse
-									) == DamageState::NowDead)
-									{
-										Debug::LogInfo("Veinhole at [%d %d] Destroyed!", veinhole->MonsterCell.X, veinhole->MonsterCell.Y);
-
-										if (pCurCell->OverlayTypeIndex == -1)
-										{
-											TechnoClass::ClearWhoTargetingThis(pCurCell);
-										}
-									}
-								}
-							}
-						}
-					}
-
-					Spawn_Flames_And_Smudges(cellhere, pWHExt->ScorcScorchChance, pWHExt->CraterChance, pWHExt->CellAnimChance, pWHExt->CellAnim);
+					Spawn_Flames_And_Smudges(cellhere, scorch_chance, crater_chance, cellanim_chance, pWHExt->CellAnim);
 
 					for (NextObject next(alt ? pCurCell->AltObject : pCurCell->FirstObject); next; next++)
 					{
@@ -708,7 +725,7 @@ DEFINE_FUNCTION_JUMP(CALL, 0x74A1E1, DamageArea::Apply);
 
 #ifdef _ENABLE
 
-DEFINE_HOOK(0x489286, MapClass_DamageArea, 0x6)
+ASMJIT_PATCH(0x489286, MapClass_DamageArea, 0x6)
 {
 	GET_BASE(WarheadTypeClass*, pWH, 0x0C);
 	if (auto const pWHExt = WarheadTypeExtContainer::Instance.TryFind(pWH))
@@ -739,7 +756,7 @@ DEFINE_HOOK(0x489286, MapClass_DamageArea, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x489968, Explosion_Damage_PenetratesIronCurtain, 0x5)
+ASMJIT_PATCH(0x489968, Explosion_Damage_PenetratesIronCurtain, 0x5)
 {
 	enum { BypassInvulnerability = 0x48996D };
 	GET_BASE(WarheadTypeClass*, pWarhead, 0xC);
@@ -748,7 +765,7 @@ DEFINE_HOOK(0x489968, Explosion_Damage_PenetratesIronCurtain, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x4899DA, DamageArea_Damage_MaxAffect, 7)
+ASMJIT_PATCH(0x4899DA, DamageArea_Damage_MaxAffect, 7)
 {
 	REF_STACK(DynamicVectorClass<DamageGroup*>, groupvec, 0xE0 - 0xA8);
 	GET_BASE(FakeWarheadTypeClass*, pWarhead, 0xC);
@@ -814,7 +831,7 @@ DEFINE_HOOK(0x4899DA, DamageArea_Damage_MaxAffect, 7)
 
 	return 0;
 }
-DEFINE_HOOK(0x489AD6, DamageArea_Damage_AfterLoop, 6)
+ASMJIT_PATCH(0x489AD6, DamageArea_Damage_AfterLoop, 6)
 {
 	REF_STACK(DynamicVectorClass<DamageGroup*>, groupvec, 0xE0 - 0xA8);
 	GET_BASE(FakeWarheadTypeClass*, pWarhead, 0xC);
@@ -920,14 +937,14 @@ DEFINE_HOOK(0x489AD6, DamageArea_Damage_AfterLoop, 6)
 	return 0x489E87;
 }
 // hook up the area damage delivery with chain reactions
-DEFINE_HOOK(0x48964F, DamageArea_CellChainReaction, 5)
+ASMJIT_PATCH(0x48964F, DamageArea_CellChainReaction, 5)
 {
 	GET(CellClass*, pCell, EBX);
 	pCell->ChainReaction();
 	return 0;
 }
 
-DEFINE_HOOK(0x4892BE, DamageArea_NullDamage, 0x6)
+ASMJIT_PATCH(0x4892BE, DamageArea_NullDamage, 0x6)
 {
 	enum
 	{
@@ -948,7 +965,7 @@ DEFINE_HOOK(0x4892BE, DamageArea_NullDamage, 0x6)
 }
 
 // create enumerator
-DEFINE_HOOK(0x4895B8, DamageArea_CellSpread1, 0x6)
+ASMJIT_PATCH(0x4895B8, DamageArea_CellSpread1, 0x6)
 {
 	REF_STACK(CellSpreadEnumerator<std::numeric_limits<short>::max()>*, pIter, 0xE0 - 0xB4);
 	GET(int, spread, EAX);
@@ -967,7 +984,7 @@ DEFINE_HOOK(0x4895B8, DamageArea_CellSpread1, 0x6)
 }
 
 // apply the current value
-DEFINE_HOOK(0x4895C7, DamageArea_CellSpread2, 0x8)
+ASMJIT_PATCH(0x4895C7, DamageArea_CellSpread2, 0x8)
 {
 	GET_STACK(CellSpreadEnumerator<std::numeric_limits<short>::max()>*, pIter, STACK_OFFS(0xE0, 0xB4));
 
@@ -978,7 +995,7 @@ DEFINE_HOOK(0x4895C7, DamageArea_CellSpread2, 0x8)
 }
 
 // advance and delete if done
-DEFINE_HOOK(0x4899BE, DamageArea_CellSpread3, 0x8)
+ASMJIT_PATCH(0x4899BE, DamageArea_CellSpread3, 0x8)
 {
 	REF_STACK(CellSpreadEnumerator<std::numeric_limits<short>::max()>*, pIter, STACK_OFFS(0xE0, 0xB4));
 	REF_STACK(int, index, STACK_OFFS(0xE0, 0xD0));
@@ -997,7 +1014,7 @@ DEFINE_HOOK(0x4899BE, DamageArea_CellSpread3, 0x8)
 	return 0x4899DA;
 }
 
-//DEFINE_HOOK(0x4896EC, MapClass_DamageArea_DamageSelf, 0x6) {
+//ASMJIT_PATCH(0x4896EC, MapClass_DamageArea_DamageSelf, 0x6) {
 //	GET(ObjectClass*, pObj, ECX);
 //	GET(TechnoTypeClass*, pType, EAX);
 //	GET_BASE(WarheadTypeClass*, pWH, 0xC);
@@ -1010,7 +1027,7 @@ DEFINE_HOOK(0x4899BE, DamageArea_CellSpread3, 0x8)
 //	return 0x489702;
 //}
 
-DEFINE_HOOK(0x48A2D9, DamageArea_ExplodesThreshold, 6)
+ASMJIT_PATCH(0x48A2D9, DamageArea_ExplodesThreshold, 6)
 {
 	GET(OverlayTypeClass*, pOverlay, EAX);
 	GET_STACK(int, damage, 0x24);
@@ -1019,7 +1036,7 @@ DEFINE_HOOK(0x48A2D9, DamageArea_ExplodesThreshold, 6)
 		? 0x48A2E7 : 0x48A433;
 }
 
-DEFINE_HOOK(0x489E9F, DamageArea_BridgeAbsoluteDestroyer, 5)
+ASMJIT_PATCH(0x489E9F, DamageArea_BridgeAbsoluteDestroyer, 5)
 {
 	GET(WarheadTypeClass*, pWH, EBX);
 	GET(WarheadTypeClass*, pIonCannonWH, EDI);
@@ -1027,27 +1044,27 @@ DEFINE_HOOK(0x489E9F, DamageArea_BridgeAbsoluteDestroyer, 5)
 	return 0x489EA4;
 }
 
-DEFINE_HOOK(0x489FD8, DamageArea_BridgeAbsoluteDestroyer2, 6)
+ASMJIT_PATCH(0x489FD8, DamageArea_BridgeAbsoluteDestroyer2, 6)
 {
 	return R->Stack<bool>(0xF) ? 0x48A004 : 0x489FE0;
 }
 
-DEFINE_HOOK(0x48A15D, DamageArea_BridgeAbsoluteDestroyer3, 6)
+ASMJIT_PATCH(0x48A15D, DamageArea_BridgeAbsoluteDestroyer3, 6)
 {
 	return R->Stack<bool>(0xF) ? 0x48A188 : 0x48A165;
 }
 
-DEFINE_HOOK(0x48A229, DamageArea_BridgeAbsoluteDestroyer4, 6)
+ASMJIT_PATCH(0x48A229, DamageArea_BridgeAbsoluteDestroyer4, 6)
 {
 	return  R->Stack<bool>(0xF) ? 0x48A250 : 0x48A231;
 }
 
-DEFINE_HOOK(0x48A283, DamageArea_BridgeAbsoluteDestroyer5, 6)
+ASMJIT_PATCH(0x48A283, DamageArea_BridgeAbsoluteDestroyer5, 6)
 {
 	return R->Stack<bool>(0xF) ? 0x48A2AA : 0x48A28B;
 }
 
-DEFINE_HOOK(0x4893BA, DamageArea_DamageAir, 0x9)
+ASMJIT_PATCH(0x4893BA, DamageArea_DamageAir, 0x9)
 {
 	GET(const CoordStruct* const, pCoords, EDI);
 	GET(WarheadTypeClass*, pWarhead, ESI);
@@ -1070,7 +1087,7 @@ DEFINE_HOOK(0x4893BA, DamageArea_DamageAir, 0x9)
 	return heightAboveGround > pExt->DamageAirThreshold ? 0x4893C3u : 0x48955Eu;
 }
 
-DEFINE_HOOK(0x489562, DamageArea_DestroyCliff, 9)
+ASMJIT_PATCH(0x489562, DamageArea_DestroyCliff, 9)
 {
 	GET(CellClass* const, pCell, EAX);
 

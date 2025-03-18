@@ -35,6 +35,132 @@
 #include <Phobos.UI.h>
 #include <Phobos.Defines.h>
 
+#include <Lib/asmjit/x86.h>
+
+std::unique_ptr<asmjit::JitRuntime> gJitRuntime;
+asmjit::ErrorHandler gJitErrorHandler;
+
+namespace Assembly
+{
+	static constexpr BYTE INIT = 0x00,
+		INT3 = 0xCC,
+		NOP = 0x90,
+		CALL = 0xE8,
+		JMP = 0xE9,
+		JLE = 0x7E;
+};
+struct HookSummary
+{
+	const void* func;
+	size_t size;
+};
+std::map<unsigned int, std::vector<HookSummary>> Hooks { };
+
+void ApplyasmjitPatch()
+{
+	for (auto& hook : Hooks)
+	{
+		if (hook.second.empty())
+			continue;
+
+		if (hook.second.size() > 1)
+		{
+			Debug::LogDeferred("hook at 0x%x , has %d hooks registered !\n", hook.first, hook.second.size());
+		}
+		size_t hook_size = hook.second[0].size;
+		asmjit::CodeHolder code;
+		code.init(gJitRuntime->environment(), gJitRuntime->cpuFeatures());
+		code.setErrorHandler(&gJitErrorHandler);
+		asmjit::x86::Assembler assembly(&code);
+		asmjit::Label l_origin = assembly.newLabel();
+		DWORD hookSize = MaxImpl(hook_size, 5u);
+
+		for (auto& hook_fn : hook.second)
+		{
+			assembly.pushad();
+			assembly.pushfd();
+			assembly.push(hook.first);
+			assembly.sub(asmjit::x86::esp, 4);
+			assembly.lea(asmjit::x86::eax, asmjit::x86::ptr(asmjit::x86::esp, 4));
+			assembly.push(asmjit::x86::eax);
+			assembly.call(hook_fn.func);
+			assembly.add(asmjit::x86::esp, 0xC);
+			assembly.mov(asmjit::x86::ptr(asmjit::x86::esp, -8), asmjit::x86::eax);
+			assembly.popfd();
+			assembly.popad();
+			assembly.cmp(asmjit::x86::dword_ptr(asmjit::x86::esp, -0x2C), 0);
+			assembly.jz(l_origin);
+			assembly.jmp(asmjit::x86::ptr(asmjit::x86::esp, -0x2C));
+			assembly.bind(l_origin);
+		}
+
+		void* hookAddress = (void*)hook.first;
+
+		std::vector<byte> originalCode(hookSize);
+		memcpy(originalCode.data(), hookAddress, hookSize);
+
+		// fix relative jump or call
+		if (originalCode[0] == Assembly::CALL || originalCode[0] == Assembly::JMP)
+		{
+			DWORD dest = hook.first + 5 + *(DWORD*)(originalCode.data() + 1);
+			switch (originalCode[0])
+			{
+			case Assembly::JMP: // jmp
+				assembly.jmp(dest);
+				originalCode.erase(originalCode.begin(), originalCode.begin() + 5);
+				Debug::LogDeferred("hook at 0x%x is placed at JMP fixing the relative addr !\n", hook.first);
+				break;
+			case Assembly::CALL: // call
+				assembly.call(dest);
+				originalCode.erase(originalCode.begin(), originalCode.begin() + 5);
+				Debug::LogDeferred("hook at 0x%x is placed at CALL fixing the relative addr !\n", hook.first);
+
+				break;
+			}
+		}
+		assembly.embed(originalCode.data(), originalCode.size());
+		assembly.jmp(hook.first + hookSize);
+		const void* fn;
+		gJitRuntime->add(&fn, &code);
+		code.reset();
+		code.init(gJitRuntime->environment(), gJitRuntime->cpuFeatures());
+		code.setErrorHandler(&gJitErrorHandler);
+		code.attach(&assembly);
+		assembly.jmp(fn);
+		code.flatten();
+		code.resolveUnresolvedLinks();
+		code.relocateToBase(hook.first);
+
+		DWORD protect_flag {};
+		DWORD protect_flagb {};
+		VirtualProtect(hookAddress, hookSize, PAGE_EXECUTE_READWRITE, &protect_flag);
+		code.copyFlattenedData(hookAddress, hookSize);
+		VirtualProtect(hookAddress, hookSize, protect_flag, &protect_flagb);
+		FlushInstructionCache(Game::hInstance, hookAddress, hookSize);
+	}
+
+	Hooks.clear();
+}
+
+void Initasmjit()
+{
+	gJitRuntime = std::make_unique<asmjit::JitRuntime>();
+
+	void* buffer {};
+	int len = Patch::GetSection(Phobos::hInstance, ASMJIT_PATCH_SECTION_NAME, &buffer);
+
+	hookdeclb* end = (hookdeclb*)((DWORD)buffer + len);
+	Debug::LogDeferred("Applying %d asmjit hooks.\n", std::distance((hookdeclb*)buffer, end));
+
+	for (hookdeclb* begin = (hookdeclb*)buffer; begin < end; begin++)
+	{
+		auto& hook = Hooks[begin->hookAddr];
+		hook.emplace_back(begin->hookFunc, begin->hookSize);
+	}
+
+	ApplyasmjitPatch();
+}
+
 #ifdef EXPERIMENTAL_IMGUI
 DEFINE_HOOK(0x5D4E66, Windows_Message_Handler_Add, 0x7)
 {
@@ -598,6 +724,10 @@ DECLARE_PATCH(_set_fp_mode)
 
 #include <Misc/Multithread.h>
 
+//DEFINE_HOOK(0x7CD810, OnGameEntryPoint, 0x9) {
+//	return 0;
+//}
+
 BOOL APIENTRY DllMain(HANDLE hInstance, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
 	switch (ul_reason_for_call)
@@ -648,6 +778,8 @@ BOOL APIENTRY DllMain(HANDLE hInstance, DWORD  ul_reason_for_call, LPVOID lpRese
 		Debug::LogDeferred("Applying %d Static Patches.\n", std::distance((_patch*)buffer, end));
 		len = Patch::GetSection(hInstance, ".syhks00", &buffer);
 
+		Initasmjit();
+
 		//hookdecl
 		Debug::LogDeferred("Total %d hooks applied.\n", std::distance((hookdecl*)buffer, (hookdecl*)((DWORD)buffer + len)));
 
@@ -679,6 +811,7 @@ BOOL APIENTRY DllMain(HANDLE hInstance, DWORD  ul_reason_for_call, LPVOID lpRese
 	case DLL_PROCESS_DETACH:
 		Multithreading::ShutdownMultitheadMode();
 		Debug::DeactivateLogger();
+		gJitRuntime.reset();
 		break;
 	}
 

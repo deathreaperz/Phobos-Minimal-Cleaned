@@ -3259,6 +3259,7 @@ CoordStruct TechnoExtData::GetFLHAbsoluteCoords(TechnoClass* pThis, const CoordS
 {
 	auto const pType = pThis->GetTechnoType();
 	Matrix3D mtx = TechnoExtData::GetTransform(pThis);
+	auto pFoot = flag_cast_to<FootClass*>(pThis);
 
 	// Steps 2-3: turret offset and rotation
 	if (isOnTurret && pThis->HasTurret())
@@ -3266,7 +3267,9 @@ CoordStruct TechnoExtData::GetFLHAbsoluteCoords(TechnoClass* pThis, const CoordS
 		TechnoTypeExtContainer::Instance.Find(pType)->ApplyTurretOffset(&mtx, 1.0);
 		double turretRad = pThis->TurretFacing().GetRadian<32>();
 		double bodyRad = pThis->PrimaryFacing.Current().GetRadian<32>();
-		float angle = static_cast<float>(turretRad - bodyRad);
+		// For BuildingClass turret facing is equal to primary facing
+
+		float angle = pFoot ? (float)(turretRad - bodyRad) : (float)(turretRad);
 		mtx.RotateZ(angle);
 	}
 
@@ -5677,7 +5680,7 @@ void AEProperties::Recalculate(TechnoClass* pTechno)
 // =============================
 // container hooks
 
-DEFINE_HOOK(0x6F3260, TechnoClass_CTOR, 0x5)
+ASMJIT_PATCH(0x6F3260, TechnoClass_CTOR, 0x5)
 {
 	GET(TechnoClass*, pItem, ESI);
 	HouseExtData::LimboTechno.push_back_unique(pItem);
@@ -5685,7 +5688,7 @@ DEFINE_HOOK(0x6F3260, TechnoClass_CTOR, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x6F4500, TechnoClass_DTOR, 0x5)
+ASMJIT_PATCH(0x6F4500, TechnoClass_DTOR, 0x5)
 {
 	GET(TechnoClass*, pItem, ECX);
 
@@ -5708,8 +5711,8 @@ DEFINE_HOOK(0x6F4500, TechnoClass_DTOR, 0x5)
 	return 0;
 }
 
-//DEFINE_HOOK_AGAIN(0x70C250, TechnoClass_SaveLoad_Prefix, 0x8)
-DEFINE_HOOK(0x70BF50, TechnoClass_SaveLoad_Prefix, 0x5)
+//ASMJIT_PATCH_AGAIN(0x70C250, TechnoClass_SaveLoad_Prefix, 0x8)
+ASMJIT_PATCH(0x70BF50, TechnoClass_SaveLoad_Prefix, 0x5)
 {
 	GET_STACK(TechnoClass*, pItem, 0x4);
 	GET_STACK(IStream*, pStm, 0x8);
@@ -5717,7 +5720,7 @@ DEFINE_HOOK(0x70BF50, TechnoClass_SaveLoad_Prefix, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x70BF6C, TechnoClass_Load_Suffix, 0x6)
+ASMJIT_PATCH(0x70BF6C, TechnoClass_Load_Suffix, 0x6)
 {
 	TechnoExtContainer::Instance.LoadStatic();
 	//auto key = TechnoExtContainer::Instance.GetSavingObject();
@@ -5748,7 +5751,7 @@ DEFINE_HOOK(0x70BF6C, TechnoClass_Load_Suffix, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x70C250, TechnoClass_Save_Suffix_Prefix, 0x8)
+ASMJIT_PATCH(0x70C250, TechnoClass_Save_Suffix_Prefix, 0x8)
 {
 	GET_STACK(TechnoClass*, pItem, 0x4);
 	GET_STACK(IStream*, pStm, 0x8);
@@ -5764,7 +5767,7 @@ DEFINE_HOOK(0x70C250, TechnoClass_Save_Suffix_Prefix, 0x8)
 	return 0x70C266;
 }
 
-DEFINE_HOOK(0x7077C0, TechnoClass_Detach, 0x7)
+ASMJIT_PATCH(0x7077C0, TechnoClass_Detach, 0x7)
 {
 	GET(TechnoClass*, pThis, ECX);
 	GET_STACK(AbstractClass*, target, 0x4);
@@ -5775,7 +5778,7 @@ DEFINE_HOOK(0x7077C0, TechnoClass_Detach, 0x7)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x710415, TechnoClass_AnimPointerExpired_add, 6)
+ASMJIT_PATCH(0x710415, TechnoClass_AnimPointerExpired_add, 6)
 {
 	GET(AnimClass*, pAnim, EAX);
 	GET(TechnoClass*, pThis, ECX);

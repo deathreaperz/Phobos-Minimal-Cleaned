@@ -11,7 +11,7 @@
 
 #include <EventClass.h>
 
-DEFINE_HOOK(0x6ab773, SelectClass_ProcessInput_ProduceUnsuspended, 0xA)
+ASMJIT_PATCH(0x6ab773, SelectClass_ProcessInput_ProduceUnsuspended, 0xA)
 {
 	GET(EventClass*, pEvent, EAX);
 	GET_STACK(DWORD, flag, 0xB8);
@@ -24,7 +24,7 @@ DEFINE_HOOK(0x6ab773, SelectClass_ProcessInput_ProduceUnsuspended, 0xA)
 	return 0x6AB7CC;
 }
 
-DEFINE_HOOK(0x64C314, Breakup_Receive_Packet_PayloadSize2, 0x8)
+ASMJIT_PATCH(0x64C314, Breakup_Receive_Packet_PayloadSize2, 0x8)
 {
 	GET(EventType, eventType, ESI);
 
@@ -36,7 +36,7 @@ DEFINE_HOOK(0x64C314, Breakup_Receive_Packet_PayloadSize2, 0x8)
 	return 0x64C321;
 }
 
-DEFINE_HOOK(0x64BE83, Breakup_Receive_Packet_PayloadSize1, 0x8)
+ASMJIT_PATCH(0x64BE83, Breakup_Receive_Packet_PayloadSize1, 0x8)
 {
 	GET(EventType, eventType, EDI);
 
@@ -49,7 +49,7 @@ DEFINE_HOOK(0x64BE83, Breakup_Receive_Packet_PayloadSize1, 0x8)
 	return (EventType::MEGAMISSION == eventType) ? 0x64BF1A : 0x64BE97;
 }
 
-DEFINE_HOOK(0x64B704, Add_Compressed_Events_PayloadSize, 0x8)
+ASMJIT_PATCH(0x64B704, Add_Compressed_Events_PayloadSize, 0x8)
 {
 	GET(EventType, eventType, EDI);
 
@@ -62,7 +62,7 @@ DEFINE_HOOK(0x64B704, Add_Compressed_Events_PayloadSize, 0x8)
 }
 
 // #666: Trench Traversal - check if traversal is possible & cursor display
-DEFINE_HOOK(0x44725F, BuildingClass_GetActionOnObject_TargetABuilding, 5)
+ASMJIT_PATCH(0x44725F, BuildingClass_GetActionOnObject_TargetABuilding, 5)
 {
 	GET(BuildingClass*, pThis, ESI);
 	GET(TechnoClass*, T, EBP);
@@ -81,7 +81,7 @@ DEFINE_HOOK(0x44725F, BuildingClass_GetActionOnObject_TargetABuilding, 5)
 	return 0;
 }
 
-DEFINE_HOOK(0x443414, BuildingClass_ActionOnObject, 6)
+ASMJIT_PATCH(0x443414, BuildingClass_ActionOnObject, 6)
 {
 	GET(Action, action, EAX);
 	GET(BuildingClass*, pThis, ECX);
@@ -111,7 +111,7 @@ DEFINE_HOOK(0x443414, BuildingClass_ActionOnObject, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x4C6CCD, EventClass_Execute, 0xA)
+ASMJIT_PATCH(0x4C6CCD, EventClass_Execute, 0xA)
 {
 	GET(int, EventKind, EAX);
 	GET(EventClass*, Event, ESI);
@@ -131,7 +131,7 @@ DEFINE_HOOK(0x4C6CCD, EventClass_Execute, 0xA)
 		;
 }
 
-DEFINE_HOOK(0x4C65EF, EventClass_CTOR_Log, 0x7)
+ASMJIT_PATCH(0x4C65EF, EventClass_CTOR_Log, 0x7)
 {
 	GET(int, events, EAX);
 
@@ -146,7 +146,7 @@ DEFINE_HOOK(0x4C65EF, EventClass_CTOR_Log, 0x7)
 	return 0;
 }
 
-DEFINE_HOOK(0x64C5C7, Execute_DoList_Log, 0x7)
+ASMJIT_PATCH(0x64C5C7, Execute_DoList_Log, 0x7)
 {
 	const auto eventType = static_cast<EventExt::Events>(R->AL());
 	if (EventExt::IsValidType(eventType))

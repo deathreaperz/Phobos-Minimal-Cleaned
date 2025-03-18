@@ -18,7 +18,7 @@ void FakeAircraftClass::_Destroyed(int mult)
 
 DEFINE_FUNCTION_JUMP(CALL, 0x4CD809, FakeAircraftClass::_Destroyed);
 
-//DEFINE_HOOK(0x4CD7D6, FlyLocomotionClass_Movement_AI_TriggerCrashWeapon, 0x5)
+//ASMJIT_PATCH(0x4CD7D6, FlyLocomotionClass_Movement_AI_TriggerCrashWeapon, 0x5)
 //{
 //	GET(AircraftClass*, pLinked, ECX);
 //
@@ -44,7 +44,7 @@ COMPILETIMEEVAL FORCEDINLINE bool AircraftCanStrafeWithWeapon(WeaponTypeClass* p
 		.Get(pWeapon->Projectile->ROT <= 1 && !pWeapon->Projectile->Inviso);
 }
 
-DEFINE_HOOK(0x415EEE, AircraftClass_FireAt_DropCargo, 0x6) //was 8
+ASMJIT_PATCH(0x415EEE, AircraftClass_FireAt_DropCargo, 0x6) //was 8
 {
 	GET(AircraftClass*, pThis, EDI);
 	GET_BASE(int, nWeaponIdx, 0xC);
@@ -156,7 +156,7 @@ DEFINE_HOOK(0x415EEE, AircraftClass_FireAt_DropCargo, 0x6) //was 8
 	return !(pBullet->Type->ROT == 1) ? 0x41631F : 0x4160CF;
 }
 
-DEFINE_HOOK(0x415991, AircraftClass_Mission_Paradrop_Overfly_Radius, 0x6)
+ASMJIT_PATCH(0x415991, AircraftClass_Mission_Paradrop_Overfly_Radius, 0x6)
 {
 	enum { ConditionMeet = 0x41599F, ConditionFailed = 0x4159C8 };
 
@@ -167,7 +167,7 @@ DEFINE_HOOK(0x415991, AircraftClass_Mission_Paradrop_Overfly_Radius, 0x6)
 	return comparator > nRadius ? ConditionMeet : ConditionFailed;
 }
 
-DEFINE_HOOK(0x415934, AircraftClass_Mission_Paradrop_Approach_Radius, 0x6)
+ASMJIT_PATCH(0x415934, AircraftClass_Mission_Paradrop_Approach_Radius, 0x6)
 {
 	enum { ConditionMeet = 0x415942, ConditionFailed = 0x415956 };
 
@@ -178,7 +178,7 @@ DEFINE_HOOK(0x415934, AircraftClass_Mission_Paradrop_Approach_Radius, 0x6)
 	return  comparator <= nRadius ? ConditionMeet : ConditionFailed;
 }
 
-DEFINE_HOOK(0x416545, AircraftClass_FireAt_AttackRangeSight_1, 0x7)
+ASMJIT_PATCH(0x416545, AircraftClass_FireAt_AttackRangeSight_1, 0x7)
 {
 	GET(AircraftClass*, pThis, EDI);
 	GET(RulesClass*, pRules, EAX);
@@ -188,7 +188,7 @@ DEFINE_HOOK(0x416545, AircraftClass_FireAt_AttackRangeSight_1, 0x7)
 	return 0x41654C;
 }
 
-DEFINE_HOOK(0x416580, AircraftClass_FireAt_AttackRangeSight_2, 0x7)
+ASMJIT_PATCH(0x416580, AircraftClass_FireAt_AttackRangeSight_2, 0x7)
 {
 	GET(AircraftClass*, pThis, EDI);
 	GET(RulesClass*, pRules, ECX);
@@ -198,7 +198,7 @@ DEFINE_HOOK(0x416580, AircraftClass_FireAt_AttackRangeSight_2, 0x7)
 	return 0x416587;
 }
 
-DEFINE_HOOK(0x417A2E, AircraftClass_EnterIdleMode_Opentopped, 0x5)
+ASMJIT_PATCH(0x417A2E, AircraftClass_EnterIdleMode_Opentopped, 0x5)
 {
 	GET(AircraftClass*, pThis, ESI);
 
@@ -211,7 +211,7 @@ DEFINE_HOOK(0x417A2E, AircraftClass_EnterIdleMode_Opentopped, 0x5)
 		? 0x417944 : 0x417AD4;
 }
 
-DEFINE_HOOK(0x416EC9, AircraftClass_MI_Move_Carryall_AllowWater, 0x6) //was 8
+ASMJIT_PATCH(0x416EC9, AircraftClass_MI_Move_Carryall_AllowWater, 0x6) //was 8
 {
 	GET(AircraftClass*, pCarryall, ESI);
 
@@ -222,7 +222,7 @@ DEFINE_HOOK(0x416EC9, AircraftClass_MI_Move_Carryall_AllowWater, 0x6) //was 8
 	return 0x416EE4;
 }
 
-DEFINE_HOOK(0x416FFD, AircraftClass_MI_Move_Carryall_AllowWater_LZClear, 0x6) //5
+ASMJIT_PATCH(0x416FFD, AircraftClass_MI_Move_Carryall_AllowWater_LZClear, 0x6) //5
 {
 	GET(AircraftClass*, pThis, ESI);
 
@@ -238,7 +238,7 @@ DEFINE_HOOK(0x416FFD, AircraftClass_MI_Move_Carryall_AllowWater_LZClear, 0x6) //
 	return 0x41700E;
 }
 
-DEFINE_HOOK(0x4183C3, AircraftClass_CurleyShuffle_A, 0x6)
+ASMJIT_PATCH(0x4183C3, AircraftClass_CurleyShuffle_A, 0x6)
 {
 	GET(AircraftClass*, pThis, ESI);
 	GET(RulesClass*, pRules, ECX);
@@ -246,7 +246,7 @@ DEFINE_HOOK(0x4183C3, AircraftClass_CurleyShuffle_A, 0x6)
 	return 0x4183C9;
 }
 
-DEFINE_HOOK(0x418671, AircraftClass_CurleyShuffle_B, 0x6)
+ASMJIT_PATCH(0x418671, AircraftClass_CurleyShuffle_B, 0x6)
 {
 	GET(AircraftClass*, pThis, ESI);
 	GET(RulesClass*, pRules, EDX);
@@ -254,7 +254,7 @@ DEFINE_HOOK(0x418671, AircraftClass_CurleyShuffle_B, 0x6)
 	return 0x418677;
 }
 
-DEFINE_HOOK(0x418733, AircraftClass_CurleyShuffle_C, 0x6)
+ASMJIT_PATCH(0x418733, AircraftClass_CurleyShuffle_C, 0x6)
 {
 	GET(AircraftClass*, pThis, ESI);
 	GET(RulesClass*, pRules, EAX);
@@ -262,7 +262,7 @@ DEFINE_HOOK(0x418733, AircraftClass_CurleyShuffle_C, 0x6)
 	return 0x418739;
 }
 
-DEFINE_HOOK(0x418782, AircraftClass_CurleyShuffle_D, 0x6)
+ASMJIT_PATCH(0x418782, AircraftClass_CurleyShuffle_D, 0x6)
 {
 	GET(AircraftClass*, pThis, ESI);
 	GET(RulesClass*, pRules, ECX);
@@ -270,7 +270,7 @@ DEFINE_HOOK(0x418782, AircraftClass_CurleyShuffle_D, 0x6)
 	return 0x418788;
 }
 
-//DEFINE_HOOK(0x41B7F0, AircraftClass_IFlyControl_Is_Strafe, 0x6)
+//ASMJIT_PATCH(0x41B7F0, AircraftClass_IFlyControl_Is_Strafe, 0x6)
 //{
 //	GET_STACK(IFlyControl*, ptr, 0x4);
 //
@@ -309,14 +309,14 @@ DEFINE_HOOK(0x418782, AircraftClass_CurleyShuffle_D, 0x6)
 //}
 
 #ifdef TEST_CODE
-DEFINE_HOOK(0x4197FC, AircraftClass_MI_Attack_GoodFireLoc_Range, 0x6)
+ASMJIT_PATCH(0x4197FC, AircraftClass_MI_Attack_GoodFireLoc_Range, 0x6)
 {
 	GET(AircraftClass*, pThis, EDI);
 	R->EAX(pThis->GetWeaponRange(pThis->SelectWeapon(pThis->Target)));
 	return 0x419808;
 }
 
-DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x5)
+ASMJIT_PATCH(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x5)
 {
 	GET(AircraftClass*, pThis, ESI);
 	auto const pTarget = generic_cast<TechnoClass*>(pThis->Target);
@@ -325,13 +325,13 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 }
 #endif
 
-//DEFINE_HOOK(0x4CD105, FlyLocomotionClass_StopMoving_AirportBound, 0x5)
+//ASMJIT_PATCH(0x4CD105, FlyLocomotionClass_StopMoving_AirportBound, 0x5)
 //{
 //	GET(AircraftClass*, pThis, EDI);
 //	return pThis->Type->AirportBound ? 0x4CD12A : 0x0;
 //}
 //
-//DEFINE_HOOK(0x73C71D, UnitClass_DrawSHP_FacingDir, 0x6)
+//ASMJIT_PATCH(0x73C71D, UnitClass_DrawSHP_FacingDir, 0x6)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	GET(int, nFacingOffs, EDX);
@@ -374,7 +374,7 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	return nullptr;
 //}
 //
-//DEFINE_HOOK(0x73C655, UnitClass_DrawSHP_TechnoType, 0x6)
+//ASMJIT_PATCH(0x73C655, UnitClass_DrawSHP_TechnoType, 0x6)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	if (auto pDisguiseType = GetUnitDisguise(pThis)) {
@@ -383,7 +383,7 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	}
 //	return 0x0;
 //}
-//DEFINE_HOOK(0x73C69D, UnitClass_DrawSHP_TechnoType2, 0x6)
+//ASMJIT_PATCH(0x73C69D, UnitClass_DrawSHP_TechnoType2, 0x6)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	if (auto pDisguiseType = GetUnitDisguise(pThis)) {
@@ -392,7 +392,7 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	}
 //	return 0x0;
 //}
-//DEFINE_HOOK(0x73C702, UnitClass_DrawSHP_TechnoType3, 0x6)
+//ASMJIT_PATCH(0x73C702, UnitClass_DrawSHP_TechnoType3, 0x6)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	if (auto pDisguiseType = GetUnitDisguise(pThis)) {
@@ -402,7 +402,7 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	return 0x0;
 //}
 //
-//DEFINE_HOOK(0x73C725, UnitClass_DrawSHP_HasTurret, 0x5)
+//ASMJIT_PATCH(0x73C725, UnitClass_DrawSHP_HasTurret, 0x5)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	if (auto pDisguiseType = GetUnitDisguise(pThis)) {
@@ -413,10 +413,10 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	return 0x0;
 //}
 //
-//DEFINE_HOOK_AGAIN(0x73B765, UnitClass_DrawVoxel_TurretFacing, 0x5)
-//DEFINE_HOOK_AGAIN(0x73BA78, UnitClass_DrawVoxel_TurretFacing, 0x6)
-//DEFINE_HOOK_AGAIN(0x73BD8B, UnitClass_DrawVoxel_TurretFacing, 0x5)
-//DEFINE_HOOK(0x73BDA3, UnitClass_DrawVoxel_TurretFacing, 0x5)
+//ASMJIT_PATCH_AGAIN(0x73B765, UnitClass_DrawVoxel_TurretFacing, 0x5)
+//ASMJIT_PATCH_AGAIN(0x73BA78, UnitClass_DrawVoxel_TurretFacing, 0x6)
+//ASMJIT_PATCH_AGAIN(0x73BD8B, UnitClass_DrawVoxel_TurretFacing, 0x5)
+//ASMJIT_PATCH(0x73BDA3, UnitClass_DrawVoxel_TurretFacing, 0x5)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //
@@ -432,7 +432,7 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	return 0;
 //}
 //
-//DEFINE_HOOK(0x73B8E3, UnitClass_DrawVoxel_HasChargeTurret , 0x5)
+//ASMJIT_PATCH(0x73B8E3, UnitClass_DrawVoxel_HasChargeTurret , 0x5)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	GET(TechnoTypeClass*, pThisType, EBX);
@@ -444,7 +444,7 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	return 0x0;
 //}
 //
-//DEFINE_HOOK(0x73BC28, UnitClass_DrawVoxel_HasChargeTurret2,0x5)
+//ASMJIT_PATCH(0x73BC28, UnitClass_DrawVoxel_HasChargeTurret2,0x5)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	GET(TechnoTypeClass*, pThisType, EBX);
@@ -467,7 +467,7 @@ DEFINE_HOOK(0x418072, AircraftClass_MI_Attack_BypasPassangersRangeDeterminer, 0x
 //	return 0;
 //}
 //
-//DEFINE_HOOK(0x73BA63, UnitClass_DrawVoxel_TurretOffset, 0x5)
+//ASMJIT_PATCH(0x73BA63, UnitClass_DrawVoxel_TurretOffset, 0x5)
 //{
 //	GET(TechnoClass*, pThis, EBP);
 //	GET(TechnoTypeClass*, pThisType, EBX);
@@ -1092,7 +1092,7 @@ int Mission_Attack(AircraftClass* pThis)
 // the code is 90% close to decomp but it result different
 // need to investigae
 // disabled atm !
-//DEFINE_HOOK(0x417FE0, AircraftClass_MI_Attack_Handle, 0x6)
+//ASMJIT_PATCH(0x417FE0, AircraftClass_MI_Attack_Handle, 0x6)
 //{
 //	R->EAX(Mission_Attack(R->ECX<AircraftClass*>()));
 //	return 0x418D54;

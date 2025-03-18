@@ -19,7 +19,7 @@
 
 #include <Ext/Bullet/Trajectories/StraightTrajectory.h>
 
-DEFINE_HOOK(0x466705, BulletClass_AI, 0x6) //8
+ASMJIT_PATCH(0x466705, BulletClass_AI, 0x6) //8
 {
 	enum { retContunue = 0x0, retDead = 0x466781 };
 	GET(FakeBulletClass* const, pThis, EBP);
@@ -102,7 +102,7 @@ DEFINE_HOOK(0x466705, BulletClass_AI, 0x6) //8
 	return 0;
 }
 
-DEFINE_HOOK(0x469276, BulletClass_DetonateAt_ApplyLogics, 0xA)
+ASMJIT_PATCH(0x469276, BulletClass_DetonateAt_ApplyLogics, 0xA)
 {
 	GET(ObjectClass* const, pVictimObject, EDI);
 	GET(FakeBulletClass*, pThis, ESI);
@@ -147,7 +147,7 @@ DEFINE_HOOK(0x469276, BulletClass_DetonateAt_ApplyLogics, 0xA)
 	return 0x4692D5;
 }
 
-DEFINE_HOOK(0x4671B9, BulletClass_AI_ApplyGravity, 0x6)
+ASMJIT_PATCH(0x4671B9, BulletClass_AI_ApplyGravity, 0x6)
 {
 	//GET(BulletClass* const, pThis, EBP);
 	GET(BulletTypeClass* const, pType, EAX);
@@ -162,7 +162,7 @@ DEFINE_HOOK(0x4671B9, BulletClass_AI_ApplyGravity, 0x6)
 DEFINE_JUMP(LJMP, 0x4690D4, 0x469130)
 //DEFINE_SKIP_HOOK(0x4690D4 , BulletClass_Logics_Shake_Handled ,0x6 , 469130);
 
-DEFINE_HOOK(0x469A75, BulletClass_Logics_DamageHouse, 0x7)
+ASMJIT_PATCH(0x469A75, BulletClass_Logics_DamageHouse, 0x7)
 {
 	GET(FakeBulletClass*, pThis, ESI);
 	GET(HouseClass*, pHouse, ECX);
@@ -177,7 +177,7 @@ DEFINE_HOOK(0x469A75, BulletClass_Logics_DamageHouse, 0x7)
 // seemingly (at least partially) adopt characteristics of a vertical projectile.
 // This is a potentially slightly hacky solution to that, as proper solution
 // would likely require making sense of BulletClass::AI and ain't nobody got time for that.
-DEFINE_HOOK(0x4668BD, BulletClass_AI_Interceptor_InvisoSkip, 0x6)
+ASMJIT_PATCH(0x4668BD, BulletClass_AI_Interceptor_InvisoSkip, 0x6)
 {
 	enum { DetonateBullet = 0x467F9B, Continue = 0x0 };
 	GET(FakeBulletClass*, pThis, EBP);
@@ -207,7 +207,7 @@ static FORCEDINLINE void TryDetonateDamageArea(BulletClass* pThis, TechnoClass* 
 #include <Misc/PhobosGlobal.h>
 #include <InfantryClass.h>
 
-DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
+ASMJIT_PATCH(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 {
 	enum { ReturnFromFunction = 0x46A2FB };
 
@@ -286,7 +286,7 @@ DEFINE_HOOK(0x4690C1, BulletClass_Logics_Detonate, 0x8)
 	return 0;
 }
 
-DEFINE_HOOK(0x469D1A, BulletClass_Logics_Debris_Checks, 0x6)
+ASMJIT_PATCH(0x469D1A, BulletClass_Logics_Debris_Checks, 0x6)
 {
 	enum { SkipGameCode = 0x469EBA, SetDebrisCount = 0x469D36 };
 
@@ -305,7 +305,7 @@ DEFINE_HOOK(0x469D1A, BulletClass_Logics_Debris_Checks, 0x6)
 	return SetDebrisCount;
 }
 
-DEFINE_HOOK(0x469B44, BulletClass_Logics_LandTypeCheck, 0x6)
+ASMJIT_PATCH(0x469B44, BulletClass_Logics_LandTypeCheck, 0x6)
 {
 	enum { SkipChecks = 0x469BA2 };
 

@@ -11,7 +11,7 @@
 #include <Utilities/Macro.h>
 
 //#pragma optimize("", off )
-DEFINE_HOOK(0x71C5D2, TerrainClass_CatchFire_AttachFireAnim, 0x6)
+ASMJIT_PATCH(0x71C5D2, TerrainClass_CatchFire_AttachFireAnim, 0x6)
 {
 	GET(FakeTerrainClass*, pThis, EDI);
 
@@ -47,7 +47,7 @@ DEFINE_HOOK(0x71C5D2, TerrainClass_CatchFire_AttachFireAnim, 0x6)
 }
 //#pragma optimize("", on )
 
-DEFINE_HOOK(0x71D09D, TerrainClass_UnLImbo_Light, 0x6)
+ASMJIT_PATCH(0x71D09D, TerrainClass_UnLImbo_Light, 0x6)
 {
 	GET(TerrainClass*, pThis, ECX);
 	GET(CoordStruct*, pCoord, EBP);
@@ -56,7 +56,7 @@ DEFINE_HOOK(0x71D09D, TerrainClass_UnLImbo_Light, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x71CA15, TerrainClass_Limbo_Light, 0x6)
+ASMJIT_PATCH(0x71CA15, TerrainClass_Limbo_Light, 0x6)
 {
 	GET(bool, nLimboed, EAX);
 	GET(TerrainClass*, pThis, EDI);
@@ -71,7 +71,7 @@ DEFINE_HOOK(0x71CA15, TerrainClass_Limbo_Light, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x71C2BC, TerrainClass_Draw_CustomPal, 0x6)
+ASMJIT_PATCH(0x71C2BC, TerrainClass_Draw_CustomPal, 0x6)
 {
 	GET(TerrainClass*, pThis, ESI);
 	GET(ConvertClass*, pConvert, EDX);
@@ -96,7 +96,7 @@ DEFINE_HOOK(0x71C2BC, TerrainClass_Draw_CustomPal, 0x6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x5F4FEF, ObjectClass_Put_RegisterLogic_Terrain, 0x6)
+ASMJIT_PATCH(0x5F4FEF, ObjectClass_Put_RegisterLogic_Terrain, 0x6)
 {
 	GET(ObjectClass*, pThis, ESI);
 	GET(ObjectTypeClass*, pType, EBX);
@@ -130,7 +130,7 @@ DEFINE_HOOK(0x5F4FEF, ObjectClass_Put_RegisterLogic_Terrain, 0x6)
 }
 //#endif
 
-DEFINE_HOOK(0x71C6EE, TerrainClass_FireOut_Crumbling, 0x6)
+ASMJIT_PATCH(0x71C6EE, TerrainClass_FireOut_Crumbling, 0x6)
 {
 	enum { StartCrumbling = 0x71C6F8, Skip = 0x71C72B };
 

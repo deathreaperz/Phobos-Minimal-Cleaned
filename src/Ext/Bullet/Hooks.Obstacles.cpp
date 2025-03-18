@@ -14,7 +14,7 @@
 #include <InfantryClass.h>
 #include <AircraftClass.h>
 
-DEFINE_HOOK(0x6F7248, TechnoClass_InRange_Additionals, 0x6)
+ASMJIT_PATCH(0x6F7248, TechnoClass_InRange_Additionals, 0x6)
 {
 	enum { ContinueCheck = 0x6F72E3, RetTrue = 0x6F7256, RetFalse = 0x6F7655 };
 
@@ -78,7 +78,7 @@ DEFINE_HOOK(0x6F7248, TechnoClass_InRange_Additionals, 0x6)
 	return ContinueCheck;
 }
 
-DEFINE_HOOK(0x6FC3A1, TechnoClass_CanFire_InBunkerRangeCheck, 0x5)
+ASMJIT_PATCH(0x6FC3A1, TechnoClass_CanFire_InBunkerRangeCheck, 0x5)
 {
 	enum { ContinueChecks = 0x6FC3C5, CannotFire = 0x6FC86A };
 
@@ -92,7 +92,7 @@ DEFINE_HOOK(0x6FC3A1, TechnoClass_CanFire_InBunkerRangeCheck, 0x5)
 	return ContinueChecks;
 }
 
-DEFINE_HOOK(0x70CF6F, TechnoClass_ThreatCoefficients_WeaponRange, 0x6)
+ASMJIT_PATCH(0x70CF6F, TechnoClass_ThreatCoefficients_WeaponRange, 0x6)
 {
 	enum { SkipGameCode = 0x70CF75 };
 
@@ -104,7 +104,7 @@ DEFINE_HOOK(0x70CF6F, TechnoClass_ThreatCoefficients_WeaponRange, 0x6)
 	return SkipGameCode;
 }
 
-DEFINE_HOOK(0x41810F, AircraftClass_MissionAttack_WeaponRangeCheck1, 0x6)
+ASMJIT_PATCH(0x41810F, AircraftClass_MissionAttack_WeaponRangeCheck1, 0x6)
 {
 	enum { WithinDistance = 0x418117, NotWithinDistance = 0x418131 };
 
@@ -120,7 +120,7 @@ DEFINE_HOOK(0x41810F, AircraftClass_MissionAttack_WeaponRangeCheck1, 0x6)
 	return NotWithinDistance;
 }
 
-DEFINE_HOOK(0x418BA8, AircraftClass_MissionAttack_WeaponRangeCheck2, 0x6)
+ASMJIT_PATCH(0x418BA8, AircraftClass_MissionAttack_WeaponRangeCheck2, 0x6)
 {
 	enum { SkipGameCode = 0x418BAE };
 

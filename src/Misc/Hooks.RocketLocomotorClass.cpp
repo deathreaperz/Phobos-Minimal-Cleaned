@@ -628,7 +628,7 @@ DEFINE_FUNCTION_JUMP(VTABLE, 0x7F0B5C, _RocketLocomotionClass::_Process));
 
 #pragma region Process
 
-DEFINE_HOOK(0x6622E0, RocketLocomotionClass_ILocomotion_Process_CustomMissile, 6)
+ASMJIT_PATCH(0x6622E0, RocketLocomotionClass_ILocomotion_Process_CustomMissile, 6)
 {
 	GET(AircraftClass* const, pThis, ECX);
 
@@ -643,7 +643,7 @@ DEFINE_HOOK(0x6622E0, RocketLocomotionClass_ILocomotion_Process_CustomMissile, 6
 	return 0;
 }
 
-DEFINE_HOOK(0x66238A, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff1, 5)
+ASMJIT_PATCH(0x66238A, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff1, 5)
 {
 	GET(ILocomotion* const, pThis, ESI);
 
@@ -666,7 +666,7 @@ DEFINE_HOOK(0x66238A, RocketLocomotionClass_ILocomotion_Process_CustomMissileTak
 	return 0;
 }
 
-DEFINE_HOOK(0x662512, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff2, 5)
+ASMJIT_PATCH(0x662512, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff2, 5)
 {
 	GET(ILocomotion* const, pThis, ESI);
 
@@ -689,7 +689,7 @@ DEFINE_HOOK(0x662512, RocketLocomotionClass_ILocomotion_Process_CustomMissileTak
 	return 0;
 }
 
-DEFINE_HOOK(0x6627E5, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff3, 5)
+ASMJIT_PATCH(0x6627E5, RocketLocomotionClass_ILocomotion_Process_CustomMissileTakeoff3, 5)
 {
 	GET(ILocomotion* const, pThis, ESI);
 
@@ -712,7 +712,7 @@ DEFINE_HOOK(0x6627E5, RocketLocomotionClass_ILocomotion_Process_CustomMissileTak
 	return 0;
 }
 
-DEFINE_HOOK(0x662D85, RocketLocomotionClass_ILocomotion_Process_CustomMissileTrailer, 6)
+ASMJIT_PATCH(0x662D85, RocketLocomotionClass_ILocomotion_Process_CustomMissileTrailer, 6)
 {
 	GET(ILocomotion* const, pThis, ESI);
 
@@ -743,7 +743,7 @@ DEFINE_HOOK(0x662D85, RocketLocomotionClass_ILocomotion_Process_CustomMissileTra
 
 // new
 // SpawnerOwner may die when this processed , should store the data at SpawnManagerExt or something
-DEFINE_HOOK(0x662720, RocketLocomotionClass_ILocomotion_Process_Raise, 0x6)
+ASMJIT_PATCH(0x662720, RocketLocomotionClass_ILocomotion_Process_Raise, 0x6)
 {
 	enum { Handled = 0x6624C8, Continue = 0x0 };
 
@@ -765,7 +765,7 @@ DEFINE_HOOK(0x662720, RocketLocomotionClass_ILocomotion_Process_Raise, 0x6)
 
 #pragma region Explode
 
-DEFINE_HOOK(0x66305A, RocketLocomotionClass_Explode_CustomMissile, 6)
+ASMJIT_PATCH(0x66305A, RocketLocomotionClass_Explode_CustomMissile, 6)
 {
 	GET(AircraftTypeClass* const, pType, ECX);
 	GET(RocketLocomotionClass* const, pLocomotor, ESI);
@@ -788,7 +788,7 @@ DEFINE_HOOK(0x66305A, RocketLocomotionClass_Explode_CustomMissile, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x663218, RocketLocomotionClass_Explode_CustomMissile2, 5)
+ASMJIT_PATCH(0x663218, RocketLocomotionClass_Explode_CustomMissile2, 5)
 {
 	GET(RocketLocomotionClass* const, pThis, ESI);
 	REF_STACK(CoordStruct const, coords, STACK_OFFS(0x60, 0x18));

@@ -21,7 +21,7 @@
 
 #pragma region DETONATION
 
-//DEFINE_HOOK(0x46920B, BulletClass_Logics, 0x6)
+//ASMJIT_PATCH(0x46920B, BulletClass_Logics, 0x6)
 //{
 //	//GET(BulletClass* const, pThis, ESI);
 //	//GET_BASE(const CoordStruct*, pCoords, 0x8);
@@ -109,7 +109,7 @@ void ApplyLogics(BulletClass* pThis, CoordStruct* coords)
 	PhobosGlobal::Instance()->DetonateDamageArea = true;
 }
 
-// DEFINE_HOOK(0x46A2A1, BulletClass_Logics_ReturnB, 0x5){
+// ASMJIT_PATCH(0x46A2A1, BulletClass_Logics_ReturnB, 0x5){
 // 	GET(BulletClass* , pThis ,ESI);
 // 	GET_BASE(CoordStruct*, coords, 0x8);
 //
@@ -122,7 +122,7 @@ void ApplyLogics(BulletClass* pThis, CoordStruct* coords)
 // 	return 0x46A2FB;
 // }
 
-DEFINE_HOOK(0x469AA4, BulletClass_Logics_Extras, 0x5)
+ASMJIT_PATCH(0x469AA4, BulletClass_Logics_Extras, 0x5)
 {
 	GET(BulletClass*, pThis, ESI);
 	GET_BASE(CoordStruct*, coords, 0x8);
@@ -135,7 +135,7 @@ DEFINE_HOOK(0x469AA4, BulletClass_Logics_Extras, 0x5)
 
 #include <Ext/SWType/NewSuperWeaponType/LightningStorm.h>
 
-DEFINE_HOOK(0x48A4F0, CombatAnimSelect, 0x5)
+ASMJIT_PATCH(0x48A4F0, CombatAnimSelect, 0x5)
 {
 	GET(int, damage, ECX);
 	GET(WarheadTypeClass*, pWarhead, EDX);
@@ -221,7 +221,7 @@ DEFINE_HOOK(0x48A4F0, CombatAnimSelect, 0x5)
 #ifdef TODO_for_DamageArea
 
 // Cylinder CellSpread
-DEFINE_HOOK(0x489430, MapClass_DamageArea_Cylinder_1, 0x7)
+ASMJIT_PATCH(0x489430, MapClass_DamageArea_Cylinder_1, 0x7)
 {
 	//GET(int, nDetoCrdZ, EDX);
 	GET_BASE(FakeWarheadTypeClass* const, pWH, 0x0C);
@@ -235,7 +235,7 @@ DEFINE_HOOK(0x489430, MapClass_DamageArea_Cylinder_1, 0x7)
 	return 0;
 }
 
-DEFINE_HOOK(0x4894C1, MapClass_DamageArea_Cylinder_2, 0x5)
+ASMJIT_PATCH(0x4894C1, MapClass_DamageArea_Cylinder_2, 0x5)
 {
 	//GET(int, nDetoCrdZ, EDX);
 	GET_BASE(FakeWarheadTypeClass* const, pWH, 0x0C);
@@ -251,7 +251,7 @@ DEFINE_HOOK(0x4894C1, MapClass_DamageArea_Cylinder_2, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x48979C, MapClass_DamageArea_Cylinder_3, 0x8)
+ASMJIT_PATCH(0x48979C, MapClass_DamageArea_Cylinder_3, 0x8)
 {
 	//GET(int, nDetoCrdZ, ECX);
 	GET_BASE(FakeWarheadTypeClass* const, pWH, 0x0C);
@@ -265,7 +265,7 @@ DEFINE_HOOK(0x48979C, MapClass_DamageArea_Cylinder_3, 0x8)
 	return 0;
 }
 
-DEFINE_HOOK(0x4897C3, MapClass_DamageArea_Cylinder_4, 0x5)
+ASMJIT_PATCH(0x4897C3, MapClass_DamageArea_Cylinder_4, 0x5)
 {
 	//GET(int, nDetoCrdZ, ECX);
 	GET_BASE(FakeWarheadTypeClass* const, pWH, 0x0C);
@@ -279,7 +279,7 @@ DEFINE_HOOK(0x4897C3, MapClass_DamageArea_Cylinder_4, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x48985A, MapClass_DamageArea_Cylinder_5, 0x5)
+ASMJIT_PATCH(0x48985A, MapClass_DamageArea_Cylinder_5, 0x5)
 {
 	//GET(int, nDetoCrdZ, ECX);
 	GET_BASE(FakeWarheadTypeClass* const, pWH, 0x0C);
@@ -293,7 +293,7 @@ DEFINE_HOOK(0x48985A, MapClass_DamageArea_Cylinder_5, 0x5)
 	return 0;
 }
 
-DEFINE_HOOK(0x4898BF, MapClass_DamageArea_Cylinder_6, 0x5)
+ASMJIT_PATCH(0x4898BF, MapClass_DamageArea_Cylinder_6, 0x5)
 {
 	//GET(int, nDetoCrdZ, EDX);
 	GET_BASE(FakeWarheadTypeClass* const, pWH, 0x0C);
@@ -308,7 +308,7 @@ DEFINE_HOOK(0x4898BF, MapClass_DamageArea_Cylinder_6, 0x5)
 }
 
 // AffectsInAir and AffectsOnFloor
-DEFINE_HOOK(0x489416, MapClass_DamageArea_CheckHeight_AircraftTarcker, 0x6)
+ASMJIT_PATCH(0x489416, MapClass_DamageArea_CheckHeight_AircraftTarcker, 0x6)
 {
 	enum { SkipThisObject = 0x489547 };
 
@@ -327,7 +327,7 @@ DEFINE_HOOK(0x489416, MapClass_DamageArea_CheckHeight_AircraftTarcker, 0x6)
 	return SkipThisObject;
 }
 
-DEFINE_HOOK(0x489710, MapClass_DamageArea_CheckHeight_2, 0x7)
+ASMJIT_PATCH(0x489710, MapClass_DamageArea_CheckHeight_2, 0x7)
 {
 	enum { SkipThisObject = 0x4899B3 };
 

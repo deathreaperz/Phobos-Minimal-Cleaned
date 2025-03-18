@@ -29,7 +29,7 @@
 #include <SpawnManagerClass.h>
 #include <AirstrikeClass.h>
 
-DEFINE_HOOK(0x702DD6, TechnoClass_RegisterDestruction_Trigger, 0x6)
+ASMJIT_PATCH(0x702DD6, TechnoClass_RegisterDestruction_Trigger, 0x6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(TechnoClass*, pAttacker, EDI);
@@ -46,7 +46,7 @@ DEFINE_HOOK(0x702DD6, TechnoClass_RegisterDestruction_Trigger, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x7032B0, TechnoClass_RegisterLoss_Trigger, 0x6)
+ASMJIT_PATCH(0x7032B0, TechnoClass_RegisterLoss_Trigger, 0x6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(HouseClass*, pAttacker, EDI);
@@ -62,7 +62,7 @@ DEFINE_HOOK(0x7032B0, TechnoClass_RegisterLoss_Trigger, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
+ASMJIT_PATCH(0x6F47A0, TechnoClass_GetBuildTime, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
 
@@ -133,7 +133,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 
 //The stack is messed up here , idk
 // i cant properly catch them , it is just return garbages
-//DEFINE_HOOK(0x6FF1FB, TechnoClass_Fire_DetachedRailgun, 0x6)
+//ASMJIT_PATCH(0x6FF1FB, TechnoClass_Fire_DetachedRailgun, 0x6)
 //{
 //	GET(TechnoClass*, pThis, ESI);
 //	GET(WeaponTypeClass*, pWeapon, EBX);
@@ -168,7 +168,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 //
 //DEFINE_DISABLE_HOOK(0x6FF26E, TechnoClass_Fire_DetachedRailgun2_ares)
 
-// DEFINE_HOOK(0x6FF1FB, TechnoClass_Fire_DetachedRailgun, 0x6)
+// ASMJIT_PATCH(0x6FF1FB, TechnoClass_Fire_DetachedRailgun, 0x6)
 // {
 // 	//GET(TechnoClass*, pThis, ESI);
 // 	GET(WeaponTypeClass*, pWeapon, EBX);
@@ -186,7 +186,7 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 // 		? 0x6FF20F : 0x0;
 // }
 //
-// DEFINE_HOOK(0x6FF26E, TechnoClass_Fire_DetachedRailgun2, 0x6)
+// ASMJIT_PATCH(0x6FF26E, TechnoClass_Fire_DetachedRailgun2, 0x6)
 // {
 // 	GET(WeaponTypeClass*, pWeapon, EBX);
 //
@@ -194,13 +194,13 @@ DEFINE_HOOK(0x6F47A0, TechnoClass_GetBuildTime, 5)
 // 		? 0x6FF274 : 0x0;
 // }
 
-DEFINE_HOOK(0x6FA4C6, TechnoClass_Update_ZeroOutTarget, 5)
+ASMJIT_PATCH(0x6FA4C6, TechnoClass_Update_ZeroOutTarget, 5)
 {
 	GET(TechnoClass* const, pThis, ESI);
 	return (pThis->WhatAmI() == AbstractType::Aircraft) ? 0x6FA4D1 : 0;
 }
 
-DEFINE_HOOK(0x70BE80, TechnoClass_ShouldSelfHealOneStep, 5)
+ASMJIT_PATCH(0x70BE80, TechnoClass_ShouldSelfHealOneStep, 5)
 {
 	GET(TechnoClass* const, pThis, ECX);
 	auto const nAmount = TechnoExt_ExtData::GetSelfHealAmount(pThis);
@@ -209,7 +209,7 @@ DEFINE_HOOK(0x70BE80, TechnoClass_ShouldSelfHealOneStep, 5)
 }
 
 // customizable cloaking stages
-DEFINE_HOOK(0x7036EB, TechnoClass_Uncloak_CloakingStages, 6)
+ASMJIT_PATCH(0x7036EB, TechnoClass_Uncloak_CloakingStages, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
@@ -217,7 +217,7 @@ DEFINE_HOOK(0x7036EB, TechnoClass_Uncloak_CloakingStages, 6)
 	return 0x7036F1;
 }
 
-DEFINE_HOOK(0x703A79, TechnoClass_VisualCharacter_CloakingStages, 0xA)
+ASMJIT_PATCH(0x703A79, TechnoClass_VisualCharacter_CloakingStages, 0xA)
 {
 	GET(TechnoClass*, pThis, ESI);
 	int stages = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->CloakStages.Get(RulesClass::Instance->CloakingStages);
@@ -228,7 +228,7 @@ DEFINE_HOOK(0x703A79, TechnoClass_VisualCharacter_CloakingStages, 0xA)
 #include <ExtraHeaders/StackVector.h>
 
 // make damage sparks customizable, using game setting as default.
-DEFINE_HOOK(0x6FACD9, TechnoClass_AI_DamageSparks, 6)
+ASMJIT_PATCH(0x6FACD9, TechnoClass_AI_DamageSparks, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 
@@ -278,7 +278,7 @@ DEFINE_HOOK(0x6FACD9, TechnoClass_AI_DamageSparks, 6)
 	return 0x6FAF01;
 }
 
-DEFINE_HOOK(0x70380A, TechnoClass_Cloak_CloakSound, 6)
+ASMJIT_PATCH(0x70380A, TechnoClass_Cloak_CloakSound, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
@@ -295,7 +295,7 @@ DEFINE_HOOK(0x70380A, TechnoClass_Cloak_CloakSound, 6)
 	return 0x703810;
 }
 
-DEFINE_HOOK(0x70375B, TechnoClass_Uncloak_DecloakSound, 6)
+ASMJIT_PATCH(0x70375B, TechnoClass_Uncloak_DecloakSound, 6)
 {
 	GET(int, ptr, ESI);
 	const TechnoClass* pThis = reinterpret_cast<TechnoClass*>(ptr - 0x9C);
@@ -317,7 +317,7 @@ DEFINE_HOOK(0x70375B, TechnoClass_Uncloak_DecloakSound, 6)
 }
 
 // linking units for type selection
-DEFINE_HOOK(0x732C30, TechnoClass_IDMatches, 5)
+ASMJIT_PATCH(0x732C30, TechnoClass_IDMatches, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
 	GET(DynamicVectorClass<const char*>*, pNames, EDX);
@@ -352,7 +352,7 @@ DEFINE_HOOK(0x732C30, TechnoClass_IDMatches, 5)
 	return 0x732C97;
 }
 
-DEFINE_HOOK(0x6F3950, TechnoClass_GetCrewCount, 8)
+ASMJIT_PATCH(0x6F3950, TechnoClass_GetCrewCount, 8)
 {
 	GET(TechnoClass*, pThis, ECX);
 	auto pType = pThis->GetTechnoType();
@@ -370,7 +370,7 @@ DEFINE_HOOK(0x6F3950, TechnoClass_GetCrewCount, 8)
 }
 
 // Support per unit modification of Iron Curtain effect duration
-DEFINE_HOOK(0x70E2B0, TechnoClass_IronCurtain, 5)
+ASMJIT_PATCH(0x70E2B0, TechnoClass_IronCurtain, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
 	GET_STACK(int, duration, STACK_OFFS(0x0, -0x4));
@@ -389,7 +389,7 @@ DEFINE_HOOK(0x70E2B0, TechnoClass_IronCurtain, 5)
 	return 0x70E2FD;
 }
 
-DEFINE_HOOK(0x7327AA, TechnoClass_PlayerOwnedAliveAndNamed_GroupAs, 8)
+ASMJIT_PATCH(0x7327AA, TechnoClass_PlayerOwnedAliveAndNamed_GroupAs, 8)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(const char*, pID, EDI);
@@ -400,7 +400,7 @@ DEFINE_HOOK(0x7327AA, TechnoClass_PlayerOwnedAliveAndNamed_GroupAs, 8)
 
 #include <CaptureManagerClass.h>
 
-DEFINE_HOOK(0x707B09, TechnoClass_PointerGotInvalid_SpawnCloakOwner, 6)
+ASMJIT_PATCH(0x707B09, TechnoClass_PointerGotInvalid_SpawnCloakOwner, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(AbstractClass*, ptr, EBP);
@@ -436,7 +436,7 @@ void PlayEva(const char* pEva, CDTimerClass& nTimer, double nRate)
 	}
 }
 
-DEFINE_HOOK(0x70DA95, TechnoClass_RadarTrackingUpdate_AnnounceDetected, 6)
+ASMJIT_PATCH(0x70DA95, TechnoClass_RadarTrackingUpdate_AnnounceDetected, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET_STACK(int, detect, 0x10);
@@ -463,7 +463,7 @@ DEFINE_HOOK(0x70DA95, TechnoClass_RadarTrackingUpdate_AnnounceDetected, 6)
 	return 0x70DADC;
 }
 
-DEFINE_HOOK(0x70CBB0, TechnoClass_DealParticleDamage_AmbientDamage, 6)
+ASMJIT_PATCH(0x70CBB0, TechnoClass_DealParticleDamage_AmbientDamage, 6)
 {
 	GET_BASE(WeaponTypeClass*, pWeapon, 0x14);
 
@@ -476,7 +476,7 @@ DEFINE_HOOK(0x70CBB0, TechnoClass_DealParticleDamage_AmbientDamage, 6)
 }
 
 // the fuck , game calling `MapClass[]` multiple times , fixed it
-DEFINE_HOOK(0x6FB5F0, TechnoClass_DeleteGap_Optimize, 6)
+ASMJIT_PATCH(0x6FB5F0, TechnoClass_DeleteGap_Optimize, 6)
 {
 	GET(CellClass*, pCell, EAX);
 
@@ -494,7 +494,7 @@ DEFINE_HOOK(0x6FB5F0, TechnoClass_DeleteGap_Optimize, 6)
 	return 0x6FB69E;
 }
 
-DEFINE_HOOK(0x6FB306, TechnoClass_CreateGap_Optimize, 6)
+ASMJIT_PATCH(0x6FB306, TechnoClass_CreateGap_Optimize, 6)
 {
 	GET(CellClass*, pCell, EAX);
 
@@ -512,13 +512,13 @@ DEFINE_HOOK(0x6FB306, TechnoClass_CreateGap_Optimize, 6)
 	return 0x6FB3BD;
 }
 
-DEFINE_HOOK(0x6FB757, TechnoClass_UpdateCloak, 8)
+ASMJIT_PATCH(0x6FB757, TechnoClass_UpdateCloak, 8)
 {
 	GET(TechnoClass*, pThis, ESI);
 	return !TechnoExt_ExtData::CloakDisallowed(pThis, false) ? 0x6FB7FD : 0x6FB75F;
 }
 
-DEFINE_HOOK(0x6FBC90, TechnoClass_ShouldNotBeCloaked, 5)
+ASMJIT_PATCH(0x6FBC90, TechnoClass_ShouldNotBeCloaked, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
 	// the original code would not disallow cloaking as long as
@@ -528,14 +528,14 @@ DEFINE_HOOK(0x6FBC90, TechnoClass_ShouldNotBeCloaked, 5)
 	return 0x6FBDBC;
 }
 
-DEFINE_HOOK(0x6FBDC0, TechnoClass_ShouldBeCloaked, 5)
+ASMJIT_PATCH(0x6FBDC0, TechnoClass_ShouldBeCloaked, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
 	R->EAX(TechnoExt_ExtData::CloakAllowed(pThis));
 	return 0x6FBF93;
 }
 
-DEFINE_HOOK(0x6F6AC9, TechnoClass_Remove_Early, 6)
+ASMJIT_PATCH(0x6F6AC9, TechnoClass_Remove_Early, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 
@@ -555,8 +555,7 @@ DEFINE_HOOK(0x6F6AC9, TechnoClass_Remove_Early, 6)
 	return pThis->InLimbo ? 0x6F6C93u : 0x6F6AD5u;
 }
 
-DEFINE_HOOK_AGAIN(0x6F6D0E, TechnoClass_Put_BuildingLight, 7)
-DEFINE_HOOK(0x6F6F20, TechnoClass_Put_BuildingLight, 6)
+ASMJIT_PATCH(0x6F6F20, TechnoClass_Put_BuildingLight, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 
@@ -576,9 +575,9 @@ DEFINE_HOOK(0x6F6F20, TechnoClass_Put_BuildingLight, 6)
 	}
 
 	return 0x0;
-}
+}ASMJIT_PATCH_AGAIN(0x6F6D0E, TechnoClass_Put_BuildingLight, 7)
 
-DEFINE_HOOK(0x707D20, TechnoClass_GetCrew, 5)
+ASMJIT_PATCH(0x707D20, TechnoClass_GetCrew, 5)
 {
 	GET(TechnoClass*, pThis, ECX);
 	auto pType = pThis->GetTechnoType();
@@ -635,7 +634,7 @@ DEFINE_HOOK(0x707D20, TechnoClass_GetCrew, 5)
 }
 
 // complete replacement
-DEFINE_HOOK(0x70FBE0, TechnoClass_Activate_AresReplace, 6)
+ASMJIT_PATCH(0x70FBE0, TechnoClass_Activate_AresReplace, 6)
 {
 	GET(TechnoClass* const, pThis, ECX);
 
@@ -695,7 +694,7 @@ DEFINE_HOOK(0x70FBE0, TechnoClass_Activate_AresReplace, 6)
 	return 0x70FC85;
 }
 
-DEFINE_HOOK(0x6FD438, TechnoClass_FireLaser, 6)
+ASMJIT_PATCH(0x6FD438, TechnoClass_FireLaser, 6)
 {
 	GET(WeaponTypeClass*, pWeapon, ECX);
 	GET(LaserDrawClass*, pBeam, EAX);
@@ -715,7 +714,7 @@ DEFINE_HOOK(0x6FD438, TechnoClass_FireLaser, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x6f526c, TechnoClass_DrawExtras_PowerOff, 5)
+ASMJIT_PATCH(0x6f526c, TechnoClass_DrawExtras_PowerOff, 5)
 {
 	GET(TechnoClass*, pTechno, EBP);
 
@@ -799,7 +798,7 @@ DEFINE_HOOK(0x6f526c, TechnoClass_DrawExtras_PowerOff, 5)
 	return 0x6F5347;
 }
 
-DEFINE_HOOK(0x70AA60, TechnoClass_DrawExtraInfo, 6)
+ASMJIT_PATCH(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 {
 	GET(TechnoClass*, pThis, ECX);
 	GET_STACK(Point2D*, pPoint, 0x4);
@@ -934,7 +933,7 @@ DEFINE_HOOK(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 }
 
 // complete replacement
-DEFINE_HOOK(0x70FC90, TechnoClass_Deactivate_AresReplace, 6)
+ASMJIT_PATCH(0x70FC90, TechnoClass_Deactivate_AresReplace, 6)
 {
 	GET(TechnoClass* const, pThis, ECX);
 
@@ -991,18 +990,17 @@ DEFINE_HOOK(0x70FC90, TechnoClass_Deactivate_AresReplace, 6)
 	return 0x70FD6E;
 }
 
-DEFINE_HOOK_AGAIN(0x6FB4A3, TechnoClass_CreateGap_LargeGap, 7)
-DEFINE_HOOK(0x6FB1B5, TechnoClass_CreateGap_LargeGap, 7)
+ASMJIT_PATCH(0x6FB1B5, TechnoClass_CreateGap_LargeGap, 7)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(TechnoTypeClass*, pType, EAX);
 
 	pThis->GapRadius = TechnoTypeExtContainer::Instance.Find(pType)->GapRadiusInCells;
 	return R->Origin() + 0xD;
-}
+}ASMJIT_PATCH_AGAIN(0x6FB4A3, TechnoClass_CreateGap_LargeGap, 7)
 
 // Radar Jammers (#305) unjam all on owner change
-DEFINE_HOOK(0x7014D5, TechnoClass_ChangeOwnership_Additional, 6)
+ASMJIT_PATCH(0x7014D5, TechnoClass_ChangeOwnership_Additional, 6)
 {
 	GET(TechnoClass* const, pThis, ESI);
 	//Debug::LogInfo("ChangeOwnershipFor [%s]" , pThis->get_ID());
@@ -1034,7 +1032,7 @@ DEFINE_HOOK(0x7014D5, TechnoClass_ChangeOwnership_Additional, 6)
 	return 0;
 }
 
-DEFINE_HOOK(0x702E64, TechnoClass_RegisterDestruction_Bounty, 6)
+ASMJIT_PATCH(0x702E64, TechnoClass_RegisterDestruction_Bounty, 6)
 {
 	GET(TechnoClass*, pVictim, ESI);
 	GET(TechnoClass*, pKiller, EDI);
@@ -1044,7 +1042,7 @@ DEFINE_HOOK(0x702E64, TechnoClass_RegisterDestruction_Bounty, 6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x6FAF0D, TechnoClass_Update_EMPLock, 6)
+ASMJIT_PATCH(0x6FAF0D, TechnoClass_Update_EMPLock, 6)
 {
 	GET(TechnoClass*, pThis, ESI);
 
@@ -1075,7 +1073,7 @@ DEFINE_HOOK(0x6FAF0D, TechnoClass_Update_EMPLock, 6)
 	return 0x6FAFFD;
 }
 
-DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
+ASMJIT_PATCH(0x6F3F88, TechnoClass_Init_1, 5)
 {
 	GET(TechnoClass* const, pThis, ESI);
 
@@ -1172,7 +1170,7 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 // westwood does firingUnit->WhatAmI() == abs_AircraftType
 // which naturally never works
 // let's see what this change does
-// DEFINE_HOOK(0x6F7561, TechnoClass_Targeting_Arcing_Aircraft, 0x5)
+// ASMJIT_PATCH(0x6F7561, TechnoClass_Targeting_Arcing_Aircraft, 0x5)
 // {
 // 	GET(AbstractType, pTarget, EAX);
 // 	GET(CoordStruct*, pCoord, ESI);
@@ -1182,7 +1180,7 @@ DEFINE_HOOK(0x6F3F88, TechnoClass_Init_1, 5)
 DEFINE_PATCH(0x6F7563, 0x2);
 
 // No data found on .inj for this
-//DEFINE_HOOK(0x5F7933, TechnoTypeClass_FindFactory_ExcludeDisabled, 0x6)
+//ASMJIT_PATCH(0x5F7933, TechnoTypeClass_FindFactory_ExcludeDisabled, 0x6)
 //{
 //	GET(BuildingClass*, pBld, ESI);
 //
@@ -1191,7 +1189,7 @@ DEFINE_PATCH(0x6F7563, 0x2);
 //		0x5F7A57 : 0x5F7941;
 //}
 
-DEFINE_HOOK(0x6F90F8, TechnoClass_SelectAutoTarget_Demacroize, 0x6)
+ASMJIT_PATCH(0x6F90F8, TechnoClass_SelectAutoTarget_Demacroize, 0x6)
 {
 	GET(int, nVal1, EDI);
 	GET(int, nVal2, EAX);
@@ -1200,7 +1198,7 @@ DEFINE_HOOK(0x6F90F8, TechnoClass_SelectAutoTarget_Demacroize, 0x6)
 	return 0x6F9116;
 }
 
-DEFINE_HOOK(0x70133E, TechnoClass_GetWeaponRange_Demacroize, 0x5)
+ASMJIT_PATCH(0x70133E, TechnoClass_GetWeaponRange_Demacroize, 0x5)
 {
 	GET(int, nVal1, EDI);
 	GET(int, nVal2, EBX);
@@ -1209,7 +1207,7 @@ DEFINE_HOOK(0x70133E, TechnoClass_GetWeaponRange_Demacroize, 0x5)
 	return 0x701388;
 }
 
-DEFINE_HOOK(0x707EEA, TechnoClass_GetGuardRange_Demacroize, 0x6)
+ASMJIT_PATCH(0x707EEA, TechnoClass_GetGuardRange_Demacroize, 0x6)
 {
 	GET(int, nVal1, EBX);
 	GET(int, nVal2, EAX);
@@ -1219,7 +1217,7 @@ DEFINE_HOOK(0x707EEA, TechnoClass_GetGuardRange_Demacroize, 0x6)
 }
 
 // customizable berserk fire rate modification
-// DEFINE_HOOK(0x6FF28F, TechnoClass_Fire_BerserkROFMultiplier, 6)
+// ASMJIT_PATCH(0x6FF28F, TechnoClass_Fire_BerserkROFMultiplier, 6)
 // {
 // 	GET(TechnoClass*, pThis, ESI);
 // 	GET(int, ROF, EAX);
@@ -1237,7 +1235,7 @@ DEFINE_HOOK(0x707EEA, TechnoClass_GetGuardRange_Demacroize, 0x6)
 // 	return 0x6FF2A4;
 // }
 
-DEFINE_HOOK(0x6FE709, TechnoClass_Fire_BallisticScatter1, 6)
+ASMJIT_PATCH(0x6FE709, TechnoClass_Fire_BallisticScatter1, 6)
 {
 	GET_STACK(BulletTypeClass*, pProjectile, 0x68);
 	auto pExt = BulletTypeExtContainer::Instance.Find(pProjectile);
@@ -1251,7 +1249,7 @@ DEFINE_HOOK(0x6FE709, TechnoClass_Fire_BallisticScatter1, 6)
 	return 0x6FE71C;
 }
 
-DEFINE_HOOK(0x6FE7FE, TechnoClass_Fire_BallisticScatter2, 5)
+ASMJIT_PATCH(0x6FE7FE, TechnoClass_Fire_BallisticScatter2, 5)
 {
 	GET_STACK(BulletTypeClass*, pProjectile, 0x68);
 	auto pExt = BulletTypeExtContainer::Instance.Find(pProjectile);
@@ -1265,7 +1263,7 @@ DEFINE_HOOK(0x6FE7FE, TechnoClass_Fire_BallisticScatter2, 5)
 	return 0x6FE821;
 }
 
-DEFINE_HOOK(0x707A47, TechnoClass_PointerGotInvalid_LastTarget, 0xA)
+ASMJIT_PATCH(0x707A47, TechnoClass_PointerGotInvalid_LastTarget, 0xA)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(void*, ptr, EBP);
@@ -1279,17 +1277,16 @@ DEFINE_HOOK(0x707A47, TechnoClass_PointerGotInvalid_LastTarget, 0xA)
 //TechnoClass_SetTarget_Burst
 DEFINE_JUMP(LJMP, 0x6FCF53, 0x6FCF61);
 
-DEFINE_HOOK_AGAIN(0x717855, TechnoTypeClass_UpdatePalette_Reset, 0x6)
-DEFINE_HOOK(0x717823, TechnoTypeClass_UpdatePalette_Reset, 0x6)
+ASMJIT_PATCH(0x717823, TechnoTypeClass_UpdatePalette_Reset, 0x6)
 {
 	GET(TechnoTypeClass*, pThis, ESI);
 
 	pThis->Palette = nullptr;
 
 	return 0;
-}
+}ASMJIT_PATCH_AGAIN(0x717855, TechnoTypeClass_UpdatePalette_Reset, 0x6)
 
-DEFINE_HOOK(0x71136F, TechnoTypeClass_CTOR_Initialize, 0x6)
+ASMJIT_PATCH(0x71136F, TechnoTypeClass_CTOR_Initialize, 0x6)
 {
 	GET(TechnoTypeClass*, pThis, ESI);
 
@@ -1302,7 +1299,7 @@ DEFINE_HOOK(0x71136F, TechnoTypeClass_CTOR_Initialize, 0x6)
 	return 0;
 }
 
-DEFINE_HOOK(0x7119D5, TechnoTypeClass_CTOR_NoInit_Particles, 0x6)
+ASMJIT_PATCH(0x7119D5, TechnoTypeClass_CTOR_NoInit_Particles, 0x6)
 {
 	GET(TechnoTypeClass*, pThis, ESI)
 
@@ -1314,7 +1311,7 @@ DEFINE_HOOK(0x7119D5, TechnoTypeClass_CTOR_NoInit_Particles, 0x6)
 
 // destroying a building (no health left) resulted in a single green pip shown
 // in the health bar for a split second. this makes the last pip red.
-DEFINE_HOOK(0x6F661D, TechnoClass_DrawHealthBar_DestroyedBuilding_RedPip, 0x7)
+ASMJIT_PATCH(0x6F661D, TechnoClass_DrawHealthBar_DestroyedBuilding_RedPip, 0x7)
 {
 	GET(BuildingClass*, pBld, ESI);
 	return (pBld->Health <= 0 || pBld->IsRedHP()) ? 0x6F6628 : 0x6F6630;
@@ -1323,7 +1320,7 @@ DEFINE_HOOK(0x6F661D, TechnoClass_DrawHealthBar_DestroyedBuilding_RedPip, 0x7)
 //TechnoClass_GetActionOnObject_IvanBombsB
 DEFINE_JUMP(LJMP, 0x6FFF9E, 0x700006);
 
-// DEFINE_HOOK(0x6FF2D1, TechnoClass_FireAt_Facings, 0x6)
+// ASMJIT_PATCH(0x6FF2D1, TechnoClass_FireAt_Facings, 0x6)
 // {
 // 	GET(TechnoClass*, pThis, ESI);
 // 	GET(WeaponTypeClass*, pWeapon, EBX);
@@ -1343,7 +1340,7 @@ DEFINE_JUMP(LJMP, 0x6FFF9E, 0x700006);
 // 	return 0x6FF31B;
 // }
 
-DEFINE_HOOK(0x6FE53F, TechnoClass_FireAt_CreateBullet, 0x6)
+ASMJIT_PATCH(0x6FE53F, TechnoClass_FireAt_CreateBullet, 0x6)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET(WeaponTypeClass*, pWeapon, EBX);
@@ -1366,7 +1363,7 @@ DEFINE_HOOK(0x6FE53F, TechnoClass_FireAt_CreateBullet, 0x6)
 	return 0x6FE562;
 }
 
-DEFINE_HOOK(0x6F826E, TechnoClass_CanAutoTargetObject_CivilianEnemy, 0x5)
+ASMJIT_PATCH(0x6F826E, TechnoClass_CanAutoTargetObject_CivilianEnemy, 0x5)
 {
 	GET(TechnoClass*, pThis, EDI);
 	GET(TechnoClass*, pTarget, ESI);
@@ -1407,7 +1404,7 @@ DEFINE_HOOK(0x6F826E, TechnoClass_CanAutoTargetObject_CivilianEnemy, 0x5)
 	return Undecided;
 }
 
-DEFINE_HOOK(0x7162B0, TechnoTypeClass_GetPipMax_MindControl, 0x6)
+ASMJIT_PATCH(0x7162B0, TechnoTypeClass_GetPipMax_MindControl, 0x6)
 {
 	GET(TechnoTypeClass* const, pThis, ECX);
 
@@ -1428,7 +1425,7 @@ DEFINE_HOOK(0x7162B0, TechnoTypeClass_GetPipMax_MindControl, 0x6)
 	return 0x7162BC;
 }
 
-DEFINE_HOOK(0x6FE31C, TechnoClass_Fire_AllowDamage, 8)
+ASMJIT_PATCH(0x6FE31C, TechnoClass_Fire_AllowDamage, 8)
 {
 	//GET(TechnoClass*, pThis, ESI);
 	GET(WeaponTypeClass*, pWeapon, EBX);
@@ -1448,7 +1445,7 @@ DEFINE_HOOK(0x6FE31C, TechnoClass_Fire_AllowDamage, 8)
 }
 
 // health bar for detected submerged units
-DEFINE_HOOK(0x6F534E, TechnoClass_DrawExtras_Insignia, 0x5)
+ASMJIT_PATCH(0x6F534E, TechnoClass_DrawExtras_Insignia, 0x5)
 {
 	enum { SkipGameCode = 0x6F5388, CheckDrawHealthAllowed = 0x6F538E };
 
@@ -1471,7 +1468,7 @@ DEFINE_HOOK(0x6F534E, TechnoClass_DrawExtras_Insignia, 0x5)
 	return CheckDrawHealthAllowed;
 }
 
-// DEFINE_HOOK(0x70CBC3, TechnoClass_DealParticleDamage_FixArgs, 0x6)
+// ASMJIT_PATCH(0x70CBC3, TechnoClass_DealParticleDamage_FixArgs, 0x6)
 // {
 // 	GET(WeaponTypeClass*, pWeapon, EDI);
 // 	GET(float, nDamage , ECX);
@@ -1487,7 +1484,7 @@ DEFINE_HOOK(0x6F534E, TechnoClass_DrawExtras_Insignia, 0x5)
 
 // this code somewhat broke targeting
 // it created identically like ares but not working as expected , duh
-DEFINE_HOOK(0x6FA361, TechnoClass_Update_LoseTarget, 5)
+ASMJIT_PATCH(0x6FA361, TechnoClass_Update_LoseTarget, 5)
 {
 	GET(TechnoClass* const, pThis, ESI);
 	GET(HouseClass* const, pHouse, EDI);

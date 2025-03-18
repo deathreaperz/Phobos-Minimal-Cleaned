@@ -139,7 +139,7 @@ SuperExtContainer SuperExtContainer::Instance;
 // =============================
 // container hooks
 
-DEFINE_HOOK(0x6CB10E, SuperClass_CTOR, 0x7)
+ASMJIT_PATCH(0x6CB10E, SuperClass_CTOR, 0x7)
 {
 	GET(SuperClass*, pItem, ESI);
 
@@ -150,7 +150,7 @@ DEFINE_HOOK(0x6CB10E, SuperClass_CTOR, 0x7)
 	return 0;
 }
 
-DEFINE_HOOK(0x6CB1BD, SuperClass_SDDTOR, 0x7)
+ASMJIT_PATCH(0x6CB1BD, SuperClass_SDDTOR, 0x7)
 {
 	GET(SuperClass*, pItem, ESI);
 	SuperExtContainer::Instance.Remove(pItem);
@@ -184,7 +184,7 @@ HRESULT __stdcall FakeSuperClass::_Save(IStream* pStm, bool clearDirty)
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7F3FFC, FakeSuperClass::_Load)
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7F4000, FakeSuperClass::_Save)
 
-// DEFINE_HOOK(0x6CE001 , SuperClass_Detach , 0x5)
+// ASMJIT_PATCH(0x6CE001 , SuperClass_Detach , 0x5)
 // {
 // 	GET(SuperClass*, pThis, ESI);
 // 	GET(void*, target, EAX);

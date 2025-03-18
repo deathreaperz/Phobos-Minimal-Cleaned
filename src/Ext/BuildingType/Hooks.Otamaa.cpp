@@ -21,7 +21,7 @@
 
 #pragma region Otamaa
 
-DEFINE_HOOK(0x6FE3E3, TechnoClass_FireAt_OccupyDamageBonus, 0xA) //B
+ASMJIT_PATCH(0x6FE3E3, TechnoClass_FireAt_OccupyDamageBonus, 0xA) //B
 {
 	GET(TechnoClass* const, pThis, ESI);
 	GET(WeaponTypeClass* const, pWeapon, EBX);
@@ -90,7 +90,7 @@ DEFINE_HOOK(0x6FE3E3, TechnoClass_FireAt_OccupyDamageBonus, 0xA) //B
 	return 0x6FE4E7; //end of func
 }
 
-DEFINE_HOOK(0x6FD15E, TechnoClass_RearmDelay_RofMult, 0xA)
+ASMJIT_PATCH(0x6FD15E, TechnoClass_RearmDelay_RofMult, 0xA)
 {
 	GET(TechnoClass*, pThis, ESI);
 	GET_STACK(int, nROF, 0x14);
@@ -134,7 +134,7 @@ DEFINE_HOOK(0x6FD15E, TechnoClass_RearmDelay_RofMult, 0xA)
 }
 
 #pragma region BunkerSounds
-DEFINE_HOOK(0x45933D, BuildingClass_BunkerWallUpSound, 0x5)
+ASMJIT_PATCH(0x45933D, BuildingClass_BunkerWallUpSound, 0x5)
 {
 	GET(FakeBuildingClass* const, pThis, ESI);
 	const auto nSound = pThis->_GetTypeExtData()->BunkerWallsUpSound.Get(RulesClass::Instance->BunkerWallsUpSound);
@@ -142,7 +142,7 @@ DEFINE_HOOK(0x45933D, BuildingClass_BunkerWallUpSound, 0x5)
 	return 0x459374;
 }
 
-DEFINE_HOOK(0x4595D9, BuildingClass_4595C0_BunkerDownSound, 0x5)
+ASMJIT_PATCH(0x4595D9, BuildingClass_4595C0_BunkerDownSound, 0x5)
 {
 	GET(FakeBuildingClass* const, pThis, EDI);
 	const auto nSound = pThis->_GetTypeExtData()->BunkerWallsDownSound.Get(RulesClass::Instance->BunkerWallsDownSound);
@@ -150,7 +150,7 @@ DEFINE_HOOK(0x4595D9, BuildingClass_4595C0_BunkerDownSound, 0x5)
 	return 0x459612;
 }
 
-DEFINE_HOOK(0x459494, BuildingClass_459470_BunkerDownSound, 0x5)
+ASMJIT_PATCH(0x459494, BuildingClass_459470_BunkerDownSound, 0x5)
 {
 	GET(FakeBuildingClass* const, pThis, ESI);
 	const auto nSound = pThis->_GetTypeExtData()->BunkerWallsDownSound.Get(RulesClass::Instance->BunkerWallsDownSound);
@@ -162,7 +162,7 @@ DEFINE_HOOK(0x459494, BuildingClass_459470_BunkerDownSound, 0x5)
 // not working  ?
 // hook itself is fine , but it not play globally as it should :s
 /*
-DEFINE_HOOK(0x44A86A, BuildingClass_Mi_Selling_PackupSound, 0xC)
+ASMJIT_PATCH(0x44A86A, BuildingClass_Mi_Selling_PackupSound, 0xC)
 {
 	enum
 	{
@@ -181,7 +181,7 @@ DEFINE_HOOK(0x44A86A, BuildingClass_Mi_Selling_PackupSound, 0xC)
 
 */
 
-DEFINE_HOOK(0x450821, BuildingClass_Repair_AI_Step, 0x5)// B
+ASMJIT_PATCH(0x450821, BuildingClass_Repair_AI_Step, 0x5)// B
 {
 	GET(FakeBuildingClass* const, pThis, ESI);
 	R->EAX(int(pThis->_GetTypeExtData()->RepairRate.Get(RulesClass::Instance->RepairRate) * 900.0));
@@ -189,7 +189,7 @@ DEFINE_HOOK(0x450821, BuildingClass_Repair_AI_Step, 0x5)// B
 }
 
 // ares replace this
-//DEFINE_HOOK(0x70BEF9, TechnoClass_canHealRepair_Building, 0x5) //B
+//ASMJIT_PATCH(0x70BEF9, TechnoClass_canHealRepair_Building, 0x5) //B
 //{
 //	GET(TechnoClass*, pThis, ESI);
 //
@@ -203,7 +203,7 @@ DEFINE_HOOK(0x450821, BuildingClass_Repair_AI_Step, 0x5)// B
 //}
 
 //https://modenc.renegadeprojects.com/RepairStep
-DEFINE_HOOK(0x712125, TechnoTypeClass_GetRepairStep_Building, 0x6)
+ASMJIT_PATCH(0x712125, TechnoTypeClass_GetRepairStep_Building, 0x6)
 {
 	GET(TechnoTypeClass*, pThis, ECX);
 	GET(RulesClass*, pRules, EAX);
@@ -218,7 +218,7 @@ DEFINE_HOOK(0x712125, TechnoTypeClass_GetRepairStep_Building, 0x6)
 }
 
 //was 4
-DEFINE_HOOK(0x7120D0, TechnoTypeClass_GetRepairCost_Building, 0x7)
+ASMJIT_PATCH(0x7120D0, TechnoTypeClass_GetRepairCost_Building, 0x7)
 {
 	GET(TechnoTypeClass*, pThis, ECX);
 
@@ -253,7 +253,7 @@ DEFINE_HOOK(0x7120D0, TechnoTypeClass_GetRepairCost_Building, 0x7)
 //DEFINE_FUNCTION_JUMP(VTABLE, 0x7F4F88, GET_OFFSET(GetRepairCost));
 //DEFINE_FUNCTION_JUMP(VTABLE, 0x7F62C8, GET_OFFSET(GetRepairCost));
 
-// DEFINE_HOOK(0x464758, BuildingTypeClass_LoadFromINI_PowerUPZAdjust, 0x8) {
+// ASMJIT_PATCH(0x464758, BuildingTypeClass_LoadFromINI_PowerUPZAdjust, 0x8) {
 // 	GET(int, nIndex, EBX);
 // 	GET(BuildingTypeClass*, pThis, EBP);
 
@@ -264,7 +264,7 @@ DEFINE_HOOK(0x7120D0, TechnoTypeClass_GetRepairCost_Building, 0x7)
 // 	return 0;
 // }
 
-DEFINE_HOOK(0x505F6C, HouseClass_GenerateAIBuildList_AIBuildInstead, 0x6)
+ASMJIT_PATCH(0x505F6C, HouseClass_GenerateAIBuildList_AIBuildInstead, 0x6)
 {
 	GET(HouseClass*, pHouse, ESI);
 
