@@ -260,6 +260,17 @@ static PhobosMap<BuildingClass*, double> MergedDamage {};
 static DynamicVectorClass<ObjectClass*, DllAllocator<ObjectClass*>> Targets;
 static DynamicVectorClass<DamageGroup*, DllAllocator<DamageGroup*>> Handled;
 
+inline int Distance_Level_Snap(const Coordinate& coord1, const Coordinate& coord2)
+{
+	int z1 = coord1.Z;
+	int z2 = coord2.Z;
+	if (Math::abs(z2 - z1) < 104)
+	{
+		z2 = coord1.Z;
+	}
+	return CoordStruct(coord1.X - coord2.X, coord1.Y - coord2.Y, z1 - z2).Length();
+}
+
 // this function is landmines , hooking it breaking other
 
 DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
@@ -269,8 +280,8 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 		bool affectTiberium,
 		HouseClass* pHouse)
 {
-	//JMP_STD(0x489280);
-
+	JMP_STD(0x489280);
+#ifdef _aaa
 	if (!pWarhead)
 	{
 		return DamageAreaResult::Missed;
@@ -278,6 +289,9 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 
 	if (VTable::Get(pWarhead) != WarheadTypeClass::vtable)
 		Debug::FatalErrorAndExit("!");
+
+	//if (IS_SAME_STR_("SA", pWarhead->ID))
+	//	DebugBreak();
 
 	const auto pWHExt = ((FakeWarheadTypeClass*)pWarhead)->_GetExtData();
 	CellStruct cell = CellClass::Coord2Cell(*pCoord);
@@ -385,9 +399,11 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 	if (int(spread + 0.99) >= 0)
 	{
 		//obtain Object within the spread distance
+		int i = 0;
 		for (CellSpreadEnumerator it(short(spread + 0.99), short(0)); it; ++it)
 		{
 			auto cellhere = (cell + (*it));
+			const bool IsCenter = i++ == 0;
 
 			if (auto pCurCell = MapClass::Instance->TryGetCellAt(cellhere))
 			{
@@ -397,9 +413,9 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 					auto spawn_distance = cellhere.DistanceFrom(cell);
 					Damage_Overlay(pCurCell, cell, pWarhead, spawn_distance, damage, pSource, pHouse, affectTiberium);
 
-					auto scorch_chance = std::clamp(Math::PercentAtMax(pWHExt->ScorchChance.Get(), spreadLept, spawn_distance, pWHExt->ScorchPercentAtMax.Get()), 0.0, 1.0);
-					auto crater_chance = std::clamp(Math::PercentAtMax(pWHExt->CraterChance.Get(), spreadLept, spawn_distance, pWHExt->CraterPercentAtMax.Get()), 0.0, 1.0);
-					auto cellanim_chance = std::clamp(Math::PercentAtMax(pWHExt->CellAnimChance.Get(), spreadLept, spawn_distance, pWHExt->CellAnimPercentAtMax.Get()), 0.0, 1.0);
+					auto scorch_chance = std::clamp(Math::PercentAtMax(pWHExt->ScorchChance.Get(), (int)spreadLept, (int)spawn_distance, pWHExt->ScorchPercentAtMax.Get()), 0.0, 1.0);
+					auto crater_chance = std::clamp(Math::PercentAtMax(pWHExt->CraterChance.Get(), (int)spreadLept, (int)spawn_distance, pWHExt->CraterPercentAtMax.Get()), 0.0, 1.0);
+					auto cellanim_chance = std::clamp(Math::PercentAtMax(pWHExt->CellAnimChance.Get(), (int)spreadLept, (int)spawn_distance, pWHExt->CellAnimPercentAtMax.Get()), 0.0, 1.0);
 
 					Spawn_Flames_And_Smudges(cellhere, scorch_chance, crater_chance, cellanim_chance, pWHExt->CellAnim);
 
@@ -407,14 +423,10 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 					{
 						auto pCur = *next;
 
-						if (pCur == pSource && !pWHExt->AllowDamageOnSelf && !isCrushWarhead)
-							continue;
-
-						if (!pCur->IsAlive)
+						if (!pCur->IsAlive || pCur == pSource && !pWHExt->AllowDamageOnSelf && !isCrushWarhead)
 							continue;
 
 						const auto what = pCur->WhatAmI();
-						//auto pTechno = flag_cast_to<TechnoClass*, false>(pCur);
 
 						if (what == UnitClass::AbsID && ((ScenarioClass::Instance->SpecialFlags.RawFlags & 0x800) != 0))
 						{
@@ -429,33 +441,29 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 
 						if (what == BuildingClass::AbsID)
 						{
-							if (!it.getCurSpread())
+							if (IsCenter && !(pCoord->Z - cur_cellCoord.Z <= Unsorted::CellHeight))
 							{
-								if (!(pCoord->Z - cur_cellCoord.Z <= Unsorted::LevelHeight * 2))
-								{
-									cur_Group->Distance = (int)((cur_cellCoord - (*pCoord)).Length()) - Unsorted::LevelHeight;
-								}
-
-								if (spreadLow)
-								{
-									if (pCur->IsIronCurtained()
-										&& ((BuildingClass*)pCur)->ProtectType == ProtectTypes::IronCurtain
-										&& cur_Group->Distance < 85
-										)
-									{
-										HitICEdTechno = !pWHExt->PenetratesIronCurtain;
-									}
-								}
+								cur_Group->Distance = (int)(cur_cellCoord.operator-(*pCoord).Length()) - Unsorted::CellHeight;
 							}
 							else
 							{
-								cur_Group->Distance = (int)((cur_cellCoord - (*pCoord)).Length()) - Unsorted::CellHeight;
+								cur_Group->Distance = (int)pCoord->operator-(cur_cellCoord).Length();
 							}
 						}
 						else
 						{
-							cur_cellCoord = pCur->GetTargetCoords();
-							cur_Group->Distance = (int)((cur_cellCoord - (*pCoord)).Length()) - Unsorted::CellHeight;
+							cur_Group->Distance = (int)pCoord->operator-(pCur->GetTargetCoords()).Length();
+						}
+
+						if (spreadLow && IsCenter)
+						{
+							if (pCur->IsIronCurtained()
+								&& ((BuildingClass*)pCur)->ProtectType == ProtectTypes::IronCurtain
+								&& cur_Group->Distance < 85
+								)
+							{
+								HitICEdTechno = !pWHExt->PenetratesIronCurtain;
+							}
 						}
 					}
 				}
@@ -687,6 +695,7 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 	}
 
 	return DamageAreaResult(AnythingHit == 0);
+#endif
 }
 
 DEFINE_FUNCTION_JUMP(CALL, 0x423EAB, DamageArea::Apply);
@@ -723,7 +732,7 @@ DEFINE_FUNCTION_JUMP(CALL, 0x6E250B, DamageArea::Apply);
 DEFINE_FUNCTION_JUMP(CALL, 0x71BABF, DamageArea::Apply);
 DEFINE_FUNCTION_JUMP(CALL, 0x74A1E1, DamageArea::Apply);
 
-#ifdef _ENABLE
+#ifndef _ENABLE
 
 ASMJIT_PATCH(0x489286, MapClass_DamageArea, 0x6)
 {
@@ -763,6 +772,30 @@ ASMJIT_PATCH(0x489968, Explosion_Damage_PenetratesIronCurtain, 0x5)
 	if (WarheadTypeExtContainer::Instance.Find(pWarhead)->PenetratesIronCurtain)
 		return BypassInvulnerability;
 	return 0;
+}
+
+ASMJIT_PATCH(0x4896BF, DamageAread_AfterOverlay, 0x6)
+{
+	GET(CellClass*, pCellHere, EBX);
+	GET_STACK(CellClass*, pCellDetonation, 0x20);
+	GET_BASE(FakeWarheadTypeClass*, pWarhead, 0xC);
+
+	auto pWHExt = pWarhead->_GetExtData();
+	auto spawn_distance = pCellHere->MapCoords.DistanceFrom(pCellDetonation->MapCoords);
+	double spreadLept = pWarhead->CellSpread * 256.0;
+	auto scorch_chance = std::clamp(Math::PercentAtMax(pWHExt->ScorchChance.Get(), (int)spreadLept, (int)spawn_distance, pWHExt->ScorchPercentAtMax.Get()), 0.0, 1.0);
+	auto crater_chance = std::clamp(Math::PercentAtMax(pWHExt->CraterChance.Get(), (int)spreadLept, (int)spawn_distance, pWHExt->CraterPercentAtMax.Get()), 0.0, 1.0);
+	auto cellanim_chance = std::clamp(Math::PercentAtMax(pWHExt->CellAnimChance.Get(), (int)spreadLept, (int)spawn_distance, pWHExt->CellAnimPercentAtMax.Get()), 0.0, 1.0);
+
+	Spawn_Flames_And_Smudges(pCellHere->MapCoords, scorch_chance, crater_chance, cellanim_chance, pWHExt->CellAnim);
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x4896EC, Explosion_Damage_DamageSelf, 0x6)
+{
+	GET_BASE(FakeWarheadTypeClass*, pWarhead, 0xC);
+	return pWarhead->_GetExtData()->AllowDamageOnSelf ? 0x489702 : 0;
 }
 
 ASMJIT_PATCH(0x4899DA, DamageArea_Damage_MaxAffect, 7)

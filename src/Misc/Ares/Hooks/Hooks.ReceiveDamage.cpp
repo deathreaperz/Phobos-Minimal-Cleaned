@@ -653,7 +653,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		}
 	}
 
-	if ((pThis->IsBeingWarpedOut() || TechnoExtData::IsChronoDelayDamageImmune(flag_cast_to<FootClass*, false>(pThis))) && !args.IgnoreDefenses)
+	if ((pThis->IsBeingWarpedOut() && !args.IgnoreDefenses && TechnoExtData::IsChronoDelayDamageImmune(flag_cast_to<FootClass*, false>(pThis))))
 	{
 		*args.Damage = 0;
 		R->EAX(DamageState::Unaffected);
@@ -773,33 +773,53 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		return 0x702D1F;
 	}
 
-	if (_res != DamageState::NowDead)
+	if (_res == DamageState::PostMortem)
 	{
-		if (_res == DamageState::PostMortem)
-		{
-			R->EAX(DamageState::PostMortem);
-			return 0x702D1F;
-		}
-
-		if (_res == DamageState::Unaffected)
-		{
-			goto LABEL_101;
-		}
-
-		goto LABEL_94;
+		R->EAX(DamageState::PostMortem);
+		return 0x702D1F;
 	}
 
-	if (pThis->WhatAmI() != AbstractType::Building || !args.WH->CausesDelayKill)
+	if (_res != DamageState::NowDead && _res != DamageState::Unaffected)
 	{
-	LABEL_94:
-
 		pThis->RadarFlashTimer.Start(RulesClass::Instance->RadarCombatFlashTime);
+		auto pBld = cast_to<BuildingClass*, false>(pThis);
 
-		if (_res != DamageState::Unaffected
-			&& _res != DamageState::NowDead
-			&& pType->CanDisguise
-			&& !pType->PermaDisguise
-			)
+		if (args.WH->CausesDelayKill && pBld && pBld->Type->EligibleForDelayKill)
+		{
+			const int v22 = (int)(((double)args.WH->DelayKillAtMax * (double)args.WH->DelayKillFrames - (double)args.WH->DelayKillFrames)
+				 / (double)((int)args.WH->CellSpread << 8)
+				 * (double)args.DistanceToEpicenter
+				 + (double)args.WH->DelayKillFrames);
+
+			if (pBld->IsGoingToBlow)
+			{
+				int Started = pBld->GoingToBlowTimer.StartTime;
+				int DelayTime = pBld->GoingToBlowTimer.TimeLeft;
+
+				if (Started != -1)
+				{
+					if (Unsorted::CurrentFrame - Started >= DelayTime)
+						DelayTime = 0;
+					else
+						DelayTime -= Unsorted::CurrentFrame - Started;
+				}
+
+				if ((int)v22 < DelayTime)
+				{
+					pBld->IsGoingToBlow = 1;
+					pBld->GoingToBlowTimer.Start(v22);
+				}
+			}
+			else
+			{
+				pBld->IsGoingToBlow = 1;
+				pBld->GoingToBlowTimer.Start(v22);
+			}
+
+			_res = DamageState::PostMortem;
+		}
+
+		if (pType->CanDisguise && !pType->PermaDisguise)
 		{
 			if (pThis->IsDisguised())
 			{
@@ -808,272 +828,289 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 			pThis->InfantryBlinkTimer.Start(2 * *args.Damage);
 		}
+	}
 
-	LABEL_101:
-		if (!pThis->Health)
+	if (!pThis->Health)
+	{
+		_res = DamageState::NowDead;
+	}
+
+	switch (_res)
+	{
+	case DamageState::Unaffected:
+	case DamageState::NowRed:
+		break;
+	case DamageState::Unchanged:
+	{
+		if (pType->DamageSound != -1)
 		{
-			_res = DamageState::NowDead;
+			VocClass::PlayIndexAtPos(pType->DamageSound, pThis->Location, 0);
 		}
 
-		switch (_res)
+		if (!pWHExt->Malicious && !pWHExt->Nonprovocative)
 		{
-		case DamageState::Unaffected:
-		case DamageState::NowRed:
-			goto LABEL_191;
-		case DamageState::Unchanged:
-			goto LABEL_181;
-		case DamageState::NowYellow:
-			if (pType->VoiceFeedback.Count > 0
-				&& Random2Class::NonCriticalRandomNumber->RandomRanged(0, 99) < 30
-					  && pThis->Owner->ControlledByCurrentPlayer())
+			if ((pType->ToProtect || pThis->__ProtectMe_3CF) && !pThis->Owner->IsControlledByHuman() && args.Attacker)
 			{
-				VocClass::PlayIndexAtPos(pType->VoiceFeedback.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->VoiceFeedback.Count - 1), pThis->Location, 0);
+				pThis->BaseIsAttacked(args.Attacker);
 			}
-			goto LABEL_191;
-		case DamageState::NowDead:
+		}
 
-			if (pWHExt->Supress_LostEva.Get())
-				pExt->SupressEVALost = true;
+		break;
+	}
+	case DamageState::NowYellow:
+	{
+		if (pType->VoiceFeedback.Count > 0
+			&& Random2Class::NonCriticalRandomNumber->RandomRanged(0, 99) < 30
+			 && pThis->Owner->ControlledByCurrentPlayer())
+		{
+			const int feedbackIndex = pType->VoiceFeedback.Count > 1 ? Random2Class::NonCriticalRandomNumber->RandomRanged(0, pType->VoiceFeedback.Count - 1) : 0;
+			VocClass::PlayIndexAtPos(pType->VoiceFeedback.Items[feedbackIndex], pThis->Location, 0);
+		}
 
-			GiftBoxFunctional::Destroy(pExt, pTypeExt);
+		break;
+	}
+	case DamageState::NowDead:
+	{
+		if (pWHExt->Supress_LostEva.Get())
+			pExt->SupressEVALost = true;
 
-			if (pThis->IsAlive)
+		GiftBoxFunctional::Destroy(pExt, pTypeExt);
+
+		if (pThis->IsAlive)
+		{
+			std::set<PhobosAttachEffectTypeClass*> cumulativeTypes {};
+			std::vector<WeaponTypeClass*> expireWeapons {};
+			PhobosAEFunctions::ApplyExpireWeapon(expireWeapons, cumulativeTypes, pThis);
+
+			for (auto const& pWeapon : expireWeapons)
 			{
-				std::set<PhobosAttachEffectTypeClass*> cumulativeTypes {};
-				std::vector<WeaponTypeClass*> expireWeapons {};
-				PhobosAEFunctions::ApplyExpireWeapon(expireWeapons, cumulativeTypes, pThis);
+				TechnoClass* pTarget = pThis;
+				if (!pThis->IsAlive)
+					pTarget = nullptr;
 
-				for (auto const& pWeapon : expireWeapons)
-				{
-					TechnoClass* pTarget = pThis;
-					if (!pThis->IsAlive)
-						pTarget = nullptr;
+				WeaponTypeExtData::DetonateAt(pWeapon, pThis->Location, pTarget, false, pThis->Owner);
+			}
+		}
 
-					WeaponTypeExtData::DetonateAt(pWeapon, pThis->Location, pTarget, false, pThis->Owner);
-				}
+		if (!pThis->IsAlive)
+			break;
+
+		if (auto pManager = pThis->SlaveManager)
+		{
+			pManager->Killed(args.Attacker);
+		}
+
+		if (pThis->DrainTarget)
+		{
+			if (auto DrainAnim = std::exchange(pThis->DrainAnim, nullptr))
+			{
+				DrainAnim->RemainingIterations = 0;
+				DrainAnim->UnInit();
+				DrainAnim = nullptr;;
 			}
 
-			if (!pThis->IsAlive)
-				goto LABEL_191;
-
-			if (auto pManager = pThis->SlaveManager)
+			pThis->DrainTarget->DrainingMe = 0;
+			if (auto pDrainingTargetOwn = pThis->DrainTarget->Owner)
 			{
-				pManager->Killed(args.Attacker);
+				pDrainingTargetOwn->RecheckPower = true;
 			}
 
-			if (pThis->DrainTarget)
-			{
-				if (auto DrainAnim = std::exchange(pThis->DrainAnim, nullptr))
-				{
-					DrainAnim->RemainingIterations = 0;
-					DrainAnim->UnInit();
-					DrainAnim = nullptr;;
-				}
+			pThis->DrainTarget = 0;
+		}
 
-				pThis->DrainTarget->DrainingMe = 0;
-				if (auto pDrainingTargetOwn = pThis->DrainTarget->Owner)
+		if (auto pDrainer = pThis->DrainingMe)
+		{
+			if (auto DrainAnim = std::exchange(pDrainer->DrainAnim, nullptr))
+			{
+				DrainAnim->RemainingIterations = 0;
+				DrainAnim->UnInit();
+				DrainAnim = nullptr;;
+			}
+
+			if (pDrainer->DrainTarget)
+			{
+				pDrainer->DrainTarget->DrainingMe = 0;
+				if (auto pDrainingTargetOwn = pDrainer->DrainTarget->Owner)
 				{
 					pDrainingTargetOwn->RecheckPower = true;
 				}
 
-				pThis->DrainTarget = 0;
+				pDrainer->DrainTarget = 0;
 			}
+		}
 
-			if (auto pDrainer = pThis->DrainingMe)
+		if (auto pManager = pThis->CaptureManager)
+		{
+			pManager->FreeAll();
+		}
+
+		if (pType->VoiceDie.Count > 0 && pThis->Owner->ControlledByCurrentPlayer())
+		{
+			auto const& nSound = pWHExt->DieSound_Override;
+
+			if (nSound.isset())
 			{
-				if (auto DrainAnim = std::exchange(pDrainer->DrainAnim, nullptr))
-				{
-					DrainAnim->RemainingIterations = 0;
-					DrainAnim->UnInit();
-					DrainAnim = nullptr;;
-				}
+				VocClass::PlayIndexAtPos(nSound, pThis->Location);
+			}
+			else
+			{
+				VocClass::PlayIndexAtPos(pType->VoiceDie[pType->VoiceDie.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->VoiceDie.Count - 1)], pThis->Location);
+			}
+		}
 
-				if (pDrainer->DrainTarget)
+		if (pType->DieSound.Count > 0)
+		{
+			auto const& nSound = pWHExt->VoiceSound_Override;
+
+			if (nSound.isset())
+			{
+				VocClass::PlayIndexAtPos(nSound, pThis->Location);
+			}
+			else
+			{
+				VocClass::PlayIndexAtPos(pType->DieSound[pType->DieSound.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->DieSound.Count - 1)], pThis->Location);
+			}
+		}
+
+		if (TechnoTypeExtContainer::Instance.Find(pType)->TiberiumSpill)
+		{
+			const auto pBld = cast_to<BuildingClass*, false>(pThis);
+
+			if (pBld && !pBld->Type->Weeder)
+			{
+				auto storage = &TechnoExtContainer::Instance.Find(pThis)->TiberiumStorage;
+				double stored = storage->GetAmounts();
+
+				if (stored > 0.0
+					&& !ScenarioClass::Instance->SpecialFlags.StructEd.HarvesterImmune)
 				{
-					pDrainer->DrainTarget->DrainingMe = 0;
-					if (auto pDrainingTargetOwn = pDrainer->DrainTarget->Owner)
+					// don't spill more than we can hold
+					double max = 9.0;
+					if (max > pType->Storage)
 					{
-						pDrainingTargetOwn->RecheckPower = true;
+						max = pType->Storage;
 					}
 
-					pDrainer->DrainTarget = 0;
-				}
-			}
+					const int nIdx = storage->GetHighestStorageIdx();
 
-			if (auto pManager = pThis->CaptureManager)
-			{
-				pManager->FreeAll();
-			}
-
-			if (pType->VoiceDie.Count > 0 && pThis->Owner->ControlledByCurrentPlayer())
-			{
-				auto const& nSound = pWHExt->DieSound_Override;
-
-				if (nSound.isset())
-				{
-					VocClass::PlayIndexAtPos(nSound, pThis->Location);
-				}
-				else
-				{
-					VocClass::PlayIndexAtPos(pType->VoiceDie[pType->VoiceDie.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->VoiceDie.Count - 1)], pThis->Location);
-				}
-			}
-
-			if (pType->DieSound.Count > 0)
-			{
-				auto const& nSound = pWHExt->VoiceSound_Override;
-
-				if (nSound.isset())
-				{
-					VocClass::PlayIndexAtPos(nSound, pThis->Location);
-				}
-				else
-				{
-					VocClass::PlayIndexAtPos(pType->DieSound[pType->DieSound.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->DieSound.Count - 1)], pThis->Location);
-				}
-			}
-
-			if (TechnoTypeExtContainer::Instance.Find(pType)->TiberiumSpill)
-			{
-				const auto pBld = cast_to<BuildingClass*, false>(pThis);
-
-				if (pBld && !pBld->Type->Weeder)
-				{
-					auto storage = &TechnoExtContainer::Instance.Find(pThis)->TiberiumStorage;
-					double stored = storage->GetAmounts();
-
-					if (stored > 0.0
-						&& !ScenarioClass::Instance->SpecialFlags.StructEd.HarvesterImmune)
+					// assume about half full, recalc if possible
+					int value = static_cast<int>(max / 2);
+					if (pType->Storage > 0)
 					{
-						// don't spill more than we can hold
-						double max = 9.0;
-						if (max > pType->Storage)
-						{
-							max = pType->Storage;
-						}
-
-						const int nIdx = storage->GetHighestStorageIdx();
-
-						// assume about half full, recalc if possible
-						int value = static_cast<int>(max / 2);
-						if (pType->Storage > 0)
-						{
-							value = int(stored / pType->Storage * max);
-						}
-
-						// get the spill center
-						TechnoClass::SpillTiberium(value, nIdx, MapClass::Instance->GetCellAt(pThis->GetCoords()), { 0,2 });
-					}
-				}
-			}
-
-			pThis->SendToEachLink(RadioCommand::NotifyUnlink);
-			pThis->Stun();
-
-			if (pTypeExt->TiberiumRemains.Get(pType->TiberiumHeal && RulesExtData::Instance()->Tiberium_HealEnabled))
-			{
-				int nIdx = pExt->TiberiumStorage.GetHighestStorageIdx();
-				const CellClass* pCenter = MapClass::Instance->GetCellAt(pThis->Location);
-
-				// increase the tiberium for the four neighbours and center.
-				// center is retrieved by getting a neighbour cell index >= 8
-				for (int i = 0; i < 8; i += 2)
-				{
-					pCenter->GetNeighbourCell((FacingType)i)->IncreaseTiberium(nIdx, ScenarioClass::Instance->Random.RandomFromMax(2));
-				}
-			}
-
-			if (auto& pParticleZero = pThis->FireParticleSystem)
-			{
-				pParticleZero->UnInit();
-				pParticleZero = nullptr;
-			}
-
-			if (pThis->GetHeight() > 0 || !pThis->IsABomb || pThis->GetCell()->LandType != LandType::Water)
-			{
-				if (pType->MaxDebris > 0)
-				{
-					auto totalSpawnAmount = ScenarioClass::Instance->Random.RandomRanged(pType->MinDebris, pType->MaxDebris);
-					auto nCoords = pThis->GetCoords();
-
-					if (totalSpawnAmount && pType->DebrisTypes.Count > 0 && pType->DebrisMaximums.Count > 0)
-					{
-						for (int currentIndex = 0; currentIndex < pType->DebrisTypes.Count; ++currentIndex)
-						{
-							if (currentIndex >= pType->DebrisMaximums.Count)
-								break;
-
-							if (!pType->DebrisMaximums[currentIndex] || !pType->DebrisTypes.Items[currentIndex])
-								continue;
-
-							//this never goes to 0
-							int amountToSpawn = (Math::abs(int(ScenarioClass::Instance->Random.Random())) % pType->DebrisMaximums[currentIndex]) + 1;
-							amountToSpawn = LessOrEqualTo(amountToSpawn, totalSpawnAmount);
-							totalSpawnAmount -= amountToSpawn;
-
-							for (; amountToSpawn > 0; --amountToSpawn)
-							{
-								auto pVoxAnim = GameCreate<VoxelAnimClass>(pType->DebrisTypes.Items[currentIndex],
-								&nCoords, pThis->Owner);
-
-								VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis;
-							}
-
-							if (totalSpawnAmount <= 0)
-							{
-								totalSpawnAmount = 0;
-								break;
-							}
-						}
+						value = int(stored / pType->Storage * max);
 					}
 
-					if (totalSpawnAmount > 0)
-					{
-						if (const auto pArray = GetDebrisAnim(pType))
-						{
-							auto debrisAnim_Coord = nCoords;
-							debrisAnim_Coord.Z += 20;
+					// get the spill center
+					TechnoClass::SpillTiberium(value, nIdx, MapClass::Instance->GetCellAt(pThis->GetCoords()), { 0,2 });
+				}
+			}
+		}
 
-							for (int b = 0; b < totalSpawnAmount; ++b)
+		pThis->SendToEachLink(RadioCommand::NotifyUnlink);
+		pThis->Stun();
+
+		if (pTypeExt->TiberiumRemains.Get(pType->TiberiumHeal && RulesExtData::Instance()->Tiberium_HealEnabled))
+		{
+			int nIdx = pExt->TiberiumStorage.GetHighestStorageIdx();
+			const CellClass* pCenter = MapClass::Instance->GetCellAt(pThis->Location);
+
+			// increase the tiberium for the four neighbours and center.
+			// center is retrieved by getting a neighbour cell index >= 8
+			for (int i = 0; i < 8; i += 2)
+			{
+				pCenter->GetNeighbourCell((FacingType)i)->IncreaseTiberium(nIdx, ScenarioClass::Instance->Random.RandomFromMax(2));
+			}
+		}
+
+		if (auto& pParticleZero = pThis->FireParticleSystem)
+		{
+			pParticleZero->UnInit();
+		}
+
+		if (pThis->GetHeight() > 0 || !pThis->IsABomb || pThis->GetCell()->LandType != LandType::Water)
+		{
+			if (pType->MaxDebris > 0)
+			{
+				auto totalSpawnAmount = ScenarioClass::Instance->Random.RandomRanged(pType->MinDebris, pType->MaxDebris);
+				auto nCoords = pThis->GetCoords();
+
+				if (totalSpawnAmount && pType->DebrisTypes.Count > 0 && pType->DebrisMaximums.Count > 0)
+				{
+					for (int currentIndex = 0; currentIndex < pType->DebrisTypes.Count; ++currentIndex)
+					{
+						if (currentIndex >= pType->DebrisMaximums.Count)
+							break;
+
+						if (!pType->DebrisMaximums[currentIndex] || !pType->DebrisTypes.Items[currentIndex])
+							continue;
+
+						//this never goes to 0
+						int amountToSpawn = (Math::abs(int(ScenarioClass::Instance->Random.Random())) % pType->DebrisMaximums[currentIndex]) + 1;
+						amountToSpawn = LessOrEqualTo(amountToSpawn, totalSpawnAmount);
+						totalSpawnAmount -= amountToSpawn;
+
+						for (; amountToSpawn > 0; --amountToSpawn)
+						{
+							auto pVoxAnim = GameCreate<VoxelAnimClass>(pType->DebrisTypes.Items[currentIndex],
+							&nCoords, pThis->Owner);
+
+							VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis;
+						}
+
+						if (totalSpawnAmount <= 0)
+						{
+							totalSpawnAmount = 0;
+							break;
+						}
+					}
+				}
+
+				if (totalSpawnAmount > 0)
+				{
+					if (const auto pArray = GetDebrisAnim(pType))
+					{
+						auto debrisAnim_Coord = nCoords;
+						debrisAnim_Coord.Z += 20;
+
+						for (int b = 0; b < totalSpawnAmount; ++b)
+						{
+							if (auto pDebrisAnimType = pArray->Items[ScenarioClass::Instance->Random.RandomFromMax(pArray->Count - 1)])
 							{
-								if (auto pDebrisAnimType = pArray->Items[ScenarioClass::Instance->Random.RandomFromMax(pArray->Count - 1)])
-								{
-									AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pDebrisAnimType, debrisAnim_Coord, 0, 1, AnimFlag::AnimFlag_200 | AnimFlag::AnimFlag_400, 0, 0), args.Attacker ? args.Attacker->GetOwningHouse() : args.SourceHouse,
-									pThis->GetOwningHouse(), false);
-								}
+								AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pDebrisAnimType, debrisAnim_Coord, 0, 1, AnimFlag::AnimFlag_200 | AnimFlag::AnimFlag_400, 0, 0), args.Attacker ? args.Attacker->GetOwningHouse() : args.SourceHouse,
+								pThis->GetOwningHouse(), false);
 							}
 						}
 					}
 				}
+			}
 
-				if (!(pThis->WhatAmI() == AbstractType::Building && !BuildingTypeExtContainer::Instance.Find(((BuildingClass*)pThis)->Type)->Explodes_DuringBuildup && (pThis->CurrentMission == Mission::Construction || pThis->CurrentMission == Mission::Selling)))
+			auto pWeapon = pThis->GetWeapon(pThis->CurrentWeaponNumber)->WeaponType;
+			if (pType->Explodes || pThis->HasAbility(AbilityType::Explodes) || (pWeapon && pWeapon->Suicide))
+			{
+				const bool refuseToExplode = pThis->WhatAmI() == AbstractType::Building
+					&& !BuildingTypeExtContainer::Instance.Find(((BuildingClass*)pThis)->Type)->Explodes_DuringBuildup
+					&& (pThis->CurrentMission == Mission::Construction || pThis->CurrentMission == Mission::Selling);
+
+				if (TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->Explodes_KillPassengers)
 				{
-					auto pWeapon = pThis->GetWeapon(pThis->CurrentWeaponNumber)->WeaponType;
-
-					if (pType->Explodes || pThis->HasAbility(AbilityType::Explodes) || (pWeapon && pWeapon->Suicide))
+					while (pThis->Passengers.FirstPassenger)
 					{
-						if (TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->Explodes_KillPassengers)
+						auto pPassenger = pThis->Passengers.GetFirstPassenger();
+						if (auto pTeam = pPassenger->Team)
 						{
-							while (pThis->Passengers.FirstPassenger)
-							{
-								auto pPassenger = pThis->Passengers.GetFirstPassenger();
-								if (auto pTeam = pPassenger->Team)
-								{
-									pTeam->RemoveMember(pPassenger);
-								}
-
-								if (auto pPassengerremoved = pThis->Passengers.RemoveFirstPassenger())
-								{
-									pPassengerremoved->KillCargo(args.Attacker);
-									pPassengerremoved->RegisterDestruction(args.Attacker);
-								}
-							}
+							pTeam->RemoveMember(pPassenger);
 						}
 
-						if (!pWHExt->ApplySuppressDeathWeapon(pThis))
-							pThis->FireDeathWeapon(0);
+						if (auto pPassengerremoved = pThis->Passengers.RemoveFirstPassenger())
+						{
+							pPassengerremoved->RegisterDestruction(args.Attacker);
+							TechnoExtData::HandleRemove(pPassengerremoved, args.Attacker, false, false);
+						}
 					}
 				}
+
+				if (!refuseToExplode && !pWHExt->ApplySuppressDeathWeapon(pThis))
+					pThis->FireDeathWeapon(0);
 			}
 
 			if (args.Attacker)
@@ -1109,11 +1146,12 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 			{
 				pBomb->Detonate();
 			}
+
 			R->EAX(_res);
 			return 0x702D1F;
-		default:
+		}
+		else
 		{
-		LABEL_181:
 			if (pType->DamageSound != -1)
 			{
 				VocClass::PlayIndexAtPos(pType->DamageSound, pThis->Location, 0);
@@ -1123,212 +1161,192 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 			{
 				pThis->BaseIsAttacked(args.Attacker);
 			}
-
-			if (_res == DamageState::NowDead)
-			{
-				R->EAX(_res);
-				return 0x702D1F;
-			}
-
-		LABEL_191:
-
-			if (args.Attacker && !pThis->Owner->IsAlliedWith(args.Attacker))
-			{
-				pThis->IsTickedOff = 1;
-			}
-
-			bool IsAffected = _res != DamageState::Unaffected;
-			bool bAffected = false;
-
-			if (IsAffected || args.IgnoreDefenses || _isNegativeDamage || *args.Damage)
-			{
-				if (IsAffected && _isNegativeDamage)
-				{
-					const auto rank = pThis->Veterancy.GetRemainingLevel();
-					const auto fromTechno = pTypeExt->SelfHealing_CombatDelay.GetFromSpecificRank(rank);
-					const int amount = pWHExt->SelfHealing_CombatDelay.GetFromSpecificRank(rank)
-						->Get(fromTechno);
-
-					//the timer will always restart
-					//not accumulated
-					if (amount > 0)
-					{
-						pExt->SelfHealing_CombatDelay.Start(amount);
-					}
-				}
-			}
-			else { bAffected = true; }
-
-			const auto pHouse = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
-
-			if (IsAffected && pWHExt->DecloakDamagedTargets.Get())
-				pThis->Reveal();
-
-			const auto bCond1 = (!bAffected || !pWHExt->EffectsRequireDamage);
-			const auto bCond2 = (!pWHExt->EffectsRequireVerses || (pWHExt->GetVerses(TechnoExtData::GetTechnoArmor(pThis, args.WH)).Verses >= 0.0001));
-
-			if (bCond1 && bCond2)
-			{
-				AresWPWHExt::applyKillDriver(args.WH, args.Attacker, pThis);
-
-				if (pWHExt->Sonar_Duration > 0)
-				{
-					auto& nSonarTime = TechnoExtContainer::Instance.Find(pThis)->CloakSkipTimer;
-					if (pWHExt->Sonar_Duration > nSonarTime.GetTimeLeft())
-					{
-						nSonarTime.Start(pWHExt->Sonar_Duration);
-
-						if (pThis->CloakState != CloakState::Uncloaked)
-						{
-							pThis->Uncloak(true);
-							pThis->NeedsRedraw = true;
-						}
-					}
-				}
-
-				if (pWHExt->DisableWeapons_Duration > 0)
-				{
-					auto& nTimer = TechnoExtContainer::Instance.Find(pThis)->DisableWeaponTimer;
-					if (pWHExt->DisableWeapons_Duration > nTimer.GetTimeLeft())
-					{
-						nTimer.Start(pWHExt->DisableWeapons_Duration);
-					}
-				}
-
-				if (pWHExt->Flash_Duration > 0 && pWHExt->Flash_Duration > pThis->Flashing.DurationRemaining)
-				{
-					pThis->Flash(pWHExt->Flash_Duration);
-				}
-
-				if (pWHExt->RemoveDisguise)
-				{
-					pWHExt->ApplyRemoveDisguise(pHouse, pThis);
-				}
-
-				if (pWHExt->RemoveMindControl)
-				{
-					pWHExt->ApplyRemoveMindControl(pHouse, pThis);
-				}
-			}
-
-			if (pThis->GetHealthPercentage() <= RulesClass::Instance->ConditionYellow)
-			{
-				if (_res == DamageState::NowYellow || _res == DamageState::NowRed)
-				{
-					StackVector<ParticleSystemTypeClass*, 15u> _Particles {};
-					const auto allowAny = pTypeExt->ParticleSystems_DamageSmoke.HasValue();
-
-					for (const auto pSystem : pTypeExt->ParticleSystems_DamageSmoke.GetElements(pType->DamageParticleSystems))
-					{
-						if (allowAny || pSystem->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
-						{
-							_Particles->push_back(pSystem);
-						}
-					}
-
-					if (!pThis->DamageParticleSystem && !_Particles->empty() && pThis->GetHeight() > -10)
-					{
-						CoordStruct _offs = pThis->Location + pType->GetParticleSysOffset();
-						pThis->DamageParticleSystem =
-							GameCreate<ParticleSystemClass>(_Particles[ScenarioClass::Instance->Random.RandomFromMax(_Particles->size() - 1)], _offs, nullptr, pThis);
-					}
-				}
-			}
-			else
-			{
-				if (auto& pPart = pThis->DamageParticleSystem)
-				{
-					pPart->UnInit();
-					pPart = nullptr;
-				}
-			}
-
-			if (_isNegativeDamage)
-			{
-				R->EAX(_res);
-				return 0x702D1F;
-			}
-
-			const auto pFoot = flag_cast_to<FootClass*, false>(pThis);
-			auto retalitate = args.Attacker;
-			if (args.Attacker && args.Attacker->InOpenToppedTransport && args.Attacker->Transporter)
-			{
-				retalitate = args.Attacker->Transporter;
-			}
-
-			bool retaliate = false;
-			if (pThis->AllowToRetaliate(retalitate, args.WH))
-			{
-				if (retalitate)
-				{
-					if (pThis->IsCloseEnough(args.Attacker, pThis->SelectWeapon(args.Attacker))
-						|| !pThis->Owner->IsControlledByHuman()
-						|| (((pType->Sight + 0.5) * 256.0) >= (retalitate->Location - pThis->Location).Length()))
-					{
-						pThis->Override_Mission(Mission::Attack, retalitate);
-					}
-				}
-
-				retaliate = true;
-			}
-
-			if (!pWHExt->PreventScatter)
-			{
-				if (pFoot)
-				{
-					if (!pFoot->Target && !pFoot->Destination)
-					{
-						if (retaliate && (RulesClass::Instance->PlayerScatter || pFoot->HasAbility(AbilityType::Scatter)))
-						{
-							pFoot->Scatter(CoordStruct::Empty, true, false);
-						}
-						else if (!pFoot->IsTethered && pFoot->WhatAmI() != AircraftClass::AbsID && pThis->GetCurrentMissionControl()->Scatter)
-						{
-							const bool IsMoving = pFoot->Locomotor.GetInterfacePtr()->Is_Moving();
-
-							if (!IsMoving)
-							{
-								const bool IsHuman = pFoot->Owner->IsControlledByHuman();
-								const bool IsScatter = RulesClass::Instance->PlayerScatter;
-								const bool IscatterAbility = pFoot->HasAbility(AbilityType::Scatter);
-								if (!IsHuman || IsScatter || IscatterAbility)
-								{
-									pFoot->Scatter(CoordStruct::Empty, true, false);
-								}
-							}
-						}
-					}
-				}
-			}
-
-			R->EAX(_res);
-			return 0x702D1F;
 		}
+	}
+	break;
+	case DamageState::PostMortem:
+	{
+		pThis->IsAlive = true;
+		pThis->Health = 1;
+		R->EAX(DamageState::PostMortem);
+		return 0x702D1F;
+	}
+	default:
+		break;
+	}
 
-		if (auto pBld = cast_to<BuildingClass*, false>(pThis))
+	if (args.Attacker && !pThis->Owner->IsAlliedWith(args.Attacker))
+	{
+		pThis->IsTickedOff = 1;
+	}
+
+	bool IsAffected = _res != DamageState::Unaffected;
+	bool bAffected = false;
+	if (IsAffected || args.IgnoreDefenses || _isNegativeDamage || *args.Damage)
+	{
+		if (IsAffected && !_isNegativeDamage)
 		{
-			if (!pBld->Type->EligibleForDelayKill)
-			{
-				goto LABEL_94;
-			}
+			const auto rank = pThis->Veterancy.GetRemainingLevel();
+			const auto fromTechno = pTypeExt->SelfHealing_CombatDelay.GetFromSpecificRank(rank);
+			const int amount = pWHExt->SelfHealing_CombatDelay.GetFromSpecificRank(rank)
+				->Get(fromTechno);
 
-			const int v22 = (int)(((double)args.WH->DelayKillAtMax * (double)args.WH->DelayKillFrames - (double)args.WH->DelayKillFrames)
-			  / (double)((int)args.WH->CellSpread << 8)
-			  * (double)args.DistanceToEpicenter
-			  + (double)args.WH->DelayKillFrames);
-
-			if (!pBld->IsGoingToBlow || pBld->GoingToBlowTimer.Expired())
+			//the timer will always restart
+			//not accumulated
+			if (amount > 0)
 			{
-				pBld->GoingToBlowTimer.Start(v22);
-				pBld->IsGoingToBlow = true;
+				pExt->SelfHealing_CombatDelay.Start(amount);
 			}
 		}
+	}
+	else { bAffected = true; }
+
+	const auto pHouse = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
+
+	if (IsAffected && pWHExt->DecloakDamagedTargets.Get())
+		pThis->Reveal();
+
+	const auto bCond1 = (!bAffected || !pWHExt->EffectsRequireDamage);
+	const auto bCond2 = (!pWHExt->EffectsRequireVerses || (pWHExt->GetVerses(TechnoExtData::GetTechnoArmor(pThis, args.WH)).Verses >= 0.0001));
+
+	if (bCond1 && bCond2)
+	{
+		AresWPWHExt::applyKillDriver(args.WH, args.Attacker, pThis);
+
+		if (pWHExt->Sonar_Duration > 0)
+		{
+			auto& nSonarTime = TechnoExtContainer::Instance.Find(pThis)->CloakSkipTimer;
+			if (pWHExt->Sonar_Duration > nSonarTime.GetTimeLeft())
+			{
+				nSonarTime.Start(pWHExt->Sonar_Duration);
+
+				if (pThis->CloakState != CloakState::Uncloaked)
+				{
+					pThis->Uncloak(true);
+					pThis->NeedsRedraw = true;
+				}
+			}
+		}
+
+		if (pWHExt->DisableWeapons_Duration > 0)
+		{
+			auto& nTimer = TechnoExtContainer::Instance.Find(pThis)->DisableWeaponTimer;
+			if (pWHExt->DisableWeapons_Duration > nTimer.GetTimeLeft())
+			{
+				nTimer.Start(pWHExt->DisableWeapons_Duration);
+			}
+		}
+
+		if (pWHExt->Flash_Duration > 0 && pWHExt->Flash_Duration > pThis->Flashing.DurationRemaining)
+		{
+			pThis->Flash(pWHExt->Flash_Duration);
+		}
+
+		if (pWHExt->RemoveDisguise)
+		{
+			pWHExt->ApplyRemoveDisguise(pHouse, pThis);
+		}
+
+		if (pWHExt->RemoveMindControl)
+		{
+			pWHExt->ApplyRemoveMindControl(pHouse, pThis);
 		}
 	}
 
-	pThis->IsAlive = true;
-	pThis->Health = 1;
-	R->EAX(DamageState::PostMortem);
+	if (pThis->GetHealthPercentage() <= RulesClass::Instance->ConditionYellow)
+	{
+		if (_res == DamageState::NowYellow || _res == DamageState::NowRed)
+		{
+			StackVector<ParticleSystemTypeClass*, 15u> _Particles {};
+			const auto allowAny = pTypeExt->ParticleSystems_DamageSmoke.HasValue();
+
+			for (const auto pSystem : pTypeExt->ParticleSystems_DamageSmoke.GetElements(pType->DamageParticleSystems))
+			{
+				if (allowAny || pSystem->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
+				{
+					_Particles->push_back(pSystem);
+				}
+			}
+
+			if (!pThis->DamageParticleSystem && !_Particles->empty() && pThis->GetHeight() > -10)
+			{
+				CoordStruct _offs = pThis->Location + pType->GetParticleSysOffset();
+				pThis->DamageParticleSystem =
+					GameCreate<ParticleSystemClass>(
+						_Particles[ScenarioClass::Instance->Random.RandomFromMax(_Particles->size() - 1)],
+						_offs,
+						nullptr,
+						pThis);
+			}
+		}
+	}
+	else
+	{
+		if (auto& pPart = pThis->DamageParticleSystem)
+		{
+			pPart->UnInit();
+		}
+	}
+
+	if (_isNegativeDamage)
+	{
+		R->EAX(_res);
+		return 0x702D1F;
+	}
+
+	const auto pFoot = flag_cast_to<FootClass*, false>(pThis);
+	auto retalitate = args.Attacker;
+	if (args.Attacker && args.Attacker->InOpenToppedTransport && args.Attacker->Transporter)
+	{
+		retalitate = args.Attacker->Transporter;
+	}
+
+	bool retaliate = false;
+	if (pThis->AllowToRetaliate(retalitate, args.WH))
+	{
+		if (retalitate)
+		{
+			if (pThis->IsCloseEnough(args.Attacker, pThis->SelectWeapon(args.Attacker))
+				|| !pThis->Owner->IsControlledByHuman()
+				|| (((pType->Sight + 0.5) * 256.0) >= (retalitate->Location - pThis->Location).Length()))
+			{
+				pThis->Override_Mission(Mission::Attack, retalitate);
+			}
+		}
+
+		retaliate = true;
+	}
+
+	if (!pWHExt->PreventScatter)
+	{
+		if (pFoot)
+		{
+			if (!pFoot->Target && !pFoot->Destination)
+			{
+				if (retaliate && (RulesClass::Instance->PlayerScatter || pFoot->HasAbility(AbilityType::Scatter)))
+				{
+					pFoot->Scatter(CoordStruct::Empty, true, false);
+				}
+				else if (!pFoot->IsTethered && pFoot->WhatAmI() != AircraftClass::AbsID && pThis->GetCurrentMissionControl()->Scatter)
+				{
+					const bool IsMoving = pFoot->Locomotor.GetInterfacePtr()->Is_Moving();
+
+					if (!IsMoving)
+					{
+						const bool IsHuman = pFoot->Owner->IsControlledByHuman();
+						const bool IsScatter = RulesClass::Instance->PlayerScatter;
+						const bool IscatterAbility = pFoot->HasAbility(AbilityType::Scatter);
+						if (!IsHuman || IsScatter || IscatterAbility)
+						{
+							pFoot->Scatter(CoordStruct::Empty, true, false);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	R->EAX(_res);
 	return 0x702D1F;
 }
 
@@ -1423,66 +1441,7 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 			{
 				pParticle->SpawnFrames *= 1.5;
 			}
-
-			if (!pTypeExt->DisableDamageSound && pThis->Type->DamageSound == -1)
-			{
-				VocClass::PlayIndexAtPos(RulesClass::Instance->BuildingDamageSound, &pThis->Location, 0);
-			}
-
-			if (args.WH->Sparky)
-			{
-				const bool Onfire = pTypeExt->HealthOnfire.Get(pThis->GetHealthStatus());
-				auto const pFireType = pTypeExt->OnFireTypes.GetElements(RulesClass::Instance->OnFire);
-
-				if (Onfire && pFireType.size() >= 3 && Unsorted::CurrentFrame > pBldExt->LastFlameSpawnFrame + RulesExtData::Instance()->BuildingFlameSpawnBlockFrames)
-				{
-					pBldExt->LastFlameSpawnFrame = Unsorted::CurrentFrame;
-					const auto rand_ = pThis->Type->GetFoundationWidth() + pThis->Type->GetFoundationHeight(false) + 5;
-
-					for (auto fnd = foundation; (fnd->X != 0x7FFF || fnd->Y != 0x7FFF); ++fnd)
-					{
-						auto const& [nCellX, nCellY] = pThis->InlineMapCoords() + *fnd;
-						CoordStruct nDestCoord { (nCellX * 256) + 128, (nCellY * 256) + 128, 0 };
-						nDestCoord.Z = MapClass::Instance->GetCellFloorHeight(nDestCoord);
-
-						auto PlayFireAnim = [&](int nLoop = 1, int nFireTypeAt = 2)
-							{
-								if (auto pAnimType = pFireType[nFireTypeAt])
-								{
-									nDestCoord = MapClass::GetRandomCoordsNear(nDestCoord, 96, false);
-									auto const pAnim = GameCreate<AnimClass>(pAnimType, nDestCoord, 0, nLoop);
-									pAnim->SetOwnerObject(pThis);
-									const auto pKiller = args.Attacker;
-									const auto Invoker = (pKiller) ? pKiller->Owner : args.SourceHouse;
-									AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, pKiller, false);
-								}
-							};
-
-						switch (ScenarioClass::Instance->Random.RandomFromMax(rand_))
-						{
-						case 1:
-						case 2:
-						case 3:
-						case 4:
-						case 5:
-							PlayFireAnim(ScenarioClass::Instance->Random.RandomRanged(1, pFireType.size()), 0);
-							break;
-						case 6:
-						case 7:
-						case 8:
-							PlayFireAnim(ScenarioClass::Instance->Random.RandomRanged(1, pFireType.size()), 1);
-							break;
-						case 9:
-							PlayFireAnim();
-							break;
-						default:
-							break;
-						}
-					}
-				}
-			}
-
-			break;
+			[[fallthrough]];
 		}
 		case DamageState::NowRed:
 		{
@@ -1608,20 +1567,15 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 			auto Started = pThis->GoingToBlowTimer.StartTime;
 			auto DelayTime = pThis->GoingToBlowTimer.TimeLeft;
 
-			if (Started == -1)
-			{
-				goto LABEL_59;
-			}
-
-			if (Unsorted::CurrentFrame - Started < DelayTime)
+			if (Started != -1 && Unsorted::CurrentFrame - Started < DelayTime)
 			{
 				DelayTime -= Unsorted::CurrentFrame - Started;
-			LABEL_59:
-				if (DelayTime > 0)
-				{
-					pThis->UnInit();
-					pThis->AfterDestruction();
-				}
+			}
+
+			if (DelayTime > 0)
+			{
+				pThis->UnInit();
+				pThis->AfterDestruction();
 			}
 			break;
 		}
@@ -1850,12 +1804,9 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 	{
 		*args.Damage = static_cast<int>(*args.Damage * pWarheadExt->DeployedDamage.Get(pThis));
 	}
-	else if (pThis->Crawling)
+	else if (pThis->Crawling && *args.Damage > 0 && !args.IgnoreDefenses)
 	{
-		if (*args.Damage > 0 && !args.IgnoreDefenses)
-		{
-			*args.Damage = (int)MaxImpl(((double)*args.Damage * args.WH->ProneDamage), 1);
-		}
+		*args.Damage = (int)MaxImpl(((double)*args.Damage * args.WH->ProneDamage), 1);
 	}
 
 	if (args.WH->InfDeath == InfDeath::Mutate && pThis->GetHeight() > 0)
@@ -1864,446 +1815,434 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 	}
 
 	DamageState _res = pThis->FootClass::ReceiveDamage(args.Damage, args.DistanceToEpicenter, args.WH, args.Attacker, args.IgnoreDefenses, args.PreventsPassengerEscape, args.SourceHouse);
-
-	if (_res != DamageState::PostMortem)
+	if (_res == DamageState::Unaffected || _res == DamageState::PostMortem)
 	{
-		if (_res == DamageState::Unaffected)
+		R->EAX(_res);
+		return 0x518D52;
+	}
+
+	if (_res == DamageState::NowDead)
+	{
+		if (auto pEnslave = pThis->SlaveOwner)
 		{
-			R->EAX(_res);
-			return 0x518D52;
+			if (auto pManager = pEnslave->SlaveManager)
+			{
+				pManager->Killed(pThis);
+			}
 		}
 
-		if (_res == DamageState::NowDead)
+		auto MyTransport = pThis->Transporter;
+
+		if (MyTransport
+		  && MyTransport->WhatAmI() == UnitClass::AbsID
+		  && pThis->Type->Gunner)
 		{
-			if (auto pEnslave = pThis->SlaveOwner)
+			static_cast<UnitClass*>(MyTransport)->RemovePassenger(pThis);
+		}
+
+		pThis->Destroyed(args.Attacker);
+		pThis->StopMoving();
+		pThis->Stun();
+		pThis->QueueMission(Mission::None, false);
+		pThis->QueueMission(Mission::Guard, false);
+		pThis->NextMission();
+		pThis->KillPassengers(args.Attacker);
+
+		if (!TechnoExtContainer::Instance.Find(pThis)->GarrisonedIn)
+		{
+			bool IsForcedCyborg = false;
+			if (args.IgnoreDefenses)
 			{
-				if (auto pManager = pEnslave->SlaveManager)
+				if (pThis->Type->Cyborg)
 				{
-					pManager->Killed(pThis);
+					IsForcedCyborg = true;
+					if (pThis->IsABomb)
+					{
+						GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+					}
 				}
 			}
 
-			auto MyTransport = pThis->Transporter;
-
-			if (MyTransport
-			  && MyTransport->WhatAmI() == UnitClass::AbsID
-			  && pThis->Type->Gunner)
+			if (pThis->GetHeight() <= 10 && pThis->GetCell()->LandType == LandType::Water)
 			{
-				static_cast<UnitClass*>(MyTransport)->RemovePassenger(pThis);
+				if (pThis->IsABomb)
+				{
+					GameCreate<AnimClass>(RulesClass::Instance->Wake, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+
+					auto splash_loc = pThis->Location + CoordStruct { 0, 0, 3 };
+					GameCreate<AnimClass>(RulesClass::Instance->SplashList[0], splash_loc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+				}
+
+				R->EAX(DamageState::NowDead);
+				return Crashable(pThis, pThis->Type, args.Attacker);
 			}
 
-			pThis->Destroyed(args.Attacker);
-			pThis->StopMoving();
-			pThis->Stun();
-			pThis->QueueMission(Mission::None, false);
-			pThis->QueueMission(Mission::Guard, false);
-			pThis->NextMission();
-			pThis->KillPassengers(args.Attacker);
-
-			if (!TechnoExtContainer::Instance.Find(pThis)->GarrisonedIn)
+			if (pThis->Type->Cyborg && pThis->Crawling)
 			{
-				bool IsForcedCyborg = false;
-				if (args.IgnoreDefenses)
+				GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+				R->EAX(DamageState::NowDead);
+				return Crashable(pThis, pThis->Type, args.Attacker);
+			}
+			else
+			{
+				auto infDeath = args.WH->InfDeath;
+				if (!pThis->Type->JumpJet)
 				{
-					if (pThis->Type->Cyborg)
+					if (pThis->SequenceAnim == DoType::Paradrop)
 					{
-						IsForcedCyborg = true;
-						if (pThis->IsABomb)
+						if (infDeath == InfDeath::Virus)
 						{
-							GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-						}
-					}
-				}
+							auto pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+							auto pInvoker = args.Attacker
+								? args.Attacker->Owner
+								: args.SourceHouse;
 
-				if (pThis->GetHeight() <= 10)
-				{
-					if (pThis->GetCell()->LandType == LandType::Water)
-					{
-						if (pThis->IsABomb)
-						{
-							GameCreate<AnimClass>(RulesClass::Instance->Wake, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+							AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
 
-							auto splash_loc = pThis->Location + CoordStruct { 0, 0, 3 };
-							GameCreate<AnimClass>(RulesClass::Instance->SplashList[0], splash_loc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-						}
-
-						R->EAX(DamageState::NowDead);
-						return Crashable(pThis, pThis->Type, args.Attacker);
-					}
-				}
-
-				if (pThis->Type->Cyborg && pThis->Crawling)
-				{
-					GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-					R->EAX(DamageState::NowDead);
-					return Crashable(pThis, pThis->Type, args.Attacker);
-				}
-				else
-				{
-					auto infDeath = args.WH->InfDeath;
-					if (!pThis->Type->JumpJet)
-					{
-						if (pThis->SequenceAnim == DoType::Paradrop)
-						{
-							if (infDeath == InfDeath::Virus)
+							if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
 							{
-								auto pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-								auto pInvoker = args.Attacker
-									? args.Attacker->Owner
-									: args.SourceHouse;
-
-								AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
-
-								if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
-								{
-									auto pParticleType = ParticleTypeClass::Array->Items[RulesClass::Instance->InfantryVirus->SpawnsParticle];
-									ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
-								}
-							}
-
-							infDeath = InfDeath::Explode;
-						}
-
-						if (auto pAttackerBld = cast_to<BuildingClass*>(args.Attacker))
-						{
-							if (pAttackerBld->Type->LaserFence)
-							{
-								infDeath = InfDeath::Electro;
+								auto pParticleType = ParticleTypeClass::Array->Items[RulesClass::Instance->InfantryVirus->SpawnsParticle];
+								ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
 							}
 						}
 
-						if (pThis->Type->DeathAnims.Count <= 0)
+						infDeath = InfDeath::Explode;
+					}
+
+					if (auto pAttackerBld = cast_to<BuildingClass*>(args.Attacker))
+					{
+						if (pAttackerBld->Type->LaserFence)
 						{
-							if (pThis->Type->NotHuman)
+							infDeath = InfDeath::Electro;
+						}
+					}
+
+					if (pThis->Type->DeathAnims.Count <= 0)
+					{
+						if (pThis->Type->NotHuman)
+						{
+							bool Succeeded = false;
+
+							if (auto pDeathAnim = pWarheadExt->NotHuman_DeathAnim.Get(nullptr))
 							{
-								bool Succeeded = false;
-
-								if (auto pDeathAnim = pWarheadExt->NotHuman_DeathAnim.Get(nullptr))
-								{
-									auto pAnim = GameCreate<AnimClass>(pDeathAnim, pThis->Location);
-									auto pInvoker = args.Attacker ? args.Attacker->GetOwningHouse() : nullptr;
-									AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->GetOwningHouse(), args.Attacker, true, true);
-									pAnim->ZAdjust = pThis->GetZAdjustment();
-									Succeeded = true;
-								}
-								else
-								{
-									auto const& whSequence = pWarheadExt->NotHuman_DeathSequence;
-									// Die1-Die5 sequences are offset by 10
-									COMPILETIMEEVAL auto Die = [](int x) { return x + 10; };
-
-									int resultSequence = Die(1);
-
-									if (!whSequence.isset()
-										&& TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->NotHuman_RandomDeathSequence.Get())
-									{
-										resultSequence = ScenarioClass::Instance->Random.RandomRanged(Die(1), Die(5));
-									}
-									else if (whSequence.isset())
-									{
-										resultSequence = std::clamp(Die(Math::abs(whSequence.Get())), Die(1), Die(5));
-									}
-
-									pThis->_GetExtData()->IsUsingDeathSequence = true;
-
-									//BugFix : when the sequence not declared , it keep the infantry alive ! , wtf WW ?!
-									if (pThis->PlayAnim(static_cast<DoType>(resultSequence), true))
-									{
-										Succeeded = true;
-									}
-								}
-
-								if (Succeeded)
-								{
-									if (infDeath == InfDeath::Virus)
-									{
-										auto pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-										auto pInvoker = args.Attacker
-											? args.Attacker->Owner
-											: args.SourceHouse;
-
-										AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
-
-										if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
-										{
-											auto pParticleType = ParticleTypeClass::Array->Items[RulesClass::Instance->InfantryVirus->SpawnsParticle];
-											ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
-										}
-									}
-
-									if (!IsForcedCyborg)
-									{
-										R->EAX(DamageState::NowDead);
-										return 0x518D52;
-									}
-								}
-								else
-								{
-									pThis->UnInit();
-									R->EAX(DamageState::NowDead);
-									return 0x518D52;
-								}
-
-								R->EAX(DamageState::NowDead);
-								return Crashable(pThis, pThis->Type, args.Attacker);
+								auto pAnim = GameCreate<AnimClass>(pDeathAnim, pThis->Location);
+								auto pInvoker = args.Attacker ? args.Attacker->GetOwningHouse() : nullptr;
+								AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->GetOwningHouse(), args.Attacker, true, true);
+								pAnim->ZAdjust = pThis->GetZAdjustment();
+								Succeeded = true;
 							}
 							else
 							{
-								AnimTypeClass* pTypeAnim = pWarheadExt->InfDeathAnim;
-								for (auto begin = pWarheadExt->InfDeathAnims.begin(); begin != pWarheadExt->InfDeathAnims.end(); ++begin)
+								auto const& whSequence = pWarheadExt->NotHuman_DeathSequence;
+								// Die1-Die5 sequences are offset by 10
+								COMPILETIMEEVAL auto Die = [](int x) { return x + 10; };
+
+								int resultSequence = Die(1);
+
+								if (!whSequence.isset()
+									&& TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->NotHuman_RandomDeathSequence.Get())
 								{
-									if (begin->first == pThis->Type)
-									{
-										pTypeAnim = begin->second;
-										break;
-									}
+									resultSequence = ScenarioClass::Instance->Random.RandomRanged(Die(1), Die(5));
+								}
+								else if (whSequence.isset())
+								{
+									resultSequence = std::clamp(Die(Math::abs(whSequence.Get())), Die(1), Die(5));
 								}
 
-								if (pTypeAnim)
-								{
-									auto pAnim = GameCreate<AnimClass>(pTypeAnim, pThis->Location);
-									HouseClass* const Invoker = (args.Attacker)
-										? args.Attacker->Owner
-										: args.SourceHouse
-										;
+								pThis->_GetExtData()->IsUsingDeathSequence = true;
 
-									AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, args.Attacker, false, true);
-								}
-								else
-								{
-									AnimClass* pAnim = nullptr;
-									switch (infDeath)
-									{
-									case InfDeath::Die1:
-										if (pThis->PlayAnim(DoType::Die1, true, false))
-										{
-											if (!IsForcedCyborg)
-											{
-												R->EAX(DamageState::NowDead);
-												return 0x518D52;
-											}
-										}
-
-										break;
-									case InfDeath::Die2:
-										if (pThis->PlayAnim(DoType::Die2, true, false))
-										{
-											if (!IsForcedCyborg)
-											{
-												R->EAX(DamageState::NowDead);
-												return 0x518D52;
-											}
-										}
-
-										break;
-									case InfDeath::Explode:
-										pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-										break;
-									case InfDeath::Flames:
-										pAnim = GameCreate<AnimClass>(RulesClass::Instance->FlamingInfantry, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-										break;
-									case InfDeath::Electro:
-									{
-										AnimTypeClass* El = RulesExtData::Instance()->ElectricDeath;
-
-										if (!El)
-										{
-											El = AnimTypeClass::Array->Items[0];
-										}
-
-										pAnim = GameCreate<AnimClass>(El, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-									}
-									break;
-									case InfDeath::HeadPop:
-										pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryHeadPop, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-										break;
-									case InfDeath::Nuked:
-										pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryNuked, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-										break;
-									case InfDeath::Virus:
-									{
-										pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-									}
-									break;
-									case InfDeath::Mutate:
-									{
-										auto curLoc = pThis->Location;
-										pThis->UnmarkAllOccupationBits(curLoc);
-										auto pCell = MapClass::Instance->GetCellAt(CellClass::Coord2Cell(curLoc));
-										bool Hasbuilding = false;
-
-										for (auto i = pCell->FirstObject; i; i = i->NextObject)
-										{
-											if (i && i->WhatAmI() == BuildingClass::AbsID)
-												Hasbuilding = true;
-										}
-
-										if (GroundType::Get(pCell->LandType)->Cost[0] == 0.0 && !pThis->OnBridge)
-										{
-											if (!pThis->PlayAnim(DoType::Die2, true, false))
-												break;
-
-											if (!IsForcedCyborg)
-											{
-												R->EAX(DamageState::NowDead);
-												return 0x518D52;
-											}
-										}
-
-										CoordStruct closest {};
-										pCell->FindInfantrySubposition(&closest, curLoc, false, false, false);
-
-										if (!closest.IsValid())
-										{
-											if (!pThis->PlayAnim(DoType::Die2, true, false))
-												break;
-
-											if (!IsForcedCyborg)
-											{
-												R->EAX(DamageState::NowDead);
-												return 0x518D52;
-											}
-										}
-
-										if (Hasbuilding)
-										{
-											if (!pThis->PlayAnim(DoType::Die2, true, false))
-												break;
-
-											if (!IsForcedCyborg)
-											{
-												R->EAX(DamageState::NowDead);
-												return 0x518D52;
-											}
-										}
-
-										pThis->MarkAllOccupationBits(curLoc);
-										auto pAnim_Mutate = GameCreate<AnimClass>(RulesClass::Instance->InfantryMutate, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-
-										auto pInvoker = args.Attacker
-											? args.Attacker->Owner
-											: args.SourceHouse;
-
-										AnimExtData::SetAnimOwnerHouseKind(pAnim_Mutate, pInvoker, pThis->Owner, args.Attacker, true);
-
-										pAnim_Mutate->MarkAllOccupationBits(pThis->Location);
-									}
-									break;
-									case InfDeath::Brute:
-										pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryBrute, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-										break;
-									default:
-										break;
-									}
-
-									if (pAnim)
-									{
-										auto pInvoker = args.Attacker
-											? args.Attacker->Owner
-											: args.SourceHouse;
-
-										const auto& [bChanged, result] = AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
-
-										if (infDeath == InfDeath::Mutate && bChanged && result != OwnerHouseKind::Default)
-										{
-											pAnim->LightConvert = nullptr;
-										}
-									}
-								}
-
-								R->EAX(DamageState::NowDead);
-								return Crashable(pThis, pThis->Type, args.Attacker);
+								//BugFix : when the sequence not declared , it keep the infantry alive ! , wtf WW ?!
+								Succeeded = pThis->PlayAnim(static_cast<DoType>(resultSequence), true);
 							}
+
+							if (Succeeded)
+							{
+								if (infDeath == InfDeath::Virus)
+								{
+									auto pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+									auto pInvoker = args.Attacker
+										? args.Attacker->Owner
+										: args.SourceHouse;
+
+									AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+
+									if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
+									{
+										auto pParticleType = ParticleTypeClass::Array->Items[RulesClass::Instance->InfantryVirus->SpawnsParticle];
+										ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
+									}
+								}
+
+								if (!IsForcedCyborg)
+								{
+									R->EAX(DamageState::NowDead);
+									return 0x518D52;
+								}
+							}
+							else //infdeath fail
+							{
+								pThis->UnInit();
+								R->EAX(DamageState::NowDead);
+								return 0x518D52;
+							}
+
+							R->EAX(DamageState::NowDead);
+							return Crashable(pThis, pThis->Type, args.Attacker);
 						}
 						else
 						{
-							int infDeathInt = (int)infDeath;
-							if (infDeathInt < 0
-								|| infDeathInt >= pThis->Type->DeathAnims.Count
-								|| !pThis->Type->DeathAnims[infDeathInt])
+							AnimTypeClass* pTypeAnim = pWarheadExt->InfDeathAnim;
+							for (auto begin = pWarheadExt->InfDeathAnims.begin(); begin != pWarheadExt->InfDeathAnims.end(); ++begin)
 							{
-								infDeathInt = 0;
+								if (begin->first == pThis->Type)
+								{
+									pTypeAnim = begin->second;
+									break;
+								}
 							}
 
-							if (auto pDeathAnim = pThis->Type->DeathAnims[infDeathInt])
+							if (pTypeAnim)
 							{
-								auto pAnim = GameCreate<AnimClass>(pDeathAnim, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-
-								HouseClass* Invoker = (args.Attacker)
+								auto pAnim = GameCreate<AnimClass>(pTypeAnim, pThis->Location);
+								HouseClass* const Invoker = (args.Attacker)
 									? args.Attacker->Owner
 									: args.SourceHouse
 									;
 
 								AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, args.Attacker, false, true);
 							}
+							else
+							{
+								AnimClass* pAnim = nullptr;
+								switch (infDeath)
+								{
+								case InfDeath::Die1:
+									if (pThis->PlayAnim(DoType::Die1, true, false))
+									{
+										if (!IsForcedCyborg)
+										{
+											R->EAX(DamageState::NowDead);
+											return 0x518D52;
+										}
+									}
+
+									break;
+								case InfDeath::Die2:
+									if (pThis->PlayAnim(DoType::Die2, true, false))
+									{
+										if (!IsForcedCyborg)
+										{
+											R->EAX(DamageState::NowDead);
+											return 0x518D52;
+										}
+									}
+
+									break;
+								case InfDeath::Explode:
+									pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+									break;
+								case InfDeath::Flames:
+									pAnim = GameCreate<AnimClass>(RulesClass::Instance->FlamingInfantry, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+									break;
+								case InfDeath::Electro:
+								{
+									AnimTypeClass* El = RulesExtData::Instance()->ElectricDeath;
+
+									if (!El)
+									{
+										El = AnimTypeClass::Array->Items[0];
+									}
+
+									pAnim = GameCreate<AnimClass>(El, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								}
+								break;
+								case InfDeath::HeadPop:
+									pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryHeadPop, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+									break;
+								case InfDeath::Nuked:
+									pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryNuked, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+									break;
+								case InfDeath::Virus:
+								{
+									pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryVirus, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+								}
+								break;
+								case InfDeath::Mutate:
+								{
+									auto curLoc = pThis->Location;
+									pThis->UnmarkAllOccupationBits(curLoc);
+									auto pCell = MapClass::Instance->GetCellAt(CellClass::Coord2Cell(curLoc));
+									const bool Hasbuilding = pCell->GetBuilding();
+
+									if (GroundType::Get(pCell->LandType)->Cost[0] == 0.0 && !pThis->OnBridge)
+									{
+										bool fail = false;
+										if (!pThis->PlayAnim(DoType::Die2, true, false))
+										{
+											pThis->UnInit();//fail
+											fail = true;
+										}
+
+										if (!IsForcedCyborg || fail)
+										{
+											R->EAX(DamageState::NowDead);
+											return 0x518D52;
+										}
+										else break;
+									}
+
+									CoordStruct closest {};
+									pCell->FindInfantrySubposition(&closest, curLoc, false, false, false);
+
+									if (!closest.IsValid())
+									{
+										bool fail = false;
+										if (!pThis->PlayAnim(DoType::Die2, true, false))
+										{
+											pThis->UnInit();//fail
+											fail = true;
+										}
+
+										if (!IsForcedCyborg || fail)
+										{
+											R->EAX(DamageState::NowDead);
+											return 0x518D52;
+										}
+										else break;
+									}
+
+									if (Hasbuilding)
+									{
+										bool fail = false;
+
+										if (!pThis->PlayAnim(DoType::Die2, true, false))
+										{
+											pThis->UnInit();//fail
+											fail = true;
+										}
+
+										if (!IsForcedCyborg || fail)
+										{
+											R->EAX(DamageState::NowDead);
+											return 0x518D52;
+										}
+										else break;
+									}
+
+									pThis->MarkAllOccupationBits(curLoc);
+									auto pAnim_Mutate = GameCreate<AnimClass>(RulesClass::Instance->InfantryMutate, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+
+									auto pInvoker = args.Attacker
+										? args.Attacker->Owner
+										: args.SourceHouse;
+
+									AnimExtData::SetAnimOwnerHouseKind(pAnim_Mutate, pInvoker, pThis->Owner, args.Attacker, true);
+
+									pAnim_Mutate->MarkAllOccupationBits(pThis->Location);
+								}
+								break;
+								case InfDeath::Brute:
+									pAnim = GameCreate<AnimClass>(RulesClass::Instance->InfantryBrute, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+									break;
+								default:
+									break;
+								}
+
+								if (pAnim)
+								{
+									auto pInvoker = args.Attacker
+										? args.Attacker->Owner
+										: args.SourceHouse;
+
+									const auto& [bChanged, result] = AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+
+									if (infDeath == InfDeath::Mutate && bChanged && result != OwnerHouseKind::Default)
+									{
+										pAnim->LightConvert = nullptr;
+									}
+								}
+							}
+
+							R->EAX(DamageState::NowDead);
+							return Crashable(pThis, pThis->Type, args.Attacker);
+						}
+					}
+					else
+					{
+						int infDeathInt = (int)infDeath;
+						if (infDeathInt < 0
+							|| infDeathInt >= pThis->Type->DeathAnims.Count
+							|| !pThis->Type->DeathAnims[infDeathInt])
+						{
+							infDeathInt = 0;
+						}
+
+						if (auto pDeathAnim = pThis->Type->DeathAnims[infDeathInt])
+						{
+							auto pAnim = GameCreate<AnimClass>(pDeathAnim, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+
+							HouseClass* Invoker = (args.Attacker)
+								? args.Attacker->Owner
+								: args.SourceHouse
+								;
+
+							AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, args.Attacker, false, true);
 						}
 					}
 				}
-
-				GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
 			}
 
-			R->EAX(DamageState::NowDead);
-			return Crashable(pThis, pThis->Type, args.Attacker);
+			GameCreate<AnimClass>(RulesClass::Instance->InfantryExplode, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
 		}
 
-		if (!pThis->Owner->IsControlledByHuman()
-		  && pThis->Type->Engineer
-		  && (pThis->GetCurrentMission() == Mission::Guard
-			  || pThis->GetCurrentMission() == Mission::Area_Guard))
+		R->EAX(DamageState::NowDead);
+		return Crashable(pThis, pThis->Type, args.Attacker);
+	}
+
+	if (!pThis->Owner->IsControlledByHuman()
+			  && pThis->Type->Engineer
+			  && (pThis->GetCurrentMission() == Mission::Guard
+				  || pThis->GetCurrentMission() == Mission::Area_Guard))
+	{
+		pThis->QueueMission(Mission::Hunt, false);
+	}
+
+	CoordStruct target_ = args.Attacker ? args.Attacker->Location : CoordStruct::Empty;
+	pThis->Scatter(target_, false, false);
+
+	if (args.Attacker && pThis->PanicDurationLeft < 100)
+	{
+		if (pThis->Type->Fraidycat)
 		{
-			pThis->QueueMission(Mission::Hunt, false);
-		}
-
-		CoordStruct target_ = args.Attacker ? args.Attacker->Location : CoordStruct::Empty;
-		pThis->Scatter(target_, false, false);
-
-		if (args.Attacker && pThis->PanicDurationLeft < 100)
-		{
-			if (pThis->Type->Fraidycat)
-			{
-				pThis->PanicDurationLeft = 300;
-				R->EAX(_res);
-				return 0x518D52;
-			}
-
-			if (!pThis->Type->Fearless && !pThis->HasAbility(AbilityType::Fearless))
-			{
-				int PanixMax = 100;
-				if (pThis->Type->Doggie && pThis->IsRedHP())
-				{
-					PanixMax = RulesExtData::Instance()->DoggiePanicMax;
-				}
-
-				pThis->PanicDurationLeft = PanixMax;
-				R->EAX(_res);
-				return 0x518D52;
-			}
+			pThis->PanicDurationLeft = 300;
 		}
 		else if (!pThis->Type->Fearless && !pThis->HasAbility(AbilityType::Fearless))
 		{
-			int morefear = 50;
-			auto _HPPercent = pThis->GetHealthPercentage();
-
-			if (_HPPercent > RulesClass::Instance->ConditionRed)
+			int PanixMax = 100;
+			if (pThis->Type->Doggie && pThis->IsRedHP())
 			{
-				morefear = 25;
+				PanixMax = RulesExtData::Instance()->DoggiePanicMax;
 			}
 
-			if (_HPPercent > RulesClass::Instance->ConditionYellow)
-			{
-				morefear /= 2;
-			}
-
-			int v66 = pThis->PanicDurationLeft + morefear;
-
-			if (v66 >= 300)
-			{
-				v66 = 300;
-			}
-
-			pThis->PanicDurationLeft = v66;
+			pThis->PanicDurationLeft = PanixMax;
 		}
+	}
+	else if (!pThis->Type->Fearless && !pThis->HasAbility(AbilityType::Fearless))
+	{
+		int morefear = 50;
+		auto _HPPercent = pThis->GetHealthPercentage();
+
+		if (_HPPercent > RulesClass::Instance->ConditionRed)
+		{
+			morefear = 25;
+		}
+
+		if (_HPPercent > RulesClass::Instance->ConditionYellow)
+		{
+			morefear /= 2;
+		}
+
+		pThis->PanicDurationLeft = MinImpl(300, pThis->PanicDurationLeft + morefear);
 	}
 
 	R->EAX(_res);
@@ -2314,112 +2253,48 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 
 #pragma region Unit
 
-ASMJIT_PATCH(0x7384BD, UnitClass_ReceiveDamage_OreMinerUnderAttack, 6)
+ASMJIT_PATCH(0x737C90, UnitClass_ReceiveDamage_Handled, 5)
 {
-	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFS(0x44, -0xC));
-	return !WarheadTypeExtContainer::Instance.Find(pWH)->Malicious || WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative ? 0x738535u : 0u;
-}
+	GET(UnitClass*, pThis, ECX);
+	REF_STACK(args_ReceiveDamage, args, 0x4);
 
-ASMJIT_PATCH(0x744745, UnitClass_RegisterDestruction_Trigger, 0x5)
-{
-	GET(UnitClass*, pThis, ESI);
-	GET(TechnoClass*, pAttacker, EDI);
-
-	if (pThis && pThis->IsAlive && pAttacker)
+	DamageState _res = DamageState::Unaffected;
+	if (pThis->DeathFrameCounter > 0)
 	{
-		if (auto pTag = pThis->AttachedTag)
-		{
-			pTag->RaiseEvent((TriggerEvent)AresTriggerEvents::DestroyedByHouse, pThis, CellStruct::Empty, false, pAttacker->GetOwningHouse());
-		}
+		R->EAX(_res);
+		return 0x738679;
 	}
 
-	return 0x0;
-}
+	auto pWHExt = WarheadTypeExtContainer::Instance.Find(args.WH);
+	bool isPlayerControlled = pThis->Owner->ControlledByCurrentPlayer();
+	bool selected = pThis->IsSelected && isPlayerControlled;
 
-ASMJIT_PATCH(0x737F6D, UnitClass_ReceiveDamage_Destroy, 0x7)
-{
-	GET(UnitClass* const, pThis, ESI);
-	REF_STACK(args_ReceiveDamage const, args, STACK_OFFS(0x44, -0x4));
-
-	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
-	R->ECX(R->ESI());
-	pExt->ReceiveDamage = true;
-	AnimTypeExtData::ProcessDestroyAnims(pThis, args.Attacker, args.WH);
-	pThis->Destroy();
-	return 0x737F74;
-}
-
-ASMJIT_PATCH(0x738801, UnitClass_Destroy_DestroyAnim, 0x6) //was C
-{
-	GET(UnitClass* const, pThis, ESI);
-
-	auto const Extension = TechnoExtContainer::Instance.Find(pThis);
-
-	if (!Extension->ReceiveDamage)
+	if (!args.IgnoreDefenses)
 	{
-		AnimTypeExtData::ProcessDestroyAnims(pThis);
-	}
-
-	return 0x73887E;
-}
-
-// #895584: ships not taking damage when repaired in a shipyard. bug
-// was that the logic that prevented units from being damaged when
-// exiting a war factory applied here, too. added the Naval check.
-ASMJIT_PATCH(0x737CE4, UnitClass_ReceiveDamage_ShipyardRepair, 6)
-{
-	GET(BuildingTypeClass*, pType, ECX);
-	return (pType->WeaponsFactory && !pType->Naval)
-		? 0x737CEE : 0x737D31;
-}
-
-ASMJIT_PATCH(0x737F97, UnitClass_ReceiveDamage_Survivours, 0xA)
-{
-	//GET(UnitTypeClass*, pType, EAX);
-	GET(UnitClass*, pThis, ESI);
-	GET_STACK(TechnoClass*, pKiller, 0x54);
-	GET_STACK(bool, select, 0x13);
-	GET_STACK(bool, ignoreDefenses, 0x58);
-	GET_STACK(bool, preventPassangersEscape, STACK_OFFSET(0x44, 0x18));
-
-	if (pThis && pThis->Passengers.NumPassengers > 0)
-	{
-		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-
-		if (pTypeExt->Passengers_SyncOwner && pTypeExt->Passengers_SyncOwner_RevertOnExit)
+		if (auto pRadio = pThis->GetRadioContact())
 		{
-			auto pPassenger = pThis->Passengers.GetFirstPassenger();
-			auto pExt = TechnoExtContainer::Instance.Find(pPassenger);
-
-			if (pExt->OriginalPassengerOwner)
-				pPassenger->SetOwningHouse(pExt->OriginalPassengerOwner, false);
-
-			while (pPassenger->NextObject)
+			if (auto pBld = cast_to<BuildingClass*, false>(pRadio))
 			{
-				pPassenger = flag_cast_to<FootClass*, false>(pPassenger->NextObject);
-				pExt = TechnoExtContainer::Instance.Find(pPassenger);
-
-				if (pExt->OriginalPassengerOwner)
-					pPassenger->SetOwningHouse(pExt->OriginalPassengerOwner, false);
+				// #895584: ships not taking damage when repaired in a shipyard. bug
+				// was that the logic that prevented units from being damaged when
+				// exiting a war factory applied here, too. added the Naval check.
+				if (pBld->Type->WeaponsFactory
+					&& !pBld->Type->Naval
+					&& MapClass::Instance->TryGetCellAt(pThis->Location)->GetBuilding() == pBld)
+				{
+					R->EAX(_res);
+					return 0x738679;
+				}
 			}
 		}
 	}
 
-	TechnoExt_ExtData::SpawnSurvivors(pThis, pKiller, select, ignoreDefenses, preventPassangersEscape);
-
-	R->EBX(-1);
-	return 0x73838A;
-}
-
-ASMJIT_PATCH(0x737D57, UnitClass_ReceiveDamage_DyingFix, 0x7)
-{
-	GET(UnitClass* const, pThis, ESI);
-	GET(DamageState const, result, EAX);
+	_res = pThis->FootClass::ReceiveDamage(args.Damage, args.DistanceToEpicenter, args.WH, args.Attacker, args.IgnoreDefenses, args.PreventsPassengerEscape, args.SourceHouse);
 
 	// Immediately release locomotor warhead's hold on a crashable unit if it dies while attacked by one.
-	if (result == DamageState::NowDead)
+	if (_res == DamageState::NowDead)
 	{
-		if (pThis->IsAttackedByLocomotor && pThis->GetTechnoType()->Crashable)
+		if (pThis->IsAttackedByLocomotor && pThis->Type->Crashable)
 			pThis->IsAttackedByLocomotor = false;
 
 		//this cause desync ?
@@ -2445,24 +2320,184 @@ ASMJIT_PATCH(0x737D57, UnitClass_ReceiveDamage_DyingFix, 0x7)
 		}
 	}
 
-	if (result != DamageState::PostMortem && pThis->DeathFrameCounter > 0)
+	if (_res != DamageState::PostMortem && pThis->DeathFrameCounter > 0)
 	{
 		R->EAX(DamageState::PostMortem);
+		return 0x738679;
 	}
 
-	return 0;
-}
+	auto _CurCoord = pThis->GetCoords();
+	auto _CurCell = CellClass::Coord2Cell(_CurCoord);
+	auto pType = pThis->Type;
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
-ASMJIT_PATCH(0x737CBB, UnitClass_ReceiveDamage_DeathCounter, 0x6)
-{
-	GET(UnitClass*, pThis, ESI);
-
-	if (pThis->DeathFrameCounter > 0)
+	if (_res != DamageState::PostMortem)
 	{
-		return 0x737D26;
+		if (_res != DamageState::NowDead)
+		{
+			if (_res != DamageState::Unaffected)
+			{
+				if (pThis->Type->Harvester
+					&& pWHExt->Malicious
+					&& !pWHExt->Nonprovocative
+					&& pThis->Owner == HouseClass::CurrentPlayer()
+					&& !pThis->Owner->IsObserver())
+				{
+					if (RadarEventClass::Create(RadarEventType::HarvesterAttacked, _CurCell))
+					{
+						VoxClass::Play(GameStrings::EVA_OreMinerUnderAttack());
+					}
+				}
+
+				if (!pThis->HaveAttackMoveTarget
+					&& args.Attacker
+					&& args.Attacker->IsAlive
+					&& !args.Attacker->IsSinking
+					&& !args.Attacker->IsCrashing
+					&& !args.Attacker->TemporalTargetingMe
+					&& !pThis->IsTethered
+					&& pThis->Owner->IsAlliedWith(args.Attacker)
+					&& isPlayerControlled)
+				{
+					if (pThis->ShouldCrushIt(args.Attacker))
+					{
+						pThis->SetDestination(args.Attacker, true);
+						pThis->QueueMission(Mission::Move, false);
+						R->EAX(_res);
+						return 0x738679;
+					}
+
+					if ((pType->Harvester || pType->Weeder)
+						&& pThis->GetPipFillLevel() > 0
+						&& pThis->GetHealthPercentage() <= RulesClass::Instance->ConditionYellow)
+					{
+						TechnoClass* pDock = nullptr;
+						for (int i = 0; i < pType->Dock.Count; ++i)
+						{
+							pDock = pThis->FindDockingBay(pType->Dock.Items[i], 0, false);
+							if (pDock)
+								break;
+						}
+
+						if (pType->Dock.Count > 0 && !pDock)
+						{
+							R->EAX(_res);
+							return 0x738679;
+						}
+
+						if (!pThis->ContainsLink(pDock) && pThis->SendCommand(RadioCommand::RequestLink, pDock) == RadioCommand::AnswerPositive)
+						{
+							pThis->QueueMission(Mission::Enter, false);
+						}
+					}
+				}
+			}
+
+			R->EAX(_res);
+			return 0x738679;
+		}
+
+		if (auto pBunker = cast_to<BuildingClass*>(pThis->BunkerLinkedItem))
+		{
+			pBunker->ClearBunker();
+		}
+
+		if (pType->DeathFrames <= 0)
+		{
+			bool ShouldSink = pType->Weight > RulesClass::Instance->ShipSinkingWeight && pType->Naval && !pType->Underwater && !pType->Organic;
+
+			if (!pTypeExt->Sinkable.Get(ShouldSink)
+			   || pThis->GetCell()->LandType != LandType::Water
+			   || pThis->WarpingOut)
+			{
+				pThis->Destroyed(args.Attacker);
+
+				if (pThis->GetHeight() <= 10
+				  && pThis->IsABomb
+				  && (pThis->GetCell()->LandType == LandType::Water))
+				{
+					GameCreate<AnimClass>(RulesClass::Instance->Wake, pThis->Location, 0, 1, AnimFlag(0x600), 0, 0);
+					auto coord_splash = pThis->Location;
+					coord_splash += CoordStruct(0, 0, 5);
+					GameCreate<AnimClass>(RulesClass::Instance->SplashList.Items[RulesClass::Instance->SplashList.Count - 1], pThis->Location, 0, 1, AnimFlag(0x600), 0, 0);
+				}
+				else
+				{
+					pExt->ReceiveDamage = true;
+					AnimTypeExtData::ProcessDestroyAnims(pThis, args.Attacker, args.WH);
+					pThis->Explode();
+				}
+			}
+			else
+			{
+				pThis->Destroyed(args.Attacker);
+				pThis->Health = 1;
+				pThis->IsAlive = 1;
+				pThis->IsSinking = 1;
+				pThis->Stun();
+			}
+		}
+		else
+		{
+			if (pThis->DeathFrameCounter == -1)
+			{
+				pThis->DeathFrameCounter = 0;
+				pThis->Destroyed(args.Attacker);
+			}
+
+			pThis->Health = 1;
+			pThis->IsAlive = 1;
+		}
+
+		pThis->UpdatePlacement(PlacementType::Remove);
+
+		if (pThis->Passengers.NumPassengers > 0 && pThis->Passengers.GetFirstPassenger())
+		{
+			if (pTypeExt->Passengers_SyncOwner && pTypeExt->Passengers_SyncOwner_RevertOnExit)
+			{
+				auto pPassenger = pThis->Passengers.GetFirstPassenger();
+				auto pPassengerExt = TechnoExtContainer::Instance.Find(pPassenger);
+
+				if (pPassengerExt->OriginalPassengerOwner)
+					pPassenger->SetOwningHouse(pPassengerExt->OriginalPassengerOwner, false);
+
+				while (pPassenger->NextObject)
+				{
+					pPassenger = flag_cast_to<FootClass*, false>(pPassenger->NextObject);
+					pPassengerExt = TechnoExtContainer::Instance.Find(pPassenger);
+
+					if (pExt->OriginalPassengerOwner)
+						pPassenger->SetOwningHouse(pExt->OriginalPassengerOwner, false);
+				}
+			}
+		}
+
+		if (pType->OpenTopped)
+			pThis->MarkPassengersAsExited();
+
+		TechnoExt_ExtData::SpawnSurvivors(pThis, args.Attacker, selected, args.IgnoreDefenses, args.PreventsPassengerEscape);
+
+		if (GameModeOptionsClass::Instance->Crates)
+		{
+			if (pType->CrateGoodie
+			  && (ScenarioClass::Instance->TruckCrate && !pType->IsTrain
+				  || ScenarioClass::Instance->TrainCrate && pType->IsTrain))
+			{
+				const auto crate_cell = MapClass::Instance->NearByLocation(pThis->GetMapCoords(), SpeedType::Track, ZoneType::None, MovementZone::Normal, 0, 1, 1, true, false, false, true, CellStruct::Empty, false, false);
+				if (crate_cell.IsValid())
+				{
+					MapClass::Instance->Place_Crate(crate_cell, PowerupEffects(0x14));
+				}
+			}
+		}
+
+		if ((pType->Crashable && !pThis->Crash(args.Attacker)) || !pThis->IsSinking)
+			pThis->UnInit();
 	}
 
-	return 0x0;
+	R->EAX(_res);
+	return 0x738679;
 }
 
 #pragma endregion
@@ -2523,6 +2558,140 @@ ASMJIT_PATCH(0x718B29, LocomotionClass_SomethingWrong_ReceiveDamage_UseCurrentHP
 }
 
 #pragma region placeholder
+//ASMJIT_PATCH(0x737F97, UnitClass_ReceiveDamage_Survivours, 0xA)
+//{
+//	//GET(UnitTypeClass*, pType, EAX);
+//	GET(UnitClass*, pThis, ESI);
+//	GET_STACK(TechnoClass*, pKiller, 0x54);
+//	GET_STACK(bool, select, 0x13);
+//	GET_STACK(bool, ignoreDefenses, 0x58);
+//	GET_STACK(bool, preventPassangersEscape, STACK_OFFSET(0x44, 0x18));
+//
+//	if (pThis && pThis->Passengers.NumPassengers > 0)
+//	{
+//		auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+//
+//		if (pTypeExt->Passengers_SyncOwner && pTypeExt->Passengers_SyncOwner_RevertOnExit)
+//		{
+//			auto pPassenger = pThis->Passengers.GetFirstPassenger();
+//			auto pExt = TechnoExtContainer::Instance.Find(pPassenger);
+//
+//			if (pExt->OriginalPassengerOwner)
+//				pPassenger->SetOwningHouse(pExt->OriginalPassengerOwner, false);
+//
+//			while (pPassenger->NextObject)
+//			{
+//				pPassenger = flag_cast_to<FootClass*, false>(pPassenger->NextObject);
+//				pExt = TechnoExtContainer::Instance.Find(pPassenger);
+//
+//				if (pExt->OriginalPassengerOwner)
+//					pPassenger->SetOwningHouse(pExt->OriginalPassengerOwner, false);
+//			}
+//		}
+//	}
+//
+//	TechnoExt_ExtData::SpawnSurvivors(pThis, pKiller, select, ignoreDefenses, preventPassangersEscape);
+//
+//	R->EBX(-1);
+//	return 0x73838A;
+//}
+//
+//ASMJIT_PATCH(0x737F6D, UnitClass_ReceiveDamage_Destroy, 0x7)
+//{
+//	GET(UnitClass* const, pThis, ESI);
+//	REF_STACK(args_ReceiveDamage const, args, STACK_OFFS(0x44, -0x4));
+//
+//	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+//	R->ECX(R->ESI());
+//	pExt->ReceiveDamage = true;
+//	AnimTypeExtData::ProcessDestroyAnims(pThis, args.Attacker, args.WH);
+//	pThis->Destroy();
+//	return 0x737F74;
+//}
+//
+//ASMJIT_PATCH(0x7384BD, UnitClass_ReceiveDamage_OreMinerUnderAttack, 6)
+//{
+//	GET_STACK(WarheadTypeClass*, pWH, STACK_OFFS(0x44, -0xC));
+//	return !WarheadTypeExtContainer::Instance.Find(pWH)->Malicious || WarheadTypeExtContainer::Instance.Find(pWH)->Nonprovocative ? 0x738535u : 0u;
+//}
+//
+//ASMJIT_PATCH(0x737DE2, UnitClass_ReceiveDamage_Sinkable, 0x6)
+//{
+//	enum { GoOtherChecks = 0x737E18, NoSink = 0x737E63 };
+//
+//	GET(UnitTypeClass*, pType, EAX);
+//
+//	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+//	bool ShouldSink = pType->Weight > RulesClass::Instance->ShipSinkingWeight && pType->Naval && !pType->Underwater && !pType->Organic;
+//
+//	return pTypeExt->Sinkable.Get(ShouldSink) ? GoOtherChecks : NoSink;
+//}
+//
+//ASMJIT_PATCH(0x737D57, UnitClass_ReceiveDamage_DyingFix, 0x7)
+//{
+//	GET(UnitClass* const, pThis, ESI);
+//	GET(DamageState const, result, EAX);
+//
+//	// Immediately release locomotor warhead's hold on a crashable unit if it dies while attacked by one.
+//	if (result == DamageState::NowDead)
+//	{
+//
+//		if (pThis->IsAttackedByLocomotor && pThis->GetTechnoType()->Crashable)
+//			pThis->IsAttackedByLocomotor = false;
+//
+//		//this cause desync ?
+//		if (!pThis->Type->Voxel && pThis->Type->Strength > 0)
+//		{
+//			if (pThis->Type->MaxDeathCounter > 0
+//				&& !pThis->InLimbo
+//				&& !pThis->IsCrashing
+//				&& !pThis->IsSinking
+//				&& !pThis->TemporalTargetingMe
+//				&& !pThis->IsInAir()
+//				&& pThis->DeathFrameCounter <= 0
+//				)
+//			{
+//
+//				pThis->Stun();
+//				const auto loco = pThis->Locomotor.GetInterfacePtr();
+//
+//				if (loco->Is_Moving_Now())
+//					loco->Stop_Moving();
+//
+//				pThis->DeathFrameCounter = 1;
+//			}
+//		}
+//	}
+//
+//	if (result != DamageState::PostMortem && pThis->DeathFrameCounter > 0)
+//	{
+//		R->EAX(DamageState::PostMortem);
+//	}
+//
+//	return 0;
+//}
+//
+//ASMJIT_PATCH(0x737CBB, UnitClass_ReceiveDamage_DeathCounter, 0x6)
+//{
+//	GET(UnitClass*, pThis, ESI);
+//
+//	if (pThis->DeathFrameCounter > 0)
+//	{
+//		return 0x737D26;
+//	}
+//
+//	return 0x0;
+//}
+//
+//// #895584: ships not taking damage when repaired in a shipyard. bug
+//// was that the logic that prevented units from being damaged when
+//// exiting a war factory applied here, too. added the Naval check.
+//ASMJIT_PATCH(0x737CE4, UnitClass_ReceiveDamage_ShipyardRepair, 6)
+//{
+//	GET(BuildingTypeClass*, pType, ECX);
+//	return (pType->WeaponsFactory && !pType->Naval)
+//		? 0x737CEE : 0x737D31;
+//}
 
 //ASMJIT_PATCH(0x518313, InfantryClass_ReceiveDamage_JumpjetExplode, 0x6)
 //{

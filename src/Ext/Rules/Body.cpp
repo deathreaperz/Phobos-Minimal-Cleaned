@@ -725,12 +725,16 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 		this->FirestormIdleAnim = AnimTypeClass::FindOrAllocate("FSIDLE");
 		this->FirestormGroundAnim = AnimTypeClass::FindOrAllocate("FSGRND");
 		this->FirestormAirAnim = AnimTypeClass::FindOrAllocate("FSAIR");
+		this->XGRYMED1_ = AnimTypeClass::FindOrAllocate("XGRYMED1");
+		this->XGRYMED2_ = AnimTypeClass::FindOrAllocate("XGRYMED2");
+		this->XGRYSML1_ = AnimTypeClass::FindOrAllocate("XGRYSML1");
 	}
 
 	GenericPrerequisite::LoadFromINIList_New(pINI);
 
 	INI_EX exINI(pINI);
 
+	this->GiveMoneyIfStorageFull.Read(exINI, GameStrings::General, "Storage.GiveMoneyIfFull");
 	this->AutoBuilding.Read(exINI, GameStrings::General, "AutoBuilding");
 	this->AIAngerOnAlly.Read(exINI, GameStrings::General, "AIAngerOnAlly");
 	this->BuildingTypeSelectable.Read(exINI, GameStrings::General, "BuildingTypeSelectable");
@@ -847,7 +851,11 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	this->TogglePowerAllowed.Read(exINI, GameStrings::General(), "TogglePowerAllowed");
 	this->TogglePowerDelay.Read(exINI, GameStrings::General(), "TogglePowerDelay");
 	this->TogglePowerIQ.Read(exINI, "IQ", "TogglePower");
+
 	this->GainSelfHealAllowMultiplayPassive.Read(exINI, GameStrings::General(), "GainSelfHealAllowMultiplayPassive");
+	this->GainSelfHealFromPlayerControl.Read(exINI, GameStrings::General, "GainSelfHealFromPlayerControl");
+	this->GainSelfHealFromAllies.Read(exINI, GameStrings::General, "GainSelfHealFromAllies");
+
 	this->VeinsDamagingWeightTreshold.Read(exINI, GameStrings::General(), "VeinsDamagingWeightTreshold");
 	this->VeinholePal.Read(exINI, GameStrings::General(), "VeinholePalette");
 	this->DegradeEnabled.Read(exINI, GameStrings::General(), "Degrade.Enabled");
@@ -1334,7 +1342,11 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->TogglePowerAllowed)
 		.Process(this->TogglePowerDelay)
 		.Process(this->TogglePowerIQ)
+
 		.Process(this->GainSelfHealAllowMultiplayPassive)
+		.Process(this->GainSelfHealFromPlayerControl)
+		.Process(this->GainSelfHealFromAllies)
+
 		.Process(this->VeinsDamagingWeightTreshold)
 		.Process(this->VeinholePal)
 		.Process(this->Veinhole_Warhead)
@@ -1493,6 +1505,12 @@ void RulesExtData::Serialize(T& Stm)
 
 		.Process(this->RecountBurst)
 		.Process(this->AirstrikeLineColor)
+
+		.Process(this->XGRYMED1_)
+		.Process(this->XGRYMED2_)
+		.Process(this->XGRYSML1_)
+
+		.Process(this->GiveMoneyIfStorageFull)
 		;
 
 	MyPutData.Serialize(Stm);

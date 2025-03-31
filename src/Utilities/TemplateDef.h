@@ -2161,6 +2161,7 @@ OPTIONALINLINE bool ValueableVector<bool>::Load(PhobosStreamReader& stm, bool re
 	if (Savegame::ReadPhobosStream(stm, size, registerForChange))
 	{
 		this->clear();
+		this->reserve(size);
 
 		for (size_t i = 0; i < size; ++i)
 		{

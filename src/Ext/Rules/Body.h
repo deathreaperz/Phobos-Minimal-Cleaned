@@ -266,6 +266,8 @@ public:
 	Valueable<int> TogglePowerIQ { -1 };
 
 	Valueable<bool> GainSelfHealAllowMultiplayPassive { false };
+	Valueable<bool> GainSelfHealFromPlayerControl { false };
+	Valueable<bool> GainSelfHealFromAllies { false };
 
 	Nullable<double> VeinsDamagingWeightTreshold {};
 	Valueable<PaletteManager*> VeinholePal {};
@@ -459,11 +461,16 @@ public:
 
 	Valueable<bool> JumpjetTilt {};
 
-	Valueable<bool> NoTurret_TrackTarget { false };
+	Valueable<bool> NoTurret_TrackTarget { true };
 
 	Valueable<bool> RecountBurst { false };
 	Valueable<ColorStruct> AirstrikeLineColor { { 255, 0, 0 } };
 
+	AnimTypeClass* XGRYMED1_ {};
+	AnimTypeClass* XGRYMED2_ {};
+	AnimTypeClass* XGRYSML1_ {};
+
+	Valueable<bool> GiveMoneyIfStorageFull { false }; // vanilla behaviour
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);
 	void ReplaceVoxelLightSources();

@@ -1223,10 +1223,13 @@ int BuildingTypeExtData::GetUpgradesAmount(BuildingTypeClass* pBuilding, HouseCl
 	auto pPowersUp = pBuilding->PowersUpBuilding;
 
 	if (!pHouse)
-		return 0;
+		return -1;
 
 	auto checkUpgrade = [pHouse, pBuilding, &result, &isUpgrade](BuildingTypeClass* pTPowersUp)
 		{
+			if (!pTPowersUp)
+				return;
+
 			isUpgrade = true;
 			for (auto const& pBld : pHouse->Buildings)
 			{
@@ -1313,8 +1316,22 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		// Ares SuperWeapons tag
 		auto const& pArray = SuperWeaponTypeClass::Array;
+		std::string str_Supers = GameStrings::SuperWeapons();
 		if (pArray->IsAllocated && pArray->Count > 0)
-			this->SuperWeapons.Read(exINI, pSection, GameStrings::SuperWeapons());
+		{
+			this->SuperWeapons.Read(exINI, pSection, str_Supers.c_str());
+
+			for (size_t i = 0;; ++i)
+			{
+				NullableIdxVector<SuperWeaponTypeClass*> _readsupers {};
+				_readsupers.Read(exINI, pSection, (str_Supers + std::to_string(i)).c_str());
+
+				if (!_readsupers.HasValue() || _readsupers.empty())
+					break;
+
+				this->SuperWeapons.insert(this->SuperWeapons.end(), _readsupers.begin(), _readsupers.end());
+			}
+		}
 
 		this->Refinery_UseStorage.Read(exINI, pSection, "Refinery.UseStorage");
 		//const auto IscompatibilityMode = Phobos::Otamaa::CompatibilityMode;
@@ -1558,7 +1575,20 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->AIExtraCounts.Read(exINI, pSection, "AIExtraCounts");
 		this->LandingDir.Read(exINI, pSection, "LandingDir");
 
-		this->Secret_Boons.Read(exINI, pSection, "SecretLab.PossibleBoons");
+		std::string _boons = "SecretLab.PossibleBoons";
+
+		this->Secret_Boons.Read(exINI, pSection, _boons.c_str());
+		for (size_t i = 0;; ++i)
+		{
+			NullableVector<TechnoTypeClass*> _read {};
+			_read.Read(exINI, pSection, (_boons + std::to_string(i)).c_str());
+
+			if (!_read.HasValue() || _read.empty())
+				break;
+
+			this->Secret_Boons.insert(this->Secret_Boons.end(), _read.begin(), _read.end());
+		}
+
 		this->Secret_RecalcOnCapture.Read(exINI, pSection, "SecretLab.GenerateOnCapture");
 
 		this->Academy.clear();
@@ -1641,6 +1671,9 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			this->NextBuilding_Next.Read(exINI, pSection, "NextBuilding.Next");
 			this->NextBuilding_Prev.Read(exINI, pSection, "NextBuilding.Prev");
 		}
+
+		this->AllowAlliesRepair.Read(exINI, pSection, "AllowAlliesRepair");
+		this->AllowRepairFlyMZone.Read(exINI, pSection, "AllowRepairFlyMZone");
 	}
 #pragma endregion
 	if (pArtINI->GetSection(pArtSection))
@@ -1779,7 +1812,6 @@ bool BuildingTypeExtData::ShouldExistGreyCameo(TechnoTypeClass* pType)
 	return false;
 }
 
-#include <EventClass.h>
 #include <Ext/Scenario/Body.h>
 
 // Check the cameo change
@@ -2074,6 +2106,9 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->Cameo_ShouldCount)
 
 		.Process(this->IsAnimDelayedBurst)
+
+		.Process(this->AllowAlliesRepair)
+		.Process(this->AllowRepairFlyMZone)
 		;
 }
 

@@ -360,29 +360,40 @@ static TechnoClass* CreateFoot(
 					if (auto const pFlyLoco = locomotion_cast<FlyLocomotionClass*>(pTechno->Locomotor))
 					{
 						pTechno->SetLocation(location);
-						bool airportBound = rtti == AbstractType::AircraftType && static_cast<AircraftTypeClass*>(pType)->AirportBound;
-						if (pCell->GetContent() || airportBound)
-							pTechno->EnterIdleMode(false, true);
-						else
-							pFlyLoco->Move_To(pCell->GetCoordsWithBridge());
+						if (pType->Speed != 0) {
+							bool airportBound = rtti == AbstractType::AircraftType && static_cast<AircraftTypeClass*>(pType)->AirportBound;
+							if (pCell->GetContent() || airportBound)
+								pTechno->EnterIdleMode(false, true);
+							else
+								pFlyLoco->Move_To(pCell->GetCoordsWithBridge());
+						}
+						else if (inAir) {
+							AircraftTrackerClass::Instance->Add(pTechno);
+						}
 					}
 					else if (auto const pJJLoco = locomotion_cast<JumpjetLocomotionClass*>(pTechno->Locomotor))
 					{
 						pJJLoco->Facing.Set_Current(DirStruct(facing));
-						if (pType->BalloonHover)
-						{
-							// Makes the jumpjet think it is hovering without actually moving.
-							pJJLoco->NextState = JumpjetLocomotionClass::State::Hovering;
-							pJJLoco->IsMoving = true;
-							pJJLoco->HeadToCoord = location;
-							pJJLoco->Height = pType->JumpjetData.Height;
-							if (!inAir)
-								AircraftTrackerClass::Instance->Add(pTechno);
+						if (pType->Speed != 0) {
+							if (pType->BalloonHover)
+							{
+								// Makes the jumpjet think it is hovering without actually moving.
+								pJJLoco->NextState = JumpjetLocomotionClass::State::Hovering;
+								pJJLoco->IsMoving = true;
+								pJJLoco->HeadToCoord = location;
+								pJJLoco->Height = pType->JumpjetData.Height;
+
+								if (!inAir)
+									AircraftTrackerClass::Instance->Add(pTechno);
+							}
+							else if (inAir)
+							{
+								// Order non-BalloonHover jumpjets to land.
+								pJJLoco->Move_To(location);
+							}
 						}
-						else if (inAir)
-						{
-							// Order non-BalloonHover jumpjets to land.
-							pJJLoco->Move_To(location);
+						else if (inAir) {
+							AircraftTrackerClass::Instance->Add(pTechno);
 						}
 					}
 					else if (inAir && !parachuted)

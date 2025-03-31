@@ -921,7 +921,7 @@ namespace Tiberiumpip
 		for (size_t i = 0; i < (size_t)TiberiumClass::Array->Count; i++)
 		{
 			size_t index = i;
-			if (i < orders.size())
+			if (i < orders.size() && orders[i] >= 0)
 				index = orders[i];
 
 			if (Amounts[index].value > 0)
@@ -2735,17 +2735,30 @@ ASMJIT_PATCH(0x4DB1A0, FootClass_GetMovementSpeed_SpeedMult, 0x6)
 ASMJIT_PATCH(0x71F1A2, TEventClass_HasOccured_DestroyedAll, 6)
 {
 	GET(HouseClass*, pHouse, ESI);
+	enum { AllDestroyed = 0x71F1B1, HasAlive = 0x71F163 };
 
 	if (pHouse->ActiveInfantryTypes.GetTotal() <= 0)
 	{
 		for (auto& bld : pHouse->Buildings)
 		{
 			if (bld->Type->CanBeOccupied && bld->Occupants.Count > 0)
-				return 0x71F163;
+				return HasAlive;
 		}
 	}
 
-	return 0x71F1B1;
+	if (pHouse->ActiveAircraftTypes.GetTotal() > 0)
+		return HasAlive;
+
+	if (pHouse->ActiveInfantryTypes.GetTotal() > 0)
+		return HasAlive;
+
+	for (auto pItem : *InfantryClass::Array)
+	{
+		if (pItem->InLimbo && pHouse == pItem->GetOwningHouse() && pHouse->IsAlliedWith(pItem->Transporter))
+			return HasAlive;
+	}
+
+	return AllDestroyed;
 }
 
 ASMJIT_PATCH(0x6DEA37, TAction_Execute_Win, 6)
@@ -2938,12 +2951,12 @@ ASMJIT_PATCH(0x4A267D, CreditClass_AI_MissingCurPlayerPtr, 0x6)
 
 ASMJIT_PATCH(0x5FF93F, SpotlightClass_Draw_OutOfboundSurfaceArrayFix, 0x7)
 {
-	GET(SpotlightClass*, pThis, EBP);
+	//GET(SpotlightClass*, pThis, EBP);
 	GET(int, idx, ECX);
 
 	if (idx > 64)
 	{
-		Debug::LogInfo("[0x{}]SpotlightClass with OutOfBoundSurfaceArrayIndex[{}] Fixing!", (void*)pThis, idx);
+		//Debug::LogInfo("[0x{}]SpotlightClass with OutOfBoundSurfaceArrayIndex[{}] Fixing!", (void*)pThis, idx);
 		idx = 64;
 	}
 
@@ -5808,22 +5821,22 @@ ASMJIT_PATCH(0x4FD95F, HouseClass_CheckFireSale_LimboID, 0x6)
 	return BuildingExtContainer::Instance.Find(pBld)->LimboID != -1 ? 0x4FD983 : 0x0;
 }
 
-ASMJIT_PATCH(0x4C2A02, Ebolt_DTOR_TechnoIsNotTechno, 0x6)
-{
-	GET(TechnoClass*, pTr, ECX);
-	const auto vtable = VTable::Get(pTr);
+// ASMJIT_PATCH(0x4C2A02, Ebolt_DTOR_TechnoIsNotTechno, 0x6)
+// {
+// 	GET(TechnoClass*, pTr, ECX);
+// 	const auto vtable = VTable::Get(pTr);
 
-	if (vtable != AircraftClass::vtable
-		&& vtable != UnitClass::vtable
-		&& vtable != BuildingClass::vtable
-		&& vtable != InfantryClass::vtable
-		)
-	{
-		return R->Origin() + 0x6; //skip setting ebolt for the techno because it corrupted pointer
-	}
+// 	if (vtable != AircraftClass::vtable
+// 		&& vtable != UnitClass::vtable
+// 		&& vtable != BuildingClass::vtable
+// 		&& vtable != InfantryClass::vtable
+// 		)
+// 	{
+// 		return R->Origin() + 0x6; //skip setting ebolt for the techno because it corrupted pointer
+// 	}
 
-	return 0x0;
-}ASMJIT_PATCH_AGAIN(0x4C2C19, Ebolt_DTOR_TechnoIsNotTechno, 0x6)
+// 	return 0x0;
+// }ASMJIT_PATCH_AGAIN(0x4C2C19, Ebolt_DTOR_TechnoIsNotTechno, 0x6)
 
 ASMJIT_PATCH(0x674028, RulesClass_ReadLandTypeData_Additionals, 0x7)
 {
@@ -5964,7 +5977,7 @@ ASMJIT_PATCH(0x6F91EC, TechnoClass_GreatestThreat_DeadTechnoInsideTracker, 0x6)
 
 	if (!pTrackerTechno->IsAlive)
 	{
-		Debug::LogInfo("Found DeadTechno[{} - {}] on AircraftTracker!", (void*)pTrackerTechno, pTrackerTechno->get_ID());
+		//Debug::LogInfo("Found DeadTechno[{} - {}] on AircraftTracker!", (void*)pTrackerTechno, pTrackerTechno->get_ID());
 		return 0x6F9377; // next
 	}
 
@@ -6295,11 +6308,171 @@ ASMJIT_PATCH(0x48724F, CellClass_PlaceTiberiumAt_RandomMax, 0x9)
 	return 0x487291;
 }
 
-/* AnimTypeClass::FromName patch
-58164B XGRYMED1
-581664 XGRYMED2
-58167E XGRYSML1
-581D53 XGRYMED1
-581D6C XGRYMED2
-581D86 XGRYSML1
-*/
+//DEFINE_HOOK(0x7C8B3D, game_Dele_whoCall, 0x9)
+//{
+//	GET_STACK(void* , ptr , 0x4);
+//	GET_STACK(DWORD, caller, 0x0);
+//	Debug::Log("Caller 0x%x \n" , caller);
+//	CRT::free(ptr);
+//	return 0x007C8B47;
+//}
+//
+//DEFINE_HOOK(0x7C93E8, game_freeMem_caller, 0x5) {
+//	GET_STACK(DWORD, caller, 0x0);
+//	Debug::Log("CRT::free Caller 0x%x \n", caller);
+//	return 0x0;
+//}
+//ASMJIT_PATCH(0x5C5070, DVC_NoneNameType_clear_, 0x6)
+//{
+//	GET(DynamicVectorClass<NodeNameType*>*, pThis, ECX);
+//
+//	pThis->Count = 0;
+//	if (pThis->Items && pThis->IsAllocated)
+//	{
+//		Debug::Log("Caller DVC_NoneNameType_clear_ \n");
+//		CRT::free(pThis->Items);
+//
+//		pThis->Items = nullptr;
+//	}
+//	pThis->IsAllocated = 0;
+//	pThis->Capacity = 0;
+//	return 0x5C5099;
+//}
+
+//#pragma optimize("", off )
+//std::string _tempName = GameStrings::NoneStr();
+//ASMJIT_PATCH(0x69E149, SHPStruct_deleteptr_check_getName, 0x5)
+//{
+//	GET(SHPStruct*, ptr, ESI);
+//	_tempName = ptr->AsReference()->Filename;
+//	return 0x0;
+//}
+//int count_ = 0;
+//ASMJIT_PATCH(0x69E1EC, SHPStruct_deleteptr_check, 0x6)
+//{
+//	GET(SHPStruct*, ptr, ESI);
+//	Debug::Log("Caller SHPStruct_deleteptr_check deleting [%d][0x%x][%s]\n", count_++,ptr , _tempName.c_str());
+//
+//	if (count_ == 251)
+//	{
+//		auto as_ = ptr->AsReference();
+//		DebugBreak();
+//	}
+//
+//
+//	_tempName = GameStrings::NoneStr();
+//	CRT::free(ptr);
+//	return 0x69E1F5;
+//}
+//#pragma optimize("", on )
+
+ASMJIT_PATCH(0x581646, MapClass_CollapseCliffs_DefaultAnim, 0x5)
+{
+	R->Stack(0x1C, RulesExtData::Instance()->XGRYMED1_);//med1
+	R->Stack(0x28, RulesExtData::Instance()->XGRYMED2_);//med2
+	R->EDX(RulesExtData::Instance()->XGRYSML1_);//0x2C sml
+	return 0x58168F;
+}
+
+ASMJIT_PATCH(0x581D4E, MapClass_CollapseCliffs_DefaultAnimB, 0x5)
+{
+	R->Stack(0x20, RulesExtData::Instance()->XGRYMED1_);//med1
+	R->Stack(0x24, RulesExtData::Instance()->XGRYMED2_);//med2
+	R->EDX(RulesExtData::Instance()->XGRYSML1_);//0x2C sml
+	return 0x581D97;
+}
+
+ASMJIT_PATCH(0x7B4940, WString_OperatorSet_empty, 0x5)
+{
+	GET_STACK(Wstring*, pString, 0x4);
+	GET_STACK(DWORD, caller, 0x0);
+
+	if (!pString)
+		Debug::FatalError("Empty String set for wstring caller  %x\n", caller);
+
+	return 0x0;
+}
+
+ASMJIT_PATCH(0x4F671D, HouseClass_CanAfforBase_MissingPointer, 0x5)
+{
+	GET(HouseClass*, pThis, ESI);
+	GET(BuildingClass*, pBld, EAX);
+
+	if (!pBld)
+	{
+		Debug::FatalErrorAndExit("Cannot Find BuildWeapons For [%s - %ls] , BuildWeapons Count %d\n", pThis->Type->ID, pThis->Type->UIName, RulesClass::Instance->BuildWeapons.Count);
+	}
+
+	return 0x0;
+}
+
+//ASMJIT_PATCH(0x7BB350, XSurface_DrawSurface_InvalidSurface, 0x5)
+//{
+//	GET(XSurface*, pThis, ESI);
+//	GET_STACK(DWORD, caller, 0x0);
+//
+//	if (!pThis ||
+//		(
+//			VTable::Get(pThis) != XSurface::vtable &&
+//			VTable::Get(pThis) != DSurface::vtable &&
+//			VTable::Get(pThis) != BSurface::vtable &&
+//			VTable::Get(pThis) != Surface::vtable
+//
+//		))
+//		Debug::FatalError("Invalid XSurface Caller %x\n", caller);
+//
+//
+//	return 0x0;
+//}
+
+//ASMJIT_PATCH(0x7086C3, HouseClass_Is_Attacked_Exclude, 0x6)
+//{
+//	GET(UnitClass*, pCandidate, ESI);
+//
+//
+//	return 0x70874C;//increment
+//}
+
+//ASMJIT_PATCH(0x4E0052, FootClass_TryBunkering, 0x5)
+//{
+//	GET(FootClass*, pThis, EDI);
+//	GET(TechnoClass*, pRecipient, ESI);
+//
+//	if (!pThis->__ProtectMe_3CF) {
+//		if (pThis->SendCommand(RadioCommand::RequestLink, pRecipient) == RadioCommand::AnswerPositive)
+//		{
+//			//check it first
+//			return 0x4E005F;
+//		}
+//	}
+//
+//	return 0x4E003B;
+//}
+
+//bunker state AI 458E50
+
+ASMJIT_PATCH(0x7084E9, HouseClass_BaseIsAttacked_StopRecuiting, 0x6)
+{
+	GET(UnitClass*, pCandidate, EBX);
+	bool allow = true;
+
+	if (pCandidate->IsTethered)
+	{
+		allow = false;
+	}
+	else if (auto pContact = pCandidate->GetRadioContact())
+	{
+		if (auto pBldC = cast_to<BuildingClass*, false>(pContact))
+		{
+			if (pBldC->Type->Bunker)
+				allow = false;
+		}
+	}
+	else if (auto pBld = pCandidate->GetCell()->GetBuilding())
+	{
+		if (pBld->Type->Bunker)
+			allow = false;
+	}
+
+	return allow ? 0x0 : 0x708622;//continue
+}

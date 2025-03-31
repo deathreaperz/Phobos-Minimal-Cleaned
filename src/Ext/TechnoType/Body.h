@@ -666,7 +666,7 @@ public:
 
 	Valueable<AnimTypeClass*> NoAmmoEffectAnim { nullptr };
 	Valueable<int> AttackFriendlies_WeaponIdx { -1 };
-	Valueable<bool> AttackFriendlies_AutoAttack { false };
+	Valueable<bool> AttackFriendlies_AutoAttack { true };
 
 	Nullable<WORD> PipScaleIndex { };
 
@@ -1074,6 +1074,13 @@ public:
 	Nullable<int> InitialSpawnsNumber {};
 	ValueableVector<AircraftTypeClass*> Spawns_Queue {};
 
+	Nullable<bool> Sinkable {};
+	Valueable<int> SinkSpeed { 5 };
+	Valueable<bool> Sinkable_SquidGrab { true };
+
+	int SpawnerRange {};
+	int EliteSpawnerRange {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromINIFile_Aircraft(CCINIClass* pINI);
 	void LoadFromINIFile_EvaluateSomeVariables(CCINIClass* pINI);
@@ -1084,6 +1091,13 @@ public:
 	bool IsCountedAsHarvester();
 
 	void AdjustCrushProperties();
+
+	void CalculateSpawnerRange();
+	void ResetSpawnerRange()
+	{
+		this->SpawnerRange = 0;
+		this->EliteSpawnerRange = 0;
+	}
 
 	// Ares 0.A
 	const char* GetSelectionGroupID() const;

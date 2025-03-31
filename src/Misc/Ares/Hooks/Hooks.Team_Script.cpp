@@ -186,30 +186,34 @@ ASMJIT_PATCH(0x6EB432, TeamClass_AttackedBy_Retaliate, 9)
 
 	if (RulesExtData::Instance()->TeamRetaliate)
 	{
-		auto ArchiveTarget = pThis->ArchiveTarget;
+		auto pFocus = flag_cast_to<TechnoClass*>(pThis->ArchiveTarget);
 		CellClass* SpawnCell = pThis->SpawnCell;
 
-		if (!ArchiveTarget
-		  || ((char)ArchiveTarget->AbstractFlags & 1) == 0
-		  || (!((FootClass*)ArchiveTarget)->IsArmed())
-		  || SpawnCell
-		  && (((FootClass*)ArchiveTarget)->IsCloseEnoughToAttackCoords(SpawnCell->GetCoords())))
+		if (!pFocus
+		  || !pFocus->IsArmed()
+		  || !SpawnCell
+		  || pFocus->IsCloseEnoughToAttackCoords(SpawnCell->GetCoords()))
 		{
-			if ((int)pAttacker->WhatAmI() != 2)
+			if (pAttacker->WhatAmI() != AircraftClass::AbsID)
 			{
+				auto pAttackerTechno = flag_cast_to<TechnoClass*>(pAttacker);
+
 				auto Owner = pThis->Owner;
-				if (((char)pAttacker->AbstractFlags & 2) != 0)
+				if (pAttackerTechno && Owner->IsAlliedWith(pAttackerTechno->GetOwningHouse()))
 				{
-					if (Owner->IsAlliedWith(pAttacker->GetOwningHouse()))
-						return 0x6EB47A;
+					return 0x6EB47A;
 				}
 
-				if (((char)pAttacker->AbstractFlags & 4) == 0
-				  || !((FootClass*)pAttacker)->InLimbo
-				  && !((FootClass*)pAttacker)->GetTechnoType()->ConsideredAircraft)
+				if (auto pAttackerFoot = flag_cast_to<FootClass*>(pAttacker))
 				{
-					pThis->ArchiveTarget = pAttacker;
+					if (pAttackerFoot->InLimbo
+					|| pAttackerFoot->GetTechnoType()->ConsideredAircraft)
+					{
+						return 0x6EB47A;
+					}
 				}
+
+				pThis->ArchiveTarget = pAttacker;
 			}
 		}
 	}

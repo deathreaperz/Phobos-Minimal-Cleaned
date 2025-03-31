@@ -832,17 +832,17 @@ ASMJIT_PATCH(0x68927B, ScenarioClass_ScanPlaceUnit_CheckMovement2, 0x5)
 // This notably causes an issue with Grinder that restores ActiveAnim if the building is sold/destroyed while SpecialAnim is playing even if the building is gone or in limbo.
 // Now it does not do this if the building is in limbo, which covers all cases from being destroyed, sold, to erased by Temporal weapons.
 // There is another potential case for this with ProductionAnim & IdleAnim which is also patched here just in case.
-ASMJIT_PATCH(0x44E9FA, BuildingClass_Detach_RestoreAnims, 0x6)
-{
-	enum { SkipAnimOne = 0x44E9A4, SkipAnimTwo = 0x44EA07 };
-
-	GET(BuildingClass*, pThis, ESI);
-
-	if (pThis->InLimbo || !pThis->IsAlive)
-		return R->Origin() == 0x44E997 ? SkipAnimOne : SkipAnimTwo;
-
-	return 0;
-}ASMJIT_PATCH_AGAIN(0x44E997, BuildingClass_Detach_RestoreAnims, 0x6)
+//ASMJIT_PATCH(0x44E9FA, BuildingClass_Detach_RestoreAnims, 0x6)
+//{
+//	enum { SkipAnimOne = 0x44E9A4, SkipAnimTwo = 0x44EA07 };
+//
+//	GET(BuildingClass*, pThis, ESI);
+//
+//	if (pThis->InLimbo || !pThis->IsAlive)
+//		return R->Origin() == 0x44E997 ? SkipAnimOne : SkipAnimTwo;
+//
+//	return 0;
+//}ASMJIT_PATCH_AGAIN(0x44E997, BuildingClass_Detach_RestoreAnims, 0x6)
 
 // Fix initial facing when jumpjet locomotor is being attached
 // there is bug with preplaced units , wait for fix
@@ -1490,18 +1490,18 @@ ASMJIT_PATCH(0x412B40, AircraftTrackerClass_FillCurrentVector, 0x5)
 	GET_STACK(CellClass*, pCell, 0x4);
 	GET_STACK(int, range, 0x8);
 
-	pThis->CurrentVector.Reset();
+	pThis->CurrentVector.Clear();
 
 	if (range < 1)
 		range = 1;
 
-	auto const mapCoords = pCell->MapCoords;
-	int sectorWidth = MapClass::MapCellDimension->Width / 20;
-	int sectorHeight = MapClass::MapCellDimension->Height / 20;
-	int sectorIndexXStart = std::clamp((mapCoords.X - range) / sectorWidth, 0, 19);
-	int sectorIndexYStart = std::clamp((mapCoords.Y - range) / sectorHeight, 0, 19);
-	int sectorIndexXEnd = std::clamp((mapCoords.X + range) / sectorWidth, 0, 19);
-	int sectorIndexYEnd = std::clamp((mapCoords.Y + range) / sectorHeight, 0, 19);
+	const CellStruct mapCoords = pCell->MapCoords;
+	const int sectorWidth = MapClass::MapCellDimension->Width / 20;
+	const int sectorHeight = MapClass::MapCellDimension->Height / 20;
+	const int sectorIndexXStart = std::clamp((mapCoords.X - range) / sectorWidth, 0, 19);
+	const int sectorIndexYStart = std::clamp((mapCoords.Y - range) / sectorHeight, 0, 19);
+	const int sectorIndexXEnd = std::clamp((mapCoords.X + range) / sectorWidth, 0, 19);
+	const int sectorIndexYEnd = std::clamp((mapCoords.Y + range) / sectorHeight, 0, 19);
 
 	for (int y = sectorIndexYStart; y <= sectorIndexYEnd; y++)
 	{
@@ -2050,26 +2050,32 @@ ASMJIT_PATCH(0x4C75DA, EventClass_RespondToEvent_Stop, 0x6)
 	}
 	else
 	{
-		// Check Jumpjets
-		const auto pFoot = flag_cast_to<FootClass*>(pTechno);
-		const auto pJumpjetLoco = pFoot ? locomotion_cast<JumpjetLocomotionClass*>(pFoot->Locomotor) : nullptr;
+		const auto pFoot = flag_cast_to<FootClass*, false>(pTechno);
 
 		// Clear archive target for infantries and vehicles like receive a mega mission
 		if (pFoot && !pAircraft)
 			pTechno->SetArchiveTarget(nullptr);
 
-		// To avoid foots stuck in Mission::Area_Guard
-		if (pTechno->CurrentMission == Mission::Area_Guard && !pTechno->GetTechnoType()->DefaultToGuardArea)
-			pTechno->QueueMission(Mission::Guard, true);
+		// Only stop when it is not under the bridge (meeting the original conditions which has been skipped)
+		if (!pTechno->vt_entry_2B0() || pTechno->OnBridge || pTechno->IsInAir() || pTechno->GetCell()->SlopeIndex)
+		{
+			// To avoid foots stuck in Mission::Area_Guard
+			if (pTechno->CurrentMission == Mission::Area_Guard && !pTechno->GetTechnoType()->DefaultToGuardArea)
+				pTechno->QueueMission(Mission::Guard, true);
 
-		// To avoid jumpjets falling into a state of standing idly by
-		if (!pJumpjetLoco) // If is not jumpjet, clear the destination is enough
-			pTechno->SetDestination(nullptr, true);
-		else if (!pFoot->Destination) // When in attack move and have had a target, the destination will be cleaned up, enter the guard mission can prevent the jumpjets stuck in a status of standing idly by
-			pTechno->QueueMission(Mission::Guard, true);
-		else if (static_cast<int>(CellClass::Coord2Cell(pFoot->Destination->GetCoords()).DistanceFromSquared(pTechno->GetMapCoords())) > 2) // If the jumpjet is moving, find the forward cell then stop in it
-			pTechno->SetDestination(pTechno->GetCell()->GetNeighbourCell(static_cast<FacingType>(pJumpjetLoco->Facing.Current().GetValue<3>())), true);
-		// Otherwise landing or idling normally without answering the stop command
+			// Check Jumpjets
+			const auto pJumpjetLoco = pFoot ? locomotion_cast<JumpjetLocomotionClass*>(pFoot->Locomotor) : nullptr;
+
+			// To avoid jumpjets falling into a state of standing idly by
+			if (!pJumpjetLoco) // If is not jumpjet, clear the destination is enough
+				pTechno->SetDestination(nullptr, true);
+			else if (!pFoot->Destination) // When in attack move and have had a target, the destination will be cleaned up, enter the guard mission can prevent the jumpjets stuck in a status of standing idly by
+				pTechno->QueueMission(Mission::Guard, true);
+			else if (static_cast<int>(CellClass::Coord2Cell(pFoot->Destination->GetCoords()).DistanceFromSquared(pTechno->GetMapCoords())) > 2) // If the jumpjet is moving, find the forward cell then stop in it
+				pTechno->SetDestination(pTechno->GetCell()->GetNeighbourCell(static_cast<FacingType>(pJumpjetLoco->Facing.Current().GetValue<3>())), true);
+
+			// Otherwise landing or idling normally without answering the stop command
+		}
 	}
 
 	return SkipGameCode;
@@ -2279,6 +2285,105 @@ ASMJIT_PATCH(0x75EE49, WaveClass_DrawSonic_CrashFix, 0x7)
 
 	if (colorIndex > 12)
 		R->EAX(12);
+
+	return 0;
+}
+
+// Radio: do not untether techno who have other tether link
+ASMJIT_PATCH(0x6F4BB3, TechnoClass_ReceiveCommand_NotifyUnlink, 0x7)
+{
+	// Place the hook after processing to prevent functions from calling each other and getting stuck in a dead loop.
+	GET(TechnoClass* const, pThis, ESI);
+	// The radio link capacity of some technos can be greater than 1 (like airport)
+	// Here is a specific example, there may be other situations as well:
+	// - Untether without check may result in `AirportBound=no` aircraft being unable to release from `IsTether` status.
+	// - Specifically, all four aircraft are connected to the airport and have `RadioLink` settings, but when the first aircraft
+	//   is `Unlink` from the airport, all subsequent aircraft will be stuck in `IsTether` status.
+	// - This is because when both parties who are `RadioLink` to each other need to `Unlink`, they need to `Untether` first,
+	//   and this requires ensuring that both parties have `IsTether` flag (0x6F4C50), otherwise `Untether` cannot be successful,
+	//   which may lead to some unexpected situations.
+	for (int i = 0; i < pThis->RadioLinks.Capacity; ++i)
+	{
+		if (const auto pLink = pThis->RadioLinks.Items[i])
+		{
+			if (pLink->IsTethered) // If there's another tether link, reset flag to true
+				pThis->IsTethered = true; // Ensures that other links can be properly untether afterwards
+		}
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x6FC617, TechnoClass_GetFireError_AirCarrierSkipCheckNearBridge, 0x8)
+{
+	enum { ContinueCheck = 0x6FC61F, TemporaryCannotFire = 0x6FCD0E };
+
+	GET(TechnoClass* const, pThis, ESI);
+	GET(const bool, nearBridge, EAX);
+
+	return (nearBridge && !pThis->IsInAir()) ? TemporaryCannotFire : ContinueCheck;
+}
+
+// WW used SetDesired here, causing the barrel drawn incorrectly.
+DEFINE_HOOK(0x6F6DEE, TechnoClass_Unlimbo_BarrelFacingBugFix, 0x7)
+{
+	enum { SkipGameCode = 0x6F6DFA };
+
+	GET(DirStruct*, pDir, ECX);
+	GET(TechnoClass*, pThis, ESI);
+
+	pThis->BarrelFacing.Set_Current(*pDir);
+
+	return SkipGameCode;
+}
+
+DEFINE_HOOK(0x4DFC39, FootClass_FindBioReactor_CheckValid, 0x6)
+{
+	GET(FootClass*, pThis, ESI);
+	GET(BuildingClass*, pBuilding, EDI);
+
+	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x6;
+}
+
+DEFINE_HOOK(0x4DFED2, FootClass_FindGarrisonStructure_CheckValid, 0x6)
+{
+	GET(FootClass*, pThis, ESI);
+	GET(BuildingClass*, pBuilding, EBX);
+
+	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x6;
+}
+
+DEFINE_HOOK(0x4E0024, FootClass_FindTankBunker_CheckValid, 0x8)
+{
+	GET(FootClass*, pThis, EDI);
+	GET(BuildingClass*, pBuilding, ESI);
+
+	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
+}
+
+DEFINE_HOOK(0x4DFD92, FootClass_FindBattleBunker_CheckValid, 0x8)
+{
+	GET(FootClass*, pThis, ESI);
+	GET(BuildingClass*, pBuilding, EBX);
+
+	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
+}
+
+DEFINE_HOOK(0x4DFB28, FootClass_FindGrinder_CheckValid, 0x8)
+{
+	GET(FootClass*, pThis, ESI);
+	GET(BuildingClass*, pBuilding, EBX);
+
+	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
+}
+
+DEFINE_HOOK(0x4C7643, EventClass_RespondToEvent_StopTemporal, 0x6)
+{
+	GET(TechnoClass*, pTechno, ESI);
+	auto const pTemporal = pTechno->TemporalImUsing;
+
+	if (pTemporal && pTemporal->Target)
+		pTemporal->LetGo();
 
 	return 0;
 }

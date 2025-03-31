@@ -179,20 +179,20 @@ ASMJIT_PATCH(0x43E7B0, BuildingClass_DrawVisible, 5)
 					}
 				}
 
-				//auto nColorInt = pThis->Owner->Color.ToInit();//0x63DAD0
-				//DSurface::Temp->Draw_Rect(cameoRect, (COLORREF)nColorInt);
-				//Point2D DrawTextLoc = { DrawCameoLoc.X - 20 , DrawCameoLoc.Y - 20 };
-				//std::wstring pFormat = std::to_wstring(nTotal);
-				//pFormat += L"X";
-				//RectangleStruct nTextDimension;
-				//Drawing::GetTextDimensions(&nTextDimension, pFormat.c_str(), DrawTextLoc, TextPrintType::Center | TextPrintType::FullShadow | TextPrintType::Efnt, 4, 2);
-				//auto nIntersect = Drawing::Intersect(nTextDimension, cameoRect);
-
-				//DSurface::Temp->Fill_Rect(nIntersect, (COLORREF)0);
-				//DSurface::Temp->Draw_Rect(nIntersect, (COLORREF)nColorInt);
-
-				//Point2D nRet;
-				//Simple_Text_Print_Wide(&nRet, pFormat.c_str(), DSurface::Temp.get(), &cameoRect, &DrawTextLoc, (COLORREF)nColorInt, (COLORREF)0, TextPrintType::Center | TextPrintType::FullShadow | TextPrintType::Efnt, true);
+				int prog = pFactory->GetProgress();
+				{
+					Point2D textLoc = { cameoRect.X + cameoRect.Width / 2, cameoRect.Y };
+					const auto percent = int(((double)prog / 54.0) * 100.0);
+					const auto text_ = std::to_wstring(percent);
+					RectangleStruct nTextDimension {};
+					COMPILETIMEEVAL TextPrintType printType = TextPrintType::FullShadow | TextPrintType::Point8 | TextPrintType::Background | TextPrintType::Center;
+					Drawing::GetTextDimensions(&nTextDimension, text_.c_str(), textLoc, printType, 4, 2);
+					auto nIntersect = RectangleStruct::Intersect(nTextDimension, *pBounds, nullptr, nullptr);
+					const COLORREF foreColor = pThis->Owner->Color.ToInit();
+					DSurface::Temp->Fill_Rect(nIntersect, (COLORREF)0);
+					DSurface::Temp->Draw_Rect(nIntersect, (COLORREF)foreColor);
+					DSurface::Temp->DrawText_Old(text_.c_str(), pBounds, &textLoc, (DWORD)foreColor, 0, (DWORD)printType);
+				}
 			}
 			else if (pType->SuperWeapon != -1)
 			{
@@ -697,26 +697,41 @@ ASMJIT_PATCH(0x448BE3, BuildingClass_SetOwningHouse_FixArgs, 0x5)
 	return 0x448BED;
 }
 
-ASMJIT_PATCH(0x44840B, BuildingClass_ChangeOwnership_Tech, 6)
+ASMJIT_PATCH(0x4483FB, BuildingClass_ChangeOwnership_Tech, 6)
 {
 	GET(BuildingClass*, pThis, ESI);
 	GET(HouseClass*, pNewOwner, EBX);
 
-	if (pThis->Owner != pNewOwner && Bld_ChangeOwnerAnnounce)
+	if (Bld_ChangeOwnerAnnounce && !pNewOwner->Type->MultiplayPassive)
 	{
-		const auto pExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
-		const auto color = HouseClass::CurrentPlayer->ColorSchemeIndex;
-
-		if (pThis->Owner->ControlledByCurrentPlayer())
+		if (pThis->Type->NeedsEngineer)
 		{
-			VoxClass::PlayIndex(pExt->LostEvaEvent);
-			pExt->MessageLost->PrintAsMessage(color);
+			if (pThis->Owner != pNewOwner)
+			{
+				const auto pExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
+				const auto color = HouseClass::CurrentPlayer->ColorSchemeIndex;
+
+				if (pThis->Owner->ControlledByCurrentPlayer())
+				{
+					VoxClass::PlayIndex(pExt->LostEvaEvent);
+					pExt->MessageLost->PrintAsMessage(color);
+				}
+
+				if (pNewOwner->ControlledByCurrentPlayer())
+				{
+					VoxClass::PlayIndex(pThis->Type->CaptureEvaEvent);
+					pExt->MessageCapture->PrintAsMessage(color);
+				}
+			}
 		}
-
-		if (pNewOwner->ControlledByCurrentPlayer())
+		else
 		{
-			VoxClass::PlayIndex(pThis->Type->CaptureEvaEvent);
-			pExt->MessageCapture->PrintAsMessage(color);
+			auto coord = pThis->GetMapCoords();
+			if (RadarEventClass::Create(RadarEventType::BuildingCaptured, coord))
+			{
+				if (pNewOwner->ControlledByCurrentPlayer())
+					VoxClass::Play(GameStrings::EVA_BuildingCaptured);
+			}
 		}
 	}
 
@@ -1218,6 +1233,7 @@ ASMJIT_PATCH(0x451E40, BuildingClass_DestroyNthAnim_Destroy, 0x7)
 		{
 			if (auto pAnim = std::exchange(pThis->Anims[i], nullptr))
 			{
+				pAnim->RemainingIterations = 0;
 				pAnim->UnInit();
 			}
 		}
@@ -1226,6 +1242,7 @@ ASMJIT_PATCH(0x451E40, BuildingClass_DestroyNthAnim_Destroy, 0x7)
 	{
 		if (auto pAnim = std::exchange(pThis->Anims[AnimState], nullptr))
 		{
+			pAnim->RemainingIterations = 0;
 			pAnim->UnInit();
 		}
 	}
@@ -1767,21 +1784,52 @@ ASMJIT_PATCH(0x51E635, InfantryClass_GetActionOnObject_EngineerOverFriendlyBuild
 		DontRepair = 0x51E63A,
 		DoRepair = 0x51E659,
 		SkipAll = 0x51E458,
+		ReturnValue = 0x51F17E
 	};
 
-	GET(BuildingClass* const, pTarget, ESI);
+	GET(TechnoClass* const, pTarget, ESI);
 	GET(InfantryClass* const, pThis, EDI);
 
-	const auto pData = BuildingTypeExtContainer::Instance.Find(pTarget->Type);
+	auto pBuilding = cast_to<BuildingClass*>(pTarget);
 
-	if ((pData->RubbleIntact || pData->RubbleIntactRemove) && pTarget->Owner->IsAlliedWith(pThis))
+	if (pBuilding)
 	{
-		MouseCursorFuncs::SetMouseCursorAction(90u, Action::GRepair, false);
-		R->EAX(Action::GRepair);
-		return SkipAll;
+		const auto pData = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
+
+		if ((pData->RubbleIntact || pData->RubbleIntactRemove) && pTarget->Owner->IsAlliedWith(pThis))
+		{
+			MouseCursorFuncs::SetMouseCursorAction(90u, Action::GRepair, false);
+			R->EAX(Action::GRepair);
+			return SkipAll;
+		}
 	}
 
-	return ((R->EAX<DWORD>() & 0x4000) != 0) ? DontRepair : DoRepair;
+	if (((R->EAX<DWORD>() & 0x4000) != 0))
+	{
+		if (pBuilding)
+		{
+			const bool canBeGrinded = pBuilding->Type->Grinding && BuildingExtData::CanGrindTechno(pBuilding, pThis);
+			Action ret = canBeGrinded ? Action::Repair : Action::NoGRepair;
+
+			if (ret == Action::NoGRepair &&
+				(pBuilding->Type->InfantryAbsorb
+					|| BuildingTypeExtContainer::Instance.Find(pBuilding->Type)->TunnelType != -1
+					|| pBuilding->Type->Hospital && pThis->GetHealthPercentage() < RulesClass::Instance->ConditionGreen
+					|| pBuilding->Type->Armory && pThis->Type->Trainable
+					))
+			{
+				ret = pThis->SendCommand(RadioCommand::QueryCanEnter, pTarget) == RadioCommand::AnswerPositive ?
+					Action::Enter : Action::NoEnter;
+			}
+
+			R->EBP(ret);
+			return ReturnValue;
+		}
+
+		return DontRepair;
+	}
+
+	return DoRepair;
 }
 
 ASMJIT_PATCH(0x51FA82, InfantryClass_GetActionOnCell_EngineerRepairable, 6)

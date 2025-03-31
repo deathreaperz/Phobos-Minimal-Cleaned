@@ -133,6 +133,31 @@ ASMJIT_PATCH(0x62A074, ParasiteClass_AI_DamagingAction, 0x6)
 	return ReceiveDamage_LikeVehicle;
 }
 
+ASMJIT_PATCH(0x629C67, ParasiteClass_AI_AllowSink, 0xA)
+{
+	GET(ParasiteClass* const, pThis, ESI);
+	GET(TechnoClass*, pVictim, EDI);
+
+	if (auto pUnit = cast_to<UnitClass*, false>(pVictim))
+	{
+		auto pVictimTypeExt = TechnoTypeExtContainer::Instance.Find(pUnit->Type);
+
+		if (pVictimTypeExt->Sinkable_SquidGrab)
+		{
+			pVictim->IsSinking = true;
+			pVictim->Destroyed(pThis->Owner);
+			pVictim->Stun();
+		}
+		else
+		{
+			auto damage = pUnit->Type->Strength;
+			pVictim->ReceiveDamage(&damage, 0, RulesClass::Instance->C4Warhead, pThis->Owner, true, false, pThis->Owner->Owner);
+		}
+		return 0x629C86;
+	}
+
+	return 0x0;
+}
 //ASMJIT_PATCH(0x62A0B7, ParasiteClass_AI_InfantryAction, 0x5)
 //{
 //	enum

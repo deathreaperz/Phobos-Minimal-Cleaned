@@ -187,16 +187,17 @@ void PhobosAttachEffectClass::AnimCheck()
 	}
 }
 
-void PhobosAttachEffectClass::UpdateCumulativeAnim()
+void PhobosAttachEffectClass::UpdateCumulativeAnim(int count)
 {
 	if (!this->HasCumulativeAnim || !this->Animation)
 		return;
-	int count = PhobosAEFunctions::GetAttachedEffectCumulativeCount(this->Techno, this->Type);
+
 	if (count < 1)
 	{
 		this->KillAnim();
 		return;
 	}
+
 	auto const pAnimType = this->Type->GetCumulativeAnimation(count);
 	if (this->Animation->Type != pAnimType)
 		AnimExtData::ChangeAnimType(this->Animation, pAnimType, false, this->Type->CumulativeAnimations_RestartOnChange);
@@ -381,15 +382,18 @@ bool PhobosAttachEffectClass::ShouldBeDiscardedNow() const
 	if (this->Type->DiscardOn_BelowPercent.isset() && this->Techno->GetHealthPercentage() <= this->Type->DiscardOn_BelowPercent.Get())
 		return true;
 
-	if (auto const pFoot = flag_cast_to<FootClass*, false>(this->Techno))
+	if (this->Type->DiscardOn != DiscardCondition::None)
 	{
-		bool isMoving = pFoot->Locomotor->Is_Really_Moving_Now();
+		if (auto const pFoot = flag_cast_to<FootClass*, false>(this->Techno))
+		{
+			bool isMoving = pFoot->Locomotor->Is_Really_Moving_Now();
 
-		if (isMoving && (this->Type->DiscardOn & DiscardCondition::Move) != DiscardCondition::None)
-			return true;
+			if (isMoving && (this->Type->DiscardOn & DiscardCondition::Move) != DiscardCondition::None)
+				return true;
 
-		if (!isMoving && (this->Type->DiscardOn & DiscardCondition::Stationary) != DiscardCondition::None)
-			return true;
+			if (!isMoving && (this->Type->DiscardOn & DiscardCondition::Stationary) != DiscardCondition::None)
+				return true;
+		}
 	}
 
 	if (this->Techno->DrainingMe && (this->Type->DiscardOn & DiscardCondition::Drain) != DiscardCondition::None)
@@ -542,8 +546,10 @@ PhobosAttachEffectClass* PhobosAttachEffectClass::CreateAndAttach(PhobosAttachEf
 		{
 			currentTypeCount++;
 			match = attachEffect;
+			if (!pType->Cumulative)
+				break;
 
-			if (pType->Cumulative && (!attachParams.CumulativeRefreshSameSourceOnly || (attachEffect->Source == pSource && attachEffect->Invoker == pInvoker)))
+			if (!attachParams.CumulativeRefreshSameSourceOnly || (attachEffect->Source == pSource && attachEffect->Invoker == pInvoker))
 				cumulativeMatches->push_back(attachEffect);
 		}
 	}
@@ -657,37 +663,41 @@ int PhobosAttachEffectClass::RemoveAllOfType(PhobosAttachEffectTypeClass* pType,
 
 	StackVector<WeaponTypeClass*, 256> expireWeapons {};
 
-	pTargetExt->PhobosAE.remove_all_if([&](auto& it)
- {
-	 if (!it)
-		 return true;
+	for (auto it = pTargetExt->PhobosAE.begin(); it != pTargetExt->PhobosAE.end(); )
+	{
+		if (maxCount > 0 && detachedCount >= maxCount)
+			break;
 
-	 if (maxCount > 0 && detachedCount >= maxCount)
-		 return false;
+		auto const attachEffect = it->get();
 
-	 if (pType == it->Type)
-	 {
-		 detachedCount++;
+		if (pType == attachEffect->Type)
+		{
+			detachedCount++;
 
-		 if (pType->ExpireWeapon && (pType->ExpireWeapon_TriggerOn & ExpireWeaponCondition::Remove) != ExpireWeaponCondition::None)
-		 {
-			 if (!pType->Cumulative || !pType->ExpireWeapon_CumulativeOnlyOnce || PhobosAEFunctions::GetAttachedEffectCumulativeCount(pTarget, pType) < 2)
-				 expireWeapons->push_back(pType->ExpireWeapon);
-		 }
+			if (pType->ExpireWeapon && (pType->ExpireWeapon_TriggerOn & ExpireWeaponCondition::Remove) != ExpireWeaponCondition::None)
+			{
+				if (!pType->Cumulative || !pType->ExpireWeapon_CumulativeOnlyOnce || PhobosAEFunctions::GetAttachedEffectCumulativeCount(pTarget, pType) < 2)
+					expireWeapons->push_back(pType->ExpireWeapon);
+			}
 
-		 if (pType->Cumulative && !pType->CumulativeAnimations.empty())
-			 PhobosAEFunctions::UpdateCumulativeAttachEffects(pTarget, pType, nullptr);
+			if (pType->Cumulative && pType->CumulativeAnimations.size() > 0)
+				PhobosAEFunctions::UpdateCumulativeAttachEffects(pTarget, pType, nullptr);
 
-		 if (it->ResetIfRecreatable())
-		 {
-			 return false;
-		 }
+			if (attachEffect->ResetIfRecreatable())
+			{
+				++it;
+				continue;
+			}
 
-		 return true;
-	 }
-
-	 return false;
-	});
+			it = pTargetExt->PhobosAE.erase(it);
+			if (stackCount-- < 1)
+				break;
+		}
+		else
+		{
+			++it;
+		}
+	}
 
 	auto const coords = pTarget->GetCoords();
 	auto const pOwner = pTarget->Owner;

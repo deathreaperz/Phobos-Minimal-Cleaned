@@ -44,11 +44,14 @@ void PhobosAEFunctions::UpdateCumulativeAttachEffects(TechnoClass* pTechno, Phob
 	PhobosAttachEffectClass* pAEWithAnim = nullptr;
 	auto pExt = TechnoExtContainer::Instance.Find(pTechno);
 	int duration = 0;
+	int count = 0;
 
 	for (auto const& attachEffect : pExt->PhobosAE)
 	{
 		if (!attachEffect || attachEffect->GetType() != pAttachEffectType)
 			continue;
+
+		count++;
 
 		if (attachEffect->HasCumulativeAnim)
 		{
@@ -68,7 +71,7 @@ void PhobosAEFunctions::UpdateCumulativeAttachEffects(TechnoClass* pTechno, Phob
 
 	if (pAEWithAnim)
 	{
-		pAEWithAnim->UpdateCumulativeAnim();
+		pAEWithAnim->UpdateCumulativeAnim(count);
 
 		if (pRemoved == pAEWithAnim)
 		{

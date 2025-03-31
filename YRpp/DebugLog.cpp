@@ -9,8 +9,7 @@ void GameDebugLog::HookLogEnd(DWORD addr, const char* pFormat, size_t size, long
 
 	const int time_i = (int)time;
 
-	if (time_i > 0)
-	{
+	if (time_i > 0) {
 		Debug::LogInfo("[{0:x}] {1} [{2}] , Spend {3} s", addr, pFormat, size, time_i);
 	}
 }

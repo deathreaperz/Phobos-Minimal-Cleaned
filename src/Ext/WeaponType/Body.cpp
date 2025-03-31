@@ -185,6 +185,8 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Cursor_AttackOutOfRange.Read(exINI, pSection, "Cursor.AttackOutOfRange");
 
 	this->Bolt_ParticleSys.Read(exINI, pSection, "Bolt.ParticleSystem");
+	this->Bolt_FollowFLH.Read(exINI, pSection, "Bolt.FollowFLH");
+
 	this->Laser_Thickness.Read(exINI, pSection, "LaserThickness");
 
 	this->ExtraWarheads.Read(exINI, pSection, "ExtraWarheads");
@@ -235,6 +237,17 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->DelayedFire_PauseFiringSequence.Read(exINI, pSection, "DelayedFire.PauseFiringSequence");
 	this->DelayedFire_OnlyOnInitialBurst.Read(exINI, pSection, "DelayedFire.OnlyOnInitialBurst");
 	this->DelayedFire_AnimOffset.Read(exINI, pSection, "DelayedFire.AnimOffset");
+
+	this->KeepRange.Read(exINI, pSection, "KeepRange");
+	this->KeepRange_AllowAI.Read(exINI, pSection, "KeepRange.AllowAI");
+	this->KeepRange_AllowPlayer.Read(exINI, pSection, "KeepRange.AllowPlayer");
+
+	this->SkipWeaponPicking = true;
+	if (this->CanTarget != AffectedTarget::All || this->CanTargetHouses != AffectedHouse::All || this->AttachEffect_RequiredTypes.size()
+		|| this->AttachEffect_RequiredGroups.size() || this->AttachEffect_DisallowedTypes.size() || this->AttachEffect_DisallowedGroups.size())
+	{
+		this->SkipWeaponPicking = false;
+	}
 }
 
 int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass* pFirer, std::optional<int> fallback)
@@ -279,6 +292,66 @@ int WeaponTypeExtData::GetRangeWithModifiers(WeaponTypeClass* pThis, TechnoClass
 		}
 	}
 	return MaxImpl(range, 0);
+}
+
+#include <SpawnManagerClass.h>
+
+int WeaponTypeExtData::GetTechnoKeepRange(WeaponTypeClass* pThis, TechnoClass* pFirer, bool isMinimum)
+{
+	const auto pExt = WeaponTypeExtContainer::Instance.Find(pThis);
+	const auto keepRange = pExt->KeepRange.Get();
+
+	if (!keepRange || !pFirer || pFirer->Transporter)
+		return 0;
+
+	const auto absType = pFirer->WhatAmI();
+
+	if (absType != AbstractType::Infantry && absType != AbstractType::Unit)
+		return 0;
+
+	const auto pHouse = pFirer->Owner;
+
+	if (pHouse && pHouse->IsControlledByHuman())
+	{
+		if (!pExt->KeepRange_AllowPlayer)
+			return 0;
+	}
+	else if (!pExt->KeepRange_AllowAI)
+	{
+		return 0;
+	}
+
+	if (!pFirer->DiskLaserTimer.InProgress())
+	{
+		const auto spawnManager = pFirer->SpawnManager;
+
+		if (!spawnManager || spawnManager->Status != SpawnManagerStatus::CoolDown)
+			return 0;
+
+		const auto spawnsNumber = pFirer->GetTechnoType()->SpawnsNumber;
+
+		for (int i = 0; i < spawnsNumber; i++)
+		{
+			const auto status = spawnManager->SpawnedNodes[i]->Status;
+
+			if (status == SpawnNodeStatus::TakeOff || status == SpawnNodeStatus::Returning)
+				return 0;
+		}
+	}
+
+	if (isMinimum)
+		return (keepRange > 0) ? keepRange : 0;
+
+	if (keepRange > 0)
+		return 0;
+
+	const auto checkRange = -keepRange - 128;
+	const auto pTarget = pFirer->Target;
+
+	if (pTarget && pFirer->DistanceFrom(pTarget) >= checkRange)
+		return (checkRange > 443) ? checkRange : 443; // 1.73 * Unsorted::LeptonsPerCell
+
+	return -keepRange;
 }
 
 #include <New/PhobosAttachedAffect/Functions.h>
@@ -436,6 +509,7 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->Bolt_Color2)
 		.Process(this->Bolt_Color3)
 		.Process(this->Bolt_ParticleSys)
+		.Process(this->Bolt_FollowFLH)
 		.Process(this->Laser_Thickness)
 
 		.Process(this->ExtraWarheads)
@@ -484,6 +558,11 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->DelayedFire_PauseFiringSequence)
 		.Process(this->DelayedFire_OnlyOnInitialBurst)
 		.Process(this->DelayedFire_AnimOffset)
+		.Process(this->SkipWeaponPicking)
+
+		.Process(this->KeepRange)
+		.Process(this->KeepRange_AllowAI)
+		.Process(this->KeepRange_AllowPlayer)
 		;
 
 	MyAttachFireDatas.Serialize(Stm);
@@ -574,21 +653,13 @@ void WeaponTypeExtData::DetonateAt(WeaponTypeClass* pThis, const CoordStruct& co
 	}
 }
 
-EBolt* WeaponTypeExtData::CreateBolt(WeaponTypeClass* pWeapon)
-{
-	return WeaponTypeExtData::CreateBolt(WeaponTypeExtContainer::Instance.Find(pWeapon));
-}
-
-EBolt* WeaponTypeExtData::CreateBolt(WeaponTypeExtData* pWeapon)
+EBolt* WeaponTypeExtData::CreateBolt(WeaponTypeClass* pWeapon, TechnoClass* pFirer)
 {
 	auto ret = GameCreate<EBolt>();
-
-	if (pWeapon)
-	{
-		WeaponTypeExtData::boltWeaponTypeExt[ret] = pWeapon;
-		ret->Lifetime = 1 << (std::clamp(pWeapon->Bolt_Duration.Get(), 1, 31) - 1);
-	}
-
+	auto map = &WeaponTypeExtData::boltWeaponTypeExt[ret];
+	map->Weapon = WeaponTypeExtContainer::Instance.Find(pWeapon);
+	map->BurstIndex = pFirer->CurrentBurstIndex;
+	ret->Lifetime = 1 << (std::clamp(map->Weapon->Bolt_Duration.Get(), 1, 31) - 1);
 	return ret;
 }
 

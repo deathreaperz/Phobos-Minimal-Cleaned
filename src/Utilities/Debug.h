@@ -154,7 +154,7 @@ public:
 
 	static COMPILETIMEEVAL FORCEDINLINE bool LogFileActive()
 	{
-		return Debug::LogEnabled;
+		return Debug::LogEnabled && Debug::LogFile;
 	}
 
 	template <typename... TArgs>
@@ -226,10 +226,14 @@ public:
 		return filename;
 	}
 
+	template<bool ImmedietelyExit = false>
 	[[noreturn]] static NOINLINE void ExitGame(unsigned int code = 1u)
 	{
 		Phobos::ExeTerminate();
-		CRT::exit_returnsomething(code, 0, 0);
+		if constexpr (!ImmedietelyExit)
+			CRT::exit_returnsomething(code, 0, 0);
+		else
+			exit(code);
 	}
 
 	static COMPILETIMEEVAL void GenerateDefaultMessage()

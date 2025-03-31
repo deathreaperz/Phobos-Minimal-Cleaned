@@ -80,9 +80,9 @@ struct INIInheritance
 {
 	static COMPILETIMEEVAL const char* const IcludesSection = "$Include";
 	static COMPILETIMEEVAL int inheritsCRC = -1871638965; // CRCEngine()("$Inherits", 9)
-	static CCINIClass* LastINIFile;
-	static std::set<std::string> SavedIncludes;
-	static PhobosMap<int, std::string> Inherits;
+	static OPTIONALINLINE CCINIClass* LastINIFile;
+	static OPTIONALINLINE std::set<std::string> SavedIncludes;
+	static OPTIONALINLINE PhobosMap<int, std::string> Inherits;
 
 	static int Finalize(char* buffer, int length, const char* result)
 	{
@@ -240,10 +240,6 @@ struct INIInheritance
 		return result;
 	}
 };
-
-CCINIClass* INIInheritance::LastINIFile = nullptr;
-std::set<std::string>  INIInheritance::SavedIncludes {};
-PhobosMap<int, std::string>  INIInheritance::Inherits {};
 
 // INIClass__GetInt__Hack // pop edi, jmp + 6, nop
 DEFINE_PATCH(0x5278C6, 0x5F, 0xEB, 0x06, 0x90);

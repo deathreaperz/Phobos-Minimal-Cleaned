@@ -266,6 +266,8 @@ HRESULT Phobos::SaveGameDataAfter(IStream* pStm)
 	return S_OK;
 }
 
+#include <BeaconManagerClass.h>
+
 void Phobos::LoadGameDataAfter(IStream* pStm)
 {
 	//clear the loadgame flag
@@ -279,6 +281,7 @@ void Phobos::LoadGameDataAfter(IStream* pStm)
 		}
 	}
 
+	BeaconManagerClass::Instance->LoadArt();
 	Debug::LogInfo("[Phobos] Finished loading the game");
 }
 
@@ -360,13 +363,11 @@ ASMJIT_PATCH(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	//	}
 	//}
 
-	EBolt::Array->for_each([&](EBolt* pThis)
- {
-	 if (removed && pThis->Owner == pInvalid)
-	 {
-		 pThis->Owner = nullptr;
-	 }
-	});
+	// EBolt::Array->for_each([&](EBolt* pThis) {
+	// 	if (removed && pThis->Owner == pInvalid) {
+	// 		pThis->Owner = nullptr;
+	// 	}
+	// });
 
 	//PrismForwarding::Array.for_each([&](auto& pThis) {
 	//	if (pThis) {
@@ -379,7 +380,7 @@ ASMJIT_PATCH(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 
 #define LogPool(s) Debug::LogInfo("{} MemoryPool size {}", _STR_(s) , ##s::Instance.Pool.size());
 
-ASMJIT_PATCH(0x48CFC6, Game_Exit_RecordPoolSize, 0x6)
+ASMJIT_PATCH(0x48CFB7, Game_Exit_RecordPoolSize, 0x6)
 {
 	LogPool(TechnoExtContainer)
 		LogPool(BuildingExtContainer)
@@ -396,8 +397,10 @@ ASMJIT_PATCH(0x48CFC6, Game_Exit_RecordPoolSize, 0x6)
 }
 
 // Clear static data from respective classes
+// this function is executed after all game classes already cleared
 ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 {
+	CellExtContainer::Instance.Clear();
 	PrismForwarding::Array.clear();
 	MouseClassExt::ClearCameos();
 	TemporalExtContainer::Instance.Clear();
@@ -469,6 +472,7 @@ ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 		WaveExtContainer::Instance.Pool.reserve(1000);
 		SWFirerClass::Array.reserve(1000);
 		TemporalExtContainer::Instance.Pool.reserve(100);
+		CellExtContainer::Array.reserve(2000);
 	}
 
 	return 0;

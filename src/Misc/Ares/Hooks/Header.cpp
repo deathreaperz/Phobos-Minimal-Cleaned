@@ -1662,6 +1662,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 		while (pThis->Passengers.GetFirstPassenger())
 		{
 			auto const pPassenger = pThis->RemoveFirstPassenger();
+
 			bool trySpawn = false;
 			if (passengerChance > 0)
 			{
@@ -1773,7 +1774,7 @@ void TechnoExt_ExtData::DepositTiberium(TechnoClass* pThis, HouseClass* pHouse, 
 				decidedAmount = (amount * pTiberium->Value) / pTiberium->Value;
 			}
 
-			pHouse->GiveTiberium(decidedAmount, decidedIndex);
+			((FakeHouseClass*)(pHouse))->_GiveTiberium(decidedAmount, decidedIndex);
 		}
 	}
 
@@ -3425,32 +3426,46 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 
 	TrailsManager::Construct(static_cast<TechnoClass*>(pThis), true);
 
-	// Update open topped state of potential passengers if transport's OpenTopped value changes.
-	bool toOpenTopped = pToType->OpenTopped && !pOldType->OpenTopped;
-
-	if ((toOpenTopped || (!pToType->OpenTopped && pOldType->OpenTopped)) && pThis->Passengers.NumPassengers > 0)
+	if (pThis->Passengers.NumPassengers > 0)
 	{
-		auto pPassenger = pThis->Passengers.FirstPassenger;
+		const bool toOpenTopped = pToType->OpenTopped && !pOldType->OpenTopped;
+		const bool fromOpenTopped = !pToType->OpenTopped && pOldType->OpenTopped;
+		const bool addGunner = pToType->Gunner && !pOldType->Gunner;
+		const bool removeGunner = !pToType->Gunner && pOldType->Gunner;
 
-		while (pPassenger)
+		if (toOpenTopped || fromOpenTopped || addGunner || removeGunner)
 		{
-			if (toOpenTopped)
+			auto pPassenger = pThis->Passengers.FirstPassenger;
+			FootClass* pLastPassenger = nullptr;
+			// Update open topped state of potential passengers if transport's OpenTopped value changes.
+			while (pPassenger)
 			{
-				pThis->EnteredOpenTopped(pPassenger);
+				if (toOpenTopped)
+				{
+					pThis->EnteredOpenTopped(pPassenger);
+				}
+				else if (fromOpenTopped)
+				{
+					pThis->ExitedOpenTopped(pPassenger);
+					// Lose target & destination
+					pPassenger->Stun();
+					// OpenTopped adds passengers to logic layer when enabled. Under normal conditions this does not need to be removed since
+					// OpenTopped state does not change while passengers are still in transport but in case of type conversion that can happen.
+					LogicClass::Instance->RemoveObject(pPassenger);
+				}
+
+				pLastPassenger = pPassenger;
+				pPassenger = flag_cast_to<FootClass*>(pPassenger->NextObject);
 			}
-			else
+
+			// Update Gunner
+			if (auto const pFoot = flag_cast_to<FootClass*>(pThis))
 			{
-				pThis->ExitedOpenTopped(pPassenger);
-
-				// Lose target & destination
-				pPassenger->Guard();
-
-				// OpenTopped adds passengers to logic layer when enabled. Under normal conditions this does not need to be removed since
-				// OpenTopped state does not change while passengers are still in transport but in case of type conversion that can happen.
-				MapClass::Logics.get().RemoveObject(pPassenger);
+				if (addGunner)
+					pFoot->ReceiveGunner(pLastPassenger);
+				else if (removeGunner)
+					pFoot->RemoveGunner(pLastPassenger);
 			}
-
-			pPassenger = flag_cast_to <FootClass*>(pPassenger->NextObject);
 		}
 	}
 
@@ -3523,10 +3538,10 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 
 	TechnoExt_ExtData::SetSpotlight(pThis, pSpot);
 	const int value = MinImpl(pToType->ROT, 127);
-	(&pThis->PrimaryFacing)->ROT.Raw = value << 8;
+	(&pThis->PrimaryFacing)->ROT.Raw = (unsigned short)(value << 8);
 
 	const int valuesec = MinImpl(pToTypeExt->TurretRot.Get(pToType->ROT), 127);
-	(&pThis->SecondaryFacing)->ROT.Raw = valuesec << 8;
+	(&pThis->SecondaryFacing)->ROT.Raw = (unsigned short)(valuesec << 8);
 
 	// // because we are throwing away the locomotor in a split second, piggybacking
 	// // has to be stopped. otherwise the object might remain in a weird state.

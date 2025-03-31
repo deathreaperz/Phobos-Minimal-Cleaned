@@ -17,7 +17,8 @@ ASMJIT_PATCH(0x69BAE7, SessionClass_Resume_CampaignGameSpeed, 0xA)
 
 ASMJIT_PATCH(0x55E160, SyncDelay_Start, 0x6)
 {
-	if (Phobos::Misc::CustomGS && !SessionClass::IsMultiplayer()) {
+	if (Phobos::Misc::CustomGS && !SessionClass::IsMultiplayer())
+	{
 		auto& FrameTimer = Game::FrameTimer();
 		auto const& ChangeIntervals = Phobos::Misc::CustomGS_ChangeInterval;
 		auto const& ChangeDelays = Phobos::Misc::CustomGS_ChangeDelay;
@@ -41,7 +42,8 @@ ASMJIT_PATCH(0x55E160, SyncDelay_Start, 0x6)
 
 ASMJIT_PATCH(0x55E33B, SyncDelay_End, 0x5)
 {
-	if (Phobos::Misc::CustomGS && SessionClass::IsSingleplayer()) {
+	if (Phobos::Misc::CustomGS && SessionClass::IsSingleplayer())
+	{
 		Game::FrameTimer->TimeLeft = GameOptionsClass::Instance->GameSpeed;
 	}
 

@@ -40,6 +40,7 @@ void Phobos::ExecuteLua()
 				{
 					Phobos::Config::MultiThreadSinglePlayer = false;
 					Phobos::Config::DebugFatalerrorGenerateDump = true;
+					//Phobos::Otamaa::ReplaceGameMemoryAllocator = true;
 					Phobos::Otamaa::IsAdmin = true;
 				}
 			}
@@ -148,6 +149,4 @@ void Phobos::ExecuteLua()
 			Phobos::Otamaa::AllowMultipleInstance = lua_toboolean(L, -1);
 		}
 	}
-
-	LuaBridge::InitScriptLuaList(unique_lua);
 }

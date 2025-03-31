@@ -1930,6 +1930,19 @@ int HouseExtData::GetFactoryCountWithoutNonMFB(AbstractType rtti, bool isNaval)
 	return std::max(count, 0);
 }
 
+int HouseExtData::GetForceEnemyIndex()
+{
+	return this->ForceEnemyIndex;
+}
+
+void HouseExtData::SetForceEnemy(int EnemyIndex)
+{
+	if (EnemyIndex < 0 && EnemyIndex != -2)
+		this->ForceEnemyIndex = -1;
+	else
+		this->ForceEnemyIndex = EnemyIndex;
+}
+
 //void HouseExtData::AddToLimboTracking(TechnoTypeClass* pTechnoType)
 //{
 //	if (pTechnoType)
@@ -2092,6 +2105,7 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->NumShipyards_NonMFB)
 
 		.Process(this->SuspendedEMPulseSWs)
+		.Process(this->ForceEnemyIndex)
 		;
 }
 
@@ -2168,6 +2182,44 @@ int FakeHouseClass::_Expert_AI()
 	 */
 	if (this->ExpertAITimer.Expired())
 	{
+		if (RulesExtData::Instance()->AIBiasSpawnCell && !SessionClass::IsCampaign())
+		{
+			if (const auto count = this->ConYards.Count)
+			{
+				const auto wayPoint = this->GetSpawnPosition();
+
+				if (wayPoint != -1)
+				{
+					const auto center = ScenarioClass::Instance->GetWaypointCoords(wayPoint);
+					auto newCenter = center;
+					double distanceSquared = 131072.0;
+
+					for (int i = 0; i < count; ++i)
+					{
+						if (const auto pBuilding = this->ConYards.GetItem(i))
+						{
+							if (pBuilding->IsAlive && pBuilding->Health && !pBuilding->InLimbo)
+							{
+								const auto newDistanceSquared = pBuilding->GetMapCoords().DistanceFromSquared(center);
+
+								if (newDistanceSquared < distanceSquared)
+								{
+									distanceSquared = newDistanceSquared;
+									newCenter = pBuilding->GetMapCoords();
+								}
+							}
+						}
+					}
+
+					if (newCenter != center)
+					{
+						this->BaseSpawnCell = newCenter;
+						this->Base.Center = newCenter;
+					}
+				}
+			}
+		}
+
 		if (this->EnemyHouseIndex == -1
 			&& SessionClass::Instance->GameMode != GameMode::Campaign
 			&& !this->Type->MultiplayPassive)
@@ -2282,35 +2334,41 @@ int FakeHouseClass::_Expert_AI()
 
 	if (SessionClass::Instance->GameMode != GameMode::Campaign && !SpawnerMain::GetGameConfigs()->SpawnerHackMPNodes)
 	{
-		using fp_type = bool(__thiscall*)(HouseClass*, int);
-
-		const std::pair<UrgencyType, DWORD> urgency[(int)StrategyType::Count] {
-			{ this->Check_Fire_Sale() ,  0x4FDCE0 }  ,
-			{ this->Check_Raise_Money() , 0x4FDD10 }
+		const std::array<UrgencyType, 2u> urgency = {
+			this->AIMode == AIMode::BuildBase ? UrgencyType::None : this->Check_Fire_Sale()
+			,
+			this->Check_Raise_Money()
 		};
 
-		for (auto u = (int)UrgencyType::Critical; u >= (int)UrgencyType::Low; u--)
+		// Process strategies by priority from 4 down to 1
+		for (int priority = (int)UrgencyType::Critical; priority >= (int)UrgencyType::Low; --priority)
 		{
-			bool acted = false;
-			for (auto& [urg, call] : urgency)
+			for (int strat = 0; strat < 2; ++strat)
 			{
-				if (urg == (UrgencyType)u)
+				if (urgency[strat] == (UrgencyType)priority)
 				{
-					acted |= reinterpret_cast<fp_type>(call)(this, u);
+					if (strat == 1)
+					{
+						this->AI_Raise_Money((UrgencyType)priority);
+					}
+					else
+					{
+						this->AI_Fire_Sale((UrgencyType)priority);
+					}
 				}
 			}
 		}
 	}
 	else
 	{
-		Check_Fire_Sale();
+		this->AI_Fire_Sale(Check_Fire_Sale());
 	}
 
 	return ScenarioClass::Instance->Random.RandomRanged(1, 7) + 105;
 }
 
 DEFINE_FUNCTION_JUMP(CALL, 0x4F9017, FakeHouseClass::_Expert_AI)
-
+DEFINE_FUNCTION_JUMP(LJMP, 0x4FD500, FakeHouseClass::_Expert_AI)
 // =============================
 // container hooks
 

@@ -61,6 +61,8 @@ ASMJIT_PATCH(0x64CCBF, DoList_ReplaceReconMessage, 6)
 			"Please submit that to the developers along with SYNC*.txt, debug.txt and syringe.log."
 				, Phobos::Otamaa::ParserErrorDetected ? "(One or more parser errors have been detected that might be responsible. Check the debug logs.)\r" : ""
 		);
+
+		Debug::ExitGame<true>(0);
 	}
 
 	return 0x64CD11;
@@ -76,6 +78,7 @@ ASMJIT_PATCH(0x64CCBF, DoList_ReplaceReconMessage, 6)
 LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 {
 	DWORD* eip_pointer = reinterpret_cast<DWORD*>(&pExs->ContextRecord->Eip);
+	std::string reason = "Unknown";
 
 	switch (*eip_pointer)
 	{
@@ -114,11 +117,11 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 		//MovementZone movementZone = (MovementZone)(ExceptionInfo->ContextRecord->Ebp + 0x10);
 
 		//AstarClass , broken ptr
-		Debug::LogInfo("PathfindingCrash");
+		reason = ("PathfindingCrash");
 		break;
 	}
 	case 0x584DF7:
-		Debug::LogInfo("SubzoneTrackingCrash");
+		reason = ("SubzoneTrackingCrash");
 		break;
 		//case 0x755C7F:
 		//{
@@ -139,7 +142,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 	}
 
 	Debug::FreeMouse();
-	Debug::LogInfo("Exception handler fired!");
+	Debug::LogInfo("Exception handler fired reason {} !", reason);
 	Debug::Log("Exception 0x%x at 0x%x\n", pExs->ExceptionRecord->ExceptionCode, pExs->ExceptionRecord->ExceptionAddress);
 	Game::StreamerThreadFlush();
 
@@ -365,6 +368,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 						pp.To.X, pp.To.Y
 					);
 				}
+				pp.Clear();
 			}
 
 			fprintf(except, "\nStack dump (depth : %d):\n", EXCEPTION_STACK_DEPTH_MAX);
@@ -437,7 +441,7 @@ LONG __fastcall ExceptionHandler(int code, PEXCEPTION_POINTERS const pExs)
 		break;
 	}
 
-	Debug::ExitGame(pExs->ExceptionRecord->ExceptionCode);
+	Debug::ExitGame<true>(pExs->ExceptionRecord->ExceptionCode);
 
 	return 0u;
 };
