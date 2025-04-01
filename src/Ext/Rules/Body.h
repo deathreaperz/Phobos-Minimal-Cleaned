@@ -409,6 +409,10 @@ public:
 	Valueable<int> UnitIdleActionIntervalMax { 450 };
 
 	Valueable<bool> ExpandAircraftMission {};
+	Valueable<bool> AssignUnitMissionAfterParadropped { false };
+
+	Valueable<Leptons> VisualScatter_Min { Leptons(8) };
+	Valueable<Leptons> VisualScatter_Max { Leptons(52) };
 
 	struct LandTypeExt
 	{

@@ -2492,7 +2492,7 @@ ASMJIT_PATCH(0x737C90, UnitClass_ReceiveDamage_Handled, 5)
 			}
 		}
 
-		if ((pType->Crashable && !pThis->Crash(args.Attacker)) || !pThis->IsSinking)
+		if ((!pType->Crashable || !pThis->Crash(args.Attacker)) && !pThis->IsSinking)
 			pThis->UnInit();
 	}
 
