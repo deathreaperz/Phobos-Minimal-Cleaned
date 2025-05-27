@@ -45,6 +45,19 @@ struct DifficultyStruct
 };
 
 #pragma pack(push, 8)
+
+struct JumpjetControls {
+	int				 TurnRate;
+	int				 Speed;
+	double			 Climb;
+	int				 CruiseHeight;
+	double			 Acceleration;
+	double			 WobblesPerSecond;
+	int				 WobbleDeviation;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 8)
 class RulesClass
 {
 public:
@@ -909,7 +922,7 @@ public:
 	int				 OreTwinkleChance;
 	AnimTypeClass*			 OreTwinkle;
 
-	ColorStruct ColorAdd [0x10];
+	std::array<ColorStruct,0x10> ColorAdd;
 
 	int				 LaserTargetColor;
 	int				 IronCurtainColor;
@@ -919,4 +932,4 @@ public:
 	float				 FallBackCoefficient;
 };
 #pragma pack(pop)
-//static_assert(sizeof(RulesClass) == 0x18C0);
+static_assert(sizeof(RulesClass) == 0x18C0);

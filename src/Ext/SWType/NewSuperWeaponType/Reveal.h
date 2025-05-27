@@ -21,11 +21,9 @@ public:
 
 	static void RevealMap(const CellStruct& Coords, float range, int height, HouseClass* Owner);
 
-	using TStateMachine = RevealStateMachine;
-
 protected:
 	void newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper)
 	{
-		SWStateMachine::Register<TStateMachine>(Deferment, XY, pSuper, this);
+		SWStateMachine::Array.push_back(std::move(std::make_unique <RevealStateMachine>(Deferment, XY, pSuper, this)));
 	}
 };

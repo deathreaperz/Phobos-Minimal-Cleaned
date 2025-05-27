@@ -229,7 +229,7 @@ public:
 	virtual void Init() override { JMP_THIS(0x6F3F40); }
 	virtual void PointerExpired(AbstractClass* pAbstract, bool bremoved) override JMP_THIS(0x7077C0);
 	virtual int GetOwningHouseIndex() const override JMP_THIS(0x6F9DB0);//{ return this->Owner->ArrayIndex; }
-	virtual HouseClass* GetOwningHouse() const override { return this->Owner; }
+	virtual HouseClass* GetOwningHouse() const;// override { return this->Owner; }
 	virtual void Update() override JMP_THIS(0x6F9E50);
 
 	//ObjectClass
@@ -374,7 +374,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	virtual void DrawHealthBar(Point2D *pLocation, RectangleStruct *pBounds, bool bUnk3) const RX;
 	virtual void DrawPipScalePips(Point2D *pLocation, Point2D *pOriginalLocation, RectangleStruct *pBounds) const RX;
 	virtual void DrawVeterancyPips(Point2D *pLocation, RectangleStruct *pBounds) const RX;
-	virtual void DrawExtraInfo(Point2D const& location, Point2D const& originalLocation, RectangleStruct const& bounds) const RX;
+	virtual void DrawExtraInfo(Point2D const* location, Point2D const* originalLocation, RectangleStruct const* bounds) const RX;
 	virtual void Uncloak(bool bPlaySound) RX;
 	virtual void Cloak(bool bPlaySound) RX;
 	virtual DWORD vt_entry_464(DWORD dwUnk) const R0;
@@ -654,9 +654,9 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 
 	void GattlingAI() const
 	{ JMP_THIS(0x70DE70); }
-	//
-	void DrawExtraInfo(Point2D const& location, Point2D const* originalLocation, RectangleStruct const* bounds) const
-	{ DrawExtraInfo(location,*originalLocation,*bounds); }
+
+	//void DrawExtraInfo(Point2D const& location, Point2D const* originalLocation, RectangleStruct const* bounds) const
+	//{ DrawExtraInfo(location,*originalLocation,*bounds); }
 
 	void Techno_70E280(AbstractClass* pTarget) const
 	{ JMP_THIS(0x70E280); }
@@ -772,6 +772,11 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 
 	bool planing_6385C0() const { JMP_THIS(0x6385C0); }
 	bool AllowToRetaliate(TechnoClass* source, WarheadTypeClass* warhead) const { JMP_THIS(0x7087C0); }
+
+	// returns the house that controls this techno (replaces the ID with player's ID if needed)
+	int GetControllingHouse() const {
+		JMP_THIS(0x6339B0);
+	}
 
 	//Constructor
 	TechnoClass(HouseClass* pOwner) noexcept

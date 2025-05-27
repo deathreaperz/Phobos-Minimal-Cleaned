@@ -144,7 +144,7 @@ public:
 	IndexBitfield<HouseClass*> RadarPersist {};
 	std::set<HouseTypeClass*> FactoryOwners_GatheredPlansOf {};
 	std::set<BuildingClass*> Academies {};
-	HelperedVector<TechnoTypeClass*> Reversed {};
+	std::set<TechnoTypeClass*> Reversed {};
 
 	bool Is_NavalYardSpied { false };
 	bool Is_AirfieldSpied { false };
@@ -370,22 +370,22 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	OPTIONALINLINE static std::vector<int> AIProduction_CreationFrames;
-	OPTIONALINLINE static std::vector<int> AIProduction_Values;
-	OPTIONALINLINE static std::vector<int> AIProduction_BestChoices;
-	OPTIONALINLINE static std::vector<int> AIProduction_BestChoicesNaval;
-	OPTIONALINLINE static PhobosMap<TechnoClass*, KillMethod> AutoDeathObjects;
-	OPTIONALINLINE static HelperedVector<TechnoClass*> LimboTechno;
+	static std::vector<int> AIProduction_CreationFrames;
+	static std::vector<int> AIProduction_Values;
+	static std::vector<int> AIProduction_BestChoices;
+	static std::vector<int> AIProduction_BestChoicesNaval;
+	static PhobosMap<TechnoClass*, KillMethod> AutoDeathObjects;
+	static HelperedVector<TechnoClass*> LimboTechno;
 
-	OPTIONALINLINE static int LastGrindingBlanceUnit;
-	OPTIONALINLINE static int LastGrindingBlanceInf;
-	OPTIONALINLINE static int LastHarvesterBalance;
-	OPTIONALINLINE static int LastSlaveBalance;
+	static int LastGrindingBlanceUnit;
+	static int LastGrindingBlanceInf;
+	static int LastHarvesterBalance;
+	static int LastSlaveBalance;
 
-	OPTIONALINLINE static CDTimerClass CloakEVASpeak;
-	OPTIONALINLINE static CDTimerClass SubTerraneanEVASpeak;
+	static CDTimerClass CloakEVASpeak;
+	static CDTimerClass SubTerraneanEVASpeak;
 
-	static OPTIONALINLINE bool IsAnyFirestormActive;
+	static bool IsAnyFirestormActive;
 };
 
 class HouseExtContainer final : public Container<HouseExtData>
@@ -406,13 +406,15 @@ public:
 };
 
 class HouseTypeExtData;
-class FakeHouseClass : public HouseClass
+class NOVTABLE FakeHouseClass : public HouseClass
 {
 public:
 	bool _IsAlliedWith(HouseClass* pOther);
 	void _Detach(AbstractClass* target, bool all);
 	int _Expert_AI();
 	void _GiveTiberium(float amout, int type);
+	bool _IsIonCannonEligibleTarget(TechnoClass* pTechno) const;
+	void _UpdateAngerNodes(int score_add, HouseClass* pHouse);
 
 	HouseExtData* _GetExtData()
 	{

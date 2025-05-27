@@ -14,6 +14,19 @@
 
 #include "EventClass.h"
 
+#include <Ext/Rules/Body.h>
+
+int GeneralUtils::GetColorFromColorAdd(int colorIndex)
+{
+	auto const& colorAdd = RulesClass::Instance->ColorAdd;
+	const int colorValue = GetColorIndexForColorAdd(colorIndex);
+
+	if (RulesExtData::Instance()->ColorAddUse8BitRGB)
+		return colorAdd[colorValue].ToInit();
+
+	return GetColorFromColorAdd(colorAdd[colorValue]);
+}
+
 bool GeneralUtils::IsValidString(const char* str)
 {
 	if (str == nullptr || strlen(str) == 0 || GameStrings::IsBlank(str))
@@ -52,16 +65,39 @@ void GeneralUtils::DoubleValidCheck(double* source, const char* section, const c
 
 const wchar_t* GeneralUtils::LoadStringOrDefault(const char* key, const wchar_t* defaultValue)
 {
-	if (GeneralUtils::IsValidString(key))
-		return StringTable::LoadString(key);
-	else
+	if (!GeneralUtils::IsValidString(key))
 		return defaultValue;
+
+	return StringTable::FetchString(key);
 }
 
 const wchar_t* GeneralUtils::LoadStringUnlessMissing(const char* key, const wchar_t* defaultValue)
 {
-	const auto get_result = LoadStringOrDefault(key, defaultValue);
-	return wcsstr(get_result, L"MISSING:") ? defaultValue : get_result;
+	if (!GeneralUtils::IsValidString(key))
+		return defaultValue;
+
+	auto pCSF = CSFLoader::FindOrAllocateDynamicStrings(key);
+
+	if (pCSF->IsMissingValue)
+	{
+		wcscpy_s(pCSF->Text, std::size(pCSF->Text), defaultValue);
+		pCSF->IsMissingValue = false; // enforce it to false, since we dont want to do this operation again
+	}
+
+	return pCSF->Text;
+}
+
+const wchar_t* GeneralUtils::LoadStringUnlessMissingNoChecks(const char* key, const wchar_t* defaultValue)
+{
+	auto pCSF = CSFLoader::FindOrAllocateDynamicStrings(key);
+
+	if (pCSF->IsMissingValue)
+	{
+		wcscpy_s(pCSF->Text, std::size(pCSF->Text), defaultValue);
+		pCSF->IsMissingValue = false; // enforce it to false, since we dont want to do this operation again
+	}
+
+	return pCSF->Text;
 }
 
 void GeneralUtils::AdjacentCellsInRange(std::vector<CellStruct>& nCells, short range)

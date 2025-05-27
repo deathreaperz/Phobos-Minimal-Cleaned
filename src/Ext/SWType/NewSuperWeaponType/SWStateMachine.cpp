@@ -9,7 +9,11 @@
 
 #include <New/Entity/ElectricBoltClass.h>
 
-//HelperedVector<std::unique_ptr<SWStateMachine>> SWStateMachine::Array;
+#pragma region defines
+
+HelperedVector<std::unique_ptr<SWStateMachine>> SWStateMachine::Array;
+
+#pragma endregion
 
 void SWStateMachine::UpdateAll()
 {

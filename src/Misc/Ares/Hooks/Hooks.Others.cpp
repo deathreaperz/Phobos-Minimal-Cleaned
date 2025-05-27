@@ -713,24 +713,24 @@ ASMJIT_PATCH(0x489270, CellChainReact, 5)
 	return 0;
 }
 
-ASMJIT_PATCH(0x424DD3, AnimClass_ReInit_TiberiumChainReaction_Chance, 6)
-{
-	GET(TiberiumClass*, pTib, EDI);
+// ASMJIT_PATCH(0x424DD3, AnimClass_ReInit_TiberiumChainReaction_Chance, 6)
+// {
+// 	GET(TiberiumClass*, pTib, EDI);
+//
+// 	return ScenarioClass::Instance->Random.RandomFromMax(99) < TiberiumExtContainer::Instance.Find(pTib)->
+// 		? 0x424DF9 : 0x424E9B;
+// }
 
-	return ScenarioClass::Instance->Random.RandomFromMax(99) < TiberiumExtContainer::Instance.Find(pTib)->GetDebrisChance()
-		? 0x424DF9 : 0x424E9B;
-}
-
-ASMJIT_PATCH(0x424EC5, AnimClass_ReInit_TiberiumChainReaction_Damage, 6)
-{
-	GET(TiberiumClass*, pTib, EDI);
-	auto pExt = TiberiumExtContainer::Instance.Find(pTib);
-
-	R->Stack(0x0, pExt->GetExplosionWarhead());
-	R->EDX(pExt->GetExplosionDamage());
-
-	return 0x424ECB;
-}
+// ASMJIT_PATCH(0x424EC5, AnimClass_ReInit_TiberiumChainReaction_Damage, 6)
+// {
+// 	GET(TiberiumClass*, pTib, EDI);
+// 	auto pExt = TiberiumExtContainer::Instance.Find(pTib);
+//
+// 	R->Stack(0x0, pExt->GetExplosionWarhead());
+// 	R->EDX(pExt->GetExplosionDamage());
+//
+// 	return 0x424ECB;
+// }
 
 ASMJIT_PATCH(0x6AB8BB, SelectClass_ProcessInput_BuildTime, 6)
 {
@@ -980,7 +980,7 @@ ASMJIT_PATCH(0x5F3FB2, ObjectClass_Update_MaxFallRate, 6)
 				}
 				else
 				{
-					pTechno->UpdatePosition((int)PCPType::During);
+					pTechno->UpdatePosition(PCPType::During);
 					return 0x5F413F;
 				}
 			}
@@ -1007,7 +1007,7 @@ ASMJIT_PATCH(0x71A84E, TemporalClass_UpdateA, 5)
 	// it's not guaranteed that there is a target
 	if (auto const pTarget = pThis->Target)
 	{
-		TechnoExtContainer::Instance.Find(pTarget)->RadarJammer.reset(nullptr);
+		TechnoExtContainer::Instance.Find(pTarget)->RadarJammer.reset();
 		AresAE::UpdateTempoal(&TechnoExtContainer::Instance.Find(pTarget)->AeData, pTarget);
 	}
 
@@ -1036,6 +1036,7 @@ ASMJIT_PATCH(0x413FD2, AircraftClass_Init_Academy, 6)
 ASMJIT_PATCH(0x41D940, AirstrikeClass_Fire_AirstrikeAttackVoice, 5)
 {
 	GET(AirstrikeClass*, pAirstrike, EDI);
+	GET(TechnoClass*, pTarget, ESI);
 
 	// get default from rules
 	int index = RulesClass::Instance->AirstrikeAttackVoice;
@@ -1055,7 +1056,23 @@ ASMJIT_PATCH(0x41D940, AirstrikeClass_Fire_AirstrikeAttackVoice, 5)
 	}
 
 	VocClass::PlayAt(index, pAirstrike->FirstObject->Location, nullptr);
-	return 0x41D970;
+	pAirstrike->Target = pTarget;
+
+	if (pTarget)
+	{
+		const auto pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
+		pTargetExt->AirstrikeTargetingMe = pAirstrike;
+		pTarget->StartAirstrikeTimer(100000);
+
+		if (auto pBld = cast_to<BuildingClass*, false>(pTarget))
+		{
+			pBld->IsAirstrikeTargetingMe = true;
+			pBld->Mark(MarkType::Redraw);
+		}
+	}
+
+	//return 0x41D970;
+	return 0x41DA0B;
 }
 
 ASMJIT_PATCH(0x41D5AE, AirstrikeClass_PointerGotInvalid_AirstrikeAbortSound, 9)
@@ -1300,10 +1317,10 @@ ASMJIT_PATCH(0x6d4b25, TacticalClass_Draw_TheDarkSideOfTheMoon, 6)
 
 	if (RulesExtData::Instance()->FPSCounter)
 	{
-		wchar_t buffer[0x100];
-		swprintf_s(buffer, L"FPS: %-4u Avg: %.2f", FPSCounter::CurrentFrameRate(), FPSCounter::GetAverageFrameRate());
-
-		DrawText_Helper(buffer, offset, COLOR_WHITE);
+		fmt::basic_memory_buffer<wchar_t> buffer;
+		fmt::format_to(std::back_inserter(buffer), L"FPS: {} Avg: {}", FPSCounter::CurrentFrameRate(), (unsigned int)FPSCounter::GetAverageFrameRate());
+		buffer.push_back(L'\0');
+		DrawText_Helper(buffer.data(), offset, COLOR_WHITE);
 	}
 
 	return 0;

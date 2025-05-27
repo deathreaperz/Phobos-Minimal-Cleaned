@@ -12,7 +12,24 @@
 #include <atlstr.h>
 
 #include <New/Interfaces/LevitateLocomotionClass.h>
+#include <New/Interfaces/AdvancedDriveLocomotionClass.h>
 #include <New/Interfaces/TestLocomotionClass.h>
+#include <New/Interfaces/CustomRocketLocomotionClass.h>
+#include <New/Interfaces/TSJumpJetLocomotionClass.h>
+
+#define PARSE(who)\
+if (IS_SAME_STR_(parser.value(), who ##_data.s_name)) { \
+	CLSID who ##_dummy; \
+	std::wstring who ##_dummy_clsid = ## who ##_data.w_CLSID; \
+	## who ##_dummy_clsid.insert(0, L"{"); \
+	## who ##_dummy_clsid.insert(who ##_dummy_clsid.size(), L"}"); \
+	const unsigned hr = CLSIDFromString(LPCOLESTR(who ##_dummy_clsid.data()), &who ##_dummy); \
+	if (SUCCEEDED(hr)) {\
+		value = ## who ##_dummy; return true;\
+	} else {\
+		Debug::LogError("Cannot find Locomotor [{} - {}({})] err : 0x{:08X}", pSection, parser.value(), PhobosCRT::WideStringToString(## who ##_dummy_clsid), hr);\
+	}\
+}
 
 namespace detail
 {
@@ -25,31 +42,33 @@ namespace detail
 		// Semantic locomotor aliases
 		if (parser.value()[0] != '{')
 		{
+			if (Phobos::Otamaa::IsAdmin)
+				Debug::Log("Reading locomotor [%s] of [%s]\n", parser.value(), pSection);
+
 			for (size_t i = 0; i < EnumFunctions::LocomotorPairs_ToStrings.size(); ++i)
 			{
 				if (IS_SAME_STR_(parser.value(), EnumFunctions::LocomotorPairs_ToStrings[i].first))
 				{
 					CLSID dummy;
-					if (CLSIDFromString(LPCOLESTR(EnumFunctions::LocomotorPairs_ToWideStrings[i].second), &dummy) == NOERROR)
+					const unsigned hr = CLSIDFromString(LPCOLESTR(EnumFunctions::LocomotorPairs_ToWideStrings[i].second), &dummy);
+					if (SUCCEEDED(hr))
 					{
-						value = dummy;
-						return true;
+						value = dummy; return true;
+					}
+					else
+					{
+						Debug::LogError("Cannot find Locomotor [{} - {}({})] err : 0x{:08X}", pSection, parser.value(), EnumFunctions::LocomotorPairs_ToStrings[i].second, hr);
 					}
 				}
 			}
 
-			if (IS_SAME_STR_(parser.value(), Levitate_data.s_name))
-			{
-				CLSID dummy;
-				if (CLSIDFromString(LPCOLESTR(Levitate_data.w_CLSID), &dummy) == NOERROR)
-				{
-					value = dummy;
-					return true;
-				}
-			}
+			PARSE(Levitate)
+				PARSE(AdvancedDrive)
+				PARSE(CustomRocket)
+				PARSE(TSJumpJet)
 
-			//AddMore loco here
-			return false;
+				//AddMore loco here
+				return false;
 		}
 
 		CHAR bytestr[128];
@@ -63,7 +82,15 @@ namespace detail
 			return false;
 
 		MultiByteToWideChar(0, 1, bytestr, -1, wcharstr, 128);
-		return CLSIDFromString(wcharstr, &value) == NOERROR;
+		const unsigned hr = CLSIDFromString(wcharstr, &value);
+
+		if (!SUCCEEDED(hr))
+		{
+			Debug::LogError("Cannot find Locomotor [{} - {}] err : 0x{:08X}", pSection, parser.value(), hr);
+			return false;
+		}
+
+		return true;
 	}
 }
 
@@ -341,6 +368,8 @@ ASMJIT_PATCH(0x474230, CCINIClass_Load_Inheritance, 0x5)
 			CCFileClass nFile { node.Data->Value };
 			if (nFile.Exists())
 				INIInheritance::LastINIFile->ReadCCFile(&nFile, false, false);
+			else
+				Debug::FatalErrorAndExit("Included INI file %s does not exist", node.Data->Value);
 		}
 	}
 

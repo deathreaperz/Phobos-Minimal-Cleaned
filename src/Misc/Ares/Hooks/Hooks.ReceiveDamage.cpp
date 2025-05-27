@@ -240,7 +240,7 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 				// Needs to be added to the logic layer for the anim to work.
 				LogicClass::Instance->AddObject(pThis, false);
 				VocClass::PlayIndexAtPos(pTerrainExt->CrumblingSound, pThis->GetCoords());
-				pThis->UpdatePlacement(PlacementType::Redraw);
+				pThis->Mark(MarkType::Redraw);
 				pThis->Disappear(true);
 				return 0x71BB79;
 			}
@@ -520,7 +520,7 @@ ASMJIT_PATCH(0x5F5390, ObjectClass_ReveiveDamage_Handled, 0x5)
 
 						if (pThis->IsAlive && pThis->IsSelected)
 						{
-							pThis->UpdatePlacement(PlacementType::Redraw);
+							pThis->Mark(MarkType::Redraw);
 						}
 					}
 
@@ -593,7 +593,9 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 	pWHExt->ApplyDamageMult(pThis, &args);
 	applyCombatAlert(pThis, &args);
-	TechnoExtData::ApplyKillWeapon(pThis, args.Attacker, args.WH);
+
+	if (pWHExt->CanTargetHouse(args.SourceHouse, pThis))
+		pExt->LastHurtFrame = Unsorted::CurrentFrame;
 
 	if (args.Attacker && (!args.Attacker->IsAlive || args.Attacker->Health <= 0) && !args.Attacker->Owner)
 		args.Attacker = nullptr; //clean up;
@@ -603,6 +605,8 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		R->EAX(DamageState::NowDead);
 		return 0x702D1F;
 	}
+
+	const bool unkillable = !pWHExt->CanKill || pExt->AE.Unkillable;
 
 	if (!args.IgnoreDefenses)
 	{
@@ -699,14 +703,14 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		return 0x702D1F;
 	}
 
-	if (!args.WH->AffectsAllies && args.Attacker && args.Attacker->Owner->IsAlliedWith(pThis->Owner))
+	const auto pSourceHouse = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
+
+	if (!pWHExt->CanAffectHouse(pThis->Owner, pSourceHouse))
 	{
 		*args.Damage = 0;
 		R->EAX(DamageState::Unaffected);
 		return 0x702D1F;
 	}
-
-	const auto pSourceHouse = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
 
 	if (args.WH->Psychedelic)
 	{
@@ -753,6 +757,16 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 	PhobosAEFunctions::ApplyReflectDamage(pThis, args.Damage, args.Attacker, pSourceHouse, args.WH);
 
+	// Check if the warhead can not kill targets
+	//we dont want to kill the thing , dont return
+	bool isActuallyAffected = false;
+	if (!args.IgnoreDefenses && pThis->Health > 0 && unkillable && *args.Damage >= pThis->Health)
+	{
+		*args.Damage = 0;
+		pThis->Health = 1;
+		pThis->EstimatedHealth = 1;
+		isActuallyAffected = true;
+	}
 	_res = pThis->ObjectClass::ReceiveDamage(args.Damage, args.DistanceToEpicenter, args.WH, args.Attacker, args.IgnoreDefenses, args.PreventsPassengerEscape, args.SourceHouse);
 
 	const bool Show = Phobos::Otamaa::IsAdmin || *args.Damage;
@@ -760,7 +774,26 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 	if (Phobos::Debug_DisplayDamageNumbers && Show)
 		FlyingStrings::DisplayDamageNumberString(*args.Damage, DamageDisplayType::Regular, pThis->GetRenderCoords(), TechnoExtContainer::Instance.Find(pThis)->DamageNumberOffset);
 
-	GiftBoxFunctional::TakeDamage(TechnoExtContainer::Instance.Find(pThis), TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType()), args.WH, _res);
+	if (!pThis->Health)
+	{
+		int nSelectedPowerup = -1;
+
+		if (pExt->DropCrate >= 0 && pExt->DropCrate == 1)
+		{
+			nSelectedPowerup = static_cast<int>(pExt->DropCrateType);
+		}
+		else if (pTypeExt->DropCrate.isset())
+		{
+			nSelectedPowerup = pTypeExt->DropCrate.Get();
+		}
+
+		if (nSelectedPowerup >= 0)
+		{
+			TechnoExtData::TryToCreateCrate(pThis->Location, static_cast<PowerupEffects>(nSelectedPowerup));
+		}
+	}
+
+	GiftBoxFunctional::TakeDamage(pExt, pTypeExt, args.WH, _res);
 
 	if (args.Attacker && !pWHExt->Nonprovocative)
 	{
@@ -878,11 +911,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 		if (pThis->IsAlive)
 		{
-			std::set<PhobosAttachEffectTypeClass*> cumulativeTypes {};
-			std::vector<WeaponTypeClass*> expireWeapons {};
-			PhobosAEFunctions::ApplyExpireWeapon(expireWeapons, cumulativeTypes, pThis);
-
-			for (auto const& pWeapon : expireWeapons)
+			for (auto const& pWeapon : pExt->AE.ExpireWeaponOnDead)
 			{
 				TechnoClass* pTarget = pThis;
 				if (!pThis->IsAlive)
@@ -1137,9 +1166,10 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 				}
 
 				if (pThis->IsAlive)
-				{
+					TechnoExtData::ApplyKillWeapon(pThis, args.Attacker, args.WH);
+
+				if (pThis->IsAlive)
 					PhobosAEFunctions::ApplyRevengeWeapon(pThis, args.Attacker, args.WH);
-				}
 			}
 
 			if (auto pBomb = pThis->AttachedBomb)
@@ -1180,7 +1210,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		pThis->IsTickedOff = 1;
 	}
 
-	bool IsAffected = _res != DamageState::Unaffected;
+	bool IsAffected = _res != DamageState::Unaffected || isActuallyAffected;
 	bool bAffected = false;
 	if (IsAffected || args.IgnoreDefenses || _isNegativeDamage || *args.Damage)
 	{
@@ -1354,30 +1384,27 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 #pragma region Building
 
-ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
+DamageState FakeBuildingClass::_ReceiveDamage(int* Damage, int DistanceToEpicenter, WarheadTypeClass* WH, TechnoClass* Attacker, bool IgnoreDefenses, bool PreventsPassengerEscape, HouseClass* SourceHouse)
 {
-	GET(BuildingClass*, pThis, ECX);
-	REF_STACK(args_ReceiveDamage, args, 0x4);
-
+	BuildingClass* pThis = this;
 	DamageState _res = DamageState::Unaffected;
-	auto pWHExt = WarheadTypeExtContainer::Instance.Find(args.WH);
+	auto pWHExt = WarheadTypeExtContainer::Instance.Find(WH);
 	auto pTypeExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
 	auto pBldExt = BuildingExtContainer::Instance.Find(pThis);
 
-	if (pThis == args.Attacker && (!pWHExt->AllowDamageOnSelf && !pThis->Type->DamageSelf))
+	if (pThis == Attacker && (!pWHExt->AllowDamageOnSelf && !pThis->Type->DamageSelf))
 	{
-		R->EAX(_res);
-		return 0x442C14;
+		return DamageState::Unaffected;
 	}
 
 	auto pShape = pThis->GetShapeNumber();
 	auto foundation = pThis->GetFoundationData();
 
-	if (pThis->Owner && !pWHExt->Nonprovocative && args.Attacker && !pThis->IsStrange())
+	if (pThis->Owner && !pWHExt->Nonprovocative && Attacker && !pThis->IsStrange())
 	{
-		pThis->Owner->LAEnemy = args.Attacker->Owner->ArrayIndex;
+		pThis->Owner->LAEnemy = Attacker->Owner->ArrayIndex;
 		pThis->Owner->LATime = Unsorted::CurrentFrame;
-		pThis->BaseIsAttacked(args.Attacker);
+		pThis->BaseIsAttacked(Attacker);
 	}
 
 	StackVector<TechnoClass*, 0xAu> CachedRadio { };
@@ -1390,23 +1417,21 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 		}
 	}
 
-	if (pThis->Type->LaserFence && !args.IgnoreDefenses)
+	if (pThis->Type->LaserFence && !IgnoreDefenses)
 	{
-		R->EAX(DamageState::Unaffected);
-		return 0x442C14;
+		return DamageState::Unaffected;
 	}
 
 	if (pThis->Type->BridgeRepairHut && pThis->Type->Immune)
 	{
-		R->EAX(DamageState::Unaffected);
-		return 0x442C14;
+		return DamageState::Unaffected;
 	}
 
 	if (FirewallFunctions::IsActiveFirestormWall(pThis, nullptr))
 	{
 		auto const pExt = RulesExtData::Instance();
 		auto const& coefficient = pExt->DamageToFirestormDamageCoefficient;
-		auto const amount = static_cast<int>(*args.Damage * coefficient);
+		auto const amount = static_cast<int>(*Damage * coefficient);
 
 		if (amount > 0)
 		{
@@ -1420,17 +1445,15 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 			}
 		}
 
-		R->EAX(DamageState::Unaffected);
-		return 0x442C14;
+		return DamageState::Unaffected;
 	}
 	else
 	{
-		_res = pThis->TechnoClass::ReceiveDamage(args.Damage, args.DistanceToEpicenter, args.WH, args.Attacker, args.IgnoreDefenses, args.PreventsPassengerEscape, args.SourceHouse);
+		_res = pThis->TechnoClass::ReceiveDamage(Damage, DistanceToEpicenter, WH, Attacker, IgnoreDefenses, PreventsPassengerEscape, SourceHouse);
 
 		if (!pThis->IsAlive)
 		{
-			R->EAX(_res);
-			return 0x442C14;
+			return _res;
 		}
 
 		switch (_res)
@@ -1450,7 +1473,7 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 				VocClass::PlayIndexAtPos(RulesClass::Instance->BuildingDamageSound, &pThis->Location, 0);
 			}
 
-			if (args.WH->Sparky)
+			if (WH->Sparky)
 			{
 				const bool Onfire = pTypeExt->HealthOnfire.Get(pThis->GetHealthStatus());
 				auto const pFireType = pTypeExt->OnFireTypes.GetElements(RulesClass::Instance->OnFire);
@@ -1473,8 +1496,8 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 									nDestCoord = MapClass::GetRandomCoordsNear(nDestCoord, 96, false);
 									auto const pAnim = GameCreate<AnimClass>(pAnimType, nDestCoord, 0, nLoop);
 									pAnim->SetOwnerObject(pThis);
-									const auto pKiller = args.Attacker;
-									const auto Invoker = (pKiller) ? pKiller->Owner : args.SourceHouse;
+									const auto pKiller = Attacker;
+									const auto Invoker = (pKiller) ? pKiller->Owner : SourceHouse;
 									AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, pKiller, false);
 								}
 							};
@@ -1520,8 +1543,7 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 				pThis->UnloadBunker();
 			}
 
-			if (auto& pPrism = pBldExt->MyPrismForwarding)
-				pPrism->RemoveFromNetwork(true);
+			pBldExt->MyPrismForwarding->RemoveFromNetwork(true);
 
 			if (auto pManager = pThis->CaptureManager)
 			{
@@ -1562,7 +1584,7 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 				pSource->Deactivate();
 			}
 
-			pThis->Destroy(0u, args.Attacker, args.IgnoreDefenses, foundation);
+			pThis->Destroy(0u, Attacker, IgnoreDefenses, foundation);
 
 			auto Started = pThis->GoingToBlowTimer.StartTime;
 			auto DelayTime = pThis->GoingToBlowTimer.TimeLeft;
@@ -1581,8 +1603,7 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 		}
 		case DamageState::PostMortem:
 		{
-			R->EAX(_res);
-			return 0x442C14;
+			return _res;
 		}
 		default:
 			break;
@@ -1593,45 +1614,48 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 	{
 		if (_res != DamageState::Unaffected)
 		{
-			if (!pWHExt->Nonprovocative && args.Attacker)
+			if (!pWHExt->Nonprovocative && Attacker)
 			{
 				if (!pThis->Type->Insignificant && !pThis->IsStrange())
 				{
-					pBldExt->ReceiveDamageWarhead = args.WH;
+					pBldExt->ReceiveDamageWarhead = WH;
 					pThis->BuildingUnderAttack();
 				}
 
-				pThis->OwnerCountryIndex = args.Attacker->Owner->ArrayIndex;
+				pThis->OwnerCountryIndex = Attacker->Owner->ArrayIndex;
 
 				if (!pThis->Type->EMPulseCannon
 					&& !pThis->Type->NukeSilo
 					&& pThis->CurrentMission != Mission::Selling
-					&& !pThis->Owner->IsAlliedWith(args.Attacker))
+					&& !pThis->Owner->IsAlliedWith(Attacker->Owner))
 				{
-					auto pWPS = pThis->GetWeapon(0);
-					if (pWPS && pWPS->WeaponType)
+					if (Attacker->IsAlive)
 					{
-						if (!pWPS->WeaponType->Projectile->AA
-							&& (!pThis->Target || !pThis->IsCloseEnoughToAttack(args.Attacker)))
+						auto pWPS = pThis->GetWeapon(0);
+						if (pWPS && pWPS->WeaponType)
 						{
-							const bool def = BuildingTypeExtContainer::Instance.Find(pThis->Type)->PlayerReturnFire.Get(
-											args.Attacker->WhatAmI() == AircraftClass::AbsID ||
-											(pThis->Owner->IsControlledByHuman() && !RulesClass::Instance->PlayerReturnFire)
-							);
-
-							if (def)
+							if (!pWPS->WeaponType->Projectile->AA
+								&& (!pThis->Target || !pThis->IsCloseEnoughToAttack(Attacker)))
 							{
-								auto& pri = pThis->PrimaryFacing;
+								const bool def = BuildingTypeExtContainer::Instance.Find(pThis->Type)->PlayerReturnFire.Get(
+												Attacker->WhatAmI() == AircraftClass::AbsID ||
+												(pThis->Owner->IsControlledByHuman() && !RulesClass::Instance->PlayerReturnFire)
+								);
 
-								if (!pri.Is_Rotating() && pThis->IsPowerOnline())
+								if (def)
 								{
-									DirStruct _rand { ScenarioClass::Instance->Random.Random() };
-									pri.Set_Desired(_rand);
+									auto& pri = pThis->PrimaryFacing;
+
+									if (!pri.Is_Rotating() && pThis->IsPowerOnline())
+									{
+										DirStruct _rand { ScenarioClass::Instance->Random.Random() };
+										pri.Set_Desired(_rand);
+									}
 								}
-							}
-							else
-							{
-								pThis->SetTarget(args.Attacker);
+								else
+								{
+									pThis->SetTarget(Attacker);
+								}
 							}
 						}
 					}
@@ -1648,10 +1672,11 @@ ASMJIT_PATCH(0x442230, BuildingClass_ReceiveDamage_Handle, 0x6)
 		}
 	}
 
-	R->EAX(_res);
-	return 0x442C14;
+	return _res;
 }
 
+DEFINE_FUNCTION_JUMP(LJMP, 0x442230, FakeBuildingClass::_ReceiveDamage)
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E4028, FakeBuildingClass::_ReceiveDamage)
 #pragma endregion
 
 #pragma region Foot
@@ -2253,6 +2278,11 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 
 #pragma region Unit
 
+namespace RemoveCellContentTemp
+{
+	bool CheckBeforeUnmark = false;
+}
+
 ASMJIT_PATCH(0x737C90, UnitClass_ReceiveDamage_Handled, 5)
 {
 	GET(UnitClass*, pThis, ECX);
@@ -2357,7 +2387,7 @@ ASMJIT_PATCH(0x737C90, UnitClass_ReceiveDamage_Handled, 5)
 					&& !args.Attacker->IsCrashing
 					&& !args.Attacker->TemporalTargetingMe
 					&& !pThis->IsTethered
-					&& pThis->Owner->IsAlliedWith(args.Attacker)
+					&& pThis->Owner->IsAlliedWith(args.Attacker->Owner)
 					&& isPlayerControlled)
 				{
 					if (pThis->ShouldCrushIt(args.Attacker))
@@ -2450,7 +2480,9 @@ ASMJIT_PATCH(0x737C90, UnitClass_ReceiveDamage_Handled, 5)
 			pThis->IsAlive = 1;
 		}
 
-		pThis->UpdatePlacement(PlacementType::Remove);
+		RemoveCellContentTemp::CheckBeforeUnmark = true;
+		pThis->Mark(MarkType::Remove);
+		RemoveCellContentTemp::CheckBeforeUnmark = false;
 
 		if (pThis->Passengers.NumPassengers > 0 && pThis->Passengers.GetFirstPassenger())
 		{
@@ -2500,6 +2532,20 @@ ASMJIT_PATCH(0x737C90, UnitClass_ReceiveDamage_Handled, 5)
 	return 0x738679;
 }
 
+ASMJIT_PATCH(0x47EAF7, CellClass_RemoveContent_BeforeUnmarkOccupationBits, 0x7)
+{
+	enum { ContinueCheck = 0x47EAFE, DontUnmark = 0x47EB8F };
+
+	GET(CellClass*, pCell, EDI);
+	GET_STACK(bool, onBridge, STACK_OFFSET(0x14, 0x8));
+
+	if (RemoveCellContentTemp::CheckBeforeUnmark && onBridge ? pCell->AltObject : pCell->FirstObject)
+		return DontUnmark;
+
+	GET(ObjectClass*, pContent, ESI);
+	R->EAX(pContent->WhatAmI());
+	return ContinueCheck;
+}
 #pragma endregion
 
 #pragma region Veinhole

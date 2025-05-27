@@ -108,11 +108,16 @@ public:
 
 	Valueable<ParticleSystemTypeClass*> AttachedSystem { nullptr };
 	Valueable<WeaponTypeClass*> ReturnWeapon { nullptr };
-
+	Valueable<bool> ReturnWeapon_ApplyFirepowerMult {};
 	TrailsReader Trails { };
 
 	std::unique_ptr<PhobosTrajectoryType> TrajectoryType { };
 	Valueable<bool> SubjectToGround { };
+
+	Valueable<bool> Airburst_TargetAsSource {};
+	Valueable<bool> Airburst_TargetAsSource_SkipHeight {};
+	Valueable<Leptons> AirburstWeapon_SourceScatterMin {};
+	Valueable<Leptons> AirburstWeapon_SourceScatterMax {};
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 
@@ -141,6 +146,7 @@ public:
 		return pRules->MissileSafetyAltitude;
 	}
 
+	BulletClass* CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, HouseClass* pHouse, WeaponTypeClass* pWeapon, bool addDamage, bool SetWeaponType) const;
 	BulletClass* CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, WeaponTypeClass* pWeapon, bool addDamage, bool SetWeaponType) const;
 	BulletClass* CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, WeaponTypeClass* pWeapon) const;
 	BulletClass* CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, int damage, WarheadTypeClass* pWarhead, int speed, int range, bool bright, bool addDamage) const;
@@ -204,7 +210,7 @@ double BulletTypeExtData::GetAdjustedGravity(BulletTypeClass* pType)
 	return BulletTypeExtContainer::Instance.Find(pType)->GetAdjustedGravity();
 }
 
-class FakeBulletTypeClass : public BulletTypeClass
+class NOVTABLE FakeBulletTypeClass : public BulletTypeClass
 {
 public:
 

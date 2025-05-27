@@ -955,22 +955,6 @@ ASMJIT_PATCH(0x4FA2E0, HouseClass_SetThreat_Bounds, 0x7)
 	return index < 0 ? 0x4FA347u : 0;
 }
 
-//#pragma optimize("", off )
-ASMJIT_PATCH(0x504796, HouseClass_AddAnger_MultiplayPassive, 0x6)
-{
-	GET_STACK(HouseClass*, pOtherHouse, 0x10);
-	GET(HouseClass*, pThis, ECX);
-
-	if (!pOtherHouse)
-		return 0x50484E;
-
-	R->ECX(SessionClass::Instance->GameMode != GameMode::Campaign
-		&& pOtherHouse->Type->MultiplayPassive ? 0x0 : pThis->AngerNodes.Count);
-
-	return 0x50479C;
-}
-//#pragma optimize("", on)
-
 ASMJIT_PATCH(0x509303, HouseClass_AllyWith_unused, 0x6)
 {
 	GET(HouseClass*, pThis, ESI);
@@ -1456,7 +1440,7 @@ ASMJIT_PATCH(0x500CC5, HouseClass_InitFromINI_FixBufferLimits, 6)
 
 	if (H->UINameString[0])
 	{
-		const wchar_t* str = StringTable::LoadString(H->UINameString);
+		const wchar_t* str = StringTable::FetchString(H->UINameString);
 		PhobosCRT::wstrCopy(H->UIName, str);
 	}
 	else

@@ -19,6 +19,8 @@
 #include <RadarEventClass.h>
 #include <TacticalClass.h>
 
+HelperedVector<ShieldClass*> ShieldClass::Array;
+
 ShieldClass::ShieldClass() : Techno { nullptr }
 , HP { 0 }
 , Timers { }
@@ -703,11 +705,14 @@ SelfHealingStatus ShieldClass::SelfHealEnabledByCheck()
 {
 	if (!this->Type->SelfHealing_EnabledBy.empty())
 	{
-		for (auto const pBuilding : this->Techno->Owner->Buildings)
+		for (auto& pBuilding : this->Techno->Owner->Buildings)
 		{
-			bool isActive = !(pBuilding->Deactivated || pBuilding->IsUnderEMP()) && pBuilding->IsPowerOnline();
+			if (!this->Type->SelfHealing_EnabledBy.Contains(pBuilding->Type))
+				continue;
 
-			if (this->Type->SelfHealing_EnabledBy.Contains(pBuilding->Type) && isActive)
+			const bool isActive = !(pBuilding->Deactivated || pBuilding->IsUnderEMP()) && pBuilding->IsPowerOnline();
+
+			if (isActive)
 			{
 				return SelfHealingStatus::Online;
 			}
@@ -772,7 +777,7 @@ void ShieldClass::SelfHealing()
 	}
 }
 
-void ShieldClass::InvalidatePointer(AbstractClass* ptr, bool bDetach)
+void ShieldClass::InvalidateAnimPointer(AnimClass* ptr)
 {
 	if (this->IdleAnim && this->IdleAnim.get() == ptr)
 		this->IdleAnim.release();
@@ -889,6 +894,8 @@ void ShieldClass::CreateAnim()
 		pAnim->RemainingIterations = 0xFFu;
 		AnimExtData::SetAnimOwnerHouseKind(pAnim, this->Techno->Owner, nullptr, this->Techno, false);
 		pAnim->SetOwnerObject(this->Techno);
+		auto pAnimExt = ((FakeAnimClass*)pAnim)->_GetExtData();
+		pAnimExt->IsShieldIdleAnim = true;
 		this->IdleAnim.reset(pAnim);
 	}
 }
@@ -921,6 +928,9 @@ void ShieldClass::DrawShieldBar(int iLength, Point2D* pLocation, RectangleStruct
 {
 	if (this->HP > 0 || this->Type->Respawn)
 	{
+		if (this->HP <= 0 && this->Type->Pips_HideIfNoStrength)
+			return;
+
 		if (this->Techno->WhatAmI() == BuildingClass::AbsID)
 			this->DrawShieldBar_Building(iLength, pLocation, pBound);
 		else

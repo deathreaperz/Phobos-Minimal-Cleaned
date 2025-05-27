@@ -16,20 +16,20 @@ class REGISTERS;
 class Debug final
 {
 public:
-	static OPTIONALINLINE FILE* LogFile {};
+	static FILE* LogFile;
 
-	OPTIONALINLINE static bool LogEnabled {};
-	OPTIONALINLINE static std::wstring ApplicationFilePath {};
-	OPTIONALINLINE static std::wstring DefaultFEMessage {};
-	OPTIONALINLINE static std::wstring LogFilePathName {};
-	OPTIONALINLINE static std::wstring LogFileMainName { L"\\debug" };
-	OPTIONALINLINE static std::wstring LogFileMainFormattedName {};
-	OPTIONALINLINE static std::wstring LogFileExt { L".log" };
-	OPTIONALINLINE static std::wstring LogFileFullPath {};
-	OPTIONALINLINE static char LogMessageBuffer[0x1000] {};
-	OPTIONALINLINE static char DefferedVectorBuffer[0x1000] {};
-	OPTIONALINLINE static std::vector<std::string> DefferedVector {};
-	OPTIONALINLINE static bool made {};
+	static bool LogEnabled;
+	static std::wstring ApplicationFilePath;
+	static std::wstring DefaultFEMessage;
+	static std::wstring LogFilePathName;
+	static std::wstring LogFileMainName;
+	static std::wstring LogFileMainFormattedName;
+	static std::wstring LogFileExt;
+	static std::wstring LogFileFullPath;
+	static char LogMessageBuffer[0x1000];
+	static char DefferedVectorBuffer[0x1000];
+	static std::vector<std::string> DefferedVector;
+	static bool made;
 
 	static void InitLogger();
 	static void DeactivateLogger();
@@ -40,11 +40,11 @@ public:
 	static void FreeMouse();
 
 	template <typename... TArgs>
-	static void LogInfo(const std::format_string<TArgs...> _Fmt, TArgs&&... _Args)
+	static void NOINLINE LogInfo(const fmt::format_string<TArgs...> _Fmt, TArgs&&... _Args)
 	{
 		if (LogFileActive())
 		{
-			std::string fmted = std::vformat(_Fmt.get(), std::make_format_args(_Args...));
+			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
 			fmted += "\n";
 			fprintf_s(Debug::LogFile, "%s", fmted.c_str());
 			Debug::Flush();
@@ -52,11 +52,11 @@ public:
 	}
 
 	template <typename... TArgs>
-	static void LogError(const std::format_string<TArgs...> _Fmt, TArgs&&... _Args)
+	static void NOINLINE LogError(const fmt::format_string<TArgs...> _Fmt, TArgs&&... _Args)
 	{
 		if (LogFileActive())
 		{
-			std::string fmted = std::vformat(_Fmt.get(), std::make_format_args(_Args...));
+			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
 			fmted += "\n";
 			fprintf_s(Debug::LogFile, "%s", fmted.c_str());
 			Debug::Flush();
@@ -175,7 +175,7 @@ public:
 		const std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
 		const std::tm* localTime = std::localtime(&currentTime);
 
-		return std::format(L"{:04}{:02}{:02}-{:02}{:02}{:02}",
+		return fmt::format(L"{:04}{:02}{:02}-{:02}{:02}{:02}",
 			localTime->tm_year + 1900,
 			localTime->tm_mon + 1,
 			localTime->tm_mday,
@@ -190,7 +190,7 @@ public:
 		const std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
 		const std::tm* localTime = std::localtime(&currentTime);
 
-		return std::format("{:04}{:02}{:02}-{:02}{:02}{:02}",
+		return fmt::format("{:04}{:02}{:02}-{:02}{:02}{:02}",
 			localTime->tm_year + 1900,
 			localTime->tm_mon + 1,
 			localTime->tm_mday,
@@ -269,6 +269,13 @@ public:
 	[[noreturn]] static FORCEDINLINE void FatalErrorAndExit(const char* pFormat, TArgs&&... args)
 	{
 		FatalErrorAndExit(0u, pFormat, std::forward<TArgs>(args)...);
+	}
+
+	template <typename... TArgs>
+	[[noreturn]] static FORCEDINLINE void FatalErrorAndExitIfTrue(bool condition, const char* pFormat, TArgs&&... args)
+	{
+		if (condition)
+			FatalErrorAndExit(0u, pFormat, std::forward<TArgs>(args)...);
 	}
 
 	static void RegisterParserError()

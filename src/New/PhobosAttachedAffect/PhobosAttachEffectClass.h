@@ -2,6 +2,7 @@
 
 #include <Utilities/SavegameDef.h>
 #include <Utilities/Constructs.h>
+#include <Utilities/MemoryPoolUniquePointer.h>
 
 #include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
 
@@ -15,6 +16,8 @@ class AEAttachInfoTypeClass;
 class PhobosAttachEffectClass
 {
 public:
+
+	~PhobosAttachEffectClass();
 
 	void Initialize(PhobosAttachEffectTypeClass* pType, TechnoClass* pTechno, HouseClass* pInvokerHouse,
 	TechnoClass* pInvoker, AbstractClass* pSource, int durationOverride, int delay, int initialDelay, int recreationDelay);
@@ -47,7 +50,7 @@ public:
 		return this->IsSelfOwned() && this->Delay >= 0 ? false : !this->Duration;
 	}
 
-	bool ShouldBeDiscardedNow() const;
+	bool ShouldBeDiscardedNow();
 
 	COMPILETIMEEVAL FORCEDINLINE bool IsActive() const
 	{
@@ -65,6 +68,7 @@ public:
 	COMPILETIMEEVAL FORCEDINLINE int GetRemainingDuration() const { return this->Duration; }
 
 	void InvalidatePointer(AbstractClass* ptr, bool removed);
+	void InvalidateAnimPointer(AnimClass* ptr);
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 	bool Save(PhobosStreamWriter& Stm) const;
@@ -74,11 +78,6 @@ public:
 	static int DetachByGroups(TechnoClass* pTarget, AEAttachInfoTypeClass* attachEffectInfo);
 
 	static void TransferAttachedEffects(TechnoClass* pSource, TechnoClass* pTarget);
-
-	~PhobosAttachEffectClass()
-	{
-		Animation.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
-	}
 
 	void OnlineCheck();
 	void CloakCheck();
@@ -114,6 +113,8 @@ public:
 	AnimTypeClass* SelectedAnim { nullptr };
 	bool HasCumulativeAnim { false };
 	bool ShouldBeDiscarded { false };
+	int LastDiscardCheckFrame { -1 };
+	bool LastDiscardCheckValue {};
 };
 
 template <>

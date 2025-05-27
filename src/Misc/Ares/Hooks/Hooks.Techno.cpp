@@ -221,7 +221,7 @@ ASMJIT_PATCH(0x703A79, TechnoClass_VisualCharacter_CloakingStages, 0xA)
 {
 	GET(TechnoClass*, pThis, ESI);
 	int stages = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->CloakStages.Get(RulesClass::Instance->CloakingStages);
-	R->EAX(int(pThis->CloakProgress.Value * 256.0 / stages));
+	R->EAX(int(pThis->CloakProgress.Stage * 256.0 / stages));
 	return 0x703A94;
 }
 
@@ -540,9 +540,9 @@ ASMJIT_PATCH(0x6F6AC9, TechnoClass_Remove_Early, 6)
 	GET(TechnoClass*, pThis, ESI);
 
 	// if the removed object is a radar jammer, unjam all jammed radars
-	TechnoExtContainer::Instance.Find(pThis)->RadarJammer.reset(nullptr);
+	TechnoExtContainer::Instance.Find(pThis)->RadarJammer.reset();
 	// #617 powered units
-	TechnoExtContainer::Instance.Find(pThis)->PoweredUnit.reset(nullptr);
+	TechnoExtContainer::Instance.Find(pThis)->PoweredUnit.reset();
 
 	//#1573, #1623, #255 attached effects
 	AresAE::Remove(&TechnoExtContainer::Instance.Find(pThis)->AeData, pThis);
@@ -851,7 +851,7 @@ ASMJIT_PATCH(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 				//can be optimized using stored bool instead checking them each frames
 				if (pType->GetFoundationWidth() > 2 && pType->GetFoundationHeight(false) > 2)
 				{
-					swprintf_s(pOutDrainFormat, StringTable::LoadString(GameStrings::TXT_POWER_DRAIN2()), pOutput, pDrain);
+					swprintf_s(pOutDrainFormat, StringTable::FetchString(GameStrings::TXT_POWER_DRAIN2()), pOutput, pDrain);
 				}
 				else
 				{
@@ -878,7 +878,7 @@ ASMJIT_PATCH(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 			{
 				wchar_t pOutMoneyFormat[0x80];
 				auto nMoney = pOwner->Available_Money();
-				swprintf_s(pOutMoneyFormat, StringTable::LoadString(GameStrings::TXT_MONEY_FORMAT_1()), nMoney);
+				swprintf_s(pOutMoneyFormat, StringTable::FetchString(GameStrings::TXT_MONEY_FORMAT_1()), nMoney);
 				DrawTheStuff(pOutMoneyFormat);
 
 				if (BuildingTypeExtContainer::Instance.Find(pType)->Refinery_UseStorage)
@@ -906,7 +906,7 @@ ASMJIT_PATCH(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 				}
 				else
 				{
-					DrawTheStuff(StringTable::LoadString((pType->GetFoundationWidth() != 1) ?
+					DrawTheStuff(StringTable::FetchString((pType->GetFoundationWidth() != 1) ?
 						GameStrings::TXT_PRIMARY() : GameStrings::TXT_PRI()));
 				}
 			}
@@ -1161,6 +1161,16 @@ ASMJIT_PATCH(0x6F3F88, TechnoClass_Init_1, 5)
 
 	TechnoExtData::InitializeItems(pThis, pType);
 	TechnoExtData::InitializeAttachEffects(pThis, pType);
+
+	const auto pPrimary = pThis->GetWeapon(0)->WeaponType;
+
+	if (pPrimary && pThis->GetTechnoType()->LandTargeting != LandTargetingType::Land_not_okay)
+		pThis->DiskLaserTimer.TimeLeft = pPrimary->ROF;
+	else if (const auto pSecondary = pThis->GetWeapon(1)->WeaponType)
+		pThis->DiskLaserTimer.TimeLeft = pSecondary->ROF;
+
+	pThis->DiskLaserTimer.StartTime = MinImpl(-2, -pThis->DiskLaserTimer.TimeLeft);
+
 	TechnoExtData::InitializeUnitIdleAction(pThis, pType);
 
 	R->EAX(pType);
@@ -1307,14 +1317,6 @@ ASMJIT_PATCH(0x7119D5, TechnoTypeClass_CTOR_NoInit_Particles, 0x6)
 	(*(uintptr_t*)((char*)pThis + offsetof(TechnoTypeClass, DestroyParticleSystems))) = ParticleSystemTypeClass::TypeListArray.getAddrs();
 
 	return 0x711A00;
-}
-
-// destroying a building (no health left) resulted in a single green pip shown
-// in the health bar for a split second. this makes the last pip red.
-ASMJIT_PATCH(0x6F661D, TechnoClass_DrawHealthBar_DestroyedBuilding_RedPip, 0x7)
-{
-	GET(BuildingClass*, pBld, ESI);
-	return (pBld->Health <= 0 || pBld->IsRedHP()) ? 0x6F6628 : 0x6F6630;
 }
 
 //TechnoClass_GetActionOnObject_IvanBombsB
@@ -1521,4 +1523,69 @@ ASMJIT_PATCH(0x6FA361, TechnoClass_Update_LoseTarget, 5)
 	const bool IsNegDamage = (pThis->CombatDamage() < 0);
 
 	return IsAlly == IsNegDamage ? ForceAttack : ContinueCheck;
+}
+
+static inline bool CheckAttackMoveCanResetTarget(FootClass* pThis)
+{
+	const auto pTarget = pThis->Target;
+
+	if (!pTarget || pTarget == pThis->MegaTarget)
+		return false;
+
+	const auto pTargetTechno = flag_cast_to<TechnoClass*, false>(pTarget);
+
+	if (!pTargetTechno || pTargetTechno->IsArmed())
+		return false;
+
+	if (pThis->TargetingTimer.InProgress())
+		return false;
+
+	const auto pPrimaryWeapon = pThis->GetWeapon(0)->WeaponType;
+
+	if (!pPrimaryWeapon)
+		return false;
+
+	const auto pNewTarget = flag_cast_to<TechnoClass*>(pThis->GreatestThreat(ThreatType::Range, &pThis->Location, false));
+
+	if (!pNewTarget || pNewTarget->GetTechnoType() == pTargetTechno->GetTechnoType())
+		return false;
+
+	const auto pSecondaryWeapon = pThis->GetWeapon(1)->WeaponType;
+
+	if (!pSecondaryWeapon || !pSecondaryWeapon->NeverUse) // Melee unit's virtual scanner
+		return true;
+
+	return pSecondaryWeapon->Range <= pPrimaryWeapon->Range;
+}
+
+ASMJIT_PATCH(0x4DF3A0, FootClass_UpdateAttackMove_SelectNewTarget, 0x6)
+{
+	GET(FootClass* const, pThis, ECX);
+
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pTypeExt->AttackMove_UpdateTarget.Get(RulesExtData::Instance()->AttackMove_UpdateTarget) && CheckAttackMoveCanResetTarget(pThis))
+	{
+		pThis->Target = nullptr;
+		pThis->HaveAttackMoveTarget = false;
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x6F85AB, TechnoClass_CanAutoTargetObject_AggressiveAttackMove, 0x6)
+{
+	enum { ContinueCheck = 0x6F85BA, CanTarget = 0x6F8604 };
+
+	GET(TechnoClass* const, pThis, EDI);
+
+	if (!pThis->Owner->IsControlledByHuman())
+		return CanTarget;
+
+	if (!pThis->MegaMissionIsAttackMove())
+		return ContinueCheck;
+
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	return pTypeExt->AttackMove_Aggressive.Get(RulesExtData::Instance()->AttackMove_UpdateTarget) ? CanTarget : ContinueCheck;
 }

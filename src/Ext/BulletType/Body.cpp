@@ -54,6 +54,14 @@ const ConvertClass* BulletTypeExtData::GetBulletConvert()
 	}
 }
 
+#include <Ext/Bullet/Body.h>
+
+BulletClass* BulletTypeExtData::CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, HouseClass* pHouse, WeaponTypeClass* pWeapon, bool addDamage, bool SetWeaponType) const
+{
+	auto pBullet = CreateBullet(pTarget, pOwner, pWeapon, addDamage, SetWeaponType);
+	return pBullet;
+}
+
 BulletClass* BulletTypeExtData::CreateBullet(AbstractClass* pTarget, TechnoClass* pOwner, WeaponTypeClass* pWeapon, bool addDamage, bool SetWeaponType) const
 {
 	if (auto pBullet = this->CreateBullet(pTarget, pOwner, pWeapon->Damage, pWeapon->Warhead,
@@ -89,6 +97,7 @@ BulletClass* BulletTypeExtData::CreateBullet(AbstractClass* pTarget, TechnoClass
 
 	if (pBullet)
 	{
+		BulletExtContainer::Instance.Find(pBullet)->Owner = pOwner ? pOwner->Owner : HouseExtData::FindNeutral();
 		pBullet->Range = range;
 	}
 
@@ -189,7 +198,13 @@ void BulletTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Arcing_AllowElevationInaccuracy.Read(exINI, pSection, "Arcing.AllowElevationInaccuracy");
 		this->AttachedSystem.Read(exINI, pSection, "AttachedSystem");
 		this->ReturnWeapon.Read(exINI, pSection, "ReturnWeapon", true);
+		this->ReturnWeapon_ApplyFirepowerMult.Read(exINI, pSection, "ReturnWeapon.ApplyFirepowerMult");
 		this->SubjectToGround.Read(exINI, pSection, "SubjectToGround");
+
+		this->Airburst_TargetAsSource.Read(exINI, pSection, "Airburst.TargetAsSource");
+		this->Airburst_TargetAsSource_SkipHeight.Read(exINI, pSection, "Airburst.TargetAsSource.SkipHeight");
+		this->AirburstWeapon_SourceScatterMin.Read(exINI, pSection, "AirburstWeapon.SourceScatterMin");
+		this->AirburstWeapon_SourceScatterMax.Read(exINI, pSection, "AirburstWeapon.SourceScatterMax");
 
 		if (pThis->Inviso) {
 			trailReaded = true;
@@ -277,7 +292,13 @@ void BulletTypeExtData::Serialize(T& Stm)
 		.Process(this->Arcing_AllowElevationInaccuracy)
 		.Process(this->AttachedSystem)
 		.Process(this->ReturnWeapon)
+		.Process(this->ReturnWeapon_ApplyFirepowerMult)
 		.Process(this->SubjectToGround)
+
+		.Process(this->Airburst_TargetAsSource)
+		.Process(this->Airburst_TargetAsSource_SkipHeight)
+		.Process(this->AirburstWeapon_SourceScatterMin)
+		.Process(this->AirburstWeapon_SourceScatterMax)
 		;
 
 	this->Trails.Serialize(Stm);

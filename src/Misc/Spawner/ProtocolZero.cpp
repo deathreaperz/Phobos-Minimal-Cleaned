@@ -11,6 +11,11 @@
 
 #include <Helpers/Macro.h>
 
+#pragma region defines
+LatencyLevelEnum LatencyLevel::CurentLatencyLevel { LatencyLevelEnum::LATENCY_LEVEL_INITIAL };
+uint8_t LatencyLevel::NewFrameSendRate { 3 };
+#pragma endregion
+
 void LatencyLevel::Apply(LatencyLevelEnum newLatencyLevel)
 {
 	if (newLatencyLevel > LatencyLevelEnum::LATENCY_LEVEL_MAX)
@@ -35,7 +40,7 @@ void LatencyLevel::Apply(LatencyLevelEnum newLatencyLevel)
 	Game::Network::PreCalcFrameRate = 60;
 	Game::Network::PreCalcMaxAhead = GetMaxAhead(newLatencyLevel);
 
-	MessageListClass::Instance->PrintMessage(GetLatencyMessage(newLatencyLevel), 270, ColorScheme::White, true);
+	MessageListClass::Instance->PrintMessage(GetLatencyMessage(newLatencyLevel), (int)(RulesClass::Instance->MessageDelay * 900), ColorScheme::White, true);
 }
 
 ASMJIT_PATCH(0x55DDA0, MainLoop_AfterRender_ProtocolZero, 0x5)

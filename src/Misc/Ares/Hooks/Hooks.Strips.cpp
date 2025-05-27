@@ -18,7 +18,7 @@ ASMJIT_PATCH(0x6A9304, StripClass_GetTip_Handle, 9)
 	auto& cameo = MouseClassExt::TabCameos[MouseClass::Instance->ActiveTabIndex][buildableCount];
 	PhobosToolTip::Instance.IsCameo = true;
 
-	if (PhobosToolTip::Instance.IsEnabled())
+	if (Phobos::UI::ExtendedToolTips)
 	{
 		PhobosToolTip::Instance.HelpText(&cameo);
 		R->EAX(L"X");
@@ -35,13 +35,13 @@ ASMJIT_PATCH(0x6A9304, StripClass_GetTip_Handle, 9)
 			// account for no-name SWs
 			if (CCToolTip::HideName() || !wcslen(pSW->UIName))
 			{
-				const wchar_t* pFormat = StringTable::LoadStringA(GameStrings::TXT_MONEY_FORMAT_1);
+				const wchar_t* pFormat = StringTable::FetchString(GameStrings::TXT_MONEY_FORMAT_1);
 				_snwprintf_s(SidebarClass::TooltipBuffer(), SidebarClass::TooltipLength - 1, pFormat, -pData->Money_Amount);
 			}
 			else
 			{
 				// then, this must be brand SWs
-				const wchar_t* pFormat = StringTable::LoadStringA(GameStrings::TXT_MONEY_FORMAT_2);
+				const wchar_t* pFormat = StringTable::FetchString(GameStrings::TXT_MONEY_FORMAT_2);
 				_snwprintf_s(SidebarClass::TooltipBuffer(), SidebarClass::TooltipLength - 1, pFormat, pSW->UIName, -pData->Money_Amount);
 			}
 
@@ -73,13 +73,13 @@ ASMJIT_PATCH(0x6A9304, StripClass_GetTip_Handle, 9)
 
 		if (CCToolTip::HideName || !wcslen(pTechnoType->UIName))
 		{
-			const wchar_t* Format = StringTable::LoadStringA(GameStrings::TXT_MONEY_FORMAT_1);
+			const wchar_t* Format = StringTable::FetchString(GameStrings::TXT_MONEY_FORMAT_1);
 			_snwprintf_s(SidebarClass::TooltipBuffer, SidebarClass::TooltipLength, SidebarClass::TooltipLength - 1, Format, Cost);
 		}
 		else
 		{
 			const wchar_t* UIName = pTechnoType->UIName;
-			const wchar_t* Format = StringTable::LoadStringA(GameStrings::TXT_MONEY_FORMAT_2);
+			const wchar_t* Format = StringTable::FetchString(GameStrings::TXT_MONEY_FORMAT_2);
 			_snwprintf_s(SidebarClass::TooltipBuffer, SidebarClass::TooltipLength, SidebarClass::TooltipLength - 1, Format, UIName, Cost);
 		}
 
@@ -805,10 +805,10 @@ ASMJIT_PATCH(0x6A9B4F, StripClass_Draw_TestFlashFrame, 6)
 					const COLORREF color = Drawing::RGB_To_Int(Drawing::TooltipColor);
 					const TextPrintType printType = TextPrintType::Background | TextPrintType::Right | TextPrintType::FullShadow | TextPrintType::Point8;
 					auto textPosition = Point2D { destX , destY + 1 };
-
-					wchar_t text[0x20];
-					swprintf_s(text, L"%d", count);
-					DSurface::Sidebar->DrawText_Old(text, &surfaceRect, &textPosition, color, 0, (DWORD)printType);
+					fmt::basic_memory_buffer<wchar_t> text;
+					fmt::format_to(std::back_inserter(text), L"{}", count);
+					text.push_back(L'\0');
+					DSurface::Sidebar->DrawText_Old(text.data(), &surfaceRect, &textPosition, color, 0, (DWORD)printType);
 				}
 			}
 		}
@@ -890,13 +890,13 @@ ASMJIT_PATCH(0x6AB577, SelectClass_ProcessInput_FixOffset3, 7)
 
 	if (Item.Status == 1)
 	{
-		if (Item.Progress.Value > Progress)
+		if (Item.Progress.Stage > Progress)
 		{
-			Progress = (Item.Progress.Value + Progress) / 2;
+			Progress = (Item.Progress.Stage + Progress) / 2;
 		}
 	}
 
-	Item.Progress.Value = Progress;
+	Item.Progress.Stage = Progress;
 	R->EAX<int>(SavedFactory->GetBuildTimeFrames());
 	R->ECX<void*>(nullptr);
 

@@ -518,10 +518,15 @@ public:
 		return *(this->begin() + nIdx);
 	}
 
+	COMPILETIMEEVAL size_t end_idx() const
+	{
+		return this->size() - 1;
+	}
+
 	COMPILETIMEEVAL FORCEDINLINE T GetItemAtOrMax(int nIdx) const
 	{
 		if (!this->ValidIndex(nIdx))
-			nIdx = this->size();
+			nIdx = end_idx();
 
 		return *(this->begin() + nIdx);
 	}
@@ -654,7 +659,6 @@ public:
 	}
 
 	OPTIONALINLINE bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
-
 	OPTIONALINLINE bool Save(PhobosStreamWriter& Stm) const;
 };
 

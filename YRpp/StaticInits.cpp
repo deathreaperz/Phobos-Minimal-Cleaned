@@ -30,6 +30,10 @@
 #include <Surface.h>
 
 #include <WWKeyboardClass.h>
+#include <DisplayClass.h>
+#include <MapClass.h>
+
+#include <Helpers/Iterators.h>
 
 const CoordStruct CoordStruct::Empty = {};
 const ColorStruct ColorStruct::Empty = {};
@@ -42,6 +46,7 @@ const Point2D Point2D::Empty = {};
 const Point2DBYTE Point2DBYTE::Empty = {};
 const Point3D Point3D::Empty = {};
 const RectangleStruct RectangleStruct::Empty = {};
+const HSVClass BlackColor = { 0, 0, 0 };
 
 std::array< ColorStruct, (size_t)DefaultColorList::count> Drawing::DefaultColors
 {
@@ -243,29 +248,6 @@ SuperClass* HouseClass::FindSuperWeapon(SuperWeaponTypeClass* pType) const
 	}
 
 	return nullptr;
-}
-bool HouseClass::IsIonCannonEligibleTarget(const TechnoClass* const pTechno) const
-{
-	if (pTechno->IsAlive && !pTechno->InLimbo && pTechno->InWhichLayer() == Layer::Ground)
-	{
-		return true;
-	}
-
-	// hard difficulty shoots the tank in the factory
-	if (this->AIDifficulty == AIDifficulty::Hard)
-	{
-		for (const auto* pFactory : *FactoryClass::Array)
-		{
-			if (pFactory->Object == pTechno
-				&& pFactory->Production.Timer.Duration
-				&& !pFactory->IsSuspended)
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
 }
 
 CellStruct FootClass::GetRandomDirection(FootClass* pFoot)
@@ -1235,6 +1217,23 @@ HouseClass* HouseClass::FindSpecial()
 HouseClass* HouseClass::FindCivilianSide()
 {
 	return FindBySideName(GameStrings::Civilian());
+}
+
+void CellClass::CreateGap(HouseClass* pHouse, int range, CoordStruct& coords)
+{
+	DisplayClass::Instance->Sub_4ADEE0(0, 0);
+	CellRangeIterator<CellClass>{}(CellClass::Coord2Cell(coords), range + 0.5, [](CellClass* pCell)
+ {
+	 pCell->Flags &= ~CellFlags::Revealed;
+	 pCell->AltFlags &= ~AltCellFlags::Clear;
+	 pCell->ShroudCounter = 1;
+	 pCell->GapsCoveringThisCell = 0;
+	 return true;
+	});
+	DisplayClass::Instance->Sub_4ADCD0(0, 0);
+	pHouse->Visionary = 0;
+	MapClass::Instance->Map_AI();
+	MapClass::Instance->MarkNeedsRedraw(2);
 }
 
 void TechnoClass::SpillTiberium(int& value, int idx, CellClass* pCenter, Point2D const& nMinMax)

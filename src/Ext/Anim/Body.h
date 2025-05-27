@@ -4,13 +4,12 @@
 #include <Utilities/Container.h>
 #include <Utilities/OptionalStruct.h>
 #include <Utilities/TemplateDef.h>
-
 //#include <New/AnonymousType/SpawnsStatus.h>
 
 #include <ParticleSystemClass.h>
 
 class HouseClass;
-class AnimExtData final //: public Extension<AnimClass>
+class AnimExtData
 {
 public:
 	using base_type = AnimClass;
@@ -37,6 +36,10 @@ public:
 	//SpawnsStatus SpawnsStatusData {};
 
 	bool DelayedFireRemoveOnNoDelay { false };
+	bool IsAttachedEffectAnim { false };
+	bool IsShieldIdleAnim { false };
+
+	StageClass	DamagingState { };
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
 
@@ -60,7 +63,8 @@ public:
 	{
 		return sizeof(AnimExtData) -
 			(4u //AttachedToObject
-			 );
+			 - 4u //inheritance
+				);
 	}
 
 	static const std::pair<bool, OwnerHouseKind> SetAnimOwnerHouseKind(AnimClass* pAnim, HouseClass* pInvoker, HouseClass* pVictim, bool defaultToVictimOwner = true);
@@ -68,7 +72,7 @@ public:
 	static TechnoClass* GetTechnoInvoker(AnimClass* pThis);
 	static AbstractClass* GetTarget(AnimClass* const);
 	static void ChangeAnimType(AnimClass* pAnim, AnimTypeClass* pNewType, bool resetLoops, bool restart);
-	static DWORD DealDamageDelay(AnimClass* pThis);
+	static void DealDamageDelay(AnimClass* pThis);
 	static bool OnExpired(AnimClass* pThis, bool LandIsWater, bool EligibleHeight);
 	static bool OnMiddle(AnimClass* pThis);
 	static bool OnMiddle_SpawnSmudge(AnimClass* pThis, CellClass* pCell, Point2D nOffs);
@@ -78,17 +82,22 @@ public:
 
 	static void SpawnFireAnims(AnimClass* pThis);
 
+public:
+	void OnStart() { };
+	void OnMiddle() { };
+	void OnEnd() { };
+	void OnTypeChange();
+
 private:
 	template <typename T>
 	void Serialize(T& Stm);
 };
 
 class AnimTypeExtData;
-class FakeAnimClass : public AnimClass
+class NOVTABLE FakeAnimClass : public AnimClass
 {
 public:
-	OPTIONALINLINE static std::vector<AnimExtData*> Pool;
-	OPTIONALINLINE static HelperedVector<FakeAnimClass*> AnimsWithAttachedParticles {};
+	static std::list<FakeAnimClass*> AnimsWithAttachedParticles;
 
 	static COMPILETIMEEVAL FORCEDINLINE void ClearExtAttribute(AnimClass* key)
 	{
@@ -115,21 +124,8 @@ public:
 
 	static AnimExtData* AllocateUnchecked(AnimClass* key)
 	{
-		AnimExtData* val = nullptr;
-		if (!Pool.empty())
+		if (AnimExtData* val = new AnimExtData())
 		{
-			val = Pool.front();
-			Pool.erase(Pool.begin());
-			//re-init
-		}
-		else
-		{
-			val = DLLAllocWithoutCTOR<AnimExtData>();
-		}
-
-		if (val)
-		{
-			val->AnimExtData::AnimExtData();
 			val->AttachedToObject = key;
 			return val;
 		}
@@ -157,25 +153,13 @@ public:
 	{
 		if (AnimExtData* Item = FakeAnimClass::TryFind(key))
 		{
-			Item->~AnimExtData();
-			Item->AttachedToObject = nullptr;
-			Pool.push_back(Item);
+			delete Item;
 			FakeAnimClass::ClearExtAttribute(key);
 		}
 	}
 
 	static void Clear()
 	{
-		if (!Pool.empty())
-		{
-			auto ptr = Pool.front();
-			Pool.erase(Pool.begin());
-			if (ptr)
-			{
-				delete ptr;
-			}
-		}
-
 		AnimsWithAttachedParticles.clear();
 	}
 
@@ -187,6 +171,22 @@ public:
 	HRESULT __stdcall _Load(IStream* pStm);
 	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
 	void _Middle();
+	void _Start();
+	void _AI();
+
+	void _ApplyVeinsDamage();
+	void _ApplyDeformTerrrain();
+	void _ApplyHideIfNoOre();
+	void _ApplySpawns(CoordStruct& coord);
+
+	void _CreateFootApplyOccupyBits();
+	void _CreateFoot();
+
+	void _SpreadTiberium(CoordStruct& coords, bool isOnbridge);
+	void _PlayExtraAnims(bool onWater, bool onBridge);
+	void _DrawTrailerAnim();
+
+	int _BounceAI();
 
 	FORCEDINLINE AnimClass* _AsAnim() const
 	{

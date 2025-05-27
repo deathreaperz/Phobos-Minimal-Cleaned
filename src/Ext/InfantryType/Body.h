@@ -45,6 +45,8 @@ public:
 	Valueable<bool> AllSequnceEqualRates { false };
 	Valueable<bool> AllowReceiveSpeedBoost { false };
 
+	Nullable<double> ProneSpeed {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
@@ -69,7 +71,7 @@ public:
 	//CONSTEXPR_NOCOPY_CLASSB(InfantryTypeExtContainer, InfantryTypeExtData, "InfantryTypeClass");
 };
 
-class FakeInfantryTypeClass : public InfantryTypeClass
+class NOVTABLE FakeInfantryTypeClass : public InfantryTypeClass
 {
 public:
 

@@ -160,7 +160,7 @@ public:
 	virtual void DrawAgain(const Point2D& location, const RectangleStruct& bounds) const RX; // just forwards the call to Draw
 	virtual void Undiscover() RX; //hidden
 	virtual void See(DWORD dwUnk, DWORD dwUnk2) RX;
-	virtual bool UpdatePlacement(PlacementType value) R0;
+	virtual bool Mark(MarkType value) R0;
 	virtual RectangleStruct* GetDimensions(RectangleStruct* pRect) const R0;
 	virtual RectangleStruct* GetRenderDimensions(RectangleStruct* pRect) R0;
 	virtual void DrawRadialIndicator(DWORD dwUnk) RX;
@@ -187,7 +187,7 @@ public:
 	virtual DWORD GetPointsValue() const R0;
 	virtual Mission GetCurrentMission() const RT(Mission);
 	virtual void RestoreMission(Mission mission) RX;
-	virtual void UpdatePosition(int dwUnk) RX; // PCP
+	virtual void UpdatePosition(PCPType dwUnk) RX; // PCP
 	virtual BuildingClass* FindFactory(bool allowOccupied, bool requirePower) const R0; //who can build me
 	virtual RadioCommand ReceiveCommand(TechnoClass* pSender, RadioCommand command, AbstractClass* &pInOut) RT(RadioCommand); //receive message
 	virtual bool DiscoveredBy(HouseClass *pHouse) R0;
@@ -200,8 +200,8 @@ public:
 	virtual void SetLocation(const CoordStruct& crd) RX;
 
 // these two work through the object's Location
-	virtual CellStruct* GetMapCoords(CellStruct* pUCell) const R0;
-	virtual CellClass* GetCell() const R0;
+	virtual CellStruct* GetMapCoords(CellStruct* pUCell) const R0;  // be aware that some objects have a different coordinate system , like AnimClass where it can use AttachedObject coordinates
+	virtual CellClass* GetCell() const R0; // be aware that some objects have a different coordinate system , like AnimClass where it can use AttachedObject coordinates
 
 // these two call ::GetCoords_() instead
 	virtual CellStruct* GetMapCoordsAgain(CellStruct* pUCell) const R0;
@@ -336,6 +336,10 @@ public:
 		JMP_THIS(0x5F6060);
 	}
 
+	bool IsCrushable(TechnoClass* pCrusher) {
+		JMP_THIS(0x5F6CD0);
+	}
+
 	DamageState TakeDamage(int damage, WarheadTypeClass* pWH, bool crewed, bool ignoreDefenses = true, ObjectClass* pAttacker = nullptr, HouseClass* pAttackingHouse = nullptr) {
 		return ReceiveDamage(&damage, 0, pWH, pAttacker, ignoreDefenses, crewed, pAttackingHouse);
 	}
@@ -346,6 +350,10 @@ public:
 	const char* get_ID() const;
 
 	Point2D GetScreenLocation() const;
+
+	__declspec(property(get = GetHeight, put = SetHeight)) int HeightAGL;
+	__declspec(property(get = GetZ, put = MarkDownSetZ)) int Height;
+	__declspec(property(get = GetCoords, put = SetLocation)) CoordStruct PositionCoord;
 
 //Constructor NEVER CALL IT DIRECTLY
 	ObjectClass()  noexcept
@@ -397,7 +405,7 @@ public:
 	bool               IsInLogic; // has this object been added to the logic collection?
 	bool               IsVisible; // was this object in viewport when drawn?
 	PROTECTED_PROPERTY(BYTE, align_99[0x2]);
-	CoordStruct        Location; //Absolute current 3D location (in leptons)
+	CoordStruct        Location; //Absolute current 3D location (in leptons) , be aware that some objects have a different coordinate system , like AnimClass where it can use AttachedObject coordinates , use GetCoords() to get the correct coordinates
 	LineTrail*         LineTrailer;
  };
 

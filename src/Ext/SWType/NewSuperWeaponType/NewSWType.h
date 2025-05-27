@@ -6,6 +6,7 @@
 
 #include <array>
 #include <Utilities/VectorHelper.h>
+#include <Utilities/MemoryPoolUniquePointer.h>
 
 enum class AresNewActionType :int
 {
@@ -13,8 +14,24 @@ enum class AresNewActionType :int
 	SuperWeaponAllowed = 127,
 };
 
-struct TargetingData
+struct TargetingData final
 {
+public:
+
+	TargetingData() : TypeExt { nullptr }
+		, Owner { nullptr }
+		, NeedsLaunchSite { false }
+		, NeedsDesignator { false }
+		, NeedsAttractors { false }
+		, NeedsSupressors { false }
+		, NeedsInhibitors { false }
+		, LaunchSites {}
+		, Designators {}
+		, Inhibitors {}
+		, Attractors {}
+		, Suppressors {}
+	{ }
+
 	TargetingData(SWTypeExtData* pTypeExt, HouseClass* pOwner) noexcept : TypeExt { pTypeExt }
 		, Owner { pOwner }
 		, NeedsLaunchSite { false }
@@ -29,7 +46,19 @@ struct TargetingData
 		, Suppressors {}
 	{ }
 
-	~TargetingData() noexcept = default;
+	void reset()
+	{
+		NeedsLaunchSite = false;
+		NeedsDesignator = false;
+		NeedsAttractors = false;
+		NeedsSupressors = false;
+		NeedsInhibitors = false;
+		LaunchSites.clear();
+		Designators.clear();
+		Inhibitors.clear();
+		Attractors.clear();
+		Suppressors.clear();
+	}
 
 	struct LaunchSite
 	{
@@ -63,10 +92,10 @@ struct TargetingData
 	//Enemy Designator
 	HelperedVector<RangedItem> Suppressors;
 
-private:
-	TargetingData(const TargetingData&) = delete;
-	TargetingData(TargetingData&&) = delete;
-	TargetingData& operator=(const TargetingData& other) = delete;
+	//private:
+	//	TargetingData(const TargetingData&) = delete;
+	//	TargetingData(TargetingData&&) = delete;
+	//	TargetingData& operator=(const TargetingData& other) = delete;
 };
 
 class NewSWType
@@ -98,7 +127,7 @@ public:
 	virtual bool HandleThisType(SuperWeaponType type) const { return false; }
 	virtual SuperWeaponFlags Flags(const SWTypeExtData* pData) const { return SuperWeaponFlags::None; }
 
-	virtual bool CanFireAt(const TargetingData* pTargeting, CellStruct const& cell, bool manual) const;
+	virtual bool CanTargetingFireAt(const TargetingData* pTargeting, CellStruct const& cell, bool manual) const;
 
 	virtual bool Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPlayer) = 0;
 	virtual void Deactivate(SuperClass* pThis, CellStruct cell, bool isPlayer) { }
@@ -113,6 +142,11 @@ public:
 	bool IsInhibitor(const SWTypeExtData* pData, HouseClass* pOwner, TechnoClass* pTechno) const;
 	bool IsAttractor(const SWTypeExtData* pData, HouseClass* pOwner, TechnoClass* pTechno) const;
 	bool IsSuppressor(const SWTypeExtData* pData, HouseClass* pOwner, TechnoClass* pTechno) const;
+
+	bool IsDesignatorSimple(const SWTypeExtData* pData, HouseClass* pSWOwner, HouseClass* pTechnoOwner, TechnoTypeClass* pTechnoType) const;
+	bool IsInhibitorSimple(const SWTypeExtData* pData, HouseClass* pSWOwner, HouseClass* pTechnoOwner, TechnoTypeClass* pTechnoType, bool bIsPoweredOffline) const;
+	bool IsAttractorSimple(const SWTypeExtData* pData, HouseClass* pSWOwner, HouseClass* pTechnoOwner, TechnoTypeClass* pTechnoType) const;
+	bool IsSuppressorSimple(const SWTypeExtData* pData, HouseClass* pSWOwner, HouseClass* pTechnoOwner, TechnoTypeClass* pTechnoType, bool bIsPoweredOffline) const;
 
 	virtual SWRange GetRange(const SWTypeExtData* pData) const;
 	virtual WarheadTypeClass* GetWarhead(const SWTypeExtData* pData) const;
@@ -139,7 +173,7 @@ public:
 	bool IsLaunchSiteEligible(SWTypeExtData* pSWType, const CellStruct& Coords, BuildingClass* pBuilding, bool ignoreRange) const;
 	bool HasLaunchSite(SWTypeExtData* pSWType, HouseClass* pOwner, const CellStruct& Coords) const;
 
-	std::unique_ptr<const TargetingData> GetTargetingData(SWTypeExtData* pData, HouseClass* pOwner) const;
+	std::unique_ptr<TargetingData> GetTargetingData(SWTypeExtData* pData, HouseClass* pOwner) const;
 	bool CanFireAt(SWTypeExtData* pData, HouseClass* pOwner, const CellStruct& cell, bool manual) const;
 
 	TechnoClass* GetFirer(SuperClass* pSW, const CellStruct& Coords, bool ignoreRange) const;

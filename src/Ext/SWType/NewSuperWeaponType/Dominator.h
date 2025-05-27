@@ -26,6 +26,6 @@ public:
 protected:
 	void newStateMachine(CellStruct XY, SuperClass* pSuper)
 	{
-		SWStateMachine::Register<PsychicDominatorStateMachine>(XY, pSuper, this);
+		SWStateMachine::Array.push_back(std::move(std::make_unique<PsychicDominatorStateMachine>(XY, pSuper, this)));
 	}
 };

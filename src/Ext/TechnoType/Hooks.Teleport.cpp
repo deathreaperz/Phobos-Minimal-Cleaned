@@ -17,15 +17,14 @@
 	TechnoTypeClass* pType = pOwner->GetTechnoType(); \
 	TechnoTypeExtData *pExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-ASMJIT_PATCH(0x7197E4, TeleportLocomotionClass_Process_ChronospherePreDelay, 0x6)
+ASMJIT_PATCH(0x7197DF, TeleportLocomotionClass_Process_ChronospherePreDelay, 0x6)
 {
-	GET(TeleportLocomotionClass*, pThis, ESI);
+	//GET(TeleportLocomotionClass*, pThis, ESI);
+	GET(FootClass*, pLinked, ECX);
 
-	auto const pExt = TechnoExtContainer::Instance.Find(pThis->Owner);
-	auto pTypeExtData = TechnoTypeExtContainer::Instance.Find(pExt->Type);
+	auto pTypeExtData = TechnoTypeExtContainer::Instance.Find(pLinked->GetTechnoType());
 	R->ECX(pTypeExtData->ChronoSpherePreDelay.Get(RulesExtData::Instance()->ChronoSpherePreDelay));
-
-	return 0;
+	return 0x7197E4;
 }
 
 ASMJIT_PATCH(0x719BD9, TeleportLocomotionClass_Process_ChronosphereDelay2, 0x6)
@@ -173,8 +172,9 @@ Matrix3D* __stdcall LocomotionClass_Draw_Matrix(ILocomotion* pThis, Matrix3D* re
 	if (pIndex && pIndex->Is_Valid_Key())
 		*(int*)(pIndex) = slope_idx + (*(int*)(pIndex) << 6);
 
-	loco->LocomotionClass::Draw_Matrix(ret, pIndex);
-	*ret = Game::VoxelRampMatrix[slope_idx] * (*ret);
+	Matrix3D _DrawMtx {};
+	loco->LocomotionClass::Draw_Matrix(&_DrawMtx, pIndex);
+	*ret = Game::VoxelRampMatrix[slope_idx] * _DrawMtx;
 
 	float arf = loco->Owner->AngleRotatedForwards;
 	float ars = loco->Owner->AngleRotatedSideways;

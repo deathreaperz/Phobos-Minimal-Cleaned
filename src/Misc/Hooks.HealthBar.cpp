@@ -9,6 +9,22 @@
 #include <InfantryClass.h>
 #include <TacticalClass.h>
 
+ASMJIT_PATCH(0x6D9076, TacticalClass_RenderLayers_DrawBefore, 0x5)// FootClass
+{
+	GET(TechnoClass*, pTechno, ESI);
+	GET(Point2D*, pLocation, EAX);
+
+	if (pTechno->IsSelected && Phobos::Config::EnableSelectBox)
+	{
+		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType());
+
+		if (!pTypeExt->HealthBar_Hide && !pTypeExt->HideSelectBox)
+			TechnoExtData::DrawSelectBox(pTechno, pLocation, &DSurface::ViewBounds, true);
+	}
+
+	return 0;
+}ASMJIT_PATCH_AGAIN(0x6D9134, TacticalClass_RenderLayers_DrawBefore, 0x5)// BuildingClass
+
 ASMJIT_PATCH(0x709ACF, TechnoClass_DrawPip_PipShape1_A, 0x6)
 {
 	GET(TechnoClass* const, pThis, EBP);
@@ -42,35 +58,47 @@ ASMJIT_PATCH(0x709AF8, TechnoClass_DrawPip_PipShape2, 0x6)
 	return 0;
 }
 
-//6F6759 , EDX ,6F675F
-ASMJIT_PATCH(0x6F6722, TechnoClass_DrawHealth_Building_PipFile_B, 0x6)
+bool HideBar(TechnoClass* pTechno, TechnoTypeClass* pType, bool isAllied)
 {
-	GET(BuildingClass* const, pThis, ESI);
+	const auto what = pTechno->WhatAmI();
 
-	const auto pThisExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
-	R->EDX(pThisExt->PipShapes01.Get(FileSystem::PIPS_SHP()));
-
-	return 0x6F6728;
-}
-
-ASMJIT_PATCH(0x6F6759, TechnoClass_DrawHealth_Building_PipFile_B_pal, 0x6)
-{
-	GET(BuildingClass* const, pThis, ESI);
-	const auto pBuildingTypeExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
-	ConvertClass* nPal = FileSystem::THEATER_PAL();
-
-	if (pBuildingTypeExt->PipShapes01Remap)
+	if (auto pFoot = flag_cast_to<FootClass*, false>(pTechno))
 	{
-		nPal = pThis->GetRemapColour();
-	}
-	else if (const auto pConvertData = pBuildingTypeExt->PipShapes01Palette)
-	{
-		nPal = pConvertData->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(nPal);
+		auto pExt = TechnoExtContainer::Instance.Find(pTechno);
+
+		if (pExt->Is_DriverKilled)
+			return true;
 	}
 
-	R->EDX(nPal);
-	return 0x6F675F;
+	if (what == UnitClass::AbsID)
+	{
+		const auto pUnit = (UnitClass*)pTechno;
+
+		if (pUnit->DeathFrameCounter > 0)
+			return true;
+	}
+
+	if (what == BuildingClass::AbsID)
+	{
+		const auto pBld = (BuildingClass*)pTechno;
+
+		if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->Firestorm_Wall)
+			return true;
+	}
+
+	if ((TechnoTypeExtContainer::Instance.Find(pType)->HealthBar_Hide.Get())
+		|| pTechno->TemporalTargetingMe
+		|| pTechno->IsSinking
+	)
+		return true;
+
+	if (!RulesClass::Instance->EnemyHealth && !HouseClass::IsCurrentPlayerObserver() && !isAllied)
+		return true;
+
+	return false;
 }
+
+#ifndef _OLD
 
 ASMJIT_PATCH(0x6F66B3, TechnoClass_DrawHealth_Building_PipFile_A, 0x6)
 {
@@ -165,9 +193,9 @@ namespace DrawHeathData
 
 		//char nBuffer[0x100];
 		std::string _buffer = !pTypeExt->HealthNumber_Percent.Get() ?
-			std::format("{}/{}", pThis->Health, pThis->GetTechnoType()->Strength)
+			fmt::format("{}/{}", pThis->Health, pThis->GetTechnoType()->Strength)
 			:
-			std::format("{}%", (int)(pThis->GetHealthPercentage() * 100.0));
+			fmt::format("{}%", (int)(pThis->GetHealthPercentage() * 100.0));
 
 		auto const bIsBuilding = pThis->WhatAmI() == BuildingClass::AbsID;
 
@@ -264,7 +292,8 @@ namespace DrawHeathData
 			nPoint.Y = nLocation.Y + nBracketDelta - (bIsInfantry ? 25 : 26);
 
 			DSurface::Temp->DrawSHP(pPalette, pPipsShapeSelected, (bIsInfantry ? 1 : 0), &nPoint, pBound, BlitterFlags(0xE00), 0, 0, ZGradient::Ground, 1000, 0, 0, 0, 0, 0);
-			TechnoExtData::DrawSelectBrd(pThis, pType, bIsInfantry ? 8 : 17, pLocation, pBound, bIsInfantry, IsDisguised);
+			//TechnoExtData::DrawSelectBrd(pThis, pType, bIsInfantry ? 8 : 17, pLocation, pBound, bIsInfantry, IsDisguised);
+			//TechnoExtData::DrawSelectBox(pThis, pLocation, pBound);
 		}
 
 		const int nOffsetX = (bIsInfantry ? -5 : -15);
@@ -417,6 +446,11 @@ ASMJIT_PATCH(0x6F65D1, TechnoClass_DrawdBar_Building, 0x6)
 	GET_STACK(RectangleStruct*, pBound, STACK_OFFS(0x4C, -0x8));
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pThis->IsSelected && Phobos::Config::EnableSelectBox && !pTypeExt->HideSelectBox)
+		TechnoExtData::DrawSelectBox(pThis, pLocation, pBound);
+
 	if (const auto pShieldData = pExt->Shield.get())
 	{
 		if (pShieldData->IsAvailable() && !pShieldData->IsBrokenAndNonRespawning())
@@ -437,6 +471,11 @@ ASMJIT_PATCH(0x6F683C, TechnoClass_DrawBar_Foot, 0x7)
 
 	if (TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled)
 		return 0x6F6AB6u;
+
+	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pThis->IsSelected && Phobos::Config::EnableSelectBox && !pTypeExt->HideSelectBox)
+		TechnoExtData::DrawSelectBox(pThis, pLocation, pBound);
 
 	const int iLength = pThis->WhatAmI() == InfantryClass::AbsID ? 8 : 17;
 
@@ -537,6 +576,181 @@ void DrawHealthbar(TechnoClass* pTechno, Point2D* pLocation, RectangleStruct* pB
 	else
 	{
 	}
+}
+
+// destroying a building (no health left) resulted in a single green pip shown
+// in the health bar for a split second. this makes the last pip red.
+ASMJIT_PATCH(0x6F661D, TechnoClass_DrawHealthBar_DestroyedBuilding_RedPip, 0x7)
+{
+	GET(BuildingClass*, pBld, ESI);
+	return (pBld->Health <= 0 || pBld->IsRedHP()) ? 0x6F6628 : 0x6F6630;
+}
+
+ASMJIT_PATCH(0x6F64A0, TechnoClass_DrawHealthBar_Hide, 0x5)
+{
+	enum
+	{
+		Draw = 0x0,
+		DoNotDraw = 0x6F6ABD
+	};
+
+	GET(TechnoClass*, pThis, ECX);
+
+	const auto what = pThis->WhatAmI();
+
+	if (what == UnitClass::AbsID)
+	{
+		const auto pUnit = (UnitClass*)pThis;
+
+		if (pUnit->DeathFrameCounter > 0)
+			return DoNotDraw;
+	}
+
+	if (what == BuildingClass::AbsID)
+	{
+		const auto pBld = (BuildingClass*)pThis;
+
+		if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->Firestorm_Wall)
+			return DoNotDraw;
+	}
+
+	if ((TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->HealthBar_Hide.Get())
+		|| pThis->TemporalTargetingMe
+		|| pThis->IsSinking
+	)
+		return DoNotDraw;
+
+	return Draw;
+}
+#endif
+
+// destroying a building (no health left) resulted in a single green pip shown
+// in the health bar for a split second. this makes the last pip red.
+ASMJIT_PATCH(0x6F661D, TechnoClass_DrawHealthBar_DestroyedBuilding_RedPip, 0x7)
+{
+	GET(BuildingClass*, pBld, ESI);
+	return (pBld->Health <= 0 || pBld->IsRedHP()) ? 0x6F6628 : 0x6F6630;
+}
+
+ASMJIT_PATCH(0x6F64A0, TechnoClass_DrawHealthBar_Hide, 0x5)
+{
+	enum
+	{
+		Draw = 0x0,
+		DoNotDraw = 0x6F6ABD
+	};
+
+	GET(TechnoClass*, pThis, ECX);
+
+	const auto what = pThis->WhatAmI();
+
+	if (what == UnitClass::AbsID)
+	{
+		const auto pUnit = (UnitClass*)pThis;
+
+		if (pUnit->DeathFrameCounter > 0)
+			return DoNotDraw;
+	}
+
+	if (what == BuildingClass::AbsID)
+	{
+		const auto pBld = (BuildingClass*)pThis;
+
+		if (BuildingTypeExtContainer::Instance.Find(pBld->Type)->Firestorm_Wall)
+			return DoNotDraw;
+	}
+
+	if ((TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->HealthBar_Hide.Get())
+		|| pThis->TemporalTargetingMe
+		|| pThis->IsSinking
+	)
+		return DoNotDraw;
+
+	return Draw;
+}
+#else
+
+ASMJIT_PATCH(0x6F64A0, TechnoClass_DrawHealthBar, 0x5)
+{
+	enum { SkipDrawCode = 0x6F6ABD };
+
+	GET(TechnoClass*, pThis, ECX);
+
+	auto const& [pType, pOwner] = TechnoExtData::GetDisguiseType(pThis, false, true);
+	const bool isAllied = pOwner->IsAlliedWith(HouseClass::CurrentPlayer);
+
+	if (HideBar(pThis, pType, isAllied))
+		return SkipDrawCode;
+
+	GET_STACK(Point2D*, pLocation, 0x4);
+	GET_STACK(RectangleStruct*, pBounds, 0x8);
+	//GET_STACK(bool, drawFullyHealthBar, 0xC);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	const auto whatAmI = pThis->WhatAmI();
+	auto pBuilding = whatAmI == BuildingClass::AbsID ? static_cast<BuildingClass*>(pThis) : nullptr;
+
+	Point2D position = *pLocation;
+	Point2D pipsAdjust = Point2D::Empty;
+	int pipsLength = 0;
+
+	HealthBarTypeClass* pHealthBar = nullptr;
+
+	if (pBuilding)
+	{
+		CoordStruct dimension {};
+		pBuilding->Type->Dimension2(&dimension);
+		dimension.X /= -2;
+		dimension.Y /= 2;
+
+		const auto drawAdjust = TacticalClass::CoordsToScreen(dimension);
+		position += drawAdjust;
+
+		dimension.Y = -dimension.Y;
+		const auto drawStart = TacticalClass::CoordsToScreen(dimension);
+
+		dimension.Z = 0;
+		dimension.Y = -dimension.Y;
+		pipsAdjust = TacticalClass::CoordsToScreen(dimension);
+
+		pHealthBar = pTypeExt->HealthBar.Get(RulesExtData::Instance()->Buildings_DefaultHealthBar);
+		pipsLength = (drawAdjust.Y - drawStart.Y) >> 1;
+	}
+	else
+	{
+		pipsAdjust = Point2D { -10, 10 };
+
+		pHealthBar = pTypeExt->HealthBar.Get(RulesExtData::Instance()->DefaultHealthBar);
+
+		constexpr int defaultInfantryPipsLength = 8;
+		constexpr int defaultUnitPipsLength = 17;
+		pipsLength = pHealthBar->PipsLength.Get(whatAmI == InfantryClass::AbsID ? defaultInfantryPipsLength : defaultUnitPipsLength);
+	}
+
+	const auto pShield = pExt->Shield.get();
+
+	if (pShield && pShield->IsAvailable() && !pShield->IsBrokenAndNonRespawning())
+	{
+		pShield->DrawShieldBar(pipsLength, &position, pBounds);
+	}
+
+	if (pBuilding)
+		TechnoExtData::DrawHealthBar(pBuilding, pHealthBar, pipsLength, &position, pBounds);
+	else
+		TechnoExtData::DrawHealthBar(pThis, pType, pHealthBar, pipsLength, &position, pBounds);
+
+	TechnoExtData::ProcessDigitalDisplays(pThis, pType, &position);
+
+	const bool canShowPips = isAllied || pThis->DisplayProductionTo.Contains(HouseClass::CurrentPlayer) || HouseClass::IsCurrentPlayerObserver();
+
+	if (canShowPips || (pBuilding && pBuilding->Type->CanBeOccupied) || pType->PipsDrawForAll)
+	{
+		Point2D pipsLocation = *pLocation + pipsAdjust;
+		pThis->DrawPipScalePips(&pipsLocation, pLocation, pBounds);
+	}
+
+	return SkipDrawCode;
 }
 
 #endif

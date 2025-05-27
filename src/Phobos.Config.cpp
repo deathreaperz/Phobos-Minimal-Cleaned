@@ -11,6 +11,48 @@
 #include <GameStrings.h>
 #include <GameOptionsClass.h>
 
+//class CustomCCINIClass : public CCINIClass
+//{
+//public:
+//	static inline std::string encryptionKey { "ThisIstTheKey" }; // Example key
+//
+//	// Xor method is easy to implement
+//	// there will be more encryption support in the future
+//	// experimental for now
+//	static NOINLINE void xorEncryptDecrypt(std::vector<char>& buffer, const std::string& key)
+//	{
+//		size_t keyLength = key.length();
+//		for (std::size_t i = 0; i < buffer.size(); ++i) {
+//			buffer[i] ^=  key[i % keyLength];
+//		}
+//	}
+//
+//	// these module will be implemented as separate dll and the key will be different
+//	// and the source code for core module gonna be private and holded by each mod owner for security reason
+//#pragma optimize("", off )
+//	static NOINLINE std::vector<char> LoadINIFile(const char* filename)
+//	{
+//		CCFileClass* pFile = GameCreate<CCFileClass>(filename);
+//
+//		if(pFile->Exists()){
+//			// Read the file into a buffer.
+//			size_t fileSize = pFile->GetFileSize();
+//			std::vector<char> buffer(fileSize + 1, 0);
+//			if ((size_t)pFile->ReadBytes(buffer.data(), fileSize) == fileSize) {
+//				GameDelete<true, false>(pFile);
+//				xorEncryptDecrypt(buffer, encryptionKey); // encrypt the buffer
+//				xorEncryptDecrypt(buffer, encryptionKey); // decrypt the buffer
+//				return buffer;
+//			}
+//		}
+//
+//		GameDelete<true, false>(pFile);
+//
+//		return {};
+//	}
+//#pragma optimize("", on )
+//};
+
 void Phobos::Config::Read()
 {
 	auto const& pRA2MD = CCINIClass::INI_RA2MD;
@@ -19,7 +61,7 @@ void Phobos::Config::Read()
 	Phobos::Config::ToolTipBlur = pRA2MD->ReadBool(PHOBOS_STR, "ToolTipBlur", Phobos::Config::ToolTipBlur);
 	Phobos::Config::PrioritySelectionFiltering = pRA2MD->ReadBool(PHOBOS_STR, "PrioritySelectionFiltering", Phobos::Config::PrioritySelectionFiltering);
 	Phobos::Config::EnableBuildingPlacementPreview = pRA2MD->ReadBool(PHOBOS_STR, "ShowBuildingPlacementPreview", Phobos::Config::EnableBuildingPlacementPreview);
-	Phobos::Config::EnableSelectBrd = pRA2MD->ReadBool(PHOBOS_STR, "EnableSelectBrd", Phobos::Config::EnableSelectBrd);
+	Phobos::Config::EnableSelectBox = pRA2MD->ReadBool(PHOBOS_STR, "EnableSelectBox", Phobos::Config::EnableSelectBox);
 
 	//Phobos::Config::RealTimeTimers = pRA2MD->ReadBool(PHOBOS_STR, "RealTimeTimers", Phobos::Config::RealTimeTimers);
 	//Phobos::Config::RealTimeTimers_Adaptive = pRA2MD->ReadBool(PHOBOS_STR, "RealTimeTimers.Adaptive", Phobos::Config::RealTimeTimers_Adaptive);
@@ -70,12 +112,12 @@ void Phobos::Config::Read()
 		 Phobos::Config::ShowHarvesterCounter = CCINIClass::INI_RA2MD->ReadBool("Phobos", "ShowHarvesterCounter", Phobos::Config::ShowHarvesterCounter);
 		 Phobos::Config::ShowWeedsCounter = CCINIClass::INI_RA2MD->ReadBool("Phobos", "ShowWeedsCounter", Phobos::Config::ShowWeedsCounter);
 
-		 Phobos::UI::Power_Label = GeneralUtils::LoadStringUnlessMissing("TXT_POWER_FORMAT_B", L"Power = %d");
-		 Phobos::UI::Drain_Label = GeneralUtils::LoadStringUnlessMissing("TXT_DRAIN_FORMAT_B", L"Drain = %d");
-		 Phobos::UI::Storage_Label = GeneralUtils::LoadStringUnlessMissing("TXT_STORAGE_FORMAT", L"Storage = %.3lf");
-		 Phobos::UI::BuidingFakeLabel = GeneralUtils::LoadStringUnlessMissing("TXT_FAKE", L"FAKE");
-		 Phobos::UI::Radar_Label = GeneralUtils::LoadStringUnlessMissing("TXT_RADAR", L"Radar");
-		 Phobos::UI::Spysat_Label = GeneralUtils::LoadStringUnlessMissing("TXT_SPYSAT", L"SpySat");
+		 Phobos::UI::Power_Label = GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_POWER_FORMAT_B", L"Power = %d");
+		 Phobos::UI::Drain_Label = GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_DRAIN_FORMAT_B", L"Drain = %d");
+		 Phobos::UI::Storage_Label = GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_STORAGE_FORMAT", L"Storage = %.3lf");
+		 Phobos::UI::BuidingFakeLabel = GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_FAKE", L"FAKE");
+		 Phobos::UI::Radar_Label = GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_RADAR", L"Radar");
+		 Phobos::UI::Spysat_Label = GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_SPYSAT", L"SpySat");
 	 }
 
 	 // ToolTips
@@ -103,7 +145,7 @@ void Phobos::Config::Read()
 		 Phobos::UI::BuidingRadarJammedLabel = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"Radar Jammed");
 
 		 pINI->ReadString(GameStrings::ToolTips(), "SWShotsFormat", GameStrings::NoneStr(), Phobos::readBuffer);
-		 Phobos::UI::SWShotsFormat = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"%d/%d shots"); // ⌚
+		 Phobos::UI::SWShotsFormat = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"{}/{} shots"); // ⌚
 	 }
 
 	 // Sidebar

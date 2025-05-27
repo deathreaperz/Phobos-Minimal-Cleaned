@@ -17,7 +17,7 @@ const char* DistributionMode1CommandClass::GetName() const
 
 const wchar_t* DistributionMode1CommandClass::GetUIName() const
 {
-	return GeneralUtils::LoadStringUnlessMissing("TXT_DISTR_SPREAD", L"Distribution spread");
+	return GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_DISTR_SPREAD", L"Distribution spread");
 }
 
 const wchar_t* DistributionMode1CommandClass::GetUICategory() const
@@ -27,7 +27,7 @@ const wchar_t* DistributionMode1CommandClass::GetUICategory() const
 
 const wchar_t* DistributionMode1CommandClass::GetUIDescription() const
 {
-	return GeneralUtils::LoadStringUnlessMissing("TXT_DISTR_SPREAD_DESC", L"Automatically and averagely select similar targets around the original target. This is for changing the search range");
+	return GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_DISTR_SPREAD_DESC", L"Automatically and averagely select similar targets around the original target. This is for changing the search range");
 }
 
 void DistributionMode1CommandClass::Execute(WWKey eInput) const
@@ -42,7 +42,7 @@ const char* DistributionMode2CommandClass::GetName() const
 
 const wchar_t* DistributionMode2CommandClass::GetUIName() const
 {
-	return GeneralUtils::LoadStringUnlessMissing("TXT_DISTR_FILTER", L"Distribution filter");
+	return GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_DISTR_FILTER", L"Distribution filter");
 }
 
 const wchar_t* DistributionMode2CommandClass::GetUICategory() const
@@ -52,7 +52,7 @@ const wchar_t* DistributionMode2CommandClass::GetUICategory() const
 
 const wchar_t* DistributionMode2CommandClass::GetUIDescription() const
 {
-	return GeneralUtils::LoadStringUnlessMissing("TXT_DISTR_FILTER_DESC", L"Automatically and averagely select similar targets around the original target. This is for changing the filter criteria");
+	return GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_DISTR_FILTER_DESC", L"Automatically and averagely select similar targets around the original target. This is for changing the filter criteria");
 }
 
 void DistributionMode2CommandClass::Execute(WWKey eInput) const
@@ -81,7 +81,7 @@ void DistributionMode::Draw(ObjectClass* const pTarget, const Action mouseAction
 
 			const auto range = (2 << mode1);
 			const auto pItems = Helpers::Alex::getCellSpreadItems(pTarget->Location, range);
-			std::map<TechnoClass*, int> record;
+			std::map<TechnoClass*, int> record {};
 			int current = 1;
 
 			for (const auto& pItem : pItems)
@@ -136,8 +136,10 @@ void DistributionMode::Draw(ObjectClass* const pTarget, const Action mouseAction
 
 				if (pNewTarget)
 				{
-					if (record.contains(pNewTarget))
-						++record[pNewTarget];
+					auto it = record.find(pNewTarget);
+
+					if (it != record.end())
+						++it->second;
 
 					pSelect->ObjectClickedAction(mouseAction, pNewTarget, false);
 				}
@@ -179,7 +181,7 @@ void DistributionMode::DrawRadialIndicator()
 	if (mode1 || mode2)
 	{
 		const auto pCell = MapClass::Instance->GetCellAt(DisplayClass::Instance->CurrentFoundation_CenterCell);
-		const auto color = ((mode2 > 1)
+		ColorStruct color = ((mode2 > 1)
 			? ((mode2 == 3) ? ColorStruct { 255, 0, 0 } : ColorStruct { 200, 200, 0 })
 			: (mode2 == 1) ? ColorStruct { 0, 100, 255 } : ColorStruct { 0, 255, 50 });
 

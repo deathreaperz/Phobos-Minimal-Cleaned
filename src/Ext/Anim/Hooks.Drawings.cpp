@@ -310,8 +310,6 @@ ASMJIT_PATCH(0x4AED70, Game_DrawSHP, 0x0)
 }
 #endif
 
-#include <Ext/AnimType/Body.h>
-
 ASMJIT_PATCH(0x423061, AnimClass_Draw_Visibility, 0x6)
 {
 	enum { SkipDrawing = 0x4238A3 };
@@ -432,7 +430,7 @@ ASMJIT_PATCH(0x42308D, AnimClass_DrawIt_Transparency, 0x6)
 		if (translucencyLevel >= 15)
 			return ReturnFromFunction;
 
-		int currentFrame = pThis->Animation.Value;
+		int currentFrame = pThis->Animation.Stage;
 		int frames = pType->End;
 		if (pTypeExt->Translucent_Keyframes.KeyframeData.size() > 0)
 		{

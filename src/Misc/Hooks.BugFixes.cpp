@@ -951,6 +951,19 @@ ASMJIT_PATCH(0x4C780A, EventClass_Execute_DeployEvent_NoVoiceFix, 0x6)
 	return 0x0;
 }
 
+DEFINE_HOOK(0x730D1F, DeployCommandClass_Execute_VoiceDeploy, 0x5)
+{
+	GET_STACK(const int, unitsToDeploy, STACK_OFFSET(0x18, -0x4));
+
+	if (unitsToDeploy != 1)
+		return 0;
+
+	GET(TechnoClass* const, pThis, ESI);
+
+	pThis->VoiceDeploy();
+	return 0x0;
+}
+
 // Fix DeployToFire not working properly for WaterBound DeploysInto buildings and not recalculating position on land if can't deploy.
 ASMJIT_PATCH(0x4D580B, FootClass_ApproachTarget_DeployToFire, 0x6)
 {
@@ -1705,7 +1718,7 @@ static bool IsHashable(ObjectClass* pObj)
 		auto const pType = pAnim->Type;
 
 		if (pType->Damage != 0.0 || pType->Bouncer || pType->IsMeteor || pType->IsTiberium || pType->TiberiumChainReaction
-			|| pType->IsAnimatedTiberium || pType->MakeInfantry != -1 || AnimTypeExtContainer::Instance.Find(pType)->CreateUnit)
+			|| pType->IsAnimatedTiberium || pType->MakeInfantry != -1 || AnimTypeExtContainer::Instance.Find(pType)->CreateUnitType)
 		{
 			return true;
 		}
@@ -1890,8 +1903,6 @@ ASMJIT_PATCH(0x4232BF, AnimClass_DrawIt_MakeInfantry, 0x6)
 	return 0;
 }
 
-DEFINE_JUMP(LJMP, 0x65B3F7, 0x65B416);//RadSite, no effect
-
 // Map <Player @ X> as object owner name to correct HouseClass index.
 ASMJIT_PATCH(0x50C186, GetHouseIndexFromName_PlayerAtX, 0x6)
 {
@@ -1981,21 +1992,32 @@ ASMJIT_PATCH(0x743664, UnitClass_ReadFromINI_Follower3, 0x6)
 #pragma region End_Piggyback PowerOn
 // Author: tyuah8
 
-ASMJIT_PATCH(0x4AF94D, LocomotionClass_End_Piggyback_PowerOn, 0x7)//Drive
+NOINLINE LocomotionClass* getILoco(REGISTERS* R)
 {
-	ILocomotion* loco = R->Origin() == 0x719F17 ? R->ECX<ILocomotion*>() : R->EAX<ILocomotion*>();
-	auto pLoco = static_cast<LocomotionClass*>(loco);
-	auto pLinkedTo = pLoco->LinkedTo;
+	ILocomotion* pIloco = nullptr;
 
-	if (!pLinkedTo->Deactivated && !pLinkedTo->IsUnderEMP())
-		pLoco->Power_On();
+	if (R->Origin() == 0x719F17)
+		pIloco = R->ECX<ILocomotion*>();
 	else
-		pLoco->Power_Off();
+		pIloco = R->EAX<ILocomotion*>();
 
-	return 0;
-}ASMJIT_PATCH_AGAIN(0x719F17, LocomotionClass_End_Piggyback_PowerOn, 0x5)//Teleport
-ASMJIT_PATCH_AGAIN(0x69F05D, LocomotionClass_End_Piggyback_PowerOn, 0x7) //Ship
-ASMJIT_PATCH_AGAIN(0x54DADC, LocomotionClass_End_Piggyback_PowerOn, 0x5)//Jumpjet
+	return static_cast<LocomotionClass*>(pIloco);
+}
+
+//ASMJIT_PATCH(0x4AF94D, LocomotionClass_End_Piggyback_PowerOn, 0x7)//Drive
+//{
+//	if(const auto pLoco = getILoco(R)) {
+//		if(auto pLinkedTo = pLoco->LinkedTo ? pLoco->LinkedTo : pLoco->Owner){
+//			if (!pLinkedTo->Deactivated && !pLinkedTo->IsUnderEMP())
+//				pLoco->Power_On();
+//			else
+//				pLoco->Power_Off();
+//		}
+//	}
+//	return 0;
+//}ASMJIT_PATCH_AGAIN(0x719F17, LocomotionClass_End_Piggyback_PowerOn, 0x5)//Teleport
+//ASMJIT_PATCH_AGAIN(0x69F05D, LocomotionClass_End_Piggyback_PowerOn, 0x7) //Ship
+//ASMJIT_PATCH_AGAIN(0x54DADC, LocomotionClass_End_Piggyback_PowerOn, 0x5)//Jumpjet
 
 #pragma endregion
 
@@ -2023,6 +2045,9 @@ ASMJIT_PATCH(0x4C75DA, EventClass_RespondToEvent_Stop, 0x6)
 
 	// Clearing the current target should still be necessary for all technos
 	pTechno->SetTarget(nullptr);
+
+	// Stop any enter action
+	pTechno->QueueUpToEnter = nullptr;
 
 	if (commonAircraft)
 	{
@@ -2081,18 +2106,51 @@ ASMJIT_PATCH(0x4C75DA, EventClass_RespondToEvent_Stop, 0x6)
 	return SkipGameCode;
 }
 
+size_t __fastcall Gamestrtohex(char* str)
+{
+	JMP_STD(0x412610);
+}
+
+#include <TaskForceClass.h>
+
 // Suppress Ares' swizzle warning
 static size_t __fastcall HexStr2Int_replacement(const char* str)
 {
 	// Fake a pointer to trick Ares
 	return std::hash<std::string_view>{}(str) & 0xFFFFFF;
 }
-DEFINE_FUNCTION_JUMP(CALL, 0x6E8305, HexStr2Int_replacement); // TaskForce
-DEFINE_FUNCTION_JUMP(CALL, 0x6E5FA6, HexStr2Int_replacement); // TagType
+
+ASMJIT_PATCH(0x6E5FA3, HexStr2Int_replacement_logTagType, 0x8)
+{
+	GET(char*, HexID, EDI);
+	//GET(TagTypeClass*, pType, ESI);
+
+	size_t ID = Gamestrtohex(HexID);
+	Debug::Log("TagType[%s] want to remap as [%x] \n", HexID, ID);
+	//PhobosSwizzle::Instance.Here_I_Am((void*)ID, pType);
+
+	return 0x6E5FB6;
+}
+
+ASMJIT_PATCH(0x6E8300, HexStr2Int_replacement_logTaskForce, 0xA)
+{
+	LEA_STACK(char*, HexID, 0x18);
+	//GET(TaskForceClass*, pType, ESI);
+
+	size_t ID = Gamestrtohex(HexID);
+	Debug::Log("TaskForce[%s] want to remap as [%x] \n", HexID, ID);
+	//PhobosSwizzle::Instance.Here_I_Am((void*)ID, pType);
+
+	return 0x6E8315;
+}
+
+//DEFINE_FUNCTION_JUMP(CALL, 0x6E8305, HexStr2Int_replacement); // TaskForce
+//DEFINE_FUNCTION_JUMP(CALL, 0x6E5FA6, HexStr2Int_replacement); // TagType
 
 // Save GameModeOptions in campaign modes
 DEFINE_JUMP(LJMP, 0x67E3BD, 0x67E3D3); // Save
 DEFINE_JUMP(LJMP, 0x67F72E, 0x67F744); // Load
+DEFINE_JUMP(LJMP, 0x65B3F7, 0x65B416);//RadSite, no effect
 
 #pragma region TeamCloseRangeFix
 
@@ -2235,7 +2293,7 @@ ASMJIT_PATCH(0x4DBEE7, FootClass_SetOwningHouse_RemoveSensorsAt, 0x6)
 }
 
 // Fix a crash at 0x7BAEA1 when trying to access a point outside of surface bounds.
-class FakeXSurface final : public XSurface
+class NOVTABLE FakeXSurface final : public XSurface
 {
 public:
 
@@ -2289,30 +2347,49 @@ ASMJIT_PATCH(0x75EE49, WaveClass_DrawSonic_CrashFix, 0x7)
 	return 0;
 }
 
-// Radio: do not untether techno who have other tether link
-ASMJIT_PATCH(0x6F4BB3, TechnoClass_ReceiveCommand_NotifyUnlink, 0x7)
-{
-	// Place the hook after processing to prevent functions from calling each other and getting stuck in a dead loop.
-	GET(TechnoClass* const, pThis, ESI);
-	// The radio link capacity of some technos can be greater than 1 (like airport)
-	// Here is a specific example, there may be other situations as well:
-	// - Untether without check may result in `AirportBound=no` aircraft being unable to release from `IsTether` status.
-	// - Specifically, all four aircraft are connected to the airport and have `RadioLink` settings, but when the first aircraft
-	//   is `Unlink` from the airport, all subsequent aircraft will be stuck in `IsTether` status.
-	// - This is because when both parties who are `RadioLink` to each other need to `Unlink`, they need to `Untether` first,
-	//   and this requires ensuring that both parties have `IsTether` flag (0x6F4C50), otherwise `Untether` cannot be successful,
-	//   which may lead to some unexpected situations.
-	for (int i = 0; i < pThis->RadioLinks.Capacity; ++i)
-	{
-		if (const auto pLink = pThis->RadioLinks.Items[i])
-		{
-			if (pLink->IsTethered) // If there's another tether link, reset flag to true
-				pThis->IsTethered = true; // Ensures that other links can be properly untether afterwards
-		}
-	}
+// Change enter to move when unlink
+//ASMJIT_PATCH(0x6F4C50, TechnoClass_ReceiveCommand_NotifyUnlink, 0x6)
+//{
+//	GET(TechnoClass* const, pThis, ESI);
+//	GET_STACK(TechnoClass* const, pCall, STACK_OFFSET(0x18, 0x4));
+//	// If the link connection is cancelled and foot A is entering techno B, it may cause A and B to overlap
+//	if (!pCall->InLimbo // Has not already entered
+//		&& (pCall->AbstractFlags & AbstractFlags::Foot) // Is foot
+//		&& pCall->CurrentMission == Mission::Enter // Is entering
+//		&& static_cast<FootClass*>(pCall)->Destination == pThis // Is entering techno B
+//		&& pCall->WhatAmI() != AbstractType::Aircraft // Not aircraft
+//		&& pThis->GetTechnoType()->Passengers > 0) // Have passenger seats
+//	{
+//		pCall->SetDestination(pThis->GetCell(), false); // Set the destination at its feet
+//		pCall->QueueMission(Mission::Move, false); // Replace entering with moving
+//		pCall->NextMission(); // Immediately respond to the Mission::Move
+//	}
+//
+//	return 0;
+//}
 
-	return 0;
-}
+// Radio: do not untether techno who have other tether link
+//ASMJIT_PATCH(0x6F4BB3, TechnoClass_ReceiveCommand_RequestUntether, 0x7)
+//{
+//	// Place the hook after processing to prevent functions from calling each other and getting stuck in a dead loop.
+//	GET(TechnoClass* const, pThis, ESI);
+//	// The radio link capacity of some technos can be greater than 1 (like airport)
+//	// Here is a specific example, there may be other situations as well:
+//	// - Untether without check may result in `AirportBound=no` aircraft being unable to release from `IsTether` status.
+//	// - Specifically, all four aircraft are connected to the airport and have `RadioLink` settings, but when the first aircraft
+//	//   is `Unlink` from the airport, all subsequent aircraft will be stuck in `IsTether` status.
+//	// - This is because when both parties who are `RadioLink` to each other need to `Unlink`, they need to `Untether` first,
+//	//   and this requires ensuring that both parties have `IsTether` flag (0x6F4C50), otherwise `Untether` cannot be successful,
+//	//   which may lead to some unexpected situations.
+//	for (int i = 0; i < pThis->RadioLinks.Capacity; ++i) {
+//		if (const auto pLink = pThis->RadioLinks.Items[i]) {
+//			if (pLink->IsTethered) // If there's another tether link, reset flag to true
+//				pThis->IsTethered = true; // Ensures that other links can be properly untether afterwards
+//		}
+//	}
+//
+//	return 0;
+//}
 
 ASMJIT_PATCH(0x6FC617, TechnoClass_GetFireError_AirCarrierSkipCheckNearBridge, 0x8)
 {
@@ -2393,3 +2470,267 @@ ASMJIT_PATCH(0x6F9222, TechnoClass_SelectAutoTarget_HealingTargetAir, 0x6)
 	GET(TechnoClass*, pThis, ESI);
 	return pThis->CombatDamage(-1) < 0 ? 0x6F922E : 0;
 }
+
+// I don't know how can WW miscalculated
+// In fact, there should be three different degrees of tilt angles
+// - EBX -> atan((2*104)/(256√2)) should only be used on the steepest slopes (13-16)
+// - EBP -> atan(104/256) should be used on the most common slopes (1-4)
+// - A smaller radian atan(104/(256√2)) should be use to other slopes (5-12)
+// But this position is too far ahead, I can't find a good way to solve it perfectly
+// Using hooks and filling in floating-point numbers will cause the register to reset to zero
+// So I have to do it this way for now, make changes based on the existing data
+// Thanks to NetsuNegi for providing a simpler patch method to replace the hook method
+DEFINE_PATCH(0x75546D, 0x55) // push ebp
+DEFINE_PATCH(0x755484, 0x55) // push ebp
+DEFINE_PATCH(0x7554A1, 0x55) // push ebp
+DEFINE_PATCH(0x7554BE, 0x55) // push ebp
+DEFINE_PATCH(0x755656, 0x55) // push ebp
+DEFINE_PATCH(0x755677, 0x55) // push ebp
+DEFINE_PATCH(0x755698, 0x55) // push ebp
+DEFINE_PATCH(0x7556B9, 0x55) // push ebp
+// Although it is not the perfectest
+// It can still solve the most common situations on slopes - CrimRecya
+ASMJIT_PATCH(0x73C41B, UnitClass_DrawAsVXL_Shadow_IsLocomotorFix, 0x6)
+{
+	GET(UnitClass*, pThis, EBP);
+	GET_STACK(DWORD, surface, 0x18);
+	UnitTypeClass* pType = pThis->Type;
+	R->Stack(0x1C, surface);
+	R->AL(pType->BalloonHover || pThis->IsAttackedByLocomotor);
+	return 0x73C445;
+}
+
+// Skip incorrect copy, why do copy like this?
+DEFINE_JUMP(LJMP, 0x715326, 0x715333); // TechnoTypeClass::LoadFromINI
+// Then EDI is BarrelAnimData now, not incorrect TurretAnimData
+
+// I think no one wants to see wild pointers caused by WW's negligence
+//ASMJIT_PATCH(0x4D9A1B, FootClass_PointerExpired_RemoveDestination, 0x6)
+//{
+//
+//	GET_STACK(bool, removed, STACK_OFFSET(0x1C, 0x8));
+//
+//	if (removed)
+//		return 0x4D9ABD;
+//
+//
+//	R->BL(true);
+//
+//	return 0x4D9A25;
+//}
+
+//namespace RemoveSpawneeHelper
+//{
+//	bool removed = false;
+//}
+//
+//ASMJIT_PATCH(0x707B23, TechnoClass_PointerExpired_RemoveSpawnee, 0x6)
+//{
+//	GET(SpawnManagerClass*, pSpawnManager, ECX);
+//	GET(AbstractClass*, pRemove, EBP);
+//	GET_STACK(bool, removed, STACK_OFFSET(0x20, 0x8));
+//
+//	RemoveSpawneeHelper::removed = removed;
+//	pSpawnManager->UnlinkPointer(pRemove);
+//	RemoveSpawneeHelper::removed = false;
+//
+//	return 0x707B29;
+//}
+//
+//ASMJIT_PATCH(0x6B7CE4, SpawnManagerClass_UnlinkPointer_RemoveSpawnee, 0x6)
+//{
+//	return RemoveSpawneeHelper::removed ? 0x6B7CF4 : 0;
+//}
+
+ASMJIT_PATCH(0x64D592, Game_PreProcessMegaMissionList_CheckForTargetCrdRecal1, 0x6)
+{
+	enum { SkipTargetCrdRecal = 0x64D598 };
+	GET(TechnoClass*, pTechno, EBP);
+	return pTechno->GetTechnoType()->BalloonHover ? SkipTargetCrdRecal : 0;
+}
+
+ASMJIT_PATCH(0x64D575, Game_PreProcessMegaMissionList_CheckForTargetCrdRecal2, 0x6)
+{
+	enum { SkipTargetCrdRecal = 0x64D598 };
+	GET(TechnoClass*, pTechno, EBP);
+	return pTechno->GetTechnoType()->BalloonHover ? SkipTargetCrdRecal : 0;
+}
+
+ASMJIT_PATCH(0x64D5C5, Game_PreProcessMegaMissionList_CheckForTargetCrdRecal3, 0x6)
+{
+	enum { SkipTargetCrdRecal = 0x64D659 };
+	GET(TechnoClass*, pTechno, EBP);
+	return pTechno->GetTechnoType()->BalloonHover ? SkipTargetCrdRecal : 0;
+}
+
+ASMJIT_PATCH(0x51BFA2, InfantryClass_IsCellOccupied_Start, 0x6)
+{
+	enum { MoveOK = 0x51C02D };
+	GET(InfantryClass*, pThis, EBP);
+	return pThis->Type->BalloonHover && pThis->IsInAir() ? MoveOK : 0;
+}
+
+ASMJIT_PATCH(0x73F0A7, UnitClass_IsCellOccupied_Start, 0x9)
+{
+	enum { MoveOK = 0x73F23F };
+	GET(UnitClass*, pThis, ECX);
+	return pThis->Type->BalloonHover && pThis->IsInAir() ? MoveOK : 0;
+}
+
+#ifdef PassengerRelatedFix
+
+#include <Locomotor/LocomotionClass.h>
+#include <Locomotor/ShipLocomotionClass.h>
+
+DEFINE_FUNCTION_JUMP(CALL6, 0x51A657, FakeInfantryClass::_DummyScatter);
+
+ASMJIT_PATCH(0x4D92BF, FootClass_Mission_Enter_CheckLink, 0x5)
+{
+	enum { NextAction = 0x4D92ED, NotifyUnlink = 0x4D92CE, DoNothing = 0x4D946C };
+
+	GET(UnitClass* const, pThis, ESI);
+	GET(const RadioCommand, answer, EAX);
+
+	// Restore vanilla check
+	if (pThis->IsTethered)
+		return NextAction;
+
+	if (answer == RadioCommand::AnswerPositive)
+		return NextAction;
+
+	// The link should not be disconnected while the transporter is in motion (passengers waiting to enter),
+	// as this will result in the first passenger not getting on board
+	return answer == RadioCommand::RequestLoading ? DoNothing : NotifyUnlink;
+}
+
+ASMJIT_PATCH(0x4B08EF, DriveLocomotionClass_Process_CheckUnload, 0x5)
+{
+	enum { SkipGameCode = 0x4B078C, ContinueProcess = 0x4B0903 };
+
+	GET(ILocomotion* const, iloco, ESI);
+
+	const auto pFoot = static_cast<LocomotionClass*>(iloco)->LinkedTo;
+
+	if (pFoot->GetCurrentMission() != Mission::Unload)
+		return ContinueProcess;
+
+	return (pFoot->GetTechnoType()->Passengers > 0 && pFoot->Passengers.GetFirstPassenger()) ? ContinueProcess : SkipGameCode;
+}
+
+ASMJIT_PATCH(0x69FFB6, ShipLocomotionClass_Process_CheckUnload, 0x5)
+{
+	enum { SkipGameCode = 0x69FE39, ContinueProcess = 0x69FFCA };
+
+	GET(ILocomotion* const, iloco, ESI);
+
+	const auto pFoot = static_cast<LocomotionClass*>(iloco)->LinkedTo;
+
+	if (pFoot->GetCurrentMission() != Mission::Unload)
+		return ContinueProcess;
+
+	return (pFoot->GetTechnoType()->Passengers > 0 && pFoot->Passengers.GetFirstPassenger()) ? ContinueProcess : SkipGameCode;
+}
+
+// Rewrite from 0x718505
+ASMJIT_PATCH(0x718F1E, TeleportLocomotionClass_MovingTo_ReplaceMovementZone, 0x6)
+{
+	GET(TechnoTypeClass* const, pType, EAX);
+
+	auto movementZone = pType->MovementZone;
+
+	if (movementZone == MovementZone::Fly || movementZone == MovementZone::Destroyer)
+		movementZone = MovementZone::Normal;
+	else if (movementZone == MovementZone::AmphibiousDestroyer)
+		movementZone = MovementZone::Amphibious;
+
+	R->EBP(movementZone);
+	return R->Origin() + 0x6;
+}ASMJIT_PATCH_AGAIN(0x7190B0, TeleportLocomotionClass_MovingTo_ReplaceMovementZone, 0x6)
+
+ASMJIT_PATCH(0x73D7B5, UnitClass_Mission_Unload_CheckInvalidCell, 0x8)
+{
+	enum { CannotUnload = 0x73D87F };
+
+	GET(const CellStruct*, pCell, EAX);
+
+	return *pCell != CellStruct::Empty ? 0 : CannotUnload;
+}
+
+ASMJIT_PATCH(0x737945, UnitClass_ReceiveCommand_MoveTransporter, 0x7)
+{
+	enum { SkipGameCode = 0x737952 };
+
+	GET(UnitClass* const, pThis, ESI);
+	GET(FootClass* const, pPassenger, EDI);
+
+	// Move to the vicinity of the passenger
+	CellStruct cell = CellStruct::Empty;
+	pThis->NearbyLocation(&cell, pPassenger);
+	pThis->SetDestination((cell != CellStruct::Empty ? static_cast<AbstractClass*>(MapClass::Instance->GetCellAt(cell)) : pPassenger), true);
+
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x710352, FootClass_ImbueLocomotor_ResetUnloadingHarvester, 0x7)
+{
+	GET(FootClass*, pTarget, ESI);
+
+	pTarget->OnBridge = false;
+	if (const auto pUnit = cast_to<UnitClass*, false>(pTarget))
+		pUnit->Unloading = false;
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x7196BB, TeleportLocomotionClass_Process_MarkDown, 0xA)
+{
+	GET(FootClass*, pLinkedTo, ECX);
+	// When Teleport units board transport vehicles on the bridge, the lack of this repair can lead to numerous problems
+	// An impassable invisible barrier will be generated on the bridge (the object linked list of the cell will leave it)
+	// And the transport vehicle will board on the vehicle itself (BFRT Passenger:..., BFRT)
+	// If any infantry attempts to pass through this position on the bridge later, it will cause the game to freeze
+	auto shouldMarkDown = [pLinkedTo]()
+		{
+			if (pLinkedTo->GetCurrentMission() != Mission::Enter)
+				return true;
+
+			const auto pEnter = pLinkedTo->GetNthLink();
+
+			return (!pEnter || pEnter->GetTechnoType()->Passengers <= 0);
+		};
+
+	if (shouldMarkDown())
+		pLinkedTo->Mark(MarkType::Put);
+
+	return 0x7196C5;
+}
+
+ASMJIT_PATCH(0x73769E, UnitClass_ReceiveCommand_NoEnterOnBridge, 0x6)
+{
+	enum { NoEnter = 0x73780F };
+
+	GET(UnitClass* const, pThis, ESI);
+	GET(TechnoClass* const, pCall, EDI);
+
+	return pThis->OnBridge && pCall->OnBridge ? NoEnter : 0;
+}
+
+ASMJIT_PATCH(0x70D842, FootClass_UpdateEnter_NoMoveToBridge, 0x5)
+{
+	enum { NoMove = 0x70D84F };
+
+	GET(TechnoClass* const, pEnter, EDI);
+
+	return pEnter->OnBridge && (pEnter->WhatAmI() == AbstractType::Unit && static_cast<UnitClass*>(pEnter)->Type->Passengers > 0) ? NoMove : 0;
+}
+
+ASMJIT_PATCH(0x70D910, FootClass_QueueEnter_NoMoveToBridge, 0x5)
+{
+	enum { NoMove = 0x70D977 };
+
+	GET(TechnoClass* const, pEnter, EAX);
+
+	return pEnter->OnBridge && (pEnter->WhatAmI() == AbstractType::Unit && static_cast<UnitClass*>(pEnter)->Type->Passengers > 0) ? NoMove : 0;
+}
+
+#endif

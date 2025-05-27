@@ -2,7 +2,7 @@
 
 #include <Base/Always.h>
 #include <CellClass.h>
-#include "PriorityQueueClass.h"
+#include <PriorityQueueClass.h>
 
 enum AStarPostProcessType : int
 {
@@ -47,7 +47,8 @@ struct AStarQueueNodeHierarchical
 	int Number;
 };
 
-struct PathType {
+struct PathType
+{
 	CellStruct Start;                // Starting cell number.
 	int Cost;                    // Accumulated terrain cost.
 	int Length;                // Command string length.
@@ -60,13 +61,14 @@ struct PathType {
 
 struct PriorityQueueClass_AStarHierarchical
 {
-	DWORD Count;
-	DWORD Capacity;
+	int Count;
+	int Capacity;
 	AStarQueueNodeHierarchical** Heap;
 	void* MaxNodePointer;
 	void* MinNodePointer;
 
-	void Heapify(bool shortitems = true) {
+	void Heapify(bool shortitems = true)
+	{
 		JMP_THIS(0x42DCA0);
 	}
 };
@@ -75,7 +77,7 @@ struct PriorityQueueClass_AStarHierarchical
 class AStarPathFinderClass
 {
 public:
-	static COMPILETIMEEVAL reference<AStarPathFinderClass, 0x87E8B8> const Instance{};
+	static COMPILETIMEEVAL reference<AStarPathFinderClass, 0x87E8B8> const Instance {};
 
 	AStarPathFinderClass() JMP_THIS(0x42A6D0);
 	~AStarPathFinderClass() JMP_THIS(0x42A900);
@@ -111,7 +113,7 @@ public:
 		int* path,
 		int max_count,
 		MovementZone a7,
-		int cellPath)       JMP_THIS(0x42C900);
+		ZoneType cellPath)       JMP_THIS(0x42C900);
 	/*AStarClass__Init_Cell_Index_Sets        0042CCD0
 	AStarClass__Is_Cell_Index_Set_Registered        0042CEB0
 	AStarClass__Register_Cell_Index_Set        0042CF10

@@ -9,6 +9,16 @@
 #include <Ext/AnimType/Body.h>
 #include <Ext/Techno/Body.h>
 #include <Ext/WeaponType/Body.h>
+#include <Ext/WarheadType/Body.h>
+#include <Ext/TEvent/Body.h>
+
+PhobosAttachEffectClass::~PhobosAttachEffectClass()
+{
+	Animation.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+
+	if (this->Invoker)
+		TechnoExtContainer::Instance.Find(this->Invoker)->AttachedEffectInvokerCount--;
+}
 
 void PhobosAttachEffectClass::Initialize(PhobosAttachEffectTypeClass* pType, TechnoClass* pTechno, HouseClass* pInvokerHouse,
 	TechnoClass* pInvoker, AbstractClass* pSource, int durationOverride, int delay, int initialDelay, int recreationDelay)
@@ -22,6 +32,30 @@ void PhobosAttachEffectClass::Initialize(PhobosAttachEffectTypeClass* pType, Tec
 	this->RecreationDelay = recreationDelay;
 	this->Type = pType;
 	this->Techno = pTechno;
+
+	if (auto pWH = pType->Duration_ApplyVersus_Warhead)
+	{
+		const auto armor = TechnoExtData::GetTechnoArmor(pTechno, pType->Duration_ApplyVersus_Warhead);
+		const auto verses = WarheadTypeExtContainer::Instance.Find(pWH)->GetVerses(armor);
+		this->Duration = MaxImpl(static_cast<int>(this->Duration * verses.Verses), 0);
+	}
+
+	if (pInvoker)
+	{
+		auto pInvokerExt = TechnoExtContainer::Instance.Find(pInvoker);
+
+		pInvokerExt->AttachedEffectInvokerCount++;
+
+		if (pType->Duration_ApplyFirepowerMult)
+			this->Duration = static_cast<int>(this->Duration * pInvoker->FirepowerMultiplier * pInvokerExt->AE.FirepowerMultiplier);
+	}
+
+	if (pType->Duration_ApplyArmorMultOnTarget && this->Duration > 0) // count its own ArmorMultiplier as well
+	{
+		const auto _value = this->Duration / pTechno->ArmorMultiplier / TechnoExtContainer::Instance.Find(pTechno)->AE.ArmorMultiplier / this->Type->ArmorMultiplier;
+		this->Duration = MaxImpl(static_cast<int>(_value), 0);
+	}
+
 	this->InvokerHouse = pInvokerHouse;
 	this->Invoker = pInvoker;
 	this->Source = pSource;
@@ -37,11 +71,14 @@ void PhobosAttachEffectClass::Initialize(PhobosAttachEffectTypeClass* pType, Tec
 
 void PhobosAttachEffectClass::InvalidatePointer(AbstractClass* ptr, bool removed)
 {
-	if (!ptr)
-		return;
-
 	AnnounceInvalidPointer(this->Invoker, ptr, removed);
 	AnnounceInvalidPointer(this->InvokerHouse, ptr);
+}
+
+void PhobosAttachEffectClass::InvalidateAnimPointer(AnimClass* ptr)
+{
+	if (this->Animation && (this->Animation.get() == ptr))
+		this->Animation.release();
 }
 
 // =============================
@@ -60,32 +97,42 @@ void PhobosAttachEffectClass::AI()
 		return;
 	}
 
-	if (!this->HasInitialized && this->InitialDelay == 0)
+	if (!this->HasInitialized)
 	{
 		this->HasInitialized = true;
 		auto const pExt = TechnoExtContainer::Instance.Find(this->Techno);
 		auto const pTechno = this->Techno;
 
-		if (!pExt->ChargeTurretTimer.HasStarted() && pExt->LastRearmWasFullDelay)
-			pTechno->ROF = static_cast<int>(pTechno->ROF * this->Type->ROFMultiplier);
+		if (this->Type->ROFMultiplier != 1.0 && this->Type->ROFMultiplier > 0.0 && this->Type->ROFMultiplier_ApplyOnCurrentTimer)
+		{
+			double ROFModifier = this->Type->ROFMultiplier;
+
+			pTechno->DiskLaserTimer.Start(static_cast<int>(pTechno->DiskLaserTimer.GetTimeLeft() * ROFModifier));
+
+			if (!pExt->ChargeTurretTimer.HasStarted() && pExt->LastRearmWasFullDelay)
+				pTechno->ROF = static_cast<int>(pTechno->ROF * ROFModifier);
+		}
 
 		if (this->Type->HasTint())
-			this->Techno->MarkForRedraw();
+			pTechno->MarkForRedraw();
 	}
 
 	if (this->CurrentDelay > 0)
 	{
-		this->CurrentDelay--;
+		if (!this->ShouldBeDiscardedNow())
+		{
+			this->CurrentDelay--;
 
-		if (this->CurrentDelay == 0)
-			this->NeedsDurationRefresh = true;
+			if (this->CurrentDelay == 0)
+				this->NeedsDurationRefresh = true;
+		}
 
 		return;
 	}
 
 	if (this->NeedsDurationRefresh)
 	{
-		if (!ShouldBeDiscardedNow())
+		if (!this->ShouldBeDiscardedNow())
 		{
 			this->RefreshDuration();
 			this->NeedsDurationRefresh = false;
@@ -106,7 +153,7 @@ void PhobosAttachEffectClass::AI()
 
 		if (this->Delay > 0)
 			this->KillAnim();
-		else if (ShouldBeDiscardedNow())
+		else if (this->ShouldBeDiscardedNow())
 			this->RefreshDuration();
 		else
 			this->NeedsDurationRefresh = true;
@@ -124,6 +171,9 @@ void PhobosAttachEffectClass::AI()
 		this->CreateAnim();
 
 	this->AnimCheck();
+
+	if (auto pTag = this->Techno->AttachedTag)
+		pTag->RaiseEvent((TriggerEvent)PhobosTriggerEvent::AttachedIsUnderAttachedEffect, this->Techno, CellStruct::Empty);
 }
 
 void PhobosAttachEffectClass::AI_Temporal()
@@ -316,9 +366,12 @@ void PhobosAttachEffectClass::CreateAnim()
 		this->Animation->SetOwnerObject(this->Techno);
 		this->Animation->Owner = this->Type->Animation_UseInvokerAsOwner ? InvokerHouse : this->Techno->Owner;
 		this->Animation->RemainingIterations = 0xFFu;
+		auto pAnimExt = ((FakeAnimClass*)this->Animation.get())->_GetExtData();
+
+		pAnimExt->IsAttachedEffectAnim = true;
 		if (this->Type->Animation_UseInvokerAsOwner)
 		{
-			((FakeAnimClass*)this->Animation.get())->_GetExtData()->Invoker = Invoker;
+			pAnimExt->Invoker = Invoker;
 		}
 	}
 }
@@ -349,6 +402,26 @@ void PhobosAttachEffectClass::RefreshDuration(int durationOverride)
 	else
 		this->Duration = this->DurationOverride ? this->DurationOverride : this->Type->Duration;
 
+	if (auto pWH = this->Type->Duration_ApplyVersus_Warhead)
+	{
+		const auto armor = TechnoExtData::GetTechnoArmor(this->Techno, this->Type->Duration_ApplyVersus_Warhead);
+		const auto verses = WarheadTypeExtContainer::Instance.Find(pWH)->GetVerses(armor);
+		this->Duration = MaxImpl(static_cast<int>(this->Duration * verses.Verses), 0);
+	}
+
+	if (this->Invoker)
+	{
+		auto pInvokerExt = TechnoExtContainer::Instance.Find(this->Invoker);
+
+		pInvokerExt->AttachedEffectInvokerCount++;
+
+		if (this->Type->Duration_ApplyFirepowerMult)
+			this->Duration = static_cast<int>(this->Duration * this->Invoker->FirepowerMultiplier * pInvokerExt->AE.FirepowerMultiplier);
+	}
+
+	if (this->Type->Duration_ApplyArmorMultOnTarget && this->Duration > 0) // count its own ArmorMultiplier as well
+		this->Duration = MaxImpl(static_cast<int>(this->Duration / this->Techno->ArmorMultiplier / TechnoExtContainer::Instance.Find(this->Techno)->AE.ArmorMultiplier / this->Type->ArmorMultiplier), 0);
+
 	if (this->Type->Animation_ResetOnReapply)
 	{
 		this->KillAnim();
@@ -370,17 +443,27 @@ bool PhobosAttachEffectClass::ResetIfRecreatable()
 	return true;
 }
 
-bool PhobosAttachEffectClass::ShouldBeDiscardedNow() const
+bool _retTrue(bool& check)
 {
+	check = true;
+	return true;
+}
+bool PhobosAttachEffectClass::ShouldBeDiscardedNow()
+{
+	if (this->LastDiscardCheckFrame == Unsorted::CurrentFrame)
+		return this->LastDiscardCheckValue;
+
+	this->LastDiscardCheckFrame = Unsorted::CurrentFrame;
+
 	if (this->ShouldBeDiscarded)
-		return true;
+		return _retTrue(this->LastDiscardCheckValue);
 
 	//Debug::LogInfo(__FUNCTION__" Executed [%s - %s]", this->Techno->GetThisClassName(), this->Techno->get_ID());
 	if (this->Type->DiscardOn_AbovePercent.isset() && this->Techno->GetHealthPercentage() >= this->Type->DiscardOn_AbovePercent.Get())
-		return true;
+		return _retTrue(this->LastDiscardCheckValue);
 
 	if (this->Type->DiscardOn_BelowPercent.isset() && this->Techno->GetHealthPercentage() <= this->Type->DiscardOn_BelowPercent.Get())
-		return true;
+		return _retTrue(this->LastDiscardCheckValue);
 
 	if (this->Type->DiscardOn != DiscardCondition::None)
 	{
@@ -389,45 +472,46 @@ bool PhobosAttachEffectClass::ShouldBeDiscardedNow() const
 			bool isMoving = pFoot->Locomotor->Is_Really_Moving_Now();
 
 			if (isMoving && (this->Type->DiscardOn & DiscardCondition::Move) != DiscardCondition::None)
-				return true;
+				return _retTrue(this->LastDiscardCheckValue);
 
 			if (!isMoving && (this->Type->DiscardOn & DiscardCondition::Stationary) != DiscardCondition::None)
-				return true;
+				return _retTrue(this->LastDiscardCheckValue);
 		}
-	}
 
-	if (this->Techno->DrainingMe && (this->Type->DiscardOn & DiscardCondition::Drain) != DiscardCondition::None)
-		return true;
+		if (this->Techno->DrainingMe && (this->Type->DiscardOn & DiscardCondition::Drain) != DiscardCondition::None)
+			return _retTrue(this->LastDiscardCheckValue);
 
-	if (this->Techno->Target)
-	{
-		bool inRange = (this->Type->DiscardOn & DiscardCondition::InRange) != DiscardCondition::None;
-		bool outOfRange = (this->Type->DiscardOn & DiscardCondition::OutOfRange) != DiscardCondition::None;
-
-		if (inRange || outOfRange)
+		if (this->Techno->Target)
 		{
-			int distance = -1;
+			bool inRange = (this->Type->DiscardOn & DiscardCondition::InRange) != DiscardCondition::None;
+			bool outOfRange = (this->Type->DiscardOn & DiscardCondition::OutOfRange) != DiscardCondition::None;
 
-			if (this->Type->DiscardOn_RangeOverride.isset())
+			if (inRange || outOfRange)
 			{
-				distance = this->Type->DiscardOn_RangeOverride.Get();
+				int distance = -1;
+
+				if (this->Type->DiscardOn_RangeOverride.isset())
+				{
+					distance = this->Type->DiscardOn_RangeOverride.Get();
+				}
+				else
+				{
+					int weaponIndex = this->Techno->SelectWeapon(this->Techno->Target);
+					auto const pWeapon = this->Techno->GetWeapon(weaponIndex)->WeaponType;
+
+					if (pWeapon)
+						distance = WeaponTypeExtData::GetRangeWithModifiers(pWeapon, this->Techno);
+				}
+
+				const int distanceFromTgt = this->Techno->DistanceFrom(this->Techno->Target);
+
+				if ((inRange && distanceFromTgt <= distance) || (outOfRange && distanceFromTgt >= distance))
+					return _retTrue(this->LastDiscardCheckValue);
 			}
-			else
-			{
-				int weaponIndex = this->Techno->SelectWeapon(this->Techno->Target);
-				auto const pWeapon = this->Techno->GetWeapon(weaponIndex)->WeaponType;
-
-				if (pWeapon)
-					distance = pWeapon->Range;
-			}
-
-			const int distanceFromTgt = this->Techno->DistanceFrom(this->Techno->Target);
-
-			if ((inRange && distanceFromTgt <= distance) || (outOfRange && distanceFromTgt >= distance))
-				return true;
 		}
 	}
 
+	this->LastDiscardCheckValue = false;
 	return false;
 }
 
@@ -523,6 +607,12 @@ PhobosAttachEffectClass* PhobosAttachEffectClass::CreateAndAttach(PhobosAttachEf
 	HouseClass* pInvokerHouse, TechnoClass* pInvoker, AbstractClass* pSource, AEAttachParams const& attachParams)
 {
 	if (!pType || !pTarget)
+		return nullptr;
+
+	if (pType->AffectAbovePercent.isset() && pTarget->GetHealthPercentage() < pType->AffectAbovePercent)
+		return nullptr;
+
+	if (pType->AffectBelowPercent.isset() && pTarget->GetHealthPercentage() > pType->AffectBelowPercent)
 		return nullptr;
 
 	if (pTarget->IsIronCurtained())

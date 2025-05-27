@@ -25,9 +25,10 @@
 #include <New/Type/DigitalDisplayTypeClass.h>
 
 #include <Utilities/BuildingBrackedPositionData.h>
+#include <Utilities/MemoryPoolUniquePointer.h>
 
-#include <Misc/Ares/Hooks/Classes/AresPoweredUnit.h>
-#include <Misc/Ares/Hooks/Classes/AresJammer.h>
+#include <New/Entity/PoweredUnitClass.h>
+#include <New/Entity/RadarJammerClass.h>
 
 #include <Misc/Ares/Hooks/Classes/AttachedAffects.h>
 
@@ -495,13 +496,16 @@ struct AEProperties
 	bool HasRangeModifier { false };
 	bool HasTint { false };
 	bool HasOnFireDiscardables { false };
+	bool HasExtraWarheads { false };
+	bool HasFeedbackWeapon { false };
 
 	bool ReflectDamage { false };
-
+	std::vector<WeaponTypeClass*> ExpireWeaponOnDead { };
 	bool Untrackable { false };
 
 	bool DisableRadar { false };
 	bool DisableSpySat { false };
+	bool Unkillable { false };
 
 public:
 
@@ -544,11 +548,15 @@ protected:
 			.Process(this->HasRangeModifier)
 			.Process(this->HasTint)
 			.Process(this->HasOnFireDiscardables)
+			.Process(this->HasExtraWarheads)
+			.Process(this->HasFeedbackWeapon)
 			.Process(this->ReflectDamage)
+			.Process(this->ExpireWeaponOnDead)
 			.Process(this->Untrackable)
 			.Process(this->DisableRadar)
 			.Process(this->DisableSpySat)
 			.Process(this->ArmorMultData)
+			.Process(this->Unkillable)
 			.Success() && Stm.RegisterChange(this)
 			;
 	}
@@ -580,8 +588,8 @@ public:
 	Handle<AnimClass*, UninitAnim> EMPSparkleAnim { nullptr };
 	Mission EMPLastMission { 0 }; //
 
-	std::unique_ptr<AresPoweredUnit> PoweredUnit {};
-	std::unique_ptr<AresJammer> RadarJammer {};
+	std::unique_ptr<PoweredUnitClass> PoweredUnit { nullptr };
+	std::unique_ptr<RadarJammerClass> RadarJammer { nullptr };
 
 	BuildingLightClass* BuildingLight { 0 };
 
@@ -597,7 +605,7 @@ public:
 	BYTE TakeVehicleMode { 0 };
 	int TechnoValueAmount { 0 };
 	int Pos { };
-	std::unique_ptr<ShieldClass> Shield {};
+	std::unique_ptr<ShieldClass> Shield { nullptr };
 	HelperedVector<LaserTrailClass> LaserTrails {};
 	bool ReceiveDamage { false };
 	bool LastKillWasTeamTarget { false };
@@ -699,7 +707,7 @@ public:
 	CDTimerClass UnitAutoDeployTimer {};
 	CellClass* SubterraneanHarvRallyPoint { nullptr };
 
-	CDTimerClass MobileRefineryTimer {};
+	CDTimerClass TiberiumEaterTimer {};
 	WarheadTypeClass* LastDamageWH {};
 
 	bool UnitIdleAction {};
@@ -733,8 +741,12 @@ public:
 
 	WeaponTypeClass* LastWeaponType { nullptr };
 	HelperedVector<EBolt*> ElectricBolts {};
+	int LastHurtFrame {};
+	int AttachedEffectInvokerCount {};
 
-	~TechnoExtData() noexcept
+	AirstrikeClass* AirstrikeTargetingMe {};
+
+	~TechnoExtData()
 	{
 		if (!Phobos::Otamaa::ExeTerminated)
 		{
@@ -760,7 +772,8 @@ public:
 	{
 		for (auto const pBolt : this->ElectricBolts)
 		{
-			pBolt->Owner = nullptr;
+			if (pBolt)
+				pBolt->Owner = nullptr;
 		}
 
 		this->ElectricBolts.clear();
@@ -770,7 +783,6 @@ public:
 	void SaveToStream(PhobosStreamWriter& Stm)
 	{
 		this->Serialize(Stm);
-		this->ClearElectricBolts();
 	}
 
 	void InitializeConstant();
@@ -789,7 +801,7 @@ public:
 	void UpdateType(TechnoTypeClass* currentType);
 	void UpdateBuildingLightning();
 	void UpdateInterceptor();
-	void UpdateMobileRefinery();
+	void UpdateTiberiumEater();
 	void UpdateMCRangeLimit();
 	void UpdateSpawnLimitRange();
 	void UpdateRevengeWeapons();
@@ -820,6 +832,7 @@ public:
 		return sizeof(TechnoExtData) -
 			(4u //AttachedToObject
 			+ 4u //DamageNumberOffset
+			- 4u //inheritance
 			 );
 	}
 
@@ -868,7 +881,6 @@ public:
 	static bool IsDeactivated(TechnoClass* pThis, bool bIgnore);
 	static bool IsUnderEMP(TechnoClass* pThis, bool bIgnore);
 
-	static int GetSizeLeft(FootClass* const pThis);
 	static void Stop(TechnoClass* pThis, Mission const& eMission = Mission::Guard);
 	static bool IsHarvesting(TechnoClass* pThis);
 	static bool HasAvailableDock(TechnoClass* pThis);
@@ -914,7 +926,8 @@ public:
 	static void ApplyDrainMoney(TechnoClass* pThis);
 
 	static void DrawInsignia(TechnoClass* pThis, Point2D* pLocation, RectangleStruct* pBounds);
-	static void DrawSelectBrd(const TechnoClass* pThis, TechnoTypeClass* pType, int iLength, Point2D* pLocation, RectangleStruct* pBound, bool isInfantry, bool IsDisguised);
+	static void DrawSelectBox(TechnoClass* pThis, Point2D* pLocation, RectangleStruct* pBounds, bool drawBefore = false);
+	//static void DrawSelectBrd(const TechnoClass* pThis, TechnoTypeClass* pType, int iLength, Point2D* pLocation, RectangleStruct* pBound, bool isInfantry, bool IsDisguised);
 	static void SyncInvulnerability(TechnoClass* pFrom, TechnoClass* pTo);
 	static void PlayAnim(AnimTypeClass* const pAnim, TechnoClass* pInvoker);
 	static void HandleRemove(TechnoClass* pThis, TechnoClass* pSource = nullptr, bool SkipTrackingRemove = false, bool Delete = true);
@@ -1032,7 +1045,7 @@ public:
 	static Point2D GetFootSelectBracketPosition(TechnoClass* pThis, Anchor anchor);
 	static Point2D GetBuildingSelectBracketPosition(TechnoClass* pThis, BuildingSelectBracketPosition bracketPosition);
 	static void ProcessDigitalDisplays(TechnoClass* pThis);
-	static void GetValuesForDisplay(TechnoClass* pThis, DisplayInfoType infoType, int& value, int& maxValue);
+	static void GetValuesForDisplay(TechnoClass* pThis, DisplayInfoType infoType, int& value, int& maxValue, int infoIndex);
 	static Iterator<DigitalDisplayTypeClass*> GetDisplayType(TechnoClass* pThis, TechnoTypeClass* pType, int& length);
 
 	static void RestoreLastTargetAndMissionAfterWebbed(InfantryClass* pThis);
@@ -1049,84 +1062,18 @@ public:
 	static void ApplyKillWeapon(TechnoClass* pThis, TechnoClass* pSource, WarheadTypeClass* pWH);
 
 public:
-	static OPTIONALINLINE UnitClass* Deployer { nullptr };
+	static UnitClass* Deployer;
 };
 
 class TechnoExtContainer final : public Container<TechnoExtData>
 {
 public:
-	OPTIONALINLINE static std::vector<TechnoExtData*> Pool;
 	static TechnoExtContainer Instance;
-
-	TechnoExtData* AllocateUnchecked(TechnoClass* key)
-	{
-		TechnoExtData* val = nullptr;
-		if (!Pool.empty())
-		{
-			val = Pool.front();
-			Pool.erase(Pool.begin());
-			//re-init
-		}
-		else
-		{
-			val = DLLAllocWithoutCTOR<TechnoExtData>();
-		}
-
-		if (val)
-		{
-			val->TechnoExtData::TechnoExtData();
-			val->AttachedToObject = key;
-			val->InitializeConstant();
-			return val;
-		}
-
-		return nullptr;
-	}
-
-	TechnoExtData* Allocate(TechnoClass* key)
-	{
-		if (!key || Phobos::Otamaa::DoingLoadGame)
-			return nullptr;
-
-		this->ClearExtAttribute(key);
-
-		if (TechnoExtData* val = AllocateUnchecked(key))
-		{
-			this->SetExtAttribute(key, val);
-			return val;
-		}
-
-		return nullptr;
-	}
-
-	void Remove(TechnoClass* key)
-	{
-		if (TechnoExtData* Item = TryFind(key))
-		{
-			Item->~TechnoExtData();
-			Item->AttachedToObject = nullptr;
-			Pool.push_back(Item);
-			this->ClearExtAttribute(key);
-		}
-	}
-
-	void Clear()
-	{
-		if (!Pool.empty())
-		{
-			auto ptr = Pool.front();
-			Pool.erase(Pool.begin());
-			if (ptr)
-			{
-				delete ptr;
-			}
-		}
-	}
 
 	//CONSTEXPR_NOCOPY_CLASSB(TechnoExtContainer, TechnoExtData, "TechnoClass");
 };
 
-class FakeTechnoClass final : TechnoClass
+class NOVTABLE FakeTechnoClass final : TechnoClass
 {
 public:
 };

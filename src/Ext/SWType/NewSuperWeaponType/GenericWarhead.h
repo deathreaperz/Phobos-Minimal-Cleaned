@@ -17,11 +17,9 @@ public:
 	virtual WarheadTypeClass* GetWarhead(const SWTypeExtData* pData) const override;
 	virtual int GetDamage(const SWTypeExtData* pData) const override;
 
-	using TStateMachine = GenericWarheadStateMachine;
-
 protected:
 	void newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer)
 	{
-		SWStateMachine::Register<TStateMachine>(Deferment, XY, pSuper, pfirer, this);
+		SWStateMachine::Array.push_back(std::move(std::make_unique<GenericWarheadStateMachine>(Deferment, XY, pSuper, pfirer, this)));
 	}
 };

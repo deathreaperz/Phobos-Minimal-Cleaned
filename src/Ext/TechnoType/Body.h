@@ -22,6 +22,7 @@
 #include <New/PhobosAttachedAffect/AEAttachInfoTypeClass.h>
 
 #include <New/AnonymousType/PassengerDeletionTypeClass.h>
+#include <New/AnonymousType/TiberiumEaterTypeClass.h>
 
 #include <FileSystem.h>
 
@@ -91,7 +92,7 @@ struct BurstFLHBundle
 
 class Matrix3D;
 class DigitalDisplayTypeClass;
-
+class SelectBoxTypeClass;
 class TechnoTypeExtData
 {
 public:
@@ -259,22 +260,19 @@ public:
 	Valueable<CSFText> EnemyUIName {};
 	Valueable<bool> UseDisguiseMovementSpeed { false };
 
-	Valueable<bool> DrawInsignia { true };
-	Promotable<SHPStruct*> Insignia { nullptr };
+	Promotable<SHPStruct*> Insignia {};
+	Valueable<Vector3D<int>> InsigniaFrames { { -1, -1, -1 } };
 	Promotable<int> InsigniaFrame { -1 };
 	Nullable<bool> Insignia_ShowEnemy {};
-	Valueable<Point3D> InsigniaFrames { { -1, -1, -1 } };
-	Valueable<CoordStruct> InsigniaDrawOffset { {0, 0, 0} };
+	std::vector<InsigniaData> Insignia_Weapon {};
+	std::vector<Promotable<SHPStruct*>> Insignia_Passengers {};
+	std::vector<Promotable<int>> InsigniaFrame_Passengers {};
+	std::vector<Valueable<Vector3D<int>>> InsigniaFrames_Passengers {};
 
 	Nullable<PartialVector2D<double>> InitialStrength_Cloning {};
 
-	Nullable<SHPStruct*> SHP_SelectBrdSHP {};
-	Valueable<PaletteManager*> SHP_SelectBrdPAL {}; //CustomPalette::PaletteMode::Temperate
-	Nullable<bool> UseCustomSelectBrd {};
-	Nullable<Point3D> SelectBrd_Frame {};
-	Nullable<Point2D> SelectBrd_DrawOffset {};
-	Nullable<int> SelectBrd_TranslucentLevel {};
-	Nullable<bool> SelectBrd_ShowEnemy {};
+	Nullable<SelectBoxTypeClass*> SelectBox {};
+	Valueable<bool> HideSelectBox {};
 
 	Nullable<CoordStruct> PronePrimaryFireFLH {};
 	Nullable<CoordStruct> ProneSecondaryFireFLH {};
@@ -300,16 +298,6 @@ public:
 	ValueableIdx<VoxClass> EVA_Sold { -1 };
 	ValueableIdx<VocClass> SellSound { -1 };
 
-	Valueable<bool> MobileRefinery { false };
-	Valueable<int> MobileRefinery_TransRate { 30 };
-	Valueable<float> MobileRefinery_CashMultiplier { 1.0 };
-	Valueable<int> MobileRefinery_AmountPerCell { 0 };
-	ValueableVector<int> MobileRefinery_FrontOffset {};
-	ValueableVector<int> MobileRefinery_LeftOffset {};
-	Valueable<bool> MobileRefinery_Display { true };
-	Valueable<AffectedHouse> MobileRefinery_Display_House { AffectedHouse::All };
-	ValueableVector<AnimTypeClass*> MobileRefinery_Anims {};
-	Valueable<bool> MobileRefinery_AnimMove { false };
 	Valueable<bool> Explodes_KillPassengers { true };
 
 	Nullable<int> DeployFireWeapon {};
@@ -359,7 +347,7 @@ public:
 	Promotable<bool> CustomMissileRaise { true };
 	Nullable<Point2D> CustomMissileOffset { };
 
-	Valueable<bool> Draw_MindControlLink { true };
+	Valueable<AffectedHouse> Draw_MindControlLink { AffectedHouse::All };
 
 	NullableVector<int> Overload_Count { };
 	NullableVector<int> Overload_Damage { };
@@ -681,8 +669,6 @@ public:
 	Nullable<Point2D> SpawnsPipSize { };
 	Valueable<Point2D> SpawnsPipOffset { { 0,0 } };
 
-	std::vector<InsigniaData> Insignia_Weapon {};
-
 	Valueable<int> VHPscan_Value { 2 };
 	Valueable<bool> CloakAllowed { true };
 
@@ -937,6 +923,9 @@ public:
 
 	Nullable<float> HarvesterDumpAmount { };
 	Valueable<bool> NoExtraSelfHealOrRepair { false };
+	Nullable<bool> HarvesterScanAfterUnload { };
+	Nullable<bool> AttackMove_Aggressive { };
+	Nullable<bool> AttackMove_UpdateTarget { };
 
 	//add this just in case the implementation chages
 #pragma region BuildLimitGroup
@@ -964,10 +953,14 @@ public:
 
 	Valueable<bool> KeepTargetOnMove {};
 	Nullable<Leptons> KeepTargetOnMove_ExtraDistance {};
+	Valueable<bool> KeepTargetOnMove_NoMorePursuit { true };
+
+	Nullable<bool> AllowAirstrike {};
 
 	Nullable<bool> ForbidParallelAIQueues {};
 	Nullable<AnimTypeClass*> Wake {};
 	Valueable<bool> Spawner_AttackImmediately { false };
+	Valueable<bool> Spawner_UseTurretFacing { false };
 
 	ValueableIdx<VoxClass> EVA_Combat { -1 };
 	Nullable<bool> CombatAlert {};
@@ -1011,7 +1004,10 @@ public:
 
 	ValueableVector<int> ForceWeapon_InRange {};
 	ValueableVector<double> ForceWeapon_InRange_Overrides {};
-	Valueable<bool> ForceWeapon_InRange_ApplyRangeModifiers { false };
+	Valueable<bool> ForceWeapon_InRange_ApplyRangeModifiers {};
+	ValueableVector<int> ForceAAWeapon_InRange {};
+	ValueableVector<double> ForceAAWeapon_InRange_Overrides {};
+	Valueable<bool> ForceAAWeapon_InRange_ApplyRangeModifiers {};
 
 	Nullable<bool> UnitIdleRotateTurret {};
 	Nullable<bool> UnitIdlePointToMouse {};
@@ -1081,6 +1077,22 @@ public:
 	int SpawnerRange {};
 	int EliteSpawnerRange {};
 
+	Nullable<bool> AmphibiousEnter {};
+	Nullable<bool> AmphibiousUnload {};
+
+	Valueable<bool> AlternateFLH_OnTurret { true };
+	Nullable<double> DamagedSpeed {};
+
+	Nullable<AffectedHouse> RadarInvisibleToHouse {};
+
+	Valueable<double> AdvancedDrive_ReverseSpeed { 0.85 };
+	Valueable<Leptons> AdvancedDrive_FaceTargetRange { Leptons(4096) };
+	Valueable<bool> AdvancedDrive_ConfrontEnemies { true };
+	Valueable<int> AdvancedDrive_RetreatDuration { 150 };
+	Valueable<bool> Harvester_CanGuardArea {};
+
+	std::unique_ptr<TiberiumEaterTypeClass> TiberiumEaterType {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromINIFile_Aircraft(CCINIClass* pINI);
 	void LoadFromINIFile_EvaluateSomeVariables(CCINIClass* pINI);
@@ -1135,7 +1147,7 @@ public:
 	static bool CanBeBuiltAt(TechnoTypeClass* pProduct, BuildingTypeClass* pFactoryType);
 };
 
-class FakeTechnoTypeClass : public TechnoTypeClass
+class NOVTABLE FakeTechnoTypeClass : public TechnoTypeClass
 {
 public:
 	//TODO : replace bigger hook with LJMP patch

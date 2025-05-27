@@ -509,7 +509,7 @@ public:
 	bool IsHouseAffected(HouseClass* pFirer, HouseClass* pHouse, AffectedHouse value);
 	bool Launch(NewSWType* pNewType, SuperClass* pSuper, CellStruct const cell, bool const isPlayer);
 	void PrintMessage(const CSFText& message, HouseClass* pFirer);
-	Iterator<TechnoClass*> GetPotentialAITargets(HouseClass* pTarget = nullptr) const;
+	Iterator<TechnoClass*> GetPotentialAITargets(HouseClass* pTarget, std::vector<TechnoClass*>& outVec) const;
 	bool IsCellEligible(CellClass* pCell, SuperWeaponTarget allowed);
 	bool IsTechnoEligible(TechnoClass* pTechno, SuperWeaponTarget allowed);
 	bool IsTechnoAffected(TechnoClass* pTechno);
@@ -559,11 +559,11 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	OPTIONALINLINE static bool Handled;
-	OPTIONALINLINE static SuperClass* TempSuper;
-	OPTIONALINLINE static SuperClass* LauchData;
+	static bool Handled;
+	static SuperClass* TempSuper;
+	static SuperClass* LauchData;
 	static std::array<const AITargetingModeInfo, (size_t)SuperWeaponAITargetingMode::count> AITargetingModes;
-	OPTIONALINLINE static SuperWeaponTypeClass* CurrentSWType;
+	static SuperWeaponTypeClass* CurrentSWType;
 
 	static void LimboDeliver(BuildingTypeClass* pType, HouseClass* pOwner, int ID);
 	static void WeightedRollsHandler(std::vector<int>& nResult, Valueable<double>& RandomBuffer, const ValueableVector<float>& rolls, const ValueableVector<ValueableVector<int>>& weights, size_t size);
@@ -587,7 +587,7 @@ public:
 	static void Clear();
 };
 
-class FakeSuperWeaponTypeClass : public SuperWeaponTypeClass
+class NOVTABLE FakeSuperWeaponTypeClass : public SuperWeaponTypeClass
 {
 public:
 	HRESULT __stdcall _Load(IStream* pStm);

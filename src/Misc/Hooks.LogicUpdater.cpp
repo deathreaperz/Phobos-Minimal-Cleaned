@@ -113,6 +113,9 @@ ASMJIT_PATCH(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 
 	GET(TechnoClass*, pThis, ESI);
 
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+	const auto IsBuilding = pThis->WhatAmI() == BuildingClass::AbsID;
+
 	if (pThis->IsMouseHovering)
 		pThis->IsMouseHovering = false;
 
@@ -120,6 +123,12 @@ ASMJIT_PATCH(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 
 	if (!pThis->IsAlive)
 		return retDead;
+
+	if (!IsBuilding)
+	{
+		pExt->UpdateLaserTrails();
+		TrailsManager::AI((FootClass*)pThis);
+	}
 
 	HugeBar::InitializeHugeBar(pThis);
 
@@ -130,10 +139,9 @@ ASMJIT_PATCH(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 
 	//type may already change ,..
 	auto const pType = pThis->GetTechnoType();
-	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+
 	//auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
-	const auto IsBuilding = pThis->WhatAmI() == BuildingClass::AbsID;
 	bool IsInLimboDelivered = false;
 
 	if (IsBuilding)
@@ -178,7 +186,7 @@ ASMJIT_PATCH(0x6F9E5B, TechnoClass_AI_Early, 0x6)
 	pExt->UpdateInterceptor();
 
 	//pExt->UpdateFireSelf();
-	pExt->UpdateMobileRefinery();
+	pExt->UpdateTiberiumEater();
 	pExt->UpdateMCRangeLimit();
 	pExt->UpdateSpawnLimitRange();
 	pExt->UpdateEatPassengers();
@@ -355,9 +363,8 @@ ASMJIT_PATCH(0x4DA677, FootClass_AI_IsMovingNow, 0x6)
 #ifdef ENABLE_THESE
 		// LaserTrails update routine is in TechnoClass::AI hook because TechnoClass::Draw
 		// doesn't run when the object is off-screen which leads to visual bugs - Kerbiter
-		pExt->UpdateLaserTrails();
+		//pExt->UpdateLaserTrails();
 
-		TrailsManager::AI(pThis);
 #endif
 		return 0x4DA6A0;
 	}

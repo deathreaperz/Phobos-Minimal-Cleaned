@@ -26,6 +26,7 @@ public:
 	{
 		return sizeof(TemporalExtData) -
 			(4u //AttachedToObject
+				- 4u //inheritance
 			 );
 	}
 private:
@@ -36,75 +37,10 @@ private:
 class TemporalExtContainer final : public Container<TemporalExtData>
 {
 public:
-	OPTIONALINLINE static std::vector<TemporalExtData*> Pool;
 	static TemporalExtContainer Instance;
-
-	TemporalExtData* AllocateUnchecked(TemporalClass* key)
-	{
-		TemporalExtData* val = nullptr;
-		if (!Pool.empty())
-		{
-			val = Pool.front();
-			Pool.erase(Pool.begin());
-			//re-init
-		}
-		else
-		{
-			val = DLLAllocWithoutCTOR<TemporalExtData>();
-		}
-
-		if (val)
-		{
-			val->TemporalExtData::TemporalExtData();
-			val->AttachedToObject = key;
-			return val;
-		}
-
-		return nullptr;
-	}
-
-	TemporalExtData* Allocate(TemporalClass* key)
-	{
-		if (!key || Phobos::Otamaa::DoingLoadGame)
-			return nullptr;
-
-		this->ClearExtAttribute(key);
-
-		if (TemporalExtData* val = AllocateUnchecked(key))
-		{
-			this->SetExtAttribute(key, val);
-			return val;
-		}
-
-		return nullptr;
-	}
-
-	void Remove(TemporalClass* key)
-	{
-		if (TemporalExtData* Item = TryFind(key))
-		{
-			Item->~TemporalExtData();
-			Item->AttachedToObject = nullptr;
-			Pool.push_back(Item);
-			this->ClearExtAttribute(key);
-		}
-	}
-
-	void Clear()
-	{
-		if (!Pool.empty())
-		{
-			auto ptr = Pool.front();
-			Pool.erase(Pool.begin());
-			if (ptr)
-			{
-				delete ptr;
-			}
-		}
-	}
 };
 
-class FakeTemporalClass : public TemporalClass
+class NOVTABLE FakeTemporalClass : public TemporalClass
 {
 public:
 

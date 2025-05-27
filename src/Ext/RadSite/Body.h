@@ -9,7 +9,7 @@
 #include <Ext/WeaponType/Body.h>
 
 class RadTypeClass;
-class RadSiteExtData final
+class RadSiteExtData
 {
 public:
 	static COMPILETIMEEVAL size_t Canary = 0x87654321;
@@ -49,6 +49,7 @@ public:
 	{
 		return sizeof(RadSiteExtData) -
 			(4u //AttachedToObject
+				- 4u //inheritance
 			 );
 	}
 private:
@@ -64,7 +65,7 @@ public:
 	//CONSTEXPR_NOCOPY_CLASSB(RadSiteExtContainer, RadSiteExtData, "RadSiteClass");
 };
 
-class FakeRadSiteClass : public RadSiteClass
+class NOVTABLE FakeRadSiteClass : public RadSiteClass
 {
 public:
 	void _Detach(AbstractClass* target, bool all);

@@ -16,7 +16,7 @@
 #include <New/Type/TunnelTypeClass.h>
 #include <New/Type/CursorTypeClass.h>
 
-#include <Misc/Ares/Hooks/Classes/PrismForwardingData.h>
+#include <New/AnonymousType/PrismForwardingData.h>
 
 #include <Misc/Defines.h>
 
@@ -55,7 +55,7 @@ public:
 
 	Valueable<bool> Refinery_UseStorage { false };
 
-	Nullable<bool> AllowAirstrike {};
+	//Nullable<bool> AllowAirstrike {};
 
 	Valueable<bool> Grinding_AllowAllies { false };
 	Valueable<bool> Grinding_AllowOwner { true };
@@ -216,11 +216,6 @@ public:
 
 	Valueable<bool> Destroyed_CreateSmudge { true };
 
-	//Valueable<BuildingTypeClass*> LaserFenceType { nullptr };
-	//Nullable<BuildingTypeClass*> LaserFenceWEType { };
-	//ValueableVector<BuildingTypeClass*> LaserFencePostLinks { };
-	//Valueable<short> LaserFenceDirection {};
-
 	// #218 Specific Occupiers
 	ValueableVector<InfantryTypeClass*> AllowedOccupiers {};
 	ValueableVector<InfantryTypeClass*> DisallowedOccupiers {};
@@ -328,8 +323,6 @@ public:
 
 	Nullable<Point2D> BarracksExitCell {};
 
-	Valueable<bool> IsPrism { false };
-
 	Nullable<bool> AutoBuilding { };
 	Valueable<int> AutoBuilding_Gap { 1 };
 
@@ -344,6 +337,9 @@ public:
 	Valueable<bool> IsAnimDelayedBurst { true };
 	Valueable<bool> AllowAlliesRepair { false };
 	Valueable<bool> AllowRepairFlyMZone { false };
+
+	Valueable<int> Overpower_KeepOnline { 2 };
+	Valueable<int> Overpower_ChargeWeapon { 1 };
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
@@ -476,7 +472,7 @@ public:
 //	BuildingTypeExtContainer& operator=(const BuildingTypeExtContainer& other) = delete;
 };
 
-class FakeBuildingTypeClass : public BuildingTypeClass
+class NOVTABLE FakeBuildingTypeClass : public BuildingTypeClass
 {
 public:
 

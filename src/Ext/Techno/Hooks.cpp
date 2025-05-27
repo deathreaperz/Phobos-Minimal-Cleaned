@@ -3,7 +3,6 @@
 #include <InfantryClass.h>
 #include <ScenarioClass.h>
 #include <BuildingClass.h>
-#include <ScenarioClass.h>
 #include <UnitClass.h>
 #include <SlaveManagerClass.h>
 
@@ -110,7 +109,7 @@ Matrix3D* __stdcall TunnelLocomotionClass_ShadowMatrix(ILocomotion* iloco, Matri
 		case TunnelLocomotionClass::State::DIGGING:
 			if (key)key->Invalidate();
 			theta = Math::HalfPi;
-			if (auto total = tLoco->Timer.Duration)
+			if (auto total = tLoco->Timer.Rate)
 				theta *= 1.0 - double(tLoco->Timer.GetTimeLeft()) / double(total);
 			break;
 		case TunnelLocomotionClass::State::DUG_IN:
@@ -122,13 +121,13 @@ Matrix3D* __stdcall TunnelLocomotionClass_ShadowMatrix(ILocomotion* iloco, Matri
 		case TunnelLocomotionClass::State::DIGGING_OUT:
 			if (key)key->Invalidate();
 			theta = -Math::HalfPi;
-			if (auto total = tLoco->Timer.Duration)
+			if (auto total = tLoco->Timer.Rate)
 				theta *= double(tLoco->Timer.GetTimeLeft()) / double(total);
 			break;
 		case TunnelLocomotionClass::State::DUG_OUT:
 			if (key)key->Invalidate();
 			theta = Math::HalfPi;
-			if (auto total = tLoco->Timer.Duration)
+			if (auto total = tLoco->Timer.Rate)
 				theta *= double(tLoco->Timer.GetTimeLeft()) / double(total);
 			break;
 		default:break;
@@ -460,7 +459,7 @@ ASMJIT_PATCH(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 		{
 			if (pWeapon->Burst <= 1 || !pWeaponExt->DelayedFire_OnlyOnInitialBurst || pThis->CurrentBurstIndex == 0)
 			{
-				if (pThis->Animation.Value == firingFrame + cumulativeDelay)
+				if (pThis->Animation.Stage == firingFrame + cumulativeDelay)
 					pExt->FiringSequencePaused = true;
 
 				if (!timer.HasStarted())
@@ -489,7 +488,7 @@ ASMJIT_PATCH(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 			pExt->FiringSequencePaused = false;
 		}
 
-		if (pThis->Animation.Value == firingFrame + cumulativeDelay)
+		if (pThis->Animation.Stage == firingFrame + cumulativeDelay)
 		{
 			if (pWeaponExt->Burst_FireWithinSequence)
 			{
@@ -753,6 +752,55 @@ ASMJIT_PATCH(0x4C7462, EventClass_Execute_KeepTargetOnMove, 0x5)
 	return 0;
 }
 
+void UpdateKeepTargetOnMove(TechnoClass* pThis)
+{
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pExt->Type);
+
+	if (!pExt->KeepTargetOnMove)
+		return;
+
+	if (!pThis->Target)
+	{
+		pExt->KeepTargetOnMove = false;
+		return;
+	}
+
+	if (!pTypeExt->KeepTargetOnMove)
+	{
+		pThis->SetTarget(nullptr);
+		pExt->KeepTargetOnMove = false;
+		return;
+	}
+
+	if (pThis->CurrentMission == Mission::Guard)
+	{
+		if (!pTypeExt->KeepTargetOnMove_NoMorePursuit)
+		{
+			pThis->QueueMission(Mission::Attack, false);
+			pExt->KeepTargetOnMove = false;
+			return;
+		}
+	}
+	else if (pThis->CurrentMission != Mission::Move)
+	{
+		return;
+	}
+
+	const int weaponIndex = pThis->SelectWeapon(pThis->Target);
+
+	if (auto const pWeapon = pThis->GetWeapon(weaponIndex)->WeaponType)
+	{
+		pExt->AdditionalRange = static_cast<int>(pTypeExt->KeepTargetOnMove_ExtraDistance.Get());
+
+		if (!pThis->IsCloseEnough(pThis->Target, weaponIndex))
+		{
+			pThis->SetTarget(nullptr);
+			pExt->KeepTargetOnMove = false;
+		}
+	}
+}
+
 // Reset the target if beyond weapon range.
 // This was originally in UnitClass::Mission_Move() but because that
 // is only checked every ~15 frames, it can cause responsiveness issues.
@@ -760,53 +808,11 @@ ASMJIT_PATCH(0x736480, UnitClass_AI_KeepTargetOnMove, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 
-	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
-	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+	//auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+	//auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	if (pExt->KeepTargetOnMove)
-	{
-		if (!pThis->Target)
-		{
-			pExt->KeepTargetOnMove = false;
-			return 0;
-		}
-
-		if (!pTypeExt->KeepTargetOnMove)
-		{
-			pThis->SetTarget(nullptr);
-			pExt->KeepTargetOnMove = false;
-			return 0;
-		}
-
-		if (pThis->CurrentMission == Mission::Move)
-		{
-			if (pTypeExt->KeepTargetOnMove_ExtraDistance.isset())
-			{
-				int weaponIndex = pThis->SelectWeapon(pThis->Target);
-
-				if (auto const pWeapon = pThis->GetWeapon(weaponIndex)->WeaponType)
-				{
-					//auto pExt = TechnoExtContainer::Instance.Find(pThis);
-					pExt->AdditionalRange = static_cast<int>(pTypeExt->KeepTargetOnMove_ExtraDistance.Get());
-
-					if (!pThis->IsCloseEnough(pThis->Target, weaponIndex))
-					{
-						pThis->SetTarget(nullptr);
-						pExt->KeepTargetOnMove = false;
-					}
-
-					pExt->AdditionalRange.clear();
-				}
-			}
-		}
-		else if (pThis->CurrentMission == Mission::Guard)
-		{
-			pThis->QueueMission(Mission::Attack, false);
-			pExt->KeepTargetOnMove = false;
-		}
-	}
-
-	pExt->UpdateGattlingRateDownReset();
+	UpdateKeepTargetOnMove(pThis);
+	//pExt->UpdateGattlingRateDownReset();
 
 	return 0;
 }
@@ -837,7 +843,7 @@ ASMJIT_PATCH(0x6B7600, SpawnManagerClass_AI_InitDestination, 0x6)
 	return R->Origin() == 0x6B7600 ? SkipGameCode1 : SkipGameCode2;
 }ASMJIT_PATCH_AGAIN(0x6B769F, SpawnManagerClass_AI_InitDestination, 0x7)
 
-void DrawFactoryProgress(TechnoClass* pThis, RectangleStruct* pBounds)
+void DrawFactoryProgress(TechnoClass* pThis, Point2D* pLocation, RectangleStruct* pBounds)
 {
 	if (pThis->WhatAmI() != AbstractType::Building)
 		return;
@@ -925,7 +931,7 @@ void DrawFactoryProgress(TechnoClass* pThis, RectangleStruct* pBounds)
 	}
 }
 
-void DrawSuperProgress(TechnoClass* pThis, RectangleStruct* pBounds)
+void DrawSuperProgress(TechnoClass* pThis, Point2D* pLocation, RectangleStruct* pBounds)
 {
 	if (pThis->WhatAmI() != AbstractType::Building)
 		return;
@@ -966,10 +972,11 @@ void DrawSuperProgress(TechnoClass* pThis, RectangleStruct* pBounds)
 ASMJIT_PATCH(0x6F5EE3, TechnoClass_DrawExtras_DrawAboveHealth, 0x9)
 {
 	GET(TechnoClass*, pThis, EBP);
+	GET(Point2D*, pLoc, EDI);
 	GET_STACK(RectangleStruct*, pBounds, STACK_OFFSET(0x98, 0x8));
 
-	DrawFactoryProgress(pThis, pBounds);
-	DrawSuperProgress(pThis, pBounds);
+	DrawFactoryProgress(pThis, pLoc, pBounds);
+	DrawSuperProgress(pThis, pLoc, pBounds);
 
 	return 0;
 }
@@ -1080,11 +1087,72 @@ ASMJIT_PATCH(0x7364DC, UnitClass_Update_SinkSpeed, 0x7)
 	return 0;
 }
 
+#include <Ext/InfantryType/Body.h>
+
+ASMJIT_PATCH(0x521D94, InfantryClass_CurrentSpeed_ProneSpeed, 0x6)
+{
+	GET(FakeInfantryClass*, pThis, ESI);
+	GET(int, currentSpeed, ECX);
+
+	auto multiplier = pThis->_GetTypeExtData()->ProneSpeed.Get(
+		RulesExtData::Instance()->InfantrySpeedData.getSpeed(pThis->Type->Crawls));
+	currentSpeed *= multiplier;
+
+	//if (pThis->Type->Crawls) {
+	//	// Crawling: move at one-third speed
+	//	currentSpeed /= 3;
+	//}
+	//else {
+	//	// Prone but not crawling: move at 1.5x speed
+	//	currentSpeed += (currentSpeed / 2);
+	//}
+
+	R->ECX(currentSpeed);
+	return 0x521DC5;
+}
+
+ASMJIT_PATCH(0x4B3DF0, LocomotionClass_Process_DamagedSpeedMultiplier, 0x6)// Drive
+{
+	GET(FootClass*, pLinkedTo, ECX);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pLinkedTo->GetTechnoType());
+
+	const double multiplier = pTypeExt->DamagedSpeed.Get(RulesExtData::Instance()->DamagedSpeed);
+	__asm fmul multiplier;
+
+	return R->Origin() + 0x6;
+}ASMJIT_PATCH_AGAIN(0x6A343F, LocomotionClass_Process_DamagedSpeedMultiplier, 0x6)// Ship
+
+ASMJIT_PATCH(0x655DDD, RadarClass_ProcessPoint_RadarInvisible, 0x6)
+{
+	enum { Invisible = 0x655E66, GoOtherChecks = 0x655E19, Continue = 0x0 };
+
+	GET_STACK(bool, isInShrouded, STACK_OFFSET(0x40, 0x4));
+	GET(ObjectClass*, pObject, EBP);
+
+	if (auto pTechno = flag_cast_to<TechnoClass*>(pObject))
+	{
+		if (isInShrouded && !pTechno->Owner->IsControlledByHuman())
+			return Invisible;
+
+		auto pType = pTechno->GetTechnoType();
+
+		if (pType->RadarInvisible)
+		{
+			auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+			if (!pTypeExt->RadarInvisibleToHouse.isset() || EnumFunctions::CanTargetHouse(pTypeExt->RadarInvisibleToHouse, pTechno->Owner, HouseClass::CurrentPlayer))
+				return Invisible;
+		}
+	}
+
+	return GoOtherChecks;
+}
+
 //ASMJIT_PATCH(0x5F4032, ObjectClass_FallingDown_ToDead, 0x6)
 //{
 //	GET(ObjectClass*, pThis, ESI);
 //
-//	if (auto const pTechno = abstract_cast<TechnoClass*>(pThis))
+//	if (auto const pTechno = flag_cast_to<TechnoClass*>(pThis))
 //	{
 //		auto pCell = pTechno->GetCell();
 //		auto pType = pTechno->GetTechnoType();
@@ -1132,3 +1200,309 @@ ASMJIT_PATCH(0x7364DC, UnitClass_Update_SinkSpeed, 0x7)
 //
 //	return 0;
 //}
+
+ASMJIT_PATCH(0x6B74F0, SpawnManagerClass_AI_UseTurretFacing, 0x5)
+{
+	GET(SpawnManagerClass* const, pThis, ESI);
+
+	auto const pTechno = pThis->Owner;
+
+	if (pTechno->HasTurret() && TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType())->Spawner_UseTurretFacing)
+		R->EAX(pTechno->SecondaryFacing.Current().Raw);
+
+	return 0;
+}
+
+#include <AirstrikeClass.h>
+
+// Allow airstrike flare draw to foot
+DEFINE_JUMP(LJMP, 0x6D481D, 0x6D482D)
+
+ASMJIT_PATCH(0x6F348F, TechnoClass_WhatWeaponShouldIUse_Airstrike, 0x7)
+{
+	enum { Primary = 0x6F37AD, Secondary = 0x6F3807 };
+
+	GET(TechnoClass*, pTargetTechno, EBP);
+
+	if (!pTargetTechno)
+		return Primary;
+
+	GET(WarheadTypeClass*, pSecondaryWH, ECX);
+	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pSecondaryWH);
+
+	if (!EnumFunctions::IsTechnoEligible(pTargetTechno, pWHExt->AirstrikeTargets))
+		return Primary;
+
+	const auto pTargetType = pTargetTechno->GetTechnoType();
+
+	if (pTargetTechno->AbstractFlags & AbstractFlags::Foot)
+	{
+		const auto pTargetTypeExt = TechnoTypeExtContainer::Instance.Find(pTargetType);
+		return pTargetTypeExt->AllowAirstrike.Get(true) ? Secondary : Primary;
+	}
+
+	const auto pTargetTypeExt = TechnoTypeExtContainer::Instance.Find(pTargetType);
+	return pTargetTypeExt->AllowAirstrike.Get(static_cast<BuildingTypeClass*>(pTargetType)->CanC4) && (!pTargetType->ResourceDestination || !pTargetType->ResourceGatherer) ? Secondary : Primary;
+}
+
+// ASMJIT_PATCH(0x41D97B, AirstrikeClass_Fire_SetAirstrike, 0x7)
+// {
+// 	enum { ContinueIn = 0x41D9A0, Skip = 0x41DA0B };
+
+// 	GET(AirstrikeClass*, pThis, EDI);
+// 	GET(TechnoClass*, pTarget, ESI);
+// 	const auto pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
+// 	pTargetExt->AirstrikeTargetingMe = pThis;
+// 	pTarget->StartAirstrikeTimer(100000);
+
+// 	if(auto pBld = cast_to<BuildingClass* , false>(pTarget)){
+// 		pBld->IsAirstrikeTargetingMe = true;
+// 		pBld->Mark(MarkType::Redraw);
+// 	}
+
+// 	return Skip;
+// }
+
+ASMJIT_PATCH(0x41DA52, AirstrikeClass_ResetTarget_OriginalTarget, 0x6)
+{
+	enum { SkipGameCode = 0x41DA7C };
+
+	R->EDI(R->ESI());
+
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x41DA80, AirstrikeClass_ResetTarget_NewTarget, 0x6)
+{
+	enum { SkipGameCode = 0x41DA9C };
+
+	R->ESI(R->EBX());
+
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x41DAA4, AirstrikeClass_ResetTarget_ResetForOldTarget, 0xA)
+{
+	enum { SkipGameCode = 0x41DAAE };
+
+	GET(TechnoClass*, pTargetTechno, EDI);
+	const auto pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
+	pTargetExt->AirstrikeTargetingMe = nullptr;
+
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x41DAD4, AirstrikeClass_ResetTarget_ResetForNewTarget, 0x6)
+{
+	enum { SkipGameCode = 0x41DADA };
+
+	GET(AirstrikeClass*, pThis, EBP);
+	GET(TechnoClass*, pTargetTechno, ESI);
+	const auto pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
+	pTargetExt->AirstrikeTargetingMe = pThis;
+
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x41DBD4, AirstrikeClass_Stop_ResetForTarget, 0x7)
+{
+	enum { SkipGameCode = 0x41DC3A };
+
+	GET(AirstrikeClass*, pThis, EBP);
+	GET(ObjectClass*, pTarget, ESI);
+
+	if (const auto pTargetTechno = flag_cast_to<TechnoClass*>(pTarget))
+	{
+		auto vtable = VTable::Get(pTargetTechno);
+
+		if (!pTargetTechno->IsAlive || (vtable != UnitClass::vtable && vtable != InfantryClass::vtable && vtable != AircraftClass::vtable && vtable != BuildingClass::vtable))
+			return SkipGameCode;
+
+		AirstrikeClass* pLastTargetingMe = nullptr;
+
+		for (int idx = AirstrikeClass::Array->Count - 1; idx >= 0; --idx)
+		{
+			const auto pAirstrike = AirstrikeClass::Array->Items[idx];
+
+			if (pAirstrike != pThis && pAirstrike->Target == pTarget)
+			{
+				pLastTargetingMe = pAirstrike;
+				break;
+			}
+		}
+
+		const auto pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
+		pTargetExt->AirstrikeTargetingMe = pLastTargetingMe;
+
+		if (!pLastTargetingMe && Game::IsActive)
+			pTarget->Mark(MarkType::Redraw);
+	}
+
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x41D604, AirstrikeClass_PointerGotInvalid_ResetForTarget, 0x6)
+{
+	enum { SkipGameCode = 0x41D634 };
+
+	GET(ObjectClass*, pTarget, EAX);
+
+	if (const auto pTargetTechno = flag_cast_to<TechnoClass*>(pTarget))
+		TechnoExtContainer::Instance.Find(pTargetTechno)->AirstrikeTargetingMe = nullptr;
+
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x65E97F, HouseClass_CreateAirstrike_SetTaretForUnit, 0x6)
+{
+	enum { SkipGameCode = 0x65E992 };
+
+	GET_STACK(AirstrikeClass*, pThis, STACK_OFFSET(0x38, 0x1C));
+	const auto pOwner = pThis->Owner;
+
+	if (!pOwner || !pOwner->Target)
+		return 0;
+
+	if (const auto pTarget = flag_cast_to<TechnoClass*, false>(pOwner->Target))
+	{
+		GET(AircraftClass*, pFirer, ESI);
+		pFirer->SetTarget(pTarget);
+		return SkipGameCode;
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x51EAE0, TechnoClass_WhatAction_AllowAirstrike, 0x7)
+{
+	enum { CanAirstrike = 0x51EB06, Cannot = 0x51EB15 };
+
+	GET(ObjectClass*, pObject, ESI);
+
+	if (const auto pTechno = flag_cast_to<TechnoClass*>(pObject))
+	{
+		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType());
+
+		if (const auto pBuilding = cast_to<BuildingClass*, false>(pTechno))
+		{
+			const auto pBuildingType = pBuilding->Type;
+			return pTypeExt->AllowAirstrike.Get(pBuildingType->CanC4) && !pBuildingType->InvisibleInGame ? CanAirstrike : Cannot;
+		}
+		else
+		{
+			return pTypeExt->AllowAirstrike.Get(true) ? CanAirstrike : Cannot;
+		}
+	}
+
+	return Cannot;
+}
+
+ASMJIT_PATCH(0x70782D, TechnoClass_PointerGotInvalid_Airstrike, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(AbstractClass*, pAbstract, EBP);
+
+	if (const auto pExt = TechnoExtContainer::Instance.Find(pThis))
+		AnnounceInvalidPointer(pExt->AirstrikeTargetingMe, pAbstract);
+
+	AnnounceInvalidPointer(pThis->Airstrike, pAbstract);
+
+	return 0x70783B;
+}
+
+#pragma region GetEffectTintIntensity
+
+ASMJIT_PATCH(0x70E92F, TechnoClass_UpdateAirstrikeTint, 0x5)
+{
+	enum { ContinueIn = 0x70E96E, Skip = 0x70EC9F };
+
+	GET(TechnoClass*, pThis, ESI);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	return pExt->AirstrikeTargetingMe ? ContinueIn : Skip;
+}
+
+// ASMJIT_PATCH(0x43FDD6, BuildingClass_AI_Airstrike, 0x6)
+// {
+// 	enum { SkipGameCode = 0x43FDF1 };
+
+// 	GET(BuildingClass*, pThis, ESI);
+// 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+// 	if (pExt->AirstrikeTargetingMe)
+// 		pThis->Mark(MarkType::Redraw);
+
+// 	return SkipGameCode;
+// }
+
+ASMJIT_PATCH(0x43F9E0, BuildingClass_Mark_Airstrike, 0x6)
+{
+	enum { ContinueTintIntensity = 0x43FA0F, NonAirstrike = 0x43FA19 };
+
+	GET(BuildingClass*, pThis, EDI);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
+}
+
+ASMJIT_PATCH(0x448DF1, BuildingClass_SetOwningHouse_Airstrike, 0x6)
+{
+	enum { ContinueTintIntensity = 0x448E0D, NonAirstrike = 0x448E17 };
+
+	GET(BuildingClass*, pThis, ESI);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
+}
+
+ASMJIT_PATCH(0x451ABC, BuildingClass_PlayAnim_Airstrike, 0x6)
+{
+	enum { ContinueTintIntensity = 0x451AEB, NonAirstrike = 0x451AF5 };
+
+	GET(BuildingClass*, pThis, ESI);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
+}
+
+ASMJIT_PATCH(0x452041, BuildingClass_452000_Airstrike, 0x6)
+{
+	enum { ContinueTintIntensity = 0x452070, NonAirstrike = 0x45207A };
+
+	GET(BuildingClass*, pThis, ESI);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
+}
+
+ASMJIT_PATCH(0x456E5A, BuildingClass_Flash_Airstrike, 0x6)
+{
+	enum { ContinueTintIntensity = 0x456E89, NonAirstrike = 0x456E93 };
+
+	GET(BuildingClass*, pThis, ESI);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
+}
+
+ASMJIT_PATCH(0x456FD3, BuildingClass_GetEffectTintIntensity_Airstrike, 0x6)
+{
+	enum { ContinueTintIntensity = 0x457002, NonAirstrike = 0x45700F };
+
+	GET(BuildingClass*, pThis, ESI);
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
+}
+
+#pragma endregion
+
+ASMJIT_PATCH(0x4D6D34, FootClass_MissionAreaGuard_Miner, 0x5)
+{
+	enum { GoGuardArea = 0x4D6D69 };
+
+	GET(FootClass*, pThis, ESI);
+
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	return pTypeExt->Harvester_CanGuardArea && pThis->Owner->IsControlledByHuman() ? GoGuardArea : 0;
+}

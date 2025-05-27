@@ -130,7 +130,7 @@ ASMJIT_PATCH(0x43E7B0, BuildingClass_DrawVisible, 5)
 	if (bAllied || IsObserver || bReveal)
 	{
 		Point2D DrawExtraLoc = { pLocation->X , pLocation->Y };
-		pThis->DrawExtraInfo(DrawExtraLoc, pLocation, pBounds);
+		pThis->DrawExtraInfo(&DrawExtraLoc, pLocation, pBounds);
 
 		// display production cameo
 		if (IsObserver || bReveal)
@@ -1053,6 +1053,7 @@ ASMJIT_PATCH(0x43FD2C, BuildingClass_Update_ProduceCash, 6)
 
 	int produceAmount = 0;
 	auto pExt = BuildingExtContainer::Instance.Find(pThis);
+	auto pTExt = TechnoExtContainer::Instance.Find(pThis);
 
 	std::array<std::pair<BuildingTypeClass*, CDTimerClass*>, 4u> Timers
 	{ {
@@ -1084,13 +1085,16 @@ ASMJIT_PATCH(0x43FD2C, BuildingClass_Update_ProduceCash, 6)
 	{
 		if (BuildingTypeExtContainer::Instance.Find(pThis->Type)->ProduceCashDisplay)
 		{
-			TechnoExtContainer::Instance.Find(pThis)->TechnoValueAmount += produceAmount;
+			pTExt->TechnoValueAmount += produceAmount;
 		}
 
 		pThis->Owner->TransactMoney(produceAmount);
 	}
 
-	return 0x43FDD6;
+	if (pTExt->AirstrikeTargetingMe)
+		pThis->Mark(MarkType::Redraw);
+
+	return 0x43FDF1;
 }
 
 // #1156943: they check for type, and for the instance, yet
@@ -1659,73 +1663,26 @@ ASMJIT_PATCH(0x4456E5, BuildingClass_UpdateConstructionOptions_ExcludeDisabled, 
 //	return true;
 //}
 
-ASMJIT_PATCH(0x73A1BC, UnitClass_UpdatePosition_EnteredGrinder, 0x7)
-{
-	GET(UnitClass* const, Vehicle, EBP);
-	GET(BuildingClass* const, Grinder, EBX);
+// ASMJIT_PATCH(0x73A1BC, UnitClass_UpdatePosition_EnteredGrinder, 0x7)
+// {
+// 	GET(UnitClass* const, Vehicle, EBP);
+// 	GET(BuildingClass* const, Grinder, EBX);
+//
+// 	//ReverseEngineer(Grinder, Vehicle);
+//
+//
+// 	return 0;
+// }
 
-	//ReverseEngineer(Grinder, Vehicle);
-
-	if (BuildingExtData::ReverseEngineer(Grinder, Vehicle))
-	{
-		if (Vehicle->Owner && Vehicle->Owner->ControlledByCurrentPlayer())
-		{
-			VoxClass::Play("EVA_ReverseEngineeredVehicle");
-			VoxClass::Play(GameStrings::EVA_NewTechAcquired());
-		}
-	}
-
-	if (const auto FirstTag = Grinder->AttachedTag)
-	{
-		FirstTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerType, Grinder, CellStruct::Empty, false, Vehicle);
-
-		if (auto pSecondTag = Grinder->AttachedTag)
-		{
-			pSecondTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerAnything, Grinder, CellStruct::Empty, false, nullptr);
-		}
-	}
-
-	// https://bugs.launchpad.net/ares/+bug/1925359
-	TechnoExt_ExtData::AddPassengers(Grinder, Vehicle);
-
-	// #368: refund hijackers
-	if (Vehicle->HijackerInfantryType != -1)
-	{
-		Grinder->Owner->TransactMoney(InfantryTypeClass::Array->Items[Vehicle->HijackerInfantryType]->GetRefund(Vehicle->Owner, 0));
-	}
-
-	return 0;
-}
-
-ASMJIT_PATCH(0x5198AD, InfantryClass_UpdatePosition_EnteredGrinder, 0x6)
-{
-	GET(InfantryClass* const, Infantry, ESI);
-	GET(BuildingClass* const, Grinder, EBX);
-
-	//ReverseEngineer(Grinder, Infantry);
-
-	if (BuildingExtData::ReverseEngineer(Grinder, Infantry))
-	{
-		if (Infantry->Owner->ControlledByCurrentPlayer())
-		{
-			VoxClass::Play("EVA_ReverseEngineeredInfantry");
-			VoxClass::Play(GameStrings::EVA_NewTechAcquired());
-		}
-	}
-
-	//Ares 3.0 Added
-	if (const auto FirstTag = Grinder->AttachedTag)
-	{
-		//80
-		FirstTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerType, Grinder, CellStruct::Empty, false, Infantry);
-
-		//79
-		if (const auto pSecondTag = Grinder->AttachedTag)
-			pSecondTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerAnything, Grinder, CellStruct::Empty, false, nullptr);
-	}
-
-	return 0;
-}
+// ASMJIT_PATCH(0x5198AD, InfantryClass_UpdatePosition_EnteredGrinder, 0x6)
+// {
+// 	GET(InfantryClass* const, Infantry, ESI);
+// 	GET(BuildingClass* const, Grinder, EBX);
+//
+// 	//ReverseEngineer(Grinder, Infantry);
+//
+// 	return 0;
+// }
 
 ASMJIT_PATCH(0x7004AD, TechnoClass_GetActionOnObject_Saboteur, 0x6)
 {

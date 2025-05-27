@@ -993,7 +993,9 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 
 		if (pType->Passengers > 0
 			&& pUnit->Passengers.NumPassengers < pType->Passengers
-			&& pUnit->Passengers.GetTotalSize() < pType->Passengers)
+			&& (TechnoTypeExtContainer::Instance.Find(pType)->Passengers_BySize
+				? pUnit->Passengers.GetTotalSize() : pUnit->Passengers.NumPassengers)
+			 < pType->Passengers)
 		{
 			transports->push_back(pUnit);
 		}
@@ -1600,19 +1602,19 @@ void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 
 	if (percentage <= successPercentage)
 	{
-		const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
-		const auto& [nextAct, nextArg] = ScriptExtData::GetSpecificAction(pTeam->CurrentScript, pTeam->CurrentScript->CurrentMission + 2);
+		// const auto& [curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
+		// const auto& [nextAct, nextArg] = ScriptExtData::GetSpecificAction(pTeam->CurrentScript, pTeam->CurrentScript->CurrentMission + 2);
 
-		Debug::LogInfo("AI Scripts - SkipNextAction: [{}] [{}] (line: {} = {},{}) Next script line skipped successfuly. Next line will be: {} = {},{}",
-			pTeam->Type->ID,
-			pTeam->CurrentScript->Type->ID,
-			pTeam->CurrentScript->CurrentMission,
-			(int)curAct,
-			curArg,
-			pTeam->CurrentScript->CurrentMission + 2,
-			(int)nextAct,
-			nextArg
-		);
+		// Debug::LogInfo("AI Scripts - SkipNextAction: [{}] [{}] (line: {} = {},{}) Next script line skipped successfuly. Next line will be: {} = {},{}",
+		// 	pTeam->Type->ID,
+		// 	pTeam->CurrentScript->Type->ID,
+		// 	pTeam->CurrentScript->CurrentMission,
+		// 	(int)curAct,
+		// 	curArg,
+		// 	pTeam->CurrentScript->CurrentMission + 2,
+		// 	(int)nextAct,
+		// 	nextArg
+		// );
 
 		pTeam->CurrentScript->CurrentMission++;
 	}

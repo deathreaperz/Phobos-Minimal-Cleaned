@@ -71,17 +71,12 @@ ASMJIT_PATCH(0x701881, TechnoClass_ChangeHouse_Passenger_SyncOwner, 0x5)
 
 	if (TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->Passengers_SyncOwner && pThis->Passengers.NumPassengers > 0)
 	{
-		FootClass* pPassenger = pThis->Passengers.GetFirstPassenger();
-
-		if (pPassenger)
-			pPassenger->SetOwningHouse(pThis->Owner, false);
-
-		while (pPassenger && pPassenger->NextObject)
+		while (pThis->Passengers.FirstPassenger)
 		{
-			pPassenger = flag_cast_to<FootClass*>(pPassenger->NextObject);
-
-			if (pPassenger)
-				pPassenger->SetOwningHouse(pThis->Owner, false);
+			if (auto nPass = pThis->Passengers.RemoveFirstPassenger())
+			{
+				nPass->SetOwningHouse(pThis->Owner, false);
+			}
 		}
 	}
 

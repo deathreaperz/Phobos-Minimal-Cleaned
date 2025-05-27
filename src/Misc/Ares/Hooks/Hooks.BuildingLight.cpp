@@ -63,7 +63,7 @@ static int Height;
 
 #include <TacticalClass.h>
 
-class FakeBuildingLightClass : public BuildingLightClass
+class NOVTABLE FakeBuildingLightClass : public BuildingLightClass
 {
 public:
 	void _Draw(Point2D* pLocation, RectangleStruct* pBounds)

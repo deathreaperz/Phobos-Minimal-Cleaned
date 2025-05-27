@@ -119,7 +119,7 @@ ASMJIT_PATCH(0x6EF8A1, TeamClass_GatherAtEnemyBase_Distance, 0x6)
 	GET_BASE(ScriptActionNode*, pTeamM, 0x8);
 	GET(RulesClass*, pRules, ECX);
 	//const auto pTeamExt = TeamTypeExt::ExtMap.Find(pTeam->Type);
-	//Debug::LogInfo(std::format(__FUNCTION__ " Function With Type {} ! ",pTeam->Type->ID));
+	//Debug::LogInfo(fmt::format(__FUNCTION__ " Function With Type {} ! ",pTeam->Type->ID));
 	//R->EDX(pTeamExt->AI_SafeDIstance.Get(RulesClass::Instance->AISafeDistance) + pTeamM->Argument);
 	R->EDX(pRules->AISafeDistance + pTeamM->Argument);
 
@@ -196,7 +196,7 @@ ASMJIT_PATCH(0x6EB432, TeamClass_AttackedBy_Retaliate, 9)
 		{
 			if (pAttacker->WhatAmI() != AircraftClass::AbsID)
 			{
-				auto pAttackerTechno = flag_cast_to<TechnoClass*>(pAttacker);
+				auto pAttackerTechno = flag_cast_to<TechnoClass*, false>(pAttacker);
 
 				auto Owner = pThis->Owner;
 				if (pAttackerTechno && Owner->IsAlliedWith(pAttackerTechno->GetOwningHouse()))
@@ -204,7 +204,7 @@ ASMJIT_PATCH(0x6EB432, TeamClass_AttackedBy_Retaliate, 9)
 					return 0x6EB47A;
 				}
 
-				if (auto pAttackerFoot = flag_cast_to<FootClass*>(pAttacker))
+				if (auto pAttackerFoot = flag_cast_to<FootClass*, false>(pAttacker))
 				{
 					if (pAttackerFoot->InLimbo
 					|| pAttackerFoot->GetTechnoType()->ConsideredAircraft)

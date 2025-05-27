@@ -6,6 +6,13 @@
 
 #include <Utilities/Macro.h>
 
+TerrainExtData::~TerrainExtData()
+{
+	LighSource.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+	AttachedAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+	AttachedFireAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
+}
+
 void TerrainExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
 	if (this->LighSource.get() == ptr) {

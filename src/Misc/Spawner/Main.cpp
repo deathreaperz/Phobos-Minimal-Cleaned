@@ -23,8 +23,20 @@
 
 #include <GameOptionsClass.h>
 #include <MessageBox.h>
+#include <BeaconManagerClass.h>
 
+#pragma region defines
+std::list<MixFileClass*> SpawnerMain::LoadedMixFiles;
 SpawnerMain::GameConfigs SpawnerMain::GameConfigs::m_Ptr {};
+SpawnerMain::Configs SpawnerMain::Configs::m_Ptr {};
+
+bool SpawnerMain::Configs::Enabled; // false
+bool SpawnerMain::Configs::Active; //false
+bool SpawnerMain::Configs::DoSave;
+int SpawnerMain::Configs::NextAutoSaveFrame { -1 };
+int SpawnerMain::Configs::NextAutoSaveNumber;
+
+#pragma endregion
 
 FORCEDINLINE void ReadListFromSection(CCINIClass* pINI, const char* pSection, std::list<std::string>& strings)
 {
@@ -41,8 +53,6 @@ FORCEDINLINE void ReadListFromSection(CCINIClass* pINI, const char* pSection, st
 		}
 	}
 }
-
-SpawnerMain::Configs SpawnerMain::Configs::m_Ptr {};
 
 class NOVTABLE StaticLoadOptionsClass
 {
@@ -183,7 +193,7 @@ void SpawnerMain::ApplyStaticOptions()
 	// Set 3rd party ddraw.dll options
 	for (auto& dllData : Patch::ModuleDatas)
 	{
-		if (IS_SAME_STR_(dllData.ModuleName.c_str(), "ddraw.dll"))
+		if (IS_SAME_STR_I(dllData.ModuleName.c_str(), "ddraw.dll"))
 		{
 			if (bool* gameHandlesClose = (bool*)GetProcAddress(dllData.Handle, "GameHandlesClose"))
 				*gameHandlesClose = !pMainConfigs->DDrawHandlesClose;
@@ -195,16 +205,6 @@ void SpawnerMain::ApplyStaticOptions()
 			break;
 		}
 	}
-
-	//if (HMODULE hDDraw = LoadLibraryA("ddraw.dll")) {
-	//
-	//	if (bool* gameHandlesClose = (bool*)GetProcAddress(hDDraw, "GameHandlesClose"))
-	//		*gameHandlesClose = !SpawnerMain::Configs::DDrawHandlesClose;
-	//
-	//	LPDWORD TargetFPS = (LPDWORD)GetProcAddress(hDDraw, "TargetFPS");
-	//	if (TargetFPS && SpawnerMain::Configs::DDrawTargetFPS != -1)
-	//		*TargetFPS = SpawnerMain::Configs::DDrawTargetFPS;
-	//}
 }
 
 COMPILETIMEEVAL char* PlayerSectionArray[8] = {
@@ -549,15 +549,15 @@ void SpawnerMain::GameConfigs::AssignHouses()
 			switch (pAIConfig->Difficulty)
 			{
 			case 0:
-				wcscpy_s(pHouse->UIName, StringTable::LoadString(GameStrings::GUI_AIHard));
+				wcscpy_s(pHouse->UIName, StringTable::FetchString(GameStrings::GUI_AIHard));
 				break;
 
 			case 1:
-				wcscpy_s(pHouse->UIName, StringTable::LoadString(GameStrings::GUI_AINormal));
+				wcscpy_s(pHouse->UIName, StringTable::FetchString(GameStrings::GUI_AINormal));
 				break;
 
 			case 2:
-				wcscpy_s(pHouse->UIName, StringTable::LoadString(GameStrings::GUI_AIEasy));
+				wcscpy_s(pHouse->UIName, StringTable::FetchString(GameStrings::GUI_AIEasy));
 				break;
 			default:
 				break;
@@ -587,15 +587,23 @@ void SpawnerMain::GameConfigs::AssignHouses()
 				pHouse->StartingPoint = -1;
 			}
 		}
+
+		// Set Bonus Money
+		if (pHousesConfig->CreditsFactor != 1.0)
+			pHouse->Balance *= pHousesConfig->CreditsFactor;
+
+		// Set Handicap Difficulty
+		if (pHousesConfig->HandicapDifficulty != -1)
+			pHouse->AssignHandicap(pHousesConfig->HandicapDifficulty);
 	}
 }
 
 bool SpawnerMain::GameConfigs::Reconcile_Players()
 {
-	int i;
-	bool found;
-	int house;
-	HouseClass* pHouse;
+	int i {};
+	bool found {};
+	int house {};
+	HouseClass* pHouse = nullptr;
 
 	// Just use this as Playernodes.
 	auto& players = SessionClass::Instance->StartSpots;
@@ -664,9 +672,10 @@ bool SpawnerMain::GameConfigs::Reconcile_Players()
 			pHouse->Production = true;
 			pHouse->StaticData.IQLevel = RulesClass::Instance->MaxIQLevels;
 
-			static wchar_t buffer[21];
-			std::swprintf(buffer, sizeof(buffer), L"%s (AI)", pHouse->UIName);
-			std::wcscpy(pHouse->UIName, buffer);
+			fmt::basic_memory_buffer<wchar_t> buffer;
+			fmt::format_to(std::back_inserter(buffer), L"{} (AI)", pHouse->UIName);
+			buffer.push_back(L'\0');
+			std::wcscpy(pHouse->UIName, buffer.data());
 			SessionClass::Instance->MPlayerCount--;
 		}
 	}
@@ -706,10 +715,17 @@ void SpawnerMain::GameConfigs::After_Main_Loop()
 	{
 		Print_Saving_Game_Message2();
 
+		// Force a redraw so that our message gets printed.
+		if (Game::SpecialDialog == 0)
+		{
+			MapClass::Instance->MarkNeedsRedraw(2);
+			MapClass::Instance->Render();
+		}
+
 		if (SessionClass::Instance->GameMode == GameMode::Campaign)
 		{
-			const std::string saveFileName = std::format("AUTOSAVE{}.SAV", SpawnerMain::Configs::NextAutoSaveNumber + 1);
-			const std::wstring saveDescription = std::format(L"Mission Auto-Save (Slot {})", SpawnerMain::Configs::NextAutoSaveNumber + 1);
+			const std::string saveFileName = fmt::format("AUTOSAVE{}.SAV", SpawnerMain::Configs::NextAutoSaveNumber + 1);
+			const std::wstring saveDescription = fmt::format(L"Mission Auto-Save (Slot {})", SpawnerMain::Configs::NextAutoSaveNumber + 1);
 
 			ScenarioClass::PauseGame();
 			Game::CallBack();
@@ -737,8 +753,8 @@ bool SpawnerMain::GameConfigs::StartScenario(const char* pScenarioName)
 		Debug::LogInfo("[Spawner] Failed Read Scenario [{}]", pScenarioName);
 
 		MessageBox::Show(
-			StringTable::LoadString(GameStrings::TXT_UNABLE_READ_SCENARIO),
-			StringTable::LoadString(GameStrings::TXT_OK),
+			StringTable::FetchString(GameStrings::TXT_UNABLE_READ_SCENARIO),
+			StringTable::FetchString(GameStrings::TXT_OK),
 			0);
 
 		return false;
@@ -879,7 +895,7 @@ bool SpawnerMain::GameConfigs::StartScenario(const char* pScenarioName)
 #else
 		//char keee_[46];
 		//sprintf(keee_, "%sSav", ScenarioClass::Instance->UIName);
-		//wcsncpy(ScenarioClass::Instance->UINameLoaded, StringTable::LoadString(keee_), 0x2Du);
+		//wcsncpy(ScenarioClass::Instance->UINameLoaded, StringTable::FetchString(keee_), 0x2Du);
   //      if ( !wcsncmp(ScenarioClass::Instance->UINameLoaded, L"MISSING:", 8u) ) {
   //          wcsncpy(ScenarioClass::Instance->UINameLoaded, ScenarioClass::Instance->Name, 0x2Du);
   //      }
@@ -931,13 +947,16 @@ bool SpawnerMain::GameConfigs::StartScenario(const char* pScenarioName)
 
 bool SpawnerMain::GameConfigs::LoadSavedGame(const char* saveGameName)
 {
+	// for some reason beacons are only inited on scenario init, which doesn't happen on load
+	//BeaconManagerClass::Instance->LoadArt();
+
 	if (!saveGameName[0] || !StaticLoadOptionsClass::LoadMission(saveGameName))
 	{
 		Debug::LogInfo("[Spawner] Failed Load Game [{}]", saveGameName);
 
 		MessageBox::Show(
-			StringTable::LoadString(GameStrings::TXT_ERROR_LOADING_GAME),
-			StringTable::LoadString(GameStrings::TXT_OK),
+			StringTable::FetchString(GameStrings::TXT_ERROR_LOADING_GAME),
+			StringTable::FetchString(GameStrings::TXT_OK),
 			0);
 
 		return false;
@@ -1164,7 +1183,7 @@ DEFINE_FUNCTION_JUMP(CALL, 0x60D407, MainLoop_replaceA);
 DEFINE_FUNCTION_JUMP(CALL, 0x608206, MainLoop_replaceA);
 DEFINE_FUNCTION_JUMP(CALL, 0x48CE8A, MainLoop_replaceB);
 
-ASMJIT_PATCH(0x52DAED, Game_Start_ResetGlobal, 0x7)
+ASMJIT_PATCH(0x52DAEF, Game_Start_ResetGlobal, 0x5)
 {
 	SpawnerMain::Configs::DoSave = false;
 	SpawnerMain::Configs::NextAutoSaveFrame = -1;
@@ -1217,15 +1236,14 @@ ASMJIT_PATCH(0x700594, TechnoClass_WhatAction_AllowAlliesRepair, 0x5)
 // Allow Dogs & Flak Troopers to get a speed boost
 // Skip Crawls check on InfantryType
 // https://github.com/CnCNet/yr-patches/issues/15
-ASMJIT_PATCH(0x51D77A, InfantryClass_DoAction_AllowReceiveSpeedBoost, 5)
-{
-	enum { Allow = 0x51D793, DisAllow = 0x51DADA };
-
-	GET(FakeInfantryClass*, pThis, ESI);
-	GET(DoType, sequence, EDI);
-
-	if (pThis->_GetTypeExtData()->AllowReceiveSpeedBoost)
-		return Allow;
-
-	return sequence == DoType::Down && !pThis->Crawling ? DisAllow : Allow;
-}
+// ASMJIT_PATCH(0x51D77A, InfantryClass_DoAction_AllowReceiveSpeedBoost, 5) {
+// 	enum { Allow = 0x51D793, DisAllow = 0x51DADA };
+//
+// 	GET(FakeInfantryClass*, pThis, ESI);
+// 	GET(DoType, sequence, EDI);
+//
+// 	if (pThis->_GetTypeExtData()->AllowReceiveSpeedBoost)
+// 		return Allow;
+//
+// 	return sequence == DoType::Down && !pThis->Crawling ? DisAllow : Allow;
+// }

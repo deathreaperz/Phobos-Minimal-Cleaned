@@ -47,7 +47,8 @@ public:
 	}
 
 	template <typename Func>
-	COMPILETIMEEVAL void FORCEDINLINE remove_all_duplicates(Func&& act) {
+	COMPILETIMEEVAL void FORCEDINLINE remove_all_duplicates(Func&& act)
+	{
 		std::sort(this->begin(), this->end(), std::forward<Func>(act));
 		this->erase(std::unique(this->begin(), this->end()), this->end());
 	}

@@ -33,11 +33,11 @@ struct SpawnerMain
 {
 	struct Configs
 	{
-		static OPTIONALINLINE bool Enabled; // false
-		static OPTIONALINLINE bool Active; //false
-		static OPTIONALINLINE bool DoSave;
-		static OPTIONALINLINE int NextAutoSaveFrame { -1 };
-		static OPTIONALINLINE int NextAutoSaveNumber;
+		static bool Enabled; // false
+		static bool Active; //false
+		static bool DoSave;
+		static int NextAutoSaveFrame;
+		static int NextAutoSaveNumber;
 
 	public:
 
@@ -117,11 +117,15 @@ struct SpawnerMain
 		{
 			bool IsObserver;
 			int SpawnLocations;
+			double CreditsFactor;
+			int HandicapDifficulty;
 			int Alliances[8];
 
 			COMPILETIMEEVAL HouseConfig()
 				: IsObserver { false }
 				, SpawnLocations { -2 }
+				, CreditsFactor { 1.0 }
+				, HandicapDifficulty { -1 }
 				, Alliances { -1, -1, -1, -1, -1, -1, -1, -1 }
 			{ }
 
@@ -310,7 +314,7 @@ struct SpawnerMain
 		void LoadFromINIFile(CCINIClass* pINI);
 	};
 
-	OPTIONALINLINE static std::list<MixFileClass*> LoadedMixFiles;
+	static std::list<MixFileClass*> LoadedMixFiles;
 
 	static void CmdLineParse(char*);
 	static void PrintInitializeLog();

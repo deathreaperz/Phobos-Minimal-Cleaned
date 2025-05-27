@@ -25,7 +25,7 @@ public:
 	static bool IsEnabled();
 
 private:
-	OPTIONALINLINE static std::unique_ptr<SWSidebarClass> Instance;
+	static std::unique_ptr<SWSidebarClass> Instance;
 public:
 	static void Allocate()
 	{
@@ -53,5 +53,5 @@ public:
 	SWButtonClass* CurrentButton { nullptr };
 	ToggleSWButtonClass* ToggleButton { nullptr };
 
-	static OPTIONALINLINE CommandClass* Commands[10];
+	static CommandClass* Commands[10];
 };

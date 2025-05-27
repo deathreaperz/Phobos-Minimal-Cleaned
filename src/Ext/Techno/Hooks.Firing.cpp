@@ -26,6 +26,15 @@ bool DisguiseAllowed(const TechnoTypeExtData* pThis, ObjectTypeClass* pThat)
 	return true;
 }
 
+ASMJIT_PATCH(0x6FF0DD, TechnoClass_FireAt_TurretRecoil, 0x6)
+{
+	enum { SkipGameCode = 0x6FF15B };
+
+	GET_STACK(WeaponTypeClass* const, pWeapon, STACK_OFFSET(0xB0, -0x70));
+
+	return WeaponTypeExtContainer::Instance.Find(pWeapon)->TurretRecoil_Suppress ? SkipGameCode : 0;
+}
+
 // An example for quick tilting test
 ASMJIT_PATCH(0x7413DD, UnitClass_Fire_RecoilForce, 0x6)
 {
@@ -276,6 +285,19 @@ ASMJIT_PATCH(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 
 		if (!TechnoExtData::TargetFootAllowFiring(pThis, pTargetTechno, pWeapon))
 			return FireIllegal;
+
+		if (pWeapon->Warhead->Airstrike)
+		{
+			const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
+			if (!EnumFunctions::IsTechnoEligible(pTargetTechno, pWHExt->AirstrikeTargets))
+				return FireIllegal;
+
+			if (!TechnoTypeExtContainer::Instance.Find(
+				pTargetTechno->GetTechnoType())->AllowAirstrike.Get(
+					pTargetTechno->AbstractFlags & AbstractFlags::Foot ?
+					true : static_cast<BuildingClass*>(pTargetTechno)->Type->CanC4))
+				return FireIllegal;
+		}
 	}
 
 	return Continue;

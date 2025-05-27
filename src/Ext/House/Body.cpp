@@ -19,6 +19,30 @@
 
 #include <Utilities/Cast.h>
 
+#pragma region defines
+std::vector<int> HouseExtData::AIProduction_CreationFrames;
+std::vector<int> HouseExtData::AIProduction_Values;
+std::vector<int> HouseExtData::AIProduction_BestChoices;
+std::vector<int> HouseExtData::AIProduction_BestChoicesNaval;
+PhobosMap<TechnoClass*, KillMethod> HouseExtData::AutoDeathObjects;
+HelperedVector<TechnoClass*> HouseExtData::LimboTechno;
+
+int HouseExtData::LastGrindingBlanceUnit;
+int HouseExtData::LastGrindingBlanceInf;
+int HouseExtData::LastHarvesterBalance;
+int HouseExtData::LastSlaveBalance;
+
+CDTimerClass HouseExtData::CloakEVASpeak;
+CDTimerClass HouseExtData::SubTerraneanEVASpeak;
+
+bool HouseExtData::IsAnyFirestormActive;
+
+HouseClass* HouseExtContainer::Civilian = nullptr;
+HouseClass* HouseExtContainer::Special = nullptr;
+HouseClass* HouseExtContainer::Neutral = nullptr;
+
+#pragma endregion
+
 void HouseExtData::InitializeConstant()
 {
 	//BuiltAircraftTypes.PopulateCounts(10000);
@@ -119,8 +143,13 @@ RequirementStatus HouseExtData::RequirementsMet(
 	if (Prereqs::HouseOwnsAny(pHouse, pData->Prerequisite_Negative.data(), pData->Prerequisite_Negative.size()))
 		return RequirementStatus::Forbidden;
 
-	if (pHouseExt->Reversed.contains(pItem))
-		return RequirementStatus::Overridden;
+	for (auto pRever : pHouseExt->Reversed)
+	{
+		if (pRever == pItem)
+		{
+			return RequirementStatus::Overridden;
+		}
+	}
 
 	if (pData->RequiredStolenTech.any())
 	{
@@ -350,65 +379,71 @@ CanBuildResult HouseExtData::PrereqValidate(
 bool HouseExtData::CheckFactoryOwners(HouseClass* pHouse, TechnoTypeClass* pItem)
 {
 	auto const pExt = TechnoTypeExtContainer::Instance.Find(pItem);
+
+	if (pExt->FactoryOwners.empty() && pExt->FactoryOwners_Forbidden.empty())
+		return true;// no check needed
+
 	auto const pHouseExt = HouseExtContainer::Instance.Find(pHouse);
+	bool isAvaible = false; // assiume it is not available
 
-	if (!pExt->FactoryOwners.empty() || !pExt->FactoryOwners_Forbidden.empty())
+	for (auto& gather : pHouseExt->FactoryOwners_GatheredPlansOf)
 	{
-		for (auto& gather : pHouseExt->FactoryOwners_GatheredPlansOf)
+		for (auto& f_Owner : pExt->FactoryOwners)
 		{
-			auto FactoryOwners_begin = pExt->FactoryOwners.begin();
-			const auto FactoryOwners_end = pExt->FactoryOwners.end();
-
-			if (FactoryOwners_begin != FactoryOwners_end)
+			if (f_Owner == gather)
 			{
-				while (*FactoryOwners_begin != gather)
+				isAvaible = true; // one check pass
+				break;
+			}
+		}
+
+		for (auto& f_forbiddenOwner : pExt->FactoryOwners_Forbidden)
+		{
+			if (f_forbiddenOwner == gather)
+			{
+				return false; // it is forbidden , dont allow
+			}
+		}
+	}
+
+	if (!isAvaible)
+	{ //cant found avaible plan
+		const auto whatItem = pItem->WhatAmI();
+		for (auto const& pBld : pHouse->Buildings)
+		{
+			auto pBldExt = TechnoExtContainer::Instance.Find(pBld);
+
+			for (auto& f_Owner : pExt->FactoryOwners)
+			{
+				if (f_Owner == pBldExt->OriginalHouseType)
 				{
-					if (++FactoryOwners_begin == FactoryOwners_end)
-						continue;
+					isAvaible = true; // one check pass
+					break;
 				}
 			}
 
-			if (pExt->FactoryOwners_Forbidden.empty())
-				return true;//will skip the buildings check
-
-			auto FactoryForbiddenOwners_begin = pExt->FactoryOwners_Forbidden.begin();
-			const auto FactoryForbidden_end = pExt->FactoryOwners_Forbidden.end();
-
-			while (*FactoryForbiddenOwners_begin != gather)
+			for (auto& f_forbiddenOwner : pExt->FactoryOwners_Forbidden)
 			{
-				if (++FactoryForbiddenOwners_begin == FactoryForbidden_end)
-					return true; //will skip the buildings check
+				if (f_forbiddenOwner == pBldExt->OriginalHouseType)
+				{
+					return false;  // it is forbidden , dont allow
+				}
+			}
+
+			if (isAvaible)
+			{ // further check
+//found one factory that avaible for the item , or the building type HasAllPlans
+				if (pBld->Type->Factory == whatItem || BuildingTypeExtContainer::Instance.Find(pBld->Type)->Type->FactoryOwners_HasAllPlans)
+				{
+					return true;
+				}
 			}
 		}
 	}
 
-	const auto whatItem = pItem->WhatAmI();
-	for (auto const& pBld : pHouse->Buildings)
-	{
-		auto pBldExt = TechnoExtContainer::Instance.Find(pBld);
-
-		auto FactoryOwners_begin = pExt->FactoryOwners.begin();
-		const auto FactoryOwners_end = pExt->FactoryOwners.end();
-
-		if (FactoryOwners_begin != FactoryOwners_end)
-		{
-			while (*FactoryOwners_begin != pBldExt->OriginalHouseType)
-			{
-				if (++FactoryOwners_begin == FactoryOwners_end)
-					continue;
-			}
-		}
-
-		if (pExt->FactoryOwners_Forbidden.empty() || !pExt->FactoryOwners_Forbidden.Contains(pBldExt->OriginalHouseType))
-		{
-			if (pBld->Type->Factory == whatItem || BuildingTypeExtContainer::Instance.Find(pBld->Type)->Type->FactoryOwners_HasAllPlans)
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
+	//FactoryOwners empty , so it should return true
+	// otherwise we use isAvaible to check if we found any factory
+	return pExt->FactoryOwners.empty() ? true : isAvaible;
 }
 
 void HouseExtData::UpdateAcademy(HouseClass* pHouse, BuildingClass* pAcademy, bool added)
@@ -974,10 +1009,6 @@ CellClass* HouseExtData::GetEnemyBaseGatherCell(HouseClass* pTargetHouse, HouseC
 
 	return MapClass::Instance->TryGetCellAt(cellStruct);
 }
-
-HouseClass* HouseExtContainer::Civilian = nullptr;
-HouseClass* HouseExtContainer::Special = nullptr;
-HouseClass* HouseExtContainer::Neutral = nullptr;
 
 HouseClass* HouseExtData::FindFirstCivilianHouse()
 {
@@ -2200,12 +2231,15 @@ int FakeHouseClass::_Expert_AI()
 						{
 							if (pBuilding->IsAlive && pBuilding->Health && !pBuilding->InLimbo)
 							{
-								const auto newDistanceSquared = pBuilding->GetMapCoords().DistanceFromSquared(center);
-
-								if (newDistanceSquared < distanceSquared)
+								if (BuildingExtContainer::Instance.Find(pBuilding)->LimboID < 0)
 								{
-									distanceSquared = newDistanceSquared;
-									newCenter = pBuilding->GetMapCoords();
+									const auto newDistanceSquared = pBuilding->GetMapCoords().DistanceFromSquared(center);
+
+									if (newDistanceSquared < distanceSquared)
+									{
+										distanceSquared = newDistanceSquared;
+										newCenter = pBuilding->GetMapCoords();
+									}
 								}
 							}
 						}
@@ -2281,7 +2315,8 @@ int FakeHouseClass::_Expert_AI()
 		if (h->Defeated || this->IsAlliedWith(h) || this->IsObserver())
 		{
 			this->RemoveFromAngerNodes(h);
-			this->EnemyHouseIndex = -1;
+			this->_GetExtData()->SetForceEnemy(-1);
+			this->UpdateAngerNodes(0u, nullptr);
 		}
 	}
 
@@ -2315,6 +2350,7 @@ int FakeHouseClass::_Expert_AI()
 				this->AIMode = AIMode::LowOnCash;
 			}
 		}
+
 		if (this->AIMode == AIMode::LowOnCash)
 		{
 			if (this->Available_Money() >= 25)
@@ -2322,10 +2358,12 @@ int FakeHouseClass::_Expert_AI()
 				this->AIMode = AIMode::General;
 			}
 		}
+
 		if (this->AIMode == AIMode::BuildBase && this->LATime + 900 < Unsorted::CurrentFrame)
 		{
 			this->AIMode = AIMode::General;
 		}
+
 		if (this->AIMode != AIMode::BuildBase && this->LATime + 900 > Unsorted::CurrentFrame)
 		{
 			this->AIMode = AIMode::BuildBase;
@@ -2369,6 +2407,95 @@ int FakeHouseClass::_Expert_AI()
 
 DEFINE_FUNCTION_JUMP(CALL, 0x4F9017, FakeHouseClass::_Expert_AI)
 DEFINE_FUNCTION_JUMP(LJMP, 0x4FD500, FakeHouseClass::_Expert_AI)
+
+void FakeHouseClass::_UpdateAngerNodes(int score_add, HouseClass* pHouse)
+{
+	if (score_add != 0
+		&& pHouse
+		&& SessionClass::Instance->GameMode != GameMode::Campaign
+		&& !pHouse->Type->MultiplayPassive)
+	{
+		for (int i = 0; i < this->AngerNodes.Count; ++i)
+		{
+			AngerStruct* pAnger = &this->AngerNodes.Items[i];
+			if (pAnger->House == pHouse)
+			{
+				pAnger->AngerLevel += score_add;
+			}
+		}
+	}
+
+	const int forceIndex = this->_GetExtData()->GetForceEnemyIndex();
+
+	if (forceIndex >= 0 || forceIndex == -2)
+	{
+		this->EnemyHouseIndex = forceIndex == -2 ? -1 : forceIndex;
+		return;
+	}
+
+	int _scores = 0;
+	HouseClass* pSelected = nullptr;
+
+	for (int i = 0; i < this->AngerNodes.Count; ++i)
+	{
+		AngerStruct* pAnger = &this->AngerNodes.Items[i];
+		if (pAnger->AngerLevel > _scores && !pAnger->House->Defeated && !this->IsAlliedWith(pAnger->House))
+		{
+			_scores = pAnger->AngerLevel;
+			pSelected = pAnger->House;
+		}
+	}
+
+	this->EnemyHouseIndex = pSelected ? pSelected->ArrayIndex : -1;
+}
+
+DEFINE_FUNCTION_JUMP(LJMP, 0x504790, FakeHouseClass::_UpdateAngerNodes)
+
+#include <Ext/Infantry/Body.h>
+
+bool FakeHouseClass::_IsIonCannonEligibleTarget(TechnoClass* pTechno) const
+{
+	if (!pTechno->IsAlive)
+		return false;
+
+	bool allowed = true;
+	if (pTechno->InLimbo)
+	{
+		if (pTechno->Transporter || pTechno->BunkerLinkedItem || TechnoExtContainer::Instance.Find(pTechno)->GarrisonedIn)
+			allowed = true;
+		else  if (pTechno->WhatAmI() == AbstractType::Aircraft && ((AircraftClass*)(pTechno))->DockedTo)
+			allowed = true;
+		else
+			allowed = false;
+	}
+
+	if (!allowed)
+		return false;
+
+	//the fuck ?
+	//always target ground
+	if (pTechno->InWhichLayer() == Layer::Ground)
+	{
+		return true;
+	}
+
+	//otherwise consider the factory if the techno still in production
+	// hard difficulty shoots the tank in the factory
+	if (this->AIDifficulty == AIDifficulty::Hard)
+	{
+		for (const auto* pFactory : *FactoryClass::Array)
+		{
+			if (pFactory->Object == pTechno
+				&& pFactory->Production.Timer.Rate
+				&& !pFactory->IsSuspended)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
 // =============================
 // container hooks
 

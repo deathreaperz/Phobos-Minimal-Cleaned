@@ -13,6 +13,7 @@
 #include <CellClass.h>
 
 #include <Utilities/EnumFunctions.h>
+HelperedVector<FlyingStrings::Item> FlyingStrings::Data;
 
 bool FlyingStrings::DrawAllowed(CoordStruct const& nCoords, Point2D& outPoint)
 {
@@ -49,22 +50,22 @@ void FlyingStrings::AddMoneyString(bool Display, int const amount, TechnoClass* 
 		if (owner->VisualCharacter(0, HouseClass::CurrentPlayer()) == VisualType::Hidden)
 			return;
 
-		wchar_t moneyStr[0x20];
+		fmt::basic_memory_buffer<wchar_t> moneyStr;
 		ColorStruct color = nOverrideColor;
 
 		if (color == ColorStruct::Empty)
 		{
 			bool isPositive = amount > 0;
 			color = isPositive ? Drawing::DefaultColors[(int)DefaultColorList::Green] : Drawing::DefaultColors[(int)DefaultColorList::Red];
-			swprintf_s(moneyStr, L"%ls%ls%d", amount > 0 ? L"+" : L"-", Phobos::UI::CostLabel, Math::abs(amount));
+			fmt::format_to(std::back_inserter(moneyStr), L"{}{}{}", amount > 0 ? L"+" : L"-", Phobos::UI::CostLabel, Math::abs(amount));
 		}
 		else
 		{
-			swprintf_s(moneyStr, L"%ls%ls%d", L"+", Phobos::UI::CostLabel, Math::abs(amount));
+			fmt::format_to(std::back_inserter(moneyStr), L"+{}{}", Phobos::UI::CostLabel, Math::abs(amount));
 		}
-
+		moneyStr.push_back(L'\0');
 		Dimensions nDim {};
-		BitFont::Instance->GetTextDimension(moneyStr, &nDim.Width, &nDim.Height, 120);
+		BitFont::Instance->GetTextDimension(moneyStr.data(), &nDim.Width, &nDim.Height, 120);
 		pixelOffset.X -= (nDim.Width / 2);
 
 		if (const auto pBuilding = cast_to<BuildingClass*, false>(owner))
@@ -72,7 +73,7 @@ void FlyingStrings::AddMoneyString(bool Display, int const amount, TechnoClass* 
 		else
 			coords.Z += 256;
 
-		FlyingStrings::Add(moneyStr, coords, color, pixelOffset);
+		FlyingStrings::Add(moneyStr.data(), coords, color, pixelOffset);
 	}
 }
 
@@ -83,26 +84,28 @@ void FlyingStrings::AddMoneyString(bool Display, int const amount, HouseClass* o
 
 	if (EnumFunctions::CanTargetHouse(displayToHouses, owner, HouseClass::CurrentPlayer()))
 	{
-		wchar_t moneyStr[0x20];
+		fmt::basic_memory_buffer<wchar_t> moneyStr;
 		ColorStruct color = nOverrideColor;
 
 		if (color == ColorStruct::Empty)
 		{
 			bool isPositive = amount > 0;
 			color = isPositive ? Drawing::DefaultColors[(int)DefaultColorList::Green] : Drawing::DefaultColors[(int)DefaultColorList::Red];
-			swprintf_s(moneyStr, L"%ls%ls%d", amount > 0 ? L"+" : L"-", Phobos::UI::CostLabel, Math::abs(amount));
+			fmt::format_to(std::back_inserter(moneyStr), L"{}{}{}", amount > 0 ? L"+" : L"-", Phobos::UI::CostLabel, Math::abs(amount));
 		}
 		else
 		{
-			swprintf_s(moneyStr, L"%ls%ls%d", L"+", Phobos::UI::CostLabel, Math::abs(amount));
+			fmt::format_to(std::back_inserter(moneyStr), L"+{}{}", Phobos::UI::CostLabel, Math::abs(amount));
 		}
 
+		moneyStr.push_back(L'\0');
+
 		Dimensions nDim {};
-		BitFont::Instance->GetTextDimension(moneyStr, &nDim.Width, &nDim.Height, 120);
+		BitFont::Instance->GetTextDimension(moneyStr.data(), &nDim.Width, &nDim.Height, 120);
 		pixelOffset.X -= (nDim.Width / 2);
 		coords.Z += 256;
 
-		FlyingStrings::Add(moneyStr, coords, color, pixelOffset);
+		FlyingStrings::Add(moneyStr.data(), coords, color, pixelOffset);
 	}
 }
 
@@ -144,12 +147,11 @@ void FlyingStrings::AddNumberString(int amount, HouseClass* owner, AffectedHouse
 	{
 		const bool isPositive = amount > 0;
 		const wchar_t* sign_symbol = (sign && amount != 0) ? (isPositive ? L"+" : L"-") : L"";
-		wchar_t displayStr[0x20];
-		swprintf_s(displayStr, L"%ls%ls%d", sign_symbol, prefix ? prefix : Phobos::UI::CostLabel, Math::abs(amount));
+		std::wstring displayStr = fmt::format(L"{}{}{}", sign_symbol, prefix ? prefix : Phobos::UI::CostLabel, Math::abs(amount));
 		Dimensions nDim {};
-		BitFont::Instance->GetTextDimension(displayStr, &nDim.Width, &nDim.Height, 120);
+		BitFont::Instance->GetTextDimension(displayStr.data(), &nDim.Width, &nDim.Height, 120);
 		pixelOffset.X -= (nDim.Width / 2);
-		FlyingStrings::Add(displayStr, coords, color, pixelOffset);
+		FlyingStrings::Add(displayStr.data(), coords, color, pixelOffset);
 	}
 }
 

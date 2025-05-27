@@ -47,30 +47,28 @@ ASMJIT_PATCH(0x500910, HouseClass_GetFactoryCount, 0x5)
 // }
 //
 //update it separately
-ASMJIT_PATCH(0x4F9038, HouseClass_AI_Superweapons, 0x5)
-{
-	GET(FakeHouseClass*, pThis, ESI);
+// ASMJIT_PATCH(0x4F9038, HouseClass_AI_Superweapons, 0x5) {
+// 	GET(FakeHouseClass*, pThis, ESI);
 
-	if (!RulesExtData::Instance()->AISuperWeaponDelay.isset() || pThis->IsControlledByHuman() || pThis->Type->MultiplayPassive)
-		return 0;
+// 	if (!RulesExtData::Instance()->AISuperWeaponDelay.isset() || pThis->IsControlledByHuman() || pThis->Type->MultiplayPassive)
+// 		return 0;
 
-	const int delay = RulesExtData::Instance()->AISuperWeaponDelay.Get();
+// 	const int delay = RulesExtData::Instance()->AISuperWeaponDelay.Get();
 
-	if (delay > 0)
-	{
-		auto const pExt = pThis->_GetExtData();
+// 	if (delay > 0) {
+// 		auto const pExt = pThis->_GetExtData();
 
-		if (pExt->AISuperWeaponDelayTimer.HasTimeLeft())
-			return 0;
+// 		if (pExt->AISuperWeaponDelayTimer.HasTimeLeft())
+// 			return 0;
 
-		pExt->AISuperWeaponDelayTimer.Start(delay);
-	}
+// 		pExt->AISuperWeaponDelayTimer.Start(delay);
+// 	}
 
-	if (!SessionClass::IsCampaign() || pThis->IQLevel2 >= RulesClass::Instance->SuperWeapons)
-		pThis->AI_TryFireSW();
+// 	if (!SessionClass::IsCampaign() || pThis->IQLevel2 >= RulesClass::Instance->SuperWeapons)
+// 		pThis->AI_TryFireSW();
 
-	return 0;
-}
+// 	return 0;
+// }
 
 // ASMJIT_PATCH(0x4FD77C, HouseClass_ExpertAI_Superweapons, 0x5)
 // {
@@ -358,7 +356,7 @@ ASMJIT_PATCH(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 	GET(HouseClass* const, pNewOwner, EBP);
 
 	auto const pType = pThis->GetTechnoType();
-	//auto pOldOwnerExt = HouseExtContainer::Instance.Find(pThis->Owner);
+	auto pOldOwnerExt = HouseExtContainer::Instance.Find(pThis->Owner);
 	// pNewOwnerExt = HouseExtContainer::Instance.Find(pNewOwner);
 	//const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
@@ -373,6 +371,10 @@ ASMJIT_PATCH(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 	//if (pTypeExt->Death_IfChangeOwnership && nMethod != KillMethod::None) {
 	//	TechnoExtData::KillSelf(pThis, nMethod, pTypeExt->AutoDeath_VanishAnimation);
 	//}
+	if (RulesExtData::Instance()->ExtendedBuildingPlacing && pThis->WhatAmI() == AbstractType::Unit && pType->DeploysInto)
+	{
+		pOldOwnerExt->OwnedDeployingUnits.remove((UnitClass*)pThis);
+	}
 
 	OldOwner = pThis->Owner;
 	return 0;
@@ -402,14 +404,14 @@ ASMJIT_PATCH(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 
 ASMJIT_PATCH(0x4FDCE0, HouseClass_AI_Fire_Sale_OnLastLegs, 0x6)
 {
-	GET(HouseClass*, pThis, ECX);
+	GET(FakeHouseClass*, pThis, ECX);
 	GET_STACK(UrgencyType, urg, 0x4);
 
 	bool ret = false;
 	if (urg == UrgencyType::Critical)
 	{
 		auto const pRules = RulesExtData::Instance();
-		auto const pExt = HouseExtContainer::Instance.Find(pThis);
+		auto const pExt = pThis->_GetExtData();
 
 		if (pRules->AISellAllOnLastLegs)
 		{
@@ -472,4 +474,13 @@ ASMJIT_PATCH(0x739920, UnitClass_TryToDeploy_DisableRegroupAtNewConYard, 0x6)
 		return SkipRegroup;
 	else
 		return DoNotSkipRegroup;
+}
+
+ASMJIT_PATCH(0x4F9BFC, HouseClass_ClearForceEnemy, 0xA)	// HouseClass_MakeAlly
+{
+	GET(FakeHouseClass*, pThis, ESI);
+
+	pThis->_GetExtData()->SetForceEnemy(-1);
+	pThis->UpdateAngerNodes(0u, nullptr);
+	return R->Origin() + 0xA;
 }

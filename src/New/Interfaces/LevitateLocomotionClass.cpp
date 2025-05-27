@@ -123,8 +123,8 @@ void LevitateLocomotionClass::DoPhase1()
 
 			if (this->State)
 			{
-				if (LinkedTo->IsPathBlocked)
-					LinkedTo->IsPathBlocked = false;
+				if (LinkedTo->IsWaitingBlockagePath)
+					LinkedTo->IsWaitingBlockagePath = false;
 
 				LinkedTo->UnmarkAllOccupationBits(LinkedTo->GetCoords());
 			}
@@ -153,8 +153,8 @@ void LevitateLocomotionClass::DoPhase1()
 
 			if (this->State)
 			{
-				if (LinkedTo->IsPathBlocked)
-					LinkedTo->IsPathBlocked = false;
+				if (LinkedTo->IsWaitingBlockagePath)
+					LinkedTo->IsWaitingBlockagePath = false;
 
 				LinkedTo->UnmarkAllOccupationBits(LinkedTo->GetCoords());
 			}
@@ -180,8 +180,8 @@ void LevitateLocomotionClass::DoPhase1()
 
 		if (this->State)
 		{
-			if (LinkedTo->IsPathBlocked)
-				LinkedTo->IsPathBlocked = false;
+			if (LinkedTo->IsWaitingBlockagePath)
+				LinkedTo->IsWaitingBlockagePath = false;
 
 			LinkedTo->UnmarkAllOccupationBits(LinkedTo->GetCoords());
 		}
@@ -200,8 +200,8 @@ void LevitateLocomotionClass::DoPhase1()
 
 	if (this->State)
 	{
-		if (LinkedTo->IsPathBlocked)
-			LinkedTo->IsPathBlocked = false;
+		if (LinkedTo->IsWaitingBlockagePath)
+			LinkedTo->IsWaitingBlockagePath = false;
 
 		LinkedTo->UnmarkAllOccupationBits(LinkedTo->GetCoords());
 	}
@@ -372,9 +372,9 @@ void LevitateLocomotionClass::DoPhase3()
 		Delta.Y = 0.0;
 		State = 0;
 
-		if (!LinkedTo->IsPathBlocked)
+		if (!LinkedTo->IsWaitingBlockagePath)
 		{
-			LinkedTo->IsPathBlocked = true;
+			LinkedTo->IsWaitingBlockagePath = true;
 
 			LinkedTo->UnmarkAllOccupationBits(LinkedTo->GetCoords());
 		}
@@ -583,7 +583,7 @@ void LevitateLocomotionClass::DoPhase7()
 				const auto nTargetCoord = pTargetT->GetCoords();
 				const auto nTargetCoordCell = CellClass::Coord2Cell(nTargetCoord);
 
-				LinkedTo->UpdatePathfinding(nTargetCoordCell, CellStruct::Empty, 0);
+				LinkedTo->UpdatePathfinding(nTargetCoordCell, 0, 0);
 				const auto nSelected = LinkedTo->IsSelected;
 				LinkedTo->IsSelected = false;
 				LinkedTo->SetLocation(nCoordCell);
@@ -624,7 +624,7 @@ void LevitateLocomotionClass::DoPhase7()
 			const auto nTargetCoord = pDestT->GetCenterCoords();
 			const auto nTargetCoordCell = CellClass::Coord2Cell(nTargetCoord);
 
-			LinkedTo->UpdatePathfinding(nTargetCoordCell, CellStruct::Empty, 0);
+			LinkedTo->UpdatePathfinding(nTargetCoordCell, 0, 0);
 			const auto nSelected = LinkedTo->IsSelected;
 			LinkedTo->IsSelected = false;
 			LinkedTo->SetLocation(nCoordCell);
@@ -766,7 +766,7 @@ void LevitateLocomotionClass::ProcessSomething()
 	{
 		const bool isSelected = LinkedTo->IsSelected;
 		if (isSelected)
-			LinkedTo->UpdatePlacement(PlacementType::Remove);
+			LinkedTo->Mark(MarkType::Remove);
 
 		LinkedTo->IsSelected = false;
 		LinkedTo->SetLocation(nDeltaMod);
@@ -788,7 +788,7 @@ void LevitateLocomotionClass::ProcessSomething()
 		}
 
 		if (isSelected)
-			LinkedTo->UpdatePlacement(PlacementType::Put);
+			LinkedTo->Mark(MarkType::Put);
 
 		if (this->State == 7)
 		{

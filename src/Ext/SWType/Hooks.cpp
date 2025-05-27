@@ -23,11 +23,13 @@
 #include <New/Entity/SWFirerClass.h>
 
 #include <Misc/DamageArea.h>
+#include <Commands/Harmless.h>
 #pragma endregion
 
 //ASMJIT_PATCH_AGAIN(0x55B6F8, LogicClass_Update, 0xC) //_End
 ASMJIT_PATCH(0x55AFB3, LogicClass_Update, 0x6) //_Early
 {
+	HarmlessCommandClass::AI();
 	SWFirerClass::Update();
 	SWStateMachine::UpdateAll();
 	HouseExtData::UpdateAutoDeathObjects();
@@ -70,7 +72,7 @@ ASMJIT_PATCH(0x55AFB3, LogicClass_Update, 0x6) //_Early
 	//}
 
 	return 0x0;
-}
+}ASMJIT_PATCH_AGAIN(0x55B719, LogicClass_Update, 0x5)
 
 ASMJIT_PATCH(0x6CC390, SuperClass_Launch, 0x6)
 {
@@ -363,7 +365,7 @@ ASMJIT_PATCH(0x6F01BA, TeamClass_ChronosphereTeam_PickSuper_IsAvail_B, 0x9)
 		: 0x6F01D3;//advance
 }
 
-ASMJIT_PATCH(0x41F180, AITriggerClass_Chrono, 0x5)
+ASMJIT_PATCH(0x41F180, AITriggerTypeClass_Chrono, 0x5)
 {
 	//GET(AITriggerTypeClass*, pThis, ECX);
 	GET_STACK(HouseClass*, pOwner, 0x4);
@@ -391,11 +393,10 @@ ASMJIT_PATCH(0x41F180, AITriggerClass_Chrono, 0x5)
 	auto v8 = pSuper->RechargeTimer.StartTime;
 	auto v9 = pSuper->RechargeTimer.TimeLeft;
 	const auto rechargePercent = (1.0 - RulesClass::Instance->AIMinorSuperReadyPercent);
-	const auto rechargeTime = (double)pSuper->GetRechargeTime();
 
 	if (v8 == -1)
 	{
-		const auto result1 = rechargePercent >= (v9 - (Unsorted::CurrentFrame - v8) / rechargeTime);
+		const auto result1 = rechargePercent >= (v9 / (double)pSuper->GetRechargeTime());
 		R->EAX(result1);
 		return 0x41F1BA;
 	}
@@ -404,12 +405,12 @@ ASMJIT_PATCH(0x41F180, AITriggerClass_Chrono, 0x5)
 	if (chargeTime < v9)
 	{
 		v9 = (v9 - chargeTime);
-		const auto result2 = rechargePercent >= (v9 / rechargeTime);
+		const auto result2 = rechargePercent >= (v9 / (double)pSuper->GetRechargeTime());
 		R->EAX(result2);
 		return 0x41F1BA;
 	}
 
-	const auto result3 = rechargePercent >= (0 / rechargeTime);
+	const auto result3 = rechargePercent >= (0 / (double)pSuper->GetRechargeTime());
 	R->EAX(result3);
 	return 0x41F1BA;
 }
@@ -916,16 +917,43 @@ ASMJIT_PATCH(0x4F9004, HouseClass_Update_TrySWFire, 7)
 {
 	enum { UpdateAIExpert = 0x4F9015, Continue = 0x4F9038 };
 
-	GET(HouseClass*, pThis, ESI);
+	GET(FakeHouseClass*, pThis, ESI);
 
-	//Debug::LogInfo("House[%s - %x , calling %s" , pThis->get_ID() , pThis ,__FUNCTION__);
-	if (R->AL())
-	{ // HumanControlled
+	//Debug::Log("House[%s - %x , calling %s\n" , pThis->get_ID() , pThis ,__FUNCTION__);
+	const bool IsHuman = R->AL(); // HumanControlled
+	if (!IsHuman)
+	{
+		if (pThis->Type->MultiplayPassive)
+			return Continue;
+
+		if (RulesExtData::Instance()->AISuperWeaponDelay.isset())
+		{
+			const int delay = RulesExtData::Instance()->AISuperWeaponDelay.Get();
+			auto const pExt = pThis->_GetExtData();
+			const bool hasTimeLeft = pExt->AISuperWeaponDelayTimer.HasTimeLeft();
+
+			if (delay > 0)
+			{
+				if (hasTimeLeft)
+				{
+					return UpdateAIExpert;
+				}
+
+				pExt->AISuperWeaponDelayTimer.Start(delay);
+			}
+
+			if (!SessionClass::IsCampaign() || pThis->IQLevel2 >= RulesClass::Instance->SuperWeapons)
+				pThis->AI_TryFireSW();
+		}
+
+		return UpdateAIExpert;
+	}
+	else
+	{
 		pThis->AI_TryFireSW();
-		return Continue;
 	}
 
-	return pThis->Type->MultiplayPassive ? Continue : UpdateAIExpert;
+	return Continue;
 }
 
 ASMJIT_PATCH(0x6CBF5B, SuperClass_GetCameoChargeStage_ChargeDrainRatio, 9)
@@ -1693,31 +1721,25 @@ namespace EMPulseCannonTemp
 	int weaponIndex = 0;
 }
 
-ASMJIT_PATCH(0x44D455, BuildingClass_Mi_Missile_EMPPulseBulletWeapon, 0x8)
+ASMJIT_PATCH(0x44D46E, BuildingClass_Mi_Missile_EMPPulseBulletWeapon, 0x8)
 {
 	GET(BuildingClass* const, pThis, ESI);
 	GET(WeaponTypeClass* const, pWeapon, EBP);
-	GET_STACK(BulletClass* const, pBullet, STACK_OFFSET(0xF0, -0xA4));
-	LEA_STACK(CoordStruct*, pCoord, STACK_OFFSET(0xF0, -0x8C));
+	GET(FakeBulletClass*, pBullet, EDI);
+	pBullet->SetWeaponType(pWeapon);
 
-	if (pWeapon && pBullet)
+	if (pBullet->Type->Arcing && !pBullet->_GetTypeExtData()->Arcing_AllowElevationInaccuracy)
 	{
-		pBullet->SetWeaponType(pWeapon);
+		REF_STACK(VelocityClass, velocity, STACK_OFFSET(0xE8, -0xD0));
+		REF_STACK(CoordStruct, crdSrc, STACK_OFFSET(0xE8, -0x8C));
+		GET_STACK(CoordStruct, crdTgt, STACK_OFFSET(0xE8, -0x4C));
 
-		CoordStruct src;
-		pThis->GetFLH(&src, EMPulseCannonTemp::weaponIndex, pThis->GetRenderCoords());
-		CoordStruct dest = *pCoord;
-		auto const pTarget = pBullet->Target ? pBullet->Target : MapClass::Instance->GetCellAt(dest);
-
-		// Draw bullet effect
-		Helpers_DP::DrawBulletEffect(pWeapon, src, dest, pThis, pTarget);
-		// Draw particle system
-		Helpers_DP::AttachedParticleSystem(pWeapon, src, pTarget, pThis, dest);
-		// Play report sound
-		Helpers_DP::PlayReportSound(pWeapon, src, pThis);
-		// Draw weapon anim
-		Helpers_DP::DrawWeaponAnim(pWeapon, src, dest, pThis, pTarget);
+		pBullet->_GetExtData()->ApplyArcingFix(crdSrc, crdTgt, velocity);
 	}
+
+	//if (pWeapon) {
+	BulletExtData::SimulatedFiringEffects(pBullet, pThis->Owner, pThis, true, true);
+	//}
 
 	return 0;
 }
@@ -1988,14 +2010,24 @@ ASMJIT_PATCH(0x539EB0, LightningStorm_Start, 5)
 				RulesClass::Instance->LightningStormDuration);
 			if (outage > 0)
 			{
-				for (auto const& pHouse : *HouseClass::Array)
+				if (pExt->Weather_RadarOutageAffects == AffectedHouse::Owner)
 				{
-					if (pExt->IsHouseAffected(
-						pOwner, pHouse, pExt->Weather_RadarOutageAffects))
+					if (!pOwner->Defeated)
 					{
-						if (!pHouse->Defeated)
+						pOwner->CreateRadarOutage(outage);
+					}
+				}
+				else if (pExt->Weather_RadarOutageAffects != AffectedHouse::None)
+				{
+					for (auto const& pHouse : *HouseClass::Array)
+					{
+						if (pExt->IsHouseAffected(
+							pOwner, pHouse, pExt->Weather_RadarOutageAffects))
 						{
-							pHouse->CreateRadarOutage(outage);
+							if (!pHouse->Defeated)
+							{
+								pHouse->CreateRadarOutage(outage);
+							}
 						}
 					}
 				}
@@ -2075,7 +2107,7 @@ ASMJIT_PATCH(0x53A6CF, LightningStorm_Update, 7)
 	{
 		if (auto const pAnim = LightningStorm::BoltsPresent->Items[i])
 		{
-			if (pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2)
+			if (pAnim->Animation.Stage >= pAnim->Type->GetImage()->Frames / 2)
 			{
 				LightningStorm::BoltsPresent->RemoveAt<true>(i);
 			}
@@ -2089,7 +2121,7 @@ ASMJIT_PATCH(0x53A6CF, LightningStorm_Update, 7)
 	{
 		if (auto const pAnim = LightningStorm::CloudsManifesting->Items[i])
 		{
-			if (pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2)
+			if (pAnim->Animation.Stage >= pAnim->Type->GetImage()->Frames / 2)
 			{
 				auto const crdStrike = pAnim->GetCoords();
 				LightningStorm::Strike2(crdStrike);
@@ -2123,7 +2155,7 @@ ASMJIT_PATCH(0x53A6CF, LightningStorm_Update, 7)
 			if (auto const pAnim = LightningStorm::CloudsPresent->Items[i])
 			{
 				auto pAnimImage = pAnim->Type->GetImage();
-				if (pAnim->Animation.Value >= pAnimImage->Frames - 1)
+				if (pAnim->Animation.Stage >= pAnimImage->Frames - 1)
 				{
 					LightningStorm::CloudsPresent->RemoveAt<true>(i);
 				}

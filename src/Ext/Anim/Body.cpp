@@ -21,6 +21,10 @@
 
 #include <Misc/DamageArea.h>
 
+#pragma region defines
+std::list<FakeAnimClass*> FakeAnimClass::AnimsWithAttachedParticles {};
+#pragma endregion
+
 //std::vector<CellClass*> AnimExtData::AnimCellUpdater::Marked;
 void AnimExtData::OnInit(AnimClass* pThis, CoordStruct* pCoord)
 {
@@ -122,7 +126,16 @@ bool AnimExtData::OnExpired(AnimClass* pThis, bool LandIsWater, bool EligibleHei
 			{
 				if (auto pSplashAnim = Helper::Otamaa::PickSplashAnim(pAnimTypeExt->SplashList, pAnimTypeExt->WakeAnim, pAnimTypeExt->SplashIndexRandom.Get(), pThis->Type->IsMeteor))
 				{
-					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pSplashAnim, pThis->GetCoords(), 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, false),
+					CoordStruct _SplashCoord = pThis->Location;
+					if (pAnimTypeExt->SplashList.HasValue())
+					{
+						if (pAnimTypeExt->SplashList.size() > 0)
+						{
+							_SplashCoord.Z += 3;
+						}
+					}
+
+					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pSplashAnim, _SplashCoord, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, false),
 						pOwner,
 						nullptr,
 						pTechOwner,
@@ -132,12 +145,12 @@ bool AnimExtData::OnExpired(AnimClass* pThis, bool LandIsWater, bool EligibleHei
 			}
 			else
 			{
-				auto const& [bPlayWHAnim, nDamage] = Helper::Otamaa::DetonateWarhead(int(pThis->Type->Damage), pThis->Type->Warhead, pAnimTypeExt->Warhead_Detonate, pThis->GetCoords(), pTechOwner, pOwner, pAnimTypeExt->Damage_ConsiderOwnerVeterancy.Get());
+				auto const& [bPlayWHAnim, nDamage] = Helper::Otamaa::DetonateWarhead(int(pThis->Type->Damage), pThis->Type->Warhead, pAnimTypeExt->Warhead_Detonate, pThis->Location, pTechOwner, pOwner, pAnimTypeExt->Damage_ConsiderOwnerVeterancy.Get());
 				if (bPlayWHAnim)
 				{
-					if (auto pSplashAnim = MapClass::SelectDamageAnimation(nDamage, pThis->Type->Warhead, pThis->GetCell()->LandType, pThis->GetCoords()))
+					if (auto pSplashAnim = MapClass::SelectDamageAnimation(nDamage, pThis->Type->Warhead, pThis->GetCell()->LandType, pThis->Location))
 					{
-						AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pSplashAnim, pThis->GetCoords(), 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200 | AnimFlag::AnimFlag_2000, -30),
+						AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pSplashAnim, pThis->Location, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200 | AnimFlag::AnimFlag_2000, -30),
 							pOwner,
 							nullptr,
 							pTechOwner,
@@ -154,60 +167,8 @@ bool AnimExtData::OnExpired(AnimClass* pThis, bool LandIsWater, bool EligibleHei
 
 #include <Misc/PhobosGlobal.h>
 
-DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
+void ApplyDamage(AnimClass* pThis, AnimExtData* pExt, AnimTypeExtData* pTypeExt, TechnoClass* pInvoker, int appliedDamage)
 {
-	enum { SkipDamage = 0x42465D, CheckIsActive = 0x42464C };
-
-	if (!pThis->Type)
-		return CheckIsActive;
-
-	const auto pExt = ((FakeAnimClass*)pThis)->_GetExtData();
-	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
-	const int delay = pTypeExt->Damage_Delay.Get();
-	TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis);
-	const double damageMultiplier = (pThis->OwnerObject && pThis->OwnerObject->WhatAmI() == TerrainClass::AbsID) ? 5.0 : 1.0;
-
-	int appliedDamage = 0;
-
-	if (pTypeExt->Damage_ApplyOnce.Get()) // If damage is to be applied only once per animation loop
-	{
-		if (pThis->Animation.Value == MaxImpl(delay - 1, 1))
-			appliedDamage = static_cast<int>(std::round(pThis->Type->Damage) * damageMultiplier);
-		else
-			return SkipDamage;
-	}
-	else if (delay <= 0 || pThis->Type->Damage < 1.0) // If Damage.Delay is less than 1 or Damage is a fraction.
-	{
-		double damage = damageMultiplier * pThis->Type->Damage + pThis->Accum;
-
-		// Deal damage if it is at least 1, otherwise accumulate it for later.
-		if (damage >= 1.0)
-		{
-			appliedDamage = static_cast<int>(std::round(damage));
-			pThis->Accum = damage - appliedDamage;
-		}
-		else
-		{
-			pThis->Accum = damage;
-			return SkipDamage;
-		}
-	}
-	else
-	{
-		// Accum here is used as a counter for Damage.Delay, which cannot deal fractional damage.
-		pThis->Accum += 1.0;
-
-		if (pThis->Accum < delay)
-			return SkipDamage;
-
-		// Use Type->Damage as the actually dealt damage.
-		appliedDamage = static_cast<int>((pThis->Type->Damage) * damageMultiplier);
-		pThis->Accum = 0.0;
-	}
-
-	if (appliedDamage <= 0 || pThis->IsPlaying)
-		return  SkipDamage;
-
 	CoordStruct nCoord = pExt->BackupCoords.has_value() ? pExt->BackupCoords.get() : pThis->GetCoords();
 	const auto pOwner = pThis->Owner ? pThis->Owner : pInvoker ? pInvoker->Owner : nullptr;
 
@@ -239,8 +200,83 @@ DWORD AnimExtData::DealDamageDelay(AnimClass* pThis)
 			MapClass::FlashbangWarheadAt(nDamageResult, pWarhead, nCoord);
 		}
 	}
+}
 
-	return CheckIsActive;
+void AnimExtData::DealDamageDelay(AnimClass* pThis)
+{
+	if (!pThis->Type || !pThis->IsAlive)
+		return;
+
+	const auto pExt = ((FakeAnimClass*)pThis)->_GetExtData();
+	const auto pTypeExt = AnimTypeExtContainer::Instance.Find(pThis->Type);
+	const int delay = pTypeExt->Damage_Delay.Get();
+	TechnoClass* const pInvoker = AnimExtData::GetTechnoInvoker(pThis);
+	const double damageMultiplier = (pThis->OwnerObject && pThis->OwnerObject->WhatAmI() == TerrainClass::AbsID) ? 5.0 : 1.0;
+
+	if (!pTypeExt->Damaging_UseSeparateState)
+	{
+		auto state = &pThis->Animation;
+
+		int appliedDamage = 0;
+
+		if (pTypeExt->Damage_ApplyOnce.Get()) // If damage is to be applied only once per animation loop
+		{
+			if (state->Stage == MaxImpl(delay - 1, 1))
+				appliedDamage = static_cast<int>(std::round(pThis->Type->Damage) * damageMultiplier);
+			else
+				return;
+		}
+		else if (delay <= 0 || pThis->Type->Damage < 1.0) // If Damage.Delay is less than 1 or Damage is a fraction.
+		{
+			double damage = damageMultiplier * pThis->Type->Damage + pThis->Accum;
+
+			// Deal damage if it is at least 1, otherwise accumulate it for later.
+			if (damage >= 1.0)
+			{
+				appliedDamage = static_cast<int>(std::round(damage));
+				pThis->Accum = damage - appliedDamage;
+			}
+			else
+			{
+				pThis->Accum = damage;
+				return;
+			}
+		}
+		else
+		{
+			// Accum here is used as a counter for Damage.Delay, which cannot deal fractional damage.
+			pThis->Accum += 1.0;
+
+			if (pThis->Accum < delay)
+				return;
+
+			// Use Type->Damage as the actually dealt damage.
+			appliedDamage = static_cast<int>((pThis->Type->Damage) * damageMultiplier);
+			pThis->Accum = 0.0;
+		}
+
+		if (appliedDamage <= 0 || pThis->IsPlaying)
+			return;
+
+		ApplyDamage(pThis, pExt, pTypeExt, pInvoker, appliedDamage);
+	}
+	else
+	{
+		if (!pThis->PowerOff && pExt->DamagingState.Update())
+		{
+			if (pThis->Type->Damage > 0 && !pThis->HasExtras)
+			{
+				pThis->Accum += (pThis->Type->Damage * damageMultiplier);
+
+				if (pThis->Accum >= 1 && !pThis->IsPlaying)
+				{
+					int damage = pThis->Accum;
+					pThis->Accum -= damage;
+					ApplyDamage(pThis, pExt, pTypeExt, pInvoker, damage);
+				}
+			}
+		}
+	}
 }
 
 bool AnimExtData::OnMiddle(AnimClass* pThis)
@@ -255,7 +291,7 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 		auto pAnimTypeExt = pTypeExt;
 		const auto pObject = AnimExtData::GetTechnoInvoker(pThis);
 		const auto pHouse = !pThis->Owner && pObject ? pObject->Owner : pThis->Owner;
-		const auto nCoord = pThis->Location;
+		auto nCoord = pThis->GetCoords();
 
 		Helper::Otamaa::SpawnMultiple(
 			pAnimTypeExt->SpawnsMultiple,
@@ -315,7 +351,7 @@ bool AnimExtData::OnMiddle(AnimClass* pThis)
 						{
 							for (int i = 0; i < numParticle; ++i)
 							{
-								ParticleSystemClass::Instance->SpawnParticle(pParticleType, &pThis->Location);
+								ParticleSystemClass::Instance->SpawnParticle(pParticleType, &nCoord);
 							}
 						}
 					}
@@ -352,13 +388,13 @@ AbstractClass* AnimExtData::GetTarget(AnimClass* pThis)
 
 	if (!pTypeExt->Damage_TargetFlag.isset())
 	{
-		return pThis->GetCell();
+		return MapClass::Instance->GetCellAt(pThis->GetCoords());
 	}
 
 	switch (pTypeExt->Damage_TargetFlag.Get())
 	{
 	case DamageDelayTargetFlag::Cell:
-		return  pThis->GetCell();
+		return MapClass::Instance->GetCellAt(pThis->GetCoords());
 	case DamageDelayTargetFlag::AttachedObject:
 	{
 		if (pThis->AttachedBullet)
@@ -402,7 +438,7 @@ void AnimExtData::CreateAttachedSystem()
 	if (!pData || !pData->AttachedSystem || this->AttachedSystem)
 		return;
 
-	auto nLoc = pThis->Location;
+	auto nLoc = pThis->GetCoords();
 
 	if (pData->AttachedSystem->BehavesLike == ParticleSystemTypeBehavesLike::Smoke)
 		nLoc.Z += 100;
@@ -410,13 +446,13 @@ void AnimExtData::CreateAttachedSystem()
 	this->AttachedSystem = (GameCreate<ParticleSystemClass>(
 		pData->AttachedSystem.Get(),
 		nLoc,
-		pThis->GetCell(),
+		MapClass::Instance->GetCellAt(nLoc),
 		this->AttachedToObject,
 		CoordStruct::Empty,
 		pThis->GetOwningHouse()
 	));
 
-	FakeAnimClass::AnimsWithAttachedParticles.emplace_back((FakeAnimClass*)pThis);
+	FakeAnimClass::AnimsWithAttachedParticles.push_back((FakeAnimClass*)pThis);
 }
 
 //Modified from Ares
@@ -465,7 +501,7 @@ const std::pair<bool, OwnerHouseKind> AnimExtData::SetAnimOwnerHouseKind(AnimCla
 		if (!pAnim->Owner || pAnim->Owner != newOwner)
 		{
 			pAnim->SetHouse(newOwner);
-			if (pAnim->Type->MakeInfantry > -1 || pTypeExt->CreateUnit)
+			if (pTypeExt->RemapAnim || pAnim->Type->MakeInfantry > -1 || (pTypeExt->CreateUnitType && pTypeExt->CreateUnitType->RemapAnim.Get(pTypeExt->RemapAnim)))
 			{
 				pAnim->LightConvert = ColorScheme::Array->Items[newOwner->ColorSchemeIndex]->LightConvert;
 			}
@@ -607,7 +643,7 @@ void AnimExtData::SpawnFireAnims(AnimClass* pThis)
 
 	auto const disallowedLandTypes = pTypeExt->FireAnimDisallowedLandTypes.Get(pType->Scorch ? LandTypeFlags::Default : LandTypeFlags::None);
 
-	if (IsLandTypeInFlags(disallowedLandTypes, pThis->GetCell()->LandType))
+	if (IsLandTypeInFlags(disallowedLandTypes, MapClass::Instance->GetCellAt(coords)->LandType))
 		return;
 
 	std::vector<AnimTypeClass*>* anims = &pTypeExt->SmallFireAnims;
@@ -636,7 +672,7 @@ void AnimExtData::SpawnFireAnims(AnimClass* pThis)
 // Changes type of anim in similar fashion to Next.
 void AnimExtData::ChangeAnimType(AnimClass* pAnim, AnimTypeClass* pNewType, bool resetLoops, bool restart)
 {
-	double percentThrough = pAnim->Animation.Value / static_cast<double>(pAnim->Type->End);
+	double percentThrough = pAnim->Animation.Stage / static_cast<double>(pAnim->Type->End);
 
 	if (pNewType->End == -1)
 	{
@@ -669,12 +705,12 @@ void AnimExtData::ChangeAnimType(AnimClass* pAnim, AnimTypeClass* pNewType, bool
 
 	if (restart)
 	{
-		pAnim->Animation.Value = pNewType->Reverse ? pNewType->End : pNewType->Start;
+		pAnim->Animation.Stage = pNewType->Reverse ? pNewType->End : pNewType->Start;
 		pAnim->Start();
 	}
 	else
 	{
-		pAnim->Animation.Value = static_cast<int>(pNewType->End * percentThrough);
+		pAnim->Animation.Stage = static_cast<int>(pNewType->End * percentThrough);
 	}
 
 	const auto pExt = ((FakeAnimClass*)pAnim)->_GetExtData();
@@ -707,6 +743,9 @@ void AnimExtData::Serialize(T& Stm)
 		.Process(this->CreateUnitLocation)
 		//.Process(this->SpawnsStatusData)
 		.Process(this->DelayedFireRemoveOnNoDelay)
+		.Process(this->IsAttachedEffectAnim)
+		.Process(this->IsShieldIdleAnim)
+		.Process(this->DamagingState)
 		;
 }
 
@@ -831,7 +870,16 @@ ASMJIT_PATCH(0x422131, AnimClass_CTOR, 0x6)
 
 		// Something about creating this in constructor messes with debris anims, so it has to be done for them later.
 		if (!pItem->HasExtras)
+		{
+			auto pFake = (FakeAnimClass*)(pItem);
+			if (pFake->_GetTypeExtData()->Damaging_UseSeparateState)
+			{
+				int damagedelay = pFake->_GetTypeExtData()->Damaging_Rate == -1 ? pFake->Animation.Step : pFake->_GetTypeExtData()->Damaging_Rate;
+				pFake->_GetExtData()->DamagingState.Start(damagedelay);
+			}
+
 			val->CreateAttachedSystem();
+		}
 	}
 
 	PhobosGlobal::Instance()->LastAnimName.clear();
@@ -842,10 +890,7 @@ ASMJIT_PATCH(0x422A52, AnimClass_DTOR, 0x6)
 {
 	GET(AnimClass*, pItem, ESI);
 
-	FakeAnimClass::AnimsWithAttachedParticles.remove_all_if([pItem](FakeAnimClass* pAnim)
- {
-	 return (FakeAnimClass*)pItem == pAnim;
-	});
+	FakeAnimClass::AnimsWithAttachedParticles.remove((FakeAnimClass*)pItem);
 
 	FakeAnimClass::Remove(pItem);
 	return 0;
@@ -932,7 +977,7 @@ ASMJIT_PATCH(0x425164, AnimClass_Detach, 0x6)
 
 	if (pThis->Type == target)
 	{
-		Debug::LogInfo("Anim[0x{}] detaching Type[{}] Pointer ! ", (void*)pThis, pThis->Type->ID);
+		//Debug::LogInfo("Anim[0x{}] detaching Type[{}] Pointer ! ", (void*)pThis, pThis->Type->ID);
 		pThis->Type = nullptr;
 	}
 

@@ -652,7 +652,7 @@ void ParticleSystemExtData::UpdateSmoke()
 	auto const pOwnerObjType = pOwnerObj->Type;
 	auto const pOwnerObj_Owner = pOwnerObj->Owner;
 
-	FootClass* Owner_obj = flag_cast_to<FootClass*>(pOwnerObj_Owner);
+	ObjectClass* Owner_obj = flag_cast_to<ObjectClass*>(pOwnerObj_Owner);
 
 	if (Owner_obj) {
 		auto coords = pOwnerObj_Owner->GetCoords();
@@ -694,7 +694,9 @@ void ParticleSystemExtData::UpdateSmoke()
 	//updating the current particle ?
 	if (!pOwnerObj->TimeToDie && pOwnerObj->IsAlive)
 	{
-		if (!(Unsorted::CurrentFrame() % (int)pOwnerObj->SpawnFrames) && (!Owner_obj || Owner_obj->TubeIndex < 0))
+		auto pOwnerFoot = flag_cast_to<FootClass*>(pOwnerObj_Owner);
+
+		if (!(Unsorted::CurrentFrame() % (int)pOwnerObj->SpawnFrames) && (!pOwnerFoot || pOwnerFoot->TubeIndex < 0))
 		{
 			if (auto pParticle = this->HeldType)
 			{

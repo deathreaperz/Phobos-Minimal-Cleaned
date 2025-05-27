@@ -54,11 +54,10 @@ ASMJIT_PATCH(0x44B2FE, BuildingClass_Mi_Attack_IsPrism, 6)
 	auto const pMasterType = pThis->Type;
 	auto const pMasterTypeData = BuildingTypeExtContainer::Instance.Find(pMasterType);
 
-	if (!pMasterData->MyPrismForwarding)
-	{
-		return !pMasterTypeData->IsAnimDelayedBurst && pThis->CurrentBurstIndex != 0
-			? JustFire : IsNotPrism;
-	}
+	// if (!pMasterData->MyPrismForwarding) {
+	// 	return !pMasterTypeData->IsAnimDelayedBurst && pThis->CurrentBurstIndex != 0
+	// 		?  JustFire : IsNotPrism;
+	// }
 
 	if (pMasterTypeData->PrismForwarding.CanAttack())
 	{
@@ -109,9 +108,13 @@ ASMJIT_PATCH(0x44B2FE, BuildingClass_Mi_Attack_IsPrism, 6)
 			pMasterData->MyPrismForwarding->DamageReserve = 0;
 			pMasterData->MyPrismForwarding->SetSupportTarget(nullptr);
 		}
+		return IsCustomPrism; //always custom, the new code is a complete rewrite of the old code
 	}
 
-	return IsCustomPrism; //always custom, the new code is a complete rewrite of the old code
+	//return IsNotPrism;
+	return (!pMasterTypeData->IsAnimDelayedBurst
+			 && pThis->CurrentBurstIndex != 0) ?
+		JustFire : IsNotPrism;
 }
 
 ASMJIT_PATCH(0x447FAE, BuildingClass_GetFireError_PrismForward, 6)
@@ -125,15 +128,12 @@ ASMJIT_PATCH(0x447FAE, BuildingClass_GetFireError_PrismForward, 6)
 		//auto const pType = pThis->Type;
 		auto const pTypeData = pThis->_GetTypeExtData();
 
-		if (pThis->_GetExtData()->MyPrismForwarding)
+		if (pTypeData->PrismForwarding.CanAttack())
 		{
-			if (pTypeData->PrismForwarding.CanAttack())
+			//is a prism tower
+			if (pThis->PrismStage == PrismChargeState::Slave && pTypeData->PrismForwarding.BreakSupport)
 			{
-				//is a prism tower
-				if (pThis->PrismStage == PrismChargeState::Slave && pTypeData->PrismForwarding.BreakSupport)
-				{
-					return NotBusyCharging;
-				}
+				return NotBusyCharging;
 			}
 		}
 
@@ -154,31 +154,6 @@ ASMJIT_PATCH(0x4503F0, BuildingClass_Update_Prism, 9)
 
 	if (PrismStage != PrismChargeState::Idle)
 	{
-		if (!pData->MyPrismForwarding)
-		{
-			--pThis->DelayBeforeFiring;
-
-			if (pThis->DelayBeforeFiring <= 0)
-			{
-				pThis->DelayBeforeFiring = 0;
-
-				if (PrismStage == PrismChargeState::Master)
-				{
-					if (auto const Target = pThis->Target)
-					{
-						if (pThis->GetFireError(Target, pThis->PrismTargetCoords.X, true) == FireError::OK)
-						{
-							pThis->Fire(Target, pThis->PrismTargetCoords.X);
-						}
-					}
-				}
-
-				pThis->PrismStage = PrismChargeState::Idle;
-			}
-
-			return 0x4504E2;
-		}
-
 		if (pData->MyPrismForwarding->PrismChargeDelay <= 0)
 		{
 			--pThis->DelayBeforeFiring;
@@ -490,8 +465,8 @@ ASMJIT_PATCH(0x448277, BuildingClass_ChangeOwner_PrismForwardAndLeaveBomb, 5)
 
 	// #305: remove all jammers. will be restored with the next update.
 	pData->RegisteredJammers.clear();//
+	auto& pPrism = pData->MyPrismForwarding;
 
-	if (auto& pPrism = pData->MyPrismForwarding)
 	{
 		// the first and the last tower have to be allied to this
 		if (pTypeData->PrismForwarding.ToAllies)
@@ -548,12 +523,9 @@ ASMJIT_PATCH(0x71AF76, TemporalClass_Fire_PrismForwardAndWarpable, 9)
 	}
 
 	// prism forward
-	if (pThis->WhatAmI() == BuildingClass::AbsID)
+	if (auto const pBld = cast_to<BuildingClass*, false>(pThis))
 	{
-		if (auto& pPrism = BuildingExtContainer::Instance.Find((BuildingClass*)pThis)->MyPrismForwarding)
-		{
-			pPrism->RemoveFromNetwork(true);
-		}
+		BuildingExtContainer::Instance.Find(pBld)->MyPrismForwarding->RemoveFromNetwork(true);
 	}
 
 	return 0;
@@ -568,12 +540,10 @@ ASMJIT_PATCH(0x70FD9A, TechnoClass_Drain_PrismForward, 6)
 	{ // else we're already being drained, nothing to do
 		if (auto const pBld = cast_to<BuildingClass*, false>(pDrainee))
 		{
-			if (auto& pPrism = BuildingExtContainer::Instance.Find(pBld)->MyPrismForwarding)
-			{
-				pPrism->RemoveFromNetwork(true);
-			}
+			BuildingExtContainer::Instance.Find(pBld)->MyPrismForwarding->RemoveFromNetwork(true);
 		}
 	}
+
 	return 0;
 }
 
@@ -583,18 +553,16 @@ ASMJIT_PATCH(0x454B3D, BuildingClass_UpdatePowered_PrismForward, 6)
 	// this building just realised it needs to go offline
 	// it unregistered itself from powered unit controls but hasn't done anything else yet
 
-	if (auto& pPrism = pThis->_GetExtData()->MyPrismForwarding)
-		pPrism->RemoveFromNetwork(true);
+	BuildingExtContainer::Instance.Find((BuildingClass*)pThis)->MyPrismForwarding->RemoveFromNetwork(true);
 
 	return 0;
 }
 
-ASMJIT_PATCH(0x44EBF0, BuildingClass_Disappear_PrismForward, 5)
+ASMJIT_PATCH(0x44EC01, BuildingClass_Disappear_PrismForward, 6)
 {
 	GET(FakeBuildingClass* const, pThis, ECX);
 
-	if (auto& pPrism = pThis->_GetExtData()->MyPrismForwarding)
-		pPrism->RemoveFromNetwork(true);
+	BuildingExtContainer::Instance.Find((BuildingClass*)pThis)->MyPrismForwarding->RemoveFromNetwork(true);
 
 	return 0;
 }

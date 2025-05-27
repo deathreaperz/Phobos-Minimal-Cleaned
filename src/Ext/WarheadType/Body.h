@@ -37,9 +37,11 @@ public:
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 public:
+#pragma region classmembers
 
 	Valueable<int> Reveal { 0 };
 	Valueable<bool> BigGap { false };
+	Valueable<int> CreateGap { 0 };
 	Valueable<int> TransactMoney { 0 };
 	Nullable<int> TransactMoney_Ally { };
 	Nullable<int> TransactMoney_Enemy { };
@@ -263,6 +265,7 @@ public:
 
 	Promotable<int> Culling_BelowHP { 0, -1, -2 };
 	Promotable<int> Culling_Chance { 100 };
+	Nullable<AffectedTarget> Culling_Target {};
 
 	Valueable<bool> RelativeDamage { false };
 	Valueable<int> RelativeDamage_AirCraft { 0 };
@@ -399,10 +402,11 @@ public:
 	TechnoClass* IntendedTarget { nullptr };
 
 	Valueable<WeaponTypeClass*> KillWeapon {};
-	Valueable<AffectedTarget> KillWeapon_AffectTargets { AffectedTarget::All };
-	Valueable<AffectedHouse> KillWeapon_AffectHouses { AffectedHouse::All };
-	ValueableVector<TechnoTypeClass*> KillWeapon_AffectTypes {};
-	ValueableVector<TechnoTypeClass*> KillWeapon_IgnoreTypes {};
+	Valueable<WeaponTypeClass*> KillWeapon_OnFirer {};
+	Valueable<AffectedHouse> KillWeapon_AffectsHouses { AffectedHouse::All };
+	Valueable<AffectedHouse> KillWeapon_OnFirer_AffectsHouses { AffectedHouse::All };
+	Valueable<AffectedTarget> KillWeapon_Affects { AffectedTarget::All };
+	Valueable<AffectedTarget> KillWeapon_OnFirer_Affects { AffectedTarget::All };
 
 	Nullable<int> MindControl_ThreatDelay {};
 
@@ -421,6 +425,12 @@ public:
 	Valueable<double> CellAnimPercentAtMax { 1.0 };
 
 	NullableVector<AnimTypeClass*> CellAnim {};
+	Valueable<int> ElectricAssaultLevel { 1 };
+	Valueable<AffectedTarget> AirstrikeTargets { AffectedTarget::Building };
+
+	Valueable<bool> CanKill { true };
+#pragma endregion
+
 public:
 
 	void InitializeConstant();
@@ -511,7 +521,7 @@ private:
 	template <typename T>
 	void Serialize(T& Stm);
 public:
-	OPTIONALINLINE static PhobosMap<IonBlastClass*, WarheadTypeExtData*> IonBlastExt;
+	static PhobosMap<IonBlastClass*, WarheadTypeExtData*> IonBlastExt;
 
 	static void DetonateAt(
 		WarheadTypeClass* pThis,
@@ -560,7 +570,7 @@ public:
 	static void Clear();
 };
 
-class FakeWarheadTypeClass : public WarheadTypeClass
+class NOVTABLE FakeWarheadTypeClass : public WarheadTypeClass
 {
 public:
 

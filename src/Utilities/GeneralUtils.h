@@ -35,7 +35,12 @@ public:
 	static void IntValidCheck(int* source, const char* section, const char* tag, int defaultValue, int min = MIN_VAL(int), int max = MAX_VAL(int));
 	static void DoubleValidCheck(double* source, const char* section, const char* tag, double defaultValue, double min = MIN_VAL(double), double max = MAX_VAL(double));
 	static const wchar_t* LoadStringOrDefault(const char* key, const wchar_t* defaultValue);
+
 	static const wchar_t* LoadStringUnlessMissing(const char* key, const wchar_t* defaultValue);
+
+	// check were stripped off , make sure to check both strings for validity !
+	static const wchar_t* LoadStringUnlessMissingNoChecks(const char* key, const wchar_t* defaultValue);
+
 	static void AdjacentCellsInRange(std::vector<CellStruct>& nCells, short range);
 	static const bool ProduceBuilding(HouseClass* pOwner, int idxBuilding);
 	static AnimTypeClass* SelectRandomAnimFromVector(std::vector<AnimTypeClass*>& vec, AnimTypeClass* fallback = nullptr);
@@ -48,15 +53,16 @@ public:
 
 	// Gets integer representation of color from ColorAdd corresponding to given index, or 0 if there's no color found.
 	// Code is pulled straight from game's draw functions that deal with the tint colors.
-	static COMPILETIMEEVAL OPTIONALINLINE int GetColorFromColorAdd(int colorIndex)
+	static int GetColorFromColorAdd(int colorIndex);
+
+	static  COMPILETIMEEVAL OPTIONALINLINE ColorStruct GetColorStructFromColorAdd(int colorIndex)
 	{
-		auto const& colorAdd = RulesClass::Instance->ColorAdd;
-		int colorValue = 0;
+		return RulesClass::Instance->ColorAdd[GetColorIndexForColorAdd(colorIndex)];
+	}
 
-		if (colorIndex < 0 || colorIndex >= (sizeof(colorAdd) / sizeof(ColorStruct)))
-			return colorValue;
-
-		return GetColorFromColorAdd(colorAdd[colorIndex]);
+	static COMPILETIMEEVAL OPTIONALINLINE int GetColorIndexForColorAdd(int colorIndex) //this one fixup the index
+	{
+		return ((size_t)colorIndex >= RulesClass::Instance->ColorAdd.size()) ? 0 : colorIndex;
 	}
 
 	static COMPILETIMEEVAL OPTIONALINLINE void GetRandomAnimVal(int& Idx, int count, int facing, bool bRandom)

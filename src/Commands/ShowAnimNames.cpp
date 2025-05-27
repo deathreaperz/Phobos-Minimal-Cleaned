@@ -17,7 +17,7 @@ const char* ShowAnimNameCommandClass::GetName() const
 
 const wchar_t* ShowAnimNameCommandClass::GetUIName() const
 {
-	return GeneralUtils::LoadStringUnlessMissing("TXT_ANIMNAME", L"Show Anim Names");
+	return GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_ANIMNAME", L"Show Anim Names");
 }
 
 const wchar_t* ShowAnimNameCommandClass::GetUICategory() const
@@ -27,7 +27,7 @@ const wchar_t* ShowAnimNameCommandClass::GetUICategory() const
 
 const wchar_t* ShowAnimNameCommandClass::GetUIDescription() const
 {
-	return GeneralUtils::LoadStringUnlessMissing("TXT_ANIMNAME_DESC", L"Show Anim Names.");
+	return GeneralUtils::LoadStringUnlessMissingNoChecks("TXT_ANIMNAME_DESC", L"Show Anim Names.");
 }
 
 bool ShowAnimNameIsActive;
@@ -56,11 +56,11 @@ void ShowAnimNameCommandClass::AI()
 			if (!pTech->Type)
 				continue;
 
-			if (auto pCell = pTech->GetCell())
-			{
-				if (pCell->IsFogged() || pCell->IsShrouded())
-					continue;
-			}
+			//if (auto pCell = pTech->GetCell())
+			//{
+			//	if (pCell->IsFogged() || pCell->IsShrouded())
+			//		continue;
+			//}
 
 			//if (!IS_SAME_STR_("ROTEEMP4", pTech->Type->ID) /*&& !IS_SAME_STR_("INVISO", pTech->Type->ID)*/)
 			//	continue;
@@ -76,8 +76,15 @@ void ShowAnimNameCommandClass::AI()
 			int width = 0, height = 0;
 			BitFont::Instance->GetTextDimension(pText.c_str(), &width, &height, 120);
 			pixelOffset.X -= (width / 2);
+			auto coord = pTech->GetCoords();
 
-			auto pos = TacticalClass::Instance->CoordsToView(pTech->Location);
+			if (!coord.IsValid())
+			{
+				Debug::Log("Anim %s has invalid coords!\n", pTech->Type->ID);
+				continue;
+			}
+
+			auto pos = TacticalClass::Instance->CoordsToView(coord);
 			pos += pixelOffset;
 			auto bound = DSurface::Temp->Get_Rect_WithoutBottomBar();
 

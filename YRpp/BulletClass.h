@@ -133,11 +133,20 @@ public:
 
 	// helpers
 	CoordStruct GetBulletTargetCoords() const {
+		CoordStruct _coords {};
+
 		if(this->Target) {
-			return this->Target->GetCoords();
+			this->Target->GetCoords(&_coords);
 		} else {
-			return this->GetCoords();
+			this->GetCoords(&_coords);
 		}
+
+		return _coords;
+	}
+
+	CoordStruct GetDestinationCoords() const {
+		//Inviso projectile is snapping onto the target
+		return this->Type->Inviso ? this->Location : this->TargetCoords;
 	}
 
 	static AnimClass* CreateDamagingBulletAnim(HouseClass* pHouse, CellClass* pTarget, BulletClass* pBullet, AnimTypeClass* pAnimType);

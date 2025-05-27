@@ -342,29 +342,7 @@ bool BuildingTypeExtData::CleanUpBuildingSpace(BuildingTypeClass* pBuildingType,
 	// Step 5: Confirm command execution.
 	for (const auto& pThisOrder : finalOrder.container())
 	{
-		const auto pCheckedTechno = pThisOrder.techno;
-		const auto pDestinationCell = pThisOrder.destination;
-		const auto absType = pCheckedTechno->WhatAmI();
-		pCheckedTechno->ForceMission(Mission::Guard);
-
-		if (absType == AbstractType::Infantry)
-		{
-			const auto pInfantry = static_cast<InfantryClass*>(pCheckedTechno);
-
-			if (pInfantry->IsDeployed())
-				pInfantry->PlayAnim(DoType::Undeploy, true);
-
-			pInfantry->SetDestination(pDestinationCell, true);
-		}
-		else if (absType == AbstractType::Unit)
-		{
-			const auto pUnit = static_cast<UnitClass*>(pCheckedTechno);
-
-			if (pUnit->Deployed)
-				pUnit->Undeploy();
-
-			pUnit->SetDestination(pDestinationCell, true);
-		}
+		pThisOrder.techno->ClickedMission(Mission::Move, nullptr, pThisOrder.destination, pThisOrder.destination);
 	}
 
 	return false;
@@ -618,7 +596,6 @@ void BuildingTypeExtData::CreateLimboBuilding(BuildingClass* pBuilding, Building
 		}
 
 		pBuildingExt->LimboID = ID;
-		pBuildingExt->MyPrismForwarding.reset();
 		pBuildingExt->TechnoExt->Shield.release();
 		pBuildingExt->TechnoExt->Trails.clear();
 		pBuildingExt->TechnoExt->RevengeWeapons.clear();
@@ -1297,7 +1274,7 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		if (pThis->PowersUpBuilding[0] == NULL && !this->PowersUp_Buildings.empty())
 			PhobosCRT::strCopy(pThis->PowersUpBuilding, this->PowersUp_Buildings[0]->ID);
 
-		this->AllowAirstrike.Read(exINI, pSection, "AllowAirstrike");
+		//this->AllowAirstrike.Read(exINI, pSection, "AllowAirstrike");
 
 		this->Grinding_AllowAllies.Read(exINI, pSection, "Grinding.AllowAllies");
 		this->Grinding_AllowOwner.Read(exINI, pSection, "Grinding.AllowOwner");
@@ -1370,8 +1347,6 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Cameo_ShouldCount.Read(exINI, pSection, "Cameo.ShouldCount");
 
 #pragma region Otamaa
-		this->IsPrism.Read(exINI, pSection, "IsPrismTower");
-
 		//   this->Get()->StartFacing = 32 * ((std::clamp(pINI->ReadInteger(pSection, "StartFacing", 0), 0, 255)) << 5);
 
 		auto GetGarrisonAnim = [&exINI, pSection](
@@ -1674,6 +1649,9 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->AllowAlliesRepair.Read(exINI, pSection, "AllowAlliesRepair");
 		this->AllowRepairFlyMZone.Read(exINI, pSection, "AllowRepairFlyMZone");
+
+		this->Overpower_KeepOnline.Read(exINI, pSection, "Overpower.KeepOnline");
+		this->Overpower_ChargeWeapon.Read(exINI, pSection, "Overpower.ChargeWeapon");
 	}
 #pragma endregion
 	if (pArtINI->GetSection(pArtSection))
@@ -1876,7 +1854,7 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->SuperWeapons)
 		.Process(this->OccupierMuzzleFlashes)
 		.Process(this->Refinery_UseStorage)
-		.Process(this->AllowAirstrike)
+		//.Process(this->AllowAirstrike)
 
 		.Process(this->Grinding_AllowAllies)
 		.Process(this->Grinding_AllowOwner)
@@ -2094,8 +2072,6 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->NextBuilding_Next)
 		.Process(this->NextBuilding_CurrentHeapId)
 
-		.Process(this->IsPrism)
-
 		.Process(this->AutoBuilding)
 		.Process(this->AutoBuilding_Gap)
 		.Process(this->LimboBuild)
@@ -2109,6 +2085,9 @@ void BuildingTypeExtData::Serialize(T& Stm)
 
 		.Process(this->AllowAlliesRepair)
 		.Process(this->AllowRepairFlyMZone)
+
+		.Process(this->Overpower_KeepOnline)
+		.Process(this->Overpower_ChargeWeapon)
 		;
 }
 

@@ -110,15 +110,4 @@ ASMJIT_PATCH(0x5F3E78, ObjectClass_Update_AlphaLight, 6)
 	return pThis->InLimbo ? 0x5F3F11 : 0x5F3E86;
 }
 
-ASMJIT_PATCH(0x423B0B, AnimClass_Update_AlphaLight, 6)
-{
-	GET(AnimClass*, pThis, ESI);
-	// flaming guys do the update via base class
-	if (!pThis->Type->IsFlamingGuy)
-	{
-		TechnoExt_ExtData::UpdateAlphaShape(pThis);
-	}
-
-	return 0;
-}
 #endif

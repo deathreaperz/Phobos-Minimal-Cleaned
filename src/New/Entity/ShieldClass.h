@@ -11,6 +11,7 @@
 #include <New/Type/ShieldTypeClass.h>
 
 #include <AnimClass.h>
+#include <Utilities/MemoryPoolUniquePointer.h>
 
 enum class SelfHealingStatus : char
 {
@@ -25,13 +26,14 @@ class WarheadTypeClass;
 class WeaponTypeClass;
 class TechnoTypeClass;
 class TemporalClass;
-class ShieldClass final
+class ShieldClass
 {
 public:
 	ShieldClass();
 	ShieldClass(TechnoClass* pTechno, bool isAttached);
 	ShieldClass(TechnoClass* pTechno) : ShieldClass(pTechno, false) { };
-	~ShieldClass() noexcept
+
+	~ShieldClass()
 	{
 		this->IdleAnim.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
 		Array.remove(this);
@@ -97,6 +99,11 @@ public:
 		return this->HP <= 0 && !this->Type->Respawn;
 	}
 
+	COMPILETIMEEVAL FORCEDINLINE bool HasTint() const
+	{
+		return this->Type->Tint_Color.isset() || this->Type->Tint_Intensity != 0.0;
+	}
+
 	COMPILETIMEEVAL FORCEDINLINE ShieldTypeClass* GetType() const
 	{
 		return this->Type;
@@ -151,12 +158,23 @@ public:
 
 	void UpdateTint();
 
-	void InvalidatePointer(AbstractClass* ptr, bool bDetach);
+	void InvalidateAnimPointer(AnimClass* ptr);
 
 	bool Load(PhobosStreamReader& Stm, bool RegisterForChange);
 	bool Save(PhobosStreamWriter& Stm) const;
 
-	OPTIONALINLINE static HelperedVector<ShieldClass*> Array;
+	static HelperedVector<ShieldClass*> Array;
+	static bool LoadGlobals(PhobosStreamReader& Stm)
+	{
+		return Stm
+			.Process(Array);
+	}
+
+	static bool SaveGlobals(PhobosStreamWriter& Stm)
+	{
+		return Stm
+			.Process(Array);
+	}
 
 private:
 	template <typename T>
@@ -264,4 +282,13 @@ public:
 private:
 	ShieldClass(const ShieldClass& other) = delete;
 	ShieldClass& operator=(const ShieldClass& other) = delete;
+};
+
+template <>
+struct Savegame::ObjectFactory<ShieldClass>
+{
+	std::unique_ptr<ShieldClass> operator() (PhobosStreamReader& Stm) const
+	{
+		return std::make_unique<ShieldClass>();
+	}
 };

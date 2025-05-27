@@ -13,6 +13,8 @@
 
 // =============================
 // functions
+std::unique_ptr<SWSidebarClass> SWSidebarClass::Instance;
+CommandClass* SWSidebarClass::Commands[10];
 
 bool SWSidebarClass::AddColumn()
 {

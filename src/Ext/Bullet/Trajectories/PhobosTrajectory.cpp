@@ -240,7 +240,7 @@ void PhobosTrajectoryType::ProcessFromStream(PhobosStreamReader& Stm, std::uniqu
 		if (PhobosTrajectoryType::UpdateType(pType, nFlag))
 		{
 			// register the change if succeeded
-			PhobosSwizzle::Instance.RegisterChange(pOld, pType.get());
+			SwizzleManagerClass::Instance->Here_I_Am((long)pOld, pType.get());
 			pType->Load(Stm, false);
 		}
 	}
@@ -373,12 +373,12 @@ bool PhobosTrajectory::UpdateType(BulletClass* pBullet, std::unique_ptr<PhobosTr
 	return true;
 }
 
-void PhobosTrajectory::CreateInstance(BulletClass* pBullet, CoordStruct* pCoord, VelocityClass* pVelocity)
+bool PhobosTrajectory::CreateInstance(BulletClass* pBullet, CoordStruct* pCoord, VelocityClass* pVelocity)
 {
 	auto const pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pBullet->Type);
 
 	if (!pBulletTypeExt->TrajectoryType)
-		return;
+		return false;
 
 	auto const pBulletExt = BulletExtContainer::Instance.Find(pBullet);
 
@@ -386,6 +386,8 @@ void PhobosTrajectory::CreateInstance(BulletClass* pBullet, CoordStruct* pCoord,
 	{
 		pBulletExt->Trajectory->OnUnlimbo(pCoord, pVelocity);
 	}
+
+	return true;
 }
 
 void PhobosTrajectory::ProcessFromStream(PhobosStreamReader& Stm, std::unique_ptr<PhobosTrajectory>& pTraj)

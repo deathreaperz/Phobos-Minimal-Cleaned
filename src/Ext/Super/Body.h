@@ -80,7 +80,7 @@ public:
 };
 
 class SWTypeExtData;
-class FakeSuperClass : public SuperClass
+class NOVTABLE FakeSuperClass : public SuperClass
 {
 public:
 	HRESULT __stdcall _Load(IStream* pStm);

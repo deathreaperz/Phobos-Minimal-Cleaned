@@ -64,7 +64,7 @@ struct Game
 	static COMPILETIMEEVAL reference<bool, 0xB0FBB8u> const ScoreStuffLoad {};
 	static COMPILETIMEEVAL reference<bool, 0xA8D110u> const LANTaunts {};
 	static COMPILETIMEEVAL reference<bool, 0xA8D111> const WOLTaunts {};
-	static COMPILETIMEEVAL reference<byte[8], 0xA8D108u> const ChatMask {};
+	static COMPILETIMEEVAL reference<bool, 0xA8D108u, 8u> const ChatMask {};
 
 #define GAMEMD_CLSID(_addrs ,_name) \
 	static COMPILETIMEEVAL reference<CLSID const, _addrs> const _name {};
@@ -194,6 +194,15 @@ struct Game
 		JMP_STD(0x755C50);
 	}
 
+#ifdef deprecated
+
+	// the game's own rounding function
+	// infamous for true'ing (F2I(-5.00) == -4.00)
+	static int F2I(double val)
+	{
+		return int(F2I64(val));
+	}
+
 	// the game's own rounding function
 	// infamous for true'ing (F2I(-5.00) == -4.00)
 	static uint64_t F2I64(double val)
@@ -203,15 +212,10 @@ struct Game
 		ASM_CALL(0x7C5F00);
 	}
 
+#endif // deprecated
+
 	static COMPILETIMEEVAL int FORCEDINLINE AdjustHeight(int height)  {
 		return int((double)height * Unsorted::GameMagicNumbr_ + ((double)(height >= Unsorted::HeightMax)) + 0.5);
-	}
-
-	// the game's own rounding function
-	// infamous for true'ing (F2I(-5.00) == -4.00)
-	static int F2I(double val)
-	{
-		return int(F2I64(val));
 	}
 
 	[[noreturn]] static void __stdcall RaiseError(HRESULT err)
@@ -311,6 +315,14 @@ struct Game
 
 	static void __fastcall WriteMapFiles(const char* pFilename, int bArgs = false)
 	{ JMP_STD(0x687CE0); }
+
+	static CoordStruct* __fastcall Coord_Move(CoordStruct* revtal, CoordStruct* start, DirStruct* dir, int distance) {
+		JMP_STD(0x50E3A0);
+	}
+
+	static int __fastcall Spot_Index(CoordStruct* coord) {
+		JMP_STD(0x4810A0);
+	}
 
 	static bool __fastcall func_007BBE20(RectangleStruct* torect, const RectangleStruct* toarea, RectangleStruct* fromrect, const RectangleStruct* fromarea)
 	{ JMP_STD(0x7BBE20); }

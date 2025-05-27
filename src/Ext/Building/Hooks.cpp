@@ -11,6 +11,67 @@
 
 #include <GameOptionsClass.h>
 
+ASMJIT_PATCH(0x4400F9, BuildingClass_AI_UpdateOverpower, 0x6)
+{
+	enum { SkipGameCode = 0x44019D };
+
+	GET(FakeBuildingClass*, pThis, ESI);
+
+	if (!pThis->Type->Overpowerable)
+		return SkipGameCode;
+
+	int overPower = 0;
+
+	for (int idx = pThis->Overpowerers.Count - 1; idx >= 0; idx--)
+	{
+		const auto pCharger = pThis->Overpowerers[idx];
+
+		if (pCharger->Target != pThis)
+		{
+			pThis->Overpowerers.RemoveAt(idx);
+			continue;
+		}
+
+		const auto pWeapon = pCharger->GetWeapon(1)->WeaponType;
+
+		if (!pWeapon || !pWeapon->Warhead || !pWeapon->Warhead->ElectricAssault)
+		{
+			pThis->Overpowerers.RemoveAt(idx);
+			continue;
+		}
+
+		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
+		overPower += pWHExt->ElectricAssaultLevel;
+	}
+
+	const int charge = pThis->_GetTypeExtData()->Overpower_ChargeWeapon;
+
+	pThis->IsOverpowered = overPower >= pThis->_GetTypeExtData()->Overpower_KeepOnline + charge
+		|| (pThis->Owner->GetPowerPercentage() == 1.0 && pThis->HasPower && overPower >= charge);
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x4555E4, BuildingClass_IsPowerOnline_Overpower, 0x6)
+{
+	enum { LowPower = 0x4556BE, Continue1 = 0x4555F0, Continue2 = 0x455643 };
+
+	GET(FakeBuildingClass*, pThis, ESI);
+	int overPower = 0;
+
+	for (const auto& pCharger : pThis->Overpowerers)
+	{
+		const auto pWeapon = pCharger->GetWeapon(1)->WeaponType;
+
+		if (pWeapon && pWeapon->Warhead)
+		{
+			const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
+			overPower += pWHExt->ElectricAssaultLevel;
+		}
+	}
+
+	return overPower < pThis->_GetTypeExtData()->Overpower_KeepOnline ? LowPower : (R->Origin() == 0x4555E4 ? Continue1 : Continue2);
+}ASMJIT_PATCH_AGAIN(0x45563B, BuildingClass_IsPowerOnline_Overpower, 0x6)
+
 ASMJIT_PATCH(0x483D8E, CellClass_CheckPassability_DestroyableObstacle, 0x6)
 {
 	enum { IsBlockage = 0x483CD4 };
@@ -45,7 +106,7 @@ ASMJIT_PATCH(0x4511D6, BuildingClass_AnimationAI_SellBuildup, 0x7)
 
 	GET(FakeBuildingClass*, pThis, ESI);
 
-	return pThis->_GetTypeExtData()->SellBuildupLength == pThis->Animation.Value
+	return pThis->_GetTypeExtData()->SellBuildupLength == pThis->Animation.Stage
 		? Continue : Skip;
 }
 
@@ -391,3 +452,10 @@ ASMJIT_PATCH(0x4AE95E, DisplayClass_sub_4AE750_AntiStupid, 0x5)
 
 	return Ret;
 }
+
+ASMJIT_PATCH(0x44A541, BuildingClass_LeaveBioReactor, 0x7)
+{
+	GET(FootClass*, pFoot, ESI);
+	pFoot->Transporter = nullptr;
+	return 0;
+}ASMJIT_PATCH_AGAIN(0x442F9B, BuildingClass_LeaveBioReactor, 0x6)

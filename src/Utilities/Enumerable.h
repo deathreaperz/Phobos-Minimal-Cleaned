@@ -18,7 +18,7 @@ template <typename T> class Enumerable
 	typedef std::vector<std::unique_ptr<T>> container_t;
 public:
 
-	OPTIONALINLINE static container_t Array;
+	static container_t Array;
 
 	static int FindOrAllocateIndex(const char* Title)
 	{
@@ -222,7 +222,7 @@ public:
 				return false;
 
 			auto newPtr = FindOrAllocate(name);
-			PhobosSwizzle::Instance.RegisterChange(oldPtr, newPtr);
+			SwizzleManagerClass::Instance->Here_I_Am((long)oldPtr, newPtr);
 			newPtr->LoadFromStream(Stm);
 		}
 
@@ -252,3 +252,5 @@ public:
 
 	virtual ~Enumerable() = default;
 };
+
+#define CREATEENUMTYPECLASS(x) class x##TypeClass final : public Enumerable<x##TypeClass>

@@ -14,6 +14,7 @@
 #include <Ext/ParticleType/Body.h>
 #include <Ext/ParticleSystemType/Body.h>
 #include <Ext/WarheadType/Body.h>
+#include <Ext/Infantry/Body.h>
 
 #include <Misc/Ares/Hooks/Header.h>
 #include <Misc/Ares/Hooks/AresTrajectoryHelper.h>
@@ -204,16 +205,16 @@ ASMJIT_PATCH(0x6FD38D, TechnoClass_DrawSth_Coords, 0x7)
 		// The weapon may not have been set up
 		const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pBullet->WeaponType);
 		// pBullet->Data.Location (0x4E1130) -> pBullet->Type->Inviso ? pBullet->Location : pBullet->TargetCoords
-
+		CoordStruct _targetCoords = pBullet->GetDestinationCoords();
 		if (pWeaponExt && pWeaponExt->VisualScatter)
 		{
 			const auto pRulesExt = RulesExtData::Instance();
 			const auto radius = ScenarioClass::Instance->Random.RandomRanged(pRulesExt->VisualScatter_Min.Get(), pRulesExt->VisualScatter_Max.Get());
-			*pTargetCoords = MapClass::GetRandomCoordsNear(pBullet->Data.Location, radius, false);
+			*pTargetCoords = MapClass::GetRandomCoordsNear(_targetCoords, radius, false);
 		}
 		else
 		{
-			*pTargetCoords = pBullet->Data.Location;
+			*pTargetCoords = _targetCoords;
 		}
 	}
 	else if (FireAtTemp::pObstacleCell)
@@ -295,13 +296,14 @@ ASMJIT_PATCH(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 	GET_BASE(int, weaponIdx, 0xC);
 
 	auto coords = pOriginalTarget->GetCenterCoords();
+	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
 	if (const auto pBuilding = cast_to<BuildingClass*, false>(pOriginalTarget))
 		coords = pBuilding->GetTargetCoords();
 
 	// This is set to a temp variable as well, as accessing it everywhere needed from TechnoExt would be more complicated.
 	FireAtTemp::pObstacleCell = TrajectoryHelper::FindFirstObstacle(crdSrc, coords, pWeapon->Projectile, pThis->Owner);
-	TechnoExtContainer::Instance.Find(pThis)->FiringObstacleCell = FireAtTemp::pObstacleCell;
+	pExt->FiringObstacleCell = FireAtTemp::pObstacleCell;
 
 	R->Stack(0x10, &crdSrc);
 
@@ -335,8 +337,8 @@ ASMJIT_PATCH(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 
 	if (pThis->Berzerk)
 	{
-		const auto pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-		const double multiplier = pExt->BerserkROFMultiplier.Get(RulesExtData::Instance()->BerserkROFMultiplier);
+		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+		const double multiplier = pTypeExt->BerserkROFMultiplier.Get(RulesExtData::Instance()->BerserkROFMultiplier);
 		ROF = static_cast<int>(ROF * multiplier);
 	}
 
@@ -516,6 +518,30 @@ ASMJIT_PATCH(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 		}
 	}
 
+	if (pExt->AE.HasFeedbackWeapon)
+	{
+		for (auto const& pAE : pExt->PhobosAE)
+		{
+			if (!pAE || !pAE->IsActive())
+				continue;
+
+			if (auto const pWeaponFeedback = pAE->GetType()->FeedbackWeapon)
+			{
+				if (pThis->InOpenToppedTransport && !pWeaponFeedback->FireInTransport)
+					return 0;
+
+				WeaponTypeExtData::DetonateAt(pWeaponFeedback, pThis, pThis, true, nullptr);
+			}
+		}
+
+		//pThis techno was die after after getting affect of FeedbackWeapon
+		//if the function not bail out , it will crash the game because the vtable is already invalid
+		if (!pThis->IsAlive)
+		{
+			return 0x6FF92F;
+		}
+	}
+
 	if (pWeapon->IsSonic)
 	{
 		pThis->Wave = WaveExtData::Create(crdSrc, crdTgt, pThis, WaveType::Sonic, pOriginalTarget, pWeapon);
@@ -604,6 +630,16 @@ ASMJIT_PATCH(0x6FF656, TechnoClass_FireAt_Additionals_End, 0xA)
 	//TechnoClass_FireAt_BurstOffsetFix_2
 	++pThis->CurrentBurstIndex;
 	pThis->CurrentBurstIndex %= pWeaponType->Burst;
+
+	if (pThis->WhatAmI() == AbstractType::Infantry)
+	{
+		auto pInf = ((FakeInfantryClass*)(pThis));
+		if (pInf->_GetExtData()->ForceFullRearmDelay)
+		{
+			pInf->_GetExtData()->ForceFullRearmDelay = false;
+			pThis->CurrentBurstIndex = 0;
+		}
+	}
 
 	if (auto const pTargetObject = cast_to<BulletClass* const, false>(pTarget))
 	{

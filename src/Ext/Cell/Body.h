@@ -80,7 +80,7 @@ class CellExtContainer final : public Container<CellExtData>
 {
 public:
 	static CellExtContainer Instance;
-	static inline HelperedVector<CellExtData*> Array;
+	static HelperedVector<CellExtData*> Array;
 
 	CellExtData* AllocateUnchecked(CellClass* key)
 	{
@@ -125,7 +125,7 @@ public:
 	}
 };
 
-class FakeCellClass : public CellClass
+class NOVTABLE FakeCellClass : public CellClass
 {
 public:
 	bool _SpreadTiberium(bool force);

@@ -8,6 +8,7 @@
 #include <TeamClass.h>
 #include <HouseClass.h>
 
+#ifdef _Teamstuffs
 ASMJIT_PATCH(0x6EBB86, TeamClass_MoveToFocus_IsInStray, 0x6)
 {
 	GET(FootClass*, pFoot, ESI);
@@ -51,6 +52,7 @@ ASMJIT_PATCH(0x6EBEDB, TeamClass_MoveToFocus_BalloonHover, 0xA)
 
 		0x6EBEEF : 0x6EBEFF;
 }
+#endif
 
 //?TODO : replace these with patches
 #pragma region HouseCheckReplace
@@ -143,25 +145,20 @@ ASMJIT_PATCH(0x5003BA, HouseClass_FindJuicyTarget, 0x6)
 	return R->EDI<HouseClass*>()->IsAlliedWith(R->EAX<HouseClass*>()) ? 0x5003F7 : 0x5004B1;
 }
 
-ASMJIT_PATCH(0x5047F5, HouseClass_UpdateAngetNodes, 0x6)
-{
-	return R->EAX<HouseClass*>()->IsAlliedWith(R->EDX<HouseClass*>()) ? 0x504826 : 0x504820;
-}
-
-ASMJIT_PATCH(0x4F9A90, HouseClass_IsAlly_ObjectClass, 0x7)
-{
-	GET_STACK(TechnoClass*, pTarget, 0x4);
-	GET(HouseClass*, pThis, ECX);
-
-	bool result = false;
-	if (pTarget)
-	{
-		result = pThis->IsAlliedWith(pTarget->GetOwningHouse());
-	}
-
-	R->AL(result);
-	return 0x4F9ADE;
-}
+// ASMJIT_PATCH(0x4F9A90, HouseClass_IsAlly_ObjectClass, 0x7)
+// {
+// 	GET_STACK(TechnoClass*, pTarget, 0x4);
+// 	GET(HouseClass*, pThis, ECX);
+//
+// 	bool result = false;
+// 	if (pTarget)
+// 	{
+// 		result = pThis->IsAlliedWith(pTarget->GetOwningHouse());
+// 	}
+//
+// 	R->AL(result);
+// 	return 0x4F9ADE;
+// }
 
 //breaking stack ??
 // ASMJIT_PATCH(0x4F9A50, HouseClass_IsAlly_HouseClass, 0x6)

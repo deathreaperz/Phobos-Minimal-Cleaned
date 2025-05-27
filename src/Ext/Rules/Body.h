@@ -24,11 +24,11 @@ class VocClass;
 class WarheadTypeClass;
 class DigitalDisplayTypeClass;
 class CursorTypeClass;
-
+class SelectBoxTypeClass;
 class RulesExtData final
 {
 private:
-	OPTIONALINLINE static std::unique_ptr<RulesExtData> Data;
+	static std::unique_ptr<RulesExtData> Data;
 
 public:
 	static COMPILETIMEEVAL size_t Canary = 0x12341234;
@@ -83,7 +83,15 @@ public:
 
 	Nullable<int> InfantryGainSelfHealCap {};
 	Nullable<int> UnitsGainSelfHealCap {};
+
 	Valueable<bool> EnemyInsignia { true };
+	Valueable<bool> DrawInsigniaOnlyOnSelected {};
+	Valueable<Point2D> DrawInsignia_AdjustPos_Infantry { { 5, 2 } };
+	Valueable<Point2D> DrawInsignia_AdjustPos_Buildings { { 10, 6 } };
+	Nullable<BuildingSelectBracketPosition> DrawInsignia_AdjustPos_BuildingsAnchor {};
+	Valueable<Point2D> DrawInsignia_AdjustPos_Units { { 10, 6 } };
+	Valueable<bool> DrawInsignia_UsePixelSelectionBracketDelta {};
+
 	Valueable<AffectedHouse> DisguiseBlinkingVisibility { AffectedHouse::Owner | AffectedHouse::Allies };
 
 	Valueable<SHPStruct*> SHP_SelectBrdSHP_INF { nullptr };
@@ -300,11 +308,6 @@ public:
 	Nullable<int> StartInMultiplayerUnitCost { };
 
 	bool FPSCounter { false };
-	Valueable<bool> DrawInsigniaOnlyOnSelected {};
-	Valueable<Point2D> DrawInsignia_AdjustPos_Infantry { { 5, 2 } };
-	Valueable<Point2D> DrawInsignia_AdjustPos_Buildings { { 10, 6 } };
-	Nullable<BuildingSelectBracketPosition> DrawInsignia_AdjustPos_BuildingsAnchor {};
-	Valueable<Point2D> DrawInsignia_AdjustPos_Units { { 10, 6 } };
 
 	Valueable<int> SelectFlashTimer { 0 };
 
@@ -386,7 +389,7 @@ public:
 	Valueable<bool> DistributeTargetingFrame_AIOnly { true };
 
 	Valueable<bool> CheckUnitBaseNormal { false };
-	Valueable<bool> ExtendedBuildingPlacing { true };
+	Valueable<bool> ExtendedBuildingPlacing { false };
 	Valueable<bool> CheckExpandPlaceGrid { false };
 	Valueable<CoordStruct> ExpandLandGridFrames { { 1, 0, 0 } };
 	Valueable<CoordStruct> ExpandWaterGridFrames { { 1, 0, 0 } };
@@ -470,11 +473,56 @@ public:
 	Valueable<bool> RecountBurst { false };
 	Valueable<ColorStruct> AirstrikeLineColor { { 255, 0, 0 } };
 
+	Valueable<bool> AmphibiousEnter {};
+	Valueable<bool> AmphibiousUnload {};
+
 	AnimTypeClass* XGRYMED1_ {};
 	AnimTypeClass* XGRYMED2_ {};
 	AnimTypeClass* XGRYSML1_ {};
 
 	Valueable<bool> GiveMoneyIfStorageFull { false }; // vanilla behaviour
+
+	struct ProneSpeedData
+	{
+		Valueable<double> Crawls { 0.33333334 };
+		Valueable<double> NoCrawls { 1.5 };
+
+		COMPILETIMEEVAL OPTIONALINLINE double getSpeed(bool crawls) const
+		{
+			return (crawls ? Crawls : NoCrawls).Get();
+		}
+
+		void Load(PhobosStreamReader& Stm)
+		{
+			Stm
+				.Process(Crawls)
+				.Process(NoCrawls)
+				;
+		}
+
+		void Save(PhobosStreamWriter& Stm)
+		{
+			Stm
+				.Process(Crawls)
+				.Process(NoCrawls)
+				;
+		}
+	} InfantrySpeedData {};
+
+	Valueable<bool> ColorAddUse8BitRGB { false };
+	Valueable<double> IronCurtain_ExtraTintIntensity {};
+	Valueable<double> ForceShield_ExtraTintIntensity {};
+	Valueable<double> DamagedSpeed { 0.75 };
+
+	Valueable<SelectBoxTypeClass*> DefaultInfantrySelectBox {};
+	Valueable<SelectBoxTypeClass*> DefaultUnitSelectBox {};
+	Valueable<float> HarvesterDumpAmount { 0.0f };
+
+	Valueable<bool> HarvesterScanAfterUnload {};
+	Valueable<bool> AttackMove_Aggressive { false };
+	Valueable<bool> AttackMove_UpdateTarget { false };
+	Valueable<bool> Infantry_IgnoreBuildingSizeLimit { true };
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);
 	void ReplaceVoxelLightSources();
@@ -498,7 +546,7 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	OPTIONALINLINE static IStream* g_pStm;
+	static IStream* g_pStm;
 
 	static void Allocate(RulesClass* pThis);
 	static void Remove(RulesClass* pThis);
@@ -527,7 +575,7 @@ public:
 	static bool DetailsCurrentlyEnabled(int minDetailLevel);
 };
 
-class FakeRulesClass : public RulesClass
+class NOVTABLE FakeRulesClass : public RulesClass
 {
 public:
 	void _ReadColors(CCINIClass* pINI);

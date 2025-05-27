@@ -237,7 +237,7 @@ void CloneableLighningStormStateMachine::Update()
 	// remove all bolts from the list that are halfway done
 	this->BoltsPresent.remove_all_if([](AnimClass* pAnim)
  {
-	 return !pAnim || pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2;
+	 return !pAnim || pAnim->Animation.Stage >= pAnim->Type->GetImage()->Frames / 2;
 	});
 
 	// find the clouds that should strike right now
@@ -246,7 +246,7 @@ void CloneableLighningStormStateMachine::Update()
 	 if (!pAnim)
 		 return true;
 
-	 if (pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames / 2)
+	 if (pAnim->Animation.Stage >= pAnim->Type->GetImage()->Frames / 2)
 	 {
 		 auto const crdStrike = pAnim->GetCoords();
 		 this->Strike2(crdStrike);
@@ -273,7 +273,7 @@ void CloneableLighningStormStateMachine::Update()
 	{
 		this->CloudsPresent.remove_all_if([&](AnimClass* pAnim)
  {
-	 return !pAnim || pAnim->Animation.Value >= pAnim->Type->GetImage()->Frames - 1;
+	 return !pAnim || pAnim->Animation.Stage >= pAnim->Type->GetImage()->Frames - 1;
 		});
 	}
 
@@ -636,14 +636,24 @@ bool CloneableLighningStormStateMachine::Start(CellStruct& cell, int nDuration, 
 
 			if (outage > 0)
 			{
-				for (auto const pHouse : *HouseClass::Array)
+				if (pData->Weather_RadarOutageAffects == AffectedHouse::Owner)
 				{
-					if (pData->IsHouseAffected(
-						Super->GetOwningHouse(), pHouse, pData->Weather_RadarOutageAffects))
+					if (!Super->Owner->Defeated)
 					{
-						if (!pHouse->Defeated)
+						Super->Owner->CreateRadarOutage(outage);
+					}
+				}
+				else if (pData->Weather_RadarOutageAffects != AffectedHouse::None)
+				{
+					for (auto const& pHouse : *HouseClass::Array)
+					{
+						if (pData->IsHouseAffected(
+							Super->Owner, pHouse, pData->Weather_RadarOutageAffects))
 						{
-							pHouse->CreateRadarOutage(outage);
+							if (!pHouse->Defeated)
+							{
+								pHouse->CreateRadarOutage(outage);
+							}
 						}
 					}
 				}

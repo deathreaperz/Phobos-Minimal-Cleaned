@@ -25,6 +25,9 @@ public:
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 public:
+
+#pragma region ClassMember
+
 	Valueable<double> DiskLaser_Radius { 38.2 };
 	Valueable<int> DiskLaser_Circumference { 240 };
 	Nullable<RadTypeClass*> RadType {};
@@ -195,6 +198,9 @@ public:
 	Valueable<bool> KeepRange_AllowPlayer {};
 
 	Valueable<bool> VisualScatter { false };
+	Valueable<bool> TurretRecoil_Suppress { false };
+
+#pragma endregion
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();
@@ -232,8 +238,8 @@ public:
 		int BurstIndex;
 	};
 
-	OPTIONALINLINE static int nOldCircumference { DiskLaserClass::Radius };
-	OPTIONALINLINE static PhobosMap<EBolt*, EBoltWeaponStruct> boltWeaponTypeExt;
+	static int nOldCircumference;
+	static PhobosMap<EBolt*, EBoltWeaponStruct> boltWeaponTypeExt;
 
 	static int GetBurstDelay(WeaponTypeClass* pThis, int burstIndex);
 	static void DetonateAt(WeaponTypeClass* pThis, AbstractClass* pTarget, TechnoClass* pOwner, bool AddDamage, HouseClass* HouseInveoker);
@@ -270,7 +276,7 @@ class BulletTypeExtData;
 class WarheadTypeExtData;
 class FakeBulletTypeClass;
 class FakeWarheadTypeClass;
-class FakeWeaponTypeClass : public WeaponTypeClass
+class NOVTABLE FakeWeaponTypeClass : public WeaponTypeClass
 {
 public:
 

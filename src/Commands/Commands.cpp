@@ -24,6 +24,7 @@
 #include "ManualReloadAmmo.h"
 #include "AutoBuilding.h"
 #include "DistributionMode.h"
+#include "Harmless.h"
 
 #include <Misc/Ares/Hooks/Commands/AIBasePlan.h>
 #include <Misc/Ares/Hooks/Commands/AIControl.h>
@@ -41,12 +42,10 @@ bool PhobosCommandClass::CheckDebugDeactivated() const
 
 	if (!bAllow)
 	{
-		if (const wchar_t* text = StringTable::LoadString("TXT_COMMAND_DISABLED"))
-		{
-			wchar_t msg[0x100] = L"\0";
-			wsprintfW(msg, text, this->GetUIName());
-			MessageListClass::Instance->PrintMessage(msg);
-		}
+		const wchar_t* text = StringTable::FetchString("TXT_COMMAND_DISABLED");
+		wchar_t msg[0x100] = L"\0";
+		wsprintfW(msg, text, this->GetUIName());
+		MessageListClass::Instance->PrintMessage(msg);
 		return true;
 	}
 	return false;
@@ -99,6 +98,7 @@ ASMJIT_PATCH(0x532150, CommandClassCallback_Register, 5)
 		Make<AIBasePlanCommandClass>();
 
 		Make<AIControlCommandClass>();
+		Make<HarmlessCommandClass>();
 	}
 #pragma endregion Adminexclusive
 

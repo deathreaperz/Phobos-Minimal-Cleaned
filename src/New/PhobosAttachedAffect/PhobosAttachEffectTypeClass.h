@@ -10,6 +10,10 @@ class PhobosAttachEffectTypeClass final : public Enumerable<PhobosAttachEffectTy
 {
 public:
 	Valueable<int> Duration;
+	Valueable<bool> Duration_ApplyFirepowerMult;
+	Valueable<bool> Duration_ApplyArmorMultOnTarget;
+	Valueable<WarheadTypeClass*> Duration_ApplyVersus_Warhead;
+
 	Valueable<bool> Cumulative;
 	Valueable<int> Cumulative_MaxCount;
 	Valueable<bool> Powered;
@@ -78,8 +82,20 @@ public:
 	Valueable<bool> DisableRadar;
 	Valueable<bool> DisableSpySat;
 
+	Valueable<bool> Unkillable;
+
+	ValueableVector<WarheadTypeClass*> ExtraWarheads;
+	ValueableVector<int> ExtraWarheads_DamageOverrides;
+	ValueableVector<double> ExtraWarheads_DetonationChances;
+	ValueableVector<bool> ExtraWarheads_FullDetonation;
+
+	Valueable<WeaponTypeClass*> FeedbackWeapon;
+
 	PhobosAttachEffectTypeClass(const char* pTitle) : Enumerable<PhobosAttachEffectTypeClass>(pTitle)
 		, Duration { 0 }
+		, Duration_ApplyFirepowerMult { false }
+		, Duration_ApplyArmorMultOnTarget { false }
+		, Duration_ApplyVersus_Warhead { }
 		, Cumulative { false }
 		, Cumulative_MaxCount { -1 }
 		, Powered { false }
@@ -143,6 +159,15 @@ public:
 
 		, DisableRadar {}
 		, DisableSpySat {}
+
+		, Unkillable {}
+
+		, ExtraWarheads {}
+		, ExtraWarheads_DamageOverrides {}
+		, ExtraWarheads_DetonationChances {}
+		, ExtraWarheads_FullDetonation {}
+
+		, FeedbackWeapon {}
 	{};
 
 	COMPILETIMEEVAL FORCEDINLINE bool HasTint()
@@ -199,7 +224,7 @@ public:
 	void SaveToStream(PhobosStreamWriter& Stm);
 
 	static std::vector<PhobosAttachEffectTypeClass*> GetTypesFromGroups(std::vector<std::string>& groupIDs);
-	OPTIONALINLINE static PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
+	static PhobosMap<std::string, std::set<PhobosAttachEffectTypeClass*>> GroupsMap;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);

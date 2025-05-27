@@ -13,11 +13,9 @@ public:
 	virtual void LoadFromINI(SWTypeExtData* pData, CCINIClass* pINI) override;
 	virtual bool IsLaunchSite(const SWTypeExtData* pData, BuildingClass* pBuilding) const override;
 
-	using TStateMachine = DroppodStateMachine;
-
 protected:
 	void newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper)
 	{
-		SWStateMachine::Register<TStateMachine>(Deferment, XY, pSuper, this);
+		SWStateMachine::Array.push_back(std::move(std::make_unique<DroppodStateMachine>(Deferment, XY, pSuper, this)));
 	}
 };

@@ -14,11 +14,9 @@ public:
 
 	virtual int GetDamage(const SWTypeExtData* pData) const override;
 
-	using TStateMachine = LaserStrikeStateMachine;
-
 protected:
 	void newStateMachine(CellStruct XY, SuperClass* pSuper, TechnoClass* pFirer, int maxcount, int deferment, int duration)
 	{
-		SWStateMachine::Register<TStateMachine>(XY, pSuper, pFirer, maxcount, deferment, this, duration);
+		SWStateMachine::Array.push_back(std::move(std::make_unique<LaserStrikeStateMachine>(XY, pSuper, pFirer, maxcount, deferment, this, duration)));
 	}
 };

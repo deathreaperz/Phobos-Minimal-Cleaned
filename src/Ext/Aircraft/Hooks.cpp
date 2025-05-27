@@ -47,15 +47,6 @@ ASMJIT_PATCH(0x4197F3, AircraftClass_GetFireLocation_Strafing, 0x5)
 	return 0;
 }
 
-//WeaponStruct* FakeAircraftClass::_GetWeapon(int weaponIndex)
-//{
-//	auto const pExt = TechnoExtContainer::Instance.Find(this);
-//
-//	if (pExt->CurrentAircraftWeaponIndex >= 0)
-//		return this->TechnoClass::GetWeapon(pExt->CurrentAircraftWeaponIndex);
-//	else
-//		return this->TechnoClass::GetWeapon(this->SelectWeapon(this->Target));
-//}
 //
 //DEFINE_FUNCTION_JUMP(CALL6, 0x4180F9, FakeAircraftClass::_GetWeapon));
 //DEFINE_FUNCTION_JUMP(CALL6, 0x4184E3, FakeAircraftClass::_GetWeapon));
@@ -64,12 +55,6 @@ ASMJIT_PATCH(0x4197F3, AircraftClass_GetFireLocation_Strafing, 0x5)
 //DEFINE_FUNCTION_JUMP(CALL6, 0x4189A2, FakeAircraftClass::_GetWeapon));
 //DEFINE_FUNCTION_JUMP(CALL6, 0x418AB1, FakeAircraftClass::_GetWeapon));
 //DEFINE_FUNCTION_JUMP(CALL6, 0x418B9A, FakeAircraftClass::_GetWeapon));
-
-void FakeAircraftClass::_SetTarget(AbstractClass* pTarget)
-{
-	this->TechnoClass::SetTarget(pTarget);
-	TechnoExtContainer::Instance.Find(this)->CurrentAircraftWeaponIndex = -1;
-}
 
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7E266C, FakeAircraftClass::_SetTarget);
 
@@ -110,10 +95,14 @@ ASMJIT_PATCH(0x417FF1, AircraftClass_Mission_Attack_StrafeShots, 0x6)
 	return 0;
 }
 
+#include <Ext/BulletType/Body.h>
+
 COMPILETIMEEVAL FORCEDINLINE bool AircraftCanStrafeWithWeapon(WeaponTypeClass* pWeapon)
 {
 	return pWeapon && WeaponTypeExtContainer::Instance.Find(pWeapon)->Strafing
-		.Get(pWeapon->Projectile->ROT <= 1 && !pWeapon->Projectile->Inviso);
+		.Get(pWeapon->Projectile->ROT <= 1
+			&& !pWeapon->Projectile->Inviso)
+		&& !BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->TrajectoryType;
 }
 
 bool FireBurst(AircraftClass* pAir, AbstractClass* pTarget)
@@ -235,7 +224,7 @@ static int GetDelay(AircraftClass* pThis, bool isLastShot)
 	auto const pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
 	int delay = pWeapon->ROF;
 
-	if (isLastShot || pExt->ShootCount == pWeaponExt->Strafing_Shots || (pWeaponExt->Strafing_UseAmmoPerShot && !pThis->Ammo))
+	if (isLastShot || pExt->StrafeFireCunt == pWeaponExt->Strafing_Shots.Get(5) || (pWeaponExt->Strafing_UseAmmoPerShot && !pThis->Ammo))
 	{
 		pThis->MissionStatus = (int)AirAttackStatus::FlyToPosition;
 		delay = pWeaponExt->Strafing_EndDelay.Get((pWeapon->Range + 1024) / pThis->Type->Speed);
@@ -357,6 +346,8 @@ ASMJIT_PATCH(0x4CF68D, FlyLocomotionClass_DrawMatrix_OnAirport, 0x5)
 			R->ECX(pAir);
 			return 0x4CF6AD;
 		}
+
+		return 0x4CF6A0;
 	}
 
 	return 0;
@@ -372,6 +363,10 @@ long __stdcall AircraftClass_IFlyControl_IsStrafe(IFlyControl* ifly)
 		pWeapon = pThis->GetWeapon(pExt->CurrentAircraftWeaponIndex)->WeaponType;
 	else if (pThis->Target)
 		pWeapon = pThis->GetWeapon(pThis->SelectWeapon(pThis->Target))->WeaponType;
+	else if (pExt->LastWeaponType)
+		pWeapon = pExt->LastWeaponType;
+	else
+		pWeapon = pThis->GetWeapon(0)->WeaponType;
 
 	if (pWeapon)
 		return (long)AircraftCanStrafeWithWeapon(pWeapon);
@@ -575,49 +570,6 @@ ASMJIT_PATCH(0x414D36, AircraftClass_Update_ClearTargetIfNoAmmo, 0x6)
 	}
 
 	return 0x414D4D; //AircraftClass_Update_DontloseTargetInAir
-}
-
-AbstractClass* FakeAircraftClass::_GreatestThreat(ThreatType threatType, CoordStruct* pSelectCoords, bool onlyTargetHouseEnemy)
-{
-	if (RulesExtData::Instance()->ExpandAircraftMission) {
-		if (WeaponTypeClass* const pPrimaryWeapon = this->GetWeapon(0)->WeaponType)
-			threatType |= pPrimaryWeapon->AllowedThreats();
-
-		if (WeaponTypeClass* const pSecondaryWeapon = this->GetWeapon(1)->WeaponType)
-			threatType |= pSecondaryWeapon->AllowedThreats();
-	}
-
-	return this->FootClass::GreatestThreat(threatType, pSelectCoords, onlyTargetHouseEnemy); // FootClass_GreatestThreat (Prevent circular calls)
-}
-
-#include <Misc/DynamicPatcher/Techno/AircraftDive/AircraftDiveFunctional.h>
-#include <Misc/DynamicPatcher/Techno/AircraftPut/AircraftPutDataFunctional.h>
-
-void FakeAircraftClass::_FootClass_Update_Wrapper() {
-	auto pExt = TechnoExtContainer::Instance.Find(this);
-
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(this->Type);
-
-	pExt->UpdateAircraftOpentopped();
-	AircraftPutDataFunctional::AI(pExt, pTypeExt);
-	AircraftDiveFunctional::AI(pExt, pTypeExt);
-	//FighterAreaGuardFunctional::AI(pExt, pTypeExt);
-
-	//if (pThis->IsAlive && pThis->SpawnOwner != nullptr)
-	//{
-	//
-	//	/**
-	//	 *  If we are close enough to our owner, delete us and return true
-	//	 *  to signal to the challer that we were deleted.
-	//	 */
-	//	if (Spawned_Check_Destruction(pThis))
-	//	{
-	//		pThis->UnInit();
-	//		return 0x414F99;
-	//	}
-	//}
-
-	this->FootClass::Update();
 }
 
 // GreatestThreat: for all the mission that should let the aircraft auto select a target

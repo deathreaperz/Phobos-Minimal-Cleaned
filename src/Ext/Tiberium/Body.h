@@ -107,7 +107,7 @@ class TiberiumExtContainer final : public Container<TiberiumExtData>
 {
 public:
 	static TiberiumExtContainer Instance;
-	OPTIONALINLINE static PhobosMap<OverlayTypeClass*, TiberiumClass*> LinkedType;
+	static PhobosMap<OverlayTypeClass*, TiberiumClass*> LinkedType;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
@@ -117,7 +117,7 @@ public:
 	//CONSTEXPR_NOCOPY_CLASSB(TiberiumExtContainer, TiberiumExtData, "TiberiumClass");
 };
 
-class FakeTiberiumClass : public TiberiumClass
+class NOVTABLE FakeTiberiumClass : public TiberiumClass
 {
 public:
 #pragma region Spread

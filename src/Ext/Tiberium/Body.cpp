@@ -107,7 +107,7 @@ void TiberiumExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		for (int i = 0; i < MaxCount; ++i)
 		{
-			const std::string Find = (this->LinkedOverlayType.Get() + std::format("{:02}", i + 1));
+			const std::string Find = (this->LinkedOverlayType.Get() + fmt::format("{:02}", i + 1));
 			OverlayTypeClass* pOverlay = OverlayTypeClass::Find(Find.c_str());
 
 			if (!pOverlay)
@@ -477,6 +477,7 @@ void TiberiumExtData::Serialize(T& Stm)
 }
 
 TiberiumExtContainer TiberiumExtContainer::Instance;
+PhobosMap<OverlayTypeClass*, TiberiumClass*> TiberiumExtContainer::LinkedType;
 
 bool TiberiumExtContainer::LoadGlobals(PhobosStreamReader& Stm)
 {

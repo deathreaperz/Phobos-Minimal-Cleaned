@@ -12,7 +12,7 @@
 #include "Trajectories/PhobosTrajectory.h"
 
 class TechnoClass;
-class BulletExtData final
+class BulletExtData
 {
 public:
 	static COMPILETIMEEVAL size_t Canary = 0x2A2A2A2A;
@@ -53,6 +53,7 @@ public:
 	void InitializeLaserTrails();
 
 	void CreateAttachedSystem();
+	void ApplyArcingFix(const CoordStruct& sourceCoords, const CoordStruct& targetCoords, VelocityClass& velocity);
 
 	~BulletExtData()
 	{
@@ -74,7 +75,8 @@ public:
 		return sizeof(BulletExtData) -
 			(4u //AttachedToObject
 				+ 4u //DamageNumberOffset
-			 );
+						- 4u //inheritance
+				 );
 	}
 
 	static void InterceptBullet(BulletClass* pThis, TechnoClass* pSource, WeaponTypeClass* pWeapon);
@@ -95,77 +97,23 @@ public:
 private:
 	template <typename T>
 	void Serialize(T& Stm);
+
+public:
+
+	static void SimulatedFiringUnlimbo(BulletClass* pBullet, HouseClass* pHouse, WeaponTypeClass* pWeapon, const CoordStruct& sourceCoords, bool randomVelocity);
+	static void SimulatedFiringEffects(BulletClass* pBullet, HouseClass* pHouse, ObjectClass* pAttach, bool firingEffect, bool visualEffect);
+	static void SimulatedFiringAnim(BulletClass* pBullet, HouseClass* pHouse, ObjectClass* pAttach);
+	static void SimulatedFiringReport(BulletClass* pBullet);
+	static void SimulatedFiringLaser(BulletClass* pBullet, HouseClass* pHouse);
+	static void SimulatedFiringElectricBolt(BulletClass* pBullet);
+	static void SimulatedFiringRadBeam(BulletClass* pBullet, HouseClass* pHouse);
+	static void SimulatedFiringParticleSystem(BulletClass* pBullet, HouseClass* pHouse);
 };
 
 class BulletExtContainer final : public Container<BulletExtData>
 {
 public:
-	OPTIONALINLINE static std::vector<BulletExtData*> Pool;
 	static BulletExtContainer Instance;
-
-	BulletExtData* AllocateUnchecked(BulletClass* key)
-	{
-		BulletExtData* val = nullptr;
-		if (!Pool.empty())
-		{
-			val = Pool.front();
-			Pool.erase(Pool.begin());
-			//re-init
-		}
-		else
-		{
-			val = DLLAllocWithoutCTOR<BulletExtData>();
-		}
-
-		if (val)
-		{
-			val->BulletExtData::BulletExtData();
-			val->AttachedToObject = key;
-			return val;
-		}
-
-		return nullptr;
-	}
-
-	BulletExtData* Allocate(BulletClass* key)
-	{
-		if (!key || Phobos::Otamaa::DoingLoadGame)
-			return nullptr;
-
-		this->ClearExtAttribute(key);
-
-		if (BulletExtData* val = AllocateUnchecked(key))
-		{
-			this->SetExtAttribute(key, val);
-			return val;
-		}
-
-		return nullptr;
-	}
-
-	void Remove(BulletClass* key)
-	{
-		if (BulletExtData* Item = TryFind(key))
-		{
-			Item->~BulletExtData();
-			Item->AttachedToObject = nullptr;
-			Pool.push_back(Item);
-			this->ClearExtAttribute(key);
-		}
-	}
-
-	void Clear()
-	{
-		if (!Pool.empty())
-		{
-			auto ptr = Pool.front();
-			Pool.erase(Pool.begin());
-			if (ptr)
-			{
-				delete ptr;
-			}
-		}
-	}
 
 	//CONSTEXPR_NOCOPY_CLASSB(BulletExtContainer, BulletExtData, "BulletClass");
 };
@@ -175,7 +123,7 @@ class WarheadTypeExtData;
 class BulletTypeExtData;
 class WeaponTypeExtData;
 class FakeWeaponType;
-class FakeBulletClass : public BulletClass
+class NOVTABLE FakeBulletClass : public BulletClass
 {
 public:
 

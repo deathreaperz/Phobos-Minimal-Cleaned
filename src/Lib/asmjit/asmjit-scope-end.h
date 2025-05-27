@@ -4,6 +4,6 @@
 // SPDX-License-Identifier: Zlib
 
 #ifdef _WIN32
-  #pragma pop_macro("min")
-  #pragma pop_macro("max")
+#pragma pop_macro("min")
+#pragma pop_macro("max")
 #endif

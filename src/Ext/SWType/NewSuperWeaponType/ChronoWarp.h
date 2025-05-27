@@ -18,6 +18,6 @@ protected:
 	void newStateMachine(int Duration, const CellStruct& XY, SuperClass* pSuper, NewSWType* pSWType,
 	HelperedVector<ChronoWarpStateMachine::ChronoWarpContainer> Buildings)
 	{
-		SWStateMachine::Register<ChronoWarpStateMachine>(Duration, XY, pSuper, this, std::move(Buildings));
+		SWStateMachine::Array.push_back(std::move(std::make_unique<ChronoWarpStateMachine>(Duration, XY, pSuper, this, std::move(Buildings))));
 	}
 };

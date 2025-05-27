@@ -316,7 +316,7 @@ std::array<std::pair<const char* const, AffectedTarget>, 15u> EnumFunctions::Aff
 }
 };
 
-std::array<std::pair<const char* const, SuperWeaponAITargetingMode>, 23u> EnumFunctions::SuperWeaponAITargetingMode_ToStrings
+std::array<std::pair<const char* const, SuperWeaponAITargetingMode>, 24u> EnumFunctions::SuperWeaponAITargetingMode_ToStrings
 {
 {
 	{"none" , SuperWeaponAITargetingMode::None} ,
@@ -341,7 +341,8 @@ std::array<std::pair<const char* const, SuperWeaponAITargetingMode>, 23u> EnumFu
 	{"droppod", SuperWeaponAITargetingMode::DropPod } ,
 	{"lightningrandom", SuperWeaponAITargetingMode::LightningRandom } ,
 	{"launchsite", SuperWeaponAITargetingMode::LauchSite },
-	{"findauxtechno", SuperWeaponAITargetingMode::FindAuxTechno }
+	{"findauxtechno", SuperWeaponAITargetingMode::FindAuxTechno },
+	{"ioncannon", SuperWeaponAITargetingMode::IonCannon }
 }
 };
 
@@ -518,6 +519,9 @@ std::array<const char*, (size_t)DisplayInfoType::count> EnumFunctions::DisplayIn
 	{ "passengerkill" },
 	{ "autodeath" },
 	{ "superweapon" },
+	{ "temporallife" },
+	{ "factoryprocess" },
+	{ "selfhealcombatdelay" }
 }
 };
 
@@ -555,20 +559,25 @@ std::array<std::pair<const char* const, InterpolationMode>, 2u> EnumFunctions::I
 
 bool EnumFunctions::CanTargetHouse(AffectedHouse const& flags, HouseClass* ownerHouse, HouseClass* targetHouse)
 {
-	if (flags == AffectedHouse::All)
-		return true;
-
-	if (ownerHouse && targetHouse)
+	if (flags != AffectedHouse::None)
 	{
-		if ((flags & AffectedHouse::Owner) && ownerHouse == targetHouse)
+		if (flags == AffectedHouse::All)
 			return true;
 
-		const auto IsAlly = ownerHouse->IsAlliedWith(targetHouse);
-		return (flags & AffectedHouse::Allies) && ownerHouse != targetHouse && IsAlly ||
-			(flags & AffectedHouse::Enemies) && ownerHouse != targetHouse && !IsAlly;
+		if (ownerHouse && targetHouse)
+		{
+			if ((flags & AffectedHouse::Owner) && ownerHouse == targetHouse)
+				return true;
+
+			const auto IsAlly = ownerHouse->IsAlliedWith(targetHouse);
+			return (flags & AffectedHouse::Allies) && ownerHouse != targetHouse && IsAlly ||
+				(flags & AffectedHouse::Enemies) && ownerHouse != targetHouse && !IsAlly;
+		}
+
+		return (flags & AffectedHouse::Enemies) != AffectedHouse::None;
 	}
 
-	return (flags & AffectedHouse::Enemies) != AffectedHouse::None;
+	return false;
 }
 
 bool EnumFunctions::IsCellEligible(CellClass* const pCell, AffectedTarget const& allowed, bool explicitEmptyCells, bool considerBridgesLand)

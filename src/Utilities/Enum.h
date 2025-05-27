@@ -446,6 +446,7 @@ enum class SuperWeaponAITargetingMode
 	LightningRandom = 20,
 	LauchSite = 21,
 	FindAuxTechno = 22,
+	IonCannon = 23,
 	count
 };
 
@@ -613,6 +614,9 @@ enum class DisplayInfoType : BYTE
 	PassengerKill = 19,
 	AutoDeath = 20,
 	SuperWeapon = 21,
+	TemporalLife = 22,
+	FactoryProcess = 23,
+	SelfHealCombatDelay = 24,
 	count
 };
 

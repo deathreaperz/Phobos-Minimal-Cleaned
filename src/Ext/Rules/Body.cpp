@@ -18,6 +18,7 @@
 #include <New/Type/TechTreeTypeClass.h>
 #include <New/Type/RocketTypeClass.h>
 #include <New/Type/InsigniaTypeClass.h>
+#include <New/Type/SelectBoxTypeClass.h>
 
 #include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
 
@@ -38,6 +39,9 @@
 #include <Misc/DynamicPatcher/Trails/TrailType.h>
 
 #include <GameStrings.h>
+
+std::unique_ptr<RulesExtData> RulesExtData::Data {};
+IStream* RulesExtData::g_pStm;
 
 void RulesExtData::Allocate(RulesClass* pThis)
 {
@@ -149,6 +153,7 @@ void RulesExtData::s_LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	LaserTrailTypeClass::LoadFromINIList(&CCINIClass::INI_Art.get());
 	DigitalDisplayTypeClass::LoadFromINIList(pINI);
+	SelectBoxTypeClass::LoadFromINIList(pINI);
 
 	PhobosAttachEffectTypeClass::LoadFromINIOnlyTheList(pINI);
 	TechTreeTypeClass::LoadFromINIOnlyTheList(pINI);
@@ -184,6 +189,17 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 	PhobosAttachEffectTypeClass::ReadListFromINI(pINI);
 	TechTreeTypeClass::ReadListFromINI(pINI);
 
+	pData->DamagedSpeed.Read(iniEX, GameStrings::General, "DamagedSpeed");
+	pData->ColorAddUse8BitRGB.Read(iniEX, GameStrings::AudioVisual, "ColorAddUse8BitRGB");
+	pData->IronCurtain_ExtraTintIntensity.Read(iniEX, GameStrings::AudioVisual, "IronCurtain.ExtraTintIntensity");
+	pData->ForceShield_ExtraTintIntensity.Read(iniEX, GameStrings::AudioVisual, "ForceShield.ExtraTintIntensity");
+
+	pData->DefaultInfantrySelectBox.Read(iniEX, GameStrings::AudioVisual, "DefaultInfantrySelectBox");
+	pData->DefaultUnitSelectBox.Read(iniEX, GameStrings::AudioVisual, "DefaultUnitSelectBox");
+
+	pData->InfantrySpeedData.Crawls.Read(iniEX, GameStrings::General, "ProneSpeed.Crawls");
+	pData->InfantrySpeedData.NoCrawls.Read(iniEX, GameStrings::General, "ProneSpeed.NoCrawls");
+
 	pData->VoxelLightSource.Read(iniEX, GameStrings::AudioVisual, "VoxelLightSource");
 	pData->VoxelShadowLightSource.Read(iniEX, GameStrings::AudioVisual, "VoxelShadowLightSource");
 	pData->UseFixedVoxelLighting.Read(iniEX, GameStrings::AudioVisual, "UseFixedVoxelLighting");
@@ -196,7 +212,7 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 	detail::ParseVector<HouseTypeClass*>(iniEX, pData->AIHateHousesLists, "AIHateHousesList");
 	detail::ParseVector<HouseTypeClass*>(iniEX, pData->AIHousesLists, "AIHousesList");
 	detail::ParseVector(iniEX, pData->AIConditionsLists, "AIConditionsList", true, false, "/");
-	detail::ParseVector<AITriggerTypeClass*>(iniEX, pData->AITriggersLists, "AITriggersList");
+	detail::ParseVector<AITriggerTypeClass*, true>(iniEX, pData->AITriggersLists, "AITriggersList");
 
 	pData->AIChronoSphereSW.Read(iniEX, GameStrings::General, "AIChronoSphereSW");
 	pData->AIChronoWarpSW.Read(iniEX, GameStrings::General, "AIChronoWarpSW");
@@ -286,17 +302,18 @@ static bool NOINLINE IsVanillaDummy(const char* ID)
 #include <Ext/SWType/NewSuperWeaponType/NewSWType.h>
 
 template<typename T>
-static COMPILETIMEEVAL void FillSecrets(DynamicVectorClass<T>& secrets)
+static COMPILETIMEEVAL FORCEDINLINE void FillSecrets(DynamicVectorClass<T>& secrets)
 {
 	for (auto Option : secrets)
 	{
 		RulesExtData::Instance()->Secrets.emplace_back(Option);
-		Debug::LogInfo("Adding [{} - {}] onto Global Secrets pool", Option->ID, Option->GetThisClassName());
+		//Debug::LogInfo("Adding [{} - {}] onto Global Secrets pool" , Option->ID, Option->GetThisClassName());
 	}
 }
 
 ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
-{	// create an array of crew for faster lookup
+{
+	// create an array of crew for faster lookup
 	std::vector<InfantryTypeClass*> Crews(SideClass::Array->Count, nullptr);
 	for (int i = 0; i < SideClass::Array->Count; ++i)
 	{
@@ -381,28 +398,28 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 
 		if (pExt->Fake_Of && pExt->Fake_Of->WhatAmI() != what)
 		{
-			Debug::LogInfo("[{} - {}] has fake of but it different ClassType from it!", pItem->ID, myClassName);
+			Debug::LogInfo("[{} - {}] has FakeOf [{} - {}] but it different ClassType from it!", pItem->ID, myClassName, pExt->Fake_Of->ID, pExt->Fake_Of->GetThisClassName());
 			pExt->Fake_Of = nullptr;
 			Debug::RegisterParserError();
 		}
 
 		if (pExt->ClonedAs && pExt->ClonedAs->WhatAmI() != what)
 		{
-			Debug::LogInfo("[{} - {}] has ClonedAs but it different ClassType from it!", pItem->ID, myClassName);
+			Debug::LogInfo("[{} - {}] has ClonedAs [{} - {}] but it different ClassType from it!", pItem->ID, myClassName, pExt->ClonedAs->ID, pExt->ClonedAs->GetThisClassName());
 			pExt->ClonedAs = nullptr;
 			Debug::RegisterParserError();
 		}
 
 		if (pExt->AI_ClonedAs && pExt->AI_ClonedAs->WhatAmI() != what)
 		{
-			Debug::LogInfo("[{} - {}] has AI.ClonedAs but it different ClassType from it!", pItem->ID, myClassName);
+			Debug::LogInfo("[{} - {}] has AI.ClonedAs [{} - {}] but it different ClassType from it!", pItem->ID, myClassName, pExt->AI_ClonedAs->ID, pExt->AI_ClonedAs->GetThisClassName());
 			pExt->AI_ClonedAs = nullptr;
 			Debug::RegisterParserError();
 		}
 
 		if (pExt->ReversedAs.Get(nullptr) && pExt->ReversedAs->WhatAmI() != what)
 		{
-			Debug::LogInfo("[{} - {}] has ReversedAs but it different ClassType from it!", pItem->ID, pItem->ID, myClassName);
+			Debug::LogInfo("[{} - {}] has ReversedAs [{} - {}] but it different ClassType from it!", pItem->ID, myClassName, pExt->ReversedAs->ID, pExt->ReversedAs->GetThisClassName());
 			pExt->ReversedAs.Reset();
 			Debug::RegisterParserError();
 		}
@@ -518,7 +535,7 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 			}
 
 			auto const pBExt = BuildingTypeExtContainer::Instance.Find(pBType);
-			pBExt->IsPrism = RulesClass::Instance->PrismType == pBType;
+			//pBExt->IsPrism = RulesClass::Instance->PrismType == pBType;
 
 			if (pBExt->CloningFacility && pBType->Factory != AbstractType::None)
 			{
@@ -583,7 +600,7 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		}
 	}
 
-	for (auto const& pConst : RulesClass::Instance->BuildConst)
+	for (auto& pConst : RulesClass::Instance->BuildConst)
 	{
 		if (!pConst->AIBuildThis)
 		{
@@ -623,16 +640,15 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		}
 	}
 
-	for (auto pBullet : *BulletTypeClass::Array)
-	{
-		auto pExt = BulletTypeExtContainer::Instance.Find(pBullet);
-
-		if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke)
-		{
-			Debug::LogInfo("Bullet[{}] With AttachedSystem[{}] is not BehavesLike=Smoke!", pBullet->ID, pExt->AttachedSystem->ID);
-			Debug::RegisterParserError();
-		}
-	}
+	// for (auto pBullet : *BulletTypeClass::Array) {
+	//
+	// 	auto pExt = BulletTypeExtContainer::Instance.Find(pBullet);
+	//
+	// 	if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke) {
+	// 		Debug::LogInfo("Bullet[{}] With AttachedSystem[{}] is not BehavesLike=Smoke!", pBullet->ID, pExt->AttachedSystem->ID);
+	// 		Debug::RegisterParserError();
+	// 	}
+	// }
 
 	for (auto pHouse : *HouseTypeClass::Array)
 	{
@@ -712,6 +728,7 @@ void RulesExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	GenericPrerequisite::AddDefaults();
 	HoverTypeClass::AddDefaults();
 	ShieldTypeClass::AddDefaults();
+	SelectBoxTypeClass::AddDefaults();
 }
 
 void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
@@ -741,6 +758,11 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	INI_EX exINI(pINI);
 
+	this->Infantry_IgnoreBuildingSizeLimit.Read(exINI, GameStrings::CombatDamage, "InfantryIgnoreBuildingSizeLimit");
+	this->HarvesterDumpAmount.Read(exINI, GameStrings::General, "HarvesterDumpAmount");
+	this->AttackMove_Aggressive.Read(exINI, GameStrings::General, "AttackMove.Aggressive");
+	this->AttackMove_UpdateTarget.Read(exINI, GameStrings::General, "AttackMove.UpdateTarget");
+	this->HarvesterScanAfterUnload.Read(exINI, GameStrings::General, "HarvesterScanAfterUnload");
 	this->VisualScatter_Min.Read(exINI, GameStrings::AudioVisual, "VisualScatter.Min");
 	this->VisualScatter_Max.Read(exINI, GameStrings::AudioVisual, "VisualScatter.Max");
 
@@ -760,6 +782,9 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	this->RecountBurst.Read(exINI, GameStrings::General, "RecountBurst");
 	this->AirstrikeLineColor.Read(exINI, GameStrings::AudioVisual, "AirstrikeLineColor");
+
+	this->AmphibiousEnter.Read(exINI, GameStrings::General, "AmphibiousEnter");
+	this->AmphibiousUnload.Read(exINI, GameStrings::General, "AmphibiousUnload");
 
 	this->Cameo_AlwaysExist.Read(exINI, GameStrings::AudioVisual, "Cameo.AlwaysExist");
 	this->Cameo_OverlayShapes.Read(exINI, GameStrings::AudioVisual, "Cameo.OverlayShapes");
@@ -792,7 +817,10 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	exINI.ReadSpeed(GameStrings::General, "SubterraneanSpeed", &this->SubterraneanSpeed);
 
 	this->CheckUnitBaseNormal.Read(exINI, GameStrings::General, "CheckUnitBaseNormal");
+
+	//TODO : fuck this break AI
 	this->ExtendedBuildingPlacing.Read(exINI, GameStrings::General, "ExtendedBuildingPlacing");
+
 	this->CheckExpandPlaceGrid.Read(exINI, GameStrings::AudioVisual, "CheckExpandPlaceGrid");
 	this->ExpandLandGridFrames.Read(exINI, GameStrings::AudioVisual, "ExpandLandGridFrames");
 	this->ExpandWaterGridFrames.Read(exINI, GameStrings::AudioVisual, "ExpandWaterGridFrames");
@@ -852,6 +880,7 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	this->DrawInsignia_AdjustPos_Buildings.Read(exINI, GameStrings::AudioVisual, "DrawInsignia.AdjustPos.Buildings");
 	this->DrawInsignia_AdjustPos_BuildingsAnchor.Read(exINI, GameStrings::AudioVisual, "DrawInsignia.AdjustPos.BuildingsAnchor");
 	this->DrawInsignia_AdjustPos_Units.Read(exINI, GameStrings::AudioVisual, "DrawInsignia.AdjustPos.Units");
+	this->DrawInsignia_UsePixelSelectionBracketDelta.Read(exINI, GameStrings::AudioVisual, "DrawInsignia.UsePixelSelectionBracketDelta");
 
 #pragma region Otamaa
 	this->DisplayCreditsDelay.Read(exINI, GameStrings::AudioVisual(), "DisplayCreditsDelay");
@@ -1186,6 +1215,7 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->UnitsGainSelfHealCap)
 		.Process(this->EnemyInsignia)
 		.Process(this->DisguiseBlinkingVisibility)
+		.Process(this->DrawInsignia_UsePixelSelectionBracketDelta)
 
 		.Process(this->SHP_SelectBrdSHP_INF)
 		.Process(this->SHP_SelectBrdPAL_INF)
@@ -1433,7 +1463,9 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->CombatAlert_Interval)
 		.Process(this->CombatAlert_SuppressIfAllyDamage)
 		.Process(this->SubterraneanSpeed)
-
+		.Process(this->InfantrySpeedData)
+		.Process(this->DamagedSpeed)
+		.Process(this->ColorAddUse8BitRGB)
 		.Process(this->VoxelLightSource)
 		.Process(this->VoxelShadowLightSource)
 		.Process(this->UseFixedVoxelLighting)
@@ -1513,7 +1545,8 @@ void RulesExtData::Serialize(T& Stm)
 
 		.Process(this->RecountBurst)
 		.Process(this->AirstrikeLineColor)
-
+		.Process(this->AmphibiousEnter)
+		.Process(this->AmphibiousUnload)
 		.Process(this->XGRYMED1_)
 		.Process(this->XGRYMED2_)
 		.Process(this->XGRYSML1_)
@@ -1522,6 +1555,11 @@ void RulesExtData::Serialize(T& Stm)
 
 		.Process(this->VisualScatter_Min)
 		.Process(this->VisualScatter_Max)
+		.Process(this->HarvesterDumpAmount)
+		.Process(this->HarvesterScanAfterUnload)
+		.Process(this->AttackMove_Aggressive)
+		.Process(this->AttackMove_UpdateTarget)
+		.Process(this->Infantry_IgnoreBuildingSizeLimit)
 		;
 
 	MyPutData.Serialize(Stm);

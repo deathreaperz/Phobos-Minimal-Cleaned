@@ -65,6 +65,12 @@ public:
 
 	COMPILETIMEEVAL TimerClass& operator = (TimerClass&&) =  default;
 
+	COMPILETIMEEVAL TimerClass& operator=(long set) {
+		StartTime = CurrentTime();
+		TimeLeft = set;
+		return *this;
+	}
+
 	COMPILETIMEEVAL FORCEDINLINE void Start(int duration)
 	{
 		this->StartTime = this->CurrentTime;
@@ -171,26 +177,42 @@ using CDTimerClass = TimerClass<FrameTimer>;
 static_assert(offsetof(CDTimerClass, TimeLeft) == 0x8);
 static_assert(sizeof(CDTimerClass) == 0xC, "Invalid Size !");
 
-class RepeatableTimerStruct : public CDTimerClass
+class RepeatableTimer : public CDTimerClass
 {
 public:
-	int Duration { 0 };
+	int Rate { 0 };
 
-	COMPILETIMEEVAL RepeatableTimerStruct() = default;
-	COMPILETIMEEVAL RepeatableTimerStruct(const RepeatableTimerStruct&) = default;
-	COMPILETIMEEVAL RepeatableTimerStruct& operator = (const RepeatableTimerStruct&) = default;
-	COMPILETIMEEVAL RepeatableTimerStruct& operator = (RepeatableTimerStruct&&) = default;
-	COMPILETIMEEVAL RepeatableTimerStruct(int duration) { this->Start(duration); }
+	COMPILETIMEEVAL RepeatableTimer() = default;
+
+	COMPILETIMEEVAL RepeatableTimer(const RepeatableTimer& that) {
+		CDTimerClass::operator=(that);
+		Rate = that.Rate;
+	}
+
+	COMPILETIMEEVAL RepeatableTimer& operator = (const RepeatableTimer& that) {
+		CDTimerClass::operator=(that);
+		Rate = that.Rate;
+		return *this;
+	}
+
+	COMPILETIMEEVAL RepeatableTimer& operator=(long set) {
+		CDTimerClass::operator=(set);
+		Rate = set;
+		return *this;
+	}
+
+	COMPILETIMEEVAL RepeatableTimer& operator = (RepeatableTimer&&) = default;
+	COMPILETIMEEVAL RepeatableTimer(int duration) { this->Start(duration); }
 
 	COMPILETIMEEVAL FORCEDINLINE void Start(int duration)
 	{
-		this->Duration = duration;
+		this->Rate = duration;
 		this->Restart();
 	}
 
 	COMPILETIMEEVAL FORCEDINLINE void Restart()
 	{
-		this->CDTimerClass::Start(this->Duration);
+		this->CDTimerClass::Start(this->Rate);
 	}
 
 	COMPILETIMEEVAL OPTIONALINLINE bool Expired() const { return Percent_Expired() == 1.0f; }
@@ -215,7 +237,7 @@ public:
 
 	COMPILETIMEEVAL OPTIONALINLINE float Percent_Expired() const
 	{
-		unsigned long rate = Duration;
+		unsigned long rate = Rate;
 		if (!rate) {
 			return 1.0;
 		}
@@ -224,4 +246,4 @@ public:
 	}
 };
 
-typedef RepeatableTimerStruct RateTimer;
+typedef RepeatableTimer RateTimer;

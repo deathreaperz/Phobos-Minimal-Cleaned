@@ -255,6 +255,7 @@ void CellExtData::Serialize(T& Stm) {
 // =============================
 // container
 CellExtContainer CellExtContainer::Instance;
+HelperedVector<CellExtData*> CellExtContainer::Array;
 
 // =============================
 // container hooks

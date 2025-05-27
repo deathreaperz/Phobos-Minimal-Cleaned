@@ -274,8 +274,23 @@ ASMJIT_PATCH(0x4DA8B2, FootClass_Update_AnimRate, 6)
 	GET(FootClass*, pThis, ESI);
 	auto pType = pThis->GetTechnoType();
 	auto pExt = TechnoTypeExtContainer::Instance.Find(pType);
+	//auto pUnit = cast_to<UnitClass* , false>(pThis);
 
-	enum { Undecided = 0u, NoChange = 0x4DAA01u, Advance = 0x4DA9FBu };
+	enum
+	{
+		Undecided = 0u,
+		NoChange = 0x4DAA01u,
+		Advance = 0x4DA9FBu,
+		Checks = 0x4DA8B2u
+	};
+
+	if (!pThis->InLimbo)
+	{
+		if (pThis->InWhichLayer() != pThis->LastLayer)
+		{
+			DisplayClass::Instance->SubmitObject(pThis);
+		}
+	}
 
 	// any of these prevents the animation to advance to the next frame
 	if (pThis->IsBeingWarpedOut() || pThis->IsWarpingIn() || pThis->IsAttackedByLocomotor)

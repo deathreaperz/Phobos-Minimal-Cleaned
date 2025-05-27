@@ -17,6 +17,6 @@ public:
 protected:
 	void newStateMachine(int Duration, CellStruct XY, SuperClass* pSuper)
 	{
-		SWStateMachine::Register<UnitDeliveryStateMachine>(Duration, XY, pSuper, this);
+		SWStateMachine::Array.push_back(std::move(std::make_unique<UnitDeliveryStateMachine>(Duration, XY, pSuper, this)));
 	}
 };

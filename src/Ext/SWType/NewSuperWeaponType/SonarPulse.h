@@ -18,11 +18,9 @@ public:
 
 	virtual SWRange GetRange(const SWTypeExtData* pData) const override;
 
-	using TStateMachine = SonarPulseStateMachine;
-
 protected:
 	void newStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper)
 	{
-		SWStateMachine::Register<TStateMachine>(Deferment, XY, pSuper, this);
+		SWStateMachine::Array.push_back(std::move(std::make_unique<SonarPulseStateMachine>(Deferment, XY, pSuper, this)));
 	}
 };

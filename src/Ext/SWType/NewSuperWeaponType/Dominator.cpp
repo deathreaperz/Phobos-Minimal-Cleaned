@@ -125,7 +125,7 @@ void PsychicDominatorStateMachine::Update()
 		}
 	}
 
-	SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(this->Super->Type);
+	SWTypeExtData* pData = this->GetTypeExtData();
 
 	switch (PsyDom::Status)
 	{
@@ -166,15 +166,17 @@ void PsychicDominatorStateMachine::Update()
 	{
 		// wait for some percentage of the first anim to be
 		// played until we strike.
-		AnimClass* pAnim = PsyDom::Anim;
-		if (pAnim)
+
+		if (PsyDom::Anim)
 		{
-			int currentFrame = pAnim->Animation.Value;
-			short frameCount = pAnim->Type->GetImage()->Frames;
-			int percentage = pData->Dominator_FireAtPercentage.Get(RulesClass::Instance->DominatorFireAtPercentage);
-			if (frameCount * percentage / 100 > currentFrame)
+			if (auto pImage = PsyDom::Anim->Type->GetImage())
 			{
-				return;
+				const int percentage = pData->Dominator_FireAtPercentage.Get(RulesClass::Instance->DominatorFireAtPercentage);
+
+				if (pImage->Frames * percentage / 100 > PsyDom::Anim->Animation.Stage)
+				{
+					return;
+				}
 			}
 		}
 
@@ -187,15 +189,15 @@ void PsychicDominatorStateMachine::Update()
 	{
 		// wait for the second animation to finish. (there may be up to
 		// 10 frames still to be played.)
-		AnimClass* pAnim = PsyDom::Anim;
-		if (pAnim)
-		{
-			int currentFrame = pAnim->Animation.Value;
-			short frameCount = pAnim->Type->GetImage()->Frames;
 
-			if (frameCount - currentFrame > 10)
+		if (PsyDom::Anim)
+		{
+			if (auto pImage = PsyDom::Anim->Type->GetImage())
 			{
-				return;
+				if (pImage->Frames - PsyDom::Anim->Animation.Stage > 10)
+				{
+					return;
+				}
 			}
 		}
 
@@ -205,20 +207,19 @@ void PsychicDominatorStateMachine::Update()
 	case PsychicDominatorStatus::Reset:
 	{
 		// wait for the last frame... WTF?
-		AnimClass* pAnim = PsyDom::Anim;
-		if (pAnim && pAnim->Type)
-		{
-			int currentFrame = pAnim->Animation.Value;
-			short frameCount = pAnim->Type->GetImage()->Frames;
 
-			if (frameCount - currentFrame > 1)
+		if (PsyDom::Anim && PsyDom::Anim->Type)
+		{
+			if (auto pImage = PsyDom::Anim->Type->GetImage())
 			{
-				return;
+				if (pImage->Frames - PsyDom::Anim->Animation.Stage > 1)
+				{
+					return;
+				}
 			}
 		}
 
 		PsyDom::Status = PsychicDominatorStatus::Over;
-
 		PsyDom::Coords = CellStruct::Empty;
 		PsyDom::Anim = nullptr;
 		ScenarioClass::UpdateLighting();

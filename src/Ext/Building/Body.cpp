@@ -13,21 +13,14 @@
 
 void BuildingExtData::InitializeConstant()
 {
+	this->MyPrismForwarding = std::make_unique<PrismForwarding>();
+	this->MyPrismForwarding->Owner = this->AttachedToObject;
 	this->TechnoExt = TechnoExtContainer::Instance.Find(this->AttachedToObject);
 	auto const pTypeExt = BuildingTypeExtContainer::Instance.Find(this->AttachedToObject->Type);
 	this->Type = pTypeExt;
 
-	if (pTypeExt)
-	{
-		if (pTypeExt->IsPrism)
-		{
-			this->MyPrismForwarding = std::make_unique<PrismForwarding>();
-			this->MyPrismForwarding->Owner = this->AttachedToObject;
-		}
-
-		if (!pTypeExt->DamageFire_Offs.empty())
-			this->DamageFireAnims.resize(pTypeExt->DamageFire_Offs.size());
-	}
+	if (!pTypeExt->DamageFire_Offs.empty())
+		this->DamageFireAnims.resize(pTypeExt->DamageFire_Offs.size());
 }
 
 const std::vector<CellStruct> BuildingExtData::GetFoundationCells(BuildingClass* const pThis, CellStruct const baseCoords, bool includeOccupyHeight)
@@ -176,35 +169,32 @@ void BuildingExtData::UpdateSecretLab(BuildingClass* pThis)
 bool BuildingExtData::ReverseEngineer(BuildingClass* pBuilding, TechnoClass* Victim)
 {
 	const auto pReverseData = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
-	if (!pReverseData->ReverseEngineersVictims || !pBuilding->Owner)
+	if (!pReverseData->ReverseEngineersVictims)
 	{
 		return false;
 	}
 
 	auto VictimType = Victim->GetTechnoType();
 	auto pVictimData = TechnoTypeExtContainer::Instance.Find(VictimType);
+	if (!pVictimData->CanBeReversed)
+		return false;
+
 	auto VictimAs = pVictimData->ReversedAs.Get(VictimType);
 
-	if (!pVictimData->CanBeReversed || !VictimAs)
+	if (!VictimAs)
 		return false;
 
 	const auto pBldOwner = pBuilding->Owner;
 	auto pBldOwnerExt = HouseExtContainer::Instance.Find(pBldOwner);
 
-	if (!pBldOwnerExt->Reversed.contains(VictimAs))
+	if (HouseExtData::PrereqValidate(pBldOwner, VictimType, false, true) != CanBuildResult::Buildable)
 	{
-		const bool WasBuildable =
-			HouseExtData::PrereqValidate(pBldOwner, VictimType, false, true) == CanBuildResult::Buildable;
+		pBldOwnerExt->Reversed.emplace(VictimAs);
 
-		pBldOwnerExt->Reversed.push_back(VictimAs);
-
-		if (!WasBuildable)
+		if (HouseExtData::RequirementsMet(pBldOwner, VictimType) != RequirementStatus::Forbidden)
 		{
-			if (HouseExtData::RequirementsMet(pBldOwner, VictimType) != RequirementStatus::Forbidden)
-			{
-				pBldOwner->RecheckTechTree = true;
-				return true;
-			}
+			pBldOwner->RecheckTechTree = true;
+			return true;
 		}
 	}
 
@@ -221,7 +211,7 @@ void BuildingExtData::ApplyLimboKill(ValueableVector<int>& LimboIDs, Valueable<A
 	if (!EnumFunctions::CanTargetHouse(Affects.Get(), pAttackerHouse, pTargetHouse))
 		return;
 
-	StackVector<BuildingClass*, 256> LimboedID {};
+	StackVector<BuildingClass*, 20> LimboedID {};
 	for (const auto& pBuilding : pTargetHouse->Buildings)
 	{
 		const auto pBuildingExt = BuildingExtContainer::Instance.Find(pBuilding);
@@ -229,7 +219,8 @@ void BuildingExtData::ApplyLimboKill(ValueableVector<int>& LimboIDs, Valueable<A
 		if (pBuildingExt->LimboID <= -1 || !LimboIDs.Contains(pBuildingExt->LimboID))
 			continue;
 
-		LimboedID->push_back(pBuilding);
+		LimboedID->push_back(pBuilding); // we cant do it immedietely since the array will me modified
+		// we need to fetch the eligible building first before really killing it
 	}
 
 	for (auto& pLimboBld : LimboedID.container())
@@ -515,13 +506,8 @@ void BuildingExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 {
 	AnnounceInvalidPointer(this->CurrentAirFactory, ptr, bRemoved);
 	AnnounceInvalidPointer<TechnoClass*>(this->RegisteredJammers, ptr, bRemoved);
-	if (ptr == this->SpyEffectAnim.get())
-	{
-		this->SpyEffectAnim.release();
-	}
 
-	if (this->MyPrismForwarding)
-		this->MyPrismForwarding->InvalidatePointer(ptr, bRemoved);
+	this->MyPrismForwarding->InvalidatePointer(ptr, bRemoved);
 }
 
 void BuildingExtData::StoreTiberium(BuildingClass* pThis, float amount, int idxTiberiumType, int idxStorageTiberiumType)
@@ -598,7 +584,7 @@ void BuildingExtData::UpdatePrimaryFactoryAI(BuildingClass* pThis)
 
 	if (BuildingExt->CurrentAirFactory)
 	{
-		for (auto pBuilding : airFactoryBuilding)
+		for (auto& pBuilding : airFactoryBuilding)
 		{
 			if (!pBuilding->IsAlive)
 				continue;
@@ -623,7 +609,7 @@ void BuildingExtData::UpdatePrimaryFactoryAI(BuildingClass* pThis)
 	if (!currFactory)
 		return;
 
-	for (auto pBuilding : airFactoryBuilding)
+	for (auto& pBuilding : airFactoryBuilding)
 	{
 		if (!pBuilding->IsAlive)
 			continue;
@@ -826,10 +812,8 @@ void BuildingExtData::LimboDeliver(BuildingTypeClass* pType, HouseClass* pOwner,
 
 		//pOwner->AddTracking(pBuilding);
 		pOwner->RegisterGain(pBuilding, false);
-		pOwner->UpdatePower();
 		pOwner->RecheckTechTree = true;
 		pOwner->RecheckPower = true;
-		pOwner->RecheckRadar = true;
 		pOwner->Buildings.AddItem(pBuilding);
 
 		pOwner->ActiveBuildingTypes.Increment(pBuilding->Type->ArrayIndex);
@@ -849,7 +833,6 @@ void BuildingExtData::LimboDeliver(BuildingTypeClass* pType, HouseClass* pOwner,
 		}
 
 		pBuildingExt->LimboID = ID;
-		pBuildingExt->MyPrismForwarding.reset();
 		pBuildingExt->TechnoExt->Shield.release();
 		pBuildingExt->TechnoExt->Trails.clear();
 		pBuildingExt->TechnoExt->RevengeWeapons.clear();
@@ -1000,7 +983,7 @@ void FakeBuildingClass::_OnFireAI()
 				const auto nAdjust = ((3 * (nFireOffs.Y - 15 * nWidth + (-15) * nBuildingHeight)) >> 1) - 10;
 				pAnim->ZAdjust = nAdjust > 0 ? 0 : nAdjust; //ZAdjust always negative
 				if (pAnim->Type->End > 0)
-					pAnim->Animation.Value = ScenarioClass::Instance->Random.RandomFromMax(pAnim->Type->End - 1);
+					pAnim->Animation.Stage = ScenarioClass::Instance->Random.RandomFromMax(pAnim->Type->End - 1);
 
 				pAnim->Owner = this->Owner;
 				pExt->DamageFireAnims[i] = pAnim;
@@ -1107,3 +1090,17 @@ void FakeBuildingClass::_Detach(AbstractClass* target, bool all)
 }
 
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7E3EE4, FakeBuildingClass::_Detach)
+
+void FakeBuildingClass::_DetachAnim(AnimClass* pAnim)
+{
+	this->TechnoClass::AnimPointerExpired(pAnim);
+
+	auto pExt = BuildingExtContainer::Instance.Find(this);
+
+	if (pAnim == pExt->SpyEffectAnim.get())
+	{
+		pExt->SpyEffectAnim.release();
+	}
+}
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E3F1C, FakeBuildingClass::_DetachAnim)
+//

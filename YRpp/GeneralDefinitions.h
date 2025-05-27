@@ -19,6 +19,28 @@
 #define SDDTOR_NODELETE				0x00
 #define SDDTOR_DELETE				0x01
 
+enum ProdFailType : byte
+{
+	OK = 0x0,
+	Limit = 0x1,
+	Illegal = 0x2,
+	Cant = 0x3,
+};
+
+enum class MarkType : int
+{
+	Up = 0,
+	Remove = 0,
+	Down = 1,
+	Put = 1,
+	Change = 2,
+	Redraw = 2,
+	ChangeRedraw = 3,
+	AddContent = 3,
+	OverlapDown = 4,
+	OverlapUp = 5
+};
+
 enum class InitState : int
 {
 	Blank = 0x0, // CTOR'd
@@ -275,7 +297,7 @@ enum class RepairState : int
 
 enum class PCPType :int
 {
-	Otation = 0,
+	Rotation = 0,
 	During = 1,
 	End = 2
 };
@@ -1172,15 +1194,6 @@ enum class Layer : int {
 	Ground = 2,
 	Air = 3,
 	Top = 4
-};
-
-enum class PlacementType : int {
-	Remove = 0,
-	Put = 1,
-	Redraw = 2,
-	AddContent = 3,
-	OverlapDown = 4,
-	OverlapUp = 5
 };
 
 enum class MouseHotSpotX : int {

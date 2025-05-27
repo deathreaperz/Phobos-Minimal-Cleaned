@@ -58,9 +58,6 @@
 
 #include  <Ext/Event/Body.h>
 
-#include "Classes/AresPoweredUnit.h"
-#include "Classes/AresJammer.h"
-
 #include "AresChecksummer.h"
 
 #include <versionhelpers.h>
@@ -71,6 +68,56 @@
 #include <New/PhobosAttachedAffect/Functions.h>
 
 #include <Utilities/GameConfig.h>
+
+#pragma region defines
+PhobosMap<ObjectClass*, AlphaShapeClass*> StaticVars::ObjectLinkedAlphas { };
+std::vector<unsigned char>  StaticVars::ShpCompression1Buffer { };
+std::map<const TActionClass*, int>  StaticVars::TriggerCounts { };
+UniqueGamePtrC<MixFileClass>  StaticVars::aresMIX { };
+std::string  StaticVars::MovieMDINI { "MOVIEMD.INI" };
+WaveColorData  StaticVars::TempColor { };
+
+DWORD AresGlobalData::InternalVersion { 0x1414D121 };
+char AresGlobalData::ModName[0x40] { "Yuri's Revenge" };
+char AresGlobalData::ModVersion[0x40] { "1.001" };
+int AresGlobalData::ModIdentifier;
+CSFText AresGlobalData::ModNote;
+byte AresGlobalData::GFX_DX_Force;
+int AresGlobalData::colorCount { 8 };
+int AresGlobalData::version;
+
+int AresGlobalData::uiColorText;
+int AresGlobalData::uiColorTextButton { 0xFFFF }; // #1644: needed for CD prompt
+int AresGlobalData::uiColorTextCheckbox;
+int AresGlobalData::uiColorTextRadio;
+int AresGlobalData::uiColorTextLabel { 0xFFFF }; // #1644: needed for CD prompt
+int AresGlobalData::uiColorTextList;
+int AresGlobalData::uiColorTextCombobox;
+int AresGlobalData::uiColorTextGroupbox;
+int AresGlobalData::uiColorTextEdit;
+int AresGlobalData::uiColorTextSlider;
+int AresGlobalData::uiColorTextObserver;
+int AresGlobalData::uiColorCaret;
+int AresGlobalData::uiColorSelection;
+int AresGlobalData::uiColorSelectionCombobox;
+int AresGlobalData::uiColorSelectionList;
+int AresGlobalData::uiColorSelectionObserver;
+int AresGlobalData::uiColorBorder1;
+int AresGlobalData::uiColorBorder2;
+int AresGlobalData::uiColorDisabled;
+int AresGlobalData::uiColorDisabledLabel;
+int AresGlobalData::uiColorDisabledButton;
+int AresGlobalData::uiColorDisabledCombobox;
+int AresGlobalData::uiColorDisabledCheckbox;
+int AresGlobalData::uiColorDisabledList;
+int AresGlobalData::uiColorDisabledSlider;
+int AresGlobalData::uiColorDisabledObserver;
+AresGlobalData::ColorData AresGlobalData::Colors[16 + 1];
+
+std::array<MouseClassExt::MappedActions, (size_t)Action::count + 2> MouseClassExt::CursorIdx;
+DynamicVectorClass<BuildType, DllAllocator<BuildType>> MouseClassExt::TabCameos[4u];
+
+#pragma endregion
 
 bool StaticVars::SaveGlobals(PhobosStreamWriter& stm)
 {
@@ -480,35 +527,49 @@ void TechnoTypeExt_ExtData::ReadWeaponStructDatas(TechnoTypeClass* pType, CCINIC
 
 #pragma region TechnoExt_ExtData
 
-//https://bugs.launchpad.net/ares/+bug/1925359
-void TechnoExt_ExtData::AddPassengers(BuildingClass* const Grinder, TechnoClass* Vic)
+void TechnoExt_ExtData::AddPassengers(BuildingClass* const Grinder, FootClass* Vic)
 {
-	for (auto nPass = Vic->Passengers.GetFirstPassenger();
-		nPass;
-		nPass = (FootClass*)nPass->NextObject)
+	while (Vic->Passengers.FirstPassenger)
 	{
-		//const auto pType = nPass->GetTechnoType();
-
-		if (BuildingExtData::ReverseEngineer(Grinder, Vic))
+		if (auto nPass = Vic->RemoveFirstPassenger())
 		{
-			if (nPass->Owner && nPass->Owner->ControlledByCurrentPlayer())
+			if (auto pTeam = nPass->Team)
 			{
-				VoxClass::Play(nPass->WhatAmI() == InfantryClass::AbsID ? "EVA_ReverseEngineeredInfantry" : "EVA_ReverseEngineeredVehicle");
-				VoxClass::Play(GameStrings::EVA_NewTechAcquired());
+				pTeam->RemoveMember(nPass);
 			}
-		}
 
-		if (const auto FirstTag = Grinder->AttachedTag)
-		{
-			FirstTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerType, Grinder, CellStruct::Empty, false, nPass);
-
-			if (auto pSecondTag = Grinder->AttachedTag)
+			if (Grinder->Type->Grinding)
 			{
-				pSecondTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerAnything, Grinder, CellStruct::Empty, false, nullptr);
-			}
-		}
+				if (BuildingExtData::ReverseEngineer(Grinder, nPass))
+				{
+					if (nPass->Owner && nPass->Owner->ControlledByCurrentPlayer())
+					{
+						VoxClass::Play(nPass->WhatAmI() == InfantryClass::AbsID ? "EVA_ReverseEngineeredInfantry" : "EVA_ReverseEngineeredVehicle");
+						VoxClass::Play(GameStrings::EVA_NewTechAcquired());
+					}
 
-		AddPassengers(Grinder, nPass);
+					if (const auto FirstTag = Grinder->AttachedTag)
+					{
+						FirstTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerType, Grinder, CellStruct::Empty, false, nPass);
+
+						if (auto pSecondTag = Grinder->AttachedTag)
+						{
+							pSecondTag->RaiseEvent((TriggerEvent)AresTriggerEvents::ReverseEngineerAnything, Grinder, CellStruct::Empty, false, nullptr);
+						}
+					}
+				}
+			}
+
+			// #368: refund hijackers
+			if (nPass->HijackerInfantryType != -1)
+			{
+				Grinder->Owner->TransactMoney(InfantryTypeClass::Array->Items[nPass->HijackerInfantryType]->GetRefund(nPass->Owner, 0));
+			}
+
+			AddPassengers(Grinder, nPass);
+			Grinder->Owner->TransactMoney(nPass->GetRefund());
+			nPass->UnInit();
+		}
 	}
 }
 
@@ -885,7 +946,7 @@ bool NOINLINE TechnoExt_ExtData::CloakAllowed(TechnoClass* pThis)
 
 	if (pThis->WhatAmI() != BuildingClass::AbsID)
 	{
-		if (pThis->CloakProgress.Value)
+		if (pThis->CloakProgress.Stage)
 			return false;
 
 		if (pThis->LocomotorSource && ((FootClass*)pThis)->IsAttackedByLocomotor)
@@ -2905,7 +2966,7 @@ void TechnoExt_ExtData::InfiltratedBy(BuildingClass* EnteredBuilding, HouseClass
 
 	if (effectApplied)
 	{
-		EnteredBuilding->UpdatePlacement(PlacementType::Redraw);
+		EnteredBuilding->Mark(MarkType::Redraw);
 	}
 
 	pBldExt->AccumulatedIncome += Owner->Available_Money() - moneyBefore;
@@ -3328,7 +3389,7 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		return false;
 
 	const auto pOldType = prevType;
-	Debug::LogInfo("Attempt to convert TechnoType[{}] to [{}]", pOldType->ID, pToType->ID);
+	//Debug::LogInfo("Attempt to convert TechnoType[{}] to [{}]", pOldType->ID, pToType->ID);
 
 	if (pToType->WhatAmI() != rtti || pOldType->Spawned != pToType->Spawned || pOldType->MissileSpawn != pToType->MissileSpawn)
 	{
@@ -3783,7 +3844,9 @@ void NOINLINE UpdatePoweredBy(TechnoClass* pThis, TechnoTypeExtData* pTypeData)
 	{
 		if (!TechnoExtContainer::Instance.Find(pThis)->PoweredUnit)
 		{
-			TechnoExtContainer::Instance.Find(pThis)->PoweredUnit = std::make_unique<AresPoweredUnit>(pThis);
+			TechnoExtContainer::Instance.Find(pThis)->PoweredUnit =
+				std::make_unique < PoweredUnitClass>(pThis)
+				;
 		}
 
 		if (!TechnoExtContainer::Instance.Find(pThis)->PoweredUnit->Update())
@@ -3870,6 +3933,7 @@ void NOINLINE UpdateRadarJammer(TechnoExtData* pData, TechnoTypeExtData* pTypeDa
 		}
 
 		// dropping Radar Jammers (#305) here for now; should check if another TechnoClass::Update hook might be better ~Ren
+		;
 		if (auto& pJam = TechnoExtContainer::Instance.Find(pThis)->RadarJammer)
 		{ // RadarJam should only be non-null if the object is an active radar jammer
 			pJam->UnjamAll();
@@ -3882,15 +3946,14 @@ void NOINLINE UpdateRadarJammer(TechnoExtData* pData, TechnoTypeExtData* pTypeDa
 		{
 			if (!TechnoExtContainer::Instance.Find(pThis)->RadarJammer)
 			{
-				TechnoExtContainer::Instance.Find(pThis)->RadarJammer = std::make_unique<AresJammer>(pThis);
+				TechnoExtContainer::Instance.Find(pThis)->RadarJammer =
+					std::make_unique<RadarJammerClass>(pThis);
 			}
 
 			TechnoExtContainer::Instance.Find(pThis)->RadarJammer->Update();
 		}
 	}
 }
-
-#include "Classes/AttachedAffects.h"
 
 void TechnoExt_ExtData::Ares_technoUpdate(TechnoClass* pThis)
 {
@@ -3933,13 +3996,14 @@ void TechnoExt_ExtData::Ares_AddMoneyStrings(TechnoClass* pThis, bool forcedraw)
 		pExt->Pos = Unsorted::CurrentFrame - int32_t(RulesExtData::Instance()->DisplayCreditsDelay * -900.0);
 		pExt->TechnoValueAmount = 0;
 		bool isPositive = value > 0;
-		wchar_t moneyStr[0x20];
+		fmt::basic_memory_buffer<wchar_t> moneyStr;
 
 		const ColorStruct& color = isPositive
 			? Drawing::DefaultColors[(int)DefaultColorList::Green] :
 			Drawing::DefaultColors[(int)DefaultColorList::Red];
 
-		swprintf_s(moneyStr, L"%ls%ls%d", isPositive ? L"+" : L"-", Phobos::UI::CostLabel, Math::abs(value));
+		fmt::format_to(std::back_inserter(moneyStr), L"{}{}{}", isPositive ? L"+" : L"-", Phobos::UI::CostLabel, Math::abs(value));
+		moneyStr.push_back(L'\0');
 
 		CoordStruct loc = pThis->GetCoords();
 		if (!MapClass::Instance->IsLocationShrouded(loc)
@@ -3954,7 +4018,7 @@ void TechnoExt_ExtData::Ares_AddMoneyStrings(TechnoClass* pThis, bool forcedraw)
 				loc.Z += 256;
 			}
 
-			FlyingStrings::Add(moneyStr, loc, color, {});
+			FlyingStrings::Add(moneyStr.data(), loc, color, {});
 		}
 	}
 }
@@ -4399,7 +4463,7 @@ void FirewallFunctions::UpdateFirewall(BuildingClass* pThis, bool const changedS
 		{
 			pThis->FirestormWallFrame = idxFrame;
 			pThis->GetCell()->RecalcAttributes(0xFFFFFFFF);
-			pThis->UpdatePlacement(PlacementType::Redraw);
+			pThis->Mark(MarkType::Redraw);
 		}
 
 		auto& Anim = pThis->GetAnim(BuildingAnimSlot::Special);
@@ -5413,216 +5477,6 @@ void AresEMPulse::DisableEMPEffect2(TechnoClass* const pVictim)
 }
 #pragma endregion
 
-#pragma region AresPoweredUnit
-
-bool AresPoweredUnit::IsPoweredBy(HouseClass* const pOwner) const
-{
-	auto const pType = this->Techno->GetTechnoType();
-	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
-
-	auto const& PoweredBy = pTypeExt->PoweredBy;
-
-	for (auto const& pBuilding : pOwner->Buildings)
-	{
-		auto const inArray = PoweredBy.Contains(pBuilding->Type);
-
-		if (inArray && !pBuilding->BeingWarpedOut && !pBuilding->IsUnderEMP())
-		{
-			if (TechnoExt_ExtData::IsOperated(pBuilding) && pBuilding->IsPowerOnline())
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-void AresPoweredUnit::PowerUp()
-{
-	auto const pTechno = this->Techno;
-	if (!pTechno->IsUnderEMP() && TechnoExt_ExtData::IsOperated(pTechno))
-	{
-		AresEMPulse::DisableEMPEffect2(pTechno);
-	}
-}
-
-bool AresPoweredUnit::PowerDown()
-{
-	auto const pTechno = this->Techno;
-
-	if (AresEMPulse::IsDeactivationAdvisableB(pTechno))
-	{
-		// destroy if EMP.Threshold would crash this unit when in air
-		if (AresEMPulse::EnableEMPEffect2(pTechno)
-			|| (TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType())->EMP_Threshold
-				&& pTechno->IsInAir()))
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
-
-bool AresPoweredUnit::Update()
-{
-	if ((Unsorted::CurrentFrame - this->LastScan) < ScanInterval)
-	{
-		return true;
-	}
-
-	auto const pTechno = this->Techno;
-
-	if (!pTechno->IsAlive || !pTechno->Health || pTechno->InLimbo)
-	{
-		return true;
-	}
-
-	const auto curMission = pTechno->CurrentMission;
-	this->LastScan = Unsorted::CurrentFrame;
-
-	if (curMission == Mission::Selling || curMission == Mission::Construction)
-		return true;
-
-	const auto queueMission = pTechno->QueuedMission;
-
-	if (queueMission == Mission::Selling || queueMission == Mission::Construction)
-		return true;
-
-	auto const pOwner = pTechno->Owner;
-	auto const hasPower = this->IsPoweredBy(pOwner);
-
-	this->Powered = hasPower;
-
-	if (hasPower && pTechno->Deactivated)
-	{
-		this->PowerUp();
-	}
-	else if (!hasPower && !pTechno->Deactivated)
-	{
-		// don't shutdown units inside buildings (warfac, barracks, shipyard) because that locks up the factory and the robot tank did it
-		auto const whatAmI = pTechno->WhatAmI();
-		if ((whatAmI != InfantryClass::AbsID && whatAmI != UnitClass::AbsID) || (!pTechno->GetCell()->GetBuilding()))
-		{
-			return this->PowerDown();
-		}
-	}
-
-	return true;
-}
-
-#pragma endregion
-
-#pragma region AresJammer
-//! \param TargetBuilding The building whose eligibility to check.
-bool AresJammer::IsEligible(BuildingClass* TargetBuilding)
-{
-	/* Current requirements for being eligible:
-		- not an ally (includes ourselves)
-		- either a radar or a spysat
-	*/
-
-	if (!this->AttachedToObject->Owner->IsAlliedWith(TargetBuilding->Owner))
-	{
-		if (TargetBuilding->Type->Radar)
-			return true;
-
-		for (auto pType : TargetBuilding->GetTypes())
-		{
-			if (pType && pType->SpySat)
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-void AresJammer::Update()
-{
-	// we don't want to scan & crunch numbers every frame - this limits it to ScanInterval frames
-	if ((Unsorted::CurrentFrame - this->LastScan) < this->ScanInterval)
-	{
-		return;
-	}
-
-	// save the current frame for future reference
-	this->LastScan = Unsorted::CurrentFrame;
-
-	// walk through all buildings
-	for (auto const curBuilding : *BuildingClass::Array)
-	{
-		if (!AresJammer::IsEligible(curBuilding))
-			continue;
-
-		// for each jammable building ...
-		// ...check if it's in range, and jam or unjam based on that
-		if (this->InRangeOf(curBuilding))
-		{
-			this->Jam(curBuilding);
-		}
-		else
-		{
-			this->Unjam(curBuilding);
-		}
-	}
-}
-
-//! \param TargetBuilding The building to check the distance to.
-bool AresJammer::InRangeOf(BuildingClass* TargetBuilding)
-{
-	auto const pExt = TechnoTypeExtContainer::Instance.Find(this->AttachedToObject->GetTechnoType());
-	auto const& JammerLocation = this->AttachedToObject->Location;
-	auto const JamRadiusInLeptons = 256.0 * pExt->RadarJamRadius;
-
-	return TargetBuilding->Location.DistanceFrom(JammerLocation) <= JamRadiusInLeptons;
-}
-
-//! \param TargetBuilding The building to jam.
-void AresJammer::Jam(BuildingClass* TargetBuilding)
-{
-	//keep item unique
-	auto& jammMap = BuildingExtContainer::Instance.Find(TargetBuilding)->RegisteredJammers;
-
-	jammMap.push_back_unique(this->AttachedToObject);
-
-	if (jammMap.size() >= 1)
-	{
-		TargetBuilding->Owner->RecheckRadar = true;
-	}
-
-	this->Registered = true;
-}
-
-//! \param TargetBuilding The building to unjam.
-void AresJammer::Unjam(BuildingClass* TargetBuilding) const
-{
-	//keep item unique
-	auto& jammMap = BuildingExtContainer::Instance.Find(TargetBuilding)->RegisteredJammers;
-	jammMap.remove(this->AttachedToObject);
-
-	if (jammMap.empty())
-	{
-		TargetBuilding->Owner->RecheckRadar = true;
-	}
-}
-
-void AresJammer::UnjamAll()
-{
-	if (this->Registered)
-	{
-		this->Registered = false;
-		for (auto const item : *BuildingClass::Array)
-		{
-			this->Unjam(item);
-		}
-	}
-}
-
-#pragma endregion
-
 #pragma region AresScriptExt
 
 static std::array<const char*, 4> Move_to_own_building_SearchType { {
@@ -5986,7 +5840,7 @@ bool AresWPWHExt::conductAbduction(WeaponTypeClass* pWeapon, TechnoClass* pOwner
 	//Target->AnnounceExpiredPointer(false);
 	Target->OnBridge = false; // ????
 	Target->NextObject = 0; // ??
-	//Target->UpdatePlacement(PlacementType::Remove);
+	//Target->Mark(MarkType::Remove);
 
 	// handling for Locomotor weapons: since we took this unit from the Magnetron
 	// in an unfriendly way, set these fields here to unblock the unit
@@ -6074,7 +5928,11 @@ bool AresWPWHExt::applyOccupantDamage(BulletClass* pThis)
 	{
 		auto const& multiplier = pBldTypeExt->UCDamageMultiplier;
 		auto adjustedDamage = static_cast<int>(std::ceil(pThis->Health * multiplier));
-		if (pPoorBastard->ReceiveDamage(&adjustedDamage, 0, pThis->WH, pThis->Owner, false, true, pThis->GetOwningHouse()) == DamageState::NowDead)
+		int distance = 0;
+		//if(auto pOwnerTech = pThis->Owner)
+			//distance = pOwnerTech->DistanceFrom(pPoorBastard);
+
+		if (pPoorBastard->ReceiveDamage(&adjustedDamage, distance, pThis->WH, pThis->Owner, false, true, pThis->GetOwningHouse()) == DamageState::NowDead)
 			pBuilding->NeedsRedraw = true;
 	}
 
@@ -6961,11 +6819,19 @@ bool AresTEventExt::HasOccured(TEventClass* pThis, EventArgs& Args, bool& result
 				result = false;
 			else
 			{
-				result = HouseExtContainer::Instance.Find(Args.Owner)->Reversed.any_of
-				([&](TechnoTypeClass* pTech)
- {
-	 return pTech == TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
-				});
+				if (!HouseExtContainer::Instance.Find(Args.Owner)->Reversed.empty())
+				{
+					auto TEvetType = TEventExtContainer::Instance.Find(pThis)->GetTechnoType();
+
+					for (auto pTechR : HouseExtContainer::Instance.Find(Args.Owner)->Reversed)
+					{
+						if (pTechR == TEvetType)
+						{
+							result = true;
+							break;
+						}
+					}
+				}
 			}
 
 			return true;
@@ -7858,7 +7724,7 @@ const MouseCursor* MouseClassExt::GetCursorDataFromRawAction(Action nAction)
 
 void MouseClassExt::ClearMappedAction()
 {
-	std::memset(CursorIdx.data(), 0, sizeof(MappedActions) * CursorIdx.size());
+	__stosb(reinterpret_cast<unsigned char*>(CursorIdx.data()), 0, sizeof(MappedActions) * CursorIdx.size());
 }
 
 void MouseClassExt::InsertMappedAction(MouseCursorType nCursorIdx, Action nAction, bool Shrouded)
@@ -8249,7 +8115,7 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 				// load the tooltip string
 
 				if (Ini->ReadString(section2, (name + ".Tooltip").c_str(), defTooltip, Phobos::readBuffer))
-					value.sttToolTipSublineText = StringTable::LoadString(Phobos::readBuffer);
+					value.sttToolTipSublineText = StringTable::FetchString(Phobos::readBuffer);
 
 				if (Ini->ReadString(section2, (name + ".ColorScheme").c_str(), defColorScheme, Phobos::readBuffer))
 					PhobosCRT::strCopy(value.colorScheme, Phobos::readBuffer);
@@ -8340,7 +8206,7 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 			Debug::LogInfo("Mod is {0} ({1}) with {2:x}",
 				ModName,
 				ModVersion,
-				ModIdentifier
+				(unsigned)ModIdentifier
 			);
 	}
 

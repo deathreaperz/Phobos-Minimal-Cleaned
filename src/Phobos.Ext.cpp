@@ -54,8 +54,10 @@
 #include <New/Type/ShieldTypeClass.h>
 #include <New/Type/TechTreeTypeClass.h>
 #include <New/Type/ThemeTypeClass.h>
+#include <New/Type/HealthBarTypeClass.h>
 #include <New/Type/BarTypeClass.h>
 #include <New/Type/InsigniaTypeClass.h>
+#include <New/Type/SelectBoxTypeClass.h>
 
 #include <New/HugeBar.h>
 
@@ -378,22 +380,103 @@ ASMJIT_PATCH(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	return 0;
 }
 
-#define LogPool(s) Debug::LogInfo("{} MemoryPool size {}", _STR_(s) , ##s::Instance.Pool.size());
-
 ASMJIT_PATCH(0x48CFB7, Game_Exit_RecordPoolSize, 0x6)
 {
-	LogPool(TechnoExtContainer)
-		LogPool(BuildingExtContainer)
-		LogPool(InfantryExtContainer)
-		Debug::LogInfo("FakeAnimClass MemoryPool size {}", FakeAnimClass::Pool.size());
-	LogPool(BulletExtContainer)
-		LogPool(ParticleExtContainer)
-		LogPool(ParticleSystemExtContainer)
-		LogPool(TeamExtContainer)
-		LogPool(VoxelAnimExtContainer)
-		LogPool(WaveExtContainer)
-		LogPool(TemporalExtContainer)
-		return 0x0;
+	TheMemoryPoolFactory->reportAllocation();
+	Debug::Log("PaletteManager %d\n", PaletteManager::Array.size());
+	return 0x0;
+}
+
+#include <New/Interfaces/AdvancedDriveLocomotionClass.h>
+#include <New/Interfaces/LevitateLocomotionClass.h>
+#include <New/Interfaces/CustomRocketLocomotionClass.h>
+
+unsigned Phobos::GetVersionNumber()
+{
+	unsigned version = AresGlobalData::InternalVersion;
+
+	version += sizeof(AnimExtData);
+	version += sizeof(AnimTypeExtData);
+
+	version += sizeof(BuildingExtData);
+	version += sizeof(BuildingTypeExtData);
+
+	version += sizeof(BulletExtData);
+	version += sizeof(BulletTypeExtData);
+
+	version += sizeof(CellExtData);
+
+	version += sizeof(HouseExtData);
+	version += sizeof(HouseTypeExtData);
+
+	version += sizeof(InfantryExtData);
+	version += sizeof(InfantryTypeExtData);
+
+	version += sizeof(ParticleExtData);
+	version += sizeof(ParticleTypeExtData);
+
+	version += sizeof(ParticleSystemExtData);
+	version += sizeof(ParticleSystemTypeExtData);
+
+	version += sizeof(RadSiteExtData);
+	version += sizeof(RulesExtData);
+	version += sizeof(ScenarioExtData);
+	version += sizeof(SidebarExtData);
+
+	version += sizeof(TeamExtData);
+	version += sizeof(SmudgeTypeExtData);
+
+	version += sizeof(SuperExtData);
+	version += sizeof(SWTypeExtData);
+
+	version += sizeof(TechnoExtData);
+	version += sizeof(TechnoTypeExtData);
+
+	version += sizeof(VoxelAnimExtData);
+	version += sizeof(VoxelAnimTypeExtData);
+
+	version += sizeof(WeaponTypeExtData);
+	version += sizeof(WarheadTypeExtData);
+	version += sizeof(WaveExtData);
+
+	version += sizeof(LaserTrailClass);
+	version += sizeof(LauchSWData);
+
+	version += sizeof(ShieldClass);
+	version += sizeof(SWFirerClass);
+
+	version += sizeof(AdvancedDriveLocomotionClass);
+	version += sizeof(CustomRocketLocomotionClass);
+	version += sizeof(LevitateLocomotionClass);
+	version += sizeof(GenericPrerequisite);
+	version += sizeof(Prereqs);
+	version += sizeof(PaletteManager);
+	version += sizeof(HugeBar);
+	version += sizeof(StaticVars);
+
+#define AddTypeOf(cccc) version += sizeof(cccc##TypeClass);
+	AddTypeOf(Armor)
+		AddTypeOf(Banner)
+		AddTypeOf(Bar)
+		AddTypeOf(Color)
+		AddTypeOf(Crate)
+		AddTypeOf(Cursor)
+		AddTypeOf(DigitalDisplay)
+		AddTypeOf(HealthBar)
+		AddTypeOf(Hover)
+		AddTypeOf(Immunity)
+		AddTypeOf(Insignia)
+		AddTypeOf(LaserTrail)
+		AddTypeOf(Rad)
+		AddTypeOf(Rocket)
+		AddTypeOf(SelectBox)
+		AddTypeOf(Shield)
+		AddTypeOf(TechTree)
+		AddTypeOf(Theater)
+		AddTypeOf(Theme)
+		AddTypeOf(Tunnel)
+#undef AddTypeOf
+		return version;
 }
 
 // Clear static data from respective classes
@@ -403,15 +486,7 @@ ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	CellExtContainer::Instance.Clear();
 	PrismForwarding::Array.clear();
 	MouseClassExt::ClearCameos();
-	TemporalExtContainer::Instance.Clear();
-	TechnoExtContainer::Instance.Clear();
 	FakeAnimClass::Clear();
-	BulletExtContainer::Instance.Clear();
-	ParticleExtContainer::Instance.Clear();
-	ParticleSystemExtContainer::Instance.Clear();
-	TeamExtContainer::Instance.Clear();
-	VoxelAnimExtContainer::Instance.Clear();
-
 	TechnoTypeExtContainer::Instance.Clear();
 	BulletTypeExtContainer::Instance.Clear();
 	BuildingTypeExtContainer::Instance.Clear();
@@ -429,7 +504,7 @@ ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	CursorTypeClass::Clear();
 	//ElectricBoltManager::Clear();
 	FlyingStrings::Clear();
-	PaletteManager::Clear();
+	//PaletteManager::Clear();
 	RadTypeClass::Clear();
 	RulesExtData::Clear();
 	ScenarioExtData::Clear();
@@ -457,21 +532,14 @@ ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	SWFirerClass::Clear();
 	ShieldClass::Array.clear();
 	InsigniaTypeClass::Clear();
+	SelectBoxTypeClass::Clear();
 
 	if (!Phobos::Otamaa::ExeTerminated)
 	{
-		TechnoExtContainer::Instance.Pool.reserve(2000);
-		BuildingExtContainer::Instance.Pool.reserve(2000);
-		InfantryExtContainer::Instance.Pool.reserve(2000);
-		FakeAnimClass::Pool.reserve(10000);
-		BulletExtContainer::Instance.Pool.reserve(1000);
-		ParticleExtContainer::Instance.Pool.reserve(1000);
-		ParticleSystemExtContainer::Instance.Pool.reserve(2000);
-		TeamExtContainer::Instance.Pool.reserve(1000);
-		VoxelAnimExtContainer::Instance.Pool.reserve(1000);
-		WaveExtContainer::Instance.Pool.reserve(1000);
+		if (TheMemoryPoolFactory)
+			TheMemoryPoolFactory->reset();
+
 		SWFirerClass::Array.reserve(1000);
-		TemporalExtContainer::Instance.Pool.reserve(100);
 		CellExtContainer::Array.reserve(2000);
 	}
 
@@ -659,7 +727,10 @@ ASMJIT_PATCH(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 		Process_Load<RocketTypeClass>(pStm) &&
 		Process_Load<BarTypeClass>(pStm) &&
 		Process_Load<SWFirerClass>(pStm) &&
-		Process_Load<InsigniaTypeClass>(pStm)
+		Process_Load<InsigniaTypeClass>(pStm) &&
+		Process_Load<SelectBoxTypeClass>(pStm) &&
+		Process_Load<ShieldClass>(pStm) &&
+		Process_Load<PrismForwarding>(pStm)
 		;
 
 	if (!ret)
@@ -732,7 +803,10 @@ ASMJIT_PATCH(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 			Process_Save<RocketTypeClass>(pStm) &&
 			Process_Save<BarTypeClass>(pStm) &&
 			Process_Save<SWFirerClass>(pStm) &&
-			Process_Save<InsigniaTypeClass>(pStm)
+			Process_Save<InsigniaTypeClass>(pStm) &&
+			Process_Save<SelectBoxTypeClass>(pStm) &&
+			Process_Save<ShieldClass>(pStm) &&
+			Process_Save<PrismForwarding>(pStm)
 			;
 
 		if (!ret)

@@ -7,6 +7,7 @@
 #include <Ext/House/Body.h>
 
 #include <ProgressTimer.h>
+#include <Utilities/MemoryPoolUniquePointer.h>
 
 enum class SWStateMachineIdentifier : int
 {
@@ -31,9 +32,8 @@ enum class SWStateMachineIdentifier : int
 // i.e. start anim/sound 1 frame after clicking, fire a damage wave 25 frames later, and play second sound 50 frames after that...
 class SWStateMachine
 {
-	OPTIONALINLINE static HelperedVector<std::unique_ptr<SWStateMachine>> Array;
-
 public:
+	static HelperedVector<std::unique_ptr<SWStateMachine>> Array;
 
 	SWStateMachine() = default;
 	SWStateMachine(int Duration, CellStruct XY, SuperClass* pSuper, NewSWType* pSWType)
@@ -58,12 +58,13 @@ public:
 	}
 
 	// static methods
-	template <typename TMachine, typename... TArgs>
-	static COMPILETIMEEVAL FORCEINLINE TMachine* Register(TArgs&&... _Args)
-	{
-		Array.push_back(std::move(std::make_unique<TMachine>(std::forward<TArgs>(_Args)...)));
-		return (TMachine*)Array.back().get();
-	}
+	//template <typename TMachine , typename... TArgs>
+	//static COMPILETIMEEVAL FORCEINLINE TMachine* Register(TArgs&&... _Args) {
+	//	new(TMachine::ShieldClass_GLUE_NOT_IMPLEMENTED) ShieldClass(pTarget, true);
+
+	//	Array.push_back(std::move(std::make_unique<TMachine>(std::forward<TArgs>(_Args)...)));
+	//	return (TMachine*)Array.back().get();
+	//}
 
 	COMPILETIMEEVAL OPTIONALINLINE SWTypeExtData* GetTypeExtData() const
 	{
@@ -358,6 +359,16 @@ public:
 		this->Deferment = pData->SW_Deferment.Get(0);
 	};
 
+	~IonCannonStateMachine()
+	{
+		if (this->Anim)
+		{
+			this->Anim->TimeToDie = true;
+			this->Anim->UnInit();
+			this->Anim = nullptr;
+		}
+	}
+
 	virtual void Update();
 
 	virtual SWStateMachineIdentifier GetIdentifier() const override
@@ -368,16 +379,6 @@ public:
 	virtual const char* GetIdentifierStrings() const override
 	{
 		return "SWStateMachine::IonCannon";
-	}
-
-	virtual ~IonCannonStateMachine()
-	{
-		if (this->Anim)
-		{
-			this->Anim->TimeToDie = true;
-			this->Anim->UnInit();
-			this->Anim = nullptr;
-		}
 	}
 
 	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange) override;
@@ -409,16 +410,7 @@ public:
 		Start(XY, Duration, Deferment);
 	}
 
-	virtual void Update() override;
-
-	virtual bool Finished() override
-	{
-		return ActualDuration <= -1 ? false : Clock.Completed() && !Deferment && TimeToEnd;
-	}
-
-	virtual void InvalidatePointer(AbstractClass* ptr, bool remove) override;
-
-	virtual ~CloneableLighningStormStateMachine()
+	~CloneableLighningStormStateMachine()
 	{
 		for (auto& CP : CloudsPresent)
 		{
@@ -449,6 +441,15 @@ public:
 			BP = nullptr;
 		}
 	}
+
+	virtual void Update() override;
+
+	virtual bool Finished() override
+	{
+		return ActualDuration <= -1 ? false : Clock.Completed() && !Deferment && TimeToEnd;
+	}
+
+	virtual void InvalidatePointer(AbstractClass* ptr, bool remove) override;
 
 	virtual SWStateMachineIdentifier GetIdentifier() const override
 	{
@@ -538,7 +539,6 @@ public:
 		return "SWStateMachine::LaserStrike";
 	}
 
-	virtual ~LaserStrikeStateMachine() = default;
 	virtual bool Finished() override { return SWStateMachine::Finished() || MaxCountCounter <= 0; }
 	virtual bool Load(PhobosStreamReader& Stm, bool RegisterForChange) override;
 	virtual bool Save(PhobosStreamWriter& Stm) const override;
@@ -570,7 +570,7 @@ public:
 		: SWStateMachine(), Firer { nullptr }
 	{ }
 
-	GenericWarheadStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer, NewSWType* pSWType)
+	explicit GenericWarheadStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer, NewSWType* pSWType)
 		: SWStateMachine(Deferment, XY, pSuper, pSWType), Firer { pfirer }
 	{ }
 
@@ -603,7 +603,7 @@ public:
 		: SWStateMachine(), Firer { nullptr }, CoordsWithBridge {}
 	{ }
 
-	GeneticMutatorStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer, NewSWType* pSWType)
+	explicit GeneticMutatorStateMachine(int Deferment, CellStruct XY, SuperClass* pSuper, TechnoClass* pfirer, NewSWType* pSWType)
 		: SWStateMachine(Deferment, XY, pSuper, pSWType), Firer { pfirer }, CoordsWithBridge {}
 	{
 		this->CoordsWithBridge = MapClass::Instance->GetCellAt(XY)->GetCoordsWithBridge();
@@ -732,7 +732,7 @@ protected:
 
 #define MakeStatemachine(a) \
 case SWStateMachineIdentifier::## a ##:\
-return std::make_unique<## a ##StateMachine>();\
+return std::make_unique<a##StateMachine>();\
 
 template <>
 struct Savegame::ObjectFactory<SWStateMachine>
