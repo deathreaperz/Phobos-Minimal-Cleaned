@@ -2419,7 +2419,7 @@ ASMJIT_PATCH(0x4DFC39, FootClass_FindBioReactor_CheckValid, 0x6)
 	GET(FootClass*, pThis, ESI);
 	GET(BuildingClass*, pBuilding, EDI);
 
-	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x6;
+	return pThis->IsInAir() || pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x6;
 }
 
 ASMJIT_PATCH(0x4DFED2, FootClass_FindGarrisonStructure_CheckValid, 0x6)
@@ -2427,7 +2427,7 @@ ASMJIT_PATCH(0x4DFED2, FootClass_FindGarrisonStructure_CheckValid, 0x6)
 	GET(FootClass*, pThis, ESI);
 	GET(BuildingClass*, pBuilding, EBX);
 
-	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x6;
+	return pThis->IsInAir() || pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x6;
 }
 
 ASMJIT_PATCH(0x4E0024, FootClass_FindTankBunker_CheckValid, 0x8)
@@ -2435,7 +2435,7 @@ ASMJIT_PATCH(0x4E0024, FootClass_FindTankBunker_CheckValid, 0x8)
 	GET(FootClass*, pThis, EDI);
 	GET(BuildingClass*, pBuilding, ESI);
 
-	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
+	return pThis->IsInAir() || pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
 }
 
 ASMJIT_PATCH(0x4DFD92, FootClass_FindBattleBunker_CheckValid, 0x8)
@@ -2443,7 +2443,7 @@ ASMJIT_PATCH(0x4DFD92, FootClass_FindBattleBunker_CheckValid, 0x8)
 	GET(FootClass*, pThis, ESI);
 	GET(BuildingClass*, pBuilding, EBX);
 
-	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
+	return pThis->IsInAir() || pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
 }
 
 ASMJIT_PATCH(0x4DFB28, FootClass_FindGrinder_CheckValid, 0x8)
@@ -2451,7 +2451,7 @@ ASMJIT_PATCH(0x4DFB28, FootClass_FindGrinder_CheckValid, 0x8)
 	GET(FootClass*, pThis, ESI);
 	GET(BuildingClass*, pBuilding, EBX);
 
-	return pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
+	return pThis->IsInAir() || pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
 }
 
 ASMJIT_PATCH(0x4C7643, EventClass_RespondToEvent_StopTemporal, 0x6)

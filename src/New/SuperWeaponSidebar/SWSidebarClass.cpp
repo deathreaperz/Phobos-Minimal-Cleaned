@@ -84,7 +84,7 @@ bool SWSidebarClass::AddButton(int superIdx)
 		{
 			return std::any_of(column->Buttons.begin(), column->Buttons.end(), [superIdx](SWButtonClass* button)
 	 {
-			 return button->SuperIndex == superIdx;
+		 return button->SuperIndex == superIdx;
 			});
 		})
 	)

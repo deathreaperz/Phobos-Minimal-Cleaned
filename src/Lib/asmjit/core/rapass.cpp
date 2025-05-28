@@ -1337,7 +1337,7 @@ ASMJIT_FAVOR_SPEED Error BaseRAPass::binPack(RegGroup group) noexcept
 	ASMJIT_PROPAGATE(workRegs.concat(allocator(), this->workRegs(group)));
 	workRegs.sort([](const RAWorkReg* a, const RAWorkReg* b) noexcept
    {
-		 return b->liveStats().priority() - a->liveStats().priority();
+	   return b->liveStats().priority() - a->liveStats().priority();
 	});
 
 	uint32_t numWorkRegs = workRegs.size();

@@ -28,8 +28,7 @@ TSJumpJetLocomotionClass::TSJumpJetLocomotionClass() :
 	FlightLevel {},
 	IsLanding {},
 	IsMoving {}
-{
-}
+{ }
 
 IFACEMETHODIMP TSJumpJetLocomotionClass::Link_To_Object(void* object)
 {

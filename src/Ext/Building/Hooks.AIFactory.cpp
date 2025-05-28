@@ -141,13 +141,21 @@ void HouseExtData::UpdateVehicleProduction()
 	creationFrames.assign(count, 0x7FFFFFFF);
 	values.assign(count, 0);
 
+	//	std::vector<TeamClass*> Teams;
 	// Collect all teams that need units
 	std::vector<TeamClass*> incompleteTeams;
+	incompleteTeams.reserve(TeamClass::Array->Count);
 
 	for (auto currentTeam : *TeamClass::Array)
 	{
 		if (!currentTeam || currentTeam->Owner != pThis)
 			continue;
+
+		//if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G"))
+		//Debug::LogInfo("HereIam");
+
+		//Teams.push_back(currentTeam);
+		//int teamCreationFrame = currentTeam->CreationFrame;
 
 		if ((!currentTeam->Type->Reinforce || currentTeam->IsFullStrength)
 			&& (currentTeam->IsForcedActive || currentTeam->IsHasBeen))
@@ -155,6 +163,7 @@ void HouseExtData::UpdateVehicleProduction()
 			continue;
 		}
 
+		//DynamicVectorClass<TechnoTypeClass*> taskForceMembers {};
 		incompleteTeams.push_back(currentTeam);
 	}
 
@@ -186,18 +195,48 @@ void HouseExtData::UpdateVehicleProduction()
 			const auto index = static_cast<size_t>(((UnitTypeClass*)currentMember)->ArrayIndex);
 			values[index] += static_cast<int>(priority); // Add weighted value
 
+			//++values[index];
+
+			//if (IS_SAME_STR_(currentTeam->Type->ID, "0100003I-G")) {
+			//Debug::LogInfo("0100003I Unit %s  idx %d AddedValueResult %d", currentMember->ID, index, values[index]);
+			//}
+
 			if (currentTeam->CreationFrame < creationFrames[index])
 				creationFrames[index] = currentTeam->CreationFrame;
 		}
 	}
 
+	//	for (int i = 0; i < (int)Teams.size(); ++i) {
+	//		Debug::LogInfo("House [%s] Have [%d] Teams %s.", pThis->get_ID(), i, Teams[i]->get_ID());
+	//	}
+
+	//std::vector<int> Toremove {};
+
 	// Account for existing units
 	for (int i = 0; i < UnitClass::Array->Count; ++i)
 	{
 		const auto pUnit = UnitClass::Array->Items[i];
+		//if (VTable::Get(pUnit) != UnitClass::vtable){
+//	const char* Caller = "unk";
+//	//const char* Type = "unk";
+//	if (MappedCaller.contains(pUnit)) {
+//		Caller = MappedCaller[pUnit].c_str();
+//	}
+
+//	Debug::LogInfo("UpdateVehicleProduction for [%s] UnitClass Array(%d) at [%d] contains broken pointer[%x allocated from %s] WTF ???", pThis->get_ID() , UnitClass::Array->Count , i, pUnit , Caller);
+//	Toremove.push_back(i);
+//	continue;
+//}
 		if (values[pUnit->Type->ArrayIndex] > 0 && pUnit->CanBeRecruited(pThis))
 			--values[pUnit->Type->ArrayIndex];
 	}
+
+	//for (auto ToRemoveIdx : Toremove) {
+//	UnitClass::Array->RemoveAt(ToRemoveIdx);
+//}
+
+	//bestChoices.clear();
+	//bestChoicesNaval.clear();
 
 	int bestValue = -1;
 	int bestValueNaval = -1;
@@ -254,7 +293,7 @@ void HouseExtData::UpdateVehicleProduction()
 		// Increase probability for high-value units
 		if (bestValue > 2)
 		{
-			probability = std::min(probability + 20, 100);
+			probability = MinImpl(probability + 20, 100);
 		}
 
 		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= probability)
@@ -276,7 +315,7 @@ void HouseExtData::UpdateVehicleProduction()
 		// Increase probability for high-value units
 		if (bestValueNaval > 2)
 		{
-			probability = std::min(probability + 20, 100);
+			probability = MinImpl(probability + 20, 100);
 		}
 
 		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= probability)
@@ -620,8 +659,10 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 	Values.assign(count, 0);
 	BestChoices.clear();
 
+	//Debug::LogInfo(__FUNCTION__" Executing with Current TeamArrayCount[%d] for[%s][House %s - %x] ", TeamClass::Array->Count, AbstractClass::GetAbstractClassName(Ttype::AbsID), pHouse->get_ID() , pHouse);
 	// Collect and sort incomplete teams
 	std::vector<TeamClass*> incompleteTeams;
+	incompleteTeams.reserve(TeamClass::Array->Count);
 
 	for (auto CurrentTeam : *TeamClass::Array)
 	{
@@ -696,6 +737,7 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 		// Special handling for Aircraft
 		if COMPILETIMEEVAL(Ttype::AbsID == AbstractType::AircraftType)
 		{
+			//Debug::LogInfo("Aircraft [%s][%s] return result [%d] for can build");
 			if (buildableResult != CanBuildResult::Buildable ||
 				TT->GetActualCost(pHouse) > pHouse->Available_Money())
 			{
@@ -741,7 +783,7 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 	// Increase probability for high-value units
 	if (BestValue > 2)
 	{
-		probability = std::min(probability + 20, 100);
+		probability = MinImpl(probability + 20, 100);
 	}
 
 	// Use probability-based selection but with higher chance for needed units
