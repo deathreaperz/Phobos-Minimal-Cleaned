@@ -133,12 +133,9 @@ bool WWKeyboardClass::IsForceSelectKeyPressed() const
 	return this->IsKeyPressed(GameOptionsClass::Instance->KeyForceSelect1)
 		|| this->IsKeyPressed(GameOptionsClass::Instance->KeyForceSelect2);
 }
-void SlaveManagerClass::ZeroOutSlaves()
-{
-	for (const auto& pNode : this->SlaveNodes)
-	{
-		if (auto pSlave = pNode->Slave)
-		{
+void SlaveManagerClass::ZeroOutSlaves() {
+	for(const auto& pNode : this->SlaveNodes) {
+		if(auto pSlave = pNode->Slave) {
 			pSlave->SlaveOwner = nullptr;
 		}
 		pNode->Slave = nullptr;
@@ -147,7 +144,7 @@ void SlaveManagerClass::ZeroOutSlaves()
 	}
 }
 
-DamageState ObjectClass::TakeDamage(int damage, bool crewed, bool ignoreDefenses, ObjectClass* pAttacker, HouseClass* pAttackingHouse)
+DamageState ObjectClass::TakeDamage(int damage, bool crewed, bool ignoreDefenses , ObjectClass* pAttacker , HouseClass* pAttackingHouse)
 {
 	return TakeDamage(damage, RulesClass::Instance->C4Warhead, crewed, ignoreDefenses, pAttacker, pAttackingHouse);
 }
@@ -175,6 +172,7 @@ bool ObjectClass::IsOnMyView() const
 		&& Point.Y > Drawing::SurfaceDimensions_Hidden().Y
 		&& Point.X < Drawing::SurfaceDimensions_Hidden().X + Drawing::SurfaceDimensions_Hidden().Width
 		&& Point.Y < Drawing::SurfaceDimensions_Hidden().Y + Drawing::SurfaceDimensions_Hidden().Height;
+
 }
 
 bool ObjectClass::IsGreenToYellowHP() const
@@ -193,24 +191,18 @@ double ObjectClass::GetHealthPercentage() const
 	return (double)this->Health / (double)this->GetType()->Strength;
 }
 
-bool HouseClass::CanExpectToBuild(const TechnoTypeClass* const pItem) const
-{
+bool HouseClass::CanExpectToBuild(const TechnoTypeClass* const pItem) const {
 	auto const parentOwnerMask = this->Type->FindParentCountryIndex();
 	return this->CanExpectToBuild(pItem, parentOwnerMask);
 }
 
-bool HouseClass::CanExpectToBuild(const TechnoTypeClass* const pItem, int const idxParent) const
-{
+bool HouseClass::CanExpectToBuild(const TechnoTypeClass* const pItem, int const idxParent) const {
 	auto const parentOwnerMask = 1u << idxParent;
-	if (pItem->InOwners(parentOwnerMask))
-	{
-		if (this->InRequiredHouses(pItem))
-		{
-			if (!this->InForbiddenHouses(pItem))
-			{
+	if(pItem->InOwners(parentOwnerMask)) {
+		if(this->InRequiredHouses(pItem)) {
+			if(!this->InForbiddenHouses(pItem)) {
 				auto const BaseSide = pItem->AIBasePlanningSide;
-				if (BaseSide < 0 || BaseSide == this->Type->SideIndex)
-				{
+				if(BaseSide < 0 || BaseSide == this->Type->SideIndex) {
 					return true;
 				}
 			}
@@ -219,30 +211,23 @@ bool HouseClass::CanExpectToBuild(const TechnoTypeClass* const pItem, int const 
 	return false;
 }
 
-int HouseClass::FindSuperWeaponIndex(SuperWeaponType const type) const
-{
-	for (int i = 0; i < this->Supers.Count; ++i)
-	{
-		if (this->Supers.Items[i]->Type->Type == type)
-		{
+int HouseClass::FindSuperWeaponIndex(SuperWeaponType const type) const {
+	for(int i = 0; i < this->Supers.Count; ++i) {
+		if(this->Supers.Items[i]->Type->Type == type) {
 			return i;
 		}
 	}
 	return -1;
 }
 
-SuperClass* HouseClass::FindSuperWeapon(SuperWeaponType const type) const
-{
+SuperClass* HouseClass::FindSuperWeapon(SuperWeaponType const type) const {
 	auto index = this->FindSuperWeaponIndex(type);
 	return this->Supers.GetItemOrDefault(index);
 }
 
-SuperClass* HouseClass::FindSuperWeapon(SuperWeaponTypeClass* pType) const
-{
-	for (int i = 0; i < this->Supers.Count; ++i)
-	{
-		if (this->Supers.Items[i]->Type == pType)
-		{
+SuperClass* HouseClass::FindSuperWeapon(SuperWeaponTypeClass* pType) const {
+	for (int i = 0; i < this->Supers.Count; ++i) {
+		if (this->Supers.Items[i]->Type == pType) {
 			return this->Supers.Items[i];
 		}
 	}
@@ -254,8 +239,8 @@ CellStruct FootClass::GetRandomDirection(FootClass* pFoot)
 {
 	CellStruct nRet = CellStruct::Empty;
 
-	if (auto pCell = MapClass::Instance->GetCellAt(pFoot->GetCoords()))
-	{
+	if (auto pCell = MapClass::Instance->GetCellAt(pFoot->GetCoords())) {
+
 		const int rnd = ScenarioClass::Instance->Random.RandomFromMax(7);
 
 		for (int j = 0; j < 8; ++j)
@@ -283,8 +268,7 @@ bool TechnoClass::CanICloakByDefault() const
 	return tType->Cloakable || this->HasAbility(AbilityType::Cloak);
 }
 
-int TechnoClass::GetIonCannonValue(AIDifficulty const difficulty) const
-{
+int TechnoClass::GetIonCannonValue(AIDifficulty const difficulty) const {
 	const auto& rules = *RulesClass::Instance;
 
 	const TypeList<int>* pValues = nullptr;
@@ -333,6 +317,7 @@ int TechnoClass::GetIonCannonValue(AIDifficulty const difficulty) const
 		else if (pType->IsBaseDefense)
 		{
 			pValues = &rules.AIIonCannonBaseDefenseValue;
+
 		}
 		else if (pType->IsPlug)
 		{
@@ -386,7 +371,7 @@ void InfantryClass::RemoveMe_FromGunnerTransport()
 {
 	if (auto pTransport = this->Transporter)
 	{
-		if (auto pUnit = cast_to<UnitClass*, false>(pTransport))
+		if (auto pUnit = cast_to<UnitClass* , false>(pTransport))
 		{
 			if (pUnit->GetTechnoType()->Gunner)
 			{
@@ -455,6 +440,7 @@ Fixed::Fixed(const char* ascii)
 	}
 	else
 	{
+
 		Data.Composite.Whole = Data.Composite.Fraction = 0U;
 		if (wholepart && *wholepart != '.')
 		{
@@ -557,7 +543,7 @@ CellStruct WWMouseClass::GetCellUnderCursor()
 	return nbuffer;
 }
 
-bool LocomotionClass::End_Piggyback(ILocomotionPtr& pLoco)
+bool LocomotionClass::End_Piggyback(ILocomotionPtr &pLoco)
 {
 	if (!pLoco)
 	{
@@ -582,7 +568,7 @@ bool LocomotionClass::End_Piggyback(ILocomotionPtr& pLoco)
 	return false;
 }
 
-void LocomotionClass::ChangeLocomotorTo(FootClass* Object, const CLSID& clsid)
+void LocomotionClass::ChangeLocomotorTo(FootClass *Object, const CLSID &clsid)
 {
 	// remember the current one
 	ILocomotionPtr Original(Object->Locomotor);
@@ -598,6 +584,7 @@ void LocomotionClass::ChangeLocomotorTo(FootClass* Object, const CLSID& clsid)
 	// replace the current locomotor
 	Object->Locomotor = NewLoco;
 }
+
 
 void TechnoClass::ReleaseCaptureManager() const
 {
@@ -637,27 +624,24 @@ double TechnoClass::GetCurrentMissionRate() const
 	return control->Rate * doubleval;
 }*/
 
-int TechnoClass::GetIonCannonValue(AIDifficulty difficulty, int maxHealth) const
-{
+int TechnoClass::GetIonCannonValue(AIDifficulty difficulty, int maxHealth) const {
 	// what TS does
-	if (maxHealth > 0 && this->Health > maxHealth)
-	{
+	if (maxHealth > 0 && this->Health > maxHealth) {
 		return (this->WhatAmI() == AbstractType::Building) ? 3 : 1;
 	}
 
 	return this->GetIonCannonValue(difficulty);
 }
 
-bool PCX::LoadFile(const char* pFileName, int flag1, int flag2)
+bool PCX::LoadFile(const char *pFileName, int flag1, int flag2)
 {
-	if (Instance->GetSurface(pFileName, nullptr))
-	{
+	if (Instance->GetSurface(pFileName, nullptr)) {
 		return true;
 	}
 	return Instance->ForceLoadFile(pFileName, flag1, flag2);
 }
 
-void LoadProgressManager::DrawText(const wchar_t* pText, int X, int Y, DWORD dwColor)
+void LoadProgressManager::DrawText(const wchar_t *pText, int X, int Y, DWORD dwColor)
 {
 	if (auto pManager = LoadProgressManager::Instance())
 	{
@@ -697,11 +681,13 @@ TypeList<T*> CCINIClass::Get_TypeList(const char* section, const char* entry, co
 
 	if (INIClass::ReadString(section, entry, "", buffer, sizeof(buffer)) > 0)
 	{
+
 		TypeList<T> list;
 
 		char* name = CRT::strtok(buffer, ",");
 		while (name)
 		{
+
 			for (int index = 0; index < heap.Count; ++index)
 			{
 				T* ptr = const_cast<T*>(T::FindOrAllocate(name));
@@ -764,6 +750,7 @@ static void Sort_Vertices(Point2D* p1, Point2D* p2, Point2D* p3)
 	}
 }
 
+
 static void Fill_Triangle_Top(Surface& surface, Point2D& point1, Point2D& point2, Point2D& point3, unsigned color)
 {
 	if (point2.X > point3.X)
@@ -787,6 +774,7 @@ static void Fill_Triangle_Top(Surface& surface, Point2D& point1, Point2D& point2
 		right += b;
 	}
 }
+
 
 static void Fill_Triangle_Bottom(Surface& surface, Point2D& point1, Point2D& point2, Point2D& point3, unsigned color)
 {
@@ -812,6 +800,7 @@ static void Fill_Triangle_Bottom(Surface& surface, Point2D& point1, Point2D& poi
 	}
 }
 
+
 bool DSurface::Draw_Triangle(RectangleStruct& rect, Point2D& point1, Point2D& point2, Point2D& point3, unsigned color)
 {
 	Draw_Line_Rect(rect, point1, point2, color);
@@ -820,6 +809,7 @@ bool DSurface::Draw_Triangle(RectangleStruct& rect, Point2D& point1, Point2D& po
 
 	return true;
 }
+
 
 /**
  *
@@ -882,11 +872,13 @@ bool DSurface::Fill_Triangle(RectangleStruct& rect, Point2D& point1, Point2D& po
 	return true;
 }
 
+
 bool DSurface::Fill_Triangle_Trans(RectangleStruct& rect, Point2D& point1, Point2D& point2, Point2D& point3, ColorStruct& rgb, unsigned opacity)
 {
 	// TODO
 	return false;
 }
+
 
 bool DSurface::Draw_Quad(RectangleStruct& rect, Point2D& point1, Point2D& point2, Point2D& point3, Point2D& point4, unsigned color)
 {
@@ -898,6 +890,7 @@ bool DSurface::Draw_Quad(RectangleStruct& rect, Point2D& point1, Point2D& point2
 	return true;
 }
 
+
 bool DSurface::Fill_Quad(RectangleStruct& rect, Point2D& point1, Point2D& point2, Point2D& point3, Point2D& point4, unsigned color)
 {
 	Fill_Triangle(rect, point1, point2, point3, color);
@@ -906,11 +899,13 @@ bool DSurface::Fill_Quad(RectangleStruct& rect, Point2D& point1, Point2D& point2
 	return true;
 }
 
+
 bool DSurface::Fill_Quad_Trans(RectangleStruct& rect, Point2D& point1, Point2D& point2, Point2D& point3, Point2D& point4, ColorStruct& rgb, unsigned opacity)
 {
 	// TODO
 	return true;
 }
+
 
 /**
  *  Draw a circle.
@@ -936,6 +931,7 @@ void DSurface::Fill_Circle(const Point2D center, unsigned radius, RectangleStruc
 
 	do
 	{
+
 		dxy = center + Point2D { pt.X, pt.Y };
 		sxy = center + Point2D { -pt.X, pt.Y };
 		Draw_Line_Rect(rect, sxy, dxy, color);
@@ -957,13 +953,16 @@ void DSurface::Fill_Circle(const Point2D center, unsigned radius, RectangleStruc
 		 */
 		if (d < 0)
 		{
+
 			/**
 			 *  Calculate delta for vertical pixel.
 			 */
 			d += (4 * pt.Y) + 6;
+
 		}
 		else
 		{
+
 			/**
 			 *  Calculate delta for diagonal pixel.
 			 */
@@ -972,19 +971,23 @@ void DSurface::Fill_Circle(const Point2D center, unsigned radius, RectangleStruc
 		}
 
 		++pt.Y;
+
 	}
 	while (pt.X >= pt.Y);
 }
+
 
 void DSurface::Fill_Circle_Trans(const Point2D center, unsigned radius, RectangleStruct rect, ColorStruct& rgb, unsigned opacity)
 {
 	Fill_Ellipse_Trans(center, radius, radius, rect, rgb, opacity);
 }
 
+
 void DSurface::Draw_Circle(const Point2D center, unsigned radius, RectangleStruct rect, unsigned color)
 {
 	Draw_Ellipse(center, radius, radius, rect, color);
 }
+
 
 bool DSurface::Fill_Ellipse(Point2D point, int radius_x, int radius_y, RectangleStruct clip, unsigned color)
 {
@@ -992,11 +995,13 @@ bool DSurface::Fill_Ellipse(Point2D point, int radius_x, int radius_y, Rectangle
 	return false;
 }
 
+
 bool DSurface::Fill_Ellipse_Trans(Point2D point, int radius_x, int radius_y, RectangleStruct clip, ColorStruct& rgb, unsigned opacity)
 {
 	// TODO
 	return false;
 }
+
 
 bool DSurface::Put_Pixel_Trans(Point2D& point, ColorStruct& rgb, unsigned opacity)
 {
@@ -1041,17 +1046,15 @@ bool DSurface::Put_Pixel_Trans(Point2D& point, ColorStruct& rgb, unsigned opacit
 CellStruct TechnoClass::FindExitCell(TechnoClass* pDocker, CellStruct nDefault) const
 { JMP_THIS(0x70AD50); }
 
-ConvertClass* ConvertClass::CreateFromFile(const char* pal_filename)
-{
-	CCFileClass file { pal_filename };
+ConvertClass* ConvertClass::CreateFromFile(const char* pal_filename) {
 
-	if (!file.Exists() || !file.Open(FileAccessMode::Read))
-	{
+	CCFileClass file{ pal_filename };
+
+	if (!file.Exists() || !file.Open(FileAccessMode::Read)) {
 		return nullptr;
 	}
 
-	if (void* data = CCFileClass::Load_Alloc_Data(file))
-	{
+	if (void* data = CCFileClass::Load_Alloc_Data(file)) {
 		BytePalette loaded_pal { };
 		std::memcpy(&loaded_pal, data, sizeof(BytePalette));
 		delete data;
@@ -1066,6 +1069,7 @@ void Game::Unselect_All_Except(AbstractType rtti)
 	int index = 0;
 	while (index < ObjectClass::CurrentObjects->Count)
 	{
+
 		if (ObjectClass::CurrentObjects->Items[index]->What_Am_I() == rtti)
 		{
 			++index;
@@ -1087,6 +1091,7 @@ void Game::Unselect_All_Except(ObjectTypeClass* objecttype)
 	int index = 0;
 	while (index < ObjectClass::CurrentObjects->Count)
 	{
+
 		if (ObjectClass::CurrentObjects->Items[index]->GetType() == objecttype)
 		{
 			++index;
@@ -1108,6 +1113,7 @@ void Game::Unselect_All_Except(ObjectClass* object)
 	int index = 0;
 	while (index < ObjectClass::CurrentObjects->Count)
 	{
+
 		if (ObjectClass::CurrentObjects->Items[index] == object)
 		{
 			++index;
@@ -1124,75 +1130,75 @@ void Game::Unselect_All_Except(ObjectClass* object)
 	}
 }
 
-std::array<const DWORD, 21> CellClass::TileArray =
-{ {
-	{0x0},
-	{0x484AB0},
-	{0x485060},
-	{0x486380},
-	{0x4863A0},
-	{0x4863D0},
-	{0x4865B0},
-	{0x4865D0},
-	{0x486650},
-	{0x486670},
-	{0x486690},
-	{0x4866D0},
-	{0x4866F0},
-	{0x486710},
-	{0x486730},
-	{0x486750},
-	{0x486770},
-	{0x486790},
-	{0x4867B0},
-	{0x4867E0},
-	{0x486900},
-} };
+	std::array<const DWORD, 21> CellClass::TileArray =
+	{ {
+		{0x0},
+		{0x484AB0},
+		{0x485060},
+		{0x486380},
+		{0x4863A0},
+		{0x4863D0},
+		{0x4865B0},
+		{0x4865D0},
+		{0x486650},
+		{0x486670},
+		{0x486690},
+		{0x4866D0},
+		{0x4866F0},
+		{0x486710},
+		{0x486730},
+		{0x486750},
+		{0x486770},
+		{0x486790},
+		{0x4867B0},
+		{0x4867E0},
+		{0x486900},
+	}};
 
 const char* const FileClass::FileErrorToString[] =
-{
-		 "Non-error. "
-	   , "Operation not permitted. "
-	   , "No such file or directory. "
-	   , "No such process. "
-	   , "Interrupted function call. "
-	   , "Input/output error. "
-	   , "No such device or address. "
-	   , "Argument list too long. "
-	   , "Exec format error. "
-	   , "Bad file descriptor. "
-	   , "No child processes. "
-	   , "Resource temporarily unavailable. "
-	   , "Not enough space/cannot allocate memory. "
-	   , "Permission denied. "
-	   , "Bad address. "
-	   , "Unknown error 15. "
-	   , "Device or resource busy. "
-	   , "File exists. "
-	   , "Improper link. "
-	   , "No such device. "
-	   , "Not a directory. "
-	   , "Is a directory. "
-	   , "Invalid argument. "
-	   , "Too many open files in system. "
-	   , "Too many open files. "
-	   , "Unknown error 26. "
-	   , "Inappropriate I/O control operation. "
-	   , "File too large. "
-	   , "No space left on device. "
-	   , "Invalid seek. "
-	   , "Read-only filesystem. "
-	   , "Too many links. "
-	   , "Broken pipe. "
-	   , "Mathematics argument out of domain of function. "
-	   , "Result too large. "
-	   , "Unknown error 36. "
-	   , "Resource deadlock avoided. "
-	   , "Filename too long. "
-	   , "No locks available. "
-	   , "Function not implemented. "
-	   , "Directory not empty. "
-	   , "Invalid or incomplete multibyte or wide character. "
+ {
+		  "Non-error. "
+		, "Operation not permitted. "
+		, "No such file or directory. "
+		, "No such process. "
+		, "Interrupted function call. "
+		, "Input/output error. "
+		, "No such device or address. "
+		, "Argument list too long. "
+		, "Exec format error. "
+		, "Bad file descriptor. "
+		, "No child processes. "
+		, "Resource temporarily unavailable. "
+		, "Not enough space/cannot allocate memory. "
+		, "Permission denied. "
+		, "Bad address. "
+		, "Unknown error 15. "
+		, "Device or resource busy. "
+		, "File exists. "
+		, "Improper link. "
+		, "No such device. "
+		, "Not a directory. "
+		, "Is a directory. "
+		, "Invalid argument. "
+		, "Too many open files in system. "
+		, "Too many open files. "
+		, "Unknown error 26. "
+		, "Inappropriate I/O control operation. "
+		, "File too large. "
+		, "No space left on device. "
+		, "Invalid seek. "
+		, "Read-only filesystem. "
+		, "Too many links. "
+		, "Broken pipe. "
+		, "Mathematics argument out of domain of function. "
+		, "Result too large. "
+		, "Unknown error 36. "
+		, "Resource deadlock avoided. "
+		, "Filename too long. "
+		, "No locks available. "
+		, "Function not implemented. "
+		, "Directory not empty. "
+		, "Invalid or incomplete multibyte or wide character. "
 };
 
 HouseClass* HouseClass::FindByCountryName(const char* name)
@@ -1222,13 +1228,12 @@ HouseClass* HouseClass::FindCivilianSide()
 void CellClass::CreateGap(HouseClass* pHouse, int range, CoordStruct& coords)
 {
 	DisplayClass::Instance->Sub_4ADEE0(0, 0);
-	CellRangeIterator<CellClass>{}(CellClass::Coord2Cell(coords), range + 0.5, [](CellClass* pCell)
- {
-	 pCell->Flags &= ~CellFlags::Revealed;
-	 pCell->AltFlags &= ~AltCellFlags::Clear;
-	 pCell->ShroudCounter = 1;
-	 pCell->GapsCoveringThisCell = 0;
-	 return true;
+	CellRangeIterator<CellClass>{}(CellClass::Coord2Cell(coords), range + 0.5, [](CellClass* pCell) {
+		pCell->Flags &= ~CellFlags::Revealed;
+		pCell->AltFlags &= ~AltCellFlags::Clear;
+		pCell->ShroudCounter = 1;
+		pCell->GapsCoveringThisCell = 0;
+		return true;
 	});
 	DisplayClass::Instance->Sub_4ADCD0(0, 0);
 	pHouse->Visionary = 0;
@@ -1236,7 +1241,7 @@ void CellClass::CreateGap(HouseClass* pHouse, int range, CoordStruct& coords)
 	MapClass::Instance->MarkNeedsRedraw(2);
 }
 
-void TechnoClass::SpillTiberium(int& value, int idx, CellClass* pCenter, Point2D const& nMinMax)
+void TechnoClass::SpillTiberium(int& value ,int idx , CellClass* pCenter, Point2D const& nMinMax)
 {
 	if (!pCenter)
 		return;
@@ -1253,10 +1258,9 @@ void TechnoClass::SpillTiberium(int& value, int idx, CellClass* pCenter, Point2D
 		FacingType::West
 	};
 
-	for (auto const& neighbour : Neighbours)
-	{
+	for (auto const& neighbour : Neighbours) {
 		// spill random amount
-		const int amount = ScenarioClass::Instance->Random.RandomRanged(nMinMax.X, nMinMax.Y);
+		const int amount = ScenarioClass::Instance->Random.RandomRanged(nMinMax.X , nMinMax.Y);
 		CellClass* pCell = pCenter->GetNeighbourCell(neighbour);
 
 		if (!pCell)
@@ -1266,8 +1270,7 @@ void TechnoClass::SpillTiberium(int& value, int idx, CellClass* pCenter, Point2D
 		value -= amount;
 
 		// stop if value is reached
-		if (value <= 0)
-		{
+		if (value <= 0) {
 			break;
 		}
 	}
@@ -1282,7 +1285,7 @@ ObjectClass* AnimTypeClass::CreateObject(HouseClass* owner)
 
 bool GameStrings::IsBlank(const char* pValue)
 {
-	if (!pValue)
+	if(!pValue)
 		return true;
 
 	return CRT::strcmpi(pValue, NoneStr.get()) == 0
@@ -1322,12 +1325,10 @@ void TechnoClass::ClearAllTarget()
 
 bool TechnoClass::IsCloaked() const
 {
-	if (this->CloakState == CloakState::Cloaked)
-	{
+	if (this->CloakState == CloakState::Cloaked) {
 		return true;
 	}
-	else if (this->WhatAmI() == AbstractType::Building)
-	{
+	else if (this->WhatAmI() == AbstractType::Building) {
 		return (reinterpret_cast<const BuildingClass*>(this)->Translucency == 15);
 	}
 
@@ -1343,10 +1344,10 @@ void TechnoClass::DetachSpecificSpawnee(HouseClass* NewSpawneeOwner)
 	const auto& SpawnNodes = this->SpawnOwner->SpawnManager->SpawnedNodes;
 
 	//find the specific spawnee in the node
-	for (auto SpawnNode : SpawnNodes)
-	{
-		if (this == SpawnNode->Unit)
-		{
+	for (auto SpawnNode : SpawnNodes) {
+
+		if (this == SpawnNode->Unit) {
+
 			SpawnNode->Unit = nullptr;
 			this->SpawnOwner = nullptr;
 
@@ -1357,8 +1358,8 @@ void TechnoClass::DetachSpecificSpawnee(HouseClass* NewSpawneeOwner)
 	}
 }
 
-void TechnoClass::FreeSpecificSlave(HouseClass* Affector)
-{
+void TechnoClass::FreeSpecificSlave(HouseClass* Affector) {
+
 	if (!this->SlaveOwner)
 		return;
 
@@ -1368,8 +1369,7 @@ void TechnoClass::FreeSpecificSlave(HouseClass* Affector)
 	//as I wrote it in http://bugs.renegadeprojects.com/view.php?id=357#c10331
 	//So, expand that one instead, kthx.
 
-	if (InfantryClass* pSlave = cast_to<InfantryClass*, false>(this))
-	{
+	if (InfantryClass* pSlave = cast_to<InfantryClass* , false>(this)) {
 		auto Manager = pSlave->SlaveOwner->SlaveManager;
 
 		//LostSlave can free the unit from the miner, so we're awesome.
@@ -1383,10 +1383,8 @@ void TechnoClass::FreeSpecificSlave(HouseClass* Affector)
 
 bool SuperClass::IsDisabledFromShell() const
 {
-	if (SessionClass::Instance->GameMode != GameMode::Campaign && !Unsorted::SWAllowed)
-	{
-		if (this->Type->DisableableFromShell)
-		{
+	if (SessionClass::Instance->GameMode != GameMode::Campaign && !Unsorted::SWAllowed) {
+		if (this->Type->DisableableFromShell) {
 			return true;
 		}
 	}
