@@ -4,7 +4,7 @@
 
 #include <CellClass.h>
 
-DEFINE_PIGGYLOCO(AdvancedDrive, 4A582751-9839-11d1-B709-00A024DDAFD1)
+DEFINE_PIGGYLOCO(AdvancedDrive, 4A582751 - 9839 - 11d1 - B709 - 00A024DDAFD1)
 {
 public:
 	// IUnknown

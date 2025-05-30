@@ -132,11 +132,11 @@ void ScriptExtData::ModifyHateHouses_List1Random(TeamClass* pTeam, int idxHouses
 	{
 		pTeam->StepCompleted = true;
 		Debug::LogInfo("DEBUG: [{}] [{}] (line: {} = {},{}): Failed to modify hate values against other houses",
-			pTeam->Type->ID,
-			pTeam->CurrentScript->Type->ID,
-			pTeam->CurrentScript->CurrentMission,
-			(int)curAct,
-			(int)curArgs
+		pTeam->Type->ID,
+		pTeam->CurrentScript->Type->ID,
+		pTeam->CurrentScript->CurrentMission,
+		(int)curAct,
+		(int)curArgs
 		);
 
 		return;
@@ -165,7 +165,7 @@ void ScriptExtData::SetTheMostHatedHouse(TeamClass* pTeam, int mask = 0, int mod
 		return;
 	}
 
-	StackVector<HouseClass*, 20> objectsList{};
+	StackVector<HouseClass*, 20> objectsList {};
 	int IdxSelectedObject = -1;
 	HouseClass* selectedHouse = nullptr;
 	int highestHateLevel = 0;
@@ -353,7 +353,7 @@ HouseClass* ScriptExtData::GetTheMostHatedHouse(TeamClass* pTeam, int mask = 0, 
 				continue;
 			}
 
-			CoordStruct houseLocation{ pHouse->BaseSpawnCell.X ,pHouse->BaseSpawnCell.Y ,0 };
+			CoordStruct houseLocation { pHouse->BaseSpawnCell.X ,pHouse->BaseSpawnCell.Y ,0 };
 			objectDistance = pLeaderUnit->Location.DistanceFrom(houseLocation); // Note: distance is in leptons (*256)
 
 			if (mode == 0)
@@ -854,7 +854,7 @@ void ScriptExtData::ModifyHateHouse_Index(TeamClass* pTeam, int idxHouse = -1)
 void ScriptExtData::AggroHouse(TeamClass* pTeam, int index = -1)
 {
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
-	StackVector<HouseClass*, 20> objectsList{};
+	StackVector<HouseClass*, 20> objectsList {};
 	HouseClass* selectedHouse = nullptr;
 	int newHateLevel = 5000;
 

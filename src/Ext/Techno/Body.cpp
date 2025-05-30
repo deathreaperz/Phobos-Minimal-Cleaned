@@ -45,6 +45,87 @@
 UnitClass* TechnoExtData::Deployer { nullptr };
 #pragma endregion
 
+// Check adjacent cells from the center
+// The current MapClass::Instance->PlacePowerupCrate(...) doesn't like slopes and maybe other cases
+bool TechnoExtData::TryToCreateCrate(CoordStruct location, PowerupEffects selectedPowerup, int maxCellRange)
+{
+	CellStruct centerCell = CellClass::Coord2Cell(location);
+	short currentRange = 0;
+	bool placed = false;
+
+	do
+	{
+		short x = -currentRange;
+		short y = -currentRange;
+
+		CellStruct checkedCell;
+		checkedCell.Y = centerCell.Y + y;
+
+		// Check upper line
+		for (short i = -currentRange; i <= currentRange; i++)
+		{
+			checkedCell.X = centerCell.X + i;
+			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
+
+			if (placed)
+				break;
+		}
+
+		if (placed)
+			break;
+
+		checkedCell.Y = centerCell.Y + Math::abs(y);
+
+		// Check lower line
+		for (short i = -currentRange; i <= currentRange; i++)
+		{
+			checkedCell.X = centerCell.X + i;
+			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
+
+			if (placed)
+				break;
+		}
+
+		if (placed)
+			break;
+
+		checkedCell.X = centerCell.X + x;
+
+		// Check left line
+		for (short j = -currentRange + 1; j < currentRange; j++)
+		{
+			checkedCell.Y = centerCell.Y + j;
+			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
+
+			if (placed)
+				break;
+		}
+
+		if (placed)
+			break;
+
+		checkedCell.X = centerCell.X + Math::abs(x);
+
+		// Check right line
+		for (short j = -currentRange + 1; j < currentRange; j++)
+		{
+			checkedCell.Y = centerCell.Y + j;
+			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
+
+			if (placed)
+				break;
+		}
+
+		currentRange++;
+	}
+	while (!placed && currentRange < maxCellRange);
+
+	if (!placed)
+		Debug::LogInfo(__FUNCTION__": Failed to place a crate in the cell ({},{}) and around that location.", centerCell.X, centerCell.Y, maxCellRange);
+
+	return placed;
+}
+
 void TechnoExtData::UpdateRecountBurst()
 {
 	const auto pThis = this->AttachedToObject;
@@ -2387,6 +2468,8 @@ void TechnoExtData::PutPassengersInCoords(TechnoClass* pTransporter, const Coord
 			{
 				pFoot->ExitedOpenTopped(pPassenger);
 			}
+
+			pPassenger->Transporter = nullptr;
 		}
 		else
 		{
@@ -2395,6 +2478,7 @@ void TechnoExtData::PutPassengersInCoords(TechnoClass* pTransporter, const Coord
 			if (pBuilding->Absorber())
 			{
 				pPassenger->Absorbed = false;
+				pPassenger->Transporter = nullptr;
 				if (pBuilding->Type->ExtraPowerBonus > 0)
 				{
 					pBuilding->Owner->RecheckPower = true;
@@ -3279,6 +3363,9 @@ void TechnoExtData::UpdateInterceptor()
 
 	if (auto const pTransport = pThis->Transporter)
 	{
+		if (!pTransport->IsAlive)
+			return;
+
 		if (pTransport->WhatAmI() == AircraftClass::AbsID && !pTransport->IsInAir())
 			return;
 
@@ -3296,9 +3383,20 @@ void TechnoExtData::UpdateInterceptor()
 
 	for (auto pBullet : *BulletClass::Array)
 	{
+		if (pBullet->InLimbo || !pBullet->IsAlive)
+			continue;
+
+		const auto pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pBullet->Type);
+		const auto pBulletExt = BulletExtContainer::Instance.Find(pBullet);
+
+		if (!pBulletTypeExt->Interceptable ||
+			pBulletExt->CurrentStrength <= 0 ||
+			pBulletExt->InterceptedStatus == InterceptedStatus::Targeted)
+			continue;
+
 		const auto distance = pBullet->Location.DistanceFrom(pThis->Location);
 
-		if (distance > guardRange || distance < minguardRange || pBullet->InLimbo || !pBullet->IsAlive)
+		if (distance > guardRange || distance < minguardRange)
 			continue;
 
 		const int weaponIndex = pThis->SelectWeapon(pBullet);
@@ -3306,14 +3404,6 @@ void TechnoExtData::UpdateInterceptor()
 
 		if (pTypeExt->Interceptor_ConsiderWeaponRange.Get() &&
 			(distance > pWeapon->Range || distance < pWeapon->MinimumRange))
-			continue;
-
-		const auto pBulletExt = BulletExtContainer::Instance.Find(pBullet);
-		const auto pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pBullet->Type);
-
-		if (!pBulletTypeExt->Interceptable ||
-			pBulletExt->CurrentStrength <= 0 ||
-			pBulletExt->InterceptedStatus == InterceptedStatus::Targeted)
 			continue;
 
 		if (pBulletTypeExt->Armor.isset())
@@ -3780,6 +3870,8 @@ void TechnoExtData::UpdateEatPassengers()
 					}
 				}
 
+				pPassenger->Transporter = nullptr;
+				pPassenger->BunkerLinkedItem = nullptr;
 				//auto const pPassengerOwner = pPassenger->Owner;
 
 				//if (!pPassengerOwner->IsNeutral() && !pThis->GetTechnoType()->Insignificant)
@@ -3818,9 +3910,23 @@ bool NOINLINE TechnoExtData::CanFireNoAmmoWeapon(TechnoClass* pThis, int weaponI
 void TechnoExtData::HandleRemove(TechnoClass* pThis, TechnoClass* pSource, bool SkipTrackingRemove, bool Delete)
 {
 	// kill passenger cargo to prevent memleak
+	const auto pThisType = pThis->GetTechnoType();
+
+	if (pThisType->OpenTopped)
+	{
+		pThis->MarkPassengersAsExited();
+	}
+
+	for (auto pPassenger = pThis->Passengers.FirstPassenger; pPassenger; pPassenger = flag_cast_to<FootClass*>(pPassenger->NextObject))
+	{
+		if (pPassenger->Transporter)
+		{
+			pPassenger->Transporter = nullptr;
+		}
+	}
+
 	pThis->KillPassengers(pSource);
 
-	const auto pThisType = pThis->GetTechnoType();
 	const auto nWhat = pThis->WhatAmI();
 	Debug::LogInfo(__FUNCTION__" Called For[({}){} - {}][{} - {}](Method :{})",
 		AbstractClass::GetAbstractClassName(nWhat),
@@ -4348,9 +4454,11 @@ constexpr void CountSelfHeal(HouseClass* pOwner, int& count, Nullable<int>& cap,
 constexpr int countSelfHealing(TechnoClass* pThis, const bool infantryHeal)
 {
 	auto const pOwner = pThis->Owner;
+
+	int count = infantryHeal ? pOwner->InfantrySelfHeal : pOwner->UnitsSelfHeal;
+
 	const bool hasCap = infantryHeal ? RulesExtData::Instance()->InfantryGainSelfHealCap.isset() : RulesExtData::Instance()->UnitsGainSelfHealCap.isset();
 	const int cap = infantryHeal ? RulesExtData::Instance()->InfantryGainSelfHealCap.Get() : RulesExtData::Instance()->UnitsGainSelfHealCap.Get();
-	int count = MaxImpl(infantryHeal ? pOwner->InfantrySelfHeal : pOwner->UnitsSelfHeal, 1);
 
 	if (hasCap && count >= cap)
 	{
@@ -4366,21 +4474,21 @@ constexpr int countSelfHealing(TechnoClass* pThis, const bool infantryHeal)
 	{
 		for (auto pHouse : *HouseClass::Array)
 		{
-			if (pHouse == pOwner)
-				continue;
-
-			const bool isHuman = pHouse->IsControlledByHuman();
-
-			if ((allowPlayerControl && isHuman)
-				|| (allowAlliesInCampaign && !isHuman && pHouse->IsAlliedWith(pOwner))
-				|| (allowAlliesDefault && pHouse->IsAlliedWith(pOwner)))
+			if (pHouse != pOwner && !pHouse->Type->MultiplayPassive)
 			{
-				count += infantryHeal ? pHouse->InfantrySelfHeal : pHouse->UnitsSelfHeal;
+				const bool isHuman = pHouse->IsControlledByHuman();
 
-				if (hasCap && count >= cap)
+				if ((allowPlayerControl && isHuman)
+					|| (allowAlliesInCampaign && !isHuman && pHouse->IsAlliedWith(pOwner))
+					|| (allowAlliesDefault && pHouse->IsAlliedWith(pOwner)))
 				{
-					count = cap;
-					return count;
+					count += infantryHeal ? pHouse->InfantrySelfHeal : pHouse->UnitsSelfHeal;
+
+					if (hasCap && count >= cap)
+					{
+						count = cap;
+						return count;
+					}
 				}
 			}
 		}
@@ -4400,7 +4508,7 @@ constexpr bool CanDoSelfHeal(TechnoClass* pThis, SelfHealGainType type, int& amo
 
 		amount = RulesClass::Instance->SelfHealInfantryAmount * countSelfHealing(pThis, true);
 
-		if (!amount)
+		if (amount <= 0)
 			return false;
 
 		return true;
@@ -4412,7 +4520,7 @@ constexpr bool CanDoSelfHeal(TechnoClass* pThis, SelfHealGainType type, int& amo
 
 		amount = RulesClass::Instance->SelfHealUnitAmount * countSelfHealing(pThis, false);
 
-		if (!amount)
+		if (amount <= 0)
 			return false;
 
 		return true;
@@ -4634,17 +4742,17 @@ bool hasSelfHeal(TechnoClass* pThis, const bool infantryHeal)
 	{
 		for (auto pHouse : *HouseClass::Array)
 		{
-			if (pHouse == pOwner)
-				continue;
-
-			const bool isHuman = pHouse->IsControlledByHuman();
-
-			if ((allowPlayerControl && isHuman)
-				|| (allowAlliesInCampaign && !isHuman && pHouse->IsAlliedWith(pOwner))
-				|| (allowAlliesDefault && pHouse->IsAlliedWith(pOwner)))
+			if (pHouse != pOwner && !pHouse->Type->MultiplayPassive)
 			{
-				if (infantryHeal ? pHouse->InfantrySelfHeal > 0 : pHouse->UnitsSelfHeal > 0)
-					return true;
+				const bool isHuman = pHouse->IsControlledByHuman();
+
+				if ((allowPlayerControl && isHuman)
+					|| (allowAlliesInCampaign && !isHuman && pHouse->IsAlliedWith(pOwner))
+					|| (allowAlliesDefault && pHouse->IsAlliedWith(pOwner)))
+				{
+					if (infantryHeal ? pHouse->InfantrySelfHeal > 0 : pHouse->UnitsSelfHeal > 0)
+						return true;
+				}
 			}
 		}
 	}

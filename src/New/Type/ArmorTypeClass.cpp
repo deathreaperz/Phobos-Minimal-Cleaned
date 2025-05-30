@@ -198,7 +198,8 @@ void ArmorTypeClass::LoadForWarhead_NoParse(WarheadTypeClass* pWH)
 }
 
 void ArmorTypeClass::PrepareForWarhead(CCINIClass* pINI, WarheadTypeClass* pWH)
-{ }
+{
+}
 
 template <typename T>
 void ArmorTypeClass::Serialize(T& Stm)

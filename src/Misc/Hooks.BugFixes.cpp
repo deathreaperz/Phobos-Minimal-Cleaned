@@ -951,7 +951,7 @@ ASMJIT_PATCH(0x4C780A, EventClass_Execute_DeployEvent_NoVoiceFix, 0x6)
 	return 0x0;
 }
 
-DEFINE_HOOK(0x730D1F, DeployCommandClass_Execute_VoiceDeploy, 0x5)
+ASMJIT_PATCH(0x730D1F, DeployCommandClass_Execute_VoiceDeploy, 0x5)
 {
 	GET_STACK(const int, unitsToDeploy, STACK_OFFSET(0x18, -0x4));
 
@@ -2414,6 +2414,7 @@ ASMJIT_PATCH(0x6F6DEE, TechnoClass_Unlimbo_BarrelFacingBugFix, 0x7)
 	return SkipGameCode;
 }
 
+#ifdef _AI_ZONE_CHECK
 ASMJIT_PATCH(0x4DFC39, FootClass_FindBioReactor_CheckValid, 0x6)
 {
 	GET(FootClass*, pThis, ESI);
@@ -2453,6 +2454,7 @@ ASMJIT_PATCH(0x4DFB28, FootClass_FindGrinder_CheckValid, 0x8)
 
 	return pThis->IsInAir() || pThis->IsInSameZoneAs(pBuilding) ? 0 : R->Origin() + 0x8;
 }
+#endif
 
 ASMJIT_PATCH(0x4C7643, EventClass_RespondToEvent_StopTemporal, 0x6)
 {
@@ -2542,6 +2544,7 @@ DEFINE_JUMP(LJMP, 0x715326, 0x715333); // TechnoTypeClass::LoadFromINI
 //	return RemoveSpawneeHelper::removed ? 0x6B7CF4 : 0;
 //}
 
+#ifdef _BalloonHoverFix
 ASMJIT_PATCH(0x64D592, Game_PreProcessMegaMissionList_CheckForTargetCrdRecal1, 0x6)
 {
 	enum { SkipTargetCrdRecal = 0x64D598 };
@@ -2576,6 +2579,7 @@ ASMJIT_PATCH(0x73F0A7, UnitClass_IsCellOccupied_Start, 0x9)
 	GET(UnitClass*, pThis, ECX);
 	return pThis->Type->BalloonHover && pThis->IsInAir() ? MoveOK : 0;
 }
+#endif
 
 #ifdef PassengerRelatedFix
 

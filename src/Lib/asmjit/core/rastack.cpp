@@ -97,8 +97,8 @@ Error RAStackAllocator::calculateStackFrame() noexcept
 	// Sort stack slots based on their newly calculated weight (in descending order).
 	_slots.sort([](const RAStackSlot* a, const RAStackSlot* b) noexcept
    {
-	   return a->weight() > b->weight() ? 1 :
-		   a->weight() == b->weight() ? 0 : -1;
+		 return a->weight() > b->weight() ? 1 :
+			 a->weight() == b->weight() ? 0 : -1;
 	});
 
 	// STEP 3:

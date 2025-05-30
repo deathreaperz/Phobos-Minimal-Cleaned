@@ -422,7 +422,7 @@ Error CodeHolder::newSection(Section** sectionOut, const char* name, size_t name
 
 	Section** insertPosition = std::lower_bound(_sectionsByOrder.begin(), _sectionsByOrder.end(), section, [](const Section* a, const Section* b)
    {
-	   return std::make_tuple(a->order(), a->id()) < std::make_tuple(b->order(), b->id());
+		 return std::make_tuple(a->order(), a->id()) < std::make_tuple(b->order(), b->id());
 	});
 
 	_sections.appendUnsafe(section);

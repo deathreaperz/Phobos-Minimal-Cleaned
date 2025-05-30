@@ -215,7 +215,8 @@ ASMJIT_PATCH(0x524B60, InfantryTypeClass_SaveLoad_Prefix, 0x5)
 
 ASMJIT_PATCH(0x524B53, InfantryTypeClass_Load_Suffix, 0x5)
 {
-	if (Phobos::Config::ArtImageSwap) {
+	if (Phobos::Config::ArtImageSwap)
+	{
 		GET(BYTE*, poisonedVal, EDI);
 		poisonedVal -= 0xE20;
 		TechnoImageReplacer::Replace(reinterpret_cast<InfantryTypeClass*>(poisonedVal));

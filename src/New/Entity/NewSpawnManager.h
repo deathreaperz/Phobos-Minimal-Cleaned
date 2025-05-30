@@ -59,10 +59,12 @@ public:
 	}
 
 	NewSpawnManagerClass(TechnoClass* owner, AircraftTypeClass* spawns, int spawn_count, int regen_rate, int reload_rate)
-	{ }
+	{
+	}
 
 	virtual ~NewSpawnManagerClass() override
-	{ }
+	{
+	}
 
 	/**
 	 *  AbstractClass
@@ -78,10 +80,12 @@ virtual int Size() const override
 }
 
 virtual void ComputeCRC(CRCEngine& checksum) const override
-{ }
+{
+}
 
 virtual void Update() override
-{ }
+{
+}
 
 public:
 	TechnoClass* Owner;

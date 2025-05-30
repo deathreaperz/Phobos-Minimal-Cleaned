@@ -50,26 +50,26 @@ Error JitRuntime::_add(void** dst, CodeHolder* code) noexcept
 
 	_allocator.write(span, [&](JitAllocator::Span& span) noexcept -> Error
    {
-	   uint8_t* rw = static_cast<uint8_t*>(span.rw());
+		 uint8_t* rw = static_cast<uint8_t*>(span.rw());
 
-	   for (Section* section : code->_sections)
-	   {
-		   size_t offset = size_t(section->offset());
-		   size_t bufferSize = size_t(section->bufferSize());
-		   size_t virtualSize = size_t(section->virtualSize());
+		 for (Section* section : code->_sections)
+		 {
+			 size_t offset = size_t(section->offset());
+			 size_t bufferSize = size_t(section->bufferSize());
+			 size_t virtualSize = size_t(section->virtualSize());
 
-		   ASMJIT_ASSERT(offset + bufferSize <= span.size());
-		   memcpy(rw + offset, section->data(), bufferSize);
+			 ASMJIT_ASSERT(offset + bufferSize <= span.size());
+			 memcpy(rw + offset, section->data(), bufferSize);
 
-		   if (virtualSize > bufferSize)
-		   {
-			   ASMJIT_ASSERT(offset + virtualSize <= span.size());
-			   memset(rw + offset + bufferSize, 0, virtualSize - bufferSize);
-		   }
-	   }
+			 if (virtualSize > bufferSize)
+			 {
+				 ASMJIT_ASSERT(offset + virtualSize <= span.size());
+				 memset(rw + offset + bufferSize, 0, virtualSize - bufferSize);
+			 }
+		 }
 
-	   span.shrink(codeSize);
-	   return kErrorOk;
+		 span.shrink(codeSize);
+		 return kErrorOk;
 	});
 
 	*dst = span.rx();

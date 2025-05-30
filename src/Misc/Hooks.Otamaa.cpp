@@ -2597,87 +2597,6 @@ ASMJIT_PATCH(0x711F60, TechnoTypeClass_GetSoylent_Disable, 0x8)
 	return 0x0;
 }
 
-// Check adjacent cells from the center
-// The current MapClass::Instance->PlacePowerupCrate(...) doesn't like slopes and maybe other cases
-bool TechnoExtData::TryToCreateCrate(CoordStruct location, PowerupEffects selectedPowerup, int maxCellRange)
-{
-	CellStruct centerCell = CellClass::Coord2Cell(location);
-	short currentRange = 0;
-	bool placed = false;
-
-	do
-	{
-		short x = -currentRange;
-		short y = -currentRange;
-
-		CellStruct checkedCell;
-		checkedCell.Y = centerCell.Y + y;
-
-		// Check upper line
-		for (short i = -currentRange; i <= currentRange; i++)
-		{
-			checkedCell.X = centerCell.X + i;
-			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
-
-			if (placed)
-				break;
-		}
-
-		if (placed)
-			break;
-
-		checkedCell.Y = centerCell.Y + Math::abs(y);
-
-		// Check lower line
-		for (short i = -currentRange; i <= currentRange; i++)
-		{
-			checkedCell.X = centerCell.X + i;
-			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
-
-			if (placed)
-				break;
-		}
-
-		if (placed)
-			break;
-
-		checkedCell.X = centerCell.X + x;
-
-		// Check left line
-		for (short j = -currentRange + 1; j < currentRange; j++)
-		{
-			checkedCell.Y = centerCell.Y + j;
-			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
-
-			if (placed)
-				break;
-		}
-
-		if (placed)
-			break;
-
-		checkedCell.X = centerCell.X + Math::abs(x);
-
-		// Check right line
-		for (short j = -currentRange + 1; j < currentRange; j++)
-		{
-			checkedCell.Y = centerCell.Y + j;
-			placed = MapClass::Instance->Place_Crate(checkedCell, selectedPowerup);
-
-			if (placed)
-				break;
-		}
-
-		currentRange++;
-	}
-	while (!placed && currentRange < maxCellRange);
-
-	if (!placed)
-		Debug::LogInfo(__FUNCTION__": Failed to place a crate in the cell ({},{}) and around that location.", centerCell.X, centerCell.Y, maxCellRange);
-
-	return placed;
-}
-
 ASMJIT_PATCH(0x4DB1A0, FootClass_GetMovementSpeed_SpeedMult, 0x6)
 {
 	GET(FootClass*, pThis, ECX);
@@ -6934,10 +6853,67 @@ public:
 		if (!object)
 			Debug::FatalErrorAndExit("Trying To submit nullptr object to layer !\n");
 
-		return this->LayerClass::AddObject(object, sort);
+		if (sort)
+		{
+			auto VectorMax = this->Capacity;
+			if (this->Count >= VectorMax)
+			{
+				if (!this->IsAllocated && VectorMax)
+				{
+					return 0;
+				}
+
+				auto GrowthStep = this->CapacityIncrement;
+				if (GrowthStep <= 0 || !this->SetCapacity(VectorMax + GrowthStep, 0))
+				{
+					return 0;
+				}
+			}
+
+			int index = 0;
+
+			for (; index < this->Count; ++index)
+			{
+				if (this->Items[index]->GetYSort() > object->GetYSort())
+				{
+					break;
+				}
+			}
+
+			for (int i = this->Count - 1; i >= index; this->Items[i + 2] = this->Items[i + 1])
+			{
+				--i;
+			}
+
+			this->Items[index] = object;
+			++this->Count;
+			return 1;
+		}
+
+		return this->AddItem(object);
 	}
 };
 
 //DEFINE_FUNCTION_JUMP(VTABLE, 0x7E607C, FakeLayerClass::_Submit);
 //DEFINE_FUNCTION_JUMP(CALL, 0x55BABB, FakeLayerClass::_Submit);
 //DEFINE_FUNCTION_JUMP(CALL, 0x4A9759, FakeLayerClass::_Submit);
+
+class NOVTABLE FakeDriveLocomotionClass final : DriveLocomotionClass
+{
+public:
+
+	bool __stdcall _Is_Moving_Now()
+	{
+		if (!this->Owner || !this->Owner->IsAlive)
+			return false;
+
+		if (this->Owner->PrimaryFacing.Is_Rotating())
+			return true;
+
+		return this->Is_Moving()
+			&& this->HeadToCoord.IsValid()
+			&& this->Owner->GetCurrentSpeed() > 0;
+	}
+};
+
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E7F30, FakeDriveLocomotionClass::_Is_Moving_Now);

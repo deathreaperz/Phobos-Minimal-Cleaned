@@ -624,6 +624,9 @@ PhobosAttachEffectClass* PhobosAttachEffectClass::CreateAndAttach(PhobosAttachEf
 			return nullptr;
 	}
 
+	if (auto pTag = pTarget->AttachedTag)
+		pTag->RaiseEvent((TriggerEvent)PhobosTriggerEvent::AttachedIsUnderAttachedEffect, pTarget, CellStruct::Empty);
+
 	int currentTypeCount = 0;
 	PhobosAttachEffectClass* match = nullptr;
 	StackVector<PhobosAttachEffectClass*, 256> cumulativeMatches;
