@@ -1,7 +1,7 @@
 #pragma once
 #include "Base.h"
 
-DEFINE_LOCO(TSJumpJet, 4C8171D5 - E7A7 - 43D1 - 80F3 - 0C285CF6B352)
+DEFINE_LOCO(TSJumpJet, 4C8171D5-E7A7-43D1-80F3-0C285CF6B352)
 {
 public:
 

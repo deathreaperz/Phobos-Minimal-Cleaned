@@ -19,7 +19,7 @@ enum class MissionState
 int constexpr RocketSpeed = 416;
 class RocketTypeClass;
 
-DEFINE_LOCO(CustomRocket, 4AD76F43 - 090A - 44BF - BB1A - 5BFDE52BC842)
+DEFINE_LOCO(CustomRocket, 4AD76F43-090A-44BF-BB1A-5BFDE52BC842)
 {
 public:
 
