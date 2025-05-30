@@ -125,26 +125,6 @@ std::tuple<BuildingClass**, bool, AbstractType> GetFactory(AbstractType AbsType,
 void HouseExtData::UpdateVehicleProduction()
 {
 	auto pThis = this->AttachedToObject;
-	// PATCH: Prioritaskan produksi unit yang dibutuhkan untuk melengkapi Team yang belum penuh
-	for (auto currentTeam : *TeamClass::Array)
-	{
-		if (!currentTeam || currentTeam->Owner != pThis)
-			continue;
-		if (!currentTeam->IsFullStrength)
-		{
-			DynamicVectorClass<TechnoTypeClass*> missingMembers;
-			currentTeam->GetTaskForceMissingMemberTypes(missingMembers);
-			for (auto currentMember : missingMembers)
-			{
-				if (currentMember->WhatAmI() == UnitTypeClass::AbsID && pThis->CanBuild(currentMember, false, false) == CanBuildResult::Buildable)
-				{
-					pThis->ProducingUnitTypeIndex = ((UnitTypeClass*)currentMember)->ArrayIndex;
-					return;
-				}
-			}
-		}
-	}
-
 	const auto AIDifficulty = static_cast<int>(pThis->GetAIDifficultyIndex());
 	bool skipGround = pThis->ProducingUnitTypeIndex != -1;
 	bool skipNaval = this->ProducingNavalUnitTypeIndex != -1;
@@ -630,25 +610,6 @@ ASMJIT_PATCH(0x4FEA60, HouseClass_AI_UnitProduction, 0x6)
 template <class T, class Ttype >
 int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 {
-	// PATCH: Prioritaskan produksi unit yang dibutuhkan untuk melengkapi Team yang belum penuh
-	for (auto currentTeam : *TeamClass::Array)
-	{
-		if (!currentTeam || currentTeam->Owner != pHouse)
-			continue;
-		if (!currentTeam->IsFullStrength)
-		{
-			DynamicVectorClass<TechnoTypeClass*> missingMembers;
-			currentTeam->GetTaskForceMissingMemberTypes(missingMembers);
-			for (auto currentMember : missingMembers)
-			{
-				if (currentMember->WhatAmI() == Ttype::AbsID && pHouse->CanBuild(currentMember, false, false) == CanBuildResult::Buildable)
-				{
-					return ((Ttype*)currentMember)->ArrayIndex;
-				}
-			}
-		}
-	}
-
 	auto& CreationFrames = HouseExtData::AIProduction_CreationFrames;
 	auto& Values = HouseExtData::AIProduction_Values;
 	auto& BestChoices = HouseExtData::AIProduction_BestChoices;

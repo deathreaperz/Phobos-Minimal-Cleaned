@@ -412,21 +412,6 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 	// Reset Team selection countdown
 	pHouse->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[(int)pHouse->AIDifficulty]);
 
-	// Tambahan: Cek apakah ada Team yang belum penuh dan masih butuh anggota
-	for (auto const pTeam : *TeamClass::Array)
-	{
-		if (pTeam && pTeam->Owner == pHouse && !pTeam->IsFullStrength)
-		{
-			DynamicVectorClass<TechnoTypeClass*> missingMembers;
-			pTeam->GetTaskForceMissingMemberTypes(missingMembers);
-			if (!missingMembers.empty())
-			{
-				// Masih ada anggota TaskForce yang belum diproduksi, jangan pilih TeamType baru
-				return true;
-			}
-		}
-	}
-
 	HelperedVector<TriggerElementWeight> validTriggerCandidates;
 	HelperedVector<TriggerElementWeight> validTriggerCandidatesGroundOnly;
 	HelperedVector<TriggerElementWeight> validTriggerCandidatesNavalOnly;
