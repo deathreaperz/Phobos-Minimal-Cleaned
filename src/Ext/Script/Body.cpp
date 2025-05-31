@@ -21,23 +21,10 @@
 
 ScriptActionNode NOINLINE ScriptExtData::GetSpecificAction(ScriptClass* pScript, int nIdx)
 {
-	if (nIdx == -1)
+	if (nIdx == -1 || nIdx >= pScript->Type->ActionsCount)
 		return { -1 , 0 };
 
-	if (nIdx < pScript->Type->ActionsCount)
-		return pScript->Type->ScriptActions[nIdx];
-	//	nIdx = pScript->Type->ActionsCount;
-	//
-	//auto const nIdxR = nIdx - ScriptTypeClass::MaxActions;
-	//auto const pTypeExt = ScriptTypeExt::ExtMap.Find(pScript->Type);
-	//
-	//if (!pTypeExt->PhobosNode.empty() && nIdxR < (int)pTypeExt->PhobosNode.size()) {
-	//	return pTypeExt->PhobosNode[nIdxR];
-	//}
-	//COMPILETIMEEVAL auto const nMax = ScriptTypeClass::MaxActions - 1;
-	//return pScript->Type->ScriptActions[nMax];
-
-	return { -1 , 0 };
+	return pScript->Type->ScriptActions[nIdx];
 }
 
 // =============================
@@ -50,322 +37,166 @@ static NOINLINE const char* ToStrings(PhobosScripts from)
 {
 	switch (from)
 	{
-	case PhobosScripts::TimedAreaGuard:
-		return "TimedAreaGuard";
-	case PhobosScripts::LoadIntoTransports:
-		return "LoadIntoTransports";
-	case PhobosScripts::WaitUntilFullAmmo:
-		return "WaitUntilFullAmmo";
-	case PhobosScripts::RepeatAttackCloserThreat:
-		return "RepeatAttackCloserThreat";
-	case PhobosScripts::RepeatAttackFartherThreat:
-		return "RepeatAttackFartherThreat";
-	case PhobosScripts::RepeatAttackCloser:
-		return "RepeatAttackCloser";
-	case PhobosScripts::RepeatAttackFarther:
-		return "RepeatAttackFarther";
-	case PhobosScripts::SingleAttackCloserThreat:
-		return "SingleAttackCloserThreat";
-	case PhobosScripts::SingleAttackFartherThreat:
-		return "SingleAttackFartherThreat";
-	case PhobosScripts::SingleAttackCloser:
-		return "SingleAttackCloser";
-	case PhobosScripts::SingleAttackFarther:
-		return "SingleAttackFarther";
-	case PhobosScripts::DecreaseCurrentAITriggerWeight:
-		return "DecreaseCurrentAITriggerWeight";
-	case PhobosScripts::IncreaseCurrentAITriggerWeight:
-		return "IncreaseCurrentAITriggerWeight";
-	case PhobosScripts::RepeatAttackTypeCloserThreat:
-		return "RepeatAttackTypeCloserThreat";
-	case PhobosScripts::RepeatAttackTypeFartherThreat:
-		return "RepeatAttackTypeFartherThreat";
-	case PhobosScripts::RepeatAttackTypeCloser:
-		return "RepeatAttackTypeCloser";
-	case PhobosScripts::RepeatAttackTypeFarther:
-		return "RepeatAttackTypeFarther";
-	case PhobosScripts::SingleAttackTypeCloserThreat:
-		return "SingleAttackTypeCloserThreat";
-	case PhobosScripts::SingleAttackTypeFartherThreat:
-		return "SingleAttackTypeFartherThreat";
-	case PhobosScripts::SingleAttackTypeCloser:
-		return "SingleAttackTypeCloser";
-	case PhobosScripts::SingleAttackTypeFarther:
-		return "SingleAttackTypeFarther";
-	case PhobosScripts::WaitIfNoTarget:
-		return "WaitIfNoTarget";
-	case PhobosScripts::TeamWeightReward:
-		return "TeamWeightReward";
-	case PhobosScripts::PickRandomScript:
-		return "PickRandomScript";
-	case PhobosScripts::MoveToEnemyCloser:
-		return "MoveToEnemyCloser";
-	case PhobosScripts::MoveToEnemyFarther:
-		return "MoveToEnemyFarther";
-	case PhobosScripts::MoveToFriendlyCloser:
-		return "MoveToFriendlyCloser";
-	case PhobosScripts::MoveToFriendlyFarther:
-		return "MoveToFriendlyFarther";
-	case PhobosScripts::MoveToTypeEnemyCloser:
-		return "MoveToTypeEnemyCloser";
-	case PhobosScripts::MoveToTypeEnemyFarther:
-		return "MoveToTypeEnemyFarther";
-	case PhobosScripts::MoveToTypeFriendlyCloser:
-		return "MoveToTypeFriendlyCloser";
-	case PhobosScripts::MoveToTypeFriendlyFarther:
-		return "MoveToTypeFriendlyFarther";
-	case PhobosScripts::ModifyTargetDistance:
-		return "ModifyTargetDistance";
-	case PhobosScripts::RandomAttackTypeCloser:
-		return "RandomAttackTypeCloser";
-	case PhobosScripts::RandomAttackTypeFarther:
-		return "RandomAttackTypeFarther";
-	case PhobosScripts::RandomMoveToTypeEnemyCloser:
-		return "RandomMoveToTypeEnemyCloser";
-	case PhobosScripts::RandomMoveToTypeEnemyFarther:
-		return "RandomMoveToTypeEnemyFarther";
-	case PhobosScripts::RandomMoveToTypeFriendlyCloser:
-		return "RandomMoveToTypeFriendlyCloser";
-	case PhobosScripts::RandomMoveToTypeFriendlyFarther:
-		return "RandomMoveToTypeFriendlyFarther";
-	case PhobosScripts::SetMoveMissionEndMode:
-		return "SetMoveMissionEndMode";
-	case PhobosScripts::UnregisterGreatSuccess:
-		return "UnregisterGreatSuccess";
-	case PhobosScripts::GatherAroundLeader:
-		return "GatherAroundLeader";
-	case PhobosScripts::RandomSkipNextAction:
-		return "RandomSkipNextAction";
-	case PhobosScripts::ChangeTeamGroup:
-		return "ChangeTeamGroup";
-	case PhobosScripts::DistributedLoading:
-		return "DistributedLoading";
-	case PhobosScripts::FollowFriendlyByGroup:
-		return "FollowFriendlyByGroup";
-	case PhobosScripts::RallyUnitWithSameGroup:
-		return "RallyUnitWithSameGroup";
-	case PhobosScripts::StopForceJumpCountdown:
-		return "StopForceJumpCountdown";
-	case PhobosScripts::NextLineForceJumpCountdown:
-		return "NextLineForceJumpCountdown";
-	case PhobosScripts::SameLineForceJumpCountdown:
-		return "SameLineForceJumpCountdown";
-	case PhobosScripts::ForceGlobalOnlyTargetHouseEnemy:
-		return "ForceGlobalOnlyTargetHouseEnemy";
-	case PhobosScripts::OverrideOnlyTargetHouseEnemy:
-		return "OverrideOnlyTargetHouseEnemy";
-	case PhobosScripts::SetHouseAngerModifier:
-		return "SetHouseAngerModifier";
-	case PhobosScripts::ModifyHateHouseIndex:
-		return "ModifyHateHouseIndex";
-	case PhobosScripts::ModifyHateHousesList:
-		return "ModifyHateHousesList";
-	case PhobosScripts::ModifyHateHousesList1Random:
-		return "ModifyHateHousesList1Randoms";
-	case PhobosScripts::SetTheMostHatedHouseMinorNoRandom:
-		return "SetTheMostHatedHouseMinorNoRandom";
-	case PhobosScripts::SetTheMostHatedHouseMajorNoRandom:
-		return "SetTheMostHatedHouseMajorNoRandom";
-	case PhobosScripts::SetTheMostHatedHouseRandom:
-		return "SetTheMostHatedHouseRandom";
-	case PhobosScripts::ResetAngerAgainstHouses:
-		return "ResetAngerAgainstHouses";
-	case PhobosScripts::AggroHouse:
-		return "AggroHouse";
-	case PhobosScripts::SetSideIdxForManagingTriggers:
-		return "SetSideIdxForManagingTriggers";
-	case PhobosScripts::SetHouseIdxForManagingTriggers:
-		return "SetHouseIdxForManagingTriggers";
-	case PhobosScripts::ManageAllAITriggers:
-		return "ManageAllAITriggers";
-	case PhobosScripts::EnableTriggersFromList:
-		return "EnableTriggersFromList";
-	case PhobosScripts::DisableTriggersFromList:
-		return "DisableTriggersFromList";
-	case PhobosScripts::DisableTriggersWithObjects:
-		return "DisableTriggersWithObjects";
-	case PhobosScripts::EnableTriggersWithObjects:
-		return "EnableTriggersWithObjects";
-	case PhobosScripts::ConditionalJumpResetVariables:
-		return "ConditionalJumpResetVariables";
-	case PhobosScripts::ConditionalJumpManageResetIfJump:
-		return "ConditionalJumpManageResetIfJump";
-	case PhobosScripts::AbortActionAfterSuccessKill:
-		return "AbortActionAfterSuccessKill";
-	case PhobosScripts::ConditionalJumpManageKillsCounter:
-		return "ConditionalJumpManageKillsCounter";
-	case PhobosScripts::ConditionalJumpSetCounter:
-		return "ConditionalJumpSetCounter";
-	case PhobosScripts::ConditionalJumpSetComparatorMode:
-		return "ConditionalJumpSetComparatorMode";
-	case PhobosScripts::ConditionalJumpSetComparatorValue:
-		return "ConditionalJumpSetComparatorValue";
-	case PhobosScripts::ConditionalJumpSetIndex:
-		return "ConditionalJumpSetIndex";
-	case PhobosScripts::ConditionalJumpIfFalse:
-		return "ConditionalJumpIfFalse";
-	case PhobosScripts::ConditionalJumpIfTrue:
-		return "ConditionalJumpIfTrue";
-	case PhobosScripts::ConditionalJumpKillEvaluation:
-		return "ConditionalJumpKillEvaluation";
-	case PhobosScripts::ConditionalJumpCheckCount:
-		return "ConditionalJumpCheckCount";
-	case PhobosScripts::ConditionalJumpCheckAliveHumans:
-		return "ConditionalJumpCheckAliveHumans";
-	case PhobosScripts::ConditionalJumpCheckObjects:
-		return "ConditionalJumpCheckObjects";
-	case PhobosScripts::ConditionalJumpCheckHumanIsMostHated:
-		return "ConditionalJumpCheckHumanIsMostHated";
-	case PhobosScripts::JumpBackToPreviousScript:
-		return "JumpBackToPreviousScript";
-	case PhobosScripts::RepairDestroyedBridge:
-		return "RepairDestroyedBridge";
-	case PhobosScripts::ChronoshiftToEnemyBase:
-		return "ChronoshiftToEnemyBase";
-	case PhobosScripts::LocalVariableSet:
-		return "LocalVariableSet";
-	case PhobosScripts::LocalVariableAdd:
-		return "LocalVariableAdd";
-	case PhobosScripts::LocalVariableMinus:
-		return "LocalVariableMinus";
-	case PhobosScripts::LocalVariableMultiply:
-		return "LocalVariableMultiply";
-	case PhobosScripts::LocalVariableDivide:
-		return "LocalVariableDivide";
-	case PhobosScripts::LocalVariableMod:
-		return "LocalVariableMod";
-	case PhobosScripts::LocalVariableLeftShift:
-		return "LocalVariableLeftShift";
-	case PhobosScripts::LocalVariableRightShift:
-		return "LocalVariableRightShift";
-	case PhobosScripts::LocalVariableReverse:
-		return "LocalVariableReverse";
-	case PhobosScripts::LocalVariableXor:
-		return "LocalVariableXor";
-	case PhobosScripts::LocalVariableOr:
-		return "LocalVariableOr";
-	case PhobosScripts::LocalVariableAnd:
-		return "LocalVariableAnd";
-	case PhobosScripts::GlobalVariableSet:
-		return "GlobalVariableSet";
-	case PhobosScripts::GlobalVariableAdd:
-		return "GlobalVariableAdd";
-	case PhobosScripts::GlobalVariableMinus:
-		return "GlobalVariableMinus";
-	case PhobosScripts::GlobalVariableMultiply:
-		return "GlobalVariableMultiply";
-	case PhobosScripts::GlobalVariableDivide:
-		return "GlobalVariableDivide";
-	case PhobosScripts::GlobalVariableMod:
-		return "GlobalVariableMod";
-	case PhobosScripts::GlobalVariableLeftShift:
-		return "GlobalVariableLeftShift";
-	case PhobosScripts::GlobalVariableRightShift:
-		return "GlobalVariableRightShift";
-	case PhobosScripts::GlobalVariableReverse:
-		return "GlobalVariableReverse";
-	case PhobosScripts::GlobalVariableXor:
-		return "GlobalVariableXor";
-	case PhobosScripts::GlobalVariableOr:
-		return "GlobalVariableOr";
-	case PhobosScripts::GlobalVariableAnd:
-		return "GlobalVariableAnd";
-	case PhobosScripts::LocalVariableSetByLocal:
-		return "LocalVariableSetByLocal";
-	case PhobosScripts::LocalVariableAddByLocal:
-		return "LocalVariableAddByLocal";
-	case PhobosScripts::LocalVariableMinusByLocal:
-		return "LocalVariableMinusByLocal";
-	case PhobosScripts::LocalVariableMultiplyByLocal:
-		return "LocalVariableMultiplyByLocal";
-	case PhobosScripts::LocalVariableDivideByLocal:
-		return "LocalVariableDivideByLocal";
-	case PhobosScripts::LocalVariableModByLocal:
-		return "LocalVariableModByLocal";
-	case PhobosScripts::LocalVariableLeftShiftByLocal:
-		return "LocalVariableLeftShiftByLocal";
-	case PhobosScripts::LocalVariableRightShiftByLocal:
-		return "LocalVariableRightShiftByLocal";
-	case PhobosScripts::LocalVariableReverseByLocal:
-		return "LocalVariableReverseByLocal";
-	case PhobosScripts::LocalVariableXorByLocal:
-		return "LocalVariableXorByLocal";
-	case PhobosScripts::LocalVariableOrByLocal:
-		return "LocalVariableOrByLocal";
-	case PhobosScripts::LocalVariableAndByLocal:
-		return "LocalVariableAndByLocal";
-	case PhobosScripts::GlobalVariableSetByLocal:
-		return "GlobalVariableSetByLocal";
-	case PhobosScripts::GlobalVariableAddByLocal:
-		return "GlobalVariableAddByLocal";
-	case PhobosScripts::GlobalVariableMinusByLocal:
-		return "GlobalVariableMinusByLocal";
-	case PhobosScripts::GlobalVariableMultiplyByLocal:
-		return "GlobalVariableMultiplyByLocal";
-	case PhobosScripts::GlobalVariableDivideByLocal:
-		return "GlobalVariableDivideByLocal";
-	case PhobosScripts::GlobalVariableModByLocal:
-		return "GlobalVariableModByLocal";
-	case PhobosScripts::GlobalVariableLeftShiftByLocal:
-		return "GlobalVariableLeftShiftByLocal";
-	case PhobosScripts::GlobalVariableRightShiftByLocal:
-		return "GlobalVariableRightShiftByLocal";
-	case PhobosScripts::GlobalVariableReverseByLocal:
-		return "GlobalVariableReverseByLocal";
-	case PhobosScripts::GlobalVariableXorByLocal:
-		return "GlobalVariableXorByLocal";
-	case PhobosScripts::GlobalVariableOrByLocal:
-		return "GlobalVariableOrByLocal";
-	case PhobosScripts::GlobalVariableAndByLocal:
-		return "GlobalVariableAndByLocal";
-	case PhobosScripts::LocalVariableSetByGlobal:
-		return "LocalVariableSetByGlobal";
-	case PhobosScripts::LocalVariableAddByGlobal:
-		return "LocalVariableAddByGlobal";
-	case PhobosScripts::LocalVariableMinusByGlobal:
-		return "LocalVariableMinusByGlobal";
-	case PhobosScripts::LocalVariableMultiplyByGlobal:
-		return "LocalVariableMultiplyByGlobal";
-	case PhobosScripts::LocalVariableDivideByGlobal:
-		return "LocalVariableDivideByGlobal";
-	case PhobosScripts::LocalVariableModByGlobal:
-		return "LocalVariableModByGlobal";
-	case PhobosScripts::LocalVariableLeftShiftByGlobal:
-		return "LocalVariableLeftShiftByGlobal";
-	case PhobosScripts::LocalVariableRightShiftByGlobal:
-		return "LocalVariableRightShiftByGlobal";
-	case PhobosScripts::LocalVariableReverseByGlobal:
-		return "LocalVariableReverseByGlobal";
-	case PhobosScripts::LocalVariableXorByGlobal:
-		return "LocalVariableXorByGlobal";
-	case PhobosScripts::LocalVariableOrByGlobal:
-		return "LocalVariableOrByGlobal";
-	case PhobosScripts::LocalVariableAndByGlobal:
-		return "LocalVariableAndByGlobal";
-	case PhobosScripts::GlobalVariableSetByGlobal:
-		return "GlobalVariableSetByGlobal";
-	case PhobosScripts::GlobalVariableAddByGlobal:
-		return "GlobalVariableAddByGlobal";
-	case PhobosScripts::GlobalVariableMinusByGlobal:
-		return "GlobalVariableMinusByGlobal";
-	case PhobosScripts::GlobalVariableMultiplyByGlobal:
-		return "GlobalVariableMultiplyByGlobal";
-	case PhobosScripts::GlobalVariableDivideByGlobal:
-		return "GlobalVariableDivideByGlobal";
-	case PhobosScripts::GlobalVariableModByGlobal:
-		return "GlobalVariableModByGlobal";
-	case PhobosScripts::GlobalVariableLeftShiftByGlobal:
-		return "GlobalVariableLeftShiftByGlobal";
-	case PhobosScripts::GlobalVariableRightShiftByGlobal:
-		return "GlobalVariableRightShiftByGlobal";
-	case PhobosScripts::GlobalVariableReverseByGlobal:
-		return "GlobalVariableReverseByGlobal";
-	case PhobosScripts::GlobalVariableXorByGlobal:
-		return "GlobalVariableXorByGlobal";
-	case PhobosScripts::GlobalVariableOrByGlobal:
-		return "GlobalVariableOrByGlobal";
-	case PhobosScripts::GlobalVariableAndByGlobal:
-		return "GlobalVariableAndByGlobal";
+#define PHOBOS_SCRIPT_CASE(name) case PhobosScripts::name: return #name;
+		PHOBOS_SCRIPT_CASE(TimedAreaGuard)
+		PHOBOS_SCRIPT_CASE(LoadIntoTransports)
+		PHOBOS_SCRIPT_CASE(WaitUntilFullAmmo)
+		PHOBOS_SCRIPT_CASE(RepeatAttackCloserThreat)
+		PHOBOS_SCRIPT_CASE(RepeatAttackFartherThreat)
+		PHOBOS_SCRIPT_CASE(RepeatAttackCloser)
+		PHOBOS_SCRIPT_CASE(RepeatAttackFarther)
+		PHOBOS_SCRIPT_CASE(SingleAttackCloserThreat)
+		PHOBOS_SCRIPT_CASE(SingleAttackFartherThreat)
+		PHOBOS_SCRIPT_CASE(SingleAttackCloser)
+		PHOBOS_SCRIPT_CASE(SingleAttackFarther)
+		PHOBOS_SCRIPT_CASE(DecreaseCurrentAITriggerWeight)
+		PHOBOS_SCRIPT_CASE(IncreaseCurrentAITriggerWeight)
+		PHOBOS_SCRIPT_CASE(RepeatAttackTypeCloserThreat)
+		PHOBOS_SCRIPT_CASE(RepeatAttackTypeFartherThreat)
+		PHOBOS_SCRIPT_CASE(RepeatAttackTypeCloser)
+		PHOBOS_SCRIPT_CASE(RepeatAttackTypeFarther)
+		PHOBOS_SCRIPT_CASE(SingleAttackTypeCloserThreat)
+		PHOBOS_SCRIPT_CASE(SingleAttackTypeFartherThreat)
+		PHOBOS_SCRIPT_CASE(SingleAttackTypeCloser)
+		PHOBOS_SCRIPT_CASE(SingleAttackTypeFarther)
+		PHOBOS_SCRIPT_CASE(WaitIfNoTarget)
+		PHOBOS_SCRIPT_CASE(TeamWeightReward)
+		PHOBOS_SCRIPT_CASE(PickRandomScript)
+		PHOBOS_SCRIPT_CASE(MoveToEnemyCloser)
+		PHOBOS_SCRIPT_CASE(MoveToEnemyFarther)
+		PHOBOS_SCRIPT_CASE(MoveToFriendlyCloser)
+		PHOBOS_SCRIPT_CASE(MoveToFriendlyFarther)
+		PHOBOS_SCRIPT_CASE(MoveToTypeEnemyCloser)
+		PHOBOS_SCRIPT_CASE(MoveToTypeEnemyFarther)
+		PHOBOS_SCRIPT_CASE(MoveToTypeFriendlyCloser)
+		PHOBOS_SCRIPT_CASE(MoveToTypeFriendlyFarther)
+		PHOBOS_SCRIPT_CASE(ModifyTargetDistance)
+		PHOBOS_SCRIPT_CASE(RandomAttackTypeCloser)
+		PHOBOS_SCRIPT_CASE(RandomAttackTypeFarther)
+		PHOBOS_SCRIPT_CASE(RandomMoveToTypeEnemyCloser)
+		PHOBOS_SCRIPT_CASE(RandomMoveToTypeEnemyFarther)
+		PHOBOS_SCRIPT_CASE(RandomMoveToTypeFriendlyCloser)
+		PHOBOS_SCRIPT_CASE(RandomMoveToTypeFriendlyFarther)
+		PHOBOS_SCRIPT_CASE(SetMoveMissionEndMode)
+		PHOBOS_SCRIPT_CASE(UnregisterGreatSuccess)
+		PHOBOS_SCRIPT_CASE(GatherAroundLeader)
+		PHOBOS_SCRIPT_CASE(RandomSkipNextAction)
+		PHOBOS_SCRIPT_CASE(ChangeTeamGroup)
+		PHOBOS_SCRIPT_CASE(DistributedLoading)
+		PHOBOS_SCRIPT_CASE(FollowFriendlyByGroup)
+		PHOBOS_SCRIPT_CASE(RallyUnitWithSameGroup)
+		PHOBOS_SCRIPT_CASE(StopForceJumpCountdown)
+		PHOBOS_SCRIPT_CASE(NextLineForceJumpCountdown)
+		PHOBOS_SCRIPT_CASE(SameLineForceJumpCountdown)
+		PHOBOS_SCRIPT_CASE(ForceGlobalOnlyTargetHouseEnemy)
+		PHOBOS_SCRIPT_CASE(OverrideOnlyTargetHouseEnemy)
+		PHOBOS_SCRIPT_CASE(SetHouseAngerModifier)
+		PHOBOS_SCRIPT_CASE(ModifyHateHouseIndex)
+		PHOBOS_SCRIPT_CASE(ModifyHateHousesList)
+		PHOBOS_SCRIPT_CASE(ModifyHateHousesList1Random)
+		PHOBOS_SCRIPT_CASE(SetTheMostHatedHouseMinorNoRandom)
+		PHOBOS_SCRIPT_CASE(SetTheMostHatedHouseMajorNoRandom)
+		PHOBOS_SCRIPT_CASE(SetTheMostHatedHouseRandom)
+		PHOBOS_SCRIPT_CASE(ResetAngerAgainstHouses)
+		PHOBOS_SCRIPT_CASE(AggroHouse)
+		PHOBOS_SCRIPT_CASE(SetSideIdxForManagingTriggers)
+		PHOBOS_SCRIPT_CASE(SetHouseIdxForManagingTriggers)
+		PHOBOS_SCRIPT_CASE(ManageAllAITriggers)
+		PHOBOS_SCRIPT_CASE(EnableTriggersFromList)
+		PHOBOS_SCRIPT_CASE(DisableTriggersFromList)
+		PHOBOS_SCRIPT_CASE(DisableTriggersWithObjects)
+		PHOBOS_SCRIPT_CASE(EnableTriggersWithObjects)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpResetVariables)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpManageResetIfJump)
+		PHOBOS_SCRIPT_CASE(AbortActionAfterSuccessKill)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpManageKillsCounter)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpSetCounter)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpSetComparatorMode)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpSetComparatorValue)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpSetIndex)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpIfFalse)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpIfTrue)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpKillEvaluation)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckCount)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckAliveHumans)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckObjects)
+		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckHumanIsMostHated)
+		PHOBOS_SCRIPT_CASE(JumpBackToPreviousScript)
+		PHOBOS_SCRIPT_CASE(RepairDestroyedBridge)
+		PHOBOS_SCRIPT_CASE(ChronoshiftToEnemyBase)
+		PHOBOS_SCRIPT_CASE(LocalVariableSet)
+		PHOBOS_SCRIPT_CASE(LocalVariableAdd)
+		PHOBOS_SCRIPT_CASE(LocalVariableMinus)
+		PHOBOS_SCRIPT_CASE(LocalVariableMultiply)
+		PHOBOS_SCRIPT_CASE(LocalVariableDivide)
+		PHOBOS_SCRIPT_CASE(LocalVariableMod)
+		PHOBOS_SCRIPT_CASE(LocalVariableLeftShift)
+		PHOBOS_SCRIPT_CASE(LocalVariableRightShift)
+		PHOBOS_SCRIPT_CASE(LocalVariableReverse)
+		PHOBOS_SCRIPT_CASE(LocalVariableXor)
+		PHOBOS_SCRIPT_CASE(LocalVariableOr)
+		PHOBOS_SCRIPT_CASE(LocalVariableAnd)
+		PHOBOS_SCRIPT_CASE(GlobalVariableSet)
+		PHOBOS_SCRIPT_CASE(GlobalVariableAdd)
+		PHOBOS_SCRIPT_CASE(GlobalVariableMinus)
+		PHOBOS_SCRIPT_CASE(GlobalVariableMultiply)
+		PHOBOS_SCRIPT_CASE(GlobalVariableDivide)
+		PHOBOS_SCRIPT_CASE(GlobalVariableMod)
+		PHOBOS_SCRIPT_CASE(GlobalVariableLeftShift)
+		PHOBOS_SCRIPT_CASE(GlobalVariableRightShift)
+		PHOBOS_SCRIPT_CASE(GlobalVariableReverse)
+		PHOBOS_SCRIPT_CASE(GlobalVariableXor)
+		PHOBOS_SCRIPT_CASE(GlobalVariableOr)
+		PHOBOS_SCRIPT_CASE(GlobalVariableAnd)
+		PHOBOS_SCRIPT_CASE(LocalVariableSetByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableAddByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableMinusByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableMultiplyByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableDivideByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableModByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableLeftShiftByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableRightShiftByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableReverseByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableXorByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableOrByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableAndByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableSetByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableAddByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableMinusByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableMultiplyByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableDivideByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableModByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableLeftShiftByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableRightShiftByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableReverseByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableXorByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableOrByLocal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableAndByLocal)
+		PHOBOS_SCRIPT_CASE(LocalVariableSetByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableAddByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableMinusByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableMultiplyByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableDivideByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableModByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableLeftShiftByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableRightShiftByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableReverseByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableXorByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableOrByGlobal)
+		PHOBOS_SCRIPT_CASE(LocalVariableAndByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableSetByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableAddByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableMinusByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableMultiplyByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableDivideByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableModByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableLeftShiftByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableRightShiftByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableReverseByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableXorByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableOrByGlobal)
+		PHOBOS_SCRIPT_CASE(GlobalVariableAndByGlobal)
+#undef PHOBOS_SCRIPT_CASE
 	default:
 		return GameStrings::NoneStr();
 	}

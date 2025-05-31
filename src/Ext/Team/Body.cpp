@@ -13,11 +13,9 @@ void TeamExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 
 bool TeamExtData::HouseOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, bool allies, const Iterator<TechnoTypeClass*>& list)
 {
-	bool result = false;
 	int counter = 0;
 
-	// Count all objects of the list, like an OR operator
-	for (auto const& pItem : list)
+	for (const auto& pItem : list)
 	{
 		for (auto pObject : *TechnoClass::Array)
 		{
@@ -28,48 +26,34 @@ bool TeamExtData::HouseOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, bool 
 				&& !pObject->Owner->Type->MultiplayPassive
 				&& pObject->GetTechnoType() == pItem)
 			{
-				counter++;
+				++counter;
 			}
 		}
 	}
 
-	switch (pThis->Conditions[0].ComparatorOperand)
+	const int operand = pThis->Conditions[0].ComparatorOperand;
+	const int type = pThis->Conditions[0].ComparatorType;
+	bool result = false;
+	switch (operand)
 	{
-	case 0:
-		result = counter < pThis->Conditions[0].ComparatorType;
-		break;
-	case 1:
-		result = counter <= pThis->Conditions[0].ComparatorType;
-		break;
-	case 2:
-		result = counter == pThis->Conditions[0].ComparatorType;
-		break;
-	case 3:
-		result = counter >= pThis->Conditions[0].ComparatorType;
-		break;
-	case 4:
-		result = counter > pThis->Conditions[0].ComparatorType;
-		break;
-	case 5:
-		result = counter != pThis->Conditions[0].ComparatorType;
-		break;
-	default:
-		break;
+	case 0: result = counter < type; break;
+	case 1: result = counter <= type; break;
+	case 2: result = counter == type; break;
+	case 3: result = counter >= type; break;
+	case 4: result = counter > type; break;
+	case 5: result = counter != type; break;
+	default: break;
 	}
-
 	return result;
 }
 
 bool TeamExtData::EnemyOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClass* pEnemy, bool onlySelectedEnemy, const Iterator<TechnoTypeClass*>& list)
 {
-	bool result = false;
 	int counter = 0;
-
 	if (pEnemy && pHouse->IsAlliedWith(pEnemy) && !onlySelectedEnemy)
 		pEnemy = nullptr;
 
-	// Count all objects of the list, like an OR operator
-	for (auto const& pItem : list)
+	for (const auto& pItem : list)
 	{
 		for (auto pObject : *TechnoClass::Array)
 		{
@@ -81,277 +65,176 @@ bool TeamExtData::EnemyOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, House
 				&& !pObject->Owner->Type->MultiplayPassive
 				&& pObject->GetTechnoType() == pItem)
 			{
-				counter++;
+				++counter;
 			}
 		}
 	}
 
-	switch (pThis->Conditions[0].ComparatorOperand)
+	const int operand = pThis->Conditions[0].ComparatorOperand;
+	const int type = pThis->Conditions[0].ComparatorType;
+	bool result = false;
+	switch (operand)
 	{
-	case 0:
-		result = counter < pThis->Conditions[0].ComparatorType;
-		break;
-	case 1:
-		result = counter <= pThis->Conditions[0].ComparatorType;
-		break;
-	case 2:
-		result = counter == pThis->Conditions[0].ComparatorType;
-		break;
-	case 3:
-		result = counter >= pThis->Conditions[0].ComparatorType;
-		break;
-	case 4:
-		result = counter > pThis->Conditions[0].ComparatorType;
-		break;
-	case 5:
-		result = counter != pThis->Conditions[0].ComparatorType;
-		break;
-	default:
-		break;
+	case 0: result = counter < type; break;
+	case 1: result = counter <= type; break;
+	case 2: result = counter == type; break;
+	case 3: result = counter >= type; break;
+	case 4: result = counter > type; break;
+	case 5: result = counter != type; break;
+	default: break;
 	}
-
 	return result;
 }
 
 bool TeamExtData::NeutralOwns(AITriggerTypeClass* pThis, const Iterator<TechnoTypeClass*>& list)
 {
-	bool result = false;
 	int counter = 0;
-
 	for (auto pHouse : *HouseClass::Array)
 	{
 		if (IS_SAME_STR_(SideClass::Array->Items[pHouse->Type->SideIndex]->Name, GameStrings::Civilian()))
 			continue;
-
-		// Count all objects of the list, like an OR operator
-		for (auto const& pItem : list)
+		for (const auto& pItem : list)
 		{
 			for (auto pObject : *TechnoClass::Array)
 			{
 				if (!TechnoExtData::IsAlive(pObject))
 					continue;
-
-				if (pObject->Owner == pHouse
-					&& pObject->GetTechnoType() == pItem)
-				{
-					counter++;
-				}
+				if (pObject->Owner == pHouse && pObject->GetTechnoType() == pItem)
+					++counter;
 			}
 		}
 	}
-
-	switch (pThis->Conditions[0].ComparatorOperand)
+	const int operand = pThis->Conditions[0].ComparatorOperand;
+	const int type = pThis->Conditions[0].ComparatorType;
+	bool result = false;
+	switch (operand)
 	{
-	case 0:
-		result = counter < pThis->Conditions[0].ComparatorType;
-		break;
-	case 1:
-		result = counter <= pThis->Conditions[0].ComparatorType;
-		break;
-	case 2:
-		result = counter == pThis->Conditions[0].ComparatorType;
-		break;
-	case 3:
-		result = counter >= pThis->Conditions[0].ComparatorType;
-		break;
-	case 4:
-		result = counter > pThis->Conditions[0].ComparatorType;
-		break;
-	case 5:
-		result = counter != pThis->Conditions[0].ComparatorType;
-		break;
-	default:
-		break;
+	case 0: result = counter < type; break;
+	case 1: result = counter <= type; break;
+	case 2: result = counter == type; break;
+	case 3: result = counter >= type; break;
+	case 4: result = counter > type; break;
+	case 5: result = counter != type; break;
+	default: break;
 	}
-
 	return result;
 }
 
 bool TeamExtData::HouseOwnsAll(AITriggerTypeClass* pThis, HouseClass* pHouse, const Iterator<TechnoTypeClass*>& list)
 {
-	bool result = true;
-
 	if (list.empty())
 		return false;
-
-	// Count all objects of the list, like an AND operator
-	for (auto const& pItem : list)
+	const int operand = pThis->Conditions[0].ComparatorOperand;
+	const int type = pThis->Conditions[0].ComparatorType;
+	for (const auto& pItem : list)
 	{
-		if (!result)
-			break;
-
 		int counter = 0;
-		result = true;
-
 		for (auto pObject : *TechnoClass::Array)
 		{
 			if (!TechnoExtData::IsAlive(pObject))
 				continue;
-
-			if (pObject->Owner == pHouse &&
-				pObject->GetTechnoType() == pItem)
-			{
-				counter++;
-			}
+			if (pObject->Owner == pHouse && pObject->GetTechnoType() == pItem)
+				++counter;
 		}
-
-		switch (pThis->Conditions[0].ComparatorOperand)
+		bool result = false;
+		switch (operand)
 		{
-		case 0:
-			result = counter < pThis->Conditions[0].ComparatorType;
-			break;
-		case 1:
-			result = counter <= pThis->Conditions[0].ComparatorType;
-			break;
-		case 2:
-			result = counter == pThis->Conditions[0].ComparatorType;
-			break;
-		case 3:
-			result = counter >= pThis->Conditions[0].ComparatorType;
-			break;
-		case 4:
-			result = counter > pThis->Conditions[0].ComparatorType;
-			break;
-		case 5:
-			result = counter != pThis->Conditions[0].ComparatorType;
-			break;
-		default:
-			break;
+		case 0: result = counter < type; break;
+		case 1: result = counter <= type; break;
+		case 2: result = counter == type; break;
+		case 3: result = counter >= type; break;
+		case 4: result = counter > type; break;
+		case 5: result = counter != type; break;
+		default: break;
 		}
+		if (!result)
+			return false;
 	}
-
-	return result;
+	return true;
 }
 
 bool TeamExtData::EnemyOwnsAll(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClass* pEnemy, const Iterator<TechnoTypeClass*>& list)
 {
-	bool result = true;
-
 	if (pEnemy && pHouse->IsAlliedWith(pEnemy))
 		pEnemy = nullptr;
-
 	if (list.empty())
 		return false;
-
-	// Count all objects of the list, like an AND operator
-	for (auto const& pItem : list)
+	const int operand = pThis->Conditions[0].ComparatorOperand;
+	const int type = pThis->Conditions[0].ComparatorType;
+	for (const auto& pItem : list)
 	{
-		if (!result)
-			break;
-
 		int counter = 0;
-		result = true;
-
 		for (auto pObject : *TechnoClass::Array)
 		{
 			if (!TechnoExtData::IsAlive(pObject) || !pObject->Owner)
 				continue;
-
 			if (pObject->Owner != pHouse
 				&& (!pEnemy || (pEnemy && !pHouse->IsAlliedWith(pEnemy)))
 				&& !pObject->Owner->Type->MultiplayPassive
 				&& pObject->GetTechnoType() == pItem)
 			{
-				counter++;
+				++counter;
 			}
 		}
-
-		switch (pThis->Conditions[0].ComparatorOperand)
+		bool result = false;
+		switch (operand)
 		{
-		case 0:
-			result = counter < pThis->Conditions[0].ComparatorType;
-			break;
-		case 1:
-			result = counter <= pThis->Conditions[0].ComparatorType;
-			break;
-		case 2:
-			result = counter == pThis->Conditions[0].ComparatorType;
-			break;
-		case 3:
-			result = counter >= pThis->Conditions[0].ComparatorType;
-			break;
-		case 4:
-			result = counter > pThis->Conditions[0].ComparatorType;
-			break;
-		case 5:
-			result = counter != pThis->Conditions[0].ComparatorType;
-			break;
-		default:
-			break;
+		case 0: result = counter < type; break;
+		case 1: result = counter <= type; break;
+		case 2: result = counter == type; break;
+		case 3: result = counter >= type; break;
+		case 4: result = counter > type; break;
+		case 5: result = counter != type; break;
+		default: break;
 		}
+		if (!result)
+			return false;
 	}
-
-	return result;
+	return true;
 }
 
 bool TeamExtData::NeutralOwnsAll(AITriggerTypeClass* pThis, const Iterator<TechnoTypeClass*>& list)
 {
-	bool result = true;
-
 	if (list.empty())
 		return false;
-
-	// Any neutral house should be capable to meet the prerequisites
+	const int operand = pThis->Conditions[0].ComparatorOperand;
+	const int type = pThis->Conditions[0].ComparatorType;
 	for (auto pHouse : *HouseClass::Array)
 	{
-		if (!result)
-			break;
-
-		bool foundAll = true;
-
 		if (IS_SAME_STR_(SideClass::Array->Items[pHouse->Type->SideIndex]->Name, GameStrings::Civilian()))
 			continue;
-
-		// Count all objects of the list, like an AND operator
-		for (auto const& pItem : list)
+		bool foundAll = true;
+		for (const auto& pItem : list)
 		{
-			if (!foundAll)
-				break;
-
 			int counter = 0;
-
 			for (auto pObject : *TechnoClass::Array)
 			{
 				if (!TechnoExtData::IsAlive(pObject))
 					continue;
-
-				if (pObject->Owner == pHouse &&
-					pObject->GetTechnoType() == pItem)
-				{
-					counter++;
-				}
+				if (pObject->Owner == pHouse && pObject->GetTechnoType() == pItem)
+					++counter;
 			}
-
-			switch (pThis->Conditions[0].ComparatorOperand)
+			bool result = false;
+			switch (operand)
 			{
-			case 0:
-				foundAll = counter < pThis->Conditions[0].ComparatorType;
-				break;
-			case 1:
-				foundAll = counter <= pThis->Conditions[0].ComparatorType;
-				break;
-			case 2:
-				foundAll = counter == pThis->Conditions[0].ComparatorType;
-				break;
-			case 3:
-				foundAll = counter >= pThis->Conditions[0].ComparatorType;
-				break;
-			case 4:
-				foundAll = counter > pThis->Conditions[0].ComparatorType;
-				break;
-			case 5:
-				foundAll = counter != pThis->Conditions[0].ComparatorType;
-				break;
-			default:
+			case 0: result = counter < type; break;
+			case 1: result = counter <= type; break;
+			case 2: result = counter == type; break;
+			case 3: result = counter >= type; break;
+			case 4: result = counter > type; break;
+			case 5: result = counter != type; break;
+			default: break;
+			}
+			if (!result)
+			{
+				foundAll = false;
 				break;
 			}
 		}
-
 		if (!foundAll)
-			result = false;
+			return false;
 	}
-
-	return result;
+	return true;
 }
 
 bool TeamExtData::GroupAllowed(TechnoTypeClass* pThis, TechnoTypeClass* pThat)

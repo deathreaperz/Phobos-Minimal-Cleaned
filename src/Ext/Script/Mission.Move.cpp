@@ -10,7 +10,7 @@
 
 void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, bool pickAllies = false, int attackAITargetType = -1, int idxAITargetTypeItem = -1)
 {
-	auto pScript = pTeam->CurrentScript;
+	auto* const pScript = pTeam->CurrentScript;
 	bool bAircraftsWithoutAmmo = false;
 
 	if (!pScript)
@@ -19,9 +19,8 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 		return;
 	}
 
-	auto const& [act, scriptArgument] = pScript->GetCurrentAction();// This is the target type
-	//auto const& [nextAct, nextArg] = pScript->GetNextAction();
-	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
+	const auto& [act, scriptArgument] = pScript->GetCurrentAction();
+	auto* const pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	bool noWaitLoop = false;
 
 	// When the new target wasn't found it sleeps some few frames before the new attempt. This can save cycles and cycles of unnecessary executed lines.
@@ -35,7 +34,7 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 		pTeamData->WaitNoTargetCounter = 0;
 
 		if (pTeamData->WaitNoTargetAttempts > 0)
-			pTeamData->WaitNoTargetAttempts--;
+			--pTeamData->WaitNoTargetAttempts;
 	}
 
 	// This team has no units!
@@ -61,9 +60,9 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 	}
 
 	FootClass* pCur = nullptr;
-	if (auto pFirst = pTeam->FirstUnit)
+	if (auto* pFirst = pTeam->FirstUnit)
 	{
-		auto pNext = pFirst->NextTeamMember;
+		auto* pNext = pFirst->NextTeamMember;
 
 		do
 		{
@@ -71,7 +70,7 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 				pTeam->RemoveMember(pFirst, -1, 1);
 			else
 			{
-				auto const pTechnoType = pFirst->GetTechnoType();
+				auto* const pTechnoType = pFirst->GetTechnoType();
 
 				if (pFirst->WhatAmI() == AbstractType::Aircraft
 					&& !pFirst->IsInAir()
@@ -128,13 +127,13 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 	}
 
 	//TechnoTypeClass * pLeaderUnitType = pTeamData->TeamLeader->GetTechnoType();
-	TechnoClass* pFocus = flag_cast_to<TechnoClass*>(pTeam->ArchiveTarget);
+	TechnoClass* const pFocus = flag_cast_to<TechnoClass*>(pTeam->ArchiveTarget);
 
 	if (!pFocus && !bAircraftsWithoutAmmo)
 	{
 		// This part of the code is used for picking a new target.
-		int targetMask = scriptArgument;
-		auto selectedTarget = ScriptExtData::FindBestObject(
+		const int targetMask = scriptArgument;
+		TechnoClass* const selectedTarget = ScriptExtData::FindBestObject(
 			pTeamData->TeamLeader,
 			targetMask,
 			calcThreatMode,
@@ -161,11 +160,11 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 			pTeamData->WaitNoTargetTimer.Stop();
 			pTeamData->WaitNoTargetCounter = 0; // Disable Script Waits if there are any because a new target was selected
 
-			for (auto pFoot = pTeam->FirstUnit; pFoot; pFoot = pFoot->NextTeamMember)
+			for (auto* pFoot = pTeam->FirstUnit; pFoot; pFoot = pFoot->NextTeamMember)
 			{
 				if (ScriptExtData::IsUnitAvailable(pFoot, false))
 				{
-					auto const pTechnoType = pFoot->GetTechnoType();
+					auto* const pTechnoType = pFoot->GetTechnoType();
 
 					if (pTechnoType->Underwater && pTechnoType->LandTargeting == LandTargetingType::Land_not_okay && selectedTarget->GetCell()->LandType != LandType::Water) // Land not OK for the Naval unit
 					{
@@ -270,15 +269,15 @@ TechnoClass* ScriptExtData::FindBestObject(TechnoClass* pTechno, int method, Dis
 	TechnoClass* bestObject = nullptr;
 	double bestVal = -1;
 	HouseClass* enemyHouse = nullptr;
-	auto pTechnoType = pTechno->GetTechnoType();
+	auto* const pTechnoType = pTechno->GetTechnoType();
 
 	// Favorite Enemy House case. If set, AI will focus against that House
 	if (!pickAllies && pTechno->BelongsToATeam())
 	{
-		if (auto pFoot = flag_cast_to<FootClass*, false>(pTechno))
+		if (auto* pFoot = flag_cast_to<FootClass*, false>(pTechno))
 		{
 			const int enemyHouseIndex = pFoot->Team->FirstUnit->Owner->EnemyHouseIndex;
-			const auto pHouseExt = HouseExtContainer::Instance.Find(pFoot->Team->Owner);
+			const auto* pHouseExt = HouseExtContainer::Instance.Find(pFoot->Team->Owner);
 			const bool onlyTargetHouseEnemy = pHouseExt->ForceOnlyTargetHouseEnemyMode != -1 ?
 				pFoot->Team->Type->OnlyTargetHouseEnemy : pHouseExt->m_ForceOnlyTargetHouseEnemy;
 
@@ -299,7 +298,7 @@ TechnoClass* ScriptExtData::FindBestObject(TechnoClass* pTechno, int method, Dis
 	 // Don't pick underground units
 	 if (pObj->InWhichLayer() == Layer::Underground)
 		 return;
-	 auto objectType = pObj->GetTechnoType();
+	 auto* const objectType = pObj->GetTechnoType();
 
 	 {
 		 if (objectType->Naval)
@@ -442,9 +441,9 @@ static std::vector<int> Mission_Move_List1Random_validIndexes;
 
 void ScriptExtData::Mission_Move_List1Random(TeamClass* pTeam, DistanceMode calcThreatMode, bool pickAllies, int attackAITargetType, int idxAITargetTypeItem = -1)
 {
-	auto pScript = pTeam->CurrentScript;
+	auto* const pScript = pTeam->CurrentScript;
 	Mission_Move_List1Random_validIndexes.clear();
-	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);
+	auto* const pTeamData = TeamExtContainer::Instance.Find(pTeam);
 	const auto& [curAct, curArg] = pScript->GetCurrentAction();
 
 	if (attackAITargetType < 0)
@@ -470,7 +469,7 @@ void ScriptExtData::Mission_Move_List1Random(TeamClass* pTeam, DistanceMode calc
 				//if (pTechno->Spawned)
 				//	return;
 
-				auto pTechnoType = pTechno->GetTechnoType();
+				auto* const pTechnoType = pTechno->GetTechnoType();
 				bool found = false;
 
 				for (auto j = 0u; j < RulesExtData::Instance()->AITargetTypesLists[attackAITargetType].size() && !found; j++)
