@@ -62,9 +62,7 @@ public:
 		if (!piggybackerPresent)
 			return hr;
 
-		hr = OleLoadFromStream(pStm, __uuidof(ILocomotion), reinterpret_cast<LPVOID*>(&this->Piggybacker));
-
-		return hr;
+		return OleLoadFromStream(pStm, __uuidof(ILocomotion), reinterpret_cast<LPVOID*>(&this->Piggybacker));
 	}
 	virtual HRESULT __stdcall Save(IStream * pStm, BOOL fClearDirty) override
 	{
@@ -80,9 +78,7 @@ public:
 			return hr;
 
 		IPersistStreamPtr piggyPersist(this->Piggybacker);
-		hr = OleSaveToStream(piggyPersist, pStm);
-
-		return hr;
+		return OleSaveToStream(piggyPersist, pStm);
 	}
 	/*	virtual HRESULT __stdcall GetSizeMax(ULARGE_INTEGER* pcbSize) override
 		{

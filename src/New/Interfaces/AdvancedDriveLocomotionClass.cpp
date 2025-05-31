@@ -18,7 +18,8 @@
 bool __stdcall AdvancedDriveLocomotionClass::Process()
 {
 	const auto pLinked = this->LinkedTo;
-	const auto slopeIndex = pLinked->GetCell()->SlopeIndex;
+	const auto* const pCell = pLinked->GetCell();
+	const auto slopeIndex = pCell->SlopeIndex;
 
 	if (slopeIndex != this->CurrentRamp)
 	{
@@ -48,8 +49,8 @@ bool __stdcall AdvancedDriveLocomotionClass::Process()
 	}
 	else if (this->ForwardTo != CoordStruct::Empty)
 	{
-		const auto currentDistance = static_cast<int>(pLinked->Location.DistanceFrom(this->ForwardTo));
-		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pLinked->GetTechnoType());
+		const int currentDistance = static_cast<int>(pLinked->Location.DistanceFrom(this->ForwardTo));
+		const auto* const pTypeExt = TechnoTypeExtContainer::Instance.Find(pLinked->GetTechnoType());
 
 		if (currentDistance > pTypeExt->AdvancedDrive_FaceTargetRange.Get()
 			|| (Unsorted::CurrentFrame - this->TargetFrame) > pTypeExt->AdvancedDrive_RetreatDuration
@@ -67,9 +68,9 @@ bool __stdcall AdvancedDriveLocomotionClass::Process()
 
 	if (this->Is_Moving_Now() && !(Unsorted::CurrentFrame % 10))
 	{
-		if (!pLinked->OnBridge && pLinked->GetCell()->LandType == LandType::Water)
+		if (!pLinked->OnBridge && pCell->LandType == LandType::Water)
 		{
-			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pLinked->GetTechnoType());
+			const auto* const pTypeExt = TechnoTypeExtContainer::Instance.Find(pLinked->GetTechnoType());
 			// Customized wake
 			if (const auto pAnimType = pTypeExt->Wake.Get(RulesClass::Instance->Wake))
 				GameCreate<AnimClass>(pAnimType, pLinked->Location);

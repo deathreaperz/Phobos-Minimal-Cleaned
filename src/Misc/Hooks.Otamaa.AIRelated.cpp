@@ -243,7 +243,7 @@ BuildingClass* __fastcall Find_Enemy_Building(
 			continue;
 
 		bool IsSameHouse = pBld->Owner == house;
-		if (pBld->Owner != house && !pBld->Owner->Type->MultiplayPassive && attacker->Owner->IsAlliedWith(pBld))
+		if (!IsSameHouse && !pBld->Owner->Type->MultiplayPassive && attacker->Owner->IsAlliedWith(pBld))
 		{
 			continue;
 		}
@@ -271,19 +271,19 @@ BuildingClass* __fastcall Find_Enemy_Building(
 		}
 		case 2:
 		{
-			v10 = -1 - (int)(attacker->Location - pBld->Location).Length();
+			v10 = -1 - static_cast<int>((attacker->Location - pBld->Location).Length());
 			break;
 		}
 		case 3:
 		{
-			v10 = (int)(attacker->Location - pBld->Location).Length();
+			v10 = static_cast<int>((attacker->Location - pBld->Location).Length());
 			break;
 		}
 		default:
 			break;
 		}
 
-		if (v10 > v29 && IsSameHouse)
+		if (IsSameHouse && v10 > v29)
 		{
 			last = pBld;
 			v29 = v10;
@@ -309,7 +309,7 @@ BuildingClass* __fastcall Find_Enemy_Building(
 
 BuildingClass* __fastcall Find_Own_Building(
 		BuildingTypeClass* type,
-		HouseClass* unused,
+		HouseClass* /*unused*/,
 		TechnoClass* attacker,
 		int find_type)
 {
@@ -325,39 +325,36 @@ BuildingClass* __fastcall Find_Own_Building(
 	{
 		int v10 = -1;
 
-		if (pBld->Type == type)
+		if (pBld->Type == type && !pBld->InLimbo && BuildingExtContainer::Instance.Find(pBld)->LimboID <= -1)
 		{
-			if (!pBld->InLimbo && BuildingExtContainer::Instance.Find(pBld)->LimboID <= -1)
+			switch (find_type)
 			{
-				switch (find_type)
-				{
-				case 0:
-				{
-					auto coord = pBld->GetCoords();
-					v10 = -1 - MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
+			case 0:
+			{
+				auto coord = pBld->GetCoords();
+				v10 = -1 - MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
 
-					break;
-				}
-				case 1:
-				{
-					auto coord = pBld->GetCoords();
-					v10 = MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
+				break;
+			}
+			case 1:
+			{
+				auto coord = pBld->GetCoords();
+				v10 = MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
 
-					break;
-				}
-				case 2:
-				{
-					v10 = -1 - (int)(pBld->Location - attacker->Location).Length();
-					break;
-				}
-				case 3:
-				{
-					v10 = (int)(pBld->Location - attacker->Location).Length();
-					break;
-				}
-				default:
-					break;
-				}
+				break;
+			}
+			case 2:
+			{
+				v10 = -1 - static_cast<int>((pBld->Location - attacker->Location).Length());
+				break;
+			}
+			case 3:
+			{
+				v10 = static_cast<int>((pBld->Location - attacker->Location).Length());
+				break;
+			}
+			default:
+				break;
 			}
 		}
 
@@ -382,11 +379,11 @@ ASMJIT_PATCH(0x6EEC6D, FindTargetBuilding_LimboDelivered, 0x6)
 	enum { advance = 0x6EEE21, ret = 0x0 };
 	GET(BuildingClass*, pBuilding, ESI);
 
-	if (!pBuilding->IsAlive)
+	if (!pBuilding->IsAlive || BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
+	{
 		return advance;
-
-	return BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1 ?
-		advance : ret;
+	}
+	return ret;
 }
 
 ASMJIT_PATCH(0x6EEEF2, FindOwnBuilding_LimboDelivered, 0xA)
@@ -394,11 +391,11 @@ ASMJIT_PATCH(0x6EEEF2, FindOwnBuilding_LimboDelivered, 0xA)
 	enum { advance = 0x6EF0D7, ret = 0x0 };
 	GET(BuildingClass*, pBuilding, ESI);
 
-	if (pBuilding->InLimbo || !pBuilding->IsAlive)
+	if (pBuilding->InLimbo || !pBuilding->IsAlive || BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
+	{
 		return advance;
-
-	return BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1 ?
-		advance : ret;
+	}
+	return ret;
 }
 
 #endif
@@ -408,11 +405,11 @@ ASMJIT_PATCH(0x6EA184, TeamClass_Regroup_LimboDelivered, 0x6)
 	enum { advance = 0x6EA38C, ret = 0x6EA192 };
 	GET(BuildingClass*, pBuilding, ESI);
 
-	if (!pBuilding->IsAlive || pBuilding->InLimbo)
+	if (!pBuilding->IsAlive || pBuilding->InLimbo || BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
+	{
 		return advance;
-
-	return BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1 ?
-		advance : ret;
+	}
+	return ret;
 }
 
 ASMJIT_PATCH(0x6EE8D9, TeamClass_Scout_LimboDelivered, 0x9)
@@ -420,11 +417,11 @@ ASMJIT_PATCH(0x6EE8D9, TeamClass_Scout_LimboDelivered, 0x9)
 	enum { advance = 0x6EE928, ret = 0x0 };
 	GET(BuildingClass**, pBuilding, ESI);
 
-	if ((*pBuilding)->InLimbo || !(*pBuilding)->IsAlive)
+	if (!(*pBuilding)->IsAlive || (*pBuilding)->InLimbo || BuildingExtContainer::Instance.Find(*pBuilding)->LimboID != -1)
+	{
 		return advance;
-
-	return BuildingExtContainer::Instance.Find(*pBuilding)->LimboID != -1 ?
-		advance : ret;
+	}
+	return ret;
 }
 
 ASMJIT_PATCH(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
@@ -432,36 +429,41 @@ ASMJIT_PATCH(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 	GET(ObjectClass*, pTarget, ESI);
 
 	if (pTarget->InLimbo || !pTarget->IsAlive)
+	{
 		return 0x6F894F;
+	}
 
 	if (const auto pTechno = flag_cast_to<TechnoClass*>(pTarget))
 	{
 		if (pTechno->IsCrashing || pTechno->IsSinking)
+		{
 			return 0x6F894F;
+		}
 
 		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType());
-
 		if (pTypeExt->IsDummy)
+		{
 			return 0x6F894F;
+		}
 
 		switch (pTechno->WhatAmI())
 		{
 		case AbstractType::Building:
 		{
-			const auto pBld = (BuildingClass*)pTarget;
-
+			const auto pBld = static_cast<BuildingClass*>(pTarget);
 			if (BuildingExtContainer::Instance.Find(pBld)->LimboID != -1)
+			{
 				return 0x6F894F;
-
+			}
 			break;
 		}
 		case AbstractType::Unit:
 		{
-			const auto pUnit = (UnitClass*)pTarget;
-
+			const auto pUnit = static_cast<UnitClass*>(pTarget);
 			if (pUnit->DeathFrameCounter > 0)
+			{
 				return 0x6F894F;
-
+			}
 			break;
 		}
 		default:
