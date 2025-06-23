@@ -144,7 +144,7 @@ ASMJIT_PATCH(0x71C6EE, TerrainClass_FireOut_Crumbling, 0x6)
 		LogicClass::Instance->AddObject(pThis, false);
 		if (pTypeExt->CrumblingSound.Get() != -1)
 		{
-			VocClass::PlayIndexAtPos(pTypeExt->CrumblingSound, pThis->GetCoords(), 0);
+			VocClass::PlayAt(pTypeExt->CrumblingSound, pThis->GetCoords(), nullptr);
 		}
 
 		return StartCrumbling;

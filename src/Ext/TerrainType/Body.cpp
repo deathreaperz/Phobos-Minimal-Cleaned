@@ -76,7 +76,7 @@ void TerrainTypeExtData::PlayDestroyEffects(CoordStruct coords)
 {
 	if (this->DestroySound.Get() != -1)
 	{
-		VocClass::PlayIndexAtPos(this->DestroySound, coords, 0);
+		VocClass::PlayAt(this->DestroySound, coords, nullptr);
 	}
 
 	if (auto const pAnimType = this->DestroyAnim)

@@ -409,7 +409,7 @@ ASMJIT_PATCH(0x4DACDD, FootClass_CrashingVoice, 0x6)
 				const auto pType = pThis->GetTechnoType();
 
 				if (pThis->Owner->IsControlledByHuman())
-					VocClass::PlayIndexAtPos(pType->VoiceCrashing, nCoord, 0);
+					VocClass::PlayAt(pType->VoiceCrashing, nCoord, nullptr);
 
 				VocClass::PlayIndexAtPos(pType->CrashingSound, nCoord, &pThis->MoveSoundAudioController);
 			}

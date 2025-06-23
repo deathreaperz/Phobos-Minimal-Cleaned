@@ -565,7 +565,7 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 {
 	if (Sound.Get() != -1)
 	{
-		VocClass::PlayIndexAtPos(Sound, coords, 0);
+		VocClass::PlayAt(Sound, coords, nullptr);
 	}
 	for (auto const& pSys : this->DetonateParticleSystem)
 	{

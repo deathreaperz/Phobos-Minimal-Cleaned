@@ -809,7 +809,7 @@ bool BuildingExtData::DoGrindingExtras(BuildingClass* pBuilding, TechnoClass* pT
 
 		if (pTypeExt->Grinding_Sound.isset())
 		{
-			VocClass::PlayIndexAtPos(pTypeExt->Grinding_Sound.Get(), pTechno->GetCoords(), 0);
+			VocClass::PlayAt(pTypeExt->Grinding_Sound.Get(), pTechno->GetCoords(), nullptr);
 			return true;
 		}
 	}

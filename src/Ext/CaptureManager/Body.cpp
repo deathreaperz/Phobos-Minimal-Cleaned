@@ -55,7 +55,7 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 
 									if (nSound != -1)
 				{
-					VocClass::PlayIndexAtPos(nSound, pTarget->GetCoords(), 0);
+					VocClass::PlayAt(nSound, pTarget->GetCoords(), nullptr);
 				}
 				}
 

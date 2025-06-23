@@ -1952,7 +1952,7 @@ void TechnoExt_ExtData::HandleTunnelLocoStuffs(FootClass* pOwner, bool DugIN, bo
 	const auto pRules = RulesClass::Instance();
 	const auto nSound = (DugIN ? pExt->DigInSound : pExt->DigOutSound).Get(pRules->DigSound);
 
-			VocClass::PlayIndexAtPos(nSound, pOwner->Location, 0);
+			VocClass::PlayAt(nSound, pOwner->Location, nullptr);
 
 	if (PlayAnim)
 	{
@@ -2347,8 +2347,8 @@ void TechnoExt_ExtData::PlantBomb(TechnoClass* pSource, ObjectClass* pTarget, We
 
 			if (pSource->Owner && pSource->Owner->ControlledByCurrentPlayer())
 			{
-				VocClass::PlayIndexAtPos(pWeaponExt->Ivan_AttachSound.Get(RulesClass::Instance->BombAttachSound)
-				, pBomb->Target->Location, 0);
+						VocClass::PlayAt(pWeaponExt->Ivan_AttachSound.Get(RulesClass::Instance->BombAttachSound)
+		, pBomb->Target->Location, nullptr);
 			}
 		}
 	}
@@ -7478,7 +7478,7 @@ void TunnelFuncs::EnterTunnel(std::vector<FootClass*>* pTunnelData, BuildingClas
 		return;
 	}
 
-			VocClass::PlayIndexAtPos(pTunnel->Type->EnterTransportSound, pTunnel->Location, 0);
+			VocClass::PlayAt(pTunnel->Type->EnterTransportSound, pTunnel->Location, nullptr);
 
 	pFoot->Undiscover();
 
@@ -7713,7 +7713,7 @@ bool TunnelFuncs::UnloadOnce(FootClass* pFoot, BuildingClass* pTunnel, bool sile
 	if (Succeeded)
 	{
 		if (!silent)
-			VocClass::PlayIndexAtPos(pTunnel->Type->LeaveTransportSound, pTunnel->Location, 0);
+			VocClass::PlayAt(pTunnel->Type->LeaveTransportSound, pTunnel->Location, nullptr);
 
 		pFoot->QueueMission(Mission::Move, false);
 		pFoot->SetDestination(IsLessThanseven ? NextCell : CurrentAdj, true);
