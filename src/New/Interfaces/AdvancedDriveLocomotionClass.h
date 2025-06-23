@@ -270,6 +270,8 @@ public:
 		, ForwardTo { CoordStruct::Empty }
 		, TargetFrame { 0 }
 		, TargetDistance { 0 }
+		, LastIsForward { true }
+		, FacingStabilityFrame { 0 }
 	{ }
 
 	// Destructor
@@ -303,6 +305,11 @@ public:
 	CoordStruct ForwardTo;
 	int TargetFrame;
 	int TargetDistance;
+
+	// Facing stability to prevent oscillation
+	bool LastIsForward;
+	int FacingStabilityFrame;
+	static const int FACING_STABILITY_DELAY = 30; // frames before allowing direction change
 
 public:
 
@@ -380,4 +387,59 @@ private:
 	}
 
 	inline int UpdateSpeedAccum(int& speedAccum); // Avoid using goto
+
+	// Safety helper methods
+	inline bool IsValidTrackNumber(int trackNum) const
+	{
+		return trackNum >= 0 && trackNum < 72; // 8*9 = 72 max possible track combinations
+	}
+	
+	inline bool IsValidPathDirection(int dir) const
+	{
+		return dir >= -1 && dir <= 8;
+	}
+	
+	inline bool IsValidPathDirectionIndex(int index) const
+	{
+		return index >= 0 && index < 24; // PathDirections array size
+	}
+	
+	inline bool IsLinkedToValid() const
+	{
+		return this->LinkedTo && this->LinkedTo->IsAlive && !this->LinkedTo->InLimbo;
+	}
+	
+	inline int GetSafePathDirection(int index) const
+	{
+		if (!IsValidPathDirectionIndex(index) || !this->LinkedTo)
+			return -1;
+		return this->LinkedTo->PathDirections[index];
+	}
+	
+	inline void SetSafePathDirection(int index, int value)
+	{
+		if (IsValidPathDirectionIndex(index) && this->LinkedTo)
+			this->LinkedTo->PathDirections[index] = value;
+	}
+	
+	// Facing stability helper method
+	inline bool CanChangeDirection() const
+	{
+		return (Unsorted::CurrentFrame - this->FacingStabilityFrame) >= FACING_STABILITY_DELAY;
+	}
+	
+	inline void SetStableDirection(bool newIsForward)
+	{
+		if (this->IsForward != newIsForward && CanChangeDirection())
+		{
+			this->LastIsForward = this->IsForward;
+			this->IsForward = newIsForward;
+			this->FacingStabilityFrame = Unsorted::CurrentFrame;
+		}
+		else if (this->IsForward == newIsForward)
+		{
+			// Direction is stable, reset timer
+			this->FacingStabilityFrame = Unsorted::CurrentFrame;
+		}
+	}
 };

@@ -17,6 +17,9 @@
 
 bool __stdcall AdvancedDriveLocomotionClass::Process()
 {
+	if (!IsLinkedToValid())
+		return false;
+
 	const auto pLinked = this->LinkedTo;
 	const auto slopeIndex = pLinked->GetCell()->SlopeIndex;
 
@@ -77,7 +80,7 @@ bool __stdcall AdvancedDriveLocomotionClass::Process()
 	}
 
 	if (this->TargetCoord == CoordStruct::Empty && this->HeadToCoord == CoordStruct::Empty
-		&& pLinked->PathDirections[0] == -1 && pLinked->SpeedPercentage > 0.0)
+		&& GetSafePathDirection(0) == -1 && pLinked->SpeedPercentage > 0.0)
 	{
 		pLinked->SetSpeedPercentage(0.0);
 	}
@@ -87,6 +90,9 @@ bool __stdcall AdvancedDriveLocomotionClass::Process()
 
 void __stdcall AdvancedDriveLocomotionClass::Move_To(CoordStruct to)
 {
+	if (!IsLinkedToValid())
+		return;
+
 	const auto pLinked = this->LinkedTo;
 
 	if (!pLinked->IsUnderEMP() && !pLinked->IsParalyzed()
@@ -101,6 +107,9 @@ void __stdcall AdvancedDriveLocomotionClass::Move_To(CoordStruct to)
 
 void __stdcall AdvancedDriveLocomotionClass::Stop_Moving()
 {
+	if (!IsLinkedToValid())
+		return;
+
 	const auto pLinked = this->LinkedTo;
 
 	if (this->HeadToCoord != CoordStruct::Empty && pLinked->GetTechnoType()->IsTrain)
@@ -133,6 +142,9 @@ void __stdcall AdvancedDriveLocomotionClass::Stop_Moving()
 
 void __stdcall AdvancedDriveLocomotionClass::Do_Turn(DirStruct dir)
 {
+	if (!IsLinkedToValid())
+		return;
+
 	this->LinkedTo->PrimaryFacing.Set_Desired(dir);
 }
 
@@ -173,16 +185,16 @@ bool __stdcall AdvancedDriveLocomotionClass::Is_Moving_Here(CoordStruct to)
 {
 	const auto headToCoord = this->Head_To_Coord();
 
-	if (headToCoord == CoordStruct::Empty)
+	if (headToCoord == CoordStruct::Empty || !IsLinkedToValid())
 		return false;
 
 	if (!this->IsOnShortTrack)
 	{
 		const auto trackNum = this->TrackNumber;
 
-		if (trackNum != -1)
+		if (IsValidTrackNumber(trackNum))
 		{
-			if (const auto trackStructIndex = CellClass::TurnTrack[TrackNumber].NormalTrackStructIndex)
+			if (const auto trackStructIndex = CellClass::TurnTrack[trackNum].NormalTrackStructIndex)
 			{
 				const auto trackIdx = CellClass::RawTrack[trackStructIndex].CellIndex;
 
@@ -209,9 +221,15 @@ bool __stdcall AdvancedDriveLocomotionClass::Is_Moving_Here(CoordStruct to)
 
 bool __stdcall AdvancedDriveLocomotionClass::Will_Jump_Tracks()
 {
-	const auto pathDir = this->LinkedTo->PathDirections[0];
+	if (!IsLinkedToValid())
+		return false;
 
-	if (pathDir < 0 || pathDir >= 8)
+	const auto pathDir = GetSafePathDirection(0);
+
+	if (!IsValidPathDirection(pathDir) || pathDir >= 8)
+		return false;
+
+	if (!IsValidTrackNumber(this->TrackNumber))
 		return false;
 
 	const auto& data = CellClass::TurnTrack[this->TrackNumber];
@@ -225,7 +243,11 @@ bool __stdcall AdvancedDriveLocomotionClass::Will_Jump_Tracks()
 	if (CellClass::RawTrack[trackStructIndex].JumpIndex != this->TrackIndex)
 		return false;
 
-	const auto dirIndex = CellClass::TurnTrack[8 * dir + pathDir].NormalTrackStructIndex;
+	const auto combinedIndex = 8 * dir + pathDir;
+	if (combinedIndex < 0 || combinedIndex >= 72)
+		return false;
+
+	const auto dirIndex = CellClass::TurnTrack[combinedIndex].NormalTrackStructIndex;
 
 	return dirIndex && CellClass::RawTrack[dirIndex].EntryIndex;
 }
@@ -330,20 +352,24 @@ bool AdvancedDriveLocomotionClass::MovingProcess(bool fix)
 		}
 	}
 
-	if (pLinked->PathDirections[0] == 8 && this->TrackNumber == -1)
-	{
-		pLinked->Mark(MarkType::Up);
-		this->StopDriving<true>();
-
-		const int tubeIndex = pLinked->GetCell()->TubeIndex;
-
-		if (tubeIndex >= 0 && tubeIndex < TubeClass::Array->Count)
+			if (GetSafePathDirection(0) == 8 && this->TrackNumber == -1)
 		{
-			const auto pTube = TubeClass::Array->Items[tubeIndex];
-			this->HeadToCoord = CellClass::Cell2Coord(pTube->ExitCell);
+			pLinked->Mark(MarkType::Up);
+			this->StopDriving<true>();
 
-			memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[1], 0x5Cu);
-			pLinked->PathDirections[23] = -1;
+			const int tubeIndex = pLinked->GetCell()->TubeIndex;
+
+			if (tubeIndex >= 0 && tubeIndex < TubeClass::Array->Count)
+			{
+				const auto pTube = TubeClass::Array->Items[tubeIndex];
+				this->HeadToCoord = CellClass::Cell2Coord(pTube->ExitCell);
+
+				// Safe array manipulation
+				if (IsLinkedToValid())
+				{
+					memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[1], 23 * sizeof(int));
+					SetSafePathDirection(23, -1);
+				}
 			pLinked->TubeIndex = static_cast<char>(tubeIndex);
 			pLinked->TubeFaceIndex = 0;
 
@@ -360,7 +386,7 @@ bool AdvancedDriveLocomotionClass::MovingProcess(bool fix)
 			return false;
 		}
 
-		pLinked->PathDirections[0] = -1;
+		SetSafePathDirection(0, -1);
 		this->TrackNumber = -1;
 		this->HeadToCoord = CoordStruct::Empty;
 		return false;
@@ -446,8 +472,11 @@ bool AdvancedDriveLocomotionClass::MovingProcess(bool fix)
 
 bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool check)
 {
+	if (!pStop || !IsLinkedToValid())
+		return false;
+
 	const auto pLinked = this->LinkedTo;
-	int pathDir = pLinked->PathDirections[0];
+	int pathDir = GetSafePathDirection(0);
 
 	if (!this->Is_Moving() && pathDir == -1)
 	{
@@ -486,10 +515,10 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 				{
 					const int distance = int((pLinked->Location - this->TargetCoord).Length()) / 256;
 
-					if (distance < 24)
+					if (distance >= 0 && distance < 24)
 					{
-						pLinked->PathDirections[distance] = -1;
-						pathDir = pLinked->PathDirections[0];
+						SetSafePathDirection(distance, -1);
+						pathDir = GetSafePathDirection(0);
 					}
 				}
 			}
@@ -622,9 +651,9 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 			return false;
 		}
 
-		const auto nowDir = pLinked->PathDirections[0];
+		const auto nowDir = GetSafePathDirection(0);
 
-		if (nowDir == 8)
+		if (nowDir == 8 || !IsValidPathDirection(nowDir))
 			return false;
 
 		const auto pathCell = pLinked->GetMapCoords() + CellSpread::GetNeighbourOffset(nowDir & 7);
@@ -665,11 +694,11 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 		}
 
 		pLinked->PathWaitTimes = 10;
-		pathDir = pLinked->PathDirections[0];
+		pathDir = GetSafePathDirection(0);
 	}
 	while (false);
 
-	if (pathDir == 8)
+	if (pathDir == 8 || !IsValidPathDirection(pathDir))
 		return false;
 
 	auto nextPos = pLinked->Location;
@@ -699,6 +728,13 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 	{
 		if (pLinked->WhatAmI() != AbstractType::Unit)
 			break;
+
+		// Don't change direction while actively rotating to prevent oscillation
+		if (pLinked->PrimaryFacing.Is_Rotating() && !CanChangeDirection())
+		{
+			this->SetStableDirection(this->IsForward); // Keep current direction stable
+			break;
+		}
 
 		if (static_cast<UnitTypeClass*>(pType)->Harvester || static_cast<UnitTypeClass*>(pType)->Weeder)
 		{
@@ -730,6 +766,8 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 			}
 		}
 
+		bool newIsForward = true; // Default direction
+		
 		if (this->ForwardTo != CoordStruct::Empty)
 		{
 			const auto tgtDir = pTypeExt->AdvancedDrive_ConfrontEnemies
@@ -739,7 +777,7 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 				- static_cast<short>(tgtDir.Raw)));
 			const auto deltaOppDir = Math::abs(static_cast<short>(static_cast<short>(desiredRaw + 32768)
 				- static_cast<short>(tgtDir.Raw)));
-			this->IsForward = deltaTgtDir <= deltaOppDir;
+			newIsForward = deltaTgtDir <= deltaOppDir;
 		}
 		else if ((Unsorted::CurrentFrame - TechnoExtContainer::Instance.Find(pLinked)->LastHurtFrame)
 			<= pTypeExt->AdvancedDrive_RetreatDuration)
@@ -749,28 +787,53 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 				- static_cast<short>(curDir.Raw)));
 			const auto deltaOppDir = Math::abs(static_cast<short>(static_cast<short>(desiredRaw + 32768)
 				- static_cast<short>(curDir.Raw)));
-			this->IsForward = deltaCurDir <= deltaOppDir;
+			newIsForward = deltaCurDir <= deltaOppDir;
 		}
 		else if (pLinked->ArchiveTarget && pLinked->CurrentMission == Mission::Area_Guard
 			&& pLinked->Owner->IsControlledByHuman() && !pType->DefaultToGuardArea)
 		{
-			const auto defDir = pLinked->GetDirectionOverObject(pLinked->ArchiveTarget);
-			const auto deltaDefDir = Math::abs(static_cast<short>(static_cast<short>(desiredRaw)
-				- static_cast<short>(defDir.Raw)));
-			const auto deltaOppDir = Math::abs(static_cast<short>(static_cast<short>(desiredRaw + 32768)
-				- static_cast<short>(defDir.Raw)));
-			this->IsForward = deltaDefDir > deltaOppDir;
+			// Fixed Area Guard logic with stability check
+			if (CanChangeDirection())
+			{
+				const auto defDir = pLinked->GetDirectionOverObject(pLinked->ArchiveTarget);
+				
+				// Calculate angular differences more accurately
+				const auto currentDiff = Math::abs(static_cast<short>(static_cast<short>(desiredRaw) - static_cast<short>(defDir.Raw)));
+				const auto oppositeDiff = Math::abs(static_cast<short>(static_cast<short>(desiredRaw + 32768) - static_cast<short>(defDir.Raw)));
+				
+				// Only change direction if there's a significant difference (avoid micro-oscillations)
+				const int DIRECTION_THRESHOLD = 8192; // ~45 degrees
+				
+				if (Math::abs(currentDiff - oppositeDiff) > DIRECTION_THRESHOLD)
+				{
+					newIsForward = currentDiff > oppositeDiff;
+				}
+				else
+				{
+					// Keep current direction if differences are small
+					newIsForward = this->IsForward;
+				}
+			}
+			else
+			{
+				// Don't change direction during stability period
+				newIsForward = this->IsForward;
+			}
 		}
-		else
-		{
-			this->IsForward = true;
-		}
+		
+		// Use stable direction setting to prevent oscillation
+		this->SetStableDirection(newIsForward);
 	}
 	while (false);
 
 	const auto desDir = DirStruct(this->IsForward ? desiredRaw : (desiredRaw + 32768));
 
-	if (pLinked->PrimaryFacing.Current() != desDir)
+	// Only change facing if there's a significant difference to prevent micro-oscillations
+	const auto currentFacing = pLinked->PrimaryFacing.Current();
+	const auto facingDifference = Math::abs(static_cast<short>(currentFacing.Raw) - static_cast<short>(desDir.Raw));
+	const int MIN_FACING_DIFF = 2048; // ~11.25 degrees minimum difference
+	
+	if (facingDifference > MIN_FACING_DIFF && facingDifference < (65536 - MIN_FACING_DIFF))
 	{
 		this->Do_Turn(desDir);
 		return true;
@@ -991,7 +1054,7 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 		this->MovementSpeed = speedFactor;
 
 	pLinked->TryCrushCell(nextCell, true);
-	auto nextDir = pLinked->PathDirections[1];
+	auto nextDir = GetSafePathDirection(1);
 
 	do
 	{
@@ -1008,7 +1071,7 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 
 				if (!pathFound)
 				{
-					if (!this->LinkedTo)
+					if (!IsLinkedToValid())
 					{
 						*pStop = true;
 						return false;
@@ -1018,11 +1081,11 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 						pLinked->SetDestination(nullptr, true);
 				}
 
-				nextDir = pLinked->PathDirections[1];
+				nextDir = GetSafePathDirection(1);
 			}
 		}
 
-		if (nextDir == 8 || nextDir == -1 || check)
+		if (nextDir == 8 || nextDir == -1 || check || !IsValidPathDirection(nextDir))
 			nextDir = pathDir;
 	}
 	while (false);
@@ -1060,12 +1123,27 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 	while (false);
 
 	this->IsOnShortTrack = false;
-	this->TrackNumber = nextDir + 8 * pathDir;
+	const int newTrackNumber = nextDir + 8 * pathDir;
+	
+	if (IsValidTrackNumber(newTrackNumber))
+	{
+		this->TrackNumber = newTrackNumber;
+		
+		if (!CellClass::TurnTrack[this->TrackNumber].NormalTrackStructIndex)
+		{
+			const int fallbackTrack = 9 * pathDir;
+			if (IsValidTrackNumber(fallbackTrack))
+				this->TrackNumber = fallbackTrack;
+			else
+				this->TrackNumber = -1; // Invalid track
+		}
+	}
+	else
+	{
+		this->TrackNumber = -1; // Invalid track
+	}
 
-	if (!CellClass::TurnTrack[this->TrackNumber].NormalTrackStructIndex)
-		this->TrackNumber = 9 * pathDir;
-
-	if (CellClass::TurnTrack[this->TrackNumber].Flag & 8)
+	if (IsValidTrackNumber(this->TrackNumber) && (CellClass::TurnTrack[this->TrackNumber].Flag & 8))
 	{
 		this->IsShifting = true;
 		auto nextMoveResult = Move::No;
@@ -1157,7 +1235,7 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 				return this->StopMotion();
 			}
 
-			pLinked->PathDirections[0] = -1;
+			SetSafePathDirection(0, -1);
 			this->TrackNumber = -1;
 			nextPos = CoordStruct::Empty;
 
@@ -1166,17 +1244,26 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 		}
 		else
 		{
-			memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[2], 0x58u);
-			pLinked->PathDirections[22] = -1;
-			pLinked->IsPlanningToLook = true; // Seems like useless
+			// Safe array manipulation
+			if (IsLinkedToValid())
+			{
+				memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[2], 22 * sizeof(int));
+				SetSafePathDirection(22, -1);
+				pLinked->IsPlanningToLook = true; // Seems like useless
+			}
 		}
 	}
 	else
 	{
-		memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[1], 0x5Cu);
+		// Safe array manipulation
+		if (IsLinkedToValid())
+		{
+			memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[1], 23 * sizeof(int));
+		}
 	}
 
-	pLinked->PathDirections[23] = -1;
+	if (IsLinkedToValid())
+		SetSafePathDirection(23, -1);
 	pLinked->CurrentMapCoords = nextCell;
 	pLinked->ShouldScanForTarget = false;
 	this->TrackIndex = 0;
@@ -1199,23 +1286,23 @@ bool AdvancedDriveLocomotionClass::PassableCheck(bool* pStop, bool force, bool c
 	}
 
 	this->TrackNumber = -1;
-	pLinked->PathDirections[0] = -1;
+	SetSafePathDirection(0, -1);
 	pLinked->SetSpeedPercentage(0.0);
 	return false;
 }
 
 void AdvancedDriveLocomotionClass::MarkOccupation(const CoordStruct& to, MarkType mark)
 {
-	if (to == CoordStruct::Empty)
+	if (to == CoordStruct::Empty || !IsLinkedToValid())
 		return;
 
 	if (!this->IsOnShortTrack)
 	{
 		const auto trackNum = this->TrackNumber;
 
-		if (trackNum != -1)
+		if (IsValidTrackNumber(trackNum))
 		{
-			if (const auto trackStructIndex = CellClass::TurnTrack[TrackNumber].NormalTrackStructIndex)
+			if (const auto trackStructIndex = CellClass::TurnTrack[trackNum].NormalTrackStructIndex)
 			{
 				const auto& track = CellClass::RawTrack[trackStructIndex];
 				const auto trackIdx = track.CellIndex;
@@ -1331,7 +1418,15 @@ inline bool AdvancedDriveLocomotionClass::InMotion()
 		else if (this->IsRotating)
 		{
 			this->IsRotating = false;
-			pLinked->UpdatePosition(PCPType::Rotation);
+			
+			// Ensure facing is properly synchronized after rotation
+			if (IsLinkedToValid())
+			{
+				pLinked->UpdatePosition(PCPType::Rotation);
+				
+				// Reset facing stability timer after completed rotation to allow new direction decisions
+				this->FacingStabilityFrame = Unsorted::CurrentFrame;
+			}
 
 			if (this->LinkCannotMove())
 				return false;
@@ -1351,7 +1446,7 @@ inline bool AdvancedDriveLocomotionClass::InMotion()
 				return true;
 		}
 
-		if (!this->Is_Moving() && pLinked->PathDirections[0] == -1)
+		if (!this->Is_Moving() && GetSafePathDirection(0) == -1)
 		{
 			if (pLinked->IsSinking)
 			{
@@ -1387,23 +1482,32 @@ inline int AdvancedDriveLocomotionClass::UpdateSpeedAccum(int& speedAccum)
 	if (speedAccum <= 7)
 		return 0;
 
+	if (!IsLinkedToValid() || !IsValidTrackNumber(this->TrackNumber))
+		return 1;
+
 	const auto pLinked = this->LinkedTo;
 	auto pTrackData = &CellClass::TurnTrack[this->TrackNumber];
 	int trackStructIndex = this->IsOnShortTrack ? pTrackData->ShortTrackStructIndex : pTrackData->NormalTrackStructIndex;
 	auto pTrackPoints = CellClass::RawTrack[trackStructIndex].TrackPoint;
-	const auto pathDir = pLinked->PathDirections[0];
+	const auto pathDir = GetSafePathDirection(0);
 
-	if (pathDir < -1 || pathDir > 8)
+	if (!IsValidPathDirection(pathDir))
 	{
-		pLinked->PathDirections[0] = -1;
+		SetSafePathDirection(0, -1);
 		return 1;
 	}
 
 	bool dirChanged = pathDir != 8 && pathDir != -1
 		&& static_cast<int>(DirStruct(pTrackData->Face << 8).GetValue<3>()) != pathDir;
 
-	while (true)
+	// Add iteration limit to prevent infinite loops
+	int iterationCount = 0;
+	const int maxIterations = 100; // Safety limit
+
+	while (iterationCount < maxIterations)
 	{
+		++iterationCount; // Increment counter
+		
 		int trackIndex = this->TrackIndex;
 		const auto& trackPoint = pTrackPoints[trackIndex];
 		speedAccum -= 7;
@@ -1525,7 +1629,48 @@ inline int AdvancedDriveLocomotionClass::UpdateSpeedAccum(int& speedAccum)
 		pLinked->IsOnMap = false;
 		pLinked->SetHeight(0);
 		pLinked->IsOnMap = wasOnMap;
-		pLinked->PrimaryFacing.Set_Current(DirStruct((face << 8) + (this->IsForward ? 0 : 32768)));
+		
+		// Fix visual facing bug: Calculate proper movement direction instead of forcing track direction
+		if (trackIndex > 0)
+		{
+			// Calculate actual movement direction from previous to current position
+			const auto& prevTrackPoint = pTrackPoints[trackIndex - 1];
+			auto prevFace = prevTrackPoint.Face;
+			const auto prevPos = this->GetTrackOffset(prevTrackPoint.Point, prevFace, pLinked->Location.Z);
+			
+			// Determine actual movement direction
+			const auto movementVector = newPos - prevPos;
+			if (movementVector.X != 0 || movementVector.Y != 0)
+			{
+				// Calculate facing based on actual movement direction
+				const auto movementAngle = Math::atan2(static_cast<double>(movementVector.Y), static_cast<double>(movementVector.X));
+				const auto facingRaw = static_cast<unsigned short>((movementAngle + Math::HalfPi) * (65536.0 / Math::TwoPi));
+				
+				// Apply reverse modifier if moving backwards
+				const auto finalFacing = DirStruct(this->IsForward ? facingRaw : (facingRaw + 32768));
+				
+				// Use smooth transition instead of forcing current facing
+				if (!pLinked->PrimaryFacing.Is_Rotating() || 
+					Math::abs(static_cast<short>(pLinked->PrimaryFacing.Desired().Raw) - static_cast<short>(finalFacing.Raw)) > 16384)
+				{
+					pLinked->PrimaryFacing.Set_Desired(finalFacing);
+				}
+			}
+		}
+		else
+		{
+			// For first track point, use track direction but with smooth transition
+			const auto trackFacing = DirStruct((face << 8) + (this->IsForward ? 0 : 32768));
+			
+			// Only update if significantly different to prevent micro-oscillations
+			const auto currentFacing = pLinked->PrimaryFacing.Current();
+			const auto facingDiff = Math::abs(static_cast<short>(currentFacing.Raw) - static_cast<short>(trackFacing.Raw));
+			
+			if (facingDiff > 4096) // ~22.5 degrees threshold
+			{
+				pLinked->PrimaryFacing.Set_Desired(trackFacing);
+			}
+		}
 		trackIndex = this->TrackIndex;
 
 		if (trackIndex && CellClass::RawTrack[trackStructIndex].CellIndex == trackIndex)
@@ -1536,6 +1681,10 @@ inline int AdvancedDriveLocomotionClass::UpdateSpeedAccum(int& speedAccum)
 			&& trackIndex)
 		{
 			const int newTrack = pathDir + 8 * DirStruct(pTrackData->Face << 8).GetValue<3>();
+			
+			if (!IsValidTrackNumber(newTrack))
+				break;
+				
 			const auto pNewTrackData = &CellClass::TurnTrack[newTrack];
 			const auto normalIndex = pNewTrackData->NormalTrackStructIndex;
 
@@ -1588,8 +1737,12 @@ inline int AdvancedDriveLocomotionClass::UpdateSpeedAccum(int& speedAccum)
 						{
 							this->MarkOccupation(coords, MarkType::Down);
 							pLinked->SetSpeedPercentage(speedPercent);
-							memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[1], 0x5Cu);
-							pLinked->PathDirections[23] = -1;
+							// Safe array manipulation
+							if (IsLinkedToValid())
+							{
+								memmove(&pLinked->PathDirections[0], &pLinked->PathDirections[1], 23 * sizeof(int));
+								SetSafePathDirection(23, -1);
+							}
 						}
 					}
 
@@ -1630,6 +1783,15 @@ inline int AdvancedDriveLocomotionClass::UpdateSpeedAccum(int& speedAccum)
 
 		if (speedAccum <= 7)
 			return 0;
+	}
+
+	// Check if we exited due to iteration limit
+	if (iterationCount >= maxIterations)
+	{
+		// Log or handle infinite loop prevention
+		this->StopDriving<true>();
+		this->TrackNumber = -1;
+		return 1;
 	}
 
 	const auto delta = this->HeadToCoord - pLinked->Location;
@@ -1680,7 +1842,7 @@ inline int AdvancedDriveLocomotionClass::UpdateSpeedAccum(int& speedAccum)
 	if (reachedDestination)
 	{
 		pLinked->AbortMotion();
-		pLinked->PathDirections[0] = -1;
+		SetSafePathDirection(0, -1);
 
 		if (pLinked->GetCurrentMission() == Mission::Move && pLinked->EnterIdleMode(false, true))
 			return 2;
@@ -1694,9 +1856,12 @@ inline int AdvancedDriveLocomotionClass::UpdateSpeedAccum(int& speedAccum)
 
 bool AdvancedDriveLocomotionClass::IsReversing(FootClass* pFoot)
 {
+	if (!pFoot || !pFoot->Locomotor)
+		return false;
+
 	const auto pLoco = locomotion_cast<AdvancedDriveLocomotionClass*>(pFoot->Locomotor.GetInterfacePtr());
 
-	return pLoco && !pLoco->IsForward;
+	return pLoco && pLoco->IsLinkedToValid() && !pLoco->IsForward;
 }
 
 ASMJIT_PATCH(0x4DA9FB, FootClass_Update_WalkedFrames, 0x6)

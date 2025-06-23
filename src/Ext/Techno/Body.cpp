@@ -3516,7 +3516,11 @@ void TechnoExtData::UpdateInterceptor()
 		if (distance > guardRange || distance < minguardRange)
 			continue;
 
-		const auto pWeapon = pThis->GetWeapon(pTypeExt->Interceptor_Weapon)->WeaponType;
+		const auto pWeaponStruct = pThis->GetWeapon(pTypeExt->Interceptor_Weapon);
+		if (!pWeaponStruct)
+			continue;
+		
+		const auto pWeapon = pWeaponStruct->WeaponType;
 
 		if (pTypeExt->Interceptor_ConsiderWeaponRange.Get() &&
 			(distance > pWeapon->Range || distance < pWeapon->MinimumRange))
