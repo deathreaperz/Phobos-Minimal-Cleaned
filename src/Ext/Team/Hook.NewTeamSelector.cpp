@@ -512,7 +512,10 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		int houseTypeIdx = parentCountryTypeIdx >= 0 ? parentCountryTypeIdx : pHouse->Type->ArrayIndex; // Indexes in AITriggers section are 1-based
 		int houseIdx = pHouse->ArrayIndex;
 
-		int parentCountrySideTypeIdx = pHouse->Type->FindParentCountry()->SideIndex;
+		int parentCountrySideTypeIdx = -1;
+		if (auto parentCountry = pHouse->Type->FindParentCountry()) {
+			parentCountrySideTypeIdx = parentCountry->SideIndex;
+		}
 		int sideTypeIdx = parentCountrySideTypeIdx >= 0 ? parentCountrySideTypeIdx + 1 : pHouse->Type->SideIndex + 1; // Side indexes in AITriggers section are 1-based
 		//int sideIdx = pHouse->SideIndex + 1; // Side indexes in AITriggers section are 1-based
 
