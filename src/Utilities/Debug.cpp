@@ -24,6 +24,7 @@
 #include <filesystem>
 #pragma region declarations
 
+std::mutex Debug::LogMutex {};
 FILE* Debug::LogFile {};
 bool Debug::LogEnabled {};
 std::wstring Debug::ApplicationFilePath {};
@@ -65,6 +66,7 @@ void Debug::InitLogger()
 
 void Debug::DeactivateLogger()
 {
+	std::lock_guard<std::mutex> lock(LogMutex);
 	if (Debug::LogFile)
 	{
 		fclose(Debug::LogFile);
@@ -116,6 +118,7 @@ void Debug::PrepareLogFile()
 
 void Debug::DumpStack(REGISTERS* R, size_t len, int startAt)
 {
+	std::lock_guard<std::mutex> lock(LogMutex);
 	if (!Debug::LogFileActive())
 	{
 		return;
@@ -248,6 +251,7 @@ void Debug::FreeMouse()
 
 void Debug::FatalErrorCore(bool Dump, const std::string& msg)
 {
+	std::lock_guard<std::mutex> lock(LogMutex);
 	const bool log = Debug::LogFileActive();
 
 	if (msg.empty())
@@ -277,13 +281,17 @@ void Debug::INIParseFailed(const char* section, const char* flag, const char* va
 {
 	if (Phobos::Otamaa::TrackParserErrors && Debug::LogEnabled)
 	{
-		if (!Message)
+		std::lock_guard<std::mutex> lock(LogMutex);
+		if (Debug::LogFileActive())
 		{
-			fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s.\n", section, flag, value);
-		}
-		else
-		{
-			fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s (%s).\n", section, flag, value, Message);
+			if (!Message)
+			{
+				fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s.\n", section, flag, value);
+			}
+			else
+			{
+				fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s (%s).\n", section, flag, value, Message);
+			}
 		}
 
 		Debug::RegisterParserError();

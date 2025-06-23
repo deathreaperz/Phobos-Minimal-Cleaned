@@ -10,11 +10,15 @@
 #include <WWMouseClass.h>
 
 #include <chrono>
+#include <mutex>
 
 class AbstractClass;
 class REGISTERS;
 class Debug final
 {
+private:
+	static std::mutex LogMutex;
+
 public:
 	static FILE* LogFile;
 
@@ -46,6 +50,7 @@ public:
 	template <typename... TArgs>
 	static void NOINLINE LogInfo(const fmt::format_string<TArgs...> _Fmt, TArgs&&... _Args)
 	{
+		std::lock_guard<std::mutex> lock(LogMutex);
 		if (LogFileActive())
 		{
 			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
@@ -58,6 +63,7 @@ public:
 	template <typename... TArgs>
 	static void NOINLINE LogError(const fmt::format_string<TArgs...> _Fmt, TArgs&&... _Args)
 	{
+		std::lock_guard<std::mutex> lock(LogMutex);
 		if (LogFileActive())
 		{
 			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
@@ -69,6 +75,7 @@ public:
 
 	static void Log(const char* pFormat, ...)
 	{
+		std::lock_guard<std::mutex> lock(LogMutex);
 		if (Debug::LogFileActive())
 		{
 			va_list args;
@@ -83,6 +90,7 @@ public:
 	//this will be used to replace game debug prints
 	static void __cdecl CLog(const char* pFormat, ...)
 	{
+		std::lock_guard<std::mutex> lock(LogMutex);
 		if (Debug::LogFileActive())
 		{
 			va_list args;
@@ -117,7 +125,9 @@ public:
 
 	static FORCEINLINE void Flush()
 	{
-		fflush(Debug::LogFile);
+		if (Debug::LogFile) {
+			fflush(Debug::LogFile);
+		}
 	}
 
 	static void LogDeferred(const char* pFormat, ...)
