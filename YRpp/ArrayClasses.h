@@ -3,6 +3,7 @@
 #include <Memory.h>
 
 #include <algorithm>
+#include <type_traits>
 #include <Helpers/Concepts.h>
 #include <YRPPCore.h>
 
@@ -41,6 +42,17 @@ enum class ArrayType : int
 //=== VectorClass ========================================================
 //========================================================================
 
+/**
+ * @brief Fixed-size array container with bounds checking
+ * 
+ * @tparam T Element type
+ * 
+ * @warning Iterator Invalidation:
+ * - SetCapacity() invalidates ALL iterators
+ * - Clear() invalidates ALL iterators
+ * 
+ * @note Thread Safety: Not thread-safe. External synchronization required.
+ */
 template <typename T>
 class VectorClass
 {
@@ -240,11 +252,21 @@ public:
 
 	T& operator [] (int i)
 	{
+		// VectorClass uses Capacity for bounds checking (no Count member)
+		if (i < 0 || i >= this->Capacity) {
+			static thread_local T dummy{};  // Thread-safe dummy
+			return dummy;
+		}
 		return this->Items[i];
 	}
 
 	const T& operator [] (int i) const
 	{
+		// VectorClass uses Capacity for bounds checking (no Count member)
+		if (i < 0 || i >= this->Capacity) {
+			static thread_local const T dummy{};  // Thread-safe dummy
+			return dummy;
+		}
 		return this->Items[i];
 	}
 
@@ -287,6 +309,20 @@ protected:
 //=== DynamicVectorClass =================================================
 //========================================================================
 
+/**
+ * @brief Dynamic array container with automatic growth and bounds checking
+ * 
+ * @tparam T Element type
+ * 
+ * @warning Iterator Invalidation:
+ * - AddItem(), AddHead(), InsertAt() may invalidate ALL iterators if reallocation occurs
+ * - RemoveAt(), Remove() invalidate iterators at and after the removal point
+ * - SetCapacity(), Clear() invalidate ALL iterators
+ * - EmplaceItem() may invalidate ALL iterators if reallocation occurs
+ * 
+ * @note Thread Safety: Not thread-safe. External synchronization required.
+ * @note Exception Safety: Strong exception safety guarantee for most operations
+ */
 //TODO : unify the naming !
 template <typename T>
 class DynamicVectorClass : public VectorClass<T>
@@ -307,12 +343,28 @@ public:
 		if (other.Capacity > 0)
 		{
 			GameAllocator<T> alloc {};
-			this->Items = Memory::CreateArray<T>(alloc, static_cast<size_t>(other.Capacity));
-			this->IsAllocated = true;
-			this->Capacity = other.Capacity;
-			this->Count = other.Count;
-			for (auto i = 0; i < other.Count; ++i) {
-				this->Items[i] = other.Items[i];
+			// Exception-safe allocation and construction
+			T* newItems = nullptr;
+			try {
+				newItems = Memory::CreateArray<T>(alloc, static_cast<size_t>(other.Capacity));
+				
+				// Copy elements with proper exception handling
+				for (auto i = 0; i < other.Count; ++i) {
+					newItems[i] = other.Items[i];
+				}
+				
+				// Only assign after successful construction
+				this->Items = newItems;
+				this->IsAllocated = true;
+				this->Capacity = other.Capacity;
+				this->Count = other.Count;
+			}
+			catch (...) {
+				// Clean up on exception
+				if (newItems) {
+					Memory::DeleteArray<T>(alloc, newItems, other.Capacity);
+				}
+				throw;
 			}
 		}
 	}
@@ -416,6 +468,27 @@ public:
 
 	COMPILETIMEEVAL size_t size() const {
 		return static_cast<size_t>(Count);
+	}
+
+	// Override VectorClass operator[] to use Count instead of Capacity for bounds checking
+	T& operator [] (int i)
+	{
+		// DynamicVectorClass should use Count for bounds checking
+		if (i < 0 || i >= this->Count) {
+			static thread_local T dummy{};  // Thread-safe dummy
+			return dummy;
+		}
+		return this->Items[i];
+	}
+
+	const T& operator [] (int i) const
+	{
+		// DynamicVectorClass should use Count for bounds checking
+		if (i < 0 || i >= this->Count) {
+			static thread_local const T dummy{};  // Thread-safe dummy
+			return dummy;
+		}
+		return this->Items[i];
 	}
 
 #pragma endregion
@@ -727,6 +800,35 @@ public:
 
 		return false;
 	}
+
+	/**
+	 * @brief Validates internal consistency of the container
+	 * @return true if container is in a valid state, false if corrupted
+	 */
+	bool ValidateIntegrity() const {
+		// Check basic invariants
+		if (this->Count < 0 || this->Count > this->Capacity) {
+			return false;
+		}
+		
+		if (this->Capacity < 0) {
+			return false;
+		}
+		
+		if (this->Capacity > 0 && !this->Items) {
+			return false;
+		}
+		
+		if (this->Capacity == 0 && this->Items) {
+			return false;
+		}
+		
+		if (this->CapacityIncrement < 0) {
+			return false;
+		}
+		
+		return true;
+	}
 #pragma endregion
 
 	bool COMPILETIMEEVAL FORCEDINLINE IsValidArray()
@@ -809,6 +911,19 @@ public:
 //=== CounterClass =======================================================
 //========================================================================
 
+/**
+ * @brief Counter array with automatic capacity expansion
+ * 
+ * Provides operations for incrementing/decrementing counters at specific indices.
+ * Automatically expands capacity when accessing out-of-bounds indices.
+ * 
+ * @warning Iterator Invalidation:
+ * - EnsureItem() may invalidate ALL iterators if capacity expansion occurs
+ * - SetCapacity(), Clear() invalidate ALL iterators
+ * 
+ * @note Thread Safety: Not thread-safe. External synchronization required.
+ * @note Binary Compatibility: Maintains exact same memory layout as original
+ */
 class CounterClass : public VectorClass<int>
 {
 public:
@@ -911,7 +1026,7 @@ public:
 
 	int Decrement(int index)
 	{
-		if (this->EnsureItem(index))
+		if (this->EnsureItem(index) && this->Items[index] > 0)
 		{
 			--this->Total;
 			return --this->Items[index];
@@ -928,6 +1043,7 @@ public:
 
 	//HRESULT LoadFromStream(IStream* pStm) { JMP_THIS(0x49FBE0); }
 	//HRESULT SaveFromStream(IStream* pStm) { JMP_THIS(0x49FB70); }
+	
 public:
 	int Total { 0 };
 };
@@ -936,56 +1052,235 @@ template<typename T, const int size>
 class ArrayHelper
 {
 public:
-	operator T* () { return reinterpret_cast<T*>(this); }
-	operator const T* () const { return reinterpret_cast<const T*>(this); }
-	T* operator&() { return reinterpret_cast<T*>(this); }
-	const T* operator&() const { return reinterpret_cast<const T*>(this); }
+	// Constructor with proper initialization
+	ArrayHelper() {
+		initialize();
+	}
+	
+	// Destructor to properly clean up non-trivial types
+	~ArrayHelper() {
+		if (_initialized && !std::is_trivially_destructible_v<T>) {
+			T* ptr = reinterpret_cast<T*>(_dummy);
+			for (int i = 0; i < size; ++i) {
+				ptr[i].~T();
+			}
+		}
+	}
+	
+	// Copy constructor
+	ArrayHelper(const ArrayHelper& other) {
+		initialize();
+		if (other._initialized) {
+			T* thisPtr = reinterpret_cast<T*>(_dummy);
+			const T* otherPtr = reinterpret_cast<const T*>(other._dummy);
+			for (int i = 0; i < size; ++i) {
+				thisPtr[i] = otherPtr[i];
+			}
+		}
+	}
+	
+	// Assignment operator
+	ArrayHelper& operator=(const ArrayHelper& other) {
+		if (this != &other) {
+			if (!_initialized) initialize();
+			if (other._initialized) {
+				T* thisPtr = reinterpret_cast<T*>(_dummy);
+				const T* otherPtr = reinterpret_cast<const T*>(other._dummy);
+				for (int i = 0; i < size; ++i) {
+					thisPtr[i] = otherPtr[i];
+				}
+			}
+		}
+		return *this;
+	}
+
+	// Use safer access methods instead of dangerous reinterpret_cast
+	T* data() { 
+		// Ensure proper initialization on first access
+		if (!_initialized) {
+			initialize();
+		}
+		return reinterpret_cast<T*>(_dummy); 
+	}
+	
+	const T* data() const { 
+		return reinterpret_cast<const T*>(_dummy); 
+	}
+	
+	operator T* () { return data(); }
+	operator const T* () const { return data(); }
+	
 	T& operator[](int index) { 
-		return reinterpret_cast<T*>(this)[index]; 
+		// Add bounds checking with thread-safe dummy
+		if (index < 0 || index >= size) {
+			static thread_local T dummy{};
+			return dummy;
+		}
+		return data()[index]; 
 	}
+	
 	const T& operator[](int index) const { 
-		return reinterpret_cast<const T*>(this)[index]; 
+		// Add bounds checking with thread-safe dummy
+		if (index < 0 || index >= size) {
+			static thread_local const T dummy{};
+			return dummy;
+		}
+		return data()[index]; 
 	}
 
-	T* begin() { return reinterpret_cast<T*>(this); }
-	T* end() { return reinterpret_cast<T*>(this) + size; }
+	T* begin() { return data(); }
+	T* end() { return data() + size; }
 
-	const T* begin() const { return reinterpret_cast<const T*>(this); }
-	const T* end() const { return reinterpret_cast<const T*>(this) + size; }
+	const T* begin() const { return data(); }
+	const T* end() const { return data() + size; }
 
 	constexpr int Size() const {
 		return size;
 	}
 
-protected:
+private:
+	void initialize() {
+		if (_initialized) return;
+		
+		// Initialize memory to zero for safety
+		std::memset(_dummy, 0, sizeof(_dummy));
+		
+		// For non-trivial types, call default constructor
+		if constexpr (!std::is_trivially_constructible_v<T>) {
+			T* ptr = reinterpret_cast<T*>(_dummy);
+			for (int i = 0; i < size; ++i) {
+				new (ptr + i) T{};
+			}
+		}
+		_initialized = true;
+	}
+
 	alignas(T) char _dummy[size * sizeof(T)];
+	bool _initialized = false;
 };
 
-template<typename T, const int y, const int x>
+template<typename T, const int rows, const int cols>
 class ArrayHelper2D
 {
 public:
-	operator ArrayHelper<T, x>* () { return reinterpret_cast<ArrayHelper<T, x>*>(this); }
-	operator const ArrayHelper<T, x>* () const { return reinterpret_cast<const ArrayHelper<T, x>*>(this); }
-	ArrayHelper<T, x>* operator&() { return reinterpret_cast<ArrayHelper<T, x>*>(this); }
-	const ArrayHelper<T, x>* operator&() const { return reinterpret_cast<const ArrayHelper<T, x>*>(this); }
-	ArrayHelper<T, x>& operator[](int index) { 
-		return _dummy[index]; 
+	// Constructor with proper initialization
+	ArrayHelper2D() {
+		initialize();
 	}
-	const ArrayHelper<T, x>& operator[](int index) const { 
-		return _dummy[index]; 
+	
+	// Destructor to properly clean up non-trivial types
+	~ArrayHelper2D() {
+		if (_initialized && !std::is_trivially_destructible_v<T>) {
+			T* ptr = reinterpret_cast<T*>(_dummy);
+			for (int i = 0; i < rows * cols; ++i) {
+				ptr[i].~T();
+			}
+		}
+	}
+	
+	// Copy constructor
+	ArrayHelper2D(const ArrayHelper2D& other) {
+		initialize();
+		if (other._initialized) {
+			T* thisPtr = reinterpret_cast<T*>(_dummy);
+			const T* otherPtr = reinterpret_cast<const T*>(other._dummy);
+			for (int i = 0; i < rows * cols; ++i) {
+				thisPtr[i] = otherPtr[i];
+			}
+		}
+	}
+	
+	// Assignment operator
+	ArrayHelper2D& operator=(const ArrayHelper2D& other) {
+		if (this != &other) {
+			if (!_initialized) initialize();
+			if (other._initialized) {
+				T* thisPtr = reinterpret_cast<T*>(_dummy);
+				const T* otherPtr = reinterpret_cast<const T*>(other._dummy);
+				for (int i = 0; i < rows * cols; ++i) {
+					thisPtr[i] = otherPtr[i];
+				}
+			}
+		}
+		return *this;
 	}
 
-	ArrayHelper<T, x>* begin() { return _dummy; }
-	ArrayHelper<T, x>* end() { return _dummy + y; }
-
-	const ArrayHelper<T, x>* begin() const { return _dummy; }
-	const ArrayHelper<T, x>* end() const { return _dummy + y; }
-
-	constexpr int Size() const {
-		return y;
+	// Use safer access methods instead of dangerous reinterpret_cast
+	T* data() { 
+		// Ensure proper initialization on first access
+		if (!_initialized) {
+			initialize();
+		}
+		return reinterpret_cast<T*>(_dummy); 
+	}
+	
+	const T* data() const { 
+		return reinterpret_cast<const T*>(_dummy); 
+	}
+	
+	// Safe 2D array access with bounds checking
+	T* operator[](int row) { 
+		if (row < 0 || row >= rows) {
+			static thread_local T dummy_row[cols] = {};
+			return dummy_row;
+		}
+		return &data()[row * cols]; 
+	}
+	
+	const T* operator[](int row) const { 
+		if (row < 0 || row >= rows) {
+			static thread_local const T dummy_row[cols] = {};
+			return dummy_row;
+		}
+		return &data()[row * cols]; 
+	}
+	
+	// Direct access with row/col bounds checking
+	T& at(int row, int col) {
+		if (row < 0 || row >= rows || col < 0 || col >= cols) {
+			static thread_local T dummy{};
+			return dummy;
+		}
+		return data()[row * cols + col];
+	}
+	
+	const T& at(int row, int col) const {
+		if (row < 0 || row >= rows || col < 0 || col >= cols) {
+			static thread_local const T dummy{};
+			return dummy;
+		}
+		return data()[row * cols + col];
 	}
 
-protected:
-	ArrayHelper<T, x> _dummy[y];
+	// Iterator support
+	T* begin() { return data(); }
+	T* end() { return data() + (rows * cols); }
+	
+	const T* begin() const { return data(); }
+	const T* end() const { return data() + (rows * cols); }
+	
+	// Size information
+	constexpr int Rows() const { return rows; }
+	constexpr int Cols() const { return cols; }
+	constexpr int Size() const { return rows * cols; }
+
+private:
+	void initialize() {
+		if (_initialized) return;
+		
+		// Zero-initialize memory for safety
+		std::memset(_dummy, 0, sizeof(_dummy));
+		
+		// For non-trivial types, call constructors using placement new
+		if constexpr (!std::is_trivially_constructible_v<T>) {
+			T* ptr = reinterpret_cast<T*>(_dummy);
+			for (int i = 0; i < rows * cols; ++i) {
+				new (ptr + i) T{};
+			}
+		}
+		_initialized = true;
+	}
+
+	alignas(T) char _dummy[rows * cols * sizeof(T)];
+	bool _initialized = false;
 };

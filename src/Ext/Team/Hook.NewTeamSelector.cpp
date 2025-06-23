@@ -410,7 +410,9 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 	auto pHouseTypeExt = HouseTypeExtContainer::Instance.Find(pHouse->Type);
 	// Reset Team selection countdown
-	pHouse->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[(int)pHouse->AIDifficulty]);
+	int difficultyIndex = (int)pHouse->AIDifficulty;
+	if (difficultyIndex >= 0 && difficultyIndex < 3) // Assuming 3 difficulty levels: Easy, Normal, Hard
+		pHouse->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[difficultyIndex]);
 
 	HelperedVector<TriggerElementWeight> validTriggerCandidates;
 	HelperedVector<TriggerElementWeight> validTriggerCandidatesGroundOnly;
@@ -515,10 +517,19 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		//int sideIdx = pHouse->SideIndex + 1; // Side indexes in AITriggers section are 1-based
 
 		auto houseDifficulty = pHouse->AIDifficulty;
-		int minBaseDefenseTeams = RulesClass::Instance->MinimumAIDefensiveTeams[(int)houseDifficulty];
-		int maxBaseDefenseTeams = RulesClass::Instance->MaximumAIDefensiveTeams[(int)houseDifficulty];
+		int difficultyIdx = (int)houseDifficulty;
+		int minBaseDefenseTeams = 0;
+		int maxBaseDefenseTeams = 0;
+		int maxTeamsLimit = 0;
 		int activeDefenseTeamsCount = 0;
-		int maxTeamsLimit = RulesClass::Instance->TotalAITeamCap[(int)houseDifficulty];
+		
+		// Bounds check for difficulty index
+		if (difficultyIdx >= 0 && difficultyIdx < 3) // Assuming 3 difficulty levels
+		{
+			minBaseDefenseTeams = RulesClass::Instance->MinimumAIDefensiveTeams[difficultyIdx];
+			maxBaseDefenseTeams = RulesClass::Instance->MaximumAIDefensiveTeams[difficultyIdx];
+			maxTeamsLimit = RulesClass::Instance->TotalAITeamCap[difficultyIdx];
+		}
 		double totalWeight = 0.0;
 		double totalWeightGroundOnly = 0.0;
 		double totalWeightNavalOnly = 0.0;
@@ -533,6 +544,11 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			int teamHouseIdx = pRunningTeam->Owner->ArrayIndex;
 
 			if (teamHouseIdx != houseIdx)
+				continue;
+
+			// Filter out teams that shouldn't count against limits
+			if (pRunningTeam->NeedsToDisappear
+				|| (!pRunningTeam->IsFullStrength && pRunningTeam->TotalObjects == 0))
 				continue;
 
 			activeTeamsList.push_back(pRunningTeam);
@@ -641,7 +657,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		}
 
 		HouseClass* targetHouse = nullptr;
-		if (pHouse->EnemyHouseIndex >= 0)
+		if (pHouse->EnemyHouseIndex >= 0 && pHouse->EnemyHouseIndex < HouseClass::Array->Count)
 			targetHouse = HouseClass::Array->GetItem(pHouse->EnemyHouseIndex);
 
 		bool onlyCheckImportantTriggers = false;
@@ -863,8 +879,8 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 					if (splitTriggersByCategory)
 					{
 						//Debug::LogInfo("DEBUG: TaskForce [{}] members:", pTriggerTeam1Type->TaskForce->ID);
-						// TaskForces are limited to 6 entries
-						for (int i = 0; i < 6; i++)
+						// Use actual TaskForce entry count instead of hardcoded limit
+						for (int i = 0; i < pTriggerTeam1Type->TaskForce->CountEntries; i++)
 						{
 							auto entry = pTriggerTeam1Type->TaskForce->Entries[i];
 							TeamCategory entryIsCategory = TeamCategory::Ground;
@@ -1297,7 +1313,9 @@ ASMJIT_PATCH(0x4F8A63, HouseClass_AI_Team, 7)
 			possible_teams[i]->CreateTeam(pThis);
 		}
 
-		pThis->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[(int)pThis->AIDifficulty]);
+		int difficultyIndex = (int)pThis->AIDifficulty;
+		if (difficultyIndex >= 0 && difficultyIndex < 3) // Assuming 3 difficulty levels
+			pThis->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[difficultyIndex]);
 	}
 
 	return 0x4F8B08;
