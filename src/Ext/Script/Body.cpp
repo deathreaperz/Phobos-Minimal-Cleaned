@@ -1555,7 +1555,7 @@ void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 	if (!pTeam)
 	{
 		//	// This action finished
-		pTeam->StepCompleted = true;
+		// pTeam->StepCompleted = true;  // BUG FIX: Cannot access pTeam if it's null
 		//	const auto&[curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
 		//	const auto&[nextAct, nextArg] = pTeam->CurrentScript->GetNextAction();
 		//	Debug::LogInfo("AI Scripts - SkipNextAction: [{}] [{}] (line: {}) Jump to next line: {} = {},{} -> (No team members alive)",

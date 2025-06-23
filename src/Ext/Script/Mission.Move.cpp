@@ -41,11 +41,12 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 	// This team has no units!
 	if (!pTeam)
 	{
-		if (pTeamData->CloseEnough > 0)
-			pTeamData->CloseEnough = -1;
+		// BUG FIX: Cannot access pTeam or pTeamData if pTeam is null
+		// if (pTeamData->CloseEnough > 0)
+		//     pTeamData->CloseEnough = -1;
 
 		// This action finished
-		pTeam->StepCompleted = true;
+		// pTeam->StepCompleted = true;  // BUG FIX: Cannot access pTeam if it's null
 		//Debug::LogInfo("AI Scripts - Move: {}] {}] (line: {} = {},{}) Jump to next line: {} = {},{} -> (Reason: No team members alive)",
 		//	pTeam->Type->ID,
 		//	pScript->Type->ID,
@@ -96,7 +97,8 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 	if (!pTeamData->TeamLeader)
 	{
 		pTeamData->TeamLeader = ScriptExtData::FindTheTeamLeader(pTeam);
-		pTeamData->TeamLeader->IsTeamLeader = true;
+		if (pTeamData->TeamLeader)  // BUG FIX: Check if FindTheTeamLeader returned valid leader
+			pTeamData->TeamLeader->IsTeamLeader = true;
 	}
 
 	if (!pTeamData->TeamLeader || bAircraftsWithoutAmmo)
@@ -425,10 +427,11 @@ void ScriptExtData::Mission_Move_List(TeamClass* pTeam, DistanceMode calcThreatM
 	if ((size_t)attackAITargetType < Arr.size() && !Arr[attackAITargetType].empty())
 	{
 		ScriptExtData::Mission_Move(pTeam, calcThreatMode, pickAllies, attackAITargetType, -1);
-		//return;
+		return;  // FIXED: Mission_Move will handle StepCompleted internally
 	}
 
-	// pTeam->StepCompleted = true;
+	// Only set StepCompleted if target list is invalid
+	pTeam->StepCompleted = true;
 	// Debug::LogInfo("AI Scripts - Mission_Move_List: {}] {}] (line: {} = {},{}) Failed to get the list index [AITargetTypes][{}]! out of bound: {}",
 	// 	pTeam->Type->ID,
 	// 	pTeam->CurrentScript->Type->ID,

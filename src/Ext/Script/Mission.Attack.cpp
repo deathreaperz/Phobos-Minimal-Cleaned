@@ -158,7 +158,8 @@ void ScriptExtData::Mission_Attack(TeamClass* pTeam, bool repeatAction, Distance
 	if (!ScriptExtData::IsUnitAvailable(pTeamData->TeamLeader, true))
 	{
 		pTeamData->TeamLeader = ScriptExtData::FindTheTeamLeader(pTeam);
-		pTeamData->TeamLeader->IsTeamLeader = true;
+		if (pTeamData->TeamLeader)  // BUG FIX: Check if FindTheTeamLeader returned valid leader
+			pTeamData->TeamLeader->IsTeamLeader = true;
 	}
 
 	if (!pTeamData->TeamLeader || bAircraftsWithoutAmmo || (pacifistTeam && !agentMode))
@@ -455,10 +456,7 @@ void ScriptExtData::Mission_Attack(TeamClass* pTeam, bool repeatAction, Distance
 			pTeam->StepCompleted = true;
 		}
 
-		if (!pTeam->StepCompleted)
-		{
-			pTeam->StepCompleted = true;
-		}
+		// Removed redundant StepCompleted check - already set above in all paths
 	}
 }
 
@@ -1356,7 +1354,11 @@ void ScriptExtData::Mission_Attack_List(TeamClass* pTeam, bool repeatAction, Dis
 	if ((size_t)attackAITargetType < targetList.size() && !targetList[attackAITargetType].empty())
 	{
 		ScriptExtData::Mission_Attack(pTeam, repeatAction, calcThreatMode, attackAITargetType, -1);
+		return;  // FIXED: Mission_Attack will handle StepCompleted internally
 	}
+	
+	// Only set StepCompleted if target list is invalid
+	pTeam->StepCompleted = true;
 }
 
 thread_local std::vector<int> Mission_Attack_List1Random_validIndexes;
