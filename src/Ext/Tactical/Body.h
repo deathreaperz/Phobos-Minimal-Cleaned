@@ -1,59 +1,64 @@
 #pragma once
 
-//#include <Utilities/Container.h>
-//
-//#include <Utilities/Iterator.h>
-//#include <Utilities/Template.h>
-//
-//#include <Helpers/Template.h>
-//#include <TacticalClass.h>
+#include <TacticalClass.h>
+#include <CoordStruct.h>
+#include <ColorStruct.h>
 
-class TacticalExt
+class SuperClass;
+class FakeTacticalClass final : public TacticalClass
 {
 public:
-	/*
-		static IStream* g_pStm;
 
-		class ExtData final : public Extension<TacticalClass>
+	using callback_type = bool(__fastcall*)(ObjectClass*);
+	static OPTIONALINLINE struct TacticalSelectablesHelper
+	{
+		OPTIONALINLINE size_t size()
 		{
-		public:
-			static COMPILETIMEEVAL size_t Canary = 0x52DEBA12;
-			using base_type = TacticalClass;
-
-		public:
-
-			ExtData(TacticalClass* OwnerObject) : Extension<TacticalClass>(OwnerObject)
-			{ }
-
-			virtual ~ExtData() override = default;
-			void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
-			void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
-
-		private:
-			template <typename T>
-			void Serialize(T& Stm);
-		};
-
-	private:
-		static std::unique_ptr<ExtData> Data;
-	public:
-
-		static void Allocate(TacticalClass* pThis);
-		static void Remove(TacticalClass* pThis);
-
-		static ExtData* Global()
-		{
-			return Data.get();
+			return TacticalClass::Instance->SelectableCount;
 		}
 
-		static void Clear()
+		OPTIONALINLINE TacticalSelectableStruct* begin()
 		{
-			Allocate(TacticalClass::Instance);
+			return &Unsorted::TacticalSelectables[0];
 		}
-	*/
+
+		OPTIONALINLINE TacticalSelectableStruct* end()
+		{
+			return &Unsorted::TacticalSelectables[size()];
+		}
+	} Array {};
+
+	// Reversed from Is_Selectable, w/o Select call
+	static bool ObjectClass_IsSelectable(ObjectClass* pThis);
+
+#ifndef ___test
+	static void __fastcall __DrawTimersA(int value, ColorScheme* color, int interval, const wchar_t* label, LARGE_INTEGER* _arg, bool* _arg1);
+	static void __fastcall __DrawTimersB(int value, ColorScheme* color, int interval, const wchar_t* label, LARGE_INTEGER* _arg, bool* _arg1);
+	static void __fastcall __DrawTimersC(int value, ColorScheme* color, int interval, const wchar_t* label, LARGE_INTEGER* _arg, bool* _arg1);
+#else
+	static void __fastcall __DrawTimers(int value, ColorScheme* color, int interval, const wchar_t* label, LARGE_INTEGER* _arg, bool* _arg1);
+#endif
+
+	static void __DrawTimersSW(SuperClass* pSuper, int value, int interval);
+	static void __fastcall __DrawRadialIndicator(bool draw_indicator, bool animate, Coordinate center_coord, ColorStruct color, float radius, bool concentric, bool round);
+
+	// Reversed from Tactical::Select
+	bool IsInSelectionRect(LTRBStruct* pRect, const TacticalSelectableStruct& selectable);
+	bool IsHighPriorityInRect(LTRBStruct* rect);
+
+	// Reversed from Tactical::Select
+	void SelectFiltered(LTRBStruct* pRect, callback_type fpCheckCallback, bool bPriorityFiltering);
+
+	// Reversed from Tactical::MakeSelection
+	void Tactical_MakeFilteredSelection(callback_type fpCheckCallback);
+
+	void __DrawAllTacticalText(wchar_t* text);
+
 	//void DrawDebugOverlay();
 	//bool DrawCurrentCell(); //TODO
 	//bool DebugDrawAllCellInfo(); //TODO
 	//bool DebugDrawBridgeInfo(); //TODO
 	//void DebugDrawMouseCellMembers //TODO
 };
+
+static_assert(sizeof(FakeTacticalClass) == sizeof(TacticalClass), "MustBe Same!");

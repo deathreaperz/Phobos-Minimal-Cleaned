@@ -159,7 +159,7 @@ static void IsTechnoShouldBeAliveAfterTemporal(TechnoClass* pThis)
 		{
 			pThis->TemporalTargetingMe = nullptr;
 			pThis->Limbo();
-			Debug::LogInfo(__FUNCTION__" Called ");
+			//Debug::LogInfo(__FUNCTION__" Called ");
 			TechnoExtData::HandleRemove(pThis, nullptr, true, false);
 		}
 	}
@@ -401,7 +401,7 @@ ASMJIT_PATCH(0x4DACDD, FootClass_CrashingVoice, 0x6)
 	{
 		if (pThis->IsCrashing)
 		{
-			pThis->Audio7.ShutUp();
+			pThis->MoveSoundAudioController.ShutUp();
 			auto const nCoord = pThis->GetCoords();
 
 			if (!pThis->IsAttackedByLocomotor)
@@ -411,15 +411,15 @@ ASMJIT_PATCH(0x4DACDD, FootClass_CrashingVoice, 0x6)
 				if (pThis->Owner->IsControlledByHuman())
 					VocClass::PlayIndexAtPos(pType->VoiceCrashing, nCoord);
 
-				VocClass::PlayIndexAtPos(pType->CrashingSound, nCoord, &pThis->Audio7);
+				VocClass::PlayIndexAtPos(pType->CrashingSound, nCoord, &pThis->MoveSoundAudioController);
 			}
 			else
 			{
-				VocClass::PlayIndexAtPos(RulesClass::Instance->ScoldSound, nCoord, &pThis->Audio7);
+				VocClass::PlayIndexAtPos(RulesClass::Instance->ScoldSound, nCoord, &pThis->MoveSoundAudioController);
 			}
 		}
-		else if (pThis->__PlayingMovingSound) // done playing
-			pThis->Audio7.ShutUp();
+		else if (pThis->IsMoveSoundPlaying) // done playing
+			pThis->MoveSoundAudioController.ShutUp();
 
 		pThis->WasCrashingAlready = pThis->IsCrashing;
 	}
@@ -1233,7 +1233,7 @@ struct OverlayByteReader
 
 	bool IsAvailable() const { return uuLength > 0; }
 
-	unsigned char Get()
+	unsigned char GetByte()
 	{
 		if (IsAvailable())
 		{
@@ -1244,6 +1244,19 @@ struct OverlayByteReader
 		return 0;
 	}
 
+	unsigned short GetWord()
+	{
+		if (IsAvailable())
+		{
+			unsigned short ret;
+			ls.Get(&ret, sizeof(ret));
+			return ret;
+		}
+
+		return 0;
+	}
+
+public:
 	size_t uuLength;
 	void* pBuffer;
 	LCWStraw ls;
@@ -1252,26 +1265,32 @@ struct OverlayByteReader
 
 struct OverlayReader
 {
-	size_t Get()
+	int Get()
 	{
-		const unsigned char ret[4] {
-			ByteReaders[0].Get(),
-			ByteReaders[1].Get(),
-			ByteReaders[2].Get(),
-			ByteReaders[3].Get()
-		};
+		if (ScenarioClass::NewINIFormat >= 5)
+		{
+			unsigned short shrt = ByteReader.GetWord();
+			if (shrt != static_cast<unsigned short>(-1))
+				return shrt;
+		}
+		else
+		{
+			unsigned char byte = ByteReader.GetByte();
+			if (byte != static_cast<unsigned char>(-1))
+				return byte;
+		}
 
-		return ret[0] == 0xFF ? 0xFFFFFFFF : (ret[0] | (ret[1] << 8) | (ret[2] << 16) | (ret[3] << 24));
+		return -1;
 	}
 
 	OverlayReader(CCINIClass* pINI)
-		:ByteReaders { {pINI, GameStrings::OverlayPack() }, { pINI,"OverlayPack2" }, { pINI,"OverlayPack3" }, { pINI,"OverlayPack4" }, }
+		: ByteReader { pINI, GameStrings::OverlayPack() }
 	{ }
 
 	~OverlayReader() = default;
 
 private:
-	OverlayByteReader ByteReaders[4];
+	OverlayByteReader ByteReader;
 };
 
 ASMJIT_PATCH(0x5FD2E0, OverlayClass_ReadINI, 0x7)
@@ -1290,7 +1309,7 @@ ASMJIT_PATCH(0x5FD2E0, OverlayClass_ReadINI, 0x7)
 			for (short j = 0; j < 0x200; ++j)
 			{
 				CellStruct mapCoord { j,i };
-				size_t nOvl = reader.Get();
+				int nOvl = reader.Get();
 
 				if (nOvl != 0xFFFFFFFF)
 				{
@@ -1349,13 +1368,9 @@ ASMJIT_PATCH(0x5FD2E0, OverlayClass_ReadINI, 0x7)
 struct OverlayByteWriter
 {
 	OverlayByteWriter(const char* pSection, size_t nBufferLength)
-		:
-		lpSectionName { pSection },
-		uuLength { 0 },
-		Buffer { YRMemory::Allocate(nBufferLength) },
-		bp { nullptr, 0 },
-		lp { FALSE,0x2000 }
+		: lpSectionName { pSection }, uuLength { 0 }, bp { nullptr,0 }, lp { FALSE,0x2000 }
 	{
+		this->Buffer = YRMemory::Allocate(nBufferLength);
 		bp.Buffer.Buffer = this->Buffer;
 		bp.Buffer.Size = nBufferLength;
 		bp.Buffer.Allocated = false;
@@ -1364,16 +1379,20 @@ struct OverlayByteWriter
 
 	~OverlayByteWriter()
 	{
-		if (this->Buffer)
-			YRMemory::Deallocate(this->Buffer);
+		YRMemory::Deallocate(this->Buffer);
 	}
 
-	void  FORCEDINLINE Put(unsigned char data)
+	void PutByte(unsigned char data)
 	{
-		uuLength += lp.Put(&data, 1);
+		uuLength += lp.Put(&data, sizeof(data));
 	}
 
-	void FORCEDINLINE PutBlock(CCINIClass* pINI) const
+	void PutWord(unsigned short data)
+	{
+		uuLength += lp.Put(&data, sizeof(data));
+	}
+
+	void PutBlock(CCINIClass* pINI)
 	{
 		pINI->Clear(this->lpSectionName, nullptr);
 		pINI->WriteUUBlock(this->lpSectionName, this->Buffer, uuLength);
@@ -1389,41 +1408,24 @@ struct OverlayByteWriter
 struct OverlayWriter
 {
 	OverlayWriter(size_t nLen)
-		: ByteWriters {
-			{ GameStrings::OverlayPack(), nLen },
-			{ "OverlayPack2", nLen },
-			{ "OverlayPack3", nLen },
-			{ "OverlayPack4", nLen }
-		}
+		: ByteWriter { GameStrings::OverlayPack() , nLen }
 	{ }
-
-	~OverlayWriter() = default;
 
 	void Put(int nOverlay)
 	{
-		unsigned char bytes[] = {
-			unsigned char(nOverlay & 0xFF),
-			unsigned char((nOverlay >> 8) & 0xFF),
-			unsigned char((nOverlay >> 16) & 0xFF),
-			unsigned char((nOverlay >> 24) & 0xFF),
-		};
-
-		ByteWriters[0].Put(bytes[0]);
-		ByteWriters[1].Put(bytes[1]);
-		ByteWriters[2].Put(bytes[2]);
-		ByteWriters[3].Put(bytes[3]);
+		if (ScenarioClass::NewINIFormat >= 5)
+			ByteWriter.PutByte(static_cast<unsigned char>(nOverlay));
+		else
+			ByteWriter.PutWord(static_cast<unsigned short>(nOverlay));
 	}
 
-	void PutBlock(CCINIClass* pINI) const
+	void PutBlock(CCINIClass* pINI)
 	{
-		ByteWriters[0].PutBlock(pINI);
-		ByteWriters[1].PutBlock(pINI);
-		ByteWriters[2].PutBlock(pINI);
-		ByteWriters[3].PutBlock(pINI);
+		ByteWriter.PutBlock(pINI);
 	}
 
 private:
-	OverlayByteWriter ByteWriters[4];
+	OverlayByteWriter ByteWriter;
 };
 
 ASMJIT_PATCH(0x5FD6A0, OverlayClass_WriteINI, 0x6)
@@ -1443,7 +1445,7 @@ ASMJIT_PATCH(0x5FD6A0, OverlayClass_WriteINI, 0x6)
 			CellStruct mapCoord { j,i };
 			auto const pCell = MapClass::Instance->GetCellAt(mapCoord);
 			writer.Put(pCell->OverlayTypeIndex);
-			datawriter.Put(pCell->OverlayData);
+			datawriter.PutByte(pCell->OverlayData);
 		}
 	}
 
@@ -1878,6 +1880,7 @@ ASMJIT_PATCH(0x75BD70, WalkLocomotionClass_ProcessMoving_SlowdownDistance, 0x9)
 	GET(FootClass* const, pLinkedTo, ECX);
 	GET(int const, distance, EAX);
 	return distance >= pLinkedTo->GetCurrentSpeed() ? KeepMoving : CloseEnough;
+	//return distance < 17 ? CloseEnough : KeepMoving;
 }
 
 ASMJIT_PATCH(0x5B11DD, MechLocomotionClass_ProcessMoving_SlowdownDistance, 0x9)
@@ -1887,6 +1890,7 @@ ASMJIT_PATCH(0x5B11DD, MechLocomotionClass_ProcessMoving_SlowdownDistance, 0x9)
 	GET(FootClass* const, pLinkedTo, ECX);
 	GET(int const, distance, EAX);
 	return distance >= pLinkedTo->GetCurrentSpeed() ? KeepMoving : CloseEnough;
+	//return distance < 16 ? CloseEnough : KeepMoving;
 }
 
 // Apply cell lighting on UseNormalLight=no MakeInfantry anims.
@@ -2414,7 +2418,7 @@ ASMJIT_PATCH(0x6F6DEE, TechnoClass_Unlimbo_BarrelFacingBugFix, 0x7)
 	return SkipGameCode;
 }
 
-#ifdef _AI_ZONE_CHECK
+#ifndef _AI_ZONE_CHECK
 ASMJIT_PATCH(0x4DFC39, FootClass_FindBioReactor_CheckValid, 0x6)
 {
 	GET(FootClass*, pThis, ESI);
@@ -2467,12 +2471,6 @@ ASMJIT_PATCH(0x4C7643, EventClass_RespondToEvent_StopTemporal, 0x6)
 	return 0;
 }
 
-ASMJIT_PATCH(0x6F9222, TechnoClass_SelectAutoTarget_HealingTargetAir, 0x6)
-{
-	GET(TechnoClass*, pThis, ESI);
-	return pThis->CombatDamage(-1) < 0 ? 0x6F922E : 0;
-}
-
 // I don't know how can WW miscalculated
 // In fact, there should be three different degrees of tilt angles
 // - EBX -> atan((2*104)/(256√2)) should only be used on the steepest slopes (13-16)
@@ -2505,6 +2503,47 @@ ASMJIT_PATCH(0x73C41B, UnitClass_DrawAsVXL_Shadow_IsLocomotorFix, 0x6)
 // Skip incorrect copy, why do copy like this?
 DEFINE_JUMP(LJMP, 0x715326, 0x715333); // TechnoTypeClass::LoadFromINI
 // Then EDI is BarrelAnimData now, not incorrect TurretAnimData
+
+ASMJIT_PATCH(0x481778, CellClass_ScatterContent_Scatter, 0x6)
+{
+	enum { NextTechno = 0x4817D9 };
+
+	GET(TechnoClass*, pTechno, ESI);
+
+	if (!pTechno)
+		return NextTechno;
+
+	REF_STACK(const CoordStruct, coords, STACK_OFFSET(0x2C, 0x4));
+	GET_STACK(const bool, ignoreMission, STACK_OFFSET(0x2C, 0x8));
+	GET_STACK(const bool, ignoreDestination, STACK_OFFSET(0x2C, 0xC));
+
+	if (ignoreDestination || pTechno->HasAbility(AbilityType::Scatter)
+		|| (pTechno->Owner->IsControlledByHuman() ? RulesClass::Instance->PlayerScatter : pTechno->Owner->IQLevel2 >= RulesClass::Instance->Scatter))
+		pTechno->Scatter(coords, ignoreMission, ignoreDestination);
+
+	return NextTechno;
+}
+
+#include <Ext/WarheadType/Body.h>
+
+// make a minimally permissible attack judgment.
+const bool CanElectricAssault(FootClass* pThis, BuildingClass* pBuilding)
+{
+	const auto pWarhead = pThis->GetWeapon(1)->WeaponType->Warhead;
+	const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWarhead);
+	return pWHExt->GetVerses(TechnoExtData::GetTechnoArmor(pThis, pWarhead)).Verses != 0.0;
+}
+
+ASMJIT_PATCH(0x4D7005, FootClass_ElectricAssultFix, 0x5)			// Mission_AreaGuard
+{
+	GET(FootClass*, pThis, ESI);
+	GET(BuildingClass*, pBuilding, EDI);
+	enum { SkipGuard = 0x4D5225, SkipAreaGuard = 0x4D7025 };
+
+	return !CanElectricAssault(pThis, pBuilding) ?
+		R->Origin() == 0x4D51B2 ? SkipGuard : SkipAreaGuard
+		: 0;
+}ASMJIT_PATCH_AGAIN(0x4D51B2, FootClass_ElectricAssultFix, 0x5)	// Mission_Guard
 
 // I think no one wants to see wild pointers caused by WW's negligence
 //ASMJIT_PATCH(0x4D9A1B, FootClass_PointerExpired_RemoveDestination, 0x6)
@@ -2738,3 +2777,88 @@ ASMJIT_PATCH(0x70D910, FootClass_QueueEnter_NoMoveToBridge, 0x5)
 }
 
 #endif
+
+#ifdef DamageAreaItemsFix
+ASMJIT_PATCH(0x489BDB, DamageArea_RockerItemsFix1, 0x6)
+{
+	enum { SkipGameCode = 0x489C29 };
+	// Get cell coordinates
+	GET(const short, cellX, ESI);
+	GET(const short, cellY, EBX);
+	// Record the current cell for linked list getting
+	const auto pCell = MapClass::Instance->GetCellAt(CellStruct { cellX, cellY });
+	DamageAreaTemp::CheckingCell = pCell;
+	// First, check the FirstObject linked list
+	auto pObject = pCell->FirstObject;
+	// Check if there are objects in the linked list
+	if (pObject)
+	{
+		// When it exists, start the vanilla processing
+		R->EAX(pObject);
+		return SkipGameCode;
+	}
+	// When it does not exist, check AltObject linked list
+	pObject = pCell->AltObject;
+	// If there is an object, record the flag
+	if (pObject)
+		DamageAreaTemp::CheckingCellAlt = true;
+	// Return the original check
+	R->EAX(pObject);
+	return SkipGameCode;
+}
+
+ASMJIT_PATCH(0x489E47, DamageArea_RockerItemsFix2, 0x6)
+{
+	// Prior to this, there was already pObject = pCell->FirstObject;
+	GET(const ObjectClass*, pObject, EDI);
+	// As vanilla, first look at the next object in the linked list
+	if (pObject)
+		return 0;
+	// When it does not exist, check which linked list it is currently in
+	if (DamageAreaTemp::CheckingCellAlt)
+	{
+		// If it is already in the AltObject linked list, reset the flag and return the original check
+		DamageAreaTemp::CheckingCellAlt = false;
+		return 0;
+	}
+	// If it is still in the FirstObject linked list, take the first object in the  linked list and continue checking
+	pObject = DamageAreaTemp::CheckingCell->AltObject;
+	// If there is an object, record the flag
+	if (pObject)
+		DamageAreaTemp::CheckingCellAlt = true;
+	// Return the original check
+	R->EDI(pObject);
+	return 0;
+}
+
+#endif
+
+DEFINE_JUMP(LJMP, 0x4C752A, 0x4C757D); // Skip cell under bridge check
+
+// Fix a potential edge case where aircraft gets stuck in 'sleep' (reload/repair) on dock if it gets assigned target from team mission etc.
+ASMJIT_PATCH(0x41915D, AircraftClass_ReceiveCommand_QueryPreparedness, 0x8)
+{
+	enum { CheckAmmo = 0x419169 };
+
+	GET(AircraftClass*, pThis, ESI);
+
+	if (pThis->Team && pThis->Team->ArchiveTarget == pThis->Target && pThis->CurrentMission == Mission::Sleep)
+		return CheckAmmo;
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x418CF3, AircraftClass_Mission_Attack_PlanningFix, 0x5)
+{
+	enum { SkipIdle = 0x418D00 };
+
+	GET(AircraftClass*, pThis, ESI);
+
+	return pThis->Ammo <= 0 || !pThis->TryNextPlanningTokenNode() ? 0 : SkipIdle;
+}
+
+ASMJIT_PATCH(0x6F9222, TechnoClass_SelectAutoTarget_HealingTargetAir, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	return pThis->CombatDamage(-1) < 0 ? 0x6F922E : 0;
+}

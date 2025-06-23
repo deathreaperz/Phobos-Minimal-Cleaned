@@ -255,7 +255,7 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 					args.SourceHouse,
 					pThis->GetOwningHouse(),
 					args.Attacker,
-					false
+					false, false
 				);
 			}
 
@@ -378,7 +378,7 @@ ASMJIT_PATCH(0x5F5390, ObjectClass_ReveiveDamage_Handled, 0x5)
 				? args.Attacker->Owner
 				: args.SourceHouse;
 
-			AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pInf->Owner, args.Attacker, true);
+			AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pInf->Owner, args.Attacker, true, false);
 
 			pThis->Health = int(pInf->Type->Strength * 0.25);
 
@@ -606,7 +606,8 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		return 0x702D1F;
 	}
 
-	const bool unkillable = !pWHExt->CanKill || pExt->AE.Unkillable;
+	const bool unkillable =
+		!pWHExt->CanKill || pExt->AE.Unkillable;
 
 	if (!args.IgnoreDefenses)
 	{
@@ -760,7 +761,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 	// Check if the warhead can not kill targets
 	//we dont want to kill the thing , dont return
 	bool isActuallyAffected = false;
-	if (!args.IgnoreDefenses && pThis->Health > 0 && unkillable && *args.Damage >= pThis->Health)
+	if (!args.IgnoreDefenses && pThis->Health > 0 && unkillable && args.Damage != 0 && *args.Damage >= pThis->Health)
 	{
 		*args.Damage = 0;
 		pThis->Health = 1;
@@ -1498,7 +1499,7 @@ DamageState FakeBuildingClass::_ReceiveDamage(int* Damage, int DistanceToEpicent
 									pAnim->SetOwnerObject(pThis);
 									const auto pKiller = Attacker;
 									const auto Invoker = (pKiller) ? pKiller->Owner : SourceHouse;
-									AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, pKiller, false);
+									AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, pThis->Owner, pKiller, false, false);
 								}
 							};
 
@@ -1922,7 +1923,7 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 								? args.Attacker->Owner
 								: args.SourceHouse;
 
-							AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+							AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true, false);
 
 							if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
 							{
@@ -1989,7 +1990,7 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 										? args.Attacker->Owner
 										: args.SourceHouse;
 
-									AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+									AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true, false);
 
 									if (ParticleSystemClass::Array->ValidIndex(RulesClass::Instance->InfantryVirus->SpawnsParticle))
 									{
@@ -2161,7 +2162,7 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 										? args.Attacker->Owner
 										: args.SourceHouse;
 
-									AnimExtData::SetAnimOwnerHouseKind(pAnim_Mutate, pInvoker, pThis->Owner, args.Attacker, true);
+									AnimExtData::SetAnimOwnerHouseKind(pAnim_Mutate, pInvoker, pThis->Owner, args.Attacker, true, false);
 
 									pAnim_Mutate->MarkAllOccupationBits(pThis->Location);
 								}
@@ -2179,7 +2180,7 @@ ASMJIT_PATCH(0x517FA0, InfantryClass_ReceiveDamage_Handled, 6)
 										? args.Attacker->Owner
 										: args.SourceHouse;
 
-									const auto& [bChanged, result] = AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true);
+									const auto& [bChanged, result] = AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pThis->Owner, args.Attacker, true, false);
 
 									if (infDeath == InfDeath::Mutate && bChanged && result != OwnerHouseKind::Default)
 									{

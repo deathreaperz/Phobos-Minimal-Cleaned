@@ -77,7 +77,7 @@ void GiftBoxFunctional::AI(TechnoExtData* pExt, TechnoTypeExtData* pTypeExt)
 		if (pTypeExt->MyGiftBoxData.Remove)
 		{
 			pExt->AttachedToObject->Limbo();
-			Debug::LogInfo(__FUNCTION__" Called ");
+			//Debug::LogInfo(__FUNCTION__" Called ");
 			TechnoExtData::HandleRemove(pExt->AttachedToObject, nullptr, false, false);
 			return;
 		}
@@ -304,7 +304,7 @@ void GiftBox::Release(TechnoClass* pOwner, GiftBoxData& nData)
 									pJJLoco->NextState = JumpjetLocomotionClass::State::Hovering;
 									pJJLoco->IsMoving = true;
 									pJJLoco->HeadToCoord = location;
-									pJJLoco->Height = pTech->JumpjetData.Height;
+									pJJLoco->Height = pTech->JumpJetData.Height;
 
 									if (!inAir)
 										AircraftTrackerClass::Instance->Add(pFoot);

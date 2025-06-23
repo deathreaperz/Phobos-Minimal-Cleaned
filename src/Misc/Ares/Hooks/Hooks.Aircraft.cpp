@@ -45,7 +45,7 @@ ASMJIT_PATCH(0x415085, AircraftClass_Update_DamageSmoke, 7)
 					pThis->Owner,
 					nullptr,
 					nullptr,
-					false
+					false, false
 				);
 			}
 		}

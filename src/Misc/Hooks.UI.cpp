@@ -88,6 +88,32 @@ ASMJIT_PATCH(0x4A25E3, CreditsClass_GraphicLogic_Additionals, 0x8)
 
 	const auto pSideExt = SideExtContainer::Instance.Find(pSide);
 	RectangleStruct vRect = DSurface::Sidebar->Get_Rect();
+	const auto pHouseExt = HouseExtContainer::Instance.Find(pPlayer);
+
+	if (Phobos::UI::BattlePointsSidebar_AlwaysShow || pHouseExt->AreBattlePointsEnabled())
+	{
+		fmt::basic_memory_buffer<wchar_t> counter;
+
+		ColorStruct clrToolTip = pSideExt->Sidebar_BattlePoints_Color.Get(Drawing::TooltipColor);
+
+		int points = pHouseExt->BattlePoints;
+
+		if (Phobos::UI::BattlePointsSidebar_Label_InvertPosition)
+			fmt::format_to(std::back_inserter(counter), L"{} {}", points, Phobos::UI::BattlePointsSidebar_Label);
+		else
+			fmt::format_to(std::back_inserter(counter), L"{} {}", Phobos::UI::BattlePointsSidebar_Label, points);
+
+		counter.push_back(L'\0');
+		Point2D vPos = {
+			DSurface::Sidebar->Get_Width() / 2 - 70 + pSideExt->Sidebar_BattlePoints_Offset.Get().X,
+			2 + pSideExt->Sidebar_BattlePoints_Offset.Get().Y
+		};
+
+		auto const TextFlags = static_cast<TextPrintType>(static_cast<int>(TextPrintType::UseGradPal | TextPrintType::Metal12)
+				| static_cast<int>(pSideExt->Sidebar_BattlePoints_Align.Get()));
+
+		DSurface::Sidebar->DSurfaceDrawText(counter.data(), &vRect, &vPos, Drawing::RGB_To_Int(clrToolTip), 0, TextFlags);
+	}
 
 	if (Phobos::UI::ShowHarvesterCounter && Phobos::Config::ShowHarvesterCounter)
 	{
@@ -179,7 +205,7 @@ ASMJIT_PATCH(0x715A4D, Replace_XXICON_With_New, 0x7)         //TechnoTypeClass::
 	if (_stricmp(pFilename, GameStrings::XXICON_SHP())
 		&& strstr(pFilename, GameStrings::dot_SHP()))
 	{
-		if (const auto pFile = FileSystem::LoadFile(RulesExtData::Instance()->MissingCameo.data(), false))
+		if (const auto pFile = FakeFileLoader::_Retrieve(RulesExtData::Instance()->MissingCameo.data(), false))
 		{
 			R->EAX(pFile);
 			return R->Origin() + 0xC;

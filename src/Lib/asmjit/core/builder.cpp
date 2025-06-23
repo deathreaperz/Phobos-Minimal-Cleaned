@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -39,7 +39,9 @@ public:
 static void BaseBuilder_deletePasses(BaseBuilder* self) noexcept
 {
 	for (Pass* pass : self->_passes)
+	{
 		pass->~Pass();
+	}
 	self->_passes.reset();
 }
 
@@ -48,8 +50,7 @@ static void BaseBuilder_deletePasses(BaseBuilder* self) noexcept
 
 BaseBuilder::BaseBuilder() noexcept
 	: BaseEmitter(EmitterType::kBuilder),
-	_codeZone(32u * 1024u),
-	_dataZone(16u * 1024u),
+	_codeZone(64u * 1024u),
 	_passZone(64u * 1024u),
 	_allocator(&_codeZone)
 { }
@@ -67,11 +68,13 @@ Error BaseBuilder::newInstNode(InstNode** out, InstId instId, InstOptions instOp
 	uint32_t opCapacity = InstNode::capacityOfOpCount(opCount);
 	ASMJIT_ASSERT(opCapacity >= InstNode::kBaseOpCapacity);
 
-	InstNode* node = _allocator.allocT<InstNode>(InstNode::nodeSizeOfOpCapacity(opCapacity));
-	if (ASMJIT_UNLIKELY(!node))
+	void* ptr = _codeZone.alloc(InstNode::nodeSizeOfOpCapacity(opCapacity));
+	if (ASMJIT_UNLIKELY(!ptr))
+	{
 		return reportError(DebugUtils::errored(kErrorOutOfMemory));
+	}
 
-	*out = new(Support::PlacementNew { node }) InstNode(this, instId, instOptions, opCount, opCapacity);
+	*out = new(Support::PlacementNew { ptr }) InstNode(instId, instOptions, opCount, opCapacity);
 	return kErrorOk;
 }
 
@@ -97,34 +100,29 @@ Error BaseBuilder::newEmbedDataNode(EmbedDataNode** out, TypeId typeId, const vo
 	TypeId finalTypeId = TypeUtils::deabstract(typeId, deabstractDelta);
 
 	if (ASMJIT_UNLIKELY(!TypeUtils::isValid(finalTypeId)))
+	{
 		return reportError(DebugUtils::errored(kErrorInvalidArgument));
+	}
 
 	uint32_t typeSize = TypeUtils::sizeOf(finalTypeId);
 	Support::FastUInt8 of = 0;
 
-	size_t dataSize = Support::mulOverflow(itemCount, size_t(typeSize), &of);
+	size_t nodeSize = Support::maddOverflow(itemCount, size_t(typeSize), sizeof(EmbedDataNode), &of);
 	if (ASMJIT_UNLIKELY(of))
-		return reportError(DebugUtils::errored(kErrorOutOfMemory));
-
-	EmbedDataNode* node;
-	ASMJIT_PROPAGATE(_newNodeT<EmbedDataNode>(&node));
-
-	node->_embed._typeId = typeId;
-	node->_embed._typeSize = uint8_t(typeSize);
-	node->_itemCount = itemCount;
-	node->_repeatCount = repeatCount;
-
-	uint8_t* dstData = node->_inlineData;
-	if (dataSize > EmbedDataNode::kInlineBufferSize)
 	{
-		dstData = static_cast<uint8_t*>(_dataZone.alloc(dataSize, 8));
-		if (ASMJIT_UNLIKELY(!dstData))
-			return reportError(DebugUtils::errored(kErrorOutOfMemory));
-		node->_externalData = dstData;
+		return reportError(DebugUtils::errored(kErrorOutOfMemory));
 	}
 
+	EmbedDataNode* node = nullptr;
+	ASMJIT_PROPAGATE(_newNodeTWithSize<EmbedDataNode>(
+		&node, Support::alignUp(nodeSize, Globals::kZoneAlignment),
+		typeId, uint8_t(typeSize), itemCount, repeatCount
+	));
+
 	if (data)
-		memcpy(dstData, data, dataSize);
+	{
+		memcpy(node->data(), data, node->dataSize());
+	}
 
 	*out = node;
 	return kErrorOk;
@@ -134,7 +132,7 @@ Error BaseBuilder::newConstPoolNode(ConstPoolNode** out)
 {
 	*out = nullptr;
 
-	ASMJIT_PROPAGATE(_newNodeT<ConstPoolNode>(out));
+	ASMJIT_PROPAGATE(_newNodeT<ConstPoolNode>(out, &_codeZone));
 	return registerLabelNode(*out);
 }
 
@@ -145,13 +143,17 @@ Error BaseBuilder::newCommentNode(CommentNode** out, const char* data, size_t si
 	if (data)
 	{
 		if (size == SIZE_MAX)
+		{
 			size = strlen(data);
+		}
 
 		if (size > 0)
 		{
-			data = static_cast<char*>(_dataZone.dup(data, size, true));
+			data = static_cast<char*>(_codeZone.dup(data, size, true));
 			if (ASMJIT_UNLIKELY(!data))
+			{
 				return reportError(DebugUtils::errored(kErrorOutOfMemory));
+			}
 		}
 	}
 
@@ -187,14 +189,20 @@ BaseNode* BaseBuilder::addNode(BaseNode* node) noexcept
 
 		prev->_next = node;
 		if (next)
+		{
 			next->_prev = node;
+		}
 		else
+		{
 			_nodeList._last = node;
+		}
 	}
 
-	node->addFlags(NodeFlags::kIsActive);
+	node->_addFlags(NodeFlags::kIsActive);
 	if (node->isSection())
+	{
 		_dirtySectionLinks = true;
+	}
 
 	_cursor = node;
 	return node;
@@ -211,15 +219,21 @@ BaseNode* BaseBuilder::addAfter(BaseNode* node, BaseNode* ref) noexcept
 	node->_prev = prev;
 	node->_next = next;
 
-	node->addFlags(NodeFlags::kIsActive);
+	node->_addFlags(NodeFlags::kIsActive);
 	if (node->isSection())
+	{
 		_dirtySectionLinks = true;
+	}
 
 	prev->_next = node;
 	if (next)
+	{
 		next->_prev = node;
+	}
 	else
+	{
 		_nodeList._last = node;
+	}
 
 	return node;
 }
@@ -237,15 +251,21 @@ BaseNode* BaseBuilder::addBefore(BaseNode* node, BaseNode* ref) noexcept
 	node->_prev = prev;
 	node->_next = next;
 
-	node->addFlags(NodeFlags::kIsActive);
+	node->_addFlags(NodeFlags::kIsActive);
 	if (node->isSection())
+	{
 		_dirtySectionLinks = true;
+	}
 
 	next->_prev = node;
 	if (prev)
+	{
 		prev->_next = node;
+	}
 	else
+	{
 		_nodeList._first = node;
+	}
 
 	return node;
 }
@@ -253,29 +273,44 @@ BaseNode* BaseBuilder::addBefore(BaseNode* node, BaseNode* ref) noexcept
 BaseNode* BaseBuilder::removeNode(BaseNode* node) noexcept
 {
 	if (!node->isActive())
+	{
 		return node;
+	}
 
 	BaseNode* prev = node->prev();
 	BaseNode* next = node->next();
 
 	if (_nodeList._first == node)
+	{
 		_nodeList._first = next;
+	}
 	else
+	{
 		prev->_next = next;
+	}
 
 	if (_nodeList._last == node)
+	{
 		_nodeList._last = prev;
+	}
 	else
+	{
 		next->_prev = prev;
+	}
 
 	node->_prev = nullptr;
 	node->_next = nullptr;
-	node->clearFlags(NodeFlags::kIsActive);
+	node->_clearFlags(NodeFlags::kIsActive);
+
 	if (node->isSection())
+	{
 		_dirtySectionLinks = true;
+	}
 
 	if (_cursor == node)
+	{
 		_cursor = prev;
+	}
 
 	return node;
 }
@@ -289,20 +324,30 @@ void BaseBuilder::removeNodes(BaseNode* first, BaseNode* last) noexcept
 	}
 
 	if (!first->isActive())
+	{
 		return;
+	}
 
 	BaseNode* prev = first->prev();
 	BaseNode* next = last->next();
 
 	if (_nodeList._first == first)
+	{
 		_nodeList._first = next;
+	}
 	else
+	{
 		prev->_next = next;
+	}
 
 	if (_nodeList._last == last)
+	{
 		_nodeList._last = prev;
+	}
 	else
+	{
 		next->_prev = prev;
+	}
 
 	BaseNode* node = first;
 	uint32_t didRemoveSection = false;
@@ -314,19 +359,25 @@ void BaseBuilder::removeNodes(BaseNode* first, BaseNode* last) noexcept
 
 		node->_prev = nullptr;
 		node->_next = nullptr;
-		node->clearFlags(NodeFlags::kIsActive);
+		node->_clearFlags(NodeFlags::kIsActive);
 		didRemoveSection |= uint32_t(node->isSection());
 
 		if (_cursor == node)
+		{
 			_cursor = prev;
+		}
 
 		if (node == last)
+		{
 			break;
+		}
 		node = next;
 	}
 
 	if (didRemoveSection)
+	{
 		_dirtySectionLinks = true;
+	}
 }
 
 BaseNode* BaseBuilder::setCursor(BaseNode* node) noexcept
@@ -344,21 +395,29 @@ Error BaseBuilder::sectionNodeOf(SectionNode** out, uint32_t sectionId)
 	*out = nullptr;
 
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	if (ASMJIT_UNLIKELY(!_code->isSectionValid(sectionId)))
+	{
 		return reportError(DebugUtils::errored(kErrorInvalidSection));
+	}
 
 	if (sectionId >= _sectionNodes.size())
 	{
 		Error err = _sectionNodes.reserve(&_allocator, sectionId + 1);
 		if (ASMJIT_UNLIKELY(err != kErrorOk))
+		{
 			return reportError(err);
+		}
 	}
 
 	SectionNode* node = nullptr;
 	if (sectionId < _sectionNodes.size())
+	{
 		node = _sectionNodes[sectionId];
+	}
 
 	if (!node)
 	{
@@ -366,7 +425,10 @@ Error BaseBuilder::sectionNodeOf(SectionNode** out, uint32_t sectionId)
 
 		// We have already reserved enough space, this cannot fail now.
 		if (sectionId >= _sectionNodes.size())
-			_sectionNodes.resize(&_allocator, sectionId + 1);
+		{
+			// SAFETY: No need to check for error condition as we have already reserved enough space.
+			(void)_sectionNodes.resize(&_allocator, sectionId + 1);
+		}
 
 		_sectionNodes[sectionId] = node;
 	}
@@ -378,7 +440,7 @@ Error BaseBuilder::sectionNodeOf(SectionNode** out, uint32_t sectionId)
 Error BaseBuilder::section(Section* section)
 {
 	SectionNode* node;
-	ASMJIT_PROPAGATE(sectionNodeOf(&node, section->id()));
+	ASMJIT_PROPAGATE(sectionNodeOf(&node, section->sectionId()));
 	ASMJIT_ASSUME(node != nullptr);
 
 	if (!node->isActive())
@@ -389,16 +451,21 @@ Error BaseBuilder::section(Section* section)
 	}
 	else
 	{
-		// This is a bit tricky. We cache section links to make sure that
-		// switching sections doesn't involve traversal in linked-list unless
-		// the position of the section has changed.
+		// This is a bit tricky. We cache section links to make sure that switching sections doesn't involve
+		// traversal in linked-list unless the position of the section has changed.
 		if (hasDirtySectionLinks())
+		{
 			updateSectionLinks();
+		}
 
 		if (node->_nextSection)
+		{
 			_cursor = node->_nextSection->_prev;
+		}
 		else
+		{
 			_cursor = _nodeList.last();
+		}
 	}
 
 	return kErrorOk;
@@ -407,7 +474,9 @@ Error BaseBuilder::section(Section* section)
 void BaseBuilder::updateSectionLinks() noexcept
 {
 	if (!_dirtySectionLinks)
+	{
 		return;
+	}
 
 	BaseNode* node_ = _nodeList.first();
 	SectionNode* currentSection = nullptr;
@@ -417,14 +486,18 @@ void BaseBuilder::updateSectionLinks() noexcept
 		if (node_->isSection())
 		{
 			if (currentSection)
+			{
 				currentSection->_nextSection = node_->as<SectionNode>();
+			}
 			currentSection = node_->as<SectionNode>();
 		}
 		node_ = node_->next();
 	}
 
 	if (currentSection)
+	{
 		currentSection->_nextSection = nullptr;
+	}
 
 	_dirtySectionLinks = false;
 }
@@ -437,14 +510,20 @@ Error BaseBuilder::labelNodeOf(LabelNode** out, uint32_t labelId)
 	*out = nullptr;
 
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	uint32_t index = labelId;
 	if (ASMJIT_UNLIKELY(index >= _code->labelCount()))
+	{
 		return DebugUtils::errored(kErrorInvalidLabel);
+	}
 
 	if (index >= _labelNodes.size())
+	{
 		ASMJIT_PROPAGATE(_labelNodes.resize(&_allocator, index + 1));
+	}
 
 	LabelNode* node = _labelNodes[index];
 	if (!node)
@@ -460,11 +539,12 @@ Error BaseBuilder::labelNodeOf(LabelNode** out, uint32_t labelId)
 Error BaseBuilder::registerLabelNode(LabelNode* node)
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
-	LabelEntry* le;
-	ASMJIT_PROPAGATE(_code->newLabelEntry(&le));
-	uint32_t labelId = le->id();
+	uint32_t labelId;
+	ASMJIT_PROPAGATE(_code->newLabelId(&labelId));
 
 	// We just added one label so it must be true.
 	ASMJIT_ASSERT(_labelNodes.size() < labelId + 1);
@@ -484,12 +564,15 @@ static Error BaseBuilder_newLabelInternal(BaseBuilder* self, uint32_t labelId)
 	Error err = self->_labelNodes.willGrow(&self->_allocator, growBy);
 
 	if (ASMJIT_UNLIKELY(err))
+	{
 		return self->reportError(err);
+	}
 
-	LabelNode* node;
+	LabelNode* node = nullptr;
 	ASMJIT_PROPAGATE(self->_newNodeT<LabelNode>(&node, labelId));
 
-	self->_labelNodes.resize(&self->_allocator, labelId + 1);
+	// SAFETY: No need to check for error condition as we have already reserved enough space.
+	(void)self->_labelNodes.resize(&self->_allocator, labelId + 1);
 	self->_labelNodes[labelId] = node;
 	node->_labelId = labelId;
 	return kErrorOk;
@@ -497,32 +580,52 @@ static Error BaseBuilder_newLabelInternal(BaseBuilder* self, uint32_t labelId)
 
 Label BaseBuilder::newLabel()
 {
-	uint32_t labelId = Globals::kInvalidId;
-	LabelEntry* le;
+	Label label;
 
-	if (_code &&
-		_code->newLabelEntry(&le) == kErrorOk &&
-		BaseBuilder_newLabelInternal(this, le->id()) == kErrorOk)
+	if (ASMJIT_LIKELY(_code))
 	{
-		labelId = le->id();
+		uint32_t labelId;
+		Error err = _code->newLabelId(&labelId);
+
+		if (ASMJIT_UNLIKELY(err))
+		{
+			reportError(err);
+		}
+		else
+		{
+			if (ASMJIT_LIKELY(BaseBuilder_newLabelInternal(this, labelId)) == kErrorOk)
+			{
+				label.setId(labelId);
+			}
+		}
 	}
 
-	return Label(labelId);
+	return label;
 }
 
 Label BaseBuilder::newNamedLabel(const char* name, size_t nameSize, LabelType type, uint32_t parentId)
 {
-	uint32_t labelId = Globals::kInvalidId;
-	LabelEntry* le;
+	Label label;
 
-	if (_code &&
-		_code->newNamedLabelEntry(&le, name, nameSize, type, parentId) == kErrorOk &&
-		BaseBuilder_newLabelInternal(this, le->id()) == kErrorOk)
+	if (ASMJIT_LIKELY(_code))
 	{
-		labelId = le->id();
+		uint32_t labelId;
+		Error err = _code->newNamedLabelId(&labelId, name, nameSize, type, parentId);
+
+		if (ASMJIT_UNLIKELY(err))
+		{
+			reportError(err);
+		}
+		else
+		{
+			if (ASMJIT_LIKELY(BaseBuilder_newLabelInternal(this, labelId) == kErrorOk))
+			{
+				label.setId(labelId);
+			}
+		}
 	}
 
-	return Label(labelId);
+	return label;
 }
 
 Error BaseBuilder::bind(const Label& label)
@@ -540,15 +643,21 @@ Error BaseBuilder::bind(const Label& label)
 ASMJIT_FAVOR_SIZE Pass* BaseBuilder::passByName(const char* name) const noexcept
 {
 	for (Pass* pass : _passes)
+	{
 		if (strcmp(pass->name(), name) == 0)
+		{
 			return pass;
+		}
+	}
 	return nullptr;
 }
 
 ASMJIT_FAVOR_SIZE Error BaseBuilder::addPass(Pass* pass) noexcept
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	if (ASMJIT_UNLIKELY(pass == nullptr))
 	{
@@ -560,7 +669,9 @@ ASMJIT_FAVOR_SIZE Error BaseBuilder::addPass(Pass* pass) noexcept
 	{
 		// Kinda weird, but okay...
 		if (pass->_cb == this)
+		{
 			return kErrorOk;
+		}
 		return DebugUtils::errored(kErrorInvalidState);
 	}
 
@@ -569,37 +680,17 @@ ASMJIT_FAVOR_SIZE Error BaseBuilder::addPass(Pass* pass) noexcept
 	return kErrorOk;
 }
 
-ASMJIT_FAVOR_SIZE Error BaseBuilder::deletePass(Pass* pass) noexcept
-{
-	if (ASMJIT_UNLIKELY(!_code))
-		return DebugUtils::errored(kErrorNotInitialized);
-
-	if (ASMJIT_UNLIKELY(pass == nullptr))
-		return DebugUtils::errored(kErrorInvalidArgument);
-
-	if (pass->_cb != nullptr)
-	{
-		if (pass->_cb != this)
-			return DebugUtils::errored(kErrorInvalidState);
-
-		uint32_t index = _passes.indexOf(pass);
-		ASMJIT_ASSERT(index != Globals::kNotFound);
-
-		pass->_cb = nullptr;
-		_passes.removeAt(index);
-	}
-
-	pass->~Pass();
-	return kErrorOk;
-}
-
 Error BaseBuilder::runPasses()
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	if (_passes.empty())
+	{
 		return kErrorOk;
+	}
 
 	ErrorHandler* prev = errorHandler();
 	PostponedErrorHandler postponed;
@@ -612,13 +703,17 @@ Error BaseBuilder::runPasses()
 		_passZone.reset();
 		err = pass->run(&_passZone, _logger);
 		if (err)
+		{
 			break;
+		}
 	}
 	_passZone.reset();
 	setErrorHandler(prev);
 
 	if (ASMJIT_UNLIKELY(err))
+	{
 		return reportError(err, !postponed._message.empty() ? postponed._message.data() : nullptr);
+	}
 
 	return kErrorOk;
 }
@@ -634,7 +729,9 @@ Error BaseBuilder::_emit(InstId instId, const Operand_& o0, const Operand_& o1, 
 	if (Support::test(options, InstOptions::kReserved))
 	{
 		if (ASMJIT_UNLIKELY(!_code))
+		{
 			return DebugUtils::errored(kErrorNotInitialized);
+		}
 
 #ifndef ASMJIT_NO_VALIDATION
 		// Strict validation.
@@ -665,29 +762,33 @@ Error BaseBuilder::_emit(InstId instId, const Operand_& o0, const Operand_& o1, 
 	uint32_t opCapacity = InstNode::capacityOfOpCount(opCount);
 	ASMJIT_ASSERT(opCapacity >= InstNode::kBaseOpCapacity);
 
-	InstNode* node = _allocator.allocT<InstNode>(InstNode::nodeSizeOfOpCapacity(opCapacity));
+	void* ptr = _codeZone.alloc(InstNode::nodeSizeOfOpCapacity(opCapacity));
 	const char* comment = inlineComment();
 
 	resetInstOptions();
 	resetInlineComment();
 
-	if (ASMJIT_UNLIKELY(!node))
+	if (ASMJIT_UNLIKELY(!ptr))
 	{
 		resetExtraReg();
 		return reportError(DebugUtils::errored(kErrorOutOfMemory));
 	}
 
-	node = new(Support::PlacementNew { node }) InstNode(this, instId, options, opCount, opCapacity);
+	InstNode* node = new(Support::PlacementNew { ptr }) InstNode(instId, options, opCount, opCapacity);
 	node->setExtraReg(extraReg());
 	node->setOp(0, o0);
 	node->setOp(1, o1);
 	node->setOp(2, o2);
 	for (uint32_t i = 3; i < opCount; i++)
+	{
 		node->setOp(i, opExt[i - 3]);
+	}
 	node->resetOpRange(opCount, opCapacity);
 
 	if (comment)
-		node->setInlineComment(static_cast<char*>(_dataZone.dup(comment, strlen(comment), true)));
+	{
+		node->setInlineComment(static_cast<char*>(_codeZone.dup(comment, strlen(comment), true)));
+	}
 
 	addNode(node);
 	resetExtraReg();
@@ -700,7 +801,9 @@ Error BaseBuilder::_emit(InstId instId, const Operand_& o0, const Operand_& o1, 
 Error BaseBuilder::align(AlignMode alignMode, uint32_t alignment)
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	AlignNode* node;
 	ASMJIT_PROPAGATE(newAlignNode(&node, alignMode, alignment));
@@ -716,7 +819,9 @@ Error BaseBuilder::align(AlignMode alignMode, uint32_t alignment)
 Error BaseBuilder::embed(const void* data, size_t dataSize)
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	EmbedDataNode* node;
 	ASMJIT_PROPAGATE(newEmbedDataNode(&node, TypeId::kUInt8, data, dataSize));
@@ -729,7 +834,9 @@ Error BaseBuilder::embed(const void* data, size_t dataSize)
 Error BaseBuilder::embedDataArray(TypeId typeId, const void* data, size_t itemCount, size_t itemRepeat)
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	EmbedDataNode* node;
 	ASMJIT_PROPAGATE(newEmbedDataNode(&node, typeId, data, itemCount, itemRepeat));
@@ -742,10 +849,14 @@ Error BaseBuilder::embedDataArray(TypeId typeId, const void* data, size_t itemCo
 Error BaseBuilder::embedConstPool(const Label& label, const ConstPool& pool)
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	if (!isLabelValid(label))
+	{
 		return reportError(DebugUtils::errored(kErrorInvalidLabel));
+	}
 
 	ASMJIT_PROPAGATE(align(AlignMode::kData, uint32_t(pool.alignment())));
 	ASMJIT_PROPAGATE(bind(label));
@@ -761,24 +872,15 @@ Error BaseBuilder::embedConstPool(const Label& label, const ConstPool& pool)
 
 // BaseBuilder - EmbedLabel & EmbedLabelDelta
 // ==========================================
-//
-// If dataSize is zero it means that the size is the same as target register width, however,
-// if it's provided we really want to validate whether it's within the possible range.
-
-static inline bool BaseBuilder_checkDataSize(size_t dataSize) noexcept
-{
-	return !dataSize || (Support::isPowerOf2(dataSize) && dataSize <= 8);
-}
 
 Error BaseBuilder::embedLabel(const Label& label, size_t dataSize)
 {
-	if (ASMJIT_UNLIKELY(!_code))
-		return DebugUtils::errored(kErrorNotInitialized);
+	if (ASMJIT_UNLIKELY(!Support::bool_and(_code, Support::isZeroOrPowerOf2UpTo(dataSize, 8u))))
+	{
+		return reportError(DebugUtils::errored(!_code ? kErrorNotInitialized : kErrorInvalidArgument));
+	}
 
-	if (!BaseBuilder_checkDataSize(dataSize))
-		return reportError(DebugUtils::errored(kErrorInvalidArgument));
-
-	EmbedLabelNode* node;
+	EmbedLabelNode* node = nullptr;
 	ASMJIT_PROPAGATE(_newNodeT<EmbedLabelNode>(&node, label.id(), uint32_t(dataSize)));
 
 	addNode(node);
@@ -787,13 +889,12 @@ Error BaseBuilder::embedLabel(const Label& label, size_t dataSize)
 
 Error BaseBuilder::embedLabelDelta(const Label& label, const Label& base, size_t dataSize)
 {
-	if (ASMJIT_UNLIKELY(!_code))
-		return DebugUtils::errored(kErrorNotInitialized);
+	if (ASMJIT_UNLIKELY(!Support::bool_and(_code, Support::isZeroOrPowerOf2UpTo(dataSize, 8u))))
+	{
+		return reportError(DebugUtils::errored(!_code ? kErrorNotInitialized : kErrorInvalidArgument));
+	}
 
-	if (!BaseBuilder_checkDataSize(dataSize))
-		return reportError(DebugUtils::errored(kErrorInvalidArgument));
-
-	EmbedLabelDeltaNode* node;
+	EmbedLabelDeltaNode* node = nullptr;
 	ASMJIT_PROPAGATE(_newNodeT<EmbedLabelDeltaNode>(&node, label.id(), base.id(), uint32_t(dataSize)));
 
 	addNode(node);
@@ -806,7 +907,9 @@ Error BaseBuilder::embedLabelDelta(const Label& label, const Label& base, size_t
 Error BaseBuilder::comment(const char* data, size_t size)
 {
 	if (ASMJIT_UNLIKELY(!_code))
+	{
 		return DebugUtils::errored(kErrorNotInitialized);
+	}
 
 	CommentNode* node;
 	ASMJIT_PROPAGATE(newCommentNode(&node, data, size));
@@ -898,7 +1001,7 @@ Error BaseBuilder::serializeTo(BaseEmitter* dst)
 		else if (node_->isSection())
 		{
 			SectionNode* node = node_->as<SectionNode>();
-			err = dst->section(_code->sectionById(node->id()));
+			err = dst->section(_code->sectionById(node->sectionId()));
 		}
 		else if (node_->isComment())
 		{
@@ -906,7 +1009,10 @@ Error BaseBuilder::serializeTo(BaseEmitter* dst)
 			err = dst->comment(node->inlineComment());
 		}
 
-		if (err) break;
+		if (err)
+		{
+			break;
+		}
 		node_ = node_->next();
 	}
 	while (node_);
@@ -917,46 +1023,62 @@ Error BaseBuilder::serializeTo(BaseEmitter* dst)
 // BaseBuilder - Events
 // ====================
 
-Error BaseBuilder::onAttach(CodeHolder* code) noexcept
+static ASMJIT_INLINE void BaseBuilder_clearAll(BaseBuilder* self) noexcept
 {
-	ASMJIT_PROPAGATE(Base::onAttach(code));
+	self->_sectionNodes.reset();
+	self->_labelNodes.reset();
 
+	self->_allocator.reset(&self->_codeZone);
+	self->_codeZone.reset();
+	self->_passZone.reset();
+
+	self->_cursor = nullptr;
+	self->_nodeList.reset();
+}
+
+static ASMJIT_INLINE Error BaseBuilder_initSection(BaseBuilder* self) noexcept
+{
 	SectionNode* initialSection;
-	Error err = sectionNodeOf(&initialSection, 0);
 
-	if (!err)
-		err = _passes.willGrow(&_allocator, 8);
-
-	if (ASMJIT_UNLIKELY(err))
-	{
-		onDetach(code);
-		return err;
-	}
+	ASMJIT_PROPAGATE(self->sectionNodeOf(&initialSection, 0));
+	ASMJIT_PROPAGATE(self->_passes.willGrow(&self->_allocator, 4));
 
 	ASMJIT_ASSUME(initialSection != nullptr);
-	_cursor = initialSection;
-	_nodeList.reset(initialSection, initialSection);
-	initialSection->setFlags(NodeFlags::kIsActive);
+	self->_cursor = initialSection;
+	self->_nodeList.reset(initialSection, initialSection);
+	initialSection->_setFlags(NodeFlags::kIsActive);
 
 	return kErrorOk;
 }
 
-Error BaseBuilder::onDetach(CodeHolder* code) noexcept
+Error BaseBuilder::onAttach(CodeHolder& code) noexcept
+{
+	ASMJIT_PROPAGATE(Base::onAttach(code));
+
+	Error err = BaseBuilder_initSection(this);
+	if (ASMJIT_UNLIKELY(err))
+	{
+		onDetach(code);
+	}
+	return err;
+}
+
+Error BaseBuilder::onDetach(CodeHolder& code) noexcept
 {
 	BaseBuilder_deletePasses(this);
-	_sectionNodes.reset();
-	_labelNodes.reset();
-
-	_allocator.reset(&_codeZone);
-	_codeZone.reset();
-	_dataZone.reset();
-	_passZone.reset();
-
-	_nodeFlags = NodeFlags::kNone;
-	_cursor = nullptr;
-	_nodeList.reset();
+	BaseBuilder_clearAll(this);
 
 	return Base::onDetach(code);
+}
+
+Error BaseBuilder::onReinit(CodeHolder& code) noexcept
+{
+	// BaseEmitter::onReinit() never fails.
+	(void)Base::onReinit(code);
+
+	BaseBuilder_deletePasses(this);
+	BaseBuilder_clearAll(this);
+	return BaseBuilder_initSection(this);
 }
 
 // Pass - Construction & Destruction

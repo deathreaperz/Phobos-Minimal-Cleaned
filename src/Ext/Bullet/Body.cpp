@@ -32,12 +32,18 @@ static bool IsAllowedSplitsTarget(TechnoClass* pSource, HouseClass* pOwner, Weap
 
 	auto const pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
 
+	if (pWeaponExt->SkipWeaponPicking)
+		return true;
+
 	if (!EnumFunctions::CanTargetHouse(pWeaponExt->CanTargetHouses, pOwner, pTarget->Owner)
 			|| !EnumFunctions::IsCellEligible(pTarget->GetCell(), pWeaponExt->CanTarget, true, true)
 			|| !EnumFunctions::IsTechnoEligible(pTarget, pWeaponExt->CanTarget))
 	{
 		return false;
 	}
+
+	if (!TechnoExtData::ObjectHealthAllowFiring(pTarget, pWeapon))
+		return false;
 
 	if (!pWeaponExt->HasRequiredAttachedEffects(pTarget, pSource))
 		return false;
@@ -461,7 +467,10 @@ bool BulletExtData::ShrapnelTargetEligible(BulletClass* pThis, AbstractClass* pT
 
 		if (const auto pTargetObj = flag_cast_to<ObjectClass*, false>(pTarget))
 		{
-			auto pTargetType = static_cast<TechnoClass*>(pTargetObj)->GetType();
+			if (!pWeaponExt->SkipWeaponPicking && !TechnoExtData::ObjectHealthAllowFiring(pTargetObj, pThis->Type->ShrapnelWeapon))
+				return false;
+
+			auto pTargetType = pTargetObj->GetType();
 
 			switch ((((DWORD*)pTargetObj)[0]))
 			{
@@ -473,11 +482,14 @@ bool BulletExtData::ShrapnelTargetEligible(BulletClass* pThis, AbstractClass* pT
 				if (!pTargetType->LegalTarget || !pWhExt->CanDealDamage(static_cast<TechnoClass*>(pTargetObj), false, false))
 					return false;
 
-				if (!EnumFunctions::IsTechnoEligible(static_cast<TechnoClass*>(pTargetObj), pWeaponExt->CanTarget))
-					return false;
+				if (!pWeaponExt->SkipWeaponPicking)
+				{
+					if (!EnumFunctions::IsTechnoEligible(static_cast<TechnoClass*>(pTargetObj), pWeaponExt->CanTarget))
+						return false;
 
-				if (!pWeaponExt->HasRequiredAttachedEffects(static_cast<TechnoClass*>(pTargetObj), pThis->Owner))
-					return false;
+					if (!pWeaponExt->HasRequiredAttachedEffects(static_cast<TechnoClass*>(pTargetObj), pThis->Owner))
+						return false;
+				}
 			}
 			break;
 			default:
@@ -493,15 +505,18 @@ bool BulletExtData::ShrapnelTargetEligible(BulletClass* pThis, AbstractClass* pT
 			break;
 			}
 
-			if (!EnumFunctions::CanTargetHouse(pWeaponExt->CanTargetHouses, pThis->Owner ? pThis->Owner->Owner : BulletExtContainer::Instance.Find(pThis)->Owner, pTargetObj->GetOwningHouse()))
-				return false;
+			if (!pWeaponExt->SkipWeaponPicking)
+			{
+				if (!EnumFunctions::CanTargetHouse(pWeaponExt->CanTargetHouses, pThis->Owner ? pThis->Owner->Owner : BulletExtContainer::Instance.Find(pThis)->Owner, pTargetObj->GetOwningHouse()))
+					return false;
 
-			if (!EnumFunctions::IsCellEligible(pTargetObj->GetCell(), pWeaponExt->CanTarget, true, true))
-				return false;
+				if (!EnumFunctions::IsCellEligible(pTargetObj->GetCell(), pWeaponExt->CanTarget, true, true))
+					return false;
+			}
 		}
 		else if (pTarget->WhatAmI() == CellClass::AbsID)
 		{
-			if (!EnumFunctions::IsCellEligible((CellClass*)pTarget, pWeaponExt->CanTarget, true, true))
+			if (!pWeaponExt->SkipWeaponPicking && !EnumFunctions::IsCellEligible((CellClass*)pTarget, pWeaponExt->CanTarget, true, true))
 			{
 				return false;
 			}
@@ -683,7 +698,7 @@ bool BulletExtData::ApplyMCAlternative(BulletClass* pThis)
 				pThis->Owner->Owner,
 				pTarget->Owner,
 				pThis->Owner,
-				false
+				false, false
 			);
 		}
 

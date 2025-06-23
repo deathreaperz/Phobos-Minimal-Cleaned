@@ -377,7 +377,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	virtual void DrawExtraInfo(Point2D const* location, Point2D const* originalLocation, RectangleStruct const* bounds) const RX;
 	virtual void Uncloak(bool bPlaySound) RX;
 	virtual void Cloak(bool bPlaySound) RX;
-	virtual DWORD vt_entry_464(DWORD dwUnk) const R0;
+	virtual int GetFlashingIntensity(int currentIntensity) const R0;
 	virtual void UpdateRefinerySmokeSystems() RX;
 	virtual DWORD DisguiseAs(AbstractClass* pTarget) R0;
 	virtual void ClearDisguise() RX;
@@ -770,13 +770,27 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	void BaseIsAttacked(TechnoClass* pEnemy) const
 	{ JMP_THIS(0x708080); }
 
-	bool planing_6385C0() const { JMP_THIS(0x6385C0); }
+	bool TryNextPlanningTokenNode() const { JMP_THIS(0x6385C0); }
 	bool AllowToRetaliate(TechnoClass* source, WarheadTypeClass* warhead) const { JMP_THIS(0x7087C0); }
 
 	// returns the house that controls this techno (replaces the ID with player's ID if needed)
 	int GetControllingHouse() const {
 		JMP_THIS(0x6339B0);
 	}
+
+	void GattlingRateUp(int value)
+	{ JMP_THIS(0x70DE70); }
+
+	void GattlingRateDown(int value)
+	{ JMP_THIS(0x70E000); }
+
+	void ReleaseLocomotor(bool setTarget)
+	{ JMP_THIS(0x70FEE0); }
+
+		// changes locomotor to the given one, Magnetron style
+		//	// mind that this locks up the source too, Magnetron style
+    void ImbueLocomotor(FootClass* target, CLSID clsid)
+	{ JMP_THIS(0x710000); }
 
 	//Constructor
 	TechnoClass(HouseClass* pOwner) noexcept

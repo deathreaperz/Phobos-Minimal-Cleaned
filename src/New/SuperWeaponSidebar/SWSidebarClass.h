@@ -15,7 +15,8 @@ public:
 	bool AddColumn();
 	bool RemoveColumn();
 
-	void Init_Clear();
+	void InitClear();
+	void InitIO();
 
 	bool AddButton(int superIdx);
 	void SortButtons();
@@ -23,28 +24,15 @@ public:
 	int GetMaximumButtonCount();
 
 	static bool IsEnabled();
+	static void RecheckCameo();
 
 private:
-	static std::unique_ptr<SWSidebarClass> Instance;
+	static SWSidebarClass Instance;
 public:
-	static void Allocate()
-	{
-		Instance = std::make_unique<SWSidebarClass>();
-	}
-
-	static void Remove()
-	{
-		Instance = nullptr;
-	}
 
 	static SWSidebarClass* Global()
 	{
-		return Instance.get();
-	}
-
-	static void Clear()
-	{
-		Allocate();
+		return &Instance;
 	}
 
 public:
@@ -52,6 +40,7 @@ public:
 	SWColumnClass* CurrentColumn { nullptr };
 	SWButtonClass* CurrentButton { nullptr };
 	ToggleSWButtonClass* ToggleButton { nullptr };
+	bool DisableEntry { false };
 
 	static CommandClass* Commands[10];
 };

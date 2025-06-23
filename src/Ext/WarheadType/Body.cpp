@@ -610,6 +610,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->ElectricAssaultLevel.Read(exINI, pSection, "ElectricAssaultLevel");
 	this->AirstrikeTargets.Read(exINI, pSection, "AirstrikeTargets");
 	this->CanKill.Read(exINI, pSection, "CanKill");
+
+	this->ElectricAssault_Requireverses.Read(exINI, pSection, "ElectricAssault.Requireverses");
 }
 
 //https://github.com/Phobos-developers/Phobos/issues/629
@@ -764,7 +766,7 @@ bool WarheadTypeExtData::CanAffectHouse(HouseClass* pOwnerHouse, HouseClass* pTa
 	return true;
 }
 
-bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool SkipVerses) const
+bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool SkipVerses, bool CheckImmune) const
 {
 	if (pTechno)
 	{
@@ -778,7 +780,7 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool S
 
 		const auto pType = pTechno->GetTechnoType();
 
-		if (pType->Immune)
+		if (CheckImmune && pType->Immune)
 			return false;
 
 		if (auto const pBld = cast_to<BuildingClass*, false>(pTechno))
@@ -943,7 +945,7 @@ void WarheadTypeExtData::applyWebby(TechnoClass* pTarget, HouseClass* pKillerHou
 				AnimTypeClass* pAnimType = pAnim[ScenarioClass::Instance->Random.RandomFromMax(pAnim.size() - 1)];
 				pExt->WebbedAnim.reset(GameCreate<AnimClass>(pAnimType, pInf->Location, 0, 1, 0x600, 0, false));
 				pExt->WebbedAnim->SetOwnerObject(pInf);
-				AnimExtData::SetAnimOwnerHouseKind(pExt->WebbedAnim, pKillerHouse, pInf->Owner, pKillerTech, false);
+				AnimExtData::SetAnimOwnerHouseKind(pExt->WebbedAnim, pKillerHouse, pInf->Owner, pKillerTech, false, false);
 				TechnoExtData::StoreLastTargetAndMissionAfterWebbed(pInf);
 			}
 		}
@@ -960,11 +962,11 @@ void WarheadTypeExtData::applyWebby(TechnoClass* pTarget, HouseClass* pKillerHou
 					AnimTypeClass* pAnimType = pAnim[ScenarioClass::Instance->Random.RandomFromMax(pAnim.size() - 1)];
 					pExt->WebbedAnim.reset(GameCreate<AnimClass>(pAnimType, pInf->Location, 0, 1, 0x600, 0, false));
 					pExt->WebbedAnim->SetOwnerObject(pInf);
-					AnimExtData::SetAnimOwnerHouseKind(pExt->WebbedAnim, pKillerHouse, pInf->Owner, pKillerTech, false);
+					AnimExtData::SetAnimOwnerHouseKind(pExt->WebbedAnim, pKillerHouse, pInf->Owner, pKillerTech, false, false);
 				}
 				else
 				{
-					AnimExtData::SetAnimOwnerHouseKind(pExt->WebbedAnim, pKillerHouse, pInf->Owner, pKillerTech, false);
+					AnimExtData::SetAnimOwnerHouseKind(pExt->WebbedAnim, pKillerHouse, pInf->Owner, pKillerTech, false, false);
 				}
 			}
 			else //turn off
@@ -1618,6 +1620,7 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->ElectricAssaultLevel)
 		.Process(this->AirstrikeTargets)
 		.Process(this->CanKill)
+		.Process(this->ElectricAssault_Requireverses)
 		;
 
 	PaintBallData.Serialize(Stm);

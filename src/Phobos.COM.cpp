@@ -35,12 +35,12 @@ public:
 
 	virtual ULONG __stdcall AddRef() override
 	{
-		return Imports::InterlockedIncrementFunc.get()(&this->nRefCount);
+		return Imports::InterlockedIncrementFunc.invoke()(&this->nRefCount);
 	}
 
 	virtual ULONG __stdcall Release() override
 	{
-		int nNewRef = Imports::InterlockedDecrementFunc.get()(&this->nRefCount);
+		int nNewRef = Imports::InterlockedDecrementFunc.invoke()(&this->nRefCount);
 		if (!nNewRef)
 			GameDelete(this);
 		return nNewRef;
@@ -70,9 +70,9 @@ public:
 	virtual HRESULT __stdcall LockServer(BOOL fLock) override
 	{
 		if (fLock)
-			Imports::InterlockedIncrementFunc.get()(&this->nRefCount);
+			Imports::InterlockedIncrementFunc.invoke()(&this->nRefCount);
 		else
-			Imports::InterlockedDecrementFunc.get()(&this->nRefCount);
+			Imports::InterlockedDecrementFunc.invoke()(&this->nRefCount);
 
 		return S_OK;
 	}
@@ -88,7 +88,7 @@ void RegisterFactoryForClass()
 	IClassFactory* pFactory = GameCreate<TClassFactory<T>>();
 	DWORD dwRegister = 0;
 	CLSID clsid = __uuidof(T);
-	HRESULT hr = CoRegisterClassObject(clsid, pFactory, CLSCTX_INPROC_SERVER, REGCLS_MULTIPLEUSE, &dwRegister);
+	HRESULT hr = Imports::CoRegisterClassObject.invoke()(clsid, pFactory, CLSCTX_INPROC_SERVER, REGCLS_MULTIPLEUSE, &dwRegister);
 
 	const std::string name = typeid(T).name();
 

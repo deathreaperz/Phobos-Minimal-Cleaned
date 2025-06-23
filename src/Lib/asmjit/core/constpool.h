@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_CONSTPOOL_H_INCLUDED
@@ -78,10 +78,11 @@ public:
 			_offset(uint32_t(offset))
 		{ }
 
-		ASMJIT_INLINE_NODEBUG void* data() const noexcept
-		{
-			return static_cast<void*>(const_cast<ConstPool::Node*>(this) + 1);
-		}
+		[[nodiscard]]
+		ASMJIT_INLINE_NODEBUG void* data() noexcept { return Support::offsetPtr<void>(this, sizeof(*this)); }
+
+		[[nodiscard]]
+		ASMJIT_INLINE_NODEBUG const void* data() const noexcept { return Support::offsetPtr<void>(this, sizeof(*this)); }
 	};
 
 	//! Data comparer used internally.
@@ -93,11 +94,13 @@ public:
 		ASMJIT_INLINE_NODEBUG Compare(size_t dataSize) noexcept
 			: _dataSize(dataSize) { }
 
+		[[nodiscard]]
 		ASMJIT_INLINE_NODEBUG int operator()(const Node& a, const Node& b) const noexcept
 		{
 			return ::memcmp(a.data(), b.data(), _dataSize);
 		}
 
+		[[nodiscard]]
 		ASMJIT_INLINE_NODEBUG int operator()(const Node& a, const void* data) const noexcept
 		{
 			return ::memcmp(a.data(), data, _dataSize);
@@ -126,7 +129,10 @@ public:
 			_size = 0;
 		}
 
+		[[nodiscard]]
 		ASMJIT_INLINE_NODEBUG bool empty() const noexcept { return _size == 0; }
+
+		[[nodiscard]]
 		ASMJIT_INLINE_NODEBUG size_t size() const noexcept { return _size; }
 
 		inline void setDataSize(size_t dataSize) noexcept
@@ -135,6 +141,7 @@ public:
 			_dataSize = dataSize;
 		}
 
+		[[nodiscard]]
 		ASMJIT_INLINE_NODEBUG Node* get(const void* data) noexcept
 		{
 			Compare cmp(_dataSize);
@@ -185,10 +192,16 @@ public:
 			}
 		}
 
+		[[nodiscard]]
 		static inline Node* _newNode(Zone* zone, const void* data, size_t size, size_t offset, bool shared) noexcept
 		{
-			Node* node = zone->allocT<Node>(Support::alignUp(sizeof(Node) + size, alignof(Node)));
-			if (ASMJIT_UNLIKELY(!node)) return nullptr;
+			size_t nodeSize = Support::alignUp(sizeof(Node) + size, Globals::kZoneAlignment);
+			Node* node = zone->alloc<Node>(nodeSize);
+
+			if (ASMJIT_UNLIKELY(!node))
+			{
+				return nullptr;
+			}
 
 			node = new(Support::PlacementNew { node }) Node(offset, shared);
 			memcpy(node->data(), data, size);
@@ -237,12 +250,19 @@ public:
 	//! \name Accessors
 	//! \{
 	//! Tests whether the constant-pool is empty.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool empty() const noexcept { return _size == 0; }
+
 	//! Returns the size of the constant-pool in bytes.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG size_t size() const noexcept { return _size; }
+
 	//! Returns minimum alignment.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG size_t alignment() const noexcept { return _alignment; }
+
 	//! Returns the minimum size of all items added to the constant pool.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG size_t minItemSize() const noexcept { return _minItemSize; }
 
 	//! \}

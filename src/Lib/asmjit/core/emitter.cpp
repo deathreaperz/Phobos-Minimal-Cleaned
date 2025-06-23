@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -59,16 +59,24 @@ static ASMJIT_NOINLINE void BaseEmitter_updateForcedOptions(BaseEmitter* self) n
 	}
 
 	if (emitComments)
+	{
 		self->_addEmitterFlags(EmitterFlags::kLogComments);
+	}
 	else
+	{
 		self->_clearEmitterFlags(EmitterFlags::kLogComments);
+	}
 
 	// The reserved option tells emitter (Assembler/Builder/Compiler) that there may be either a border
 	// case (CodeHolder not attached, for example) or that logging or validation is required.
 	if (self->_code == nullptr || self->_logger || hasDiagnosticOptions)
+	{
 		self->_forcedInstOptions |= InstOptions::kReserved;
+	}
 	else
+	{
 		self->_forcedInstOptions &= ~InstOptions::kReserved;
+	}
 }
 
 // BaseEmitter - Diagnostic Options
@@ -102,7 +110,9 @@ void BaseEmitter::setLogger(Logger* logger) noexcept
 		_logger = nullptr;
 		_clearEmitterFlags(EmitterFlags::kOwnLogger);
 		if (_code)
+		{
 			_logger = _code->logger();
+		}
 	}
 	BaseEmitter_updateForcedOptions(this);
 #else
@@ -125,19 +135,26 @@ void BaseEmitter::setErrorHandler(ErrorHandler* errorHandler) noexcept
 		_errorHandler = nullptr;
 		_clearEmitterFlags(EmitterFlags::kOwnErrorHandler);
 		if (_code)
+		{
 			_errorHandler = _code->errorHandler();
+		}
 	}
 }
 
-Error BaseEmitter::reportError(Error err, const char* message)
+Error BaseEmitter::_reportError(Error err, const char* message)
 {
+	ASMJIT_ASSERT(err != kErrorOk);
+
 	ErrorHandler* eh = _errorHandler;
 	if (eh)
 	{
 		if (!message)
+		{
 			message = DebugUtils::errorAsString(err);
+		}
 		eh->handleError(err, message, this);
 	}
+
 	return err;
 }
 
@@ -363,7 +380,9 @@ Error BaseEmitter::commentf(const char* fmt, ...)
 	if (!hasEmitterFlag(EmitterFlags::kLogComments))
 	{
 		if (!hasEmitterFlag(EmitterFlags::kAttached))
+		{
 			return reportError(DebugUtils::errored(kErrorNotInitialized));
+		}
 		return kErrorOk;
 	}
 
@@ -388,7 +407,9 @@ Error BaseEmitter::commentv(const char* fmt, va_list ap)
 	if (!hasEmitterFlag(EmitterFlags::kLogComments))
 	{
 		if (!hasEmitterFlag(EmitterFlags::kAttached))
+		{
 			return reportError(DebugUtils::errored(kErrorNotInitialized));
+		}
 		return kErrorOk;
 	}
 
@@ -407,29 +428,35 @@ Error BaseEmitter::commentv(const char* fmt, va_list ap)
 // BaseEmitter - Events
 // ====================
 
-Error BaseEmitter::onAttach(CodeHolder* code) noexcept
+Error BaseEmitter::onAttach(CodeHolder& code) noexcept
 {
-	_code = code;
-	_environment = code->environment();
+	_code = &code;
+	_environment = code.environment();
 	_addEmitterFlags(EmitterFlags::kAttached);
 
-	const ArchTraits& archTraits = ArchTraits::byArch(code->arch());
-	RegType nativeRegType = Environment::is32Bit(code->arch()) ? RegType::kGp32 : RegType::kGp64;
-	_gpSignature = archTraits.regTypeToSignature(nativeRegType);
+	_gpSignature.setBits(
+	  Environment::is32Bit(code.arch())
+		? RegTraits<RegType::kGp32>::kSignature
+		: RegTraits<RegType::kGp64>::kSignature
+	);
 
 	onSettingsUpdated();
 	return kErrorOk;
 }
 
-Error BaseEmitter::onDetach(CodeHolder* code) noexcept
+Error BaseEmitter::onDetach(CodeHolder& code) noexcept
 {
 	DebugUtils::unused(code);
 
 	if (!hasOwnLogger())
+	{
 		_logger = nullptr;
+	}
 
 	if (!hasOwnErrorHandler())
+	{
 		_errorHandler = nullptr;
+	}
 
 	_clearEmitterFlags(~kEmitterPreservedFlags);
 	_instructionAlignment = uint8_t(0);
@@ -442,7 +469,18 @@ Error BaseEmitter::onDetach(CodeHolder* code) noexcept
 	_instOptions = InstOptions::kNone;
 	_extraReg.reset();
 	_inlineComment = nullptr;
-	_funcs.reset();
+
+	return kErrorOk;
+}
+
+Error BaseEmitter::onReinit(CodeHolder& code) noexcept
+{
+	ASMJIT_ASSERT(_code == &code);
+	DebugUtils::unused(code);
+
+	_instOptions = InstOptions::kNone;
+	_extraReg.reset();
+	_inlineComment = nullptr;
 
 	return kErrorOk;
 }
@@ -453,10 +491,14 @@ void BaseEmitter::onSettingsUpdated() noexcept
 	ASMJIT_ASSERT(_code != nullptr);
 
 	if (!hasOwnLogger())
+	{
 		_logger = _code->logger();
+	}
 
 	if (!hasOwnErrorHandler())
+	{
 		_errorHandler = _code->errorHandler();
+	}
 
 	BaseEmitter_updateForcedOptions(this);
 }

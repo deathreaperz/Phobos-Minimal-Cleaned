@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_JITRUNTIME_H_INCLUDED
@@ -35,6 +35,11 @@ public:
 	//! \{
 	//! Creates a `JitRuntime` instance.
 	ASMJIT_API explicit JitRuntime(const JitAllocator::CreateParams* params = nullptr) noexcept;
+
+	//! Creates a `JitRuntime` instance.
+	ASMJIT_INLINE explicit JitRuntime(const JitAllocator::CreateParams& params) noexcept
+		: JitRuntime(&params) { }
+
 	//! Destroys the `JitRuntime` instance.
 	ASMJIT_API ~JitRuntime() noexcept override;
 
@@ -57,6 +62,7 @@ public:
 	//! \name Accessors
 	//! \{
 	//! Returns the associated `JitAllocator`.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG JitAllocator* allocator() const noexcept { return const_cast<JitAllocator*>(&_allocator); }
 
 	//! \}

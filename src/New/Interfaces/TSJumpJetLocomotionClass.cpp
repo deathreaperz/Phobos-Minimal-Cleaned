@@ -368,7 +368,7 @@ void TSJumpJetLocomotionClass::Process_Cruise()
 	_desired.GetDirOver(&position, &HeadToCoord);
 	Facing.Set_Desired(_desired);
 
-	int distance = Point2D(position.X, position.Y).DistanceFrom(Point2D(HeadToCoord.X, HeadToCoord.Y));
+	int distance = (int)Point2D(position.X, position.Y).DistanceFrom(Point2D(HeadToCoord.X, HeadToCoord.Y));
 	if (distance < 20)
 	{
 		CurrentSpeed = 0;
@@ -516,7 +516,7 @@ void TSJumpJetLocomotionClass::Movement_AI()
 		CurrentWobble = 0;
 	}
 
-	int desired_height = Math::sin(CurrentWobble) * JumpjetWobbleDeviation + FlightLevel;
+	int desired_height = (int)Math::sin(CurrentWobble) * JumpjetWobbleDeviation + FlightLevel;
 	int height = LinkedTo->Height;
 	int ground_height = MapClass::Instance->GetCellFloorHeight(LinkedTo->Location);
 
@@ -552,12 +552,12 @@ void TSJumpJetLocomotionClass::Movement_AI()
 			LinkedTo->UnmarkAllOccupationBits(LinkedTo->Location);
 			LinkedTo->OnBridge = false;
 		}
-		height += JumpjetClimb;
+		height += (int)JumpjetClimb;
 		moved = true;
 	}
 	if (height_diff > desired_height)
 	{
-		height -= JumpjetClimb;
+		height -= (int)JumpjetClimb;
 		height = std::max(height, ground_height);
 		moved = true;
 		height_diff = std::max(height_diff, 0);
@@ -595,7 +595,7 @@ void TSJumpJetLocomotionClass::Movement_AI()
 		{
 			for (int y = -rad; y <= rad; y++)
 			{
-				CellClass* cellptr = MapClass::Instance->TryGetCellAt(CellStruct(x, y) + CellClass::Coord2Cell(new_coord));
+				CellClass* cellptr = MapClass::Instance->TryGetCellAt(CellStruct(short(x), short(y)) + CellClass::Coord2Cell(new_coord));
 				if (cellptr != nullptr)
 				{
 					ObjectClass* occupier = cellptr->FirstObject;

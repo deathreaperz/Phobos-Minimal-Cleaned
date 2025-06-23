@@ -3,11 +3,11 @@
 #include <ThemeClass.h>
 #include <Utilities/Helpers.h>
 
-UniqueGamePtrC<SHPStruct> SideExtData::s_GraphicalTextImage = nullptr;
-ConvertClass* SideExtData::s_GraphicalTextConvert = nullptr;
+SHPStruct* SideExtData::s_GraphicalTextImage = nullptr;
+CustomPalette SideExtData::s_GraphicalTextConvert;
 
-UniqueGamePtrC<SHPStruct> SideExtData::s_DialogBackgroundImage = nullptr;
-ConvertClass* SideExtData::s_DialogBackgroundConvert = nullptr;
+SHPStruct* SideExtData::s_DialogBackgroundImage = nullptr;
+CustomPalette SideExtData::s_DialogBackgroundConvert;
 
 int SideExtData::CurrentLoadTextColor = -1;
 
@@ -385,16 +385,20 @@ void SideExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SuperWeaponSidebar_TopPCX.Read(pINI, pSection, "SuperWeaponSidebar.TopPCX");
 	this->SuperWeaponSidebar_CenterPCX.Read(pINI, pSection, "SuperWeaponSidebar.CenterPCX");
 	this->SuperWeaponSidebar_BottomPCX.Read(pINI, pSection, "SuperWeaponSidebar.BottomPCX");
+
+	this->Sidebar_BattlePoints_Offset.Read(exINI, pSection, "Sidebar.BattlePoints.Offset");
+	this->Sidebar_BattlePoints_Color.Read(exINI, pSection, "Sidebar.BattlePoints.Color");
+	this->Sidebar_BattlePoints_Align.Read(exINI, pSection, "Sidebar.BattlePoints.Align");
 }
 
 void SideExtData::UpdateGlobalFiles()
 {
 	// clear old data
 	SideExtData::s_GraphicalTextImage = nullptr;
-	SideExtData::s_GraphicalTextConvert = nullptr;
+	SideExtData::s_GraphicalTextConvert.Clear();
 
 	SideExtData::s_DialogBackgroundImage = nullptr;
-	SideExtData::s_DialogBackgroundConvert = nullptr;
+	SideExtData::s_DialogBackgroundConvert.Clear();
 
 	int idxSide = ScenarioClass::Instance->PlayerSideIndex;
 	auto pSide = SideClass::Array->GetItemOrDefault(idxSide);
@@ -408,31 +412,25 @@ void SideExtData::UpdateGlobalFiles()
 	// load graphical text shp
 	if (pExt->GraphicalTextImage)
 	{
-		auto pShp = FileSystem::AllocateFile<SHPStruct>(pExt->GraphicalTextImage);
-		SideExtData::s_GraphicalTextImage.reset(pShp);
+		SideExtData::s_GraphicalTextImage = (FileSystem::AllocateFile<SHPStruct>(pExt->GraphicalTextImage));
 	}
 
 	// load graphical text palette and create convert
 	if (pExt->GraphicalTextPalette)
 	{
-		SideExtData::s_GraphicalTextConvert =
-			PaletteManager::FindOrAllocate(pExt->GraphicalTextPalette)
-			->GetConvert<PaletteManager::Mode::Temperate>();
+		SideExtData::s_GraphicalTextConvert.Allocate(pExt->GraphicalTextPalette.data());
 	}
 
 	// load dialog background shp
 	if (pExt->DialogBackgroundImage)
 	{
-		auto pShp = FileSystem::AllocateFile<SHPStruct>(pExt->DialogBackgroundImage);
-		SideExtData::s_DialogBackgroundImage.reset(pShp);
+		SideExtData::s_DialogBackgroundImage = (FileSystem::AllocateFile<SHPStruct>(pExt->DialogBackgroundImage));
 	}
 
 	// load dialog background palette and create convert
 	if (pExt->DialogBackgroundPalette)
 	{
-		SideExtData::s_DialogBackgroundConvert =
-			PaletteManager::FindOrAllocate(pExt->DialogBackgroundPalette)
-			->GetConvert<PaletteManager::Mode::Default>();
+		SideExtData::s_DialogBackgroundConvert.Allocate(pExt->DialogBackgroundPalette.data());
 	}
 }
 
@@ -517,6 +515,10 @@ void SideExtData::Serialize(T& Stm)
 		.Process(this->SuperWeaponSidebar_TopPCX)
 		.Process(this->SuperWeaponSidebar_CenterPCX)
 		.Process(this->SuperWeaponSidebar_BottomPCX)
+
+		.Process(this->Sidebar_BattlePoints_Offset)
+		.Process(this->Sidebar_BattlePoints_Color)
+		.Process(this->Sidebar_BattlePoints_Align)
 		;
 }
 

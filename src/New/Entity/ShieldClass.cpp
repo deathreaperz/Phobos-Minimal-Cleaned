@@ -60,7 +60,7 @@ ShieldClass::ShieldClass(TechnoClass* pTechno, bool isAttached) : Techno { pTech
 , Type { nullptr }
 {
 	this->UpdateType();
-	SetHP(this->Type->InitialStrength.Get(this->Type->Strength));
+	this->SetHP(this->Type->InitialStrength.Get(this->Type->Strength));
 	this->CurTechnoType = pTechno->GetTechnoType();
 
 	Array.push_back(this);
@@ -138,6 +138,9 @@ void ShieldClass::SyncShieldToAnother(TechnoClass* pFrom, TechnoClass* pTo)
 		pToExt->Shield->Techno = pTo;
 		pToExt->Shield->CreateAnim();
 	}
+
+	if (pFrom->WhatAmI() == AbstractType::Building && pFromExt->Shield)
+		pFromExt->Shield = nullptr;
 }
 
 void ShieldClass::OnRemove() { KillAnim(); }
@@ -569,9 +572,10 @@ void ShieldClass::OnlineCheck()
 	if (!isActive)
 	{
 		if (this->Online)
+		{
 			this->UpdateTint();
-
-		this->Online = false;
+			this->Online = false;
+		}
 		timer->Pause();
 
 		if (this->IdleAnim)
@@ -600,9 +604,11 @@ void ShieldClass::OnlineCheck()
 	else
 	{
 		if (!this->Online)
+		{
 			this->UpdateTint();
+			this->Online = true;
+		}
 
-		this->Online = true;
 		timer->Resume();
 
 		if (this->IdleAnim)
@@ -655,6 +661,7 @@ bool ShieldClass::ConvertCheck()
 		this->KillAnim();
 		pTechnoExt->CurrentShieldType = ShieldTypeClass::FindOrAllocate(DEFAULT_STR2);
 		pTechnoExt->Shield = nullptr;
+		this->UpdateTint();
 
 		return true;
 	}
@@ -698,6 +705,7 @@ bool ShieldClass::ConvertCheck()
 
 	this->CurTechnoType = newID;
 	this->UpdateTint();
+
 	return false;
 }
 
@@ -762,7 +770,7 @@ void ShieldClass::SelfHealing()
 			timer->Start(rate);
 			this->HP += percentageAmount;
 
-			UpdateIdleAnim();
+			this->UpdateIdleAnim();
 
 			if (this->HP > pType->Strength)
 			{
@@ -771,7 +779,7 @@ void ShieldClass::SelfHealing()
 			}
 			else if (this->HP <= 0)
 			{
-				BreakShield();
+				this->BreakShield();
 			}
 		}
 	}
@@ -885,14 +893,14 @@ void ShieldClass::CreateAnim()
 {
 	auto idleAnimType = this->GetIdleAnimType();
 
+	if (this->Cloak && (!idleAnimType || AnimTypeExtContainer::Instance.Find(idleAnimType)->DetachOnCloak))
+		return;
+
 	if (!this->IdleAnim && idleAnimType)
 	{
-		if (this->Cloak && (!idleAnimType || AnimTypeExtContainer::Instance.Find(idleAnimType)->DetachOnCloak))
-			return;
-
 		auto const pAnim = GameCreate<AnimClass>(idleAnimType, this->Techno->Location);
 		pAnim->RemainingIterations = 0xFFu;
-		AnimExtData::SetAnimOwnerHouseKind(pAnim, this->Techno->Owner, nullptr, this->Techno, false);
+		AnimExtData::SetAnimOwnerHouseKind(pAnim, this->Techno->Owner, nullptr, this->Techno, false, false);
 		pAnim->SetOwnerObject(this->Techno);
 		auto pAnimExt = ((FakeAnimClass*)pAnim)->_GetExtData();
 		pAnimExt->IsShieldIdleAnim = true;
@@ -926,7 +934,7 @@ AnimTypeClass* ShieldClass::GetIdleAnimType() const
 
 void ShieldClass::DrawShieldBar(int iLength, Point2D* pLocation, RectangleStruct* pBound)
 {
-	if (this->HP > 0 || this->Type->Respawn)
+	if (this->HP >= 0 || this->Type->Respawn)
 	{
 		if (this->HP <= 0 && this->Type->Pips_HideIfNoStrength)
 			return;
@@ -943,10 +951,16 @@ void ShieldClass::DrawShieldBar_Building(int iLength, Point2D* pLocation, Rectan
 	if (this->HP == 0 && this->Type->Pips_HideIfNoStrength)
 		return;
 
-	Point2D vLoc = *pLocation;
-	vLoc.X -= 5;
-	vLoc.Y -= 3;
+	static constexpr Point2D selectBracketPositionOffset { -6 , -3 };
+	static constexpr Point2D locationOffset { -5 , -3 };
 
+	Point2D selectBracketPosition = TechnoExtData::GetBuildingSelectBracketPosition(
+		this->Techno,
+		BuildingSelectBracketPosition::Top,
+		selectBracketPositionOffset
+	);
+
+	Point2D vLoc = *pLocation + locationOffset;
 	Point2D position = { 0, 0 };
 
 	const int iTotal = DrawShieldBar_PipAmount(iLength);
@@ -959,7 +973,7 @@ void ShieldClass::DrawShieldBar_Building(int iLength, Point2D* pLocation, Rectan
 			frameIdx;
 			frameIdx--, deltaX += 4, deltaY -= 2)
 		{
-			position = TechnoExtData::GetBuildingSelectBracketPosition(Techno, BuildingSelectBracketPosition::Top);
+			position = selectBracketPosition;
 			position.X -= deltaX + 6;
 			position.Y -= deltaY + 3;
 
@@ -977,7 +991,7 @@ void ShieldClass::DrawShieldBar_Building(int iLength, Point2D* pLocation, Rectan
 			frameIdx;
 			frameIdx--, deltaX += 4, deltaY -= 2)
 		{
-			position = TechnoExtData::GetBuildingSelectBracketPosition(Techno, BuildingSelectBracketPosition::Top);
+			position = selectBracketPosition;
 			position.X -= deltaX + 6;
 			position.Y -= deltaY + 3;
 

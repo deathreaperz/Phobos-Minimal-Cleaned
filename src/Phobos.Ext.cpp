@@ -59,6 +59,8 @@
 #include <New/Type/InsigniaTypeClass.h>
 #include <New/Type/SelectBoxTypeClass.h>
 
+#include <New/Entity/BannerClass.h>
+
 #include <New/HugeBar.h>
 
 #pragma region OtamaaStuffs
@@ -324,14 +326,10 @@ ASMJIT_PATCH(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	Process_InvalidatePtr<SWTypeExtContainer>(pInvalid, removed);
 	if (removed)
 	{
-		for (auto& item : HouseExtData::AutoDeathObjects)
-		{
-			if (item.first == pInvalid)
-			{
-				item.first = nullptr;
-				item.second = KillMethod::None;
-			}
-		}
+		HouseExtData::AutoDeathObjects.erase_all_if([pInvalid](std::pair<TechnoClass*, KillMethod>& item)
+ {
+	 return item.first == pInvalid;
+		});
 	}
 
 	HugeBar::InvalidatePointer(pInvalid, removed);
@@ -343,20 +341,16 @@ ASMJIT_PATCH(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	 }
 	 });
 
-	SpawnManagerClass::Array->for_each([&](SpawnManagerClass* pThis)
- {
-	 if (pThis->Owner && removed)
-	 {
-		 for (int i = 0; i < pThis->SpawnedNodes.Count; ++i)
-		 {
-			 if (pThis->SpawnedNodes[i]->Unit == pInvalid)
-			 {
-				 pThis->SpawnedNodes[i]->Unit = nullptr;
-				 pThis->SpawnedNodes[i]->Status = SpawnNodeStatus::Dead;
-			 }
-		 }
-	 }
-	});
+	//SpawnManagerClass::Array->for_each([&](SpawnManagerClass* pThis) {
+	//	if (pThis->Owner && removed) {
+	//		for (int i = 0; i < pThis->SpawnedNodes.Count; ++i) {
+	//			if (pThis->SpawnedNodes[i] && pThis->SpawnedNodes[i]->Unit == pInvalid) {
+	//				pThis->SpawnedNodes[i]->Unit = nullptr;
+	//				pThis->SpawnedNodes[i]->Status = SpawnNodeStatus::Dead;
+	//			}
+	//		}
+	//	}
+	//});
 
 	//for (int i = 0; i < MapClass::Instance->Cells.Capacity; i++) {
 	//	if (auto pCell = MapClass::Instance->Cells.Items[i]) {
@@ -380,12 +374,12 @@ ASMJIT_PATCH(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
 	return 0;
 }
 
-ASMJIT_PATCH(0x48CFB7, Game_Exit_RecordPoolSize, 0x6)
-{
-	TheMemoryPoolFactory->reportAllocation();
-	Debug::Log("PaletteManager %d\n", PaletteManager::Array.size());
-	return 0x0;
-}
+//ASMJIT_PATCH(0x48CFB7, Game_Exit_RecordPoolSize, 0x6)
+//{
+//	TheMemoryPoolFactory->reportAllocation();
+//	Debug::Log("PaletteManager %d\n", PaletteManager::Array.size());
+//	return 0x0;
+//}
 
 #include <New/Interfaces/AdvancedDriveLocomotionClass.h>
 #include <New/Interfaces/LevitateLocomotionClass.h>
@@ -453,6 +447,8 @@ unsigned Phobos::GetVersionNumber()
 	version += sizeof(PaletteManager);
 	version += sizeof(HugeBar);
 	version += sizeof(StaticVars);
+
+	version += sizeof(BannerClass);
 
 #define AddTypeOf(cccc) version += sizeof(cccc##TypeClass);
 	AddTypeOf(Armor)
@@ -533,6 +529,7 @@ ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	ShieldClass::Array.clear();
 	InsigniaTypeClass::Clear();
 	SelectBoxTypeClass::Clear();
+	BannerClass::Clear();
 
 	if (!Phobos::Otamaa::ExeTerminated)
 	{
@@ -695,7 +692,6 @@ ASMJIT_PATCH(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 
 	bool ret =
 		Process_Load<FakeAnimClass>(pStm) &&
-		Process_Load<PaletteManager>(pStm) &&
 		Process_Load<CursorTypeClass>(pStm) &&
 		Process_Load<MouseClassExt>(pStm) &&
 		Process_Load<DigitalDisplayTypeClass>(pStm) &&
@@ -730,7 +726,8 @@ ASMJIT_PATCH(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 		Process_Load<InsigniaTypeClass>(pStm) &&
 		Process_Load<SelectBoxTypeClass>(pStm) &&
 		Process_Load<ShieldClass>(pStm) &&
-		Process_Load<PrismForwarding>(pStm)
+		Process_Load<PrismForwarding>(pStm) &&
+		Process_Load<BannerClass>(pStm)
 		;
 
 	if (!ret)
@@ -771,7 +768,6 @@ ASMJIT_PATCH(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 
 		bool ret =
 			Process_Save<FakeAnimClass>(pStm) &&
-			Process_Save<PaletteManager>(pStm) &&
 			Process_Save<CursorTypeClass>(pStm) &&
 			Process_Save<MouseClassExt>(pStm) &&
 			Process_Save<DigitalDisplayTypeClass>(pStm) &&
@@ -806,7 +802,8 @@ ASMJIT_PATCH(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 			Process_Save<InsigniaTypeClass>(pStm) &&
 			Process_Save<SelectBoxTypeClass>(pStm) &&
 			Process_Save<ShieldClass>(pStm) &&
-			Process_Save<PrismForwarding>(pStm)
+			Process_Save<PrismForwarding>(pStm) &&
+			Process_Save<BannerClass>(pStm)
 			;
 
 		if (!ret)

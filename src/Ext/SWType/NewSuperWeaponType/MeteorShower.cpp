@@ -22,7 +22,7 @@ bool SW_MeteorShower::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 
 			const auto nCoord = pCell->GetCoordsWithBridge();
 
-			const int count = ScenarioClass::Instance->Random.RandomFromMax(pData->MeteorCounts);
+			const int count = ScenarioClass::Instance->Random.RandomFromMax<int>(pData->MeteorCounts);
 
 			AnimTypeClass* large_meteor = pData->MeteorLarge;
 			AnimTypeClass* small_meteor = pData->MeteorSmall;
@@ -49,7 +49,7 @@ bool SW_MeteorShower::Activate(SuperClass* pThis, const CellStruct& Coords, bool
 						pThis->Owner,
 						nullptr,
 						pFirer,
-						false
+						false, false
 					);
 				}
 			}

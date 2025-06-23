@@ -54,7 +54,7 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 
 					if (!pWHExt->CanRemoveParasytes_KickOut.Get() || coord == CoordStruct::Empty)
 					{
-						Debug::LogInfo(__FUNCTION__);
+						//Debug::LogInfo(__FUNCTION__);
 						TechnoExtData::HandleRemove(parasyte, args->Attacker, false, false);
 					}
 					else
@@ -64,7 +64,7 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 
 						if (!parasyte->Unlimbo(coord, parasyte->PrimaryFacing.Current().GetDir()))
 						{
-							Debug::LogInfo(__FUNCTION__);
+							//Debug::LogInfo(__FUNCTION__);
 							TechnoExtData::HandleRemove(parasyte, nullptr, false, false);
 							return;
 						}
@@ -81,7 +81,7 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 						if (pWHExt->CanRemoveParasytes_KickOut_Anim.isset() && pWHExt->CanRemoveParasytes_KickOut_Anim)
 						{
 							auto const pAnim = GameCreate<AnimClass>(pWHExt->CanRemoveParasytes_KickOut_Anim.Get(), parasyte->GetCoords());
-							AnimExtData::SetAnimOwnerHouseKind(pAnim, args->SourceHouse ? args->SourceHouse : parasyte->Owner, pThis->Owner, parasyte, false);
+							AnimExtData::SetAnimOwnerHouseKind(pAnim, args->SourceHouse ? args->SourceHouse : parasyte->Owner, pThis->Owner, parasyte, false, false);
 							pAnim->SetOwnerObject(parasyte);
 						}
 					}

@@ -101,7 +101,7 @@ ASMJIT_PATCH(0x62A13F, ParasiteClass_AI_WeaponAnim, 0x5)
 		pThis->Owner ? pThis->Owner->GetOwningHouse() : nullptr,
 		pThis->Victim ? pThis->Victim->GetOwningHouse() : nullptr,
 		pThis->Owner,
-		false
+		false, false
 	);
 
 	return 0x62A16A;
@@ -252,7 +252,7 @@ ASMJIT_PATCH(0x629B3F, ParasiteClass_SquiddyGrab_DeharcodeSplash, 0x5) // 7
 		{
 			auto pAnim = GameCreate<AnimClass>(pSplashType, nCoord);
 			auto const Invoker = (pThis->Owner) ? pThis->Owner->GetOwningHouse() : nullptr;
-			AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, (pThis->Victim) ? pThis->Victim->GetOwningHouse() : nullptr, pThis->Owner, false);
+			AnimExtData::SetAnimOwnerHouseKind(pAnim, Invoker, (pThis->Victim) ? pThis->Victim->GetOwningHouse() : nullptr, pThis->Owner, false, false);
 			return Handled;
 		}
 	}
@@ -265,7 +265,7 @@ ASMJIT_PATCH(0x62991C, ParasiteClass_GrappleAI_GrappleAnimCreated, 0x8)
 	GET(ParasiteClass*, pThis, ESI);
 	GET(AnimClass*, pGrapple, EAX);
 	auto const Invoker = (pThis->Owner) ? pThis->Owner->GetOwningHouse() : nullptr;
-	AnimExtData::SetAnimOwnerHouseKind(pGrapple, Invoker, (pThis->Victim) ? pThis->Victim->GetOwningHouse() : nullptr, pThis->Owner, false);
+	AnimExtData::SetAnimOwnerHouseKind(pGrapple, Invoker, (pThis->Victim) ? pThis->Victim->GetOwningHouse() : nullptr, pThis->Owner, false, false);
 	return 0x0;
 }
 

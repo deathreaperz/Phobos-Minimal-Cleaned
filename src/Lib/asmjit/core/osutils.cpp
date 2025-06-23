@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -19,7 +19,9 @@ Error OSUtils::readFile(const char* name, String& dst, size_t maxSize) noexcept
 {
 	char* buffer = dst.prepare(String::ModifyOp::kAssign, maxSize);
 	if (ASMJIT_UNLIKELY(!buffer))
+	{
 		return DebugUtils::errored(kErrorOutOfMemory);
+	}
 
 	int fd = ASMJIT_FILE64_API(::open)(name, O_RDONLY);
 	if (fd < 0)

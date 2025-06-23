@@ -73,7 +73,7 @@ void BombardTrajectory::CreateRandomAnim(CoordStruct coords, TechnoClass* pTechn
 	if (!pTechno)
 		return;
 
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pHouse ? pHouse : pTechno->Owner, nullptr, false, true);
+	AnimExtData::SetAnimOwnerHouseKind(pAnim, pHouse ? pHouse : pTechno->Owner, nullptr, pTechno, false, true);
 
 	if (ownedObject)
 		pAnim->SetOwnerObject(pTechno);

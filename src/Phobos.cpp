@@ -81,6 +81,7 @@ int Phobos::UI::SuperWeaponSidebar_LeftOffset { 0 };
 int Phobos::UI::SuperWeaponSidebar_CameoHeight { 48 };
 int Phobos::UI::SuperWeaponSidebar_Max { 0 };
 int Phobos::UI::SuperWeaponSidebar_MaxColumns { INT32_MAX };
+bool Phobos::UI::SuperWeaponSidebar_Pyramid = true;
 
 const wchar_t* Phobos::UI::CostLabel { L"" };
 const wchar_t* Phobos::UI::PowerLabel { L"" };
@@ -101,6 +102,11 @@ const wchar_t* Phobos::UI::Radar_Label { L"" };
 const wchar_t* Phobos::UI::Spysat_Label { L"" };
 
 const wchar_t* Phobos::UI::SWShotsFormat { L"" };
+
+const wchar_t* Phobos::UI::BattlePoints_Label { L"" };
+const wchar_t* Phobos::UI::BattlePointsSidebar_Label { L"" };
+bool Phobos::UI::BattlePointsSidebar_Label_InvertPosition {};
+bool Phobos::UI::BattlePointsSidebar_AlwaysShow { false };
 
 bool Phobos::Config::HideWarning { false };
 bool Phobos::Config::ToolTipDescriptions { true };
@@ -136,6 +142,7 @@ bool Phobos::Config::ScrollSidebarStripInTactical { true };
 bool Phobos::Config::ScrollSidebarStripWhenHoldKey { true };
 
 bool Phobos::Config::UnitPowerDrain { false };
+int Phobos::Config::SuperWeaponSidebar_RequiredSignificance { 0 };
 
 bool Phobos::Misc::CustomGS { false };
 int Phobos::Misc::CustomGS_ChangeInterval[7] { -1, -1, -1, -1, -1, -1, -1 };
@@ -249,7 +256,178 @@ struct HooksData
 	std::vector<byte> originalOpcode {};
 };
 
+// remove the comment if you want to run the dll with patched gamemd
+//#define NO_SYRINGE
+
+bool IsRunningInAppContainer()
+{
+	static bool s_checked = false;
+	static bool s_isAppContainer = false;
+
+	if (!s_checked)
+	{
+		HANDLE hToken;
+		if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+		{
+			DWORD dwLength = 0;
+			GetTokenInformation(hToken, TokenAppContainerSid, nullptr, 0, &dwLength);
+			s_isAppContainer = (GetLastError() != ERROR_NOT_FOUND);
+			CloseHandle(hToken);
+		}
+		s_checked = true;
+	}
+
+	return s_isAppContainer;
+}
+
+void OptimizeProcessForSecurity()
+{
+	if (IsRunningInAppContainer())
+	{
+		Debug::LogDeferred("App Container detected. Optimizing object creation.\n");
+
+		// Set process mitigations only if available (Windows 8+)
+		typedef BOOL(WINAPI* SetProcessMitigationPolicyFunc)(PROCESS_MITIGATION_POLICY, PVOID, SIZE_T);
+
+#ifdef _Enable_these
+		static bool s_checked = false;
+		static bool s_isAppContainer = false;
+		if (!s_checked)
+		{
+			SID_IDENTIFIER_AUTHORITY _ID {};
+			HANDLE _Token {};
+			DWORD _RetLength {};
+			PSID _PID {};
+
+			if (AllocateAndInitializeSid(&_ID, 1u, 0, 0, 0, 0, 0, 0, 0, 0, &_PID))
+			{
+				if (OpenProcessToken(Patch::CurrentProcess, 8u, &_Token))
+				{
+					GetTokenInformation(_Token, TokenUser, 0, 0, &_RetLength);
+					if (_RetLength <= 0x400)
+					{
+						HLOCAL _Alloc = LocalAlloc(0x40u, 0x400u);
+						if (GetTokenInformation(_Token, TokenUser, _Alloc, 0x400u, &_RetLength))
+						{
+							ACL _Acl {};
+							if (InitializeAcl(&_Acl, 0x400u, 2u)
+							&& AddAccessDeniedAce(&_Acl, 2u, 0xFAu, _PID)
+							&& AddAccessAllowedAce(&_Acl, 2u, 0x100701u, _PID))
+							{
+								SetSecurityInfo(Patch::CurrentProcess, SE_KERNEL_OBJECT, 0x80000004, 0, 0, &_Acl, 0);
+							}
+						}
+
+						s_checked = true;
+					}
+				}
+			}
+
+			if (_PID)
+				FreeSid(_PID);
+		}
+#endif
+
+		for (auto& module : Patch::ModuleDatas)
+		{
+			if (IS_SAME_STR_(module.ModuleName.c_str(), "kernel32.dll"))
+			{
+				SetProcessMitigationPolicyFunc pSetProcessMitigationPolicy =
+					(SetProcessMitigationPolicyFunc)GetProcAddress(module.Handle, "SetProcessMitigationPolicy");
+
+				if (pSetProcessMitigationPolicy)
+				{
+					// Use simplified mitigation
+					pSetProcessMitigationPolicy((PROCESS_MITIGATION_POLICY)1, nullptr, 0);
+				}
+			}
+		}
+
+		// Reduce security descriptor checks
+		SetThreadToken(nullptr, nullptr);
+	}
+}
+
 std::map<unsigned int, HooksData> Hooks { };
+#include <Zydis/Zydis.h>
+
+static void CheckHookConflict(unsigned int addr, size_t size)
+{
+	const size_t frontOffset = 4;
+	byte* hookAddress = (byte*)addr;
+	bool maybeConflicted = false;
+	bool beforeAddress = false;
+	// check hook race
+	for (int offset = -frontOffset; offset < (int)size; offset++)
+	{
+		byte cur = hookAddress[offset];
+		switch (cur)
+		{
+		case Assembly::CALL:
+		case Assembly::JMP:
+			if (offset == 0)
+			{
+				offset += 5 - 1;
+				continue;
+			}
+			else if (offset < 0 && cur != 0xE9)
+			{
+				continue;
+			}
+			maybeConflicted = true;
+			break;
+		}
+		if (maybeConflicted)
+		{
+			if (offset < 0)
+			{
+				beforeAddress = true;
+			}
+			break;
+		}
+	}
+
+	std::string disassemblyResult;
+	if (maybeConflicted)
+	{
+		// Initialize decoder context
+		ZydisDecoder decoder;
+		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_STACK_WIDTH_32);
+
+		// Initialize formatter. Only required when you actually plan to do instruction
+		// formatting ("disassembling"), like we do here
+		ZydisFormatter formatter;
+		ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
+
+		// Loop over the instructions in our buffer.
+		// The runtime-address (instruction pointer) is chosen arbitrary here in order to better
+		// visualize relative addressing
+		ZyanU64 runtime_address = addr;
+		ZyanUSize offset = 0;
+		const ZyanUSize length = size + 4;
+		ZydisDecodedInstruction instruction;
+		ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+		while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, (void*)(addr + offset), length - offset, &instruction, operands)))
+		{
+			// Format & print the binary instruction structure to human-readable format
+			char buffer[256];
+			ZydisFormatterFormatInstruction(&formatter, &instruction, operands,
+				instruction.operand_count_visible, buffer, sizeof(buffer), runtime_address, ZYAN_NULL);
+			disassemblyResult += fmt::format("\n-- 0x{:08x}  {}", runtime_address, buffer);
+
+			offset += instruction.length;
+			runtime_address += instruction.length;
+		}
+	}
+	if (disassemblyResult.contains("jmp") || disassemblyResult.contains("call"))
+	{
+		Debug::LogDeferred("Hook %x seems to be conflicted with other hooks! disassembly: %s \n", (void*)hookAddress, disassemblyResult.c_str());
+	}
+	if (beforeAddress)
+	{
+		Debug::LogDeferred("Hook %x seems to be conflicted with other hooks! see assembly before address\n", (void*)hookAddress);
+	}
+}
 
 void ApplyasmjitPatch()
 {
@@ -262,6 +440,8 @@ void ApplyasmjitPatch()
 			Debug::LogDeferred("hook at 0x%x is empty !\n", addr);
 			continue;
 		}
+
+		CheckHookConflict(addr, sm_vec[0].size);
 
 		if (sm_vec.size() > 1)
 		{
@@ -333,7 +513,7 @@ void ApplyasmjitPatch()
 		code.attach(&assembly);
 		assembly.jmp(fn);
 		code.flatten();
-		code.resolveUnresolvedLinks();
+		code.resolveCrossSectionFixups();
 		code.relocateToBase(addr);
 
 		DWORD protect_flag {};
@@ -522,39 +702,9 @@ void Phobos::CmdLineParse(char** ppArgs, int nNumArgs)
 		Debug::made = false;// reset
 	}
 
-#ifdef _Enable_these
-	SID_IDENTIFIER_AUTHORITY _ID {};
-	HANDLE _Token {};
-	DWORD _RetLength {};
-	PSID _PID {};
-
-	if (AllocateAndInitializeSid(&_ID, 1u, 0, 0, 0, 0, 0, 0, 0, 0, &_PID))
-	{
-		if (OpenProcessToken(Patch::CurrentProcess, 8u, &_Token))
-		{
-			GetTokenInformation(_Token, TokenUser, 0, 0, &_RetLength);
-			if (_RetLength <= 0x400)
-			{
-				HLOCAL _Alloc = LocalAlloc(0x40u, 0x400u);
-				if (GetTokenInformation(_Token, TokenUser, _Alloc, 0x400u, &_RetLength))
-				{
-					ACL _Acl {};
-					if (InitializeAcl(&_Acl, 0x400u, 2u)
-					  && AddAccessDeniedAce(&_Acl, 2u, 0xFAu, _PID)
-					  && AddAccessAllowedAce(&_Acl, 2u, 0x100701u, _PID))
-					{
-						SetSecurityInfo(Patch::CurrentProcess, SE_KERNEL_OBJECT, 0x80000004, 0, 0, &_Acl, 0);
-					}
-				}
-			}
-		}
-	}
-
-	if (_PID)
-		FreeSid(_PID);
-#endif
-
 	Phobos::CheckProcessorFeatures();
+	// Optimize for app container environments
+	OptimizeProcessForSecurity();
 
 	Game::DontSetExceptionHandler = dontSetExceptionHandler;
 	Debug::Log("ExceptionHandler is %s .\n", dontSetExceptionHandler ? "not present" : "present");
@@ -788,7 +938,10 @@ void Phobos::ExeRun()
 	MouseCursor::GetCursor(MouseCursorType::IvanBomb).FrameRate = 4;
 
 	Patch::PrintAllModuleAndBaseAddr();
+
+#if !defined(NO_SYRINGE)
 	Phobos::InitAdminDebugMode();
+#endif
 
 	int i = 0;
 
@@ -832,6 +985,16 @@ void Phobos::ExeTerminate()
 	if (!Phobos::Otamaa::ExeTerminated)
 	{
 		Phobos::Otamaa::ExeTerminated = true;
+
+		for (auto& datas : Patch::ModuleDatas)
+		{
+			if (datas.Handle != INVALID_HANDLE_VALUE)
+			{
+				CloseHandle(datas.Handle);
+			}
+		}
+
+		Patch::ModuleDatas.clear();
 	}
 }
 
@@ -996,7 +1159,8 @@ BOOL APIENTRY DllMain(HANDLE hInstance, DWORD  ul_reason_for_call, LPVOID lpRese
 
 		Phobos::hInstance = hInstance;
 		Patch::CurrentProcess = GetCurrentProcess();
-		Patch::Apply_CALL(0x6BBFC9, &_set_fp_mode);
+
+		//Patch::Apply_CALL(0x6BBFC9, &_set_fp_mode);
 
 		const auto time = Debug::GetCurTimeA();
 
@@ -1014,6 +1178,8 @@ BOOL APIENTRY DllMain(HANDLE hInstance, DWORD  ul_reason_for_call, LPVOID lpRese
 		Patch::Apply_CALL(0x7D4AD8, &PatchExitB);
 		Patch::Apply_CALL(0x7DC70C, &PatchExitB);
 		Patch::Apply_CALL(0x87C2A0, &PatchExitB);
+
+		Patch::Apply_TYPED<char>(0x82612C + 13, { '\n' });
 
 		const char* loadMode = lpReserved ? "statically" : "dynamicly";
 
@@ -9163,6 +9329,11 @@ BOOL APIENTRY DllMain(HANDLE hInstance, DWORD  ul_reason_for_call, LPVOID lpRese
 		{
 			Debug::LogDeferred("Compatibility modes detected : %s .\n", buf);
 		}
+
+#if defined(NO_SYRINGE)
+		LuaData::ApplyCoreHooks();
+		Phobos::ExeRun();
+#endif
 	}
 	break;
 	case DLL_PROCESS_DETACH:
@@ -9224,11 +9395,15 @@ ASMJIT_PATCH(0x52FE55, Scenario_Start, 0x6)
 
 //syringe wont inject the dll unless it got atleast one hook
 //so i keep this
-DEFINE_HOOK(0x7CD810, Game_ExeRun, 0x9)
+#if !defined(NO_SYRINGE)
+declhook(0x7CD810, Game_ExeRun, 0x9)
+extern "C" __declspec(dllexport) DWORD __cdecl Game_ExeRun(REGISTERS* R)
 {
+	LuaData::ApplyCoreHooks();
 	Phobos::ExeRun();
 	return 0;
 }
+#endif
 
 ASMJIT_PATCH(0x52F639, _YR_CmdLineParse, 0x5)
 {

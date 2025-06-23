@@ -7,10 +7,13 @@
 #ifndef llimits_h
 #define llimits_h
 
+
 #include <limits.h>
 #include <stddef.h>
 
+
 #include "lua.h"
+
 
 /*
 ** 'lu_mem' and 'l_mem' are unsigned/signed integers big enough to count
@@ -28,9 +31,11 @@ typedef unsigned long lu_mem;
 typedef long l_mem;
 #endif				/* } */
 
+
 /* chars used as small naturals (so that 'char' is reserved for characters) */
 typedef unsigned char lu_byte;
 typedef signed char ls_byte;
+
 
 /* maximum value for size_t */
 #define MAX_SIZET	((size_t)(~(size_t)0))
@@ -39,11 +44,14 @@ typedef signed char ls_byte;
 #define MAX_SIZE	(sizeof(size_t) < sizeof(lua_Integer) ? MAX_SIZET \
                           : (size_t)(LUA_MAXINTEGER))
 
+
 #define MAX_LUMEM	((lu_mem)(~(lu_mem)0))
 
 #define MAX_LMEM	((l_mem)(MAX_LUMEM >> 1))
 
+
 #define MAX_INT		INT_MAX  /* maximum value of an int */
+
 
 /*
 ** floor of the log2 of the maximum signed value for integral type 't'.
@@ -51,13 +59,16 @@ typedef signed char ls_byte;
 */
 #define log2maxs(t)	(sizeof(t) * 8 - 2)
 
+
 /*
 ** test whether an unsigned value is a power of 2 (or zero)
 */
 #define ispow2(x)	(((x) & ((x) - 1)) == 0)
 
+
 /* number of chars of a literal string without the ending \0 */
 #define LL(x)   (sizeof(x)/sizeof(char) - 1)
+
 
 /*
 ** conversion of pointer to unsigned integer: this is for hashing only;
@@ -79,9 +90,12 @@ typedef signed char ls_byte;
 
 #define point2uint(p)	((unsigned int)((L_P2I)(p) & UINT_MAX))
 
+
+
 /* types of 'usual argument conversions' for lua_Number and lua_Integer */
 typedef LUAI_UACNUMBER l_uacNumber;
 typedef LUAI_UACINT l_uacInt;
+
 
 /*
 ** Internal assertions for in-house debugging
@@ -111,10 +125,12 @@ typedef LUAI_UACINT l_uacInt;
 
 #define api_check(l,e,msg)	luai_apicheck(l,(e) && msg)
 
+
 /* macro to avoid warnings about unused variables */
 #if !defined(UNUSED)
 #define UNUSED(x)	((void)(x))
 #endif
+
 
 /* type casts (a macro highlights casts in the code) */
 #define cast(t, exp)	((t)(exp))
@@ -130,6 +146,7 @@ typedef LUAI_UACINT l_uacInt;
 #define cast_charp(i)	cast(char *, (i))
 #define cast_sizet(i)	cast(size_t, (i))
 
+
 /* cast a signed lua_Integer to lua_Unsigned */
 #if !defined(l_castS2U)
 #define l_castS2U(i)	((lua_Unsigned)(i))
@@ -143,6 +160,7 @@ typedef LUAI_UACINT l_uacInt;
 #if !defined(l_castU2S)
 #define l_castU2S(i)	((lua_Integer)(i))
 #endif
+
 
 /*
 ** non-return type
@@ -159,6 +177,7 @@ typedef LUAI_UACINT l_uacInt;
 
 #endif
 
+
 /*
 ** Inline functions
 */
@@ -172,6 +191,7 @@ typedef LUAI_UACINT l_uacInt;
 
 #define l_sinline	static l_inline
 
+
 /*
 ** type for virtual-machine instructions;
 ** must be an unsigned with (at least) 4 bytes (see details in lopcodes.h)
@@ -184,6 +204,8 @@ typedef unsigned long l_uint32;
 
 typedef l_uint32 Instruction;
 
+
+
 /*
 ** Maximum length for short strings, that is, strings that are
 ** internalized. (Cannot be smaller than reserved words or tags for
@@ -193,6 +215,7 @@ typedef l_uint32 Instruction;
 #if !defined(LUAI_MAXSHORTLEN)
 #define LUAI_MAXSHORTLEN	40
 #endif
+
 
 /*
 ** Initial size for the string table (must be power of 2).
@@ -204,6 +227,7 @@ typedef l_uint32 Instruction;
 #define MINSTRTABSIZE	128
 #endif
 
+
 /*
 ** Size of cache for strings in the API. 'N' is the number of
 ** sets (better be a prime) and "M" is the size of each set (M == 1
@@ -214,10 +238,12 @@ typedef l_uint32 Instruction;
 #define STRCACHE_M		2
 #endif
 
+
 /* minimum size for string buffer */
 #if !defined(LUA_MINBUFFER)
 #define LUA_MINBUFFER	32
 #endif
+
 
 /*
 ** Maximum depth for nested C calls, syntactical nested non-terminals,
@@ -228,6 +254,7 @@ typedef l_uint32 Instruction;
 #if !defined(LUAI_MAXCCALLS)
 #define LUAI_MAXCCALLS		200
 #endif
+
 
 /*
 ** macros that are executed whenever program enters the Lua core
@@ -245,6 +272,7 @@ typedef l_uint32 Instruction;
 #if !defined(luai_threadyield)
 #define luai_threadyield(L)	{lua_unlock(L); lua_lock(L);}
 #endif
+
 
 /*
 ** these macros allow user-specific actions when a thread is
@@ -273,6 +301,8 @@ typedef l_uint32 Instruction;
 #if !defined(luai_userstateyield)
 #define luai_userstateyield(L,n)	((void)L)
 #endif
+
+
 
 /*
 ** The luai_num* macros define the primitive operations over numbers.
@@ -324,6 +354,10 @@ typedef l_uint32 Instruction;
 #define luai_numge(a,b)         ((a)>=(b))
 #define luai_numisnan(a)        (!luai_numeq((a), (a)))
 #endif
+
+
+
+
 
 /*
 ** macro to control inclusion of some hard tests on stack reallocation

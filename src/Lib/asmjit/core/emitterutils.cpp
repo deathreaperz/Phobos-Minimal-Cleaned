@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -96,9 +96,13 @@ namespace EmitterUtils
 		self->_funcs.formatInstruction(sb, formatFlags, self, self->arch(), BaseInst(instId, options, self->extraReg()), opArray, Globals::kMaxOpCount);
 
 		if (Support::test(formatFlags, FormatFlags::kMachineCode))
+		{
 			finishFormattedLine(sb, logger->options(), self->bufferPtr(), size_t(emittedSize), relSize, immSize, self->inlineComment());
+		}
 		else
+		{
 			finishFormattedLine(sb, logger->options(), nullptr, SIZE_MAX, 0, 0, self->inlineComment());
+		}
 		logger->log(sb);
 	}
 

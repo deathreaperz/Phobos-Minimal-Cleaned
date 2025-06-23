@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_INSTDB_P_H_INCLUDED
@@ -28,8 +28,9 @@ struct InstNameIndex
 
 namespace InstNameUtils
 {
-	Error decode(String& output, uint32_t nameValue, const char* stringTable) noexcept;
-	InstId find(const char* s, size_t len, const InstNameIndex& nameIndex, const uint32_t* nameTable, const char* stringTable) noexcept;
+	Error decode(uint32_t nameValue, InstStringifyOptions options, const char* stringTable, String& output) noexcept;
+	InstId findInstruction(const char* s, size_t len, const uint32_t* nameTable, const char* stringTable, const InstNameIndex& nameIndex) noexcept;
+	uint32_t findAlias(const char* s, size_t len, const uint32_t* nameTable, const char* stringTable, uint32_t aliasNameCount) noexcept;
 } // {InstNameUtils}
 
 //! \}

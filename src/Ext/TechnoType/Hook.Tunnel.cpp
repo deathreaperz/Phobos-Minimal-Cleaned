@@ -1,7 +1,8 @@
 #include "Body.h"
 #include <Locomotor/Cast.h>
 
-ASMJIT_PATCH(0x7294E0, TunnelLocomotionClass_7294E0_Handle, 0x6) {
+ASMJIT_PATCH(0x7294E0, TunnelLocomotionClass_7294E0_Handle, 0x6)
+{
 	GET(TunnelLocomotionClass* const, pLoco, ECX);
 
 	const auto pLinkedTo = pLoco->LinkedTo;
@@ -10,17 +11,20 @@ ASMJIT_PATCH(0x7294E0, TunnelLocomotionClass_7294E0_Handle, 0x6) {
 	CoordStruct nCoord = pLinkedTo->Location;
 	const auto _height = pTypeExt->SubterraneanHeight.Get(RulesExtData::Instance()->SubterraneanHeight);
 
-	if (nCoord.Z <= _height) {
+	if (nCoord.Z <= _height)
+	{
 		pLinkedTo->Mark(MarkType::Remove);
 		pLoco->State = TunnelLocomotionClass::State::DIGGING;
 	}
-	else {
+	else
+	{
 		const auto _addSpeed = TechnoTypeExtContainer::Instance.Find(pType)->Tunnel_Speed.Get(RulesClass::Instance->TunnelSpeed);
 		auto curSpeed = pLinkedTo->GetCurrentSpeed();
 
 		curSpeed = int(curSpeed * _addSpeed);
 
-		if (curSpeed <= 5) {
+		if (curSpeed <= 5)
+		{
 			curSpeed = 5;
 		}
 

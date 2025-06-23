@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -14,7 +14,9 @@ ASMJIT_BEGIN_NAMESPACE
 FuncArgsContext::FuncArgsContext() noexcept
 {
 	for (RegGroup group : RegGroupVirtValues {})
+	{
 		_workData[size_t(group)].reset();
+	}
 }
 
 ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, const FuncArgsAssignment& args, const RAConstraints* constraints) noexcept
@@ -28,10 +30,16 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 
 	// Initialize `_archRegs`.
 	for (RegGroup group : RegGroupVirtValues {})
+	{
 		_workData[group]._archRegs = _constraints->availableRegs(group);
+	}
 
 	if (frame.hasPreservedFP())
+	{
 		_workData[size_t(RegGroup::kGp)]._archRegs &= ~Support::bitMask(archTraits().fpRegId());
+	}
+
+	uint32_t reassignmentFlagMask = 0;
 
 	// Extract information from all function arguments/assignments and build Var[] array.
 	uint32_t varId = 0;
@@ -41,11 +49,15 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 		{
 			const FuncValue& dst_ = args.arg(argIndex, valueIndex);
 			if (!dst_.isAssigned())
+			{
 				continue;
+			}
 
 			const FuncValue& src_ = func.arg(argIndex, valueIndex);
 			if (ASMJIT_UNLIKELY(!src_.isAssigned()))
+			{
 				return DebugUtils::errored(kErrorInvalidState);
+			}
 
 			Var& var = _vars[varId];
 			var.init(src_, dst_);
@@ -54,35 +66,48 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 			FuncValue& dst = var.out;
 
 			RegGroup dstGroup = RegGroup::kMaxValue;
-			uint32_t dstId = BaseReg::kIdBad;
+			uint32_t dstId = Reg::kIdBad;
 			WorkData* dstWd = nullptr;
 
 			// Not supported.
 			if (src.isIndirect())
+			{
 				return DebugUtils::errored(kErrorInvalidAssignment);
+			}
 
 			if (dst.isReg())
 			{
 				RegType dstType = dst.regType();
 				if (ASMJIT_UNLIKELY(!archTraits().hasRegType(dstType)))
+				{
 					return DebugUtils::errored(kErrorInvalidRegType);
+				}
 
 				// Copy TypeId from source if the destination doesn't have it. The RA used by BaseCompiler would never
-				// leave TypeId undefined, but users of FuncAPI can just assign phys regs without specifying the type.
+				// leave TypeId undefined, but users of FuncAPI can just assign phys regs without specifying their types.
 				if (!dst.hasTypeId())
-					dst.setTypeId(archTraits().regTypeToTypeId(dst.regType()));
+				{
+					dst.setTypeId(RegUtils::typeIdOf(dst.regType()));
+				}
 
-				dstGroup = archTraits().regTypeToGroup(dstType);
+				dstGroup = RegUtils::groupOf(dstType);
 				if (ASMJIT_UNLIKELY(dstGroup > RegGroup::kMaxVirt))
+				{
 					return DebugUtils::errored(kErrorInvalidRegGroup);
+				}
 
 				dstWd = &_workData[dstGroup];
 				dstId = dst.regId();
+
 				if (ASMJIT_UNLIKELY(dstId >= 32 || !Support::bitTest(dstWd->archRegs(), dstId)))
+				{
 					return DebugUtils::errored(kErrorInvalidPhysId);
+				}
 
 				if (ASMJIT_UNLIKELY(Support::bitTest(dstWd->dstRegs(), dstId)))
+				{
 					return DebugUtils::errored(kErrorOverlappedRegs);
+				}
 
 				dstWd->_dstRegs |= Support::bitMask(dstId);
 				dstWd->_dstShuf |= Support::bitMask(dstId);
@@ -91,28 +116,34 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 			else
 			{
 				if (!dst.hasTypeId())
+				{
 					dst.setTypeId(src.typeId());
+				}
 
 				OperandSignature signature = getSuitableRegForMemToMemMove(arch, dst.typeId(), src.typeId());
 				if (ASMJIT_UNLIKELY(!signature.isValid()))
+				{
 					return DebugUtils::errored(kErrorInvalidState);
+				}
 				_stackDstMask = uint8_t(_stackDstMask | Support::bitMask(signature.regGroup()));
 			}
 
 			if (src.isReg())
 			{
 				uint32_t srcId = src.regId();
-				RegGroup srcGroup = archTraits().regTypeToGroup(src.regType());
+				RegGroup srcGroup = RegUtils::groupOf(src.regType());
 
 				if (dstGroup == srcGroup)
 				{
 					ASMJIT_ASSERT(dstWd != nullptr);
 					dstWd->assign(varId, srcId);
 
-					// The best case, register is allocated where it is expected to be. However, we should
-					// not mark this as done if both registers are GP and sign or zero extension is required.
+					reassignmentFlagMask |= uint32_t(dstId != srcId) << uint32_t(dstGroup);
+
 					if (dstId == srcId)
 					{
+						// The best case, register is allocated where it is expected to be. However, we should
+						// not mark this as done if both registers are GP and sign or zero extension is required.
 						if (dstGroup != RegGroup::kGp)
 						{
 							var.markDone();
@@ -126,17 +157,22 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 							uint32_t srcSize = TypeUtils::sizeOf(st);
 
 							if (dt == TypeId::kVoid || st == TypeId::kVoid || dstSize <= srcSize)
+							{
 								var.markDone();
+							}
 						}
 					}
 				}
 				else
 				{
 					if (ASMJIT_UNLIKELY(srcGroup > RegGroup::kMaxVirt))
+					{
 						return DebugUtils::errored(kErrorInvalidState);
+					}
 
 					WorkData& srcData = _workData[size_t(srcGroup)];
 					srcData.assign(varId, srcId);
+					reassignmentFlagMask |= 1u << uint32_t(dstGroup);
 				}
 			}
 			else
@@ -155,6 +191,7 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 	{
 		_workData[group]._workRegs =
 			(_workData[group].archRegs() & (frame.dirtyRegs(group) | ~frame.preservedRegs(group))) | _workData[group].dstRegs() | _workData[group].assignedRegs();
+		_workData[group]._needsScratch = (reassignmentFlagMask >> uint32_t(group)) & 1u;
 	}
 
 	// Create a variable that represents `SARegId` if necessary.
@@ -164,18 +201,22 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 	uint32_t saCurRegId = frame.saRegId();
 	uint32_t saOutRegId = args.saRegId();
 
-	if (saCurRegId != BaseReg::kIdBad)
+	if (saCurRegId != Reg::kIdBad)
 	{
 		// Check if the provided `SARegId` doesn't collide with input registers.
 		if (ASMJIT_UNLIKELY(gpRegs.isAssigned(saCurRegId)))
+		{
 			return DebugUtils::errored(kErrorOverlappedRegs);
+		}
 	}
 
-	if (saOutRegId != BaseReg::kIdBad)
+	if (saOutRegId != Reg::kIdBad)
 	{
 		// Check if the provided `SARegId` doesn't collide with argument assignments.
 		if (ASMJIT_UNLIKELY(Support::bitTest(gpRegs.dstRegs(), saOutRegId)))
+		{
 			return DebugUtils::errored(kErrorOverlappedRegs);
+		}
 		saRegRequired = true;
 	}
 
@@ -190,9 +231,9 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 		Var& var = _vars[varId];
 		var.reset();
 
-		if (saCurRegId == BaseReg::kIdBad)
+		if (saCurRegId == Reg::kIdBad)
 		{
-			if (saOutRegId != BaseReg::kIdBad && !gpRegs.isAssigned(saOutRegId))
+			if (saOutRegId != Reg::kIdBad && !gpRegs.isAssigned(saOutRegId))
 			{
 				saCurRegId = saOutRegId;
 			}
@@ -200,10 +241,14 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 			{
 				RegMask availableRegs = gpRegs.availableRegs();
 				if (!availableRegs)
+				{
 					availableRegs = gpRegs.archRegs() & ~gpRegs.workRegs();
+				}
 
 				if (ASMJIT_UNLIKELY(!availableRegs))
+				{
 					return DebugUtils::errored(kErrorNoMorePhysRegs);
+				}
 
 				saCurRegId = Support::ctz(availableRegs);
 			}
@@ -213,7 +258,7 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 		gpRegs.assign(varId, saCurRegId);
 		gpRegs._workRegs |= Support::bitMask(saCurRegId);
 
-		if (saOutRegId != BaseReg::kIdBad)
+		if (saOutRegId != Reg::kIdBad)
 		{
 			var.out.initReg(ptrRegType, saOutRegId, ptrTypeId);
 			gpRegs._dstRegs |= Support::bitMask(saOutRegId);
@@ -238,15 +283,17 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::initWorkData(const FuncFrame& frame, co
 			uint32_t srcId = var.cur.regId();
 			uint32_t dstId = var.out.regId();
 
-			RegGroup group = archTraits().regTypeToGroup(var.cur.regType());
-			if (group != archTraits().regTypeToGroup(var.out.regType()))
+			RegGroup group = RegUtils::groupOf(var.cur.regType());
+			if (group != RegUtils::groupOf(var.out.regType()))
+			{
 				continue;
+			}
 
 			WorkData& wd = _workData[group];
 			if (wd.isAssigned(dstId))
 			{
 				Var& other = _vars[wd._physToVarId[dstId]];
-				if (archTraits().regTypeToGroup(other.out.regType()) == group && other.out.regId() == srcId)
+				if (RegUtils::groupOf(other.out.regType()) == group && other.out.regId() == srcId)
 				{
 					wd._numSwaps++;
 					_regSwapsMask = uint8_t(_regSwapsMask | Support::bitMask(group));
@@ -291,28 +338,36 @@ ASMJIT_FAVOR_SIZE Error FuncArgsContext::markScratchRegs(FuncFrame& frame) noexc
 		if (Support::bitTest(groupMask, group))
 		{
 			WorkData& wd = _workData[group];
+			if (wd._needsScratch)
+			{
+				// Initially, pick some clobbered or dirty register.
+				RegMask workRegs = wd.workRegs();
+				RegMask regs = workRegs & ~(wd.usedRegs() | wd._dstShuf);
 
-			// Initially, pick some clobbered or dirty register.
-			RegMask workRegs = wd.workRegs();
-			RegMask regs = workRegs & ~(wd.usedRegs() | wd._dstShuf);
+				// If that didn't work out pick some register which is not in 'used'.
+				if (!regs)
+				{
+					regs = workRegs & ~wd.usedRegs();
+				}
 
-			// If that didn't work out pick some register which is not in 'used'.
-			if (!regs)
-				regs = workRegs & ~wd.usedRegs();
+				// If that didn't work out pick any other register that is allocable.
+				// This last resort case will, however, result in marking one more
+				// register dirty.
+				if (!regs)
+				{
+					regs = wd.archRegs() & ~workRegs;
+				}
 
-			// If that didn't work out pick any other register that is allocable.
-			// This last resort case will, however, result in marking one more
-			// register dirty.
-			if (!regs)
-				regs = wd.archRegs() & ~workRegs;
+				// If that didn't work out we will have to use XORs instead of MOVs.
+				if (!regs)
+				{
+					continue;
+				}
 
-			// If that didn't work out we will have to use XORs instead of MOVs.
-			if (!regs)
-				continue;
-
-			RegMask regMask = Support::blsi(regs);
-			wd._workRegs |= regMask;
-			frame.addDirtyRegs(group, regMask);
+				RegMask regMask = Support::blsi(regs);
+				wd._workRegs |= regMask;
+				frame.addDirtyRegs(group, regMask);
+			}
 		}
 	}
 

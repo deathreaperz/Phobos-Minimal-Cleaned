@@ -40,6 +40,8 @@ class NOVTABLE FakeObjectClass : public ObjectClass
 {
 public:
 	void _DrawRadialIndicator(int val);
+	int _GetDistanceOfObj(AbstractClass* pThat);
+	int _GetDistanceOfCoord(CoordStruct* pThat);
 };
 static_assert(sizeof(FakeObjectClass) == sizeof(ObjectClass), "Invalid Size !");
 

@@ -879,16 +879,16 @@ void BuildingTypeExtData::DisplayPlacementPreview()
 
 	if (!pTypeExt->PlacementPreview_Remap.Get())
 	{
-		if (const auto pCustom = pTypeExt->PlacementPreview_Palette)
+		if (const auto pCustom = pTypeExt->PlacementPreview_Palette.GetConvert())
 		{
-			pDecidedPal = pCustom->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pDecidedPal);
+			pDecidedPal = pCustom;
 		}
 	}
 	else
 	{
-		if (pTypeExt->PlacementPreview_Palette && pTypeExt->PlacementPreview_Palette->ColorschemeDataVector)
+		if (auto pVecPal = pTypeExt->PlacementPreview_Palette.ColorschemeDataVector)
 		{
-			pDecidedPal = pTypeExt->PlacementPreview_Palette->ColorschemeDataVector->Items[pBuilding->Owner->ColorSchemeIndex]->LightConvert;
+			pDecidedPal = pVecPal->Items[pBuilding->Owner->ColorSchemeIndex]->LightConvert;
 		}
 		else
 		{
@@ -1334,7 +1334,7 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->PlacementPreview_Offset.Read(exINI, pSection, "PlacementPreview.Offset");
 		this->PlacementPreview_Remap.Read(exINI, pSection, "PlacementPreview.Remap");
 		this->PlacementPreview_Palette.Read(exINI, pSection, "PlacementPreview.Palette");
-		this->PlacementPreview_TranslucentLevel.Read(exINI, pSection, "PlacementPreview.Translucent");
+		this->PlacementPreview_TranslucentLevel.Read(exINI, pSection, "PlacementPreview.Translucency");
 
 		this->AutoBuilding.Read(exINI, pSection, "AutoBuilding");
 		this->AutoBuilding_Gap.Read(exINI, pSection, "AutoBuilding.Gap");
@@ -1401,7 +1401,7 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->Power_DegradeWithHealth.Read(exINI, pSection, "Power.DegradeWithHealth");
 		this->AutoSellTime.Read(exINI, pSection, "AutoSell.Time");
-		this->BuildingPlacementGrid_Shape.Read(exINI, pSection, "BuildingPlacementGrid.Shape");
+		this->BuildingPlacementGrid_Shape.Read(exINI, pSection, "PlacementGrid.Shape");
 		this->SpeedBonus.Read(exINI, pSection);
 		this->RadialIndicator_Visibility.Read(exINI, pSection, "RadialIndicatorVisibility");
 
@@ -1501,6 +1501,8 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Cursor_Spy.Read(exINI, pSection, "Cursor.Spy");
 		this->ImmuneToSaboteurs.Read(exINI, pSection, "ImmuneToSaboteurs");
 		this->ReverseEngineersVictims.Read(exINI, pSection, "ReverseEngineersVictims");
+		this->ReverseEngineersVictims_Passengers.Read(exINI, pSection, "ReverseEngineersVictims.IncludePassengers");
+
 		this->Cursor_Sabotage.Read(exINI, pSection, "Cursor.Sabotage");
 
 		this->GateDownSound.Read(exINI, pSection, "GateDownSound");
@@ -1658,11 +1660,18 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->NewEvaVoice_Priority.Read(exINI, pSection, "NewEVAVoice.Priority");
 		this->NewEvaVoice_RecheckOnDeath.Read(exINI, pSection, "NewEVAVoice.RecheckOnDeath");
 		this->NewEvaVoice_InitialMessage.Read(exINI, pSection, "NewEVAVoice.InitialMessage");
+
+		this->BattlePointsCollector.Read(exINI, pSection, "BattlePointsCollector");
+		this->BattlePointsCollector_RequirePower.Read(exINI, pSection, "BattlePointsCollector.RequirePower");
+
+		this->BuildingRepairedSound.Read(exINI, pSection, "BuildingRepairedSound");
 	}
 #pragma endregion
 	if (pArtINI->GetSection(pArtSection))
 	{
 		INI_EX exArtINI(pArtINI);
+
+		this->Refinery_UseNormalActiveAnim.Read(exArtINI, pArtSection, "Refinery.UseNormalActiveAnim");
 
 		if (this->IsCustom)
 		{
@@ -1980,6 +1989,7 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->Cursor_Sabotage)
 		.Process(this->ImmuneToSaboteurs)
 		.Process(this->ReverseEngineersVictims)
+		.Process(this->ReverseEngineersVictims_Passengers)
 
 		.Process(this->GateDownSound)
 		.Process(this->GateUpSound)
@@ -2100,6 +2110,12 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->NewEvaVoice_Priority)
 		.Process(this->NewEvaVoice_RecheckOnDeath)
 		.Process(this->NewEvaVoice_InitialMessage)
+
+		.Process(this->BattlePointsCollector)
+		.Process(this->BattlePointsCollector_RequirePower)
+		.Process(this->BuildingRepairedSound)
+
+		.Process(this->Refinery_UseNormalActiveAnim)
 		;
 }
 

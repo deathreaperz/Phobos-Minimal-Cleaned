@@ -72,9 +72,9 @@ ASMJIT_PATCH(0x47F852, CellClass_DrawOverlay_Tiberium_, 0x6) // B
 	const int nOreTint = std::clamp(nTint, 0, 1000);
 	auto nShadowFrame = (nIndex + pShape->Frames / 2);
 	ConvertClass* pDecided = FileSystem::x_PAL();
-	if (const auto pCustom = pTibExt->Palette)
+	if (const auto pCustom = pTibExt->Palette.GetConvert())
 	{
-		pDecided = pCustom->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pDecided);
+		pDecided = pCustom;
 	}
 
 	SHPStruct* pZShape = nullptr;
@@ -101,9 +101,9 @@ ASMJIT_PATCH(0x47F661, CellClass_DrawOverlay_Rubble_Shadow, 0x8)
 		auto const pBTypeExt = BuildingTypeExtContainer::Instance.Find(pCell->Rubble);
 
 		ConvertClass* pDecided = pCell->LightConvert;
-		if (const auto pCustom = pBTypeExt->RubblePalette)
+		if (const auto pCustom = pBTypeExt->RubblePalette.GetConvert())
 		{
-			pDecided = pCustom->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pDecided);
+			pDecided = pCustom;
 		}
 
 		auto const zAdjust = -2 - nOffset;
@@ -131,9 +131,9 @@ ASMJIT_PATCH(0x47FADB, CellClass_DrawOverlay_Rubble, 0x5)
 		{
 			auto const pBTypeExt = BuildingTypeExtContainer::Instance.Find(pRubble);
 			ConvertClass* pDecided = pCell->LightConvert;
-			if (const auto pCustom = pBTypeExt->RubblePalette)
+			if (const auto pCustom = pBTypeExt->RubblePalette.GetConvert())
 			{
-				pDecided = pCustom->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pDecided);
+				pDecided = pCustom;
 			}
 
 			const auto zAdjust = nVal - nOffset - 2;

@@ -19,6 +19,16 @@
 #include <Utilities/Cast.h>
 #include <Utilities/EnumFunctions.h>
 
+bool TechnoTypeExtData::IsSecondary(int nWeaponIndex)
+{
+	const auto pThis = this->AttachedToObject;
+
+	if (pThis->IsGattling)
+		return nWeaponIndex != 0 && nWeaponIndex % 2 != 0;
+
+	return nWeaponIndex != 0;
+}
+
 void TechnoTypeExtData::Initialize()
 {
 	this->ShieldType = ShieldTypeClass::Array.begin()->get();
@@ -114,10 +124,9 @@ VoxelStruct* TechnoTypeExtData::GetBarrelsVoxel(TechnoTypeClass* const pThis, in
 
 	const auto nAdditional = (nIdx - TechnoTypeClass::MaxWeapons);
 
-	if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->BarrelImageData.size())
-	{
-		Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%s] Is Bigger than BarrelData ! ", pThis->ID, nAdditional);
-	}
+	//if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->BarrelImageData.size()) {
+	//	Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%s] Is Bigger than BarrelData ! ", pThis->ID, nAdditional);
+	//}
 
 	return TechnoTypeExtContainer::Instance.Find(pThis)->BarrelImageData.data() +
 		nAdditional;
@@ -132,10 +141,43 @@ VoxelStruct* TechnoTypeExtData::GetTurretsVoxel(TechnoTypeClass* const pThis, in
 		return pThis->ChargerTurrets + nIdx;
 
 	const auto nAdditional = (nIdx - TechnoTypeClass::MaxWeapons);
-	if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->TurretImageData.size())
-	{
-		Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%d]  Is Bigger than TurretData ! ", pThis->ID, nAdditional);
-	}
+	//if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->TurretImageData.size()) {
+	//	Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%d]  Is Bigger than TurretData ! ", pThis->ID, nAdditional);
+	//}
+
+	return TechnoTypeExtContainer::Instance.Find(pThis)->TurretImageData.data() + nAdditional;
+}
+
+VoxelStruct* TechnoTypeExtData::GetBarrelsVoxelFixedUp(TechnoTypeClass* const pThis, int const nIdx)
+{
+	if (!pThis->HasMultipleTurrets() || pThis->IsGattling || nIdx == -1)
+		return &pThis->BarrelVoxel;
+
+	if (nIdx < TechnoTypeClass::MaxWeapons)
+		return pThis->ChargerBarrels + nIdx;
+
+	const auto nAdditional = (nIdx - TechnoTypeClass::MaxWeapons);
+
+	//if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->BarrelImageData.size()) {
+	//	Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%s] Is Bigger than BarrelData ! ", pThis->ID, nAdditional);
+	//}
+
+	return TechnoTypeExtContainer::Instance.Find(pThis)->BarrelImageData.data() +
+		nAdditional;
+}
+
+VoxelStruct* TechnoTypeExtData::GetTurretsVoxelFixedUp(TechnoTypeClass* const pThis, int const nIdx)
+{
+	if (!pThis->HasMultipleTurrets() || pThis->IsGattling || nIdx == -1)
+		return &pThis->TurretVoxel;
+
+	if (nIdx < TechnoTypeClass::MaxWeapons)
+		return pThis->ChargerTurrets + nIdx;
+
+	const auto nAdditional = (nIdx - TechnoTypeClass::MaxWeapons);
+	//if ((size_t)nAdditional >= TechnoTypeExtContainer::Instance.Find(pThis)->TurretImageData.size()) {
+	//	Debug::FatalErrorAndExit(__FUNCTION__" [%s] Size[%d]  Is Bigger than TurretData ! ", pThis->ID, nAdditional);
+	//}
 
 	return TechnoTypeExtContainer::Instance.Find(pThis)->TurretImageData.data() + nAdditional;
 }
@@ -196,27 +238,6 @@ bool TechnoTypeExtData::HasSelectionGroupID(ObjectTypeClass* pType, const std::s
 	const auto id = TechnoTypeExtData::GetSelectionGroupID(pType);
 
 	return (IS_SAME_STR_(id, pID.c_str()));
-}
-
-bool TechnoTypeExtData::IsCountedAsHarvester()
-{
-	if (!this->Harvester_Counted.isset())
-	{
-		if (this->AttachedToObject->Enslaves)
-		{
-			this->Harvester_Counted = true;
-		}
-
-		if (const auto pUnit = type_cast<UnitTypeClass*>(this->AttachedToObject))
-		{
-			if (pUnit->Harvester || pUnit->Enslaves)
-			{
-				this->Harvester_Counted = true;
-			}
-		}
-	}
-
-	return this->Harvester_Counted;
 }
 
 //DO NOT USE !
@@ -364,6 +385,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Spawner_AttackImmediately.Read(exINI, pSection, "Spawner.AttackImmediately");
 		this->Spawner_UseTurretFacing.Read(exINI, pSection, "Spawner.UseTurretFacing");
 		this->Harvester_Counted.Read(exINI, pSection, "Harvester.Counted");
+
 		this->Promote_IncludeSpawns.Read(exINI, pSection, "Promote.IncludeSpawns");
 		this->ImmuneToCrit.Read(exINI, pSection, "ImmuneToCrit");
 		this->MultiMindControl_ReleaseVictim.Read(exINI, pSection, "MultiMindControl.ReleaseVictim");
@@ -1421,6 +1443,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->ForceAAWeapon_InRange.Read(exINI, pSection, "ForceAAWeapon.InRange");
 		this->ForceAAWeapon_InRange_Overrides.Read(exINI, pSection, "ForceAAWeapon.InRange.Overrides");
 		this->ForceAAWeapon_InRange_ApplyRangeModifiers.Read(exINI, pSection, "ForceAAWeapon.InRange.ApplyRangeModifiers");
+		this->ForceWeapon_InRange_TechnoOnly.Read(exINI, pSection, "ForceWeapon.InRange.TechnoOnly");
 
 		if (!RefinerySmokeParticleSystemOne.isset())
 		{
@@ -1523,9 +1546,6 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		// Spawner range
 		this->ResetSpawnerRange();
 
-		if (this->Spawn_LimitedExtraRange)
-			this->CalculateSpawnerRange();
-
 		this->AdvancedDrive_ReverseSpeed.Read(exINI, pSection, "AdvancedDrive.ReverseSpeed");
 		this->AdvancedDrive_FaceTargetRange.Read(exINI, pSection, "AdvancedDrive.FaceTargetRange");
 		this->AdvancedDrive_ConfrontEnemies.Read(exINI, pSection, "AdvancedDrive.ConfrontEnemies");
@@ -1585,12 +1605,34 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 				}
 			}
 		}
+
+		this->BattlePoints.Read(exINI, pSection, "BattlePoints");
+		this->ForceWeapon_Check = (
+			this->ForceWeapon_Naval_Decloaked >= 0 ||
+			this->ForceWeapon_Cloaked >= 0 ||
+			this->ForceWeapon_Disguised >= 0 ||
+			this->ForceWeapon_UnderEMP >= 0 ||
+			!this->ForceWeapon_InRange.empty() ||
+			!this->ForceAAWeapon_InRange.empty()
+		);
+
+		this->FiringForceScatter.Read(exINI, pSection, "FiringForceScatter");
+		this->Convert_ResetMindControl.Read(exINI, pSection, "Convert.ResetMindControl");
+
+		this->ExtendedAircraftMissions_SmoothMoving.Read(exINI, pSection, "ExtendedAircraftMissions.SmoothMoving");
+		this->ExtendedAircraftMissions_EarlyDescend.Read(exINI, pSection, "ExtendedAircraftMissions.EarlyDescend");
+		this->ExtendedAircraftMissions_RearApproach.Read(exINI, pSection, "ExtendedAircraftMissions.RearApproach");
+		this->DigitalDisplay_Health_FakeAtDisguise.Read(exINI, pSection, "DigitalDisplay.Health.FakeAtDisguise");
+		this->EngineerRepairAmount.Read(exINI, pSection, "EngineerRepairAmount");
 	}
 
 	// Art tags
 	if (pArtIni && pArtIni->GetSection(pArtSection))
 	{
 		INI_EX exArtINI(pArtIni);
+
+		this->FireUp.Read(exArtINI, pArtSection, "FireUp");
+		this->FireUp_ResetInRetarget.Read(exArtINI, pArtSection, "FireUp.ResetInRetarget");
 
 		this->GreyCameoPCX.Read(&CCINIClass::INI_Art, pArtSection, "GreyCameoPCX");
 		this->AlternateFLH_OnTurret.Read(exArtINI, pArtSection, "AlternateFLH.OnTurret");
@@ -2703,6 +2745,7 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->ForceAAWeapon_InRange)
 		.Process(this->ForceAAWeapon_InRange_Overrides)
 		.Process(this->ForceAAWeapon_InRange_ApplyRangeModifiers)
+		.Process(this->ForceWeapon_InRange_TechnoOnly)
 
 		.Process(this->UnitIdleRotateTurret)
 		.Process(this->UnitIdlePointToMouse)
@@ -2776,6 +2819,20 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->AlternateFLH_OnTurret)
 		.Process(this->DamagedSpeed)
 		.Process(this->RadarInvisibleToHouse)
+
+		.Process(this->BattlePoints)
+		.Process(this->ForceWeapon_Check)
+		.Process(this->FiringForceScatter)
+		.Process(this->Convert_ResetMindControl)
+
+		.Process(this->FireUp)
+		.Process(this->FireUp_ResetInRetarget)
+
+		.Process(this->ExtendedAircraftMissions_SmoothMoving)
+		.Process(this->ExtendedAircraftMissions_EarlyDescend)
+		.Process(this->ExtendedAircraftMissions_RearApproach)
+		.Process(this->DigitalDisplay_Health_FakeAtDisguise)
+		.Process(this->EngineerRepairAmount)
 		;
 }
 

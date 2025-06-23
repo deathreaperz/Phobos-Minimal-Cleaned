@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_API_CONFIG_H_INCLUDED
@@ -15,7 +15,7 @@
 #define ASMJIT_LIBRARY_MAKE_VERSION(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 
 //! AsmJit library version, see \ref ASMJIT_LIBRARY_MAKE_VERSION for a version format reference.
-#define ASMJIT_LIBRARY_VERSION ASMJIT_LIBRARY_MAKE_VERSION(1, 14, 0)
+#define ASMJIT_LIBRARY_VERSION ASMJIT_LIBRARY_MAKE_VERSION(1, 17, 0)
 
 //! \def ASMJIT_ABI_NAMESPACE
 //!
@@ -26,7 +26,7 @@
 //! AsmJit default, which makes it possible to use multiple AsmJit libraries within a single project, totally
 //! controlled by users. This is useful especially in cases in which some of such library comes from third party.
 #if !defined(ASMJIT_ABI_NAMESPACE)
-#define ASMJIT_ABI_NAMESPACE v1_14
+#define ASMJIT_ABI_NAMESPACE v1_17
 #endif // !ASMJIT_ABI_NAMESPACE
 
 //! \}
@@ -76,23 +76,20 @@ namespace asmjit
 //! \note Can be defined explicitly to bypass auto-detection.
 #define ASMJIT_BUILD_RELEASE
 
+//! Disables deprecated API at compile time (deprecated API won't be available).
+#define ASMJIT_NO_DEPRECATED
+
+//! Disables the use of an inline ABI namespace within asmjit namespace (the inline namespace is used as an ABI tag).
+#define ASMJIT_NO_ABI_NAMESPACE
+
 //! Disables X86/X64 backends.
 #define ASMJIT_NO_X86
 
 //! Disables AArch64 backend.
 #define ASMJIT_NO_AARCH64
 
-//! Disables non-host backends entirely (useful for JIT compilers to minimize the library size).
-#define ASMJIT_NO_FOREIGN
-
-//! Disables deprecated API at compile time (deprecated API won't be available).
-#define ASMJIT_NO_DEPRECATED
-
-//! Disables \ref asmjit_builder functionality completely.
-#define ASMJIT_NO_BUILDER
-
-//! Disables \ref asmjit_compiler functionality completely.
-#define ASMJIT_NO_COMPILER
+//! Disables the use of `shm_open` on all targets even when it's supported.
+#define ASMJIT_NO_SHM_OPEN
 
 //! Disables JIT memory management and \ref asmjit::JitRuntime.
 #define ASMJIT_NO_JIT
@@ -109,21 +106,36 @@ namespace asmjit
 //! Disables instruction introspection API.
 #define ASMJIT_NO_INTROSPECTION
 
+//! Disables non-host backends entirely (useful for JIT compilers to minimize the library size).
+#define ASMJIT_NO_FOREIGN
+
+//! Disables \ref asmjit_builder functionality completely.
+#define ASMJIT_NO_BUILDER
+
+//! Disables \ref asmjit_compiler functionality completely.
+#define ASMJIT_NO_COMPILER
+
 // Avoid doxygen preprocessor using feature-selection definitions.
 #undef ASMJIT_BUILD_EMBED
 #undef ASMJIT_BUILD_STATIC
 #undef ASMJIT_BUILD_DEBUG
 #undef ASMJIT_BUILD_RELEASE
-#undef ASMJIT_NO_X86
-#undef ASMJIT_NO_FOREIGN
+
 // (keep ASMJIT_NO_DEPRECATED defined, we don't document deprecated APIs).
-#undef ASMJIT_NO_BUILDER
-#undef ASMJIT_NO_COMPILER
+#undef ASMJIT_NO_ABI_NAMESPACE
+
+#undef ASMJIT_NO_X86
+#undef ASMJIT_NO_AARCH64
+#undef ASMJIT_NO_FOREIGN
+
 #undef ASMJIT_NO_JIT
 #undef ASMJIT_NO_LOGGING
 #undef ASMJIT_NO_TEXT
 #undef ASMJIT_NO_VALIDATION
 #undef ASMJIT_NO_INTROSPECTION
+#undef ASMJIT_NO_BUILDER
+#undef ASMJIT_NO_COMPILER
+#undef ASMJIT_NO_UJIT
 
 //! \}
 } // {asmjit}
@@ -132,6 +144,11 @@ namespace asmjit
 // ASMJIT_NO_BUILDER implies ASMJIT_NO_COMPILER.
 #if defined(ASMJIT_NO_BUILDER) && !defined(ASMJIT_NO_COMPILER)
 #define ASMJIT_NO_COMPILER
+#endif
+
+// ASMJIT_NO_COMPILER implies ASMJIT_NO_UJIT.
+#if defined(ASMJIT_NO_COMPILER) && !defined(ASMJIT_NO_UJIT)
+#define ASMJIT_NO_UJIT
 #endif
 
 // Prevent compile-time errors caused by misconfiguration.
@@ -189,6 +206,13 @@ namespace asmjit
 //! \def ASMJIT_ARCH_BE
 //!
 //! Defined to 1 if the target architecture is big endian.
+
+//! \def ASMJIT_HAS_HOST_BACKEND
+//!
+//! Defined when AsmJit is built with the target architecture backend.
+//!
+//! For example if AsmJit is building for x86 or x86_64 architectures and `ASMJIT_NO_X86` is not defined,
+//! it would define `ASMJIT_HAS_HOST_BACKEND` when `<asmjit/code.h>` or ``<asmjit/host.h>` is included.
 
 //! \}
 
@@ -255,6 +279,24 @@ namespace asmjit
 #endif
 #endif
 
+#if ASMJIT_ARCH_X86 != 0 && !defined(ASMJIT_NO_X86)
+#define ASMJIT_HAS_HOST_BACKEND
+#endif
+
+#if ASMJIT_ARCH_ARM == 64 && !defined(ASMJIT_NO_AARCH64)
+#define ASMJIT_HAS_HOST_BACKEND
+#endif
+
+#if !defined(ASMJIT_NO_UJIT)
+#if !defined(ASMJIT_NO_X86) && ASMJIT_ARCH_X86 != 0
+#define ASMJIT_UJIT_X86
+#elif !defined(ASMJIT_NO_AARCH64) && ASMJIT_ARCH_ARM == 64
+#define ASMJIT_UJIT_AARCH64
+#else
+#define ASMJIT_NO_UJIT
+#endif
+#endif
+
 //! \endcond
 
 // C++ Compiler and Features Detection
@@ -282,26 +324,25 @@ namespace asmjit
 //! is exported. However, GCC has some strange behavior that even if one or more symbol is exported it doesn't export
 //! typeinfo unless the class itself is decorated with "visibility(default)" (i.e. ASMJIT_API).
 
-//! \def ASMJIT_FORCE_INLINE
+//! \def ASMJIT_INLINE
 //!
 //! Decorator to force inlining of functions, uses either `__attribute__((__always_inline__))` or __forceinline,
 //! depending on C++ compiler.
 
 //! \def ASMJIT_INLINE_NODEBUG
 //!
-//! Like \ref ASMJIT_FORCE_INLINE, but uses additionally `__nodebug__` or `__artificial__` attribute to make the
+//! Like \ref ASMJIT_INLINE, but uses additionally `__nodebug__` or `__artificial__` attribute to make the
 //! debugging of some AsmJit functions easier, especially getters and one-line abstractions where usually you don't
 //! want to step in.
+
+//! \def ASMJIT_INLINE_CONSTEXPR
+//!
+//! Like \ref ASMJIT_INLINE_NODEBUG, but having an additional `constexpr` attribute.
 
 //! \def ASMJIT_NOINLINE
 //!
 //! Decorator to avoid inlining of functions, uses either `__attribute__((__noinline__))` or `__declspec(noinline)`
 //! depending on C++ compiler.
-
-//! \def ASMJIT_NORETURN
-//!
-//! Decorator that marks functions that should never return. Typically used to implement assertion handlers that
-//! terminate, so the function never returns.
 
 //! \def ASMJIT_CDECL
 //!
@@ -366,11 +407,11 @@ namespace asmjit
 
 // Function attributes.
 #if !defined(ASMJIT_BUILD_DEBUG) && defined(__GNUC__)
-#define ASMJIT_FORCE_INLINE inline __attribute__((__always_inline__))
+#define ASMJIT_INLINE inline __attribute__((__always_inline__))
 #elif !defined(ASMJIT_BUILD_DEBUG) && defined(_MSC_VER)
-#define ASMJIT_FORCE_INLINE __forceinline
+#define ASMJIT_INLINE __forceinline
 #else
-#define ASMJIT_FORCE_INLINE inline
+#define ASMJIT_INLINE inline
 #endif
 
 #if defined(__clang__)
@@ -381,15 +422,14 @@ namespace asmjit
 #define ASMJIT_INLINE_NODEBUG inline
 #endif
 
+#define ASMJIT_INLINE_CONSTEXPR constexpr ASMJIT_INLINE_NODEBUG
+
 #if defined(__GNUC__)
 #define ASMJIT_NOINLINE __attribute__((__noinline__))
-#define ASMJIT_NORETURN __attribute__((__noreturn__))
 #elif defined(_MSC_VER)
 #define ASMJIT_NOINLINE __declspec(noinline)
-#define ASMJIT_NORETURN __declspec(noreturn)
 #else
 #define ASMJIT_NOINLINE
-#define ASMJIT_NORETURN
 #endif
 
 // Calling conventions.
@@ -418,13 +458,13 @@ namespace asmjit
 #define ASMJIT_VECTORCALL
 #endif
 
-// Type alignment (not allowed by C++11 'alignas' keyword).
+// Type alignment (not allowed by C++17 'alignas' keyword).
 #if defined(__GNUC__)
-#define ASMJIT_ALIGN_TYPE(TYPE, N) __attribute__((__aligned__(N))) TYPE
+#define ASMJIT_ALIGN_TYPE(N, ...) __attribute__((__aligned__(N))) __VA_ARGS__
 #elif defined(_MSC_VER)
-#define ASMJIT_ALIGN_TYPE(TYPE, N) __declspec(align(N)) TYPE
+#define ASMJIT_ALIGN_TYPE(N, ...) __declspec(align(N)) __VA_ARGS__
 #else
-#define ASMJIT_ALIGN_TYPE(TYPE, N) TYPE
+#define ASMJIT_ALIGN_TYPE(N, ...) __VA_ARGS__
 #endif
 
 //! \def ASMJIT_MAY_ALIAS
@@ -436,33 +476,13 @@ namespace asmjit
 #define ASMJIT_MAY_ALIAS
 #endif
 
-//! \def ASMJIT_MAYBE_UNUSED
-//!
-//! Expands to `[[maybe_unused]]` if supported or a compiler attribute instead.
-#if __cplusplus >= 201703L
-#define ASMJIT_MAYBE_UNUSED [[maybe_unused]]
-#elif defined(__GNUC__)
-#define ASMJIT_MAYBE_UNUSED __attribute__((unused))
-#else
-#define ASMJIT_MAYBE_UNUSED
-#endif
-
-#if defined(__clang_major__) && __clang_major__ >= 4 && !defined(_DOXYGEN)
-  // NOTE: Clang allows to apply this attribute to function arguments, which is what we want. Once GCC decides to
-  // support this use, we will enable it for GCC as well. However, until that, it will be clang only, which is
-  // what we need for static analysis.
+#if defined(__clang__) && !defined(_DOXYGEN)
+  // NOTE: Clang allows to apply this attribute to function arguments, which is what we want. Once GCC decides
+  // to support this use, we will enable it for GCC as well. However, until that, it will be clang only, which
+  // is what we need for static analysis.
 #define ASMJIT_NONNULL(FUNCTION_ARGUMENT) FUNCTION_ARGUMENT __attribute__((__nonnull__))
 #else
 #define ASMJIT_NONNULL(FUNCTION_ARGUMENT) FUNCTION_ARGUMENT
-#endif
-
-//! \def ASMJIT_NOEXCEPT_TYPE
-//!
-//! Defined to `noexcept` in C++17 mode or nothing otherwise. Used by function typedefs.
-#if __cplusplus >= 201703L
-#define ASMJIT_NOEXCEPT_TYPE noexcept
-#else
-#define ASMJIT_NOEXCEPT_TYPE
 #endif
 
 //! \def ASMJIT_ASSUME(...)
@@ -498,35 +518,13 @@ namespace asmjit
 #define ASMJIT_UNLIKELY(...) (__VA_ARGS__)
 #endif
 
-//! \def ASMJIT_FALLTHROUGH
-//!
-//! Portable [[fallthrough]] attribute.
-#if defined(__clang__) && __cplusplus >= 201103L
-#define ASMJIT_FALLTHROUGH [[clang::fallthrough]]
-#elif defined(__GNUC__) && __GNUC__ >= 7
-#define ASMJIT_FALLTHROUGH __attribute__((__fallthrough__))
-#else
-#define ASMJIT_FALLTHROUGH ((void)0) /* fallthrough */
-#endif
-
-//! \def ASMJIT_DEPRECATED
-//!
-//! Marks function, class, struct, enum, or anything else as deprecated.
-#if defined(__GNUC__)
-#define ASMJIT_DEPRECATED(MESSAGE) __attribute__((__deprecated__(MESSAGE)))
-#elif defined(_MSC_VER)
-#define ASMJIT_DEPRECATED(MESSAGE) __declspec(deprecated(MESSAGE))
-#else
-#define ASMJIT_DEPRECATED(MESSAGE)
-#endif
-
 // Utilities.
 #define ASMJIT_OFFSET_OF(STRUCT, MEMBER) ((int)(intptr_t)((const char*)&((const STRUCT*)0x100)->MEMBER) - 0x100)
 #define ASMJIT_ARRAY_SIZE(X) uint32_t(sizeof(X) / sizeof(X[0]))
 
 #if ASMJIT_CXX_HAS_ATTRIBUTE(no_sanitize, 0)
 #define ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF __attribute__((__no_sanitize__("undefined")))
-#elif defined(__GNUC__) && __GNUC__ >= 5
+#elif defined(__GNUC__)
 #define ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF __attribute__((__no_sanitize_undefined__))
 #else
 #define ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF
@@ -535,25 +533,14 @@ namespace asmjit
 // Diagnostic Macros
 // ======================================
 
-#if !defined(__clang__) && !defined(__INTEL_COMPILER) && !defined(_DOXYGEN)
-#if defined(__GNUC__) && __GNUC__ == 4
-  // There is a bug in GCC 4.X that has been fixed in GCC 5+, so just silence the warning.
-#define ASMJIT_BEGIN_DIAGNOSTIC_SCOPE                                     \
-      _Pragma("GCC diagnostic push")                                          \
-      _Pragma("GCC diagnostic ignored \"-Wmissing-field-initializers\"")
-#define ASMJIT_END_DIAGNOSTIC_SCOPE                                       \
-      _Pragma("GCC diagnostic pop")
-#elif defined(_MSC_VER)
-#define ASMJIT_BEGIN_DIAGNOSTIC_SCOPE                                     \
-      __pragma(warning(push))                                                 \
-      __pragma(warning(disable: 4127))  /* conditional expression is const */ \
-      __pragma(warning(disable: 4201))  /* nameless struct/union */
-#define ASMJIT_END_DIAGNOSTIC_SCOPE                                       \
-      __pragma(warning(pop))
-#endif
-#endif
-
-#if !defined(ASMJIT_BEGIN_DIAGNOSTIC_SCOPE) && !defined(ASMJIT_END_DIAGNOSTIC_SCOPE)
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(_DOXYGEN)
+#define ASMJIT_BEGIN_DIAGNOSTIC_SCOPE                                        \
+    __pragma(warning(push))                                                    \
+    __pragma(warning(disable: 4127))  /* conditional expression is const */    \
+    __pragma(warning(disable: 4201))  /* nameless struct/union */
+#define ASMJIT_END_DIAGNOSTIC_SCOPE                                          \
+    __pragma(warning(pop))
+#else
 #define ASMJIT_BEGIN_DIAGNOSTIC_SCOPE
 #define ASMJIT_END_DIAGNOSTIC_SCOPE
 #endif
@@ -562,19 +549,19 @@ namespace asmjit
 // ======================================
 
 #if !defined(ASMJIT_NO_ABI_NAMESPACE) && !defined(_DOXYGEN)
-#define ASMJIT_BEGIN_NAMESPACE                                              \
-    ASMJIT_BEGIN_DIAGNOSTIC_SCOPE                                             \
-    namespace asmjit {                                                        \
+#define ASMJIT_BEGIN_NAMESPACE                                               \
+    ASMJIT_BEGIN_DIAGNOSTIC_SCOPE                                              \
+    namespace asmjit {                                                         \
     inline namespace ASMJIT_ABI_NAMESPACE {
-#define ASMJIT_END_NAMESPACE                                                \
-    }}                                                                        \
+#define ASMJIT_END_NAMESPACE                                                 \
+    }}                                                                         \
     ASMJIT_END_DIAGNOSTIC_SCOPE
 #else
-#define ASMJIT_BEGIN_NAMESPACE                                              \
-    ASMJIT_BEGIN_DIAGNOSTIC_SCOPE                                             \
+#define ASMJIT_BEGIN_NAMESPACE                                               \
+    ASMJIT_BEGIN_DIAGNOSTIC_SCOPE                                              \
     namespace asmjit {
-#define ASMJIT_END_NAMESPACE                                                \
-    }                                                                         \
+#define ASMJIT_END_NAMESPACE                                                 \
+    }                                                                          \
     ASMJIT_END_DIAGNOSTIC_SCOPE
 #endif
 
@@ -584,13 +571,13 @@ namespace asmjit
 // C++ Utilities
 // =============
 
-#define ASMJIT_NONCOPYABLE(Type)                                              \
-    Type(const Type& other) = delete;                                         \
+#define ASMJIT_NONCOPYABLE(Type)                                               \
+    Type(const Type& other) = delete;                                          \
     Type& operator=(const Type& other) = delete;
 
-#define ASMJIT_NONCONSTRUCTIBLE(Type)                                         \
-    Type() = delete;                                                          \
-    Type(const Type& other) = delete;                                         \
+#define ASMJIT_NONCONSTRUCTIBLE(Type)                                          \
+    Type() = delete;                                                           \
+    Type(const Type& other) = delete;                                          \
     Type& operator=(const Type& other) = delete;
 
 //! \def ASMJIT_DEFINE_ENUM_FLAGS(T)
@@ -599,38 +586,32 @@ namespace asmjit
 #ifdef _DOXYGEN
 #define ASMJIT_DEFINE_ENUM_FLAGS(T)
 #else
-#define ASMJIT_DEFINE_ENUM_FLAGS(T)                                         \
-    static ASMJIT_INLINE_NODEBUG constexpr T operator~(T a) noexcept {        \
-      return T(~(std::underlying_type<T>::type)(a));                          \
-    }                                                                         \
-                                                                              \
-    static ASMJIT_INLINE_NODEBUG constexpr T operator|(T a, T b) noexcept {   \
-      return T((std::underlying_type<T>::type)(a) |                           \
-              (std::underlying_type<T>::type)(b));                            \
-    }                                                                         \
-    static ASMJIT_INLINE_NODEBUG constexpr T operator&(T a, T b) noexcept {   \
-      return T((std::underlying_type<T>::type)(a) &                           \
-              (std::underlying_type<T>::type)(b));                            \
-    }                                                                         \
-    static ASMJIT_INLINE_NODEBUG constexpr T operator^(T a, T b) noexcept {   \
-      return T((std::underlying_type<T>::type)(a) ^                           \
-              (std::underlying_type<T>::type)(b));                            \
-    }                                                                         \
-                                                                              \
-    static ASMJIT_INLINE_NODEBUG T& operator|=(T& a, T b) noexcept {          \
-      a = T((std::underlying_type<T>::type)(a) |                              \
-            (std::underlying_type<T>::type)(b));                              \
-      return a;                                                               \
-    }                                                                         \
-    static ASMJIT_INLINE_NODEBUG T& operator&=(T& a, T b) noexcept {          \
-      a = T((std::underlying_type<T>::type)(a) &                              \
-            (std::underlying_type<T>::type)(b));                              \
-      return a;                                                               \
-    }                                                                         \
-    static ASMJIT_INLINE_NODEBUG T& operator^=(T& a, T b) noexcept {          \
-      a = T((std::underlying_type<T>::type)(a) ^                              \
-            (std::underlying_type<T>::type)(b));                              \
-      return a;                                                               \
+#define ASMJIT_DEFINE_ENUM_FLAGS(T)                                          \
+    static ASMJIT_INLINE_CONSTEXPR T operator~(T a) noexcept {                 \
+      return T(~std::underlying_type_t<T>(a));                                 \
+    }                                                                          \
+                                                                               \
+    static ASMJIT_INLINE_CONSTEXPR T operator|(T a, T b) noexcept {            \
+      return T(std::underlying_type_t<T>(a) | std::underlying_type_t<T>(b));   \
+    }                                                                          \
+    static ASMJIT_INLINE_CONSTEXPR T operator&(T a, T b) noexcept {            \
+      return T(std::underlying_type_t<T>(a) & std::underlying_type_t<T>(b));   \
+    }                                                                          \
+    static ASMJIT_INLINE_CONSTEXPR T operator^(T a, T b) noexcept {            \
+      return T(std::underlying_type_t<T>(a) ^ std::underlying_type_t<T>(b));   \
+    }                                                                          \
+                                                                               \
+    static ASMJIT_INLINE_CONSTEXPR T& operator|=(T& a, T b) noexcept {         \
+      a = T(std::underlying_type_t<T>(a) | std::underlying_type_t<T>(b));      \
+      return a;                                                                \
+    }                                                                          \
+    static ASMJIT_INLINE_CONSTEXPR T& operator&=(T& a, T b) noexcept {         \
+      a = T(std::underlying_type_t<T>(a) & std::underlying_type_t<T>(b));      \
+      return a;                                                                \
+    }                                                                          \
+    static ASMJIT_INLINE_CONSTEXPR T& operator^=(T& a, T b) noexcept {         \
+      a = T(std::underlying_type_t<T>(a) ^ std::underlying_type_t<T>(b));      \
+      return a;                                                                \
     }
 #endif
 
@@ -640,19 +621,71 @@ namespace asmjit
 #if defined(_DOXYGEN) || (defined(_MSC_VER) && _MSC_VER <= 1900)
 #define ASMJIT_DEFINE_ENUM_COMPARE(T)
 #else
-#define ASMJIT_DEFINE_ENUM_COMPARE(T)                                                \
-    static ASMJIT_INLINE_NODEBUG bool operator<(T a, T b) noexcept {                   \
-      return (std::underlying_type<T>::type)(a) < (std::underlying_type<T>::type)(b);  \
-    }                                                                                  \
-    static ASMJIT_INLINE_NODEBUG bool operator<=(T a, T b) noexcept {                  \
-      return (std::underlying_type<T>::type)(a) <= (std::underlying_type<T>::type)(b); \
-    }                                                                                  \
-    static ASMJIT_INLINE_NODEBUG bool operator>(T a, T b) noexcept {                   \
-      return (std::underlying_type<T>::type)(a) > (std::underlying_type<T>::type)(b);  \
-    }                                                                                  \
-    static ASMJIT_INLINE_NODEBUG bool operator>=(T a, T b) noexcept {                  \
-      return (std::underlying_type<T>::type)(a) >= (std::underlying_type<T>::type)(b); \
+#define ASMJIT_DEFINE_ENUM_COMPARE(T)                                        \
+    static ASMJIT_INLINE_CONSTEXPR bool operator<(T a, T b) noexcept {         \
+      return (std::underlying_type_t<T>)(a) < (std::underlying_type_t<T>)(b);  \
+    }                                                                          \
+    static ASMJIT_INLINE_CONSTEXPR bool operator<=(T a, T b) noexcept {        \
+      return (std::underlying_type_t<T>)(a) <= (std::underlying_type_t<T>)(b); \
+    }                                                                          \
+    static ASMJIT_INLINE_CONSTEXPR bool operator>(T a, T b) noexcept {         \
+      return (std::underlying_type_t<T>)(a) > (std::underlying_type_t<T>)(b);  \
+    }                                                                          \
+    static ASMJIT_INLINE_CONSTEXPR bool operator>=(T a, T b) noexcept {        \
+      return (std::underlying_type_t<T>)(a) >= (std::underlying_type_t<T>)(b); \
     }
 #endif
+
+//! Defines a strong type `C` that wraps a value of `T`.
+#define ASMJIT_DEFINE_STRONG_TYPE(C, T)                                                   \
+struct C {                                                                                \
+  T v;                                                                                    \
+                                                                                          \
+  ASMJIT_INLINE_NODEBUG C() = default;                                                    \
+  ASMJIT_INLINE_CONSTEXPR explicit C(T x) noexcept : v(x) {}                              \
+  ASMJIT_INLINE_CONSTEXPR C(const C& other) noexcept = default;                           \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR T value() const noexcept { return v; }                          \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR T* valuePtr() noexcept { return &v; }                           \
+  ASMJIT_INLINE_CONSTEXPR const T* valuePtr() const noexcept { return &v; }               \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR C& operator=(T x) noexcept { v = x; return *this; };            \
+  ASMJIT_INLINE_CONSTEXPR C& operator=(const C& x) noexcept { v = x.v; return *this; }    \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR C operator+(T x) const noexcept { return C(v + x); }            \
+  ASMJIT_INLINE_CONSTEXPR C operator-(T x) const noexcept { return C(v - x); }            \
+  ASMJIT_INLINE_CONSTEXPR C operator*(T x) const noexcept { return C(v * x); }            \
+  ASMJIT_INLINE_CONSTEXPR C operator/(T x) const noexcept { return C(v / x); }            \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR C operator+(const C& x) const noexcept { return C(v + x.v); }   \
+  ASMJIT_INLINE_CONSTEXPR C operator-(const C& x) const noexcept { return C(v - x.v); }   \
+  ASMJIT_INLINE_CONSTEXPR C operator*(const C& x) const noexcept { return C(v * x.v); }   \
+  ASMJIT_INLINE_CONSTEXPR C operator/(const C& x) const noexcept { return C(v / x.v); }   \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR C& operator+=(T x) noexcept { v += x; return *this; }           \
+  ASMJIT_INLINE_CONSTEXPR C& operator-=(T x) noexcept { v -= x; return *this; }           \
+  ASMJIT_INLINE_CONSTEXPR C& operator*=(T x) noexcept { v *= x; return *this; }           \
+  ASMJIT_INLINE_CONSTEXPR C& operator/=(T x) noexcept { v /= x; return *this; }           \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR C& operator+=(const C& x) noexcept { v += x.v; return *this; }  \
+  ASMJIT_INLINE_CONSTEXPR C& operator-=(const C& x) noexcept { v -= x.v; return *this; }  \
+  ASMJIT_INLINE_CONSTEXPR C& operator*=(const C& x) noexcept { v *= x.v; return *this; }  \
+  ASMJIT_INLINE_CONSTEXPR C& operator/=(const C& x) noexcept { v /= x.v; return *this; }  \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR bool operator==(T x) const noexcept { return v == x; }          \
+  ASMJIT_INLINE_CONSTEXPR bool operator!=(T x) const noexcept { return v != x; }          \
+  ASMJIT_INLINE_CONSTEXPR bool operator> (T x) const noexcept { return v >  x; }          \
+  ASMJIT_INLINE_CONSTEXPR bool operator>=(T x) const noexcept { return v >= x; }          \
+  ASMJIT_INLINE_CONSTEXPR bool operator< (T x) const noexcept { return v <  x; }          \
+  ASMJIT_INLINE_CONSTEXPR bool operator<=(T x) const noexcept { return v <= x; }          \
+                                                                                          \
+  ASMJIT_INLINE_CONSTEXPR bool operator==(const C& x) const noexcept { return v == x.v; } \
+  ASMJIT_INLINE_CONSTEXPR bool operator!=(const C& x) const noexcept { return v != x.v; } \
+  ASMJIT_INLINE_CONSTEXPR bool operator> (const C& x) const noexcept { return v >  x.v; } \
+  ASMJIT_INLINE_CONSTEXPR bool operator>=(const C& x) const noexcept { return v >= x.v; } \
+  ASMJIT_INLINE_CONSTEXPR bool operator< (const C& x) const noexcept { return v <  x.v; } \
+  ASMJIT_INLINE_CONSTEXPR bool operator<=(const C& x) const noexcept { return v <= x.v; } \
+};
 
 #endif // ASMJIT_CORE_API_CONFIG_H_INCLUDED

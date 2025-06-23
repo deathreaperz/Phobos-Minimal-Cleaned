@@ -97,6 +97,7 @@ public:
 	ValueableIdx<VoxClass> EVA_Ready { -1 };
 	ValueableIdx<VoxClass> EVA_Detected { -1 };
 	ValueableIdx<VoxClass> EVA_InsufficientFunds { -1 };
+	ValueableIdx<VoxClass> EVA_InsufficientBattlePoints { -1 };
 	ValueableIdx<VoxClass> EVA_SelectTarget { -1 };
 #pragma endregion
 
@@ -106,6 +107,8 @@ public:
 	Valueable<CSFText> Message_Activate {};
 	Valueable<CSFText> Message_Abort {};
 	Valueable<CSFText> Message_InsufficientFunds {};
+	Valueable<CSFText> Message_InsufficientBattlePoints {};
+	Valueable<CSFText> Message_Impatient {};
 	Valueable<CSFText> Message_Detected {};
 	Valueable<CSFText> Message_Ready {};
 
@@ -183,7 +186,7 @@ public:
 #pragma region Otamaa
 	Nullable<SHPStruct*> GClock_Shape {};
 	Nullable<int> GClock_Transculency {};
-	Valueable<PaletteManager*> GClock_Palette {}; //CustomPalette::PaletteMode::Default
+	CustomPalette GClock_Palette {}; //CustomPalette::PaletteMode::Default
 	Valueable<bool> ChargeTimer { false };
 	Valueable<bool> ChargeTimer_Backwards { false };
 #pragma endregion
@@ -305,6 +308,8 @@ public:
 	Nullable<AnimTypeClass*> EMPulse_PulseBall {};
 	ValueableVector<BuildingTypeClass*> EMPulse_Cannons {};
 	Valueable<bool> EMPulse_SuspendOthers {};
+	Valueable<int> EMPulse_WeaponIndex { 0 };
+
 #pragma endregion
 
 #pragma region Genetic Mutator
@@ -383,7 +388,7 @@ public:
 	Valueable<int> Money_DrainDelay { 0 };
 #pragma endregion
 
-	Valueable<PaletteManager*> SidebarPalette {}; //PaletteManager::Mode::Default
+	CustomPalette SidebarPalette {}; //PaletteManager::Mode::Default
 	PhobosPCXFile SidebarPCX {};
 
 	ValueableIdxVector<SuperWeaponTypeClass> SW_ResetType {};
@@ -465,11 +470,17 @@ public:
 	NullableIdx<VoxClass> EVA_GrantOneTimeLaunched {};
 
 	Valueable<bool> CrateGoodies { false };
-	Valueable<bool> SuperWeaponSidebar_Allow { true };
+	Nullable<bool> SuperWeaponSidebar_Allow { };
 	DWORD SuperWeaponSidebar_PriorityHouses { 0u };
 	DWORD SuperWeaponSidebar_RequiredHouses { 0xFFFFFFFFu };
 
 	Valueable<int> TabIndex { 1 };
+
+	Valueable<int> BattlePoints_Amount {};
+	Valueable<int> BattlePoints_DrainAmount { 0 };
+	Valueable<int> BattlePoints_DrainDelay { 0 };
+
+	Valueable<int> SuperWeaponSidebar_Significance {};
 
 	~SWTypeExtData() noexcept;
 
@@ -504,6 +515,7 @@ public:
 	// check shootamount
 	bool CanFire(HouseClass* pOwner) const;
 	bool CanFireAt(HouseClass* pOwner, const CellStruct& coords, bool manual);
+
 	bool IsAnimVisible(HouseClass* pFirer) const;
 	bool IsHouseAffected(HouseClass* pFirer, HouseClass* pHouse);
 	bool IsHouseAffected(HouseClass* pFirer, HouseClass* pHouse, AffectedHouse value);
@@ -514,6 +526,13 @@ public:
 	bool IsTechnoEligible(TechnoClass* pTechno, SuperWeaponTarget allowed);
 	bool IsTechnoAffected(TechnoClass* pTechno);
 	bool IsAvailable(HouseClass* pHouse);
+
+	void UneableToTransactMoney(HouseClass* pHouse);
+	void UneableToTransactBattlePoints(HouseClass* pHouse);
+	void UneableToFireAtTheMoment(HouseClass* pHouse);
+
+	bool ApplyDrainMoney(int timeLeft, HouseClass* pHouse);
+	bool ApplyDrainBattlePoint(int timeLeft, HouseClass* pHouse);
 
 	//no arg(s)
 	COMPILETIMEEVAL OPTIONALINLINE double GetChargeToDrainRatio() const
@@ -541,6 +560,10 @@ public:
 	static bool TryFire(SuperClass* pThis, bool IsPlayer);
 	static bool IsTargetConstraintsEligible(SuperClass* pThis, bool IsPlayer);
 	static TargetResult PickSuperWeaponTarget(NewSWType* pNewType, const TargetingData* pTargeting, const SuperClass* pSuper);
+	static void ApplyBattlePoints(SuperClass* pSW);
+	static bool IsResourceAvailable(SuperClass* pSuper);
+	static bool LauchSuper(SuperClass* pSuper);
+	static bool DrawDarken(SuperClass* pSuper);
 
 	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{

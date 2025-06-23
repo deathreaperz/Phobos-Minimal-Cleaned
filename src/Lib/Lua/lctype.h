@@ -9,6 +9,7 @@
 
 #include "lua.h"
 
+
 /*
 ** WARNING: the functions defined here do not necessarily correspond
 ** to the similar functions in the standard C ctype.h. They are
@@ -27,11 +28,13 @@
 
 #endif
 
+
 #if !LUA_USE_CTYPE	/* { */
 
 #include <limits.h>
 
 #include "llimits.h"
+
 
 #define ALPHABIT	0
 #define DIGITBIT	1
@@ -39,7 +42,9 @@
 #define SPACEBIT	3
 #define XDIGITBIT	4
 
+
 #define MASK(B)		(1 << (B))
+
 
 /*
 ** add 1 to char to allow index -1 (EOZ)
@@ -56,6 +61,7 @@
 #define lisprint(c)	testprop(c, MASK(PRINTBIT))
 #define lisxdigit(c)	testprop(c, MASK(XDIGITBIT))
 
+
 /*
 ** In ASCII, this 'ltolower' is correct for alphabetic characters and
 ** for '.'. That is enough for Lua needs. ('check_exp' ensures that
@@ -66,8 +72,10 @@
   check_exp(('A' <= (c) && (c) <= 'Z') || (c) == ((c) | ('A' ^ 'a')),  \
             (c) | ('A' ^ 'a'))
 
+
 /* one entry for each character and for -1 (EOZ) */
 LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
+
 
 #else			/* }{ */
 
@@ -76,6 +84,7 @@ LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
 */
 
 #include <ctype.h>
+
 
 #define lislalpha(c)	(isalpha(c) || (c) == '_')
 #define lislalnum(c)	(isalnum(c) || (c) == '_')
@@ -89,3 +98,4 @@ LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
 #endif			/* } */
 
 #endif
+

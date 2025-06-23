@@ -37,7 +37,7 @@ struct TriggerElementWeight
 	//unequality
 	COMPILETIMEEVAL bool operator!=(const TriggerElementWeight& other) const
 	{
-		return (Trigger != other.Trigger || Weight != other.Weight || Category == other.Category);
+		return (Trigger != other.Trigger || Weight != other.Weight || Category != other.Category);
 	}
 
 	COMPILETIMEEVAL bool operator<(const TriggerElementWeight& other) const
@@ -649,7 +649,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		// Gather all the trigger candidates into one place for posterior fast calculations
 		for (auto const pTrigger : *AITriggerTypeClass::Array)
 		{
-			if (!pTrigger || ScenarioClass::Instance->IgnoreGlobalAITriggers == pTrigger->IsGlobal || !pTrigger->Team1)
+			if (!pTrigger || ScenarioClass::Instance->IgnoreGlobalAITriggers == (bool)pTrigger->IsGlobal || !pTrigger->Team1)
 				continue;
 
 			// Ignore offensive teams if the next trigger must be defensive
@@ -1277,19 +1277,30 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 	return true;
 }
 
-ASMJIT_PATCH(0x4F8A27, TeamTypeClass_SuggestedNewTeam_NewTeamsSelector, 0x5)
+TeamTypeClass* __fastcall Suggested_New_Team(TypeList<TeamTypeClass*>* possible_teams, HouseClass* house, bool alerted)
 {
-	enum { UseOriginalSelector = 0x4F8A63, SkipCode = 0x4F8B08 };
-	GET(HouseClass*, pHouse, ESI);
+	JMP_STD(0x6F0AB0)
+}
 
-	bool houseIsHuman = pHouse->IsHumanPlayer;
-	if (SessionClass::IsCampaign())
-		houseIsHuman = pHouse->IsHumanPlayer || pHouse->IsInPlayerControl;
+ASMJIT_PATCH(0x4F8A63, HouseClass_AI_Team, 7)
+{
+	GET(HouseClass*, pThis, ESI);
 
-	if (houseIsHuman || pHouse->Type->MultiplayPassive)
-		return SkipCode;
+	if (!UpdateTeam(pThis))
+	{
+		TypeList<TeamTypeClass*> possible_teams;
+		Suggested_New_Team(&possible_teams, pThis, false);
+		Debug::LogInfo("[{} - {}] Able to use {} team !", pThis->Type->ID, (void*)pThis, possible_teams.Count);
 
-	return UpdateTeam(pHouse) ? SkipCode : UseOriginalSelector;
+		for (int i = 0; i < possible_teams.Count; ++i)
+		{
+			possible_teams[i]->CreateTeam(pThis);
+		}
+
+		pThis->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[(int)pThis->AIDifficulty]);
+	}
+
+	return 0x4F8B08;
 }
 
 #include <ExtraHeaders/StackVector.h>
@@ -1307,7 +1318,7 @@ ASMJIT_PATCH(0x687C9B, ReadScenarioINI_AITeamSelector_PreloadValidTriggers, 0x7)
 		{
 			if (auto pTrigger = AITriggerTypeClass::Array->Items[i])
 			{
-				if (ScenarioClass::Instance->IgnoreGlobalAITriggers == pTrigger->IsGlobal || !pTrigger->Team1)
+				if (ScenarioClass::Instance->IgnoreGlobalAITriggers == (bool)pTrigger->IsGlobal || !pTrigger->Team1)
 					continue;
 
 				const int triggerHouse = pTrigger->HouseIndex;

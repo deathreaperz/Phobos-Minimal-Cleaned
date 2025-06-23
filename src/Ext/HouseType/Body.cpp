@@ -302,6 +302,9 @@ void HouseTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Disguise.Read(exINI, pSection, "DefaultDisguise", true);
 
 	this->LoadTextColor.Read(exINI, pSection, "LoadScreenText.Color");
+
+	this->BattlePoints.Read(exINI, pSection, "BattlePoints");
+	this->BattlePoints_CanUseStandardPoints.Read(exINI, pSection, "BattlePoints.CanUseStandardPoints");
 }
 
 void HouseTypeExtData::LoadFromRulesFile(CCINIClass* pINI) {
@@ -425,7 +428,7 @@ Iterator<BuildingTypeClass*> HouseTypeExtData::GetDefaultPowerplants() const
 
 int HouseTypeExtData::PickRandomCountry()
 {
-	DiscreteDistributionClass<int, DllAllocator<DistributionObject<int>>> items;
+	DiscreteDistributionClass<int> items;
 
 	for (int i = 0; i < HouseTypeClass::Array->Count; i++) {
 		HouseTypeClass* pCountry = HouseTypeClass::Array->Items[i];
@@ -493,6 +496,8 @@ void  HouseTypeExtData::Serialize(T& Stm)
 		.Process(this->ObserverFlagSHP)
 		.Process(this->ObserverFlagYuriPAL)
 
+		.Process(this->BattlePoints)
+		.Process(this->BattlePoints_CanUseStandardPoints)
 		;
 }
 

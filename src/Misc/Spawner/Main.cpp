@@ -590,7 +590,7 @@ void SpawnerMain::GameConfigs::AssignHouses()
 
 		// Set Bonus Money
 		if (pHousesConfig->CreditsFactor != 1.0)
-			pHouse->Balance *= pHousesConfig->CreditsFactor;
+			pHouse->Balance = (int)(pHouse->Balance * pHousesConfig->CreditsFactor);
 
 		// Set Handicap Difficulty
 		if (pHousesConfig->HandicapDifficulty != -1)
@@ -691,9 +691,14 @@ void SpawnerMain::GameConfigs::RespondToSaveGame(EventClass* event)
 void Print_Saving_Game_Message2()
 {
 	const int message_delay = (int)(RulesClass::Instance->MessageDelay * 900);
-	MessageListClass::Instance->AddMessage(nullptr, 0, L"Saving game...", 4, TextPrintType::Point6Grad | TextPrintType::UseGradPal | TextPrintType::FullShadow, message_delay, false);
-	MapClass::Instance->MarkNeedsRedraw(2);
-	MapClass::Instance->Render();
+	auto str = StringTable::TryFetchStringOrReturnDefaultIfMissing("TXT_AUTOSAVE_MESSAGE", L"Saving game...");
+	MessageListClass::Instance->AddMessage(nullptr, 0, str, 4, TextPrintType::Point6Grad | TextPrintType::UseGradPal | TextPrintType::FullShadow, message_delay, false);
+	// Force a redraw so that our message gets printed.
+	if (Game::SpecialDialog == 0)
+	{
+		MapClass::Instance->MarkNeedsRedraw(2);
+		MapClass::Instance->Render();
+	}
 }
 
 void SpawnerMain::GameConfigs::After_Main_Loop()
@@ -738,7 +743,7 @@ void SpawnerMain::GameConfigs::After_Main_Loop()
 		}
 		else if (SessionClass::Instance->GameMode == GameMode::LAN)
 		{
-			ScenarioClass::Instance->SaveGame("SAVEGAME.NET", L"Multiplayer Game");
+			ScenarioClass::Instance->SaveGame("SAVEGAME.NET", StringTable::TryFetchStringOrReturnDefaultIfMissing("TXT_AUTOSAVE_DESCRIPTION_MULTIPLAYER", L"Multiplayer Game"));
 			SpawnerMain::Configs::NextAutoSaveFrame = Unsorted::CurrentFrame + pConfig->AutoSaveInterval;
 		}
 

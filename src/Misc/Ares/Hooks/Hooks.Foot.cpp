@@ -70,7 +70,7 @@ ASMJIT_PATCH(0x4D98C0, FootClass_Destroyed_PlayEvent, 0xA)
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
 	if (RadarEventClass::Create(RadarEventType::UnitLost, pThis->GetMapCoords()))
-		VoxClass::PlayIndex(pTypeExt->EVA_UnitLost, -1, -1);
+		VoxClass::PlayIndex(pTypeExt->EVA_UnitLost);
 
 	return Skip;
 }
@@ -166,7 +166,7 @@ ASMJIT_PATCH(0x4D8D95, FootClass_UpdatePosition_HunterSeeker, 0xA)
 ASMJIT_PATCH(0x7101CF, FootClass_ImbueLocomotor, 0x7)
 {
 	GET(FootClass* const, pThis, ESI);
-	pThis->Audio7.AudioEventHandleEndLooping();
+	pThis->MoveSoundAudioController.AudioEventHandleEndLooping();
 	return 0;
 }
 
@@ -180,19 +180,19 @@ ASMJIT_PATCH(0x4DAA68, FootClass_Update_MoveSound, 0x6)
 	{
 		if (!pThis->Locomotor->Is_Moving_Now())
 		{
-			pThis->__MovingSoundDelay = 0;
+			pThis->MoveSoundDelay = 0;
 			return 0x4DAB3C;
 		}
 	}
 
-	if (pThis->__PlayingMovingSound)
+	if (pThis->IsMoveSoundPlaying)
 	{
 		return 0x4DAAEE;
 	}
 
 	if (pThis->LocomotorSource)
 	{
-		pThis->Audio7.AudioEventHandleEndLooping();
+		pThis->MoveSoundAudioController.AudioEventHandleEndLooping();
 		return 0x4DAAEE;
 	}
 

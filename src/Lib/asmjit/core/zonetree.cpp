@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -17,7 +17,7 @@ ASMJIT_BEGIN_NAMESPACE
 template<typename NodeT>
 struct ZoneRBUnit
 {
-	typedef ZoneTree<NodeT> Tree;
+	using Tree = ZoneTree<NodeT>;
 
 	static void verifyTree(Tree& tree) noexcept
 	{

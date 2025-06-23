@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_ZONELIST_H_INCLUDED
@@ -21,11 +21,8 @@ public:
 
 		//! \name Constants
 		//! \{
-		enum : size_t
-	{
-		kNodeIndexPrev = 0,
-		kNodeIndexNext = 1
-	};
+		static inline constexpr size_t kNodeIndexPrev = 0;
+	static inline constexpr size_t kNodeIndexNext = 1;
 
 	//! \}
 
@@ -47,10 +44,16 @@ public:
 
 	//! \name Accessors
 	//! \{
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool hasPrev() const noexcept { return _listNodes[kNodeIndexPrev] != nullptr; }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool hasNext() const noexcept { return _listNodes[kNodeIndexNext] != nullptr; }
 
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG NodeT* prev() const noexcept { return _listNodes[kNodeIndexPrev]; }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG NodeT* next() const noexcept { return _listNodes[kNodeIndexNext]; }
 
 	//! \}
@@ -65,11 +68,8 @@ public:
 
 		//! \name Constants
 		//! \{
-		enum : size_t
-	{
-		kNodeIndexFirst = 0,
-		kNodeIndexLast = 1
-	};
+		static inline constexpr size_t kNodeIndexFirst = 0;
+	static inline constexpr size_t kNodeIndexLast = 1;
 
 	//! \}
 
@@ -96,8 +96,13 @@ public:
 
 	//! \name Accessors
 	//! \{
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool empty() const noexcept { return _nodes[0] == nullptr; }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG NodeT* first() const noexcept { return _nodes[kNodeIndexFirst]; }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG NodeT* last() const noexcept { return _nodes[kNodeIndexLast]; }
 
 	//! \}
@@ -118,9 +123,13 @@ public:
 		node->_listNodes[!dir] = prev;
 		_nodes[dir] = node;
 		if (prev)
+		{
 			prev->_listNodes[dir] = node;
+		}
 		else
+		{
 			_nodes[!dir] = node;
+		}
 	}
 
 	// Can be used to both append and prepend.
@@ -133,9 +142,13 @@ public:
 
 		prev->_listNodes[dir] = node;
 		if (next)
+		{
 			next->_listNodes[!dir] = node;
+		}
 		else
+		{
 			_nodes[dir] = node;
+		}
 
 		node->_listNodes[!dir] = prev;
 		node->_listNodes[dir] = next;
@@ -152,9 +165,9 @@ public:
 		NodeT* prev = node->prev();
 		NodeT* next = node->next();
 
-		if (prev) { prev->_listNodes[1] = next; node->_listNodes[0] = nullptr; }
+		if (prev) { prev->_listNodes[1] = next; }
 		else { _nodes[0] = next; }
-		if (next) { next->_listNodes[0] = prev; node->_listNodes[1] = nullptr; }
+		if (next) { next->_listNodes[0] = prev; }
 		else { _nodes[1] = prev; }
 
 		node->_listNodes[0] = nullptr;
@@ -163,6 +176,7 @@ public:
 		return node;
 	}
 
+	[[nodiscard]]
 	inline NodeT* popFirst() noexcept
 	{
 		NodeT* node = _nodes[0];
@@ -184,6 +198,7 @@ public:
 		return node;
 	}
 
+	[[nodiscard]]
 	inline NodeT* pop() noexcept
 	{
 		NodeT* node = _nodes[1];

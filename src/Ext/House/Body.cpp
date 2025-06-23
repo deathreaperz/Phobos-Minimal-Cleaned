@@ -25,7 +25,8 @@ std::vector<int> HouseExtData::AIProduction_Values;
 std::vector<int> HouseExtData::AIProduction_BestChoices;
 std::vector<int> HouseExtData::AIProduction_BestChoicesNaval;
 PhobosMap<TechnoClass*, KillMethod> HouseExtData::AutoDeathObjects;
-HelperedVector<TechnoClass*> HouseExtData::LimboTechno;
+std::set<TechnoClass*> HouseExtData::LimboTechno;
+std::unordered_map<HouseClass*, std::set<TeamClass*>> HouseExtContainer::HousesTeams;
 
 int HouseExtData::LastGrindingBlanceUnit;
 int HouseExtData::LastGrindingBlanceInf;
@@ -87,7 +88,7 @@ float HouseExtData::GetRestrictedFactoryPlantMult(TechnoTypeClass* pTechnoType) 
 	float mult = 1.0;
 	auto const pTechnoTypeExt = TechnoTypeExtContainer::Instance.Find(pTechnoType);
 
-	for (auto const pBuilding : this->RestrictedFactoryPlants)
+	for (auto const& pBuilding : this->RestrictedFactoryPlants)
 	{
 		auto const pTypeExt = BuildingTypeExtContainer::Instance.Find(pBuilding->Type);
 
@@ -938,8 +939,9 @@ void HouseExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 	AnnounceInvalidPointer(Factory_VehicleType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_NavyType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_AircraftType, ptr, bRemoved);
-	AnnounceInvalidPointer<BuildingClass*>(Academies, ptr, bRemoved);
+	AnnounceInvalidPointer(Academies, ptr, bRemoved);
 	AnnounceInvalidPointer<BuildingClass*>(RestrictedFactoryPlants, ptr, bRemoved);
+	AnnounceInvalidPointer(OwnedCountedHarvesters, ptr, bRemoved);
 
 	for (auto& nTun : Tunnels)
 		AnnounceInvalidPointer(nTun.Vector, ptr, bRemoved);
@@ -951,17 +953,19 @@ int HouseExtData::ActiveHarvesterCount(HouseClass* pThis)
 {
 	if (!pThis || !pThis->IsCurrentPlayer()) return 0;
 
+	auto pOwnerExt = HouseExtContainer::Instance.Find(pThis);
+
 	int result =
-		std::count_if(TechnoClass::Array->begin(), TechnoClass::Array->end(),
+		std::count_if(pOwnerExt->OwnedCountedHarvesters.begin(), pOwnerExt->OwnedCountedHarvesters.end(),
 		[pThis](TechnoClass* techno)
 		{
-			if (!techno->IsAlive || techno->Health <= 0 || techno->IsCrashing || techno->IsSinking || techno->Owner != pThis)
+			if (!techno->IsAlive || techno->Health <= 0 || techno->IsCrashing || techno->IsSinking)
 				return false;
 
 			if (techno->WhatAmI() == UnitClass::AbsID && (static_cast<UnitClass*>(techno)->DeathFrameCounter > 0))
 				return false;
 
-			return TechnoTypeExtContainer::Instance.Find(techno->GetTechnoType())->IsCountedAsHarvester() && TechnoExtData::IsHarvesting(techno);
+			return TechnoExtData::IsHarvesting(techno);
 		});
 
 	return result;
@@ -972,13 +976,11 @@ int HouseExtData::TotalHarvesterCount(HouseClass* pThis)
 	if (!pThis || !pThis->IsCurrentPlayer() || pThis->Defeated) return 0;
 
 	int result = 0;
+	auto pOwnerExt = HouseExtContainer::Instance.Find(pThis);
 
-	TechnoTypeClass::Array->for_each([&result, pThis](TechnoTypeClass* techno)
+	std::for_each(pOwnerExt->OwnedCountedHarvesters.begin(), pOwnerExt->OwnedCountedHarvesters.end(), [&result, pThis](TechnoClass* techno)
  {
-	 if (TechnoTypeExtContainer::Instance.Find(techno)->IsCountedAsHarvester())
-	 {
-		 result += pThis->CountOwnedAndPresent(techno);
-	 }
+	 result += !techno->InLimbo && techno->IsAlive && techno->Health > 0;
 	});
 
 	return result;
@@ -1974,6 +1976,65 @@ void HouseExtData::SetForceEnemy(int EnemyIndex)
 		this->ForceEnemyIndex = EnemyIndex;
 }
 
+void HouseExtData::UpdateBattlePoints(int modifier)
+{
+	this->BattlePoints += modifier;
+	this->BattlePoints = this->BattlePoints < 0 ? 0 : this->BattlePoints;
+}
+
+bool HouseExtData::AreBattlePointsEnabled()
+{
+	const auto pThis = this->AttachedToObject;
+	const auto pOwnerTypeExt = HouseTypeExtContainer::Instance.Find(pThis->Type);
+
+	// Structures can enable this logic overwriting the house's setting
+	for (auto& collect : this->BattlePointsCollectors)
+	{
+		if (collect.second > 0) // just bail on one structure found to avoid performance drop
+			return true;
+	}
+
+	// Global setting
+	if (RulesExtData::Instance()->BattlePoints)
+		return true;
+
+	// House specific setting
+	if (pOwnerTypeExt->BattlePoints)
+		return true;
+
+	return false;
+}
+
+bool HouseExtData::CanTransactBattlePoints(int amount)
+{
+	return (amount > 0) || this->BattlePoints >= -amount;
+}
+
+int HouseExtData::CalculateBattlePoints(TechnoClass* pTechno)
+{
+	return pTechno ? CalculateBattlePoints(pTechno->GetTechnoType(), pTechno->Owner) : 0;
+}
+
+int HouseExtData::CalculateBattlePoints(TechnoTypeClass* pTechno, HouseClass* pOwner)
+{
+	const auto pThis = this->AttachedToObject;
+	const auto pThisTypeExt = HouseTypeExtContainer::Instance.Find(pThis->Type);
+	const auto pTechnoTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno);
+
+	if (pTechnoTypeExt->BattlePoints.isset() && pTechnoTypeExt->BattlePoints.Get() != 0)
+		return pTechnoTypeExt->BattlePoints.Get();
+	else if (!pTechnoTypeExt->BattlePoints.isset())
+	{
+		const int Points = RulesExtData::Instance()->BattlePoints_DefaultFriendlyValue.isset() && pThis->IsAlliedWith(pOwner) ?
+			RulesExtData::Instance()->BattlePoints_DefaultFriendlyValue.Get() : RulesExtData::Instance()->BattlePoints_DefaultValue;
+
+		if (Points != 0)
+			return Points;
+	}
+
+	return !pThisTypeExt->BattlePoints_CanUseStandardPoints ? 0 : pTechno->Points;
+}
+
 //void HouseExtData::AddToLimboTracking(TechnoTypeClass* pTechnoType)
 //{
 //	if (pTechnoType)
@@ -2062,9 +2123,10 @@ void HouseExtData::Serialize(T& Stm)
 	Stm
 		.Process(this->Initialized)
 		.Process(this->Degrades)
-		.Process(this->PowerPlantEnhancerBuildings, true)
-		.Process(this->Building_BuildSpeedBonusCounter, true)
-		.Process(this->Building_OrePurifiersCounter, true)
+		.Process(this->PowerPlantEnhancerBuildings)
+		.Process(this->Building_BuildSpeedBonusCounter)
+		.Process(this->Building_OrePurifiersCounter)
+		.Process(this->BattlePointsCollectors)
 		.Process(this->m_ForceOnlyTargetHouseEnemy)
 		.Process(this->ForceOnlyTargetHouseEnemyMode)
 		//.Process(this->RandomNumber)
@@ -2097,6 +2159,7 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->FactoryOwners_GatheredPlansOf, true)
 		.Process(this->Academies, true)
 		.Process(this->Reversed, true)
+		.Process(this->OwnedCountedHarvesters)
 
 		.Process(this->Is_NavalYardSpied)
 		.Process(this->Is_AirfieldSpied)
@@ -2108,7 +2171,6 @@ void HouseExtData::Serialize(T& Stm)
 
 		.Process(this->SideTechTree, true)
 		.Process(this->CombatAlertTimer)
-		.Process(this->EMPulseWeaponIndex)
 		.Process(this->RestrictedFactoryPlants, true)
 		.Process(this->AISellAllDelayTimer)
 		//.Process(this->BuiltAircraftTypes)
@@ -2137,6 +2199,7 @@ void HouseExtData::Serialize(T& Stm)
 
 		.Process(this->SuspendedEMPulseSWs)
 		.Process(this->ForceEnemyIndex)
+		.Process(this->BattlePoints)
 		;
 }
 
@@ -2192,6 +2255,7 @@ void HouseExtContainer::Clear()
 
 	HouseExtData::LimboTechno.clear();
 	HouseExtData::AutoDeathObjects.clear();
+	HouseExtContainer::HousesTeams.clear();
 }
 
 #include <Misc/Spawner/Main.h>
@@ -2370,7 +2434,7 @@ int FakeHouseClass::_Expert_AI()
 		}
 	}
 
-	if (SessionClass::Instance->GameMode != GameMode::Campaign && !SpawnerMain::GetGameConfigs()->SpawnerHackMPNodes)
+	if (SpawnerMain::GetGameConfigs()->SpawnerHackMPNodes || SessionClass::Instance->GameMode != GameMode::Campaign)
 	{
 		const std::array<UrgencyType, 2u> urgency = {
 			this->AIMode == AIMode::BuildBase ? UrgencyType::None : this->Check_Fire_Sale()
@@ -2396,10 +2460,6 @@ int FakeHouseClass::_Expert_AI()
 				}
 			}
 		}
-	}
-	else
-	{
-		this->AI_Fire_Sale(Check_Fire_Sale());
 	}
 
 	return ScenarioClass::Instance->Random.RandomRanged(1, 7) + 105;

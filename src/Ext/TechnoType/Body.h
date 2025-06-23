@@ -376,7 +376,7 @@ public:
 	Nullable<SHPStruct*> PipShapes02 { };
 	Nullable<SHPStruct*> PipGarrison { };
 	Valueable<int> PipGarrison_FrameIndex { 0 };
-	Valueable<PaletteManager*> PipGarrison_Palette { 0 }; //CustomPalette::PaletteMode::Default
+	CustomPalette PipGarrison_Palette { }; //CustomPalette::PaletteMode::Default
 
 	Valueable<bool> HealthNumber_Show { false };
 	Valueable<bool> HealthNumber_Percent { false };
@@ -387,14 +387,14 @@ public:
 	Nullable<SHPStruct*> HealthBarSHP_Selected { };
 	Valueable<int> HealthBarSHPBracketOffset { 0 };
 	Valueable<Point3D> HealthBarSHP_HealthFrame { { 18, 16, 17 } };
-	Valueable<PaletteManager*> HealthBarSHP_Palette { }; //CustomPalette::PaletteMode::Temperate
+	CustomPalette HealthBarSHP_Palette { CustomPalette::PaletteMode::Temperate }; //
 
 	Valueable<Point2D> HealthBarSHP_PointOffset { { 0, 0 } };
 	Valueable<bool> HealthbarRemap { false };
 
 	Nullable<SHPStruct*> GClock_Shape { };
 	Nullable<int> GClock_Transculency { };
-	Valueable<PaletteManager*> GClock_Palette { }; //CustomPalette::PaletteMode::Default
+	CustomPalette GClock_Palette { }; //CustomPalette::PaletteMode::Default
 
 	Valueable<bool> ROF_Random { true };
 	Nullable<Point2D> Rof_RandomMinMax { };
@@ -528,6 +528,7 @@ public:
 	ValueableVector<int> Convert_Scipt_Prereq {};
 	Valueable<TechnoTypeClass*> Convert_Water { nullptr };
 	Valueable<TechnoTypeClass*> Convert_Land { nullptr };
+	Valueable<bool> Convert_ResetMindControl { false };
 
 	Nullable<Leptons> Harvester_LongScan { };
 	Nullable<Leptons> Harvester_ShortScan { };
@@ -660,7 +661,7 @@ public:
 
 	Nullable<SHPStruct*> AmmoPip_shape { };
 	Valueable<Point2D> AmmoPip_Offset { };
-	Valueable<PaletteManager*> AmmoPip_Palette { }; //CustomPalette::PaletteMode::Default
+	CustomPalette AmmoPip_Palette { }; //CustomPalette::PaletteMode::Default
 	Valueable<Point2D> AmmoPipOffset { { 0,0 } };
 
 	Nullable<bool> ShowSpawnsPips {};
@@ -854,7 +855,7 @@ public:
 
 	PhobosPCXFile CameoPCX {};
 	PhobosPCXFile AltCameoPCX {};
-	Valueable<PaletteManager*> CameoPal {};  //CustomPalette::PaletteMode::Default
+	CustomPalette CameoPal {};  //CustomPalette::PaletteMode::Default
 	Nullable<int> LandingDir {};
 
 	// new secret lab
@@ -943,7 +944,7 @@ public:
 	NullableVector<int> Tiberium_PipIdx {};
 	Nullable<int> Tiberium_EmptyPipIdx {};
 	Valueable<SHPStruct*> Tiberium_PipShapes {};
-	Valueable<PaletteManager*> Tiberium_PipShapes_Palette {};
+	CustomPalette Tiberium_PipShapes_Palette {};
 
 	Nullable<ColorStruct> Tint_Color {};
 	Valueable<double> Tint_Intensity { 0.0 };
@@ -1008,6 +1009,7 @@ public:
 	ValueableVector<int> ForceAAWeapon_InRange {};
 	ValueableVector<double> ForceAAWeapon_InRange_Overrides {};
 	Valueable<bool> ForceAAWeapon_InRange_ApplyRangeModifiers {};
+	Valueable<bool> ForceWeapon_InRange_TechnoOnly {};
 
 	Nullable<bool> UnitIdleRotateTurret {};
 	Nullable<bool> UnitIdlePointToMouse {};
@@ -1093,6 +1095,21 @@ public:
 
 	std::unique_ptr<TiberiumEaterTypeClass> TiberiumEaterType {};
 
+	Nullable<int> BattlePoints {};
+
+	bool ForceWeapon_Check {};
+	Valueable<bool> FiringForceScatter { true };
+
+	Valueable<int> FireUp { -1 };
+	Valueable<bool> FireUp_ResetInRetarget { true };
+
+	Nullable<bool> ExtendedAircraftMissions_SmoothMoving {};
+	Nullable<bool> ExtendedAircraftMissions_EarlyDescend {};
+	Nullable<bool> ExtendedAircraftMissions_RearApproach {};
+	Valueable<bool> DigitalDisplay_Health_FakeAtDisguise { true };
+
+	Valueable<int> EngineerRepairAmount { 0 };
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromINIFile_Aircraft(CCINIClass* pINI);
 	void LoadFromINIFile_EvaluateSomeVariables(CCINIClass* pINI);
@@ -1100,7 +1117,7 @@ public:
 	void Initialize();
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
-	bool IsCountedAsHarvester();
+	bool IsSecondary(int nWeaponIndex);
 
 	void AdjustCrushProperties();
 
@@ -1142,8 +1159,13 @@ public:
 	static AnimTypeClass* GetSinkAnim(TechnoClass* pThis);
 	static double GetTunnelSpeed(TechnoClass* pThis, RulesClass* pRules);
 	static bool PassangersAllowed(TechnoTypeClass* pThis, TechnoTypeClass* pPassanger);
+
 	static VoxelStruct* GetBarrelsVoxel(TechnoTypeClass* const pThis, int const nIdx);
 	static VoxelStruct* GetTurretsVoxel(TechnoTypeClass* const pThis, int const nIdx);
+
+	static VoxelStruct* GetBarrelsVoxelFixedUp(TechnoTypeClass* const pThis, int const nIdx);
+	static VoxelStruct* GetTurretsVoxelFixedUp(TechnoTypeClass* const pThis, int const nIdx);
+
 	static bool CanBeBuiltAt(TechnoTypeClass* pProduct, BuildingTypeClass* pFactoryType);
 };
 

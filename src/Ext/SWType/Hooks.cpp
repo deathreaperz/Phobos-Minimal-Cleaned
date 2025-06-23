@@ -32,6 +32,23 @@
 //ASMJIT_PATCH_AGAIN(0x55B6F8, LogicClass_Update, 0xC) //_End
 std::chrono::high_resolution_clock::time_point lastFrameTime;
 
+//separate the function
+ASMJIT_PATCH(0x55B719, LogicClass_Update_late, 0x5)
+{
+	HarmlessCommandClass::AI();
+	SWFirerClass::Update();
+	SWStateMachine::UpdateAll();
+	HouseExtData::UpdateAutoDeathObjects();
+	HouseExtData::UpdateTransportReloaders();
+
+	for (auto pHouse : *HouseClass::Array)
+	{
+		AresHouseExt::UpdateTogglePower(pHouse);
+	}
+
+	return 0x0;
+}
+
 ASMJIT_PATCH(0x55AFB3, LogicClass_Update, 0x6) //_Early
 {
 	lastFrameTime = std::chrono::high_resolution_clock::now();
@@ -44,7 +61,6 @@ ASMJIT_PATCH(0x55AFB3, LogicClass_Update, 0x6) //_Early
 
 	for (auto pHouse : *HouseClass::Array)
 	{
-		//auto pExt = HouseExtContainer::Instance.Find(pHouse);
 		AresHouseExt::UpdateTogglePower(pHouse);
 	}
 
@@ -79,9 +95,11 @@ ASMJIT_PATCH(0x55AFB3, LogicClass_Update, 0x6) //_Early
 	//}
 
 	return 0x0;
-}//ASMJIT_PATCH_AGAIN(0x55B719, LogicClass_Update, 0x5)
+}//
 
-ASMJIT_PATCH(0x6d4b25, TacticalClass_Draw_TheDarkSideOfTheMoon, 6)
+#include <Ext/Tactical/Body.h>
+
+void FakeTacticalClass::__DrawAllTacticalText(wchar_t* text)
 {
 	const int AdvCommBarHeight = 32;
 
@@ -121,7 +139,7 @@ ASMJIT_PATCH(0x6d4b25, TacticalClass_Draw_TheDarkSideOfTheMoon, 6)
 		DrawText_Helper(buffer.data(), offset, COLOR_WHITE);
 	}
 
-	return 0;
+	this->DrawAllTacticalText(text);
 }
 
 ASMJIT_PATCH(0x6CC390, SuperClass_Launch, 0x6)
@@ -528,7 +546,7 @@ ASMJIT_PATCH(0x6EFC70, TeamClass_IronCurtain, 5)
 
 	if (found)
 	{
-		auto nCoord = pThis->SpawnCell->GetCoords();
+		auto nCoord = pThis->Zone->GetCoords();
 		pOwner->Fire_SW(obtain->Type->ArrayIndex, CellClass::Coord2Cell(nCoord));
 		pThis->StepCompleted = true;
 		return 0x6EFE4F;
@@ -577,69 +595,14 @@ ASMJIT_PATCH(0x6AAEDF, SidebarClass_ProcessCameoClick_SuperWeapons, 6)
 	{
 		RetImpatientClick = 0x6AAFB1,
 		SendSWLauchEvent = 0x6AAF10,
-		ClearDisplay = 0x6AAF46
+		ClearDisplay = 0x6AAF46,
+		ControlClassAction = 0x6AB95A
 	};
 
 	GET(int, idxSW, ESI);
-
-	SuperClass* pSuper = HouseClass::CurrentPlayer->Supers.Items[idxSW];
-	const auto pData = SWTypeExtContainer::Instance.Find(pSuper->Type);
-
-	// if this SW is only auto-firable, discard any clicks.
-	// if AutoFire is off, the sw would not be firable at all,
-	// thus we ignore the setting in that case.
-	const bool manual = !pData->SW_ManualFire && pData->SW_AutoFire;
-	const bool unstoppable = pSuper->Type->UseChargeDrain && pSuper->ChargeDrainState == ChargeDrainState::Draining
-		&& pData->SW_Unstoppable;
-
-	// play impatient voice, if this isn't charged yet
-	if (!manual && !pSuper->CanFire())
-	{
-		VoxClass::PlayIndex(pSuper->Type->ImpatientVoice);
-		return RetImpatientClick;
-	}
-
-	// prevent firing the SW if the player doesn't have sufficient
-	// funds. play an EVA message in that case.
-	if (!HouseClass::CurrentPlayer->CanTransactMoney(pData->Money_Amount))
-	{
-		VoxClass::PlayIndex(pData->EVA_InsufficientFunds);
-		pData->PrintMessage(pData->Message_InsufficientFunds, HouseClass::CurrentPlayer);
-		return RetImpatientClick;
-	}
-
-	if (!pData->SW_UseAITargeting.Get() || SWTypeExtData::IsTargetConstraintsEligible(pSuper, true))
-	{
-		// disallow manuals and active unstoppables
-		if (manual || unstoppable)
-		{
-			return RetImpatientClick;
-		}
-
-		if (pSuper->Type->Action == Action::None || pData->SW_UseAITargeting.Get())
-		{
-			R->EAX(HouseClass::CurrentPlayer());
-			return SendSWLauchEvent;
-		}
-
-		return ClearDisplay;
-	}
-	else
-	{
-		const auto pHouseID = HouseClass::CurrentPlayer->get_ID();
-		Debug::LogInfo("[{} - {}] SW [{} - {}] CannotFire", pHouseID, (void*)HouseClass::CurrentPlayer(), pSuper->Type->ID, (void*)pSuper);
-		pData->PrintMessage(pData->Message_CannotFire, HouseClass::CurrentPlayer);
-	}
-
-	return RetImpatientClick;
-}
-
-// play a customizable target selection EVA message
-ASMJIT_PATCH(0x6AAF9D, SidebarClass_ProcessCameoClick_SelectTarget, 5)
-{
-	GET(int, index, ESI);
-	VoxClass::PlayIndex(SWTypeExtContainer::Instance.Find(HouseClass::CurrentPlayer->Supers.Items[index]->Type)->EVA_SelectTarget);
-	return 0x6AB95A;
+	//impatient voice is implemented inside
+	SWTypeExtData::LauchSuper(HouseClass::CurrentPlayer->Supers.Items[idxSW]);
+	return ControlClassAction;
 }
 
 // 4AC20C, 7
@@ -948,18 +911,7 @@ ASMJIT_PATCH(0x6CC2B0, SuperClass_NameReadiness, 5)
 ASMJIT_PATCH(0x6A99B7, StripClass_Draw_SuperDarken, 5)
 {
 	GET(int, idxSW, EDI);
-
-	const auto pSW = HouseClass::CurrentPlayer->Supers.Items[idxSW];
-	const auto pExt = SWTypeExtContainer::Instance.Find(pSW->Type);
-
-	bool darken = false;
-	if (pSW->CanFire() && !pSW->Owner->CanTransactMoney(pExt->Money_Amount)
-		|| (pExt->SW_UseAITargeting && !SWTypeExtData::IsTargetConstraintsEligible(pSW, true)))
-	{
-		darken = true;
-	}
-
-	R->BL(darken);
+	R->BL(SWTypeExtData::DrawDarken(HouseClass::CurrentPlayer->Supers.Items[idxSW]));
 	return 0;
 }
 
@@ -1075,6 +1027,7 @@ ASMJIT_PATCH(0x6CB7B0, SuperClass_Lose, 6)
 
 // activate or deactivate the SW
 // ForceCharged on IDB
+// this weird return , idk
 ASMJIT_PATCH(0x6CB920, SuperClass_ClickFire, 5)
 {
 	GET(SuperClass* const, pThis, ECX);
@@ -1086,6 +1039,7 @@ ASMJIT_PATCH(0x6CB920, SuperClass_ClickFire, 5)
 	auto const pType = pThis->Type;
 	auto const pExt = SWTypeExtContainer::Instance.Find(pType);
 	auto const pOwner = pThis->Owner;
+	auto const pHouseExt = HouseExtContainer::Instance.Find(pOwner);
 
 	if (!pType->UseChargeDrain)
 	{
@@ -1098,85 +1052,88 @@ ASMJIT_PATCH(0x6CB920, SuperClass_ClickFire, 5)
 			return ret(false);
 		}
 
-		// auto-abort if no money
-		if (pOwner->CanTransactMoney(pExt->Money_Amount))
+		// auto-abort if no resources
+		if (!pOwner->CanTransactMoney(pExt->Money_Amount))
 		{
-			// can this super weapon fire now?
-			if (auto const pNewType = pExt->GetNewSWType())
+			if (pOwner->IsCurrentPlayer())
 			{
-				if (pNewType->AbortFire(pThis, isPlayer))
-				{
-					return ret(false);
-				}
+				pExt->UneableToTransactMoney(pOwner);
 			}
+			return ret(false);
+		}
+
+		if (!pHouseExt->CanTransactBattlePoints(pExt->BattlePoints_Amount))
+		{
+			if (pOwner->IsCurrentPlayer())
+			{
+				pExt->UneableToTransactBattlePoints(pOwner);
+			}
+			return ret(false);
+		}
+
+		// can this super weapon fire now?
+		if (auto const pNewType = pExt->GetNewSWType())
+		{
+			if (pNewType->AbortFire(pThis, isPlayer))
+			{
+				return ret(false);
+			}
+		}
+
+		pThis->Launch(*pCell, isPlayer);
+
+		// the others will be reset after the PostClick SW fired
+		if (!pType->PostClick && !pType->PreClick)
+		{
+			pThis->IsCharged = false;
+		}
+
+		if (pThis->OneTime || !pExt->CanFire(pOwner))
+		{
+			// remove this SW
+			pThis->OneTime = false;
+			return ret(pThis->Lose());
+		}
+		else if (pType->ManualControl)
+		{
+			// set recharge timer, then pause
+			const auto time = pThis->GetRechargeTime();
+			pThis->CameoChargeState = -1;
+			pThis->RechargeTimer.Start(time);
+			pThis->RechargeTimer.Pause();
+		}
+		else if (!pType->PreClick && !pType->PostClick)
+		{
+			pThis->StopPreclickAnim(isPlayer);
+		}
+	}
+	else
+	{
+		if (pThis->ChargeDrainState == ChargeDrainState::Draining)
+		{
+			// deactivate for human players
+			pThis->ChargeDrainState = ChargeDrainState::Ready;
+			auto const left = pThis->RechargeTimer.GetTimeLeft();
+
+			auto const duration = int(pThis->GetRechargeTime()
+				- (left / pExt->GetChargeToDrainRatio()));
+			pThis->RechargeTimer.Start(duration);
+			pExt->Deactivate(pThis, *pCell, isPlayer);
+		}
+		else if (pThis->ChargeDrainState == ChargeDrainState::Ready)
+		{
+			// activate for human players
+			pThis->ChargeDrainState = ChargeDrainState::Draining;
+			auto const left = pThis->RechargeTimer.GetTimeLeft();
+
+			auto const duration = int(
+					(pThis->GetRechargeTime() - left)
+					* pExt->GetChargeToDrainRatio());
+			pThis->RechargeTimer.Start(duration);
 
 			pThis->Launch(*pCell, isPlayer);
-
-			// the others will be reset after the PostClick SW fired
-			if (!pType->PostClick && !pType->PreClick)
-			{
-				pThis->IsCharged = false;
-			}
-
-			if (pThis->OneTime || !pExt->CanFire(pOwner))
-			{
-				// remove this SW
-				pThis->OneTime = false;
-				return ret(pThis->Lose());
-			}
-			else
-				if (pType->ManualControl)
-				{
-					// set recharge timer, then pause
-					const auto time = pThis->GetRechargeTime();
-					pThis->CameoChargeState = -1;
-					pThis->RechargeTimer.Start(time);
-					pThis->RechargeTimer.Pause();
-				}
-				else
-					if (!pType->PreClick && !pType->PostClick)
-					{
-						pThis->StopPreclickAnim(isPlayer);
-					}
-
-			return ret(false);
-		}
-		else if (pOwner->IsCurrentPlayer())
-		{
-			VoxClass::PlayIndex(pExt->EVA_InsufficientFunds);
-			pExt->PrintMessage(pExt->Message_InsufficientFunds, pOwner);
-			return ret(false);
 		}
 	}
-
-	if (pThis->ChargeDrainState == ChargeDrainState::Draining)
-	{
-		// deactivate for human players
-		pThis->ChargeDrainState = ChargeDrainState::Ready;
-		auto const left = pThis->RechargeTimer.GetTimeLeft();
-
-		auto const duration = int(pThis->GetRechargeTime()
-			- (left / pExt->GetChargeToDrainRatio()));
-		pThis->RechargeTimer.Start(duration);
-		pExt->Deactivate(pThis, *pCell, isPlayer);
-		return ret(false);
-	}
-
-	if (pThis->ChargeDrainState != ChargeDrainState::Ready)
-	{
-		return ret(false);
-	}
-
-	// activate for human players
-	pThis->ChargeDrainState = ChargeDrainState::Draining;
-	auto const left = pThis->RechargeTimer.GetTimeLeft();
-
-	auto const duration = int(
-			(pThis->GetRechargeTime() - left)
-			* pExt->GetChargeToDrainRatio());
-	pThis->RechargeTimer.Start(duration);
-
-	pThis->Launch(*pCell, isPlayer);
 
 	return ret(false);
 }
@@ -1255,34 +1212,13 @@ ASMJIT_PATCH(0x6CBD6B, SuperClass_Update_DrainMoney, 8)
 	GET(SuperClass*, pSuper, ESI);
 	GET(int, timeLeft, EAX);
 
-	if (timeLeft > 0 && pSuper->Type->UseChargeDrain && pSuper->ChargeDrainState == ChargeDrainState::Draining)
-	{
-		SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(pSuper->Type);
+	SWTypeExtData* pData = SWTypeExtContainer::Instance.Find(pSuper->Type);
 
-		const int money = pData->Money_DrainAmount;
+	if (!pData->ApplyDrainMoney(timeLeft, pSuper->Owner))
+		return 0x6CBD73;
 
-		if (money != 0 && pData->Money_DrainDelay > 0)
-		{
-			if (!(timeLeft % pData->Money_DrainDelay))
-			{
-				auto pOwner = pSuper->Owner;
-
-				// only abort if SW drains money and there is none
-				if (!pOwner->CanTransactMoney(money))
-				{
-					if (pOwner->IsControlledByHuman())
-					{
-						VoxClass::PlayIndex(pData->EVA_InsufficientFunds);
-						pData->PrintMessage(pData->Message_InsufficientFunds, HouseClass::CurrentPlayer);
-					}
-					return 0x6CBD73;
-				}
-
-				// apply drain money
-				pOwner->TransactMoney(money);
-			}
-		}
-	}
+	if (!pData->ApplyDrainBattlePoint(timeLeft, pSuper->Owner))
+		return 0x6CBD73;
 
 	return (timeLeft ? 0x6CBE7C : 0x6CBD73);
 }
@@ -1845,58 +1781,101 @@ ASMJIT_PATCH(0x44CCE7, BuildingClass_Mi_Missile_GenericSW, 6)
 		pThis->Owner->EMPTarget = pExt->SuperTarget;
 	}
 
+	// Obtain the weapon used by the EMP weapon
+	int weaponIndex = 0;
+	const auto pLinked = TechnoExtContainer::Instance.Find(pThis)->LinkedSW;
+	auto const pSWExt = SWTypeExtContainer::Instance.Find(pLinked->Type);
+	auto pTargetCell = MapClass::Instance->GetCellAt(pThis->Owner->EMPTarget);
+
+	if (pSWExt->EMPulse_WeaponIndex >= 0)
+	{
+		weaponIndex = pSWExt->EMPulse_WeaponIndex;
+	}
+	else
+	{
+		AbstractClass* pTarget = pTargetCell;
+
+		if (const auto pObject = pTargetCell->GetContent())
+			pTarget = pObject;
+
+		weaponIndex = pThis->SelectWeapon(pTarget);
+	}
+
+	const auto pWeapon = pThis->GetWeapon(weaponIndex)->WeaponType;
+
+	// Innacurate random strike Area calculation
+	int radius = BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->EMPulseCannon_InaccurateRadius;
+	radius = radius < 0 ? 0 : radius;
+
+	if (radius > 0)
+	{
+		if (pExt->RandomEMPTarget == CellStruct::Empty)
+		{
+			// Calculate a new valid random target coordinate
+			do
+			{
+				pExt->RandomEMPTarget.X = (short)ScenarioClass::Instance->Random.RandomRanged(pThis->Owner->EMPTarget.X - radius, pThis->Owner->EMPTarget.X + radius);
+				pExt->RandomEMPTarget.Y = (short)ScenarioClass::Instance->Random.RandomRanged(pThis->Owner->EMPTarget.Y - radius, pThis->Owner->EMPTarget.Y + radius);
+			}
+			while (!MapClass::Instance->IsWithinUsableArea(pExt->RandomEMPTarget, false));
+		}
+
+		pThis->Owner->EMPTarget = pExt->RandomEMPTarget; // Value overwrited every frame
+	}
+
+	if (pThis->MissionStatus != 3)
+		return 0;
+
+	pExt->RandomEMPTarget = CellStruct::Empty;
+
+	// Restart the super weapon firing process if there is enough ammo set for the current weapon
+	if (pThis->Type->Ammo > 0 && pThis->Ammo > 0)
+	{
+		int ammo = WeaponTypeExtContainer::Instance.Find(pWeapon)->Ammo.Get();
+		pThis->Ammo -= ammo;
+		pThis->Ammo = pThis->Ammo < 0 ? 0 : pThis->Ammo;
+
+		if (pThis->Ammo >= ammo)
+			pThis->MissionStatus = 0;
+
+		if (!pThis->ReloadTimer.InProgress())
+			pThis->ReloadTimer.Start(pThis->Type->Reload);
+
+		if (pThis->Ammo == 0 && pThis->Type->EmptyReload >= 0 && pThis->ReloadTimer.GetTimeLeft() > pThis->Type->EmptyReload)
+			pThis->ReloadTimer.Start(pThis->Type->EmptyReload);
+	}
+
 	return ProcessEMPulse;
 }
 
 ASMJIT_PATCH(0x44CEEC, BuildingClass_Mission_Missile_EMPulseSelectWeapon, 0x6)
 {
-	enum { SkipGameCode = 0x44CEF8 };
-
 	GET(BuildingClass*, pThis, ESI);
 
+	// Obtain the weapon used by the EMP weapon
 	int weaponIndex = 0;
-	const auto pHouseExt = HouseExtContainer::Instance.Find(pThis->Owner);
 	const auto pLinked = TechnoExtContainer::Instance.Find(pThis)->LinkedSW;
-
-	if (pHouseExt->EMPulseWeaponIndex >= 0)
-	{
-		weaponIndex = pHouseExt->EMPulseWeaponIndex;
-	}
-	else if (BuildingTypeExtContainer::Instance.Find(pThis->Type)->EMPulseCannon_UseWeaponSelection)
-	{
-		if (auto const pCell = MapClass::Instance->TryGetCellAt(pThis->Owner->EMPTarget))
-		{
-			AbstractClass* pTarget = pCell;
-
-			if (auto const pObject = pCell->GetContent())
-				pTarget = pObject;
-
-			weaponIndex = pThis->SelectWeapon(pTarget);
-		}
-	}
-
 	auto const pSWExt = SWTypeExtContainer::Instance.Find(pLinked->Type);
+	auto pTargetCell = MapClass::Instance->GetCellAt(pThis->Owner->EMPTarget);
 
-	//why this fuckery even exist ,..
-	//the SW can be state can be exploited at some point , smh
-	if (pSWExt->EMPulse_SuspendOthers)
+	if (pSWExt->EMPulse_WeaponIndex >= 0)
 	{
-		auto iter = pHouseExt->SuspendedEMPulseSWs.get_key_iterator(pLinked);
+		weaponIndex = pSWExt->EMPulse_WeaponIndex;
+	}
+	else
+	{
+		AbstractClass* pTarget = pTargetCell;
 
-		if (iter != pHouseExt->SuspendedEMPulseSWs.end())
-		{
-			for (auto const& pSuper : iter->second)
-			{
-				pSuper->IsOnHold = false;
-			}
+		if (const auto pObject = pTargetCell->GetContent())
+			pTarget = pObject;
 
-			pHouseExt->SuspendedEMPulseSWs.erase(iter);
-		}
+		weaponIndex = pThis->SelectWeapon(pTarget);
 	}
 
 	EMPulseCannonTemp::weaponIndex = weaponIndex;
-	R->EAX(pThis->GetWeapon(weaponIndex));
-	return SkipGameCode;
+
+	R->EAX(pThis->GetWeapon(EMPulseCannonTemp::weaponIndex));
+	return 0x44CEF8;
 }
 
 #include <Misc/Hooks.Otamaa.h>
@@ -2830,7 +2809,6 @@ ASMJIT_PATCH(0x44019D, BuildingClass_Update_Battery, 6)
 }
 
 #include <Ext/HouseType/Body.h>
-#include <Misc/Ares/Hooks/Header.h>
 
 ConvertClass* SWConvert = nullptr;
 BSurface* CameoPCXSurface = nullptr;
@@ -2839,8 +2817,8 @@ ASMJIT_PATCH(0x6A9948, StripClass_Draw_SuperWeapon, 6)
 {
 	GET(SuperWeaponTypeClass*, pSuper, EAX);
 
-	if (auto pManager = SWTypeExtContainer::Instance.Find(pSuper)->SidebarPalette)
-		SWConvert = pManager->GetConvert<PaletteManager::Mode::Default>();
+	if (auto pManager = SWTypeExtContainer::Instance.Find(pSuper)->SidebarPalette.GetConvert())
+		SWConvert = pManager;
 
 	return 0x0;
 }
@@ -2852,9 +2830,9 @@ ASMJIT_PATCH(0x6A9A2A, StripClass_Draw_Main, 6)
 	ConvertClass* pResult = nullptr;
 	if (pTechno)
 	{
-		if (auto pPal = TechnoTypeExtContainer::Instance.TryFind(pTechno)->CameoPal)
+		if (auto pPal = TechnoTypeExtContainer::Instance.TryFind(pTechno)->CameoPal.GetConvert())
 		{
-			pResult = pPal->GetConvert<PaletteManager::Mode::Default>();
+			pResult = pPal;
 		}
 	}
 	else

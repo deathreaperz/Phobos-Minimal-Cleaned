@@ -8,7 +8,7 @@
 #include <TeamClass.h>
 #include <HouseClass.h>
 
-#ifdef _Teamstuffs
+#ifndef _Teamstuffs
 ASMJIT_PATCH(0x6EBB86, TeamClass_MoveToFocus_IsInStray, 0x6)
 {
 	GET(FootClass*, pFoot, ESI);
@@ -21,7 +21,7 @@ ASMJIT_PATCH(0x6EBB86, TeamClass_MoveToFocus_IsInStray, 0x6)
 		R->EAX((int)nCoord_target.DistanceFrom(nCoord));
 	}
 	else
-		R->EAX(pFoot->DistanceFrom(pThis->SpawnCell));
+		R->EAX(pFoot->DistanceFrom(pThis->Zone));
 
 	return 0x6EBB91;
 }
@@ -243,7 +243,7 @@ BuildingClass* __fastcall Find_Enemy_Building(
 			continue;
 
 		bool IsSameHouse = pBld->Owner == house;
-		if (!IsSameHouse && !pBld->Owner->Type->MultiplayPassive && attacker->Owner->IsAlliedWith(pBld))
+		if (pBld->Owner != house && !pBld->Owner->Type->MultiplayPassive && attacker->Owner->IsAlliedWith(pBld))
 		{
 			continue;
 		}
@@ -271,19 +271,19 @@ BuildingClass* __fastcall Find_Enemy_Building(
 		}
 		case 2:
 		{
-			v10 = -1 - static_cast<int>((attacker->Location - pBld->Location).Length());
+			v10 = -1 - (int)(attacker->Location - pBld->Location).Length();
 			break;
 		}
 		case 3:
 		{
-			v10 = static_cast<int>((attacker->Location - pBld->Location).Length());
+			v10 = (int)(attacker->Location - pBld->Location).Length();
 			break;
 		}
 		default:
 			break;
 		}
 
-		if (IsSameHouse && v10 > v29)
+		if (v10 > v29 && IsSameHouse)
 		{
 			last = pBld;
 			v29 = v10;
@@ -309,7 +309,7 @@ BuildingClass* __fastcall Find_Enemy_Building(
 
 BuildingClass* __fastcall Find_Own_Building(
 		BuildingTypeClass* type,
-		HouseClass* /*unused*/,
+		HouseClass* unused,
 		TechnoClass* attacker,
 		int find_type)
 {
@@ -325,36 +325,39 @@ BuildingClass* __fastcall Find_Own_Building(
 	{
 		int v10 = -1;
 
-		if (pBld->Type == type && !pBld->InLimbo && BuildingExtContainer::Instance.Find(pBld)->LimboID <= -1)
+		if (pBld->Type == type)
 		{
-			switch (find_type)
+			if (!pBld->InLimbo && BuildingExtContainer::Instance.Find(pBld)->LimboID <= -1)
 			{
-			case 0:
-			{
-				auto coord = pBld->GetCoords();
-				v10 = -1 - MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
+				switch (find_type)
+				{
+				case 0:
+				{
+					auto coord = pBld->GetCoords();
+					v10 = -1 - MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
 
-				break;
-			}
-			case 1:
-			{
-				auto coord = pBld->GetCoords();
-				v10 = MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
+					break;
+				}
+				case 1:
+				{
+					auto coord = pBld->GetCoords();
+					v10 = MapClass::Instance->GetThreatPosed(coord, attacker->Owner);
 
-				break;
-			}
-			case 2:
-			{
-				v10 = -1 - static_cast<int>((pBld->Location - attacker->Location).Length());
-				break;
-			}
-			case 3:
-			{
-				v10 = static_cast<int>((pBld->Location - attacker->Location).Length());
-				break;
-			}
-			default:
-				break;
+					break;
+				}
+				case 2:
+				{
+					v10 = -1 - (int)(pBld->Location - attacker->Location).Length();
+					break;
+				}
+				case 3:
+				{
+					v10 = (int)(pBld->Location - attacker->Location).Length();
+					break;
+				}
+				default:
+					break;
+				}
 			}
 		}
 
@@ -379,11 +382,11 @@ ASMJIT_PATCH(0x6EEC6D, FindTargetBuilding_LimboDelivered, 0x6)
 	enum { advance = 0x6EEE21, ret = 0x0 };
 	GET(BuildingClass*, pBuilding, ESI);
 
-	if (!pBuilding->IsAlive || BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
-	{
+	if (!pBuilding->IsAlive)
 		return advance;
-	}
-	return ret;
+
+	return BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1 ?
+		advance : ret;
 }
 
 ASMJIT_PATCH(0x6EEEF2, FindOwnBuilding_LimboDelivered, 0xA)
@@ -391,11 +394,11 @@ ASMJIT_PATCH(0x6EEEF2, FindOwnBuilding_LimboDelivered, 0xA)
 	enum { advance = 0x6EF0D7, ret = 0x0 };
 	GET(BuildingClass*, pBuilding, ESI);
 
-	if (pBuilding->InLimbo || !pBuilding->IsAlive || BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
-	{
+	if (pBuilding->InLimbo || !pBuilding->IsAlive)
 		return advance;
-	}
-	return ret;
+
+	return BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1 ?
+		advance : ret;
 }
 
 #endif
@@ -405,11 +408,11 @@ ASMJIT_PATCH(0x6EA184, TeamClass_Regroup_LimboDelivered, 0x6)
 	enum { advance = 0x6EA38C, ret = 0x6EA192 };
 	GET(BuildingClass*, pBuilding, ESI);
 
-	if (!pBuilding->IsAlive || pBuilding->InLimbo || BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
-	{
+	if (!pBuilding->IsAlive || pBuilding->InLimbo)
 		return advance;
-	}
-	return ret;
+
+	return BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1 ?
+		advance : ret;
 }
 
 ASMJIT_PATCH(0x6EE8D9, TeamClass_Scout_LimboDelivered, 0x9)
@@ -417,11 +420,11 @@ ASMJIT_PATCH(0x6EE8D9, TeamClass_Scout_LimboDelivered, 0x9)
 	enum { advance = 0x6EE928, ret = 0x0 };
 	GET(BuildingClass**, pBuilding, ESI);
 
-	if (!(*pBuilding)->IsAlive || (*pBuilding)->InLimbo || BuildingExtContainer::Instance.Find(*pBuilding)->LimboID != -1)
-	{
+	if ((*pBuilding)->InLimbo || !(*pBuilding)->IsAlive)
 		return advance;
-	}
-	return ret;
+
+	return BuildingExtContainer::Instance.Find(*pBuilding)->LimboID != -1 ?
+		advance : ret;
 }
 
 ASMJIT_PATCH(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
@@ -429,41 +432,36 @@ ASMJIT_PATCH(0x6F7D90, TechnoClass_Threat_Forbidden, 0x6)
 	GET(ObjectClass*, pTarget, ESI);
 
 	if (pTarget->InLimbo || !pTarget->IsAlive)
-	{
 		return 0x6F894F;
-	}
 
 	if (const auto pTechno = flag_cast_to<TechnoClass*>(pTarget))
 	{
 		if (pTechno->IsCrashing || pTechno->IsSinking)
-		{
 			return 0x6F894F;
-		}
 
 		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pTechno->GetTechnoType());
+
 		if (pTypeExt->IsDummy)
-		{
 			return 0x6F894F;
-		}
 
 		switch (pTechno->WhatAmI())
 		{
 		case AbstractType::Building:
 		{
-			const auto pBld = static_cast<BuildingClass*>(pTarget);
+			const auto pBld = (BuildingClass*)pTarget;
+
 			if (BuildingExtContainer::Instance.Find(pBld)->LimboID != -1)
-			{
 				return 0x6F894F;
-			}
+
 			break;
 		}
 		case AbstractType::Unit:
 		{
-			const auto pUnit = static_cast<UnitClass*>(pTarget);
+			const auto pUnit = (UnitClass*)pTarget;
+
 			if (pUnit->DeathFrameCounter > 0)
-			{
 				return 0x6F894F;
-			}
+
 			break;
 		}
 		default:

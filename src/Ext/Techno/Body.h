@@ -745,6 +745,10 @@ public:
 	int AttachedEffectInvokerCount {};
 
 	AirstrikeClass* AirstrikeTargetingMe {};
+	CellStruct RandomEMPTarget {};
+
+	CDTimerClass FiringAnimationTimer {};
+	bool ForceFullRearmDelay { false };
 
 	~TechnoExtData()
 	{
@@ -902,6 +906,7 @@ public:
 	static void InitializeAttachEffects(TechnoClass* pThis, TechnoTypeClass* pType);
 
 	static void ObjectKilledBy(TechnoClass* pThis, TechnoClass* pKiller);
+	static void ObjectKilledBy(TechnoClass* pThis, HouseClass* pKiller);
 
 	static void DisplayDamageNumberString(TechnoClass* pThis, int damage, bool isShieldDamage, WarheadTypeClass* pWH);
 	static void KillSelf(TechnoClass* pThis, bool isPeaceful = false);
@@ -1004,6 +1009,8 @@ public:
 
 	static bool IsTypeImmune(TechnoClass* pThis, TechnoClass* pSource);
 
+	static bool AllowFiring(AbstractClass* pTargetObj, WeaponTypeClass* pWeapon);
+
 	static bool ObjectHealthAllowFiring(ObjectClass* pTargetObj, WeaponTypeClass* pWeapon);
 	static bool CheckCellAllowFiring(CellClass* pCell, WeaponTypeClass* pWeapon);
 	static bool TechnoTargetAllowFiring(TechnoClass* pThis, TechnoClass* pTarget, WeaponTypeClass* pWeapon);
@@ -1043,7 +1050,7 @@ public:
 
 	static Point2D GetScreenLocation(TechnoClass* pThis);
 	static Point2D GetFootSelectBracketPosition(TechnoClass* pThis, Anchor anchor);
-	static Point2D GetBuildingSelectBracketPosition(TechnoClass* pThis, BuildingSelectBracketPosition bracketPosition);
+	static Point2D GetBuildingSelectBracketPosition(TechnoClass* pThis, BuildingSelectBracketPosition bracketPosition, Point2D offset = Point2D::Empty);
 	static void ProcessDigitalDisplays(TechnoClass* pThis);
 	static void GetValuesForDisplay(TechnoClass* pThis, DisplayInfoType infoType, int& value, int& maxValue, int infoIndex);
 	static Iterator<DigitalDisplayTypeClass*> GetDisplayType(TechnoClass* pThis, TechnoTypeClass* pType, int& length);
@@ -1076,4 +1083,6 @@ public:
 class NOVTABLE FakeTechnoClass final : TechnoClass
 {
 public:
+
+	int _EvaluateJustCell(CellStruct* where);
 };

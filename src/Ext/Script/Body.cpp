@@ -1,6 +1,7 @@
 #include "Body.h"
 
 #include <Utilities/Cast.h>
+#include <Utilities/Debug.h>
 #include <AITriggerTypeClass.h>
 
 #include <Ext/Techno/Body.h>
@@ -12,6 +13,7 @@
 #include <Ext/Scenario/Body.h>
 #include <Ext/ScriptType/Body.h>
 #include <Ext/Team/Body.h>
+#include <Locomotor/HoverLocomotionClass.h>
 //#include <ExtraHeaders/StackVector.h>
 
 /*
@@ -21,10 +23,20 @@
 
 ScriptActionNode NOINLINE ScriptExtData::GetSpecificAction(ScriptClass* pScript, int nIdx)
 {
-	if (nIdx == -1 || nIdx >= pScript->Type->ActionsCount)
-		return { -1 , 0 };
+	if ((size_t)nIdx < (size_t)pScript->Type->ActionsCount)
+		return pScript->Type->ScriptActions[nIdx];
+	//	nIdx = pScript->Type->ActionsCount;
+	//
+	//auto const nIdxR = nIdx - ScriptTypeClass::MaxActions;
+	//auto const pTypeExt = ScriptTypeExt::ExtMap.Find(pScript->Type);
+	//
+	//if (!pTypeExt->PhobosNode.empty() && nIdxR < (int)pTypeExt->PhobosNode.size()) {
+	//	return pTypeExt->PhobosNode[nIdxR];
+	//}
+	//COMPILETIMEEVAL auto const nMax = ScriptTypeClass::MaxActions - 1;
+	//return pScript->Type->ScriptActions[nMax];
 
-	return pScript->Type->ScriptActions[nIdx];
+	return { -1 , 0 };
 }
 
 // =============================
@@ -37,166 +49,324 @@ static NOINLINE const char* ToStrings(PhobosScripts from)
 {
 	switch (from)
 	{
-#define PHOBOS_SCRIPT_CASE(name) case PhobosScripts::name: return #name;
-		PHOBOS_SCRIPT_CASE(TimedAreaGuard)
-		PHOBOS_SCRIPT_CASE(LoadIntoTransports)
-		PHOBOS_SCRIPT_CASE(WaitUntilFullAmmo)
-		PHOBOS_SCRIPT_CASE(RepeatAttackCloserThreat)
-		PHOBOS_SCRIPT_CASE(RepeatAttackFartherThreat)
-		PHOBOS_SCRIPT_CASE(RepeatAttackCloser)
-		PHOBOS_SCRIPT_CASE(RepeatAttackFarther)
-		PHOBOS_SCRIPT_CASE(SingleAttackCloserThreat)
-		PHOBOS_SCRIPT_CASE(SingleAttackFartherThreat)
-		PHOBOS_SCRIPT_CASE(SingleAttackCloser)
-		PHOBOS_SCRIPT_CASE(SingleAttackFarther)
-		PHOBOS_SCRIPT_CASE(DecreaseCurrentAITriggerWeight)
-		PHOBOS_SCRIPT_CASE(IncreaseCurrentAITriggerWeight)
-		PHOBOS_SCRIPT_CASE(RepeatAttackTypeCloserThreat)
-		PHOBOS_SCRIPT_CASE(RepeatAttackTypeFartherThreat)
-		PHOBOS_SCRIPT_CASE(RepeatAttackTypeCloser)
-		PHOBOS_SCRIPT_CASE(RepeatAttackTypeFarther)
-		PHOBOS_SCRIPT_CASE(SingleAttackTypeCloserThreat)
-		PHOBOS_SCRIPT_CASE(SingleAttackTypeFartherThreat)
-		PHOBOS_SCRIPT_CASE(SingleAttackTypeCloser)
-		PHOBOS_SCRIPT_CASE(SingleAttackTypeFarther)
-		PHOBOS_SCRIPT_CASE(WaitIfNoTarget)
-		PHOBOS_SCRIPT_CASE(TeamWeightReward)
-		PHOBOS_SCRIPT_CASE(PickRandomScript)
-		PHOBOS_SCRIPT_CASE(MoveToEnemyCloser)
-		PHOBOS_SCRIPT_CASE(MoveToEnemyFarther)
-		PHOBOS_SCRIPT_CASE(MoveToFriendlyCloser)
-		PHOBOS_SCRIPT_CASE(MoveToFriendlyFarther)
-		PHOBOS_SCRIPT_CASE(MoveToTypeEnemyCloser)
-		PHOBOS_SCRIPT_CASE(MoveToTypeEnemyFarther)
-		PHOBOS_SCRIPT_CASE(MoveToTypeFriendlyCloser)
-		PHOBOS_SCRIPT_CASE(MoveToTypeFriendlyFarther)
-		PHOBOS_SCRIPT_CASE(ModifyTargetDistance)
-		PHOBOS_SCRIPT_CASE(RandomAttackTypeCloser)
-		PHOBOS_SCRIPT_CASE(RandomAttackTypeFarther)
-		PHOBOS_SCRIPT_CASE(RandomMoveToTypeEnemyCloser)
-		PHOBOS_SCRIPT_CASE(RandomMoveToTypeEnemyFarther)
-		PHOBOS_SCRIPT_CASE(RandomMoveToTypeFriendlyCloser)
-		PHOBOS_SCRIPT_CASE(RandomMoveToTypeFriendlyFarther)
-		PHOBOS_SCRIPT_CASE(SetMoveMissionEndMode)
-		PHOBOS_SCRIPT_CASE(UnregisterGreatSuccess)
-		PHOBOS_SCRIPT_CASE(GatherAroundLeader)
-		PHOBOS_SCRIPT_CASE(RandomSkipNextAction)
-		PHOBOS_SCRIPT_CASE(ChangeTeamGroup)
-		PHOBOS_SCRIPT_CASE(DistributedLoading)
-		PHOBOS_SCRIPT_CASE(FollowFriendlyByGroup)
-		PHOBOS_SCRIPT_CASE(RallyUnitWithSameGroup)
-		PHOBOS_SCRIPT_CASE(StopForceJumpCountdown)
-		PHOBOS_SCRIPT_CASE(NextLineForceJumpCountdown)
-		PHOBOS_SCRIPT_CASE(SameLineForceJumpCountdown)
-		PHOBOS_SCRIPT_CASE(ForceGlobalOnlyTargetHouseEnemy)
-		PHOBOS_SCRIPT_CASE(OverrideOnlyTargetHouseEnemy)
-		PHOBOS_SCRIPT_CASE(SetHouseAngerModifier)
-		PHOBOS_SCRIPT_CASE(ModifyHateHouseIndex)
-		PHOBOS_SCRIPT_CASE(ModifyHateHousesList)
-		PHOBOS_SCRIPT_CASE(ModifyHateHousesList1Random)
-		PHOBOS_SCRIPT_CASE(SetTheMostHatedHouseMinorNoRandom)
-		PHOBOS_SCRIPT_CASE(SetTheMostHatedHouseMajorNoRandom)
-		PHOBOS_SCRIPT_CASE(SetTheMostHatedHouseRandom)
-		PHOBOS_SCRIPT_CASE(ResetAngerAgainstHouses)
-		PHOBOS_SCRIPT_CASE(AggroHouse)
-		PHOBOS_SCRIPT_CASE(SetSideIdxForManagingTriggers)
-		PHOBOS_SCRIPT_CASE(SetHouseIdxForManagingTriggers)
-		PHOBOS_SCRIPT_CASE(ManageAllAITriggers)
-		PHOBOS_SCRIPT_CASE(EnableTriggersFromList)
-		PHOBOS_SCRIPT_CASE(DisableTriggersFromList)
-		PHOBOS_SCRIPT_CASE(DisableTriggersWithObjects)
-		PHOBOS_SCRIPT_CASE(EnableTriggersWithObjects)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpResetVariables)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpManageResetIfJump)
-		PHOBOS_SCRIPT_CASE(AbortActionAfterSuccessKill)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpManageKillsCounter)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpSetCounter)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpSetComparatorMode)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpSetComparatorValue)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpSetIndex)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpIfFalse)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpIfTrue)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpKillEvaluation)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckCount)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckAliveHumans)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckObjects)
-		PHOBOS_SCRIPT_CASE(ConditionalJumpCheckHumanIsMostHated)
-		PHOBOS_SCRIPT_CASE(JumpBackToPreviousScript)
-		PHOBOS_SCRIPT_CASE(RepairDestroyedBridge)
-		PHOBOS_SCRIPT_CASE(ChronoshiftToEnemyBase)
-		PHOBOS_SCRIPT_CASE(LocalVariableSet)
-		PHOBOS_SCRIPT_CASE(LocalVariableAdd)
-		PHOBOS_SCRIPT_CASE(LocalVariableMinus)
-		PHOBOS_SCRIPT_CASE(LocalVariableMultiply)
-		PHOBOS_SCRIPT_CASE(LocalVariableDivide)
-		PHOBOS_SCRIPT_CASE(LocalVariableMod)
-		PHOBOS_SCRIPT_CASE(LocalVariableLeftShift)
-		PHOBOS_SCRIPT_CASE(LocalVariableRightShift)
-		PHOBOS_SCRIPT_CASE(LocalVariableReverse)
-		PHOBOS_SCRIPT_CASE(LocalVariableXor)
-		PHOBOS_SCRIPT_CASE(LocalVariableOr)
-		PHOBOS_SCRIPT_CASE(LocalVariableAnd)
-		PHOBOS_SCRIPT_CASE(GlobalVariableSet)
-		PHOBOS_SCRIPT_CASE(GlobalVariableAdd)
-		PHOBOS_SCRIPT_CASE(GlobalVariableMinus)
-		PHOBOS_SCRIPT_CASE(GlobalVariableMultiply)
-		PHOBOS_SCRIPT_CASE(GlobalVariableDivide)
-		PHOBOS_SCRIPT_CASE(GlobalVariableMod)
-		PHOBOS_SCRIPT_CASE(GlobalVariableLeftShift)
-		PHOBOS_SCRIPT_CASE(GlobalVariableRightShift)
-		PHOBOS_SCRIPT_CASE(GlobalVariableReverse)
-		PHOBOS_SCRIPT_CASE(GlobalVariableXor)
-		PHOBOS_SCRIPT_CASE(GlobalVariableOr)
-		PHOBOS_SCRIPT_CASE(GlobalVariableAnd)
-		PHOBOS_SCRIPT_CASE(LocalVariableSetByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableAddByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableMinusByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableMultiplyByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableDivideByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableModByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableLeftShiftByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableRightShiftByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableReverseByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableXorByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableOrByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableAndByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableSetByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableAddByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableMinusByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableMultiplyByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableDivideByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableModByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableLeftShiftByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableRightShiftByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableReverseByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableXorByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableOrByLocal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableAndByLocal)
-		PHOBOS_SCRIPT_CASE(LocalVariableSetByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableAddByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableMinusByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableMultiplyByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableDivideByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableModByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableLeftShiftByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableRightShiftByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableReverseByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableXorByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableOrByGlobal)
-		PHOBOS_SCRIPT_CASE(LocalVariableAndByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableSetByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableAddByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableMinusByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableMultiplyByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableDivideByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableModByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableLeftShiftByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableRightShiftByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableReverseByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableXorByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableOrByGlobal)
-		PHOBOS_SCRIPT_CASE(GlobalVariableAndByGlobal)
-#undef PHOBOS_SCRIPT_CASE
+	case PhobosScripts::TimedAreaGuard:
+		return "TimedAreaGuard";
+	case PhobosScripts::LoadIntoTransports:
+		return "LoadIntoTransports";
+	case PhobosScripts::WaitUntilFullAmmo:
+		return "WaitUntilFullAmmo";
+	case PhobosScripts::RepeatAttackCloserThreat:
+		return "RepeatAttackCloserThreat";
+	case PhobosScripts::RepeatAttackFartherThreat:
+		return "RepeatAttackFartherThreat";
+	case PhobosScripts::RepeatAttackCloser:
+		return "RepeatAttackCloser";
+	case PhobosScripts::RepeatAttackFarther:
+		return "RepeatAttackFarther";
+	case PhobosScripts::SingleAttackCloserThreat:
+		return "SingleAttackCloserThreat";
+	case PhobosScripts::SingleAttackFartherThreat:
+		return "SingleAttackFartherThreat";
+	case PhobosScripts::SingleAttackCloser:
+		return "SingleAttackCloser";
+	case PhobosScripts::SingleAttackFarther:
+		return "SingleAttackFarther";
+	case PhobosScripts::DecreaseCurrentAITriggerWeight:
+		return "DecreaseCurrentAITriggerWeight";
+	case PhobosScripts::IncreaseCurrentAITriggerWeight:
+		return "IncreaseCurrentAITriggerWeight";
+	case PhobosScripts::RepeatAttackTypeCloserThreat:
+		return "RepeatAttackTypeCloserThreat";
+	case PhobosScripts::RepeatAttackTypeFartherThreat:
+		return "RepeatAttackTypeFartherThreat";
+	case PhobosScripts::RepeatAttackTypeCloser:
+		return "RepeatAttackTypeCloser";
+	case PhobosScripts::RepeatAttackTypeFarther:
+		return "RepeatAttackTypeFarther";
+	case PhobosScripts::SingleAttackTypeCloserThreat:
+		return "SingleAttackTypeCloserThreat";
+	case PhobosScripts::SingleAttackTypeFartherThreat:
+		return "SingleAttackTypeFartherThreat";
+	case PhobosScripts::SingleAttackTypeCloser:
+		return "SingleAttackTypeCloser";
+	case PhobosScripts::SingleAttackTypeFarther:
+		return "SingleAttackTypeFarther";
+	case PhobosScripts::WaitIfNoTarget:
+		return "WaitIfNoTarget";
+	case PhobosScripts::TeamWeightReward:
+		return "TeamWeightReward";
+	case PhobosScripts::PickRandomScript:
+		return "PickRandomScript";
+	case PhobosScripts::MoveToEnemyCloser:
+		return "MoveToEnemyCloser";
+	case PhobosScripts::MoveToEnemyFarther:
+		return "MoveToEnemyFarther";
+	case PhobosScripts::MoveToFriendlyCloser:
+		return "MoveToFriendlyCloser";
+	case PhobosScripts::MoveToFriendlyFarther:
+		return "MoveToFriendlyFarther";
+	case PhobosScripts::MoveToTypeEnemyCloser:
+		return "MoveToTypeEnemyCloser";
+	case PhobosScripts::MoveToTypeEnemyFarther:
+		return "MoveToTypeEnemyFarther";
+	case PhobosScripts::MoveToTypeFriendlyCloser:
+		return "MoveToTypeFriendlyCloser";
+	case PhobosScripts::MoveToTypeFriendlyFarther:
+		return "MoveToTypeFriendlyFarther";
+	case PhobosScripts::ModifyTargetDistance:
+		return "ModifyTargetDistance";
+	case PhobosScripts::RandomAttackTypeCloser:
+		return "RandomAttackTypeCloser";
+	case PhobosScripts::RandomAttackTypeFarther:
+		return "RandomAttackTypeFarther";
+	case PhobosScripts::RandomMoveToTypeEnemyCloser:
+		return "RandomMoveToTypeEnemyCloser";
+	case PhobosScripts::RandomMoveToTypeEnemyFarther:
+		return "RandomMoveToTypeEnemyFarther";
+	case PhobosScripts::RandomMoveToTypeFriendlyCloser:
+		return "RandomMoveToTypeFriendlyCloser";
+	case PhobosScripts::RandomMoveToTypeFriendlyFarther:
+		return "RandomMoveToTypeFriendlyFarther";
+	case PhobosScripts::SetMoveMissionEndMode:
+		return "SetMoveMissionEndMode";
+	case PhobosScripts::UnregisterGreatSuccess:
+		return "UnregisterGreatSuccess";
+	case PhobosScripts::GatherAroundLeader:
+		return "GatherAroundLeader";
+	case PhobosScripts::RandomSkipNextAction:
+		return "RandomSkipNextAction";
+	case PhobosScripts::ChangeTeamGroup:
+		return "ChangeTeamGroup";
+	case PhobosScripts::DistributedLoading:
+		return "DistributedLoading";
+	case PhobosScripts::FollowFriendlyByGroup:
+		return "FollowFriendlyByGroup";
+	case PhobosScripts::RallyUnitWithSameGroup:
+		return "RallyUnitWithSameGroup";
+	case PhobosScripts::StopForceJumpCountdown:
+		return "StopForceJumpCountdown";
+	case PhobosScripts::NextLineForceJumpCountdown:
+		return "NextLineForceJumpCountdown";
+	case PhobosScripts::SameLineForceJumpCountdown:
+		return "SameLineForceJumpCountdown";
+	case PhobosScripts::ForceGlobalOnlyTargetHouseEnemy:
+		return "ForceGlobalOnlyTargetHouseEnemy";
+	case PhobosScripts::OverrideOnlyTargetHouseEnemy:
+		return "OverrideOnlyTargetHouseEnemy";
+	case PhobosScripts::SetHouseAngerModifier:
+		return "SetHouseAngerModifier";
+	case PhobosScripts::ModifyHateHouseIndex:
+		return "ModifyHateHouseIndex";
+	case PhobosScripts::ModifyHateHousesList:
+		return "ModifyHateHousesList";
+	case PhobosScripts::ModifyHateHousesList1Random:
+		return "ModifyHateHousesList1Randoms";
+	case PhobosScripts::SetTheMostHatedHouseMinorNoRandom:
+		return "SetTheMostHatedHouseMinorNoRandom";
+	case PhobosScripts::SetTheMostHatedHouseMajorNoRandom:
+		return "SetTheMostHatedHouseMajorNoRandom";
+	case PhobosScripts::SetTheMostHatedHouseRandom:
+		return "SetTheMostHatedHouseRandom";
+	case PhobosScripts::ResetAngerAgainstHouses:
+		return "ResetAngerAgainstHouses";
+	case PhobosScripts::AggroHouse:
+		return "AggroHouse";
+	case PhobosScripts::SetSideIdxForManagingTriggers:
+		return "SetSideIdxForManagingTriggers";
+	case PhobosScripts::SetHouseIdxForManagingTriggers:
+		return "SetHouseIdxForManagingTriggers";
+	case PhobosScripts::ManageAllAITriggers:
+		return "ManageAllAITriggers";
+	case PhobosScripts::EnableTriggersFromList:
+		return "EnableTriggersFromList";
+	case PhobosScripts::DisableTriggersFromList:
+		return "DisableTriggersFromList";
+	case PhobosScripts::DisableTriggersWithObjects:
+		return "DisableTriggersWithObjects";
+	case PhobosScripts::EnableTriggersWithObjects:
+		return "EnableTriggersWithObjects";
+	case PhobosScripts::ConditionalJumpResetVariables:
+		return "ConditionalJumpResetVariables";
+	case PhobosScripts::ConditionalJumpManageResetIfJump:
+		return "ConditionalJumpManageResetIfJump";
+	case PhobosScripts::AbortActionAfterSuccessKill:
+		return "AbortActionAfterSuccessKill";
+	case PhobosScripts::ConditionalJumpManageKillsCounter:
+		return "ConditionalJumpManageKillsCounter";
+	case PhobosScripts::ConditionalJumpSetCounter:
+		return "ConditionalJumpSetCounter";
+	case PhobosScripts::ConditionalJumpSetComparatorMode:
+		return "ConditionalJumpSetComparatorMode";
+	case PhobosScripts::ConditionalJumpSetComparatorValue:
+		return "ConditionalJumpSetComparatorValue";
+	case PhobosScripts::ConditionalJumpSetIndex:
+		return "ConditionalJumpSetIndex";
+	case PhobosScripts::ConditionalJumpIfFalse:
+		return "ConditionalJumpIfFalse";
+	case PhobosScripts::ConditionalJumpIfTrue:
+		return "ConditionalJumpIfTrue";
+	case PhobosScripts::ConditionalJumpKillEvaluation:
+		return "ConditionalJumpKillEvaluation";
+	case PhobosScripts::ConditionalJumpCheckCount:
+		return "ConditionalJumpCheckCount";
+	case PhobosScripts::ConditionalJumpCheckAliveHumans:
+		return "ConditionalJumpCheckAliveHumans";
+	case PhobosScripts::ConditionalJumpCheckObjects:
+		return "ConditionalJumpCheckObjects";
+	case PhobosScripts::ConditionalJumpCheckHumanIsMostHated:
+		return "ConditionalJumpCheckHumanIsMostHated";
+	case PhobosScripts::JumpBackToPreviousScript:
+		return "JumpBackToPreviousScript";
+	case PhobosScripts::RepairDestroyedBridge:
+		return "RepairDestroyedBridge";
+	case PhobosScripts::ChronoshiftToEnemyBase:
+		return "ChronoshiftToEnemyBase";
+	case PhobosScripts::LocalVariableSet:
+		return "LocalVariableSet";
+	case PhobosScripts::LocalVariableAdd:
+		return "LocalVariableAdd";
+	case PhobosScripts::LocalVariableMinus:
+		return "LocalVariableMinus";
+	case PhobosScripts::LocalVariableMultiply:
+		return "LocalVariableMultiply";
+	case PhobosScripts::LocalVariableDivide:
+		return "LocalVariableDivide";
+	case PhobosScripts::LocalVariableMod:
+		return "LocalVariableMod";
+	case PhobosScripts::LocalVariableLeftShift:
+		return "LocalVariableLeftShift";
+	case PhobosScripts::LocalVariableRightShift:
+		return "LocalVariableRightShift";
+	case PhobosScripts::LocalVariableReverse:
+		return "LocalVariableReverse";
+	case PhobosScripts::LocalVariableXor:
+		return "LocalVariableXor";
+	case PhobosScripts::LocalVariableOr:
+		return "LocalVariableOr";
+	case PhobosScripts::LocalVariableAnd:
+		return "LocalVariableAnd";
+	case PhobosScripts::GlobalVariableSet:
+		return "GlobalVariableSet";
+	case PhobosScripts::GlobalVariableAdd:
+		return "GlobalVariableAdd";
+	case PhobosScripts::GlobalVariableMinus:
+		return "GlobalVariableMinus";
+	case PhobosScripts::GlobalVariableMultiply:
+		return "GlobalVariableMultiply";
+	case PhobosScripts::GlobalVariableDivide:
+		return "GlobalVariableDivide";
+	case PhobosScripts::GlobalVariableMod:
+		return "GlobalVariableMod";
+	case PhobosScripts::GlobalVariableLeftShift:
+		return "GlobalVariableLeftShift";
+	case PhobosScripts::GlobalVariableRightShift:
+		return "GlobalVariableRightShift";
+	case PhobosScripts::GlobalVariableReverse:
+		return "GlobalVariableReverse";
+	case PhobosScripts::GlobalVariableXor:
+		return "GlobalVariableXor";
+	case PhobosScripts::GlobalVariableOr:
+		return "GlobalVariableOr";
+	case PhobosScripts::GlobalVariableAnd:
+		return "GlobalVariableAnd";
+	case PhobosScripts::LocalVariableSetByLocal:
+		return "LocalVariableSetByLocal";
+	case PhobosScripts::LocalVariableAddByLocal:
+		return "LocalVariableAddByLocal";
+	case PhobosScripts::LocalVariableMinusByLocal:
+		return "LocalVariableMinusByLocal";
+	case PhobosScripts::LocalVariableMultiplyByLocal:
+		return "LocalVariableMultiplyByLocal";
+	case PhobosScripts::LocalVariableDivideByLocal:
+		return "LocalVariableDivideByLocal";
+	case PhobosScripts::LocalVariableModByLocal:
+		return "LocalVariableModByLocal";
+	case PhobosScripts::LocalVariableLeftShiftByLocal:
+		return "LocalVariableLeftShiftByLocal";
+	case PhobosScripts::LocalVariableRightShiftByLocal:
+		return "LocalVariableRightShiftByLocal";
+	case PhobosScripts::LocalVariableReverseByLocal:
+		return "LocalVariableReverseByLocal";
+	case PhobosScripts::LocalVariableXorByLocal:
+		return "LocalVariableXorByLocal";
+	case PhobosScripts::LocalVariableOrByLocal:
+		return "LocalVariableOrByLocal";
+	case PhobosScripts::LocalVariableAndByLocal:
+		return "LocalVariableAndByLocal";
+	case PhobosScripts::GlobalVariableSetByLocal:
+		return "GlobalVariableSetByLocal";
+	case PhobosScripts::GlobalVariableAddByLocal:
+		return "GlobalVariableAddByLocal";
+	case PhobosScripts::GlobalVariableMinusByLocal:
+		return "GlobalVariableMinusByLocal";
+	case PhobosScripts::GlobalVariableMultiplyByLocal:
+		return "GlobalVariableMultiplyByLocal";
+	case PhobosScripts::GlobalVariableDivideByLocal:
+		return "GlobalVariableDivideByLocal";
+	case PhobosScripts::GlobalVariableModByLocal:
+		return "GlobalVariableModByLocal";
+	case PhobosScripts::GlobalVariableLeftShiftByLocal:
+		return "GlobalVariableLeftShiftByLocal";
+	case PhobosScripts::GlobalVariableRightShiftByLocal:
+		return "GlobalVariableRightShiftByLocal";
+	case PhobosScripts::GlobalVariableReverseByLocal:
+		return "GlobalVariableReverseByLocal";
+	case PhobosScripts::GlobalVariableXorByLocal:
+		return "GlobalVariableXorByLocal";
+	case PhobosScripts::GlobalVariableOrByLocal:
+		return "GlobalVariableOrByLocal";
+	case PhobosScripts::GlobalVariableAndByLocal:
+		return "GlobalVariableAndByLocal";
+	case PhobosScripts::LocalVariableSetByGlobal:
+		return "LocalVariableSetByGlobal";
+	case PhobosScripts::LocalVariableAddByGlobal:
+		return "LocalVariableAddByGlobal";
+	case PhobosScripts::LocalVariableMinusByGlobal:
+		return "LocalVariableMinusByGlobal";
+	case PhobosScripts::LocalVariableMultiplyByGlobal:
+		return "LocalVariableMultiplyByGlobal";
+	case PhobosScripts::LocalVariableDivideByGlobal:
+		return "LocalVariableDivideByGlobal";
+	case PhobosScripts::LocalVariableModByGlobal:
+		return "LocalVariableModByGlobal";
+	case PhobosScripts::LocalVariableLeftShiftByGlobal:
+		return "LocalVariableLeftShiftByGlobal";
+	case PhobosScripts::LocalVariableRightShiftByGlobal:
+		return "LocalVariableRightShiftByGlobal";
+	case PhobosScripts::LocalVariableReverseByGlobal:
+		return "LocalVariableReverseByGlobal";
+	case PhobosScripts::LocalVariableXorByGlobal:
+		return "LocalVariableXorByGlobal";
+	case PhobosScripts::LocalVariableOrByGlobal:
+		return "LocalVariableOrByGlobal";
+	case PhobosScripts::LocalVariableAndByGlobal:
+		return "LocalVariableAndByGlobal";
+	case PhobosScripts::GlobalVariableSetByGlobal:
+		return "GlobalVariableSetByGlobal";
+	case PhobosScripts::GlobalVariableAddByGlobal:
+		return "GlobalVariableAddByGlobal";
+	case PhobosScripts::GlobalVariableMinusByGlobal:
+		return "GlobalVariableMinusByGlobal";
+	case PhobosScripts::GlobalVariableMultiplyByGlobal:
+		return "GlobalVariableMultiplyByGlobal";
+	case PhobosScripts::GlobalVariableDivideByGlobal:
+		return "GlobalVariableDivideByGlobal";
+	case PhobosScripts::GlobalVariableModByGlobal:
+		return "GlobalVariableModByGlobal";
+	case PhobosScripts::GlobalVariableLeftShiftByGlobal:
+		return "GlobalVariableLeftShiftByGlobal";
+	case PhobosScripts::GlobalVariableRightShiftByGlobal:
+		return "GlobalVariableRightShiftByGlobal";
+	case PhobosScripts::GlobalVariableReverseByGlobal:
+		return "GlobalVariableReverseByGlobal";
+	case PhobosScripts::GlobalVariableXorByGlobal:
+		return "GlobalVariableXorByGlobal";
+	case PhobosScripts::GlobalVariableOrByGlobal:
+		return "GlobalVariableOrByGlobal";
+	case PhobosScripts::GlobalVariableAndByGlobal:
+		return "GlobalVariableAndByGlobal";
+	case PhobosScripts::SimpleDeployerDeploy:
+		return "SimpleDeployerDeploy";
 	default:
 		return GameStrings::NoneStr();
 	}
@@ -204,9 +374,9 @@ static NOINLINE const char* ToStrings(PhobosScripts from)
 
 #include "Lua/Wrapper.h"
 
-bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
+bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam, ScriptActionNode* pTeamMission, bool bThirdArd)
 {
-	auto const& [action, argument] = pTeam->CurrentScript->GetCurrentAction();
+	auto const& [action, argument] = *pTeamMission;
 
 	//Debug::LogInfo("[{} - {}] Executing[{} - {}] [{} - {}]",
 	//pTeam->Owner->get_ID(),
@@ -303,6 +473,7 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 			ScriptExtData::ForceGlobalOnlyTargetHouseEnemy(pTeam, -1);
 			break;
 		}
+
 		case PhobosScripts::ChangeTeamGroup:
 		{
 			//	ScriptExtData::TeamMemberSetGroup(pTeam, argument);
@@ -310,7 +481,6 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 			pTeam->StepCompleted = true;
 			break;
 		}
-		//TODO
 		case PhobosScripts::DistributedLoading:
 		{
 			//ScriptExtData::DistributedLoadOntoTransport(pTeam, argument); //which branch is this again ?
@@ -332,6 +502,7 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 			pTeam->StepCompleted = true;
 			break;
 		}
+
 		case PhobosScripts::AbortActionAfterSuccessKill:
 		{
 			ScriptExtData::SetAbortActionAfterSuccessKill(pTeam, -1);  //which branch is this again ?
@@ -346,7 +517,6 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 		{
 			// Start Timed Jump that jumps to the same line when the countdown finish (in frames)
 			ScriptExtData::RepairDestroyedBridge(pTeam, -1);  //which branch is this again ?
-			Debug::LogInfo("Team[{} - {} , Script [{} - {}] Action [{}] - No AttachedFunction", (void*)pTeam, pTeam->get_ID(), (void*)pTeam->CurrentScript, pTeam->CurrentScript->get_ID(), (int)action);
 			pTeam->StepCompleted = true;
 			break;
 		}
@@ -354,6 +524,13 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 		{
 			// Chronoshift to enemy base, argument is additional distance modifier
 			ScriptExtData::ChronoshiftToEnemyBase(pTeam, argument);
+			break;
+		}
+		case PhobosScripts::SimpleDeployerDeploy:
+		{
+			// Deploy/undeploy SimpleDeployer units
+			Debug::LogInfo("[SCRIPT DEBUG] SimpleDeployerDeploy case triggered! Action: %d, Argument: %d", (int)action, argument);
+			ScriptExtData::SimpleDeployerDeploy(pTeam, argument);
 			break;
 		}
 
@@ -743,35 +920,7 @@ bool ScriptExtData::ProcessScriptActions(TeamClass* pTeam)
 		}
 #pragma endregion
 		default:
-			// Do nothing because or it is a wrong Action number or it is an Ares/YR action...
-			if (IsExtVariableAction(Action))
-			{
-				VariablesHandler(pTeam, static_cast<PhobosScripts>(Action), argument);
-				break;
-			}
-
-			//dont prematurely finish the `Script` ,...
-			//bailout the script if the `Action` already -1
-			//this will free the Member and allow them to be recuited
-			if ((TeamMissionType)Action == TeamMissionType::none || (TeamMissionType)Action >= TeamMissionType::count && (AresScripts)action >= AresScripts::count)
-			{
-				// Unknown action. This action finished
-				pTeam->StepCompleted = true;
-				auto const pAction = pTeam->CurrentScript->GetCurrentAction();
-				Debug::LogInfo("AI Scripts : [{}] Team [{}][{}]  ( {} CurrentScript {} / {} line {}): Unknown Script Action: {}",
-					(void*)pTeam,
-					pTeam->Type->ID,
-					pTeam->Type->Name,
-
-					(void*)pTeam->CurrentScript,
-					pTeam->CurrentScript->Type->ID,
-					pTeam->CurrentScript->Type->Name,
-					pTeam->CurrentScript->CurrentMission,
-
-					(int)pAction.Action);
-			}
-
-			return false;
+			return ScriptExtData::VariablesHandler(pTeam, PhobosScripts(Action), argument);
 		}
 	}
 
@@ -883,11 +1032,9 @@ void ScriptExtData::LoadIntoTransports(TeamClass* pTeam)
 
 	auto const pExt = TeamExtContainer::Instance.Find(pTeam);
 
-	if (pExt)
-	{
-		FootClass* pLeaderUnit = FindTheTeamLeader(pTeam);
-		pExt->TeamLeader = pLeaderUnit;
-	}
+	FootClass* pLeaderUnit = FindTheTeamLeader(pTeam);
+	pLeaderUnit->IsTeamLeader = 1;
+	pExt->TeamLeader = pLeaderUnit;
 
 	// This action finished
 	pTeam->StepCompleted = true;
@@ -988,7 +1135,11 @@ void ScriptExtData::Mission_Gather_NearTheLeader(TeamClass* pTeam, int countdown
 
 		if (!ScriptExtData::IsUnitAvailable(pLeaderUnit, true))
 		{
+			if (pLeaderUnit)
+				pLeaderUnit->IsTeamLeader = false;
+
 			pLeaderUnit = ScriptExtData::FindTheTeamLeader(pTeam);
+			pLeaderUnit->IsTeamLeader = true;
 			pExt->TeamLeader = pLeaderUnit;
 		}
 
@@ -1204,7 +1355,7 @@ void ScriptExtData::PickRandomScript(TeamClass* pTeam, int idxScriptsList = -1)
 
 			ScriptTypeClass* pNewScript = objectsList[IdxSelectedObject];
 
-			if (pNewScript->ActionsCount > 0)
+			if (pNewScript->ActionsCount > 0 && pNewScript != pTeam->CurrentScript->Type)
 			{
 				TeamExtContainer::Instance.Find(pTeam)->PreviousScript = pTeam->CurrentScript->Type;
 				GameDelete<true, false>(pTeam->CurrentScript);
@@ -1401,24 +1552,24 @@ bool ScriptExtData::MoveMissionEndStatus(TeamClass* pTeam, TechnoClass* pFocus, 
 void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 {
 	// This team has no units! END
-	//if (!pTeam)
-	//{
-	//	// This action finished
-	//	pTeam->StepCompleted = true;
-	//	const auto&[curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
-	//	const auto&[nextAct, nextArg] = pTeam->CurrentScript->GetNextAction();
-	//	Debug::LogInfo("AI Scripts - SkipNextAction: [{}] [{}] (line: {}) Jump to next line: {} = {},{} -> (No team members alive)",
-	//		pTeam->Type->ID,
-	//		pTeam->CurrentScript->Type->ID,
-	//		pTeam->CurrentScript->CurrentMission,
-	//		curAct,
-	//		curArg,
-	//		pTeam->CurrentScript->CurrentMission + 1,
-	//		nextAct,
-	//		nextArg);
-	//
-	//	return;
-	//}
+	if (!pTeam)
+	{
+		//	// This action finished
+		pTeam->StepCompleted = true;
+		//	const auto&[curAct, curArg] = pTeam->CurrentScript->GetCurrentAction();
+		//	const auto&[nextAct, nextArg] = pTeam->CurrentScript->GetNextAction();
+		//	Debug::LogInfo("AI Scripts - SkipNextAction: [{}] [{}] (line: {}) Jump to next line: {} = {},{} -> (No team members alive)",
+		//		pTeam->Type->ID,
+		//		pTeam->CurrentScript->Type->ID,
+		//		pTeam->CurrentScript->CurrentMission,
+		//		curAct,
+		//		curArg,
+		//		pTeam->CurrentScript->CurrentMission + 1,
+		//		nextAct,
+		//		nextArg);
+		//
+		return;
+	}
 
 	if (successPercentage < 0 || successPercentage > 100)
 		successPercentage = pTeam->CurrentScript->GetCurrentAction().Argument;
@@ -1454,7 +1605,7 @@ void ScriptExtData::SkipNextAction(TeamClass* pTeam, int successPercentage = 0)
 	pTeam->StepCompleted = true;
 }
 
-void ScriptExtData::VariablesHandler(TeamClass* pTeam, PhobosScripts eAction, int nArg)
+bool ScriptExtData::VariablesHandler(TeamClass* pTeam, PhobosScripts eAction, int nArg)
 {
 	struct operation_set { int operator()(const int& a, const int& b) { return b; } };
 	struct operation_add { int operator()(const int& a, const int& b) { return a + b; } };
@@ -1618,7 +1769,11 @@ void ScriptExtData::VariablesHandler(TeamClass* pTeam, PhobosScripts eAction, in
 		VariableBinaryOperationHandler<true, true, operation_or>(pTeam, nLoArg, nHiArg); break;
 	case PhobosScripts::GlobalVariableAndByGlobal:
 		VariableBinaryOperationHandler<true, true, operation_and>(pTeam, nLoArg, nHiArg); break;
+	default:
+		return false;
 	}
+
+	return true;
 }
 
 template<bool IsGlobal, class _Pr>
@@ -1690,6 +1845,9 @@ void ScriptExtData::Set_ForceJump_Countdown(TeamClass* pTeam, bool repeatLine = 
 
 	if (count > 0)
 	{
+		if (IS_SAME_STR_("0100012F-G", pTeam->CurrentScript->Type->ID))
+			Debug::Log("0100012F Update ForceJump_Countdown !\n");
+
 		pTeamData->ForceJump_InitialCountdown = count;
 		pTeamData->ForceJump_Countdown.Start(count);
 		pTeamData->ForceJump_RepeatMode = repeatLine;
@@ -1742,6 +1900,7 @@ void ScriptExtData::ChronoshiftToEnemyBase(TeamClass* pTeam, int extraDistance)
 	auto const pLeader = ScriptExtData::FindTheTeamLeader(pTeam);
 	//const auto& [curAct, curArgs] = pTeam->CurrentScript->GetCurrentAction();
 	//const auto& [nextAct, nextArgs] = pTeam->CurrentScript->GetNextAction();
+	pLeader->IsTeamLeader = true;
 
 	if (!pLeader)
 	{
@@ -1828,7 +1987,8 @@ void ScriptExtData::ChronoshiftTeamToTarget(TeamClass* pTeam, TechnoClass* pTeam
 
 	if (pTargetCell)
 	{
-		pOwner->Fire_SW(pSuperChronosphere->Type->ArrayIndex, pTeam->SpawnCell->MapCoords);
+		auto coords = pTeam->Zone->GetCoords();
+		pOwner->Fire_SW(pSuperChronosphere->Type->ArrayIndex, CellClass::Coord2Cell(coords));
 		pOwner->Fire_SW(pSuperChronowarp->Type->ArrayIndex, pTargetCell->MapCoords);
 		pTeam->AssignMissionTarget(pTargetCell);
 	}
@@ -2182,6 +2342,343 @@ void ScriptExtData::RepairDestroyedBridge(TeamClass* pTeam, int mode = -1)
 		}
 	}
 }
+
+void ScriptExtData::SimpleDeployerDeploy(TeamClass* pTeam, int mode)
+{
+	// mode: -1 = use argument, 0 = deploy, 1 = undeploy
+	if (!pTeam)
+	{
+		Debug::Log("[SimpleDeployerDeploy] Error: pTeam is null\n");
+		return;
+	}
+
+	auto pScript = pTeam->CurrentScript;
+	if (!pScript)
+	{
+		Debug::Log("[SimpleDeployerDeploy] Error: pScript is null\n");
+		pTeam->StepCompleted = true;
+		return;
+	}
+
+	// Static optimization caches - declare at top of function
+	static std::map<UnitClass*, std::pair<CellClass*, int>> cellSearchCache;
+	static std::map<UnitClass*, int> unloadTimeoutCounter;
+	static int frameCounter = 0;
+	static int lastLogFrame = 0;
+	frameCounter++;
+
+	const auto& [curAct, scriptArgument] = pScript->GetCurrentAction();
+	if (mode < 0)
+		mode = scriptArgument;
+
+	// Reduce logging frequency to avoid spam
+	bool shouldLog = (frameCounter - lastLogFrame) > 30; // Log every second
+
+	if (shouldLog)
+	{
+		lastLogFrame = frameCounter;
+		Debug::Log("[SimpleDeployerDeploy] Team: %s, Mode: %d (Frame %d)\n",
+			pTeam->Type ? pTeam->Type->get_ID() : "Unknown", mode, frameCounter);
+	}
+
+	// Clean up dead team members first
+	FootClass* pCur = pTeam->FirstUnit;
+	while (pCur)
+	{
+		FootClass* pNext = pCur->NextTeamMember;
+		if (!ScriptExtData::IsUnitAvailable(pCur, false))
+		{
+			pTeam->RemoveMember(pCur, -1, 1);
+		}
+		pCur = pNext;
+	}
+
+	// Check if team has any units left
+	if (!pTeam->FirstUnit)
+	{
+		Debug::Log("[SimpleDeployerDeploy] Error: No units in team\n");
+		pTeam->StepCompleted = true;
+		return;
+	}
+
+	bool allUnitsProcessed = true;
+	int unitsFound = 0;
+	int simpleDeployerUnits = 0;
+
+	// Process each unit in the team
+	for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+	{
+		unitsFound++;
+
+		if (!ScriptExtData::IsUnitAvailable(pUnit, false))
+			continue;
+
+		auto pSimpleUnit = cast_to<UnitClass*, false>(pUnit);
+		if (!pSimpleUnit || !pSimpleUnit->Type->IsSimpleDeployer)
+			continue;
+
+		simpleDeployerUnits++;
+#ifdef _DEBUG
+		Debug::Log("[SimpleDeployerDeploy] Processing SimpleDeployer unit %d (%s), Deployed: %d\n",
+			simpleDeployerUnits, pSimpleUnit->Type->get_ID(), pSimpleUnit->Deployed);
+#endif
+
+		bool shouldDeploy = false;
+		bool shouldUndeploy = false;
+
+		// Determine action based on mode
+		switch (mode)
+		{
+		case 0: // Deploy
+		default:
+			if (!pSimpleUnit->Deployed)
+				shouldDeploy = true;
+			break;
+		case 1: // Undeploy
+			if (pSimpleUnit->Deployed)
+				shouldUndeploy = true;
+			break;
+		}
+
+		// Check if unit is already in deployment process
+		if (pSimpleUnit->Deploying || pSimpleUnit->DeployAnim)
+		{
+			// Unit is busy, wait for it to complete
+			allUnitsProcessed = false;
+			continue;
+		}
+
+		// Special handling for Mission::Unload completion issues with timeout
+		if (pSimpleUnit->CurrentMission == Mission::Unload)
+		{
+			// Initialize timeout counter if not exists
+			if (unloadTimeoutCounter.find(pSimpleUnit) == unloadTimeoutCounter.end())
+			{
+				unloadTimeoutCounter[pSimpleUnit] = frameCounter;
+			}
+
+			// Check if Mission::Unload should complete for SimpleDeployer
+			bool shouldComplete = (!pSimpleUnit->Deploying && !pSimpleUnit->DeployAnim);
+			bool timedOut = (frameCounter - unloadTimeoutCounter[pSimpleUnit]) > 150; // ~5 seconds timeout
+
+			if (shouldComplete || timedOut)
+			{
+				if (timedOut)
+				{
+					Debug::Log("[SimpleDeployerDeploy] Mission::Unload timeout for %s, forcing completion\n", pSimpleUnit->Type->get_ID());
+				}
+				else
+				{
+					Debug::Log("[SimpleDeployerDeploy] Force completing Mission::Unload for %s\n", pSimpleUnit->Type->get_ID());
+				}
+				pSimpleUnit->ForceMission(Mission::Guard);
+				unloadTimeoutCounter.erase(pSimpleUnit); // Clean up timeout counter
+			}
+			else
+			{
+				// Still in unload process, wait
+				allUnitsProcessed = false;
+				continue;
+			}
+		}
+		else
+		{
+			// Clean up timeout counter if unit is not in Mission::Unload
+			unloadTimeoutCounter.erase(pSimpleUnit);
+		}
+
+		// Execute deployment/undeployment action
+		if (shouldDeploy)
+		{
+			// Additional terrain checks before deployment
+			bool canDeploy = pSimpleUnit->CanDeploySlashUnload();
+			bool terrainSuitable = true;
+
+			if (canDeploy)
+			{
+				auto pCell = pSimpleUnit->GetCell();
+				if (pCell)
+				{
+					// Check terrain suitability for deployment
+					bool cellClear = pCell->Cell_Occupier() == nullptr || pCell->Cell_Occupier() == pSimpleUnit;
+					bool flatGround = pCell->GetLevel() == 0; // Level 0 = flat ground
+					bool passableTerrain = pCell->CanThisExistHere(pSimpleUnit->Type->SpeedType, nullptr, pSimpleUnit->Owner);
+					bool noBridge = !pCell->ContainsBridge();
+					bool notRampCliff = !pCell->Tile_Is_Ramp() && !pCell->Tile_Is_Cliff();
+
+					terrainSuitable = cellClear && flatGround && passableTerrain && noBridge && notRampCliff;
+
+					Debug::Log("[SimpleDeployerDeploy] Terrain check for %s: Clear=%d, Flat=%d, Passable=%d, NoBridge=%d, NotRamp=%d\n",
+						pSimpleUnit->Type->get_ID(), cellClear ? 1 : 0, flatGround ? 1 : 0,
+						passableTerrain ? 1 : 0, noBridge ? 1 : 0, notRampCliff ? 1 : 0);
+				}
+			}
+
+			Debug::Log("[SimpleDeployerDeploy] Unit %s shouldDeploy=true, canDeploy=%d, terrainSuitable=%d, deployed=%d\n",
+				pSimpleUnit->Type->get_ID(), canDeploy ? 1 : 0, terrainSuitable ? 1 : 0, pSimpleUnit->Deployed ? 1 : 0);
+
+			if (canDeploy && terrainSuitable)
+			{
+				// Try direct deployment first
+				if (pSimpleUnit->TryToDeploy())
+				{
+					Debug::Log("[SimpleDeployerDeploy] TryToDeploy succeeded for %s\n", pSimpleUnit->Type->get_ID());
+					allUnitsProcessed = false; // Wait for deployment animation
+				}
+				else
+				{
+					// Fallback to Mission::Unload (working method)
+					Debug::Log("[SimpleDeployerDeploy] TryToDeploy failed, using Mission::Unload fallback for %s\n", pSimpleUnit->Type->get_ID());
+					pSimpleUnit->QueueMission(Mission::Unload, false);
+					pSimpleUnit->NextMission();
+					allUnitsProcessed = false; // Wait for deployment to complete
+				}
+			}
+			else if (canDeploy && !terrainSuitable)
+			{
+				// Check cache first to avoid expensive repeated searches
+				CellClass* pBestCell = nullptr;
+				auto currentCell = pSimpleUnit->GetMapCoords();
+
+				// Check if we have a cached result that's still valid
+				auto cacheIt = cellSearchCache.find(pSimpleUnit);
+				if (cacheIt != cellSearchCache.end())
+				{
+					auto& [cachedCell, cacheFrame] = cacheIt->second;
+					// Use cache if it's less than 30 frames old (~1 second)
+					if (frameCounter - cacheFrame < 30 && cachedCell)
+					{
+						// Validate cached cell is still suitable
+						bool cellClear = cachedCell->Cell_Occupier() == nullptr;
+						if (cellClear)
+						{
+							pBestCell = cachedCell;
+							Debug::Log("[SimpleDeployerDeploy] Using cached suitable cell for %s\n", pSimpleUnit->Type->get_ID());
+						}
+						else
+						{
+							// Cache invalid, remove it
+							cellSearchCache.erase(cacheIt);
+						}
+					}
+					else
+					{
+						// Cache expired, remove it
+						cellSearchCache.erase(cacheIt);
+					}
+				}
+
+				// If no valid cache, perform search
+				if (!pBestCell)
+				{
+					Debug::Log("[SimpleDeployerDeploy] Current terrain not suitable, searching nearby cells for %s\n", pSimpleUnit->Type->get_ID());
+
+					// Search in 3x3 area around current position
+					for (int dx = -1; dx <= 1 && !pBestCell; dx++)
+					{
+						for (int dy = -1; dy <= 1 && !pBestCell; dy++)
+						{
+							if (dx == 0 && dy == 0) continue; // Skip current cell (already checked)
+
+							CellStruct targetCell = { short(currentCell.X + dx), short(currentCell.Y + dy) };
+							if (!MapClass::Instance->IsValidCell(targetCell)) continue;
+
+							auto pNearbyCell = MapClass::Instance->GetCellAt(targetCell);
+							if (!pNearbyCell) continue;
+
+							// Check if nearby cell is suitable
+							bool cellClear = pNearbyCell->Cell_Occupier() == nullptr;
+							bool flatGround = pNearbyCell->GetLevel() == 0;
+							bool passableTerrain = pNearbyCell->CanThisExistHere(pSimpleUnit->Type->SpeedType, nullptr, pSimpleUnit->Owner);
+							bool noBridge = !pNearbyCell->ContainsBridge();
+							bool notRampCliff = !pNearbyCell->Tile_Is_Ramp() && !pNearbyCell->Tile_Is_Cliff();
+
+							if (cellClear && flatGround && passableTerrain && noBridge && notRampCliff)
+							{
+								pBestCell = pNearbyCell;
+								// Cache the result
+								cellSearchCache[pSimpleUnit] = std::make_pair(pBestCell, frameCounter);
+								Debug::Log("[SimpleDeployerDeploy] Found suitable cell at [%d,%d] for %s\n",
+									targetCell.X, targetCell.Y, pSimpleUnit->Type->get_ID());
+							}
+						}
+					}
+				}
+
+				if (pBestCell)
+				{
+					// Move to suitable cell first, then deploy
+					Debug::Log("[SimpleDeployerDeploy] Moving %s to suitable cell for deployment\n", pSimpleUnit->Type->get_ID());
+					pSimpleUnit->SetDestination(pBestCell, true);
+					pSimpleUnit->QueueMission(Mission::Move, false);
+					pSimpleUnit->NextMission();
+					allUnitsProcessed = false; // Wait for movement to complete
+				}
+				else
+				{
+					// No suitable cells found - force deploy at current location as fallback
+					Debug::Log("[SimpleDeployerDeploy] No suitable cells found, forcing deployment at current location for %s\n", pSimpleUnit->Type->get_ID());
+					pSimpleUnit->QueueMission(Mission::Unload, false);
+					pSimpleUnit->NextMission();
+					allUnitsProcessed = false; // Wait for deployment to complete
+				}
+			}
+			else
+			{
+				Debug::Log("[SimpleDeployerDeploy] Cannot deploy %s (CanDeploySlashUnload=false)\n", pSimpleUnit->Type->get_ID());
+			}
+		}
+		else if (shouldUndeploy)
+		{
+			// Try to undeploy using proper game method
+			Debug::Log("[SimpleDeployerDeploy] Unit %s shouldUndeploy=true, deployed=%d\n",
+				pSimpleUnit->Type->get_ID(), pSimpleUnit->Deployed ? 1 : 0);
+
+			if (pSimpleUnit->Deployed)
+			{
+				pSimpleUnit->Undeploy();
+				allUnitsProcessed = false; // Wait for undeployment to complete
+			}
+		}
+		else
+		{
+			Debug::Log("[SimpleDeployerDeploy] Unit %s no action (deployed=%d, mode=%d)\n",
+				pSimpleUnit->Type->get_ID(), pSimpleUnit->Deployed ? 1 : 0, mode);
+		}
+	}
+
+	// Clean up cache entries for dead/invalid units every 300 frames (~10 seconds)
+	if (frameCounter % 300 == 0)
+	{
+		for (auto it = cellSearchCache.begin(); it != cellSearchCache.end();)
+		{
+			if (!ScriptExtData::IsUnitAvailable(it->first, false))
+			{
+				it = cellSearchCache.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+
+		for (auto it = unloadTimeoutCounter.begin(); it != unloadTimeoutCounter.end();)
+		{
+			if (!ScriptExtData::IsUnitAvailable(it->first, false))
+			{
+				it = unloadTimeoutCounter.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+	}
+
+	// Script action completes when all units have finished their deployment actions
+	pTeam->StepCompleted = allUnitsProcessed;
+}
+
 //
 //ASMJIT_PATCH(0x6913F8, ScriptClass_CTOR, 0x5)
 //{

@@ -19,6 +19,7 @@
 #include <New/Type/RocketTypeClass.h>
 #include <New/Type/InsigniaTypeClass.h>
 #include <New/Type/SelectBoxTypeClass.h>
+#include <New/Type/BannerTypeClass.h>
 
 #include <New/PhobosAttachedAffect/PhobosAttachEffectTypeClass.h>
 
@@ -158,6 +159,8 @@ void RulesExtData::s_LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	PhobosAttachEffectTypeClass::LoadFromINIOnlyTheList(pINI);
 	TechTreeTypeClass::LoadFromINIOnlyTheList(pINI);
 
+	BannerTypeClass::LoadFromINIList(pINI);
+
 	if (Data->HugeBar_Config.empty())
 	{
 		Data->HugeBar_Config.push_back(std::move(std::make_unique<HugeBar>(DisplayInfoType::Health)));
@@ -188,6 +191,12 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 	RadTypeClass::ReadListFromINI(pINI);
 	PhobosAttachEffectTypeClass::ReadListFromINI(pINI);
 	TechTreeTypeClass::ReadListFromINI(pINI);
+
+	pData->BattlePoints.Read(iniEX, GameStrings::General, "BattlePoints");
+	pData->BattlePoints_DefaultValue.Read(iniEX, GameStrings::General, "BattlePoints.DefaultValue");
+	pData->BattlePoints_DefaultFriendlyValue.Read(iniEX, GameStrings::General, "BattlePoints.DefaultFriendlyValue");
+
+	pData->SuperWeaponSidebar_AllowByDefault.Read(iniEX, GameStrings::AudioVisual, "SuperWeaponSidebar.AllowByDefault");
 
 	pData->DamagedSpeed.Read(iniEX, GameStrings::General, "DamagedSpeed");
 	pData->ColorAddUse8BitRGB.Read(iniEX, GameStrings::AudioVisual, "ColorAddUse8BitRGB");
@@ -439,10 +448,10 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 			}
 		}
 
-		if (pItem->Passengers > 0 && pItem->SizeLimit < 1)
+		if (pItem->Passengers > 0 && (int)pItem->SizeLimit < 1)
 		{
 			Debug::LogInfo("[{} - {}]Passengers={} and SizeLimit={}!",
-				pItem->ID, myClassName, pItem->Passengers, pItem->SizeLimit);
+				pItem->ID, myClassName, pItem->Passengers, (int)pItem->SizeLimit);
 			Debug::RegisterParserError();
 		}
 		if (pItem->MainVoxel.VXL)
@@ -511,11 +520,24 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 			}
 		}
 
+		if (!pExt->Harvester_Counted.isset() && pItem->Enslaves)
+		{
+			pExt->Harvester_Counted = true;
+		}
+
+		if (pExt->Spawn_LimitedExtraRange)
+			pExt->CalculateSpawnerRange();
+
 		if (isFoot)
 		{
 			if (what == UnitTypeClass::AbsID)
 			{
 				const auto pUnit = (UnitTypeClass*)pItem;
+
+				if (!pExt->Harvester_Counted.isset() && pUnit->Harvester)
+				{
+					pExt->Harvester_Counted = true;
+				}
 
 				if (pUnit->Harvester && pUnit->Weeder)
 				{
@@ -758,6 +780,8 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	INI_EX exINI(pINI);
 
+	exINI.Read3Bool(GameStrings::General, "CampaignAllowHarvesterScanUnderShroud", this->CampaignAllowHarvesterScanUnderShroud);
+	this->BerzerkTargeting.Read(exINI, GameStrings::CombatDamage, "BerzerkTargeting");
 	this->Infantry_IgnoreBuildingSizeLimit.Read(exINI, GameStrings::CombatDamage, "InfantryIgnoreBuildingSizeLimit");
 	this->HarvesterDumpAmount.Read(exINI, GameStrings::General, "HarvesterDumpAmount");
 	this->AttackMove_Aggressive.Read(exINI, GameStrings::General, "AttackMove.Aggressive");
@@ -811,7 +835,7 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	this->AttackMindControlledDelay.Read(exINI, GameStrings::General, "AttackMindControlledDelay");
 
 	this->MergeBuildingDamage.Read(exINI, GameStrings::CombatDamage, "MergeBuildingDamage");
-	this->ExpandBuildingQueue.Read(exINI, GameStrings::General, "ExpandBuildingQueue");
+	this->ExpandBuildingQueue.Read(exINI, GameStrings::General, "BuildingProductionQueue");
 	this->EnablePowerSurplus.Read(exINI, GameStrings::AI, "EnablePowerSurplus");
 	this->ShakeScreenUseTSCalculation.Read(exINI, GameStrings::AudioVisual, "ShakeScreenUseTSCalculation");
 	exINI.ReadSpeed(GameStrings::General, "SubterraneanSpeed", &this->SubterraneanSpeed);
@@ -1560,6 +1584,14 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->AttackMove_Aggressive)
 		.Process(this->AttackMove_UpdateTarget)
 		.Process(this->Infantry_IgnoreBuildingSizeLimit)
+
+		.Process(this->BattlePoints)
+		.Process(this->BattlePoints_DefaultValue)
+		.Process(this->BattlePoints_DefaultFriendlyValue)
+
+		.Process(this->SuperWeaponSidebar_AllowByDefault)
+		.Process(this->CampaignAllowHarvesterScanUnderShroud)
+		.Process(this->BerzerkTargeting)
 		;
 
 	MyPutData.Serialize(Stm);

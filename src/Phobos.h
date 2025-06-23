@@ -12,6 +12,18 @@
 
 #include <Lib/fmt/core.h>
 #include <Lib/fmt/xchar.h>
+#include <Lib/fmt/printf.h>
+#include <Lib/magic_enum/magic_enum_all.hpp>
+
+template <typename E>
+struct fmt::formatter<E, std::enable_if_t<std::is_enum_v<std::decay_t<E>>, char>> : fmt::formatter<std::string_view, char>
+{
+	template <class FormatContext>
+	auto format(E e, FormatContext& ctx) const
+	{
+		return fmt::formatter<std::string_view, char>::format(magic_enum::detail::format_as<E>(e), ctx);
+	}
+};
 
 class CCINIClass;
 class AbstractClass;
@@ -107,6 +119,7 @@ struct Phobos final
 		static int SuperWeaponSidebar_CameoHeight;
 		static int SuperWeaponSidebar_Max;
 		static int SuperWeaponSidebar_MaxColumns;
+		static bool SuperWeaponSidebar_Pyramid;
 
 		static const wchar_t* CostLabel;
 		static const wchar_t* PowerLabel;
@@ -127,6 +140,11 @@ struct Phobos final
 		static const wchar_t* Spysat_Label;
 
 		static const wchar_t* SWShotsFormat;
+
+		static const wchar_t* BattlePoints_Label;
+		static const wchar_t* BattlePointsSidebar_Label;
+		static bool BattlePointsSidebar_Label_InvertPosition;
+		static bool BattlePointsSidebar_AlwaysShow;
 	};
 
 	struct Config
@@ -179,6 +197,7 @@ struct Phobos final
 		static bool ScrollSidebarStripWhenHoldKey;
 
 		static bool UnitPowerDrain;
+		static int SuperWeaponSidebar_RequiredSignificance;
 	};
 
 	struct Misc

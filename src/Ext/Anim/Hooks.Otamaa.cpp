@@ -96,13 +96,13 @@ void NOINLINE FakeAnimClass::_Start()
 		VocClass::PlayIndexAtPos(pTypeExt->AltReport, _gCoords, nullptr);
 	}
 
-	if (!this->IsPlaying && this->Type->Report != -1)
+	if (this->IsPlaying || this->Type->Report == -1)
 	{
-		VocClass::PlayIndexAtPos(this->Type->Report, _gCoords, &this->Audio3);
+		this->Audio3.AudioEventHandleStop();
 	}
 	else
 	{
-		this->Audio3.AudioEventHandleStop();
+		VocClass::PlayIndexAtPos(this->Type->Report, _gCoords, &this->Audio3);
 	}
 
 	this->Audio4.AudioEventHandleStop();
@@ -196,7 +196,7 @@ void NOINLINE FakeAnimClass::_ApplySpawns(CoordStruct& nCoord)
 		pOwner,
 		nullptr,
 		pTech,
-		false
+		false, false
 		);
 	}
 }
@@ -284,7 +284,7 @@ void NOINLINE FakeAnimClass::_SpreadTiberium(CoordStruct& coords, bool isOnbridg
 								cellptr->MapCoords,
 								-1);
 
-							cellptr->OverlayData = ScenarioClass::Instance->Random.RandomFromMax(2);
+							cellptr->OverlayData = ScenarioClass::Instance->Random.RandomFromMax<unsigned char>(2);
 							RectangleStruct overlayrect = cellptr->GetOverlayShapeRect();
 							overlayrect.Y -= TacticalClass::view_bound->Y;
 							updaterect = RectangleStruct::Union(updaterect, overlayrect);
@@ -320,8 +320,8 @@ void NOINLINE FakeAnimClass::_PlayExtraAnims(bool onWater, bool onBridge)
 		}
 
 		auto coord_ = this->Bounce.GetCoords();
-		DamageArea::Apply(&coord_, this->Type->Damage, nullptr, this->Type->Warhead, true, nullptr);
-		MapClass::FlashbangWarheadAt(this->Type->Damage, this->Type->Warhead, coord_);
+		DamageArea::Apply(&coord_, (int)this->Type->Damage, nullptr, this->Type->Warhead, true, nullptr);
+		MapClass::FlashbangWarheadAt((int)this->Type->Damage, this->Type->Warhead, coord_);
 	}
 	else if (this->Type->IsMeteor)
 	{
@@ -368,7 +368,7 @@ void NOINLINE FakeAnimClass::_DrawTrailerAnim()
 
 		if (this->Type->TrailerSeperation == 1 || !(Unsorted::CurrentFrame() % this->Type->TrailerSeperation))
 		{
-			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(this->Type->TrailerAnim, _coord, 1, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0), pOwner, nullptr, pTech, false);
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(this->Type->TrailerAnim, _coord, 1, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0), pOwner, nullptr, pTech, false, false);
 		}
 	}
 }
@@ -728,7 +728,7 @@ void FakeAnimClass::_AI()
 					}
 
 					this->__ToDelete_197 = false;
-					this->RemainingIterations = this->Type->LoopCount;
+					this->RemainingIterations = (BYTE)this->Type->LoopCount;
 					this->Accum = 0.0;
 					int delay = this->Type->Rate;
 					if (this->Type->RandomRate.IsValid())
@@ -770,7 +770,7 @@ int FakeAnimClass::_BounceAI()
 
 	if (this->Type->IsMeteor)
 	{
-		pBounce->Velocity.Z += pBounce->Gravity;
+		pBounce->Velocity.Z += (int)pBounce->Gravity;
 	}
 
 	auto _coord = pBounce->GetCoords();
@@ -786,7 +786,7 @@ int FakeAnimClass::_BounceAI()
 				pHouse,
 				nullptr,
 				pTechnoInvoker,
-				false
+				false, false
 			);
 		}
 

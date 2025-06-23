@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #ifndef ASMJIT_CORE_STRING_H_INCLUDED
@@ -35,11 +35,7 @@ union FixedString
 {
 	//! \name Constants
 	//! \{
-	// This cannot be constexpr as GCC 4.8 refuses constexpr members of unions.
-	enum : uint32_t
-	{
-		kNumUInt32Words = uint32_t((N + sizeof(uint32_t) - 1) / sizeof(uint32_t))
-	};
+	static inline constexpr uint32_t kNumUInt32Words = uint32_t((N + sizeof(uint32_t) - 1) / sizeof(uint32_t));
 
 	//! \}
 
@@ -52,12 +48,8 @@ union FixedString
 
 	//! \name Utilities
 	//! \{
+	[[nodiscard]]
 	inline bool equals(const char* other) const noexcept { return strcmp(str, other) == 0; }
-
-#if !defined(ASMJIT_NO_DEPRECATED)
-	ASMJIT_DEPRECATED("Use FixedString::equals() instead")
-		inline bool eq(const char* other) const noexcept { return equals(other); }
-#endif // !ASMJIT_NO_DEPRECATED
 
 	//! \}
 };
@@ -91,20 +83,13 @@ public:
 	};
 
 	//! \cond INTERNAL
-	enum : uint32_t
-	{
-		kLayoutSize = 32,
-		kSSOCapacity = kLayoutSize - 2
-	};
+	static inline constexpr uint32_t kLayoutSize = 32;
+	static inline constexpr uint32_t kSSOCapacity = kLayoutSize - 2;
 
-	//! String type.
-	enum Type : uint8_t
-	{
-		//! Large string (owned by String).
-		kTypeLarge = 0x1Fu,
-		//! External string (zone allocated or not owned by String).
-		kTypeExternal = 0x20u
-	};
+	//! Large string (owned by String).
+	static inline constexpr uint8_t kTypeLarge = 0x1Fu;
+	//! External string (zone allocated or not owned by String).
+	static inline constexpr uint8_t kTypeExternal = 0x20u;
 
 	union Raw
 	{
@@ -169,35 +154,58 @@ public:
 		return *this;
 	}
 
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool operator==(const char* other) const noexcept { return  equals(other); }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool operator!=(const char* other) const noexcept { return !equals(other); }
 
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool operator==(const String& other) const noexcept { return  equals(other); }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool operator!=(const String& other) const noexcept { return !equals(other); }
 
 	//! \}
 
 	//! \name Accessors
 	//! \{
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool isExternal() const noexcept { return _type == kTypeExternal; }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool isLargeOrExternal() const noexcept { return _type >= kTypeLarge; }
 
 	//! Tests whether the string is empty.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool empty() const noexcept { return size() == 0; }
+
 	//! Returns the size of the string.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG size_t size() const noexcept { return isLargeOrExternal() ? size_t(_large.size) : size_t(_type); }
+
 	//! Returns the capacity of the string.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG size_t capacity() const noexcept { return isLargeOrExternal() ? _large.capacity : size_t(kSSOCapacity); }
 
 	//! Returns the data of the string.
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG char* data() noexcept { return isLargeOrExternal() ? _large.data : _small.data; }
+
 	//! \overload
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG const char* data() const noexcept { return isLargeOrExternal() ? _large.data : _small.data; }
 
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG char* start() noexcept { return data(); }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG const char* start() const noexcept { return data(); }
 
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG char* end() noexcept { return data() + size(); }
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG const char* end() const noexcept { return data() + size(); }
 
 	//! \}
@@ -213,6 +221,7 @@ public:
 	//! Clears the content of the string.
 	ASMJIT_API Error clear() noexcept;
 
+	[[nodiscard]]
 	ASMJIT_API char* prepare(ModifyOp op, size_t size) noexcept;
 
 	ASMJIT_API Error _opString(ModifyOp op, const char* str, size_t size = SIZE_MAX) noexcept;
@@ -339,16 +348,11 @@ public:
 	//! Truncate the string length into `newSize`.
 	ASMJIT_API Error truncate(size_t newSize) noexcept;
 
+	[[nodiscard]]
 	ASMJIT_API bool equals(const char* other, size_t size = SIZE_MAX) const noexcept;
+
+	[[nodiscard]]
 	ASMJIT_INLINE_NODEBUG bool equals(const String& other) const noexcept { return equals(other.data(), other.size()); }
-
-#if !defined(ASMJIT_NO_DEPRECATED)
-	ASMJIT_DEPRECATED("Use String::equals() instead")
-		ASMJIT_INLINE_NODEBUG bool eq(const char* other, size_t size = SIZE_MAX) const noexcept { return equals(other, size); }
-
-	ASMJIT_DEPRECATED("Use String::equals() instead")
-		ASMJIT_INLINE_NODEBUG bool eq(const String& other) const noexcept { return equals(other.data(), other.size()); }
-#endif // !ASMJIT_NO_DEPRECATED
 
 	//! \}
 
@@ -361,15 +365,21 @@ public:
 	inline void _resetInternal() noexcept
 	{
 		for (size_t i = 0; i < ASMJIT_ARRAY_SIZE(_raw.uptr); i++)
+		{
 			_raw.uptr[i] = 0;
+		}
 	}
 
 	inline void _setSize(size_t newSize) noexcept
 	{
 		if (isLargeOrExternal())
+		{
 			_large.size = newSize;
+		}
 		else
+		{
 			_small.type = uint8_t(newSize);
+		}
 	}
 
 	//! \}

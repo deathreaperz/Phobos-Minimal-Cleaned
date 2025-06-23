@@ -8,7 +8,7 @@ class SWColumnClass : public ControlClass
 {
 public:
 	SWColumnClass() = default;
-	SWColumnClass(unsigned int id, int x, int y, int width, int height);
+	SWColumnClass(unsigned int id, int maxButtons, int x, int y, int width, int height);
 
 	virtual ~SWColumnClass() = default;
 
@@ -23,6 +23,9 @@ public:
 
 	void SetHeight(int height);
 
+	static constexpr int StartID = 2101;
+
+public:
 	std::vector<SWButtonClass*> Buttons {};
 	int MaxButtons { 0 };
 };

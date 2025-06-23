@@ -44,6 +44,7 @@
 #  include <cmath>    // std::signbit
 #  include <cstddef>  // std::byte
 #  include <cstdint>  // uint32_t
+#  include <cstdlib>  // std::malloc, std::free
 #  include <cstring>  // std::memcpy
 #  include <limits>   // std::numeric_limits
 #  include <new>      // std::bad_alloc
@@ -115,6 +116,33 @@
 #  define FMT_NOINLINE __attribute__((noinline))
 #else
 #  define FMT_NOINLINE
+#endif
+
+// Detect constexpr std::string.
+#if !FMT_USE_CONSTEVAL
+#  define FMT_USE_CONSTEXPR_STRING 0
+#elif defined(__cpp_lib_constexpr_string) && \
+    __cpp_lib_constexpr_string >= 201907L
+#  if FMT_CLANG_VERSION && FMT_GLIBCXX_RELEASE
+// clang + libstdc++ are able to work only starting with gcc13.3
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=113294
+#    if FMT_GLIBCXX_RELEASE < 13
+#      define FMT_USE_CONSTEXPR_STRING 0
+#    elif FMT_GLIBCXX_RELEASE == 13 && __GLIBCXX__ < 20240521
+#      define FMT_USE_CONSTEXPR_STRING 0
+#    else
+#      define FMT_USE_CONSTEXPR_STRING 1
+#    endif
+#  else
+#    define FMT_USE_CONSTEXPR_STRING 1
+#  endif
+#else
+#  define FMT_USE_CONSTEXPR_STRING 0
+#endif
+#if FMT_USE_CONSTEXPR_STRING
+#  define FMT_CONSTEXPR_STRING constexpr
+#else
+#  define FMT_CONSTEXPR_STRING
 #endif
 
 // GCC 4.9 doesn't support qualified names in specializations.
@@ -669,26 +697,6 @@ FMT_CONSTEXPR inline auto compute_width(string_view s) -> size_t {
   return num_code_points;
 }
 
-template <typename Char>
-inline auto code_point_index(basic_string_view<Char> s, size_t n) -> size_t {
-  return min_of(n, s.size());
-}
-
-// Calculates the index of the nth code point in a UTF-8 string.
-inline auto code_point_index(string_view s, size_t n) -> size_t {
-  size_t result = s.size();
-  const char* begin = s.begin();
-  for_each_codepoint(s, [begin, &n, &result](uint32_t, string_view sv) {
-    if (n != 0) {
-      --n;
-      return true;
-    }
-    result = to_unsigned(sv.begin() - begin);
-    return false;
-  });
-  return result;
-}
-
 template <typename T> struct is_integral : std::is_integral<T> {};
 template <> struct is_integral<int128_opt> : std::true_type {};
 template <> struct is_integral<uint128_t> : std::true_type {};
@@ -731,6 +739,9 @@ struct is_fast_float : bool_constant<std::numeric_limits<T>::is_iec559 &&
 template <typename T> struct is_fast_float<T, false> : std::false_type {};
 
 template <typename T>
+using fast_float_t = conditional_t<sizeof(T) == sizeof(double), double, float>;
+
+template <typename T>
 using is_double_double = bool_constant<std::numeric_limits<T>::digits == 106>;
 
 #ifndef FMT_USE_FULL_CACHE_DRAGONBOX
@@ -745,12 +756,12 @@ template <typename T> struct allocator : private std::decay<void> {
 
   T* allocate(size_t n) {
     FMT_ASSERT(n <= max_value<size_t>() / sizeof(T), "");
-    T* p = static_cast<T*>(malloc(n * sizeof(T)));
+    T* p = static_cast<T*>(std::malloc(n * sizeof(T)));
     if (!p) FMT_THROW(std::bad_alloc());
     return p;
   }
 
-  void deallocate(T* p, size_t) { free(p); }
+  void deallocate(T* p, size_t) { std::free(p); }
 };
 
 }  // namespace detail
@@ -1488,6 +1499,13 @@ template <typename Float> constexpr auto exponent_bias() -> int {
                               : std::numeric_limits<Float>::max_exponent - 1;
 }
 
+FMT_CONSTEXPR inline auto compute_exp_size(int exp) -> int {
+  auto prefix_size = 2;  // sign + 'e'
+  auto abs_exp = exp >= 0 ? exp : -exp;
+  if (exp < 100) return prefix_size + 2;
+  return prefix_size + (abs_exp >= 1000 ? 4 : 3);
+}
+
 // Writes the exponent exp in the form "[+-]d{2,3}" to buffer.
 template <typename Char, typename OutputIt>
 FMT_CONSTEXPR auto write_exponent(int exp, OutputIt out) -> OutputIt {
@@ -2111,17 +2129,22 @@ FMT_CONSTEXPR FMT_INLINE auto write(OutputIt out, T value,
 }
 
 inline auto convert_precision_to_size(string_view s, size_t precision)
-    -> size_t {
-  size_t display_width = 0;
-  size_t num_code_points = 0;
-  for_each_codepoint(s, [&](uint32_t, string_view sv) {
-    display_width += compute_width(sv);
-    // Stop when display width exceeds precision.
-    if (display_width > precision) return false;
-    ++num_code_points;
-    return true;
-  });
-  return code_point_index(s, num_code_points);
+	-> size_t
+{
+	size_t display_width = 0;
+	size_t result = s.size();
+	for_each_codepoint(s, [&](uint32_t, string_view sv)
+   {
+		 display_width += compute_width(sv);
+		 // Stop when display width exceeds precision.
+		 if (display_width > precision)
+		 {
+			 result = to_unsigned(sv.begin() - s.begin());
+			 return false;
+		 }
+		 return true;
+	});
+	return result;
 }
 
 template <typename Char, FMT_ENABLE_IF(!std::is_same<Char, char>::value)>
@@ -2348,110 +2371,18 @@ FMT_CONSTEXPR20 auto write_significand(OutputIt out, T significand,
                                      buffer.end(), out);
 }
 
-template <typename Char, typename OutputIt, typename DecimalFP,
-          typename Grouping = digit_grouping<Char>>
-FMT_CONSTEXPR20 auto do_write_float(OutputIt out, const DecimalFP& f,
-                                    const format_specs& specs, sign s,
-                                    int exp_upper, locale_ref loc) -> OutputIt {
-  auto significand = f.significand;
-  int significand_size = get_significand_size(f);
-  const Char zero = static_cast<Char>('0');
-  size_t size = to_unsigned(significand_size) + (s != sign::none ? 1 : 0);
-  using iterator = reserve_iterator<OutputIt>;
+// Numbers with exponents greater or equal to the returned value will use
+// the exponential notation.
+template <typename T> FMT_CONSTEVAL auto exp_upper() -> int {
+  return std::numeric_limits<T>::digits10 != 0
+             ? min_of(16, std::numeric_limits<T>::digits10 + 1)
+             : 16;
+}
 
-  Char decimal_point = specs.localized() ? detail::decimal_point<Char>(loc)
-                                         : static_cast<Char>('.');
-
-  int output_exp = f.exponent + significand_size - 1;
-  auto use_exp_format = [=]() {
-    if (specs.type() == presentation_type::exp) return true;
-    if (specs.type() == presentation_type::fixed) return false;
-    // Use the fixed notation if the exponent is in [exp_lower, exp_upper),
-    // e.g. 0.0001 instead of 1e-04. Otherwise use the exponent notation.
-    const int exp_lower = -4;
-    return output_exp < exp_lower ||
-           output_exp >= (specs.precision > 0 ? specs.precision : exp_upper);
-  };
-  if (use_exp_format()) {
-    int num_zeros = 0;
-    if (specs.alt()) {
-      num_zeros = specs.precision - significand_size;
-      if (num_zeros < 0) num_zeros = 0;
-      size += to_unsigned(num_zeros);
-    } else if (significand_size == 1) {
-      decimal_point = Char();
-    }
-    auto abs_output_exp = output_exp >= 0 ? output_exp : -output_exp;
-    int exp_digits = 2;
-    if (abs_output_exp >= 100) exp_digits = abs_output_exp >= 1000 ? 4 : 3;
-
-    size += to_unsigned((decimal_point ? 1 : 0) + 2 + exp_digits);
-    char exp_char = specs.upper() ? 'E' : 'e';
-    auto write = [=](iterator it) {
-      if (s != sign::none) *it++ = detail::getsign<Char>(s);
-      // Insert a decimal point after the first digit and add an exponent.
-      it = write_significand(it, significand, significand_size, 1,
-                             decimal_point);
-      if (num_zeros > 0) it = detail::fill_n(it, num_zeros, zero);
-      *it++ = static_cast<Char>(exp_char);
-      return write_exponent<Char>(output_exp, it);
-    };
-    return specs.width > 0
-               ? write_padded<Char, align::right>(out, specs, size, write)
-               : base_iterator(out, write(reserve(out, size)));
-  }
-
-  int exp = f.exponent + significand_size;
-  if (f.exponent >= 0) {
-    // 1234e5 -> 123400000[.0+]
-    size += to_unsigned(f.exponent);
-    int num_zeros = specs.precision - exp;
-    abort_fuzzing_if(num_zeros > 5000);
-    if (specs.alt()) {
-      ++size;
-      if (num_zeros <= 0 && specs.type() != presentation_type::fixed)
-        num_zeros = 0;
-      if (num_zeros > 0) size += to_unsigned(num_zeros);
-    }
-    auto grouping = Grouping(loc, specs.localized());
-    size += to_unsigned(grouping.count_separators(exp));
-    return write_padded<Char, align::right>(out, specs, size, [&](iterator it) {
-      if (s != sign::none) *it++ = detail::getsign<Char>(s);
-      it = write_significand<Char>(it, significand, significand_size,
-                                   f.exponent, grouping);
-      if (!specs.alt()) return it;
-      *it++ = decimal_point;
-      return num_zeros > 0 ? detail::fill_n(it, num_zeros, zero) : it;
-    });
-  } else if (exp > 0) {
-    // 1234e-2 -> 12.34[0+]
-    int num_zeros = specs.alt() ? specs.precision - significand_size : 0;
-    size += 1 + static_cast<unsigned>(max_of(num_zeros, 0));
-    auto grouping = Grouping(loc, specs.localized());
-    size += to_unsigned(grouping.count_separators(exp));
-    return write_padded<Char, align::right>(out, specs, size, [&](iterator it) {
-      if (s != sign::none) *it++ = detail::getsign<Char>(s);
-      it = write_significand(it, significand, significand_size, exp,
-                             decimal_point, grouping);
-      return num_zeros > 0 ? detail::fill_n(it, num_zeros, zero) : it;
-    });
-  }
-  // 1234e-6 -> 0.001234
-  int num_zeros = -exp;
-  if (significand_size == 0 && specs.precision >= 0 &&
-      specs.precision < num_zeros) {
-    num_zeros = specs.precision;
-  }
-  bool pointy = num_zeros != 0 || significand_size != 0 || specs.alt();
-  size += 1 + (pointy ? 1 : 0) + to_unsigned(num_zeros);
-  return write_padded<Char, align::right>(out, specs, size, [&](iterator it) {
-    if (s != sign::none) *it++ = detail::getsign<Char>(s);
-    *it++ = zero;
-    if (!pointy) return it;
-    *it++ = decimal_point;
-    it = detail::fill_n(it, num_zeros, zero);
-    return write_significand<Char>(it, significand, significand_size);
-  });
+// Use the fixed notation if the exponent is in [-4, exp_upper),
+// e.g. 0.0001 instead of 1e-04. Otherwise use the exponent notation.
+constexpr auto use_fixed(int exp, int exp_upper) -> bool {
+  return exp >= -4 && exp < exp_upper;
 }
 
 template <typename Char> class fallback_digit_grouping {
@@ -2468,16 +2399,122 @@ template <typename Char> class fallback_digit_grouping {
   }
 };
 
+template <typename Char, typename Grouping, typename OutputIt,
+          typename DecimalFP>
+FMT_CONSTEXPR20 auto write_fixed(OutputIt out, const DecimalFP& f,
+                                 int significand_size, Char decimal_point,
+                                 const format_specs& specs, sign s,
+                                 locale_ref loc = {}) -> OutputIt {
+  using iterator = reserve_iterator<OutputIt>;
+
+  int exp = f.exponent + significand_size;
+  long long size = significand_size + (s != sign::none ? 1 : 0);
+  if (f.exponent >= 0) {
+    // 1234e5 -> 123400000[.0+]
+    size += f.exponent;
+    int num_zeros = specs.precision - exp;
+    abort_fuzzing_if(num_zeros > 5000);
+    if (specs.alt()) {
+      ++size;
+      if (num_zeros <= 0 && specs.type() != presentation_type::fixed)
+        num_zeros = 0;
+      if (num_zeros > 0) size += num_zeros;
+    }
+    auto grouping = Grouping(loc, specs.localized());
+    size += grouping.count_separators(exp);
+    return write_padded<Char, align::right>(
+        out, specs, to_unsigned(size), [&](iterator it) {
+          if (s != sign::none) *it++ = detail::getsign<Char>(s);
+          it = write_significand<Char>(it, f.significand, significand_size,
+                                       f.exponent, grouping);
+          if (!specs.alt()) return it;
+          *it++ = decimal_point;
+          return num_zeros > 0 ? detail::fill_n(it, num_zeros, Char('0')) : it;
+        });
+  }
+  if (exp > 0) {
+    // 1234e-2 -> 12.34[0+]
+    int num_zeros = specs.alt() ? specs.precision - significand_size : 0;
+    size += 1 + max_of(num_zeros, 0);
+    auto grouping = Grouping(loc, specs.localized());
+    size += grouping.count_separators(exp);
+    return write_padded<Char, align::right>(
+        out, specs, to_unsigned(size), [&](iterator it) {
+          if (s != sign::none) *it++ = detail::getsign<Char>(s);
+          it = write_significand(it, f.significand, significand_size, exp,
+                                 decimal_point, grouping);
+          return num_zeros > 0 ? detail::fill_n(it, num_zeros, Char('0')) : it;
+        });
+  }
+  // 1234e-6 -> 0.001234
+  int num_zeros = -exp;
+  if (significand_size == 0 && specs.precision >= 0 &&
+      specs.precision < num_zeros) {
+    num_zeros = specs.precision;
+  }
+  bool pointy = num_zeros != 0 || significand_size != 0 || specs.alt();
+  size += 1 + (pointy ? 1 : 0) + num_zeros;
+  return write_padded<Char, align::right>(
+      out, specs, to_unsigned(size), [&](iterator it) {
+        if (s != sign::none) *it++ = detail::getsign<Char>(s);
+        *it++ = Char('0');
+        if (!pointy) return it;
+        *it++ = decimal_point;
+        it = detail::fill_n(it, num_zeros, Char('0'));
+        return write_significand<Char>(it, f.significand, significand_size);
+      });
+}
+
+template <typename Char, typename Grouping, typename OutputIt,
+          typename DecimalFP>
+FMT_CONSTEXPR20 auto do_write_float(OutputIt out, const DecimalFP& f,
+                                    const format_specs& specs, sign s,
+                                    int exp_upper, locale_ref loc) -> OutputIt {
+  Char point = specs.localized() ? detail::decimal_point<Char>(loc) : Char('.');
+  int significand_size = get_significand_size(f);
+  int exp = f.exponent + significand_size - 1;
+  if (specs.type() == presentation_type::fixed ||
+      (specs.type() != presentation_type::exp &&
+       use_fixed(exp, specs.precision > 0 ? specs.precision : exp_upper))) {
+    return write_fixed<Char, Grouping>(out, f, significand_size, point, specs,
+                                       s, loc);
+  }
+
+  // Write value in the exponential format.
+  int num_zeros = 0;
+  long long size = significand_size + (s != sign::none ? 1 : 0);
+  if (specs.alt()) {
+    num_zeros = max_of(specs.precision - significand_size, 0);
+    size += num_zeros;
+  } else if (significand_size == 1) {
+    point = Char();
+  }
+  size += (point ? 1 : 0) + compute_exp_size(exp);
+  char exp_char = specs.upper() ? 'E' : 'e';
+  auto write = [=](reserve_iterator<OutputIt> it) {
+    if (s != sign::none) *it++ = detail::getsign<Char>(s);
+    // Insert a decimal point after the first digit and add an exponent.
+    it = write_significand(it, f.significand, significand_size, 1, point);
+    if (num_zeros > 0) it = detail::fill_n(it, num_zeros, Char('0'));
+    *it++ = Char(exp_char);
+    return write_exponent<Char>(exp, it);
+  };
+  auto usize = to_unsigned(size);
+  return specs.width > 0
+             ? write_padded<Char, align::right>(out, specs, usize, write)
+             : base_iterator(out, write(reserve(out, usize)));
+}
+
 template <typename Char, typename OutputIt, typename DecimalFP>
 FMT_CONSTEXPR20 auto write_float(OutputIt out, const DecimalFP& f,
                                  const format_specs& specs, sign s,
                                  int exp_upper, locale_ref loc) -> OutputIt {
   if (is_constant_evaluated()) {
-    return do_write_float<Char, OutputIt, DecimalFP,
-                          fallback_digit_grouping<Char>>(out, f, specs, s,
-                                                         exp_upper, loc);
+    return do_write_float<Char, fallback_digit_grouping<Char>>(out, f, specs, s,
+                                                               exp_upper, loc);
   } else {
-    return do_write_float<Char>(out, f, specs, s, exp_upper, loc);
+    return do_write_float<Char, digit_grouping<Char>>(out, f, specs, s,
+                                                      exp_upper, loc);
   }
 }
 
@@ -3309,17 +3346,12 @@ FMT_CONSTEXPR20 auto format_float(Float value, int precision,
   return exp;
 }
 
-// Numbers with exponents greater or equal to the returned value will use
-// the exponential notation.
-template <typename T> constexpr auto exp_upper() -> int {
-  return std::numeric_limits<T>::digits10 != 0
-             ? min_of(16, std::numeric_limits<T>::digits10 + 1)
-             : 16;
-}
+template <typename Char, typename OutputIt, typename T,
+          FMT_ENABLE_IF(is_floating_point<T>::value)>
+FMT_CONSTEXPR20 auto write(OutputIt out, T value, format_specs specs,
+                           locale_ref loc = {}) -> OutputIt {
+  if (specs.localized() && write_loc(out, value, specs, loc)) return out;
 
-template <typename Char, typename OutputIt, typename T>
-FMT_CONSTEXPR20 auto write_float(OutputIt out, T value, format_specs specs,
-                                 locale_ref loc) -> OutputIt {
   // Use signbit because value < 0 is false for NaN.
   sign s = detail::signbit(value) ? sign::minus : specs.sign();
 
@@ -3332,15 +3364,14 @@ FMT_CONSTEXPR20 auto write_float(OutputIt out, T value, format_specs specs,
     if (specs.width != 0) --specs.width;
   }
 
-  constexpr int exp_upper = detail::exp_upper<T>();
+  const int exp_upper = detail::exp_upper<T>();
   int precision = specs.precision;
   if (precision < 0) {
     if (specs.type() != presentation_type::none) {
       precision = 6;
     } else if (is_fast_float<T>::value && !is_constant_evaluated()) {
       // Use Dragonbox for the shortest format.
-      using floaty = conditional_t<sizeof(T) >= sizeof(double), double, float>;
-      auto dec = dragonbox::to_decimal(static_cast<floaty>(value));
+      auto dec = dragonbox::to_decimal(static_cast<fast_float_t<T>>(value));
       return write_float<Char>(out, dec, specs, s, exp_upper, loc);
     }
   }
@@ -3373,37 +3404,43 @@ FMT_CONSTEXPR20 auto write_float(OutputIt out, T value, format_specs specs,
 }
 
 template <typename Char, typename OutputIt, typename T,
-          FMT_ENABLE_IF(is_floating_point<T>::value)>
-FMT_CONSTEXPR20 auto write(OutputIt out, T value, format_specs specs,
-                           locale_ref loc = {}) -> OutputIt {
-  return specs.localized() && write_loc(out, value, specs, loc)
-             ? out
-             : write_float<Char>(out, value, specs, loc);
-}
-
-template <typename Char, typename OutputIt, typename T,
           FMT_ENABLE_IF(is_fast_float<T>::value)>
 FMT_CONSTEXPR20 auto write(OutputIt out, T value) -> OutputIt {
   if (is_constant_evaluated()) return write<Char>(out, value, format_specs());
 
   auto s = detail::signbit(value) ? sign::minus : sign::none;
+  auto mask = exponent_mask<fast_float_t<T>>();
+  if ((bit_cast<decltype(mask)>(value) & mask) == mask)
+    return write_nonfinite<Char>(out, std::isnan(value), {}, s);
 
-  constexpr auto specs = format_specs();
-  using floaty = conditional_t<sizeof(T) >= sizeof(double), double, float>;
-  using floaty_uint = typename dragonbox::float_info<floaty>::carrier_uint;
-  floaty_uint mask = exponent_mask<floaty>();
-  if ((bit_cast<floaty_uint>(value) & mask) == mask)
-    return write_nonfinite<Char>(out, std::isnan(value), specs, s);
+  auto dec = dragonbox::to_decimal(static_cast<fast_float_t<T>>(value));
+  int significand_size = count_digits(dec.significand);
+  int exp = dec.exponent + significand_size - 1;
+  if (use_fixed(exp, detail::exp_upper<T>())) {
+    return write_fixed<Char, fallback_digit_grouping<Char>>(
+        out, dec, significand_size, Char('.'), {}, s);
+  }
 
-  auto dec = dragonbox::to_decimal(static_cast<floaty>(value));
-  return write_float<Char>(out, dec, specs, s, exp_upper<T>(), {});
+  // Write value in the exponential format.
+  auto has_decimal_point = significand_size != 1;
+  size_t size =
+      to_unsigned((s != sign::none ? 1 : 0) + significand_size +
+                  (has_decimal_point ? 1 : 0) + compute_exp_size(exp));
+  auto it = reserve(out, size);
+  if (s != sign::none) *it++ = Char('-');
+  // Insert a decimal point after the first digit and add an exponent.
+  it = write_significand(it, dec.significand, significand_size, 1,
+                         has_decimal_point ? '.' : Char());
+  *it++ = Char('e');
+  it = write_exponent<Char>(exp, it);
+  return base_iterator(out, it);
 }
 
 template <typename Char, typename OutputIt, typename T,
           FMT_ENABLE_IF(is_floating_point<T>::value &&
                         !is_fast_float<T>::value)>
 inline auto write(OutputIt out, T value) -> OutputIt {
-  return write<Char>(out, value, format_specs());
+  return write<Char>(out, value, {});
 }
 
 template <typename Char, typename OutputIt>

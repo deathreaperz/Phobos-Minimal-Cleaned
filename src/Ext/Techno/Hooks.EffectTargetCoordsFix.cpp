@@ -423,12 +423,12 @@ ASMJIT_PATCH(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 	{
 		if (pWeapon->Report.Count == 1)
 		{
-			VocClass::PlayAt(pWeapon->Report[0], crdTgt, nullptr);
+			VocClass::PlayAt(pWeapon->Report[0], crdSrc, nullptr);
 		}
 		else
 		{
 			auto v116 = pThis->weapon_sound_randomnumber_3C8 % pWeapon->Report.Count;
-			VocClass::PlayAt(pWeapon->Report[v116], crdTgt, nullptr);
+			VocClass::PlayAt(pWeapon->Report[v116], crdSrc, nullptr);
 		}
 	}
 
@@ -437,7 +437,7 @@ ASMJIT_PATCH(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 		const auto nCoord = (pWeaponExt->Feedback_Anim_UseFLH ? crdSrc : pThis->GetCoords()) + pWeaponExt->Feedback_Anim_Offset;
 		{
 			auto pFeedBackAnim = GameCreate<AnimClass>(pAnimType, nCoord);
-			AnimExtData::SetAnimOwnerHouseKind(pFeedBackAnim, pThis->GetOwningHouse(), pThis->Target ? pThis->Target->GetOwningHouse() : nullptr, pThis, false);
+			AnimExtData::SetAnimOwnerHouseKind(pFeedBackAnim, pThis->GetOwningHouse(), pThis->Target ? pThis->Target->GetOwningHouse() : nullptr, pThis, false, false);
 
 			if (pThis->WhatAmI() != BuildingClass::AbsID)
 			{
@@ -466,7 +466,7 @@ ASMJIT_PATCH(0x6FF15F, TechnoClass_FireAt_Additionals_Start, 6)
 	if (pFiringAnim)
 	{
 		auto pFiring = GameCreate<AnimClass>(pFiringAnim, crdSrc, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
-		AnimExtData::SetAnimOwnerHouseKind(pFiring, pThis->GetOwningHouse(), pThis->Target ? pThis->Target->GetOwningHouse() : nullptr, pThis, false);
+		AnimExtData::SetAnimOwnerHouseKind(pFiring, pThis->GetOwningHouse(), pThis->Target ? pThis->Target->GetOwningHouse() : nullptr, pThis, false, false);
 		if (pThis->WhatAmI() != BuildingClass::AbsID)
 		{
 			pFiring->SetOwnerObject(pThis);
@@ -631,14 +631,10 @@ ASMJIT_PATCH(0x6FF656, TechnoClass_FireAt_Additionals_End, 0xA)
 	++pThis->CurrentBurstIndex;
 	pThis->CurrentBurstIndex %= pWeaponType->Burst;
 
-	if (pThis->WhatAmI() == AbstractType::Infantry)
+	if (pExt->ForceFullRearmDelay)
 	{
-		auto pInf = ((FakeInfantryClass*)(pThis));
-		if (pInf->_GetExtData()->ForceFullRearmDelay)
-		{
-			pInf->_GetExtData()->ForceFullRearmDelay = false;
-			pThis->CurrentBurstIndex = 0;
-		}
+		pExt->ForceFullRearmDelay = false;
+		pThis->CurrentBurstIndex = 0;
 	}
 
 	if (auto const pTargetObject = cast_to<BulletClass* const, false>(pTarget))

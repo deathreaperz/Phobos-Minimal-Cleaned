@@ -72,7 +72,7 @@ public:
 	Nullable<int> PlacementPreview_ShapeFrame {};
 	Valueable<CoordStruct> PlacementPreview_Offset { {0, -15, 1} };
 	Valueable<bool> PlacementPreview_Remap { true };
-	Valueable<PaletteManager*> PlacementPreview_Palette {}; //CustomPalette::PaletteMode::Default
+	CustomPalette PlacementPreview_Palette { CustomPalette::PaletteMode::Temperate }; //
 	Nullable<int> PlacementPreview_TranslucentLevel {};
 
 	Nullable<AffectedHouse> RadialIndicator_Visibility {};
@@ -171,7 +171,7 @@ public:
 	std::vector<AnimTypeClass*> GarrisonAnim_ActiveThree {};
 	std::vector<AnimTypeClass*> GarrisonAnim_ActiveFour {};
 
-	Valueable<PaletteManager*> PipShapes01Palette {}; //CustomPalette::PaletteMode::Temperate
+	CustomPalette PipShapes01Palette { CustomPalette::PaletteMode::Temperate }; //CustomPalette::PaletteMode::Temperate
 	Valueable<bool> PipShapes01Remap { false };
 
 	Nullable<AnimTypeClass*> TurretAnim_LowPower {};
@@ -188,7 +188,7 @@ public:
 	Nullable<SHPStruct*> BuildingPlacementGrid_Shape {};
 	BuildSpeedBonus SpeedBonus {};
 
-	Valueable<PaletteManager*> RubblePalette {}; //CustomPalette::PaletteMode::Temperates
+	CustomPalette RubblePalette { CustomPalette::PaletteMode::Temperate }; //CustomPalette::PaletteMode::Temperates
 
 	ValueableVector<FacingType> DockPoseDir {};
 
@@ -206,6 +206,7 @@ public:
 	ValueableIdx<CursorTypeClass> Cursor_Sabotage { 93 };
 	Nullable<bool> ImmuneToSaboteurs {};
 	Valueable<bool> ReverseEngineersVictims { false };
+	Valueable<bool> ReverseEngineersVictims_Passengers { false };
 
 	// lightning rod
 	Valueable<double> LightningRod_Modifier { 1.0 };
@@ -245,7 +246,7 @@ public:
 	int OutlineLength { 0 };
 	std::vector<CellStruct> CustomData {};
 	std::vector<CellStruct> OutlineData {};
-	DynamicVectorClass<Point2D, DllAllocator<Point2D>> FoundationRadarShape {};
+	DynamicVectorClass<Point2D> FoundationRadarShape {};
 
 	// new secret lab
 	NullableVector<TechnoTypeClass*> Secret_Boons {};
@@ -346,6 +347,12 @@ public:
 	Valueable<int> NewEvaVoice_Priority { 0 };
 	Valueable<bool> NewEvaVoice_RecheckOnDeath {};
 	ValueableIdx<VoxClass> NewEvaVoice_InitialMessage {};
+
+	Valueable<bool> BattlePointsCollector {};
+	Valueable<bool> BattlePointsCollector_RequirePower {};
+
+	NullableIdx<VocClass> BuildingRepairedSound {};
+	Valueable<bool> Refinery_UseNormalActiveAnim { false };
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();

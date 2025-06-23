@@ -143,7 +143,7 @@ ASMJIT_PATCH(0x71A8BD, TemporalClass_Update_WarpAway, 5)
 			pThis->Owner ? pThis->Owner->Owner : nullptr,
 			pTarget->Owner,
 			pThis->Owner,
-			false
+			false, false
 		);
 	}
 
@@ -211,7 +211,7 @@ ASMJIT_PATCH(0x71AC50, TemporalClass_LetItGo_ExpireEffect, 0x5)
 						auto const pAnim = GameCreate<AnimClass>(pExpireAnim, nCoord);
 						pAnim->ZAdjust = pTarget->GetZAdjustment() - 3;
 						AnimExtData::SetAnimOwnerHouseKind(pAnim, pTempOwner->GetOwningHouse()
-							, pTarget->GetOwningHouse(), pThis->Owner, false);
+							, pTarget->GetOwningHouse(), pThis->Owner, false, false);
 					}
 				}
 
@@ -275,7 +275,7 @@ ASMJIT_PATCH(0x71AFD0, TemporalClass_Logic_Unit_OreMinerUnderAttack, 0x5)
 				auto nDest = pTarget->GetDestination();
 				if (RadarEventClass::Create(RadarEventType::HarvesterAttacked, CellClass::Coord2Cell(nDest)))
 				{
-					VoxClass::Play(GameStrings::EVA_OreMinerUnderAttack(), -1, -1);
+					VoxClass::Play(GameStrings::EVA_OreMinerUnderAttack());
 				}
 			}
 		}

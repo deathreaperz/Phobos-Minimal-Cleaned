@@ -54,6 +54,17 @@
 //	return announce ? 0 : 0x44848F; //early bailout
 //}
 
+// AFAIK, only used by the teleport of the Chronoshift SW
+ASMJIT_PATCH(0x70337D, HouseClass_RegisterDestruction_SaveKillerInfo, 0x6)
+{
+	GET(HouseClass*, pHouse, EDI);
+	GET(TechnoClass*, pVictim, ESI);
+
+	TechnoExtData::ObjectKilledBy(pVictim, pHouse);
+
+	return 0;
+}
+
 ASMJIT_PATCH(0x51AA40, InfantryClass_Assign_Destination_DisallowMoving, 0x5)
 {
 	GET(InfantryClass*, pThis, ECX);
@@ -293,19 +304,16 @@ ASMJIT_PATCH(0x6FD054, TechnoClass_RearmDelay_ForceFullDelay, 0x6)
 	GET(WeaponTypeClass*, pWeapon, EDI);
 	GET(int, currentBurstIdx, ECX);
 
-	TechnoExtContainer::Instance.Find(pThis)->LastRearmWasFullDelay = false;
+	auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	pExt->LastRearmWasFullDelay = false;
 
 	bool rearm = currentBurstIdx >= pWeapon->Burst;
 
-	// Currently only used with infantry, so a performance saving measure.
-	if (const auto pInf = cast_to<FakeInfantryClass*, false>(pThis))
+	if (pExt->ForceFullRearmDelay)
 	{
-		if (pInf->_GetExtData()->ForceFullRearmDelay)
-		{
-			pInf->_GetExtData()->ForceFullRearmDelay = false;
-			pThis->CurrentBurstIndex = 0;
-			rearm = true;
-		}
+		pExt->ForceFullRearmDelay = false;
+		pThis->CurrentBurstIndex = 0;
+		rearm = true;
 	}
 
 	if (!rearm)
@@ -324,12 +332,12 @@ ASMJIT_PATCH(0x6FD054, TechnoClass_RearmDelay_ForceFullDelay, 0x6)
 
 	TechnoExtContainer::Instance.Find(pThis)->LastRearmWasFullDelay = true;
 	int nResult = 0;
-	auto const pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
-	if (pExt->ROF_Random.Get())
+	if (pTypeExt->ROF_Random.Get())
 	{
 		const auto nDefault = Point2D { RulesExtData::Instance()->ROF_RandomDelay->X , RulesExtData::Instance()->ROF_RandomDelay->Y };
-		nResult += GeneralUtils::GetRangedRandomOrSingleValue(pExt->Rof_RandomMinMax.Get(nDefault));
+		nResult += GeneralUtils::GetRangedRandomOrSingleValue(pTypeExt->Rof_RandomMinMax.Get(nDefault));
 	}
 
 	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
@@ -384,132 +392,6 @@ ASMJIT_PATCH(0x6FD054, TechnoClass_RearmDelay_ForceFullDelay, 0x6)
 
 	R->EAX(_ROF);
 	return 0x6FD1F5;
-}
-
-namespace FiringAITemp
-{
-	int weaponIndex;
-}
-
-ASMJIT_PATCH(0x5206D2, InfantryClass_FiringAI_SetContext, 0x6)
-{
-	GET(int, weaponIndex, EDI);
-
-	FiringAITemp::weaponIndex = weaponIndex;
-
-	return 0;
-}
-
-ASMJIT_PATCH(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
-{
-	enum { Continue = 0x5209CD, ReturnFromFunction = 0x520AD9 };
-
-	GET(InfantryClass*, pThis, EBP);
-	GET(int, firingFrame, EDX);
-
-	const auto pWeaponstruct = pThis->GetWeapon(FiringAITemp::weaponIndex);
-
-	if (!pWeaponstruct)
-		return ReturnFromFunction;
-
-	const auto pWeapon = pWeaponstruct->WeaponType;
-
-	if (!pWeapon)
-		return ReturnFromFunction;
-
-	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
-	int cumulativeDelay = 0;
-	int projectedDelay = 0;
-	//auto const pExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-
-	// Calculate cumulative burst delay as well cumulative SellSounddelay after next shot (projected delay).
-	if (pWeaponExt->Burst_FireWithinSequence)
-	{
-		for (int i = 0; i <= pThis->CurrentBurstIndex; i++)
-		{
-			int burstDelay = WeaponTypeExtData::GetBurstDelay(pWeapon, i);
-			int delay = 0;
-
-			if (burstDelay > -1)
-				delay = burstDelay;
-			else
-				delay = ScenarioClass::Instance->Random.RandomRanged(3, 5);
-
-			// Other than initial delay, treat 0 frame delays as 1 frame delay due to per-frame processing.
-			if (i != 0)
-				delay = MaxImpl(delay, 1);
-
-			cumulativeDelay += delay;
-
-			if (i == pThis->CurrentBurstIndex)
-				projectedDelay = cumulativeDelay + delay;
-		}
-	}
-
-	//IsFiring
-	if (R->AL())
-	{
-		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-		auto& timer = pExt->DelayedFireTimer;
-
-		if (pExt->DelayedFireWeaponIndex >= 0 && pExt->DelayedFireWeaponIndex != FiringAITemp::weaponIndex)
-		{
-			pExt->ResetDelayedFireTimer();
-			pExt->FiringSequencePaused = false;
-		}
-
-		if (pWeaponExt->DelayedFire_PauseFiringSequence && pWeaponExt->DelayedFire_Duration.isset() && (!pThis->Transporter || !pWeaponExt->DelayedFire_SkipInTransport))
-		{
-			if (pWeapon->Burst <= 1 || !pWeaponExt->DelayedFire_OnlyOnInitialBurst || pThis->CurrentBurstIndex == 0)
-			{
-				if (pThis->Animation.Stage == firingFrame + cumulativeDelay)
-					pExt->FiringSequencePaused = true;
-
-				if (!timer.HasStarted())
-				{
-					pExt->DelayedFireWeaponIndex = FiringAITemp::weaponIndex;
-					timer.Start(MaxImpl(GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->DelayedFire_Duration), 0));
-					auto pAnimType = pWeaponExt->DelayedFire_Animation;
-
-					if (pThis->Transporter && pWeaponExt->DelayedFire_OpenToppedAnimation.isset())
-						pAnimType = pWeaponExt->DelayedFire_OpenToppedAnimation;
-
-					pExt->CreateDelayedFireAnim(pAnimType, FiringAITemp::weaponIndex, pWeaponExt->DelayedFire_AnimIsAttached, pWeaponExt->DelayedFire_CenterAnimOnFirer,
-						pWeaponExt->DelayedFire_RemoveAnimOnNoDelay, pWeaponExt->DelayedFire_AnimOffset.isset(), pWeaponExt->DelayedFire_AnimOffset.Get());
-
-					return ReturnFromFunction;
-				}
-				else if (timer.InProgress())
-				{
-					return ReturnFromFunction;
-				}
-
-				if (timer.Completed())
-					pExt->ResetDelayedFireTimer();
-			}
-
-			pExt->FiringSequencePaused = false;
-		}
-
-		if (pThis->Animation.Stage == firingFrame + cumulativeDelay)
-		{
-			if (pWeaponExt->Burst_FireWithinSequence)
-			{
-				int frameCount = pThis->Type->Sequence->GetSequence(pThis->SequenceAnim).CountFrames;
-
-				// If projected frame for firing next shot goes beyond the sequence frame count, cease firing after this shot and start rearm timer.
-				if (firingFrame + projectedDelay > frameCount)
-				{
-					InfantryExtContainer::Instance.Find(pThis)->ForceFullRearmDelay = true;
-				}
-			}
-
-			R->EAX(FiringAITemp::weaponIndex); // Reuse the weapon index to save some time.
-			return Continue;
-		}
-	}
-
-	return ReturnFromFunction;
 }
 
 // TODO :
@@ -647,8 +529,8 @@ ASMJIT_PATCH(0x70A36E, TechnoClass_DrawPips_Ammo, 0x6)
 
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	Point2D position = { offset->X + pTypeExt->AmmoPipOffset->X, offset->Y + pTypeExt->AmmoPipOffset->Y };
-	ConvertClass* pConvert = pTypeExt->AmmoPip_Palette ?
-		pTypeExt->AmmoPip_Palette->GetOrDefaultConvert<PaletteManager::Mode::Default>(FileSystem::PALETTE_PAL)
+	ConvertClass* pConvert = pTypeExt->AmmoPip_Palette.GetConvert() ?
+		pTypeExt->AmmoPip_Palette.GetConvert()
 		: FileSystem::PALETTE_PAL();
 
 	auto pSHApe = pTypeExt->AmmoPip_shape.Get(pDefault);
@@ -1020,7 +902,7 @@ ASMJIT_PATCH(0x6B77B4, SpawnManagerClass_Update_RecycleSpawned, 0x7)
 	{
 		if (pCarrierTypeExt->Spawner_RecycleAnim)
 		{
-			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pCarrierTypeExt->Spawner_RecycleAnim, spawnerCrd), pSpawner->Owner, pSpawner->Owner, false, true);
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pCarrierTypeExt->Spawner_RecycleAnim, spawnerCrd), pSpawner->Owner, nullptr, pSpawner, false, true);
 		}
 
 		pSpawner->SetLocation(pCarrier->GetCoords());
@@ -1099,7 +981,7 @@ ASMJIT_PATCH(0x521D94, InfantryClass_CurrentSpeed_ProneSpeed, 0x6)
 
 	auto multiplier = pThis->_GetTypeExtData()->ProneSpeed.Get(
 		RulesExtData::Instance()->InfantrySpeedData.getSpeed(pThis->Type->Crawls));
-	currentSpeed *= multiplier;
+	currentSpeed = (int)(currentSpeed * multiplier);
 
 	//if (pThis->Type->Crawls) {
 	//	// Crawling: move at one-third speed
@@ -1356,21 +1238,17 @@ ASMJIT_PATCH(0x41D604, AirstrikeClass_PointerGotInvalid_ResetForTarget, 0x6)
 	return SkipGameCode;
 }
 
-ASMJIT_PATCH(0x65E97F, HouseClass_CreateAirstrike_SetTaretForUnit, 0x6)
+ASMJIT_PATCH(0x65E97F, HouseClass_CreateAirstrike_SetTargetForUnit, 0x6)
 {
-	enum { SkipGameCode = 0x65E992 };
-
 	GET_STACK(AirstrikeClass*, pThis, STACK_OFFSET(0x38, 0x1C));
-	const auto pOwner = pThis->Owner;
 
-	if (!pOwner || !pOwner->Target)
-		return 0;
-
-	if (const auto pTarget = flag_cast_to<TechnoClass*, false>(pOwner->Target))
+	if (const auto pOwner = pThis->Owner)
 	{
-		GET(AircraftClass*, pFirer, ESI);
-		pFirer->SetTarget(pTarget);
-		return SkipGameCode;
+		if (const auto pTarget = flag_cast_to<TechnoClass*>(pOwner->Target))
+		{
+			R->EAX(pTarget);
+			return 0x65E983;
+		}
 	}
 
 	return 0;
@@ -1400,18 +1278,18 @@ ASMJIT_PATCH(0x51EAE0, TechnoClass_WhatAction_AllowAirstrike, 0x7)
 	return Cannot;
 }
 
-ASMJIT_PATCH(0x70782D, TechnoClass_PointerGotInvalid_Airstrike, 0x6)
-{
-	GET(TechnoClass*, pThis, ESI);
-	GET(AbstractClass*, pAbstract, EBP);
-
-	if (const auto pExt = TechnoExtContainer::Instance.Find(pThis))
-		AnnounceInvalidPointer(pExt->AirstrikeTargetingMe, pAbstract);
-
-	AnnounceInvalidPointer(pThis->Airstrike, pAbstract);
-
-	return 0x70783B;
-}
+// ASMJIT_PATCH(0x70782D, TechnoClass_PointerGotInvalid_Airstrike, 0x6)
+// {
+// 	GET(TechnoClass*, pThis, ESI);
+// 	GET(AbstractClass*, pAbstract, EBP);
+//
+// 	if(const auto pExt = TechnoExtContainer::Instance.Find(pThis))
+// 		AnnounceInvalidPointer(pExt->AirstrikeTargetingMe, pAbstract);
+//
+// 	AnnounceInvalidPointer(pThis->Airstrike, pAbstract);
+//
+// 	return 0x70783B;
+// }
 
 #pragma region GetEffectTintIntensity
 
@@ -1488,19 +1366,11 @@ ASMJIT_PATCH(0x456E5A, BuildingClass_Flash_Airstrike, 0x6)
 	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
 }
 
-ASMJIT_PATCH(0x456FD3, BuildingClass_GetEffectTintIntensity_Airstrike, 0x6)
-{
-	enum { ContinueTintIntensity = 0x457002, NonAirstrike = 0x45700F };
-
-	GET(BuildingClass*, pThis, ESI);
-	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	return pExt->AirstrikeTargetingMe ? ContinueTintIntensity : NonAirstrike;
-}
+DEFINE_FUNCTION_JUMP(CALL, 0x450A5D, FakeBuildingClass::_GetAirstrikeInvulnerabilityIntensity); // BuildingClass_Animation_AI
 
 #pragma endregion
 
-ASMJIT_PATCH(0x4D6D34, FootClass_MissionAreaGuard_Miner, 0x5)
+ASMJIT_PATCH(0x4D6D34, FootClass_MissionAreaGuard_Harvester, 0x5)
 {
 	enum { GoGuardArea = 0x4D6D69 };
 
@@ -1509,3 +1379,246 @@ ASMJIT_PATCH(0x4D6D34, FootClass_MissionAreaGuard_Miner, 0x5)
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 	return pTypeExt->Harvester_CanGuardArea && pThis->Owner->IsControlledByHuman() ? GoGuardArea : 0;
 }
+
+DEFINE_JUMP(LJMP, 0x741406, 0x741427);
+
+ASMJIT_PATCH(0x736F61, UnitClass_UpdateFiring_FireUp, 0x6)
+{
+	GET(UnitClass*, pThis, ESI);
+	GET(int, weaponIndex, EDI);
+
+	const auto pType = pThis->Type;
+
+	if (pType->Turret || pType->Voxel)
+		return 0;
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+
+	// SHP vehicles have no secondary action frames, so it does not need SecondaryFire.
+	const int fireUp = pTypeExt->FireUp;
+	CDTimerClass& Timer = pExt->FiringAnimationTimer;
+
+	if (fireUp >= 0 && !pType->OpportunityFire &&
+		pThis->Locomotor->Is_Really_Moving_Now())
+	{
+		if (Timer.InProgress())
+			Timer.Stop();
+
+		return 0x736F73;
+	}
+
+	const int frames = pType->FiringFrames;
+	if (!Timer.InProgress() && frames >= 1)
+	{
+		pThis->CurrentFiringFrame = 2 * frames - 1;
+		Timer.Start(pThis->CurrentFiringFrame);
+	}
+
+	if (fireUp >= 0 && frames >= 1)
+	{
+		int cumulativeDelay = 0;
+		int projectedDelay = 0;
+		auto const pWeapon = pThis->GetWeapon(weaponIndex)->WeaponType;
+		auto const pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+		const bool allowBurst = pWeaponExt && pWeaponExt->Burst_FireWithinSequence;
+
+		// Calculate cumulative burst delay as well cumulative delay after next shot (projected delay).
+		if (allowBurst)
+		{
+			for (int i = 0; i <= pThis->CurrentBurstIndex; i++)
+			{
+				const int burstDelay = WeaponTypeExtData::GetBurstDelay(pWeapon, i);
+				int delay = 0;
+
+				if (burstDelay > -1)
+					delay = burstDelay;
+				else
+					delay = ScenarioClass::Instance->Random.RandomRanged(3, 5);
+
+				// Other than initial delay, treat 0 frame delays as 1 frame delay due to per-frame processing.
+				if (i != 0)
+					delay = std::max(delay, 1);
+
+				cumulativeDelay += delay;
+
+				if (i == pThis->CurrentBurstIndex)
+					projectedDelay = cumulativeDelay + delay;
+			}
+		}
+
+		const int frame = (Timer.TimeLeft - Timer.GetTimeLeft());
+
+		if (frame % 2 != 0)
+			return 0x736F73;
+
+		if (frame / 2 != fireUp + cumulativeDelay)
+		{
+			return 0x736F73;
+		}
+		else if (allowBurst)
+		{
+			// If projected frame for firing next shot goes beyond the sequence frame count, cease firing after this shot and start rearm timer.
+			if (fireUp + projectedDelay > frames)
+				pExt->ForceFullRearmDelay = true;
+		}
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x70DE40, TechnoClass_GattlingValueRateDown_GattlingRateDownDelay, 0xA)
+{
+	enum { Return = 0x70DE62 };
+
+	GET(BuildingClass* const, pThis, ECX);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
+
+	if (pTypeExt->RateDown_Delay < 0)
+		return Return;
+
+	++pExt->AccumulatedGattlingValue;
+	auto remain = pExt->AccumulatedGattlingValue;
+
+	if (!pExt->ShouldUpdateGattlingValue)
+		remain -= pTypeExt->RateDown_Delay;
+
+	if (remain <= 0)
+		return Return;
+
+	// Time's up
+	GET_STACK(int, rateDown, STACK_OFFSET(0x0, 0x4));
+	pExt->AccumulatedGattlingValue = 0;
+	pExt->ShouldUpdateGattlingValue = true;
+
+	if (pThis->Ammo <= pTypeExt->RateDown_Ammo)
+		rateDown = pTypeExt->RateDown_Cover;
+
+	if (!rateDown)
+	{
+		pThis->GattlingValue = 0;
+		return Return;
+	}
+
+	const int newValue = pThis->GattlingValue - (rateDown * remain);
+	pThis->GattlingValue = (newValue <= 0) ? 0 : newValue;
+	return Return;
+}
+
+ASMJIT_PATCH(0x70DE70, TechnoClass_GattlingRateUp_GattlingRateDownReset, 0x5)
+{
+	GET(TechnoClass* const, pThis, ECX);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	pExt->AccumulatedGattlingValue = 0;
+	pExt->ShouldUpdateGattlingValue = false;
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x70E01E, TechnoClass_GattlingRateDown_GattlingRateDownDelay, 0x6)
+{
+	enum { SkipGameCode = 0x70E04D };
+
+	GET(TechnoClass* const, pThis, ESI);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	if (pTypeExt->RateDown_Delay < 0)
+		return SkipGameCode;
+
+	GET_STACK(int, rateMult, STACK_OFFSET(0x10, 0x4));
+
+	pExt->AccumulatedGattlingValue += rateMult;
+	auto remain = pExt->AccumulatedGattlingValue;
+
+	if (!pExt->ShouldUpdateGattlingValue)
+		remain -= pTypeExt->RateDown_Delay;
+
+	if (remain <= 0 && rateMult)
+		return SkipGameCode;
+
+	// Time's up
+	pExt->AccumulatedGattlingValue = 0;
+	pExt->ShouldUpdateGattlingValue = true;
+
+	if (!rateMult)
+	{
+		pThis->GattlingValue = 0;
+		return SkipGameCode;
+	}
+
+	const auto rateDown = (pThis->Ammo <= pTypeExt->RateDown_Ammo) ? pTypeExt->RateDown_Cover.Get() : pTypeExt->AttachedToObject->RateDown;
+
+	if (!rateDown)
+	{
+		pThis->GattlingValue = 0;
+		return SkipGameCode;
+	}
+
+	const int newValue = pThis->GattlingValue - (rateDown * remain);
+	pThis->GattlingValue = (newValue <= 0) ? 0 : newValue;
+	return SkipGameCode;
+}
+
+#pragma region SetTarget
+
+ASMJIT_PATCH(0x4DF4A5, FootClass_UpdateAttackMove_SetTarget, 0x6)
+{
+	GET(FootClass*, pThis, ESI);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (R->Origin() != 0x4DF4A5)
+	{
+		pThis->Target = nullptr;
+		pExt->UpdateGattlingRateDownReset();
+
+		return R->Origin() + 0xA;
+	}
+	else
+	{
+		GET(AbstractClass*, pTarget, EAX);
+
+		pThis->Target = pTarget;
+		pExt->UpdateGattlingRateDownReset();
+
+		return 0x4DF4AB;
+	}
+}ASMJIT_PATCH_AGAIN(0x4DF3D3, FootClass_UpdateAttackMove_SetTarget, 0xA)
+ASMJIT_PATCH_AGAIN(0x4DF46A, FootClass_UpdateAttackMove_SetTarget, 0xA)
+
+ASMJIT_PATCH(0x6FCF3E, TechnoClass_SetTarget_After, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+	GET(AbstractClass*, pTarget, EDI);
+
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (const auto pUnit = cast_to<UnitClass*, false>(pThis))
+	{
+		const auto pUnitType = pUnit->Type;
+
+		if (!pUnitType->Turret && !pUnitType->Voxel)
+		{
+			const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pUnit->Type);
+
+			if (!pTarget || pTypeExt->FireUp < 0 || pTypeExt->FireUp_ResetInRetarget
+				|| !pThis->IsCloseEnough(pTarget, pThis->SelectWeapon(pTarget)))
+			{
+				pUnit->CurrentFiringFrame = -1;
+				pExt->FiringAnimationTimer.Stop();
+			}
+		}
+	}
+
+	pThis->Target = pTarget;
+	pExt->UpdateGattlingRateDownReset();
+
+	return 0x6FCF44;
+}
+
+#pragma endregion

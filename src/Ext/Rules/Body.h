@@ -95,10 +95,10 @@ public:
 	Valueable<AffectedHouse> DisguiseBlinkingVisibility { AffectedHouse::Owner | AffectedHouse::Allies };
 
 	Valueable<SHPStruct*> SHP_SelectBrdSHP_INF { nullptr };
-	Valueable<PaletteManager*> SHP_SelectBrdPAL_INF { }; //CustomPalette::PaletteMode::Temperate
+	CustomPalette SHP_SelectBrdPAL_INF { CustomPalette::PaletteMode::Temperate }; //
 
 	Valueable<SHPStruct*> SHP_SelectBrdSHP_UNIT { nullptr };
-	Valueable<PaletteManager*> SHP_SelectBrdPAL_UNIT { }; //CustomPalette::PaletteMode::Temperate
+	CustomPalette SHP_SelectBrdPAL_UNIT { CustomPalette::PaletteMode::Temperate }; //CustomPalette::PaletteMode::Temperate
 
 	Nullable<bool> UseSelectBrd {};
 
@@ -278,7 +278,7 @@ public:
 	Valueable<bool> GainSelfHealFromAllies { false };
 
 	Nullable<double> VeinsDamagingWeightTreshold {};
-	Valueable<PaletteManager*> VeinholePal {};
+	CustomPalette VeinholePal { CustomPalette::PaletteMode::Temperate };
 	Valueable<WarheadTypeClass*> Veinhole_Warhead { nullptr };
 	Valueable<float> Veins_PerCellAmount { 1.0f };
 
@@ -336,7 +336,7 @@ public:
 	AircraftPutDataRules MyPutData { };
 
 	Nullable<SHPStruct*> PrimaryFactoryIndicator { };
-	Valueable<PaletteManager*> PrimaryFactoryIndicator_Palette { };
+	CustomPalette PrimaryFactoryIndicator_Palette { };
 
 	BulletTypeClass* DefautBulletType { nullptr };
 
@@ -450,7 +450,7 @@ public:
 	Valueable<bool> Cameo_AlwaysExist { false };
 	Valueable<SHPStruct*> Cameo_OverlayShapes { FileSystem::PIPS_SHP };
 	Valueable<Vector3D<int>> Cameo_OverlayFrames { { -1, -1, -1 } };
-	Valueable<PaletteManager*> Cameo_OverlayPalette {};
+	CustomPalette Cameo_OverlayPalette {};
 	Valueable<bool> MergeBuildingDamage { false };
 
 	Valueable<bool>ExpandBuildingQueue { false };
@@ -522,6 +522,15 @@ public:
 	Valueable<bool> AttackMove_Aggressive { false };
 	Valueable<bool> AttackMove_UpdateTarget { false };
 	Valueable<bool> Infantry_IgnoreBuildingSizeLimit { true };
+
+	Valueable<bool> BattlePoints {};
+	Valueable<int> BattlePoints_DefaultValue {};
+	Nullable<int> BattlePoints_DefaultFriendlyValue {};
+
+	Valueable<bool> SuperWeaponSidebar_AllowByDefault { true };
+
+	bool CampaignAllowHarvesterScanUnderShroud[3] {};
+	Valueable<AffectedHouse> BerzerkTargeting { AffectedHouse::All };
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);

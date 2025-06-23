@@ -184,9 +184,11 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 		HouseExtData::GetParadropContent(pHouse, FallbackTypes, FallbackNum);
 	}
 
+	const auto pCountry = pData->ParaDropDatas.tryfind(pHouse->Type);
+
 	// use paradrop lists from house, side and default
 	const std::vector<ParadropData>* drops[3] {
-		pData->ParaDropDatas.tryfind(pHouse->Type),
+		pCountry ? pCountry : pData->ParaDropDatas.tryfind(pHouse->Type->FindParentCountry()) ,
 		pData->ParaDropDatas.tryfind(SideClass::Array->Items[pHouse->Type->SideIndex]),
 		pData->ParaDropDatas.tryfind(pType)
 	};
@@ -195,7 +197,7 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 	int count = 1;
 	for (auto const& planes : drops)
 	{
-		if (!planes->empty())
+		if (planes && !planes->empty())
 		{
 			count = planes->size();
 			break;
@@ -279,6 +281,8 @@ bool SW_ParaDrop::SendParadrop(SuperClass* pThis, CellClass* pCell)
 	return true;
 }
 
+#include <Ext/Techno/Body.h>
+
 //A new SendPDPlane function
 //Allows vehicles, sends one single plane for all types
 void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTypeClass* pPlaneType,
@@ -299,23 +303,12 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 
 	pPlane->Spawned = true;
 
-	//Get edge (direction for plane to come from)
-	auto edge = pOwner->GetHouseEdge();
-
 	// seems to retrieve a random cell struct at a given edge
 	auto const spawn_cell = MapClass::Instance->PickCellOnEdge(
-		edge, CellStruct::Empty, CellStruct::Empty, SpeedType::Winged, true,
+		pOwner->GetHouseEdge(), CellStruct::Empty, CellStruct::Empty, SpeedType::Winged, true,
 		MovementZone::Normal);
 
 	pPlane->QueueMission(Mission::ParadropApproach, false);
-
-	auto const bSpawned = AircraftExt::PlaceReinforcementAircraft(pPlane, spawn_cell);
-
-	if (!bSpawned)
-	{
-		GameDelete<true, false>(pPlane);
-		return;
-	}
 
 	for (auto i = 0u; i < Types.size(); ++i)
 	{
@@ -358,6 +351,9 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 					pPlane->EnteredOpenTopped(pNew);
 				}
 
+				if (pType->Gunner)
+					pPlane->ReceiveGunner(pNew);
+
 				pNew->Transporter = pPlane;
 				pPlane->AddPassenger(static_cast<FootClass*>(pNew));
 			}
@@ -365,6 +361,15 @@ void SW_ParaDrop::SendPDPlane(HouseClass* pOwner, CellClass* pTarget, AircraftTy
 	}
 
 	pPlane->HasPassengers = true;
+
+	auto const bSpawned = AircraftExt::PlaceReinforcementAircraft(pPlane, spawn_cell);
+
+	if (!bSpawned)
+	{
+		GameDelete<true, false>(pPlane);
+		return;
+	}
+
 	pPlane->NextMission();
 }
 

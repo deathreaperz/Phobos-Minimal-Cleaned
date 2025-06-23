@@ -983,7 +983,7 @@ void WarheadTypeExtData::ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, Tec
 				pHouse,
 				pTarget->GetOwningHouse(),
 				pOwner,
-				false);
+				false, false);
 		}
 
 		if (chance < dice) {
@@ -1020,7 +1020,7 @@ void WarheadTypeExtData::ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, Tec
 				pHouse,
 				pTarget->GetOwningHouse(),
 				pOwner,
-				false
+				false, false
 			);
 		}
 		else {
@@ -1029,7 +1029,7 @@ void WarheadTypeExtData::ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, Tec
 					pHouse,
 					pTarget->GetOwningHouse(),
 					pOwner,
-					false
+					false, false
 				);
 			}
 		}

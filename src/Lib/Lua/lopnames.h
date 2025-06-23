@@ -9,9 +9,10 @@
 
 #include <stddef.h>
 
+
 /* ORDER OP */
 
-static const char* const opnames[] = {
+static const char *const opnames[] = {
   "MOVE",
   "LOADI",
   "LOADF",
@@ -99,3 +100,4 @@ static const char* const opnames[] = {
 };
 
 #endif
+

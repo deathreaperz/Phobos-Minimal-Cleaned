@@ -2,6 +2,7 @@
 
 #include <Ext/SWType/Body.h>
 #include <Ext/Rules/Body.h>
+#include <Ext/House/Body.h>
 
 #include <ControlClass.h>
 #include <EventClass.h>
@@ -18,6 +19,8 @@ SWButtonClass::SWButtonClass(unsigned int id, int superIdx, int x, int y, int wi
 {
 	if (const auto backColumn = SWSidebarClass::Global()->Columns.back())
 		backColumn->Buttons.emplace_back(this);
+
+	this->Disabled = !SWSidebarClass::IsEnabled();
 }
 
 bool SWButtonClass::Draw(bool forced)
@@ -33,6 +36,7 @@ bool SWButtonClass::Draw(bool forced)
 	const auto pCurrent = HouseClass::CurrentPlayer();
 	const auto pSuper = pCurrent->Supers[this->SuperIndex];
 	const auto pSWExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
+	//const auto pHouseExt = HouseExtContainer::Instance.Find(pCurrent);
 
 	// support for pcx cameos
 	if (const auto pPCXCameo = pSWExt->SidebarPCX.GetSurface())
@@ -55,7 +59,7 @@ bool SWButtonClass::Draw(bool forced)
 		}
 		else
 		{
-			const auto pConvert = pSWExt->SidebarPalette ? pSWExt->SidebarPalette->GetOrDefaultConvert<PaletteManager::Mode::Default>(FileSystem::CAMEO_PAL) : FileSystem::CAMEO_PAL;
+			const auto pConvert = pSWExt->SidebarPalette.GetConvert() ? pSWExt->SidebarPalette.GetConvert() : FileSystem::CAMEO_PAL;
 			pSurface->DrawSHP(pConvert, pCameo, 0, &location, &bounds, BlitterFlags::bf_400, 0, 0, ZGradient::Ground, 1000, 0, nullptr, 0, 0, 0);
 		}
 	}
@@ -67,8 +71,7 @@ bool SWButtonClass::Draw(bool forced)
 		pSurface->Draw_Rect(cameoRect, tooltipColor);
 	}
 
-	if (pSuper->IsCharged && !pCurrent->CanTransactMoney(pSWExt->Money_Amount) ||
-		(pSWExt->SW_UseAITargeting && !SWTypeExtData::IsTargetConstraintsEligible(pSuper, true)))
+	if (SWTypeExtData::DrawDarken(pSuper))
 	{
 		RectangleStruct darkenBounds{ 0, 0, location.X + this->Rect.Width, location.Y + this->Rect.Height };
 		pSurface->DrawSHP(FileSystem::SIDEBAR_PAL, FileSystem::DARKEN_SHP, 0, &location, &darkenBounds, BlitterFlags::bf_400 | BlitterFlags::Darken, 0, 0, ZGradient::Ground, 1000, 0, nullptr, 0, 0, 0);
@@ -129,30 +132,30 @@ bool SWButtonClass::Draw(bool forced)
 
 void SWButtonClass::OnMouseEnter()
 {
-	if (!SWSidebarClass::IsEnabled())
+	if (!SWSidebarClass::IsEnabled() || ScenarioClass::Instance->UserInputLocked)
 		return;
 
 	this->IsHovering = true;
 	SWSidebarClass::Global()->CurrentButton = this;
 	SWSidebarClass::Global()->Columns[this->ColumnIndex]->OnMouseEnter();
-	MouseClass::Instance->UpdateCursor(MouseCursorType::Default, false);
+	CCToolTip::Instance->SaveTimerDelay();
+	CCToolTip::Instance->SetTimerDelay(0);
 }
 
 void SWButtonClass::OnMouseLeave()
 {
-	if (!SWSidebarClass::IsEnabled())
+	if (!SWSidebarClass::IsEnabled() || ScenarioClass::Instance->UserInputLocked)
 		return;
 
 	this->IsHovering = false;
 	SWSidebarClass::Global()->CurrentButton = nullptr;
 	SWSidebarClass::Global()->Columns[this->ColumnIndex]->OnMouseLeave();
-	MouseClass::Instance->UpdateCursor(MouseCursorType::Default, false);
-	CCToolTip::Instance->MarkToRedraw(CCToolTip::Instance->CurrentToolTipData);
+	CCToolTip::Instance->RestoreTimeDelay();
 }
 
 bool SWButtonClass::Action(GadgetFlag flags, DWORD* pKey, KeyModifier modifier)
 {
-	if (!SWSidebarClass::IsEnabled())
+	if (!SWSidebarClass::IsEnabled() || ScenarioClass::Instance->UserInputLocked)
 		return false;
 
 	if (flags & GadgetFlag::RightPress)
@@ -162,7 +165,7 @@ bool SWButtonClass::Action(GadgetFlag flags, DWORD* pKey, KeyModifier modifier)
 	{
 		MouseClass::Instance->UpdateCursor(MouseCursorType::Default, false);
 		VocClass::PlayGlobal(RulesClass::Instance->GUIBuildSound, Panning::Center, 1.0);
-		this->LaunchSuper();
+		SWTypeExtData::LauchSuper(HouseClass::CurrentPlayer->Supers.Items[this->SuperIndex]);
 	}
 
 	return this->ControlClass::Action(flags, pKey, KeyModifier::None);
@@ -170,57 +173,5 @@ bool SWButtonClass::Action(GadgetFlag flags, DWORD* pKey, KeyModifier modifier)
 
 bool SWButtonClass::LaunchSuper() const
 {
-	const auto pCurrent = HouseClass::CurrentPlayer();
-	const auto pSuper = pCurrent->Supers[this->SuperIndex];
-	const auto pSWExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
-	const bool manual = !pSWExt->SW_ManualFire && pSWExt->SW_AutoFire;
-	const bool unstoppable = pSuper->Type->UseChargeDrain && pSuper->ChargeDrainState == ChargeDrainState::Draining && pSWExt->SW_Unstoppable;
-
-	if (!pSuper->CanFire() && !manual)
-	{
-		VoxClass::PlayIndex(pSuper->Type->ImpatientVoice);
-		return false;
-	}
-
-	if (!pCurrent->CanTransactMoney(pSWExt->Money_Amount))
-	{
-		VoxClass::PlayIndex(pSWExt->EVA_InsufficientFunds);
-		pSWExt->PrintMessage(pSWExt->Message_InsufficientFunds, pCurrent);
-	}
-	else if (!pSWExt->SW_UseAITargeting || SWTypeExtData::IsTargetConstraintsEligible(pSuper, true))
-	{
-		if (!manual && !unstoppable)
-		{
-			const auto swIndex = pSuper->Type->ArrayIndex;
-
-			if (pSuper->Type->Action == Action::None || pSWExt->SW_UseAITargeting)
-			{
-				EventClass Event{ pCurrent->ArrayIndex, EventType::SPECIAL_PLACE, swIndex, CellStruct::Empty };
-				EventClass::AddEvent(&Event);
-			}
-			else
-			{
-				DisplayClass::Instance->CurrentBuilding = nullptr;
-				DisplayClass::Instance->CurrentBuildingType = nullptr;
-				DisplayClass::Instance->CurrentBuildingOwnerArrayIndex = -1;
-				DisplayClass::Instance->SetActiveFoundation(nullptr);
-				MapClass::Instance->SetRepairMode(0);
-				MapClass::Instance->SetSellMode(0);
-				DisplayClass::Instance->PowerToggleMode = false;
-				DisplayClass::Instance->PlanningMode = false;
-				DisplayClass::Instance->PlaceBeaconMode = false;
-				DisplayClass::Instance->CurrentSWTypeIndex = swIndex;
-				MapClass::Instance->UnselectAll();
-				VoxClass::PlayIndex(pSWExt->EVA_SelectTarget);
-			}
-
-			return true;
-		}
-	}
-	else
-	{
-		pSWExt->PrintMessage(pSWExt->Message_CannotFire, pCurrent);
-	}
-
-	return false;
+	return SWTypeExtData::LauchSuper(HouseClass::CurrentPlayer->Supers.Items[this->SuperIndex]);
 }

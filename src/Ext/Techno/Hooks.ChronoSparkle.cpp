@@ -43,7 +43,7 @@ void PlayChronoSparkleAnim(TechnoClass* pTechno, CoordStruct* pLoc, int X_Offs =
 		}
 	}
 
-	AnimExtData::SetAnimOwnerHouseKind(pAnim, pOwner, pVictim, pTInvoker, false);
+	AnimExtData::SetAnimOwnerHouseKind(pAnim, pOwner, pVictim, pTInvoker, false, false);
 }
 
 ASMJIT_PATCH(0x73622F, UnitClass_AI_ChronoSparkle, 0x5)
@@ -113,7 +113,7 @@ ASMJIT_PATCH(0x4403D4, BuildingClass_AI_ChronoSparkle, 0x6)
 						}
 					}
 
-					AnimExtData::SetAnimOwnerHouseKind(pAnim, pOwner, pVictim, pTInvoker, false);
+					AnimExtData::SetAnimOwnerHouseKind(pAnim, pOwner, pVictim, pTInvoker, false, false);
 				}
 			}
 		}

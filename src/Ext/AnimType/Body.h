@@ -6,6 +6,7 @@
 #include <Utilities/TemplateDefB.h>
 
 #include <New/Entity/LauchSWData.h>
+#include <New/Type/PaletteManager.h>
 
 #include <New/AnonymousType/CreateUnitTypeClass.h>
 
@@ -22,7 +23,7 @@ public:
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 public:
-	Valueable<PaletteManager*> Palette {}; //CustomPalette::PaletteMode::Temperate
+	CustomPalette Palette { CustomPalette::PaletteMode::Temperate }; //CustomPalette::PaletteMode::Temperate
 
 	bool MakeInfantry_Scatter { false };
 	bool MakeInfantry_AI_Scatter { false };
@@ -128,7 +129,7 @@ public:
 
 	void ValidateSpalshAnims();
 
-	COMPILETIMEEVAL OwnerHouseKind GetAnimOwnerHouseKind()
+	OwnerHouseKind GetAnimOwnerHouseKind()
 	{
 		if (this->CreateUnitType)
 		{
@@ -154,17 +155,17 @@ public:
 	static void CreateUnit_MarkCell(AnimClass* pThis);
 	static void CreateUnit_Spawn(AnimClass* pThis);
 
-	COMPILETIMEEVAL bool ScatterCreateUnit(bool IsAi)
+	bool ScatterCreateUnit(bool IsAi)
 	{
 		return IsAi ? this->CreateUnitType->AI_Scatter : this->CreateUnitType->Scatter;
 	}
 
-	COMPILETIMEEVAL bool ScatterAnimToInfantry(bool IsAi)
+	bool ScatterAnimToInfantry(bool IsAi)
 	{
 		return !IsAi ? this->MakeInfantry_Scatter : this->MakeInfantry_AI_Scatter;
 	}
 
-	COMPILETIMEEVAL  Mission GetCreateUnitMission(bool IsAi)
+	Mission GetCreateUnitMission(bool IsAi)
 	{
 		auto result = this->CreateUnitType->UnitMission;
 		if (IsAi && this->CreateUnitType->AIUnitMission.isset())
@@ -173,7 +174,7 @@ public:
 		return result;
 	}
 
-	COMPILETIMEEVAL Mission GetAnimToInfantryMission(bool IsAi)
+	Mission GetAnimToInfantryMission(bool IsAi)
 	{
 		auto result = this->MakeInfantry_Mission.Get(Mission::Hunt);
 

@@ -31,6 +31,7 @@
 
 #include <DiscreteSelectionClass.h>
 #include <DiscreteDistributionClass.h>
+#include <EventClass.h>
 
 //TODO re-evaluate these , since the default array seems not contains what the documentation table says,..
 std::array<const AITargetingModeInfo, (size_t)SuperWeaponAITargetingMode::count> SWTypeExtData::AITargetingModes =
@@ -321,6 +322,98 @@ bool SWTypeExtData::CanFireAt(HouseClass* pOwner, const CellStruct& coords, bool
 	return true;
 }
 
+bool SWTypeExtData::LauchSuper(SuperClass* pSuper)
+{
+	const auto pSWExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
+	const auto pHouseExt = HouseExtContainer::Instance.Find(pSuper->Owner);
+	const auto pCurrent = pSuper->Owner;
+	// if this SW is only auto-firable, discard any clicks.
+	// if AutoFire is off, the sw would not be firable at all,
+	// thus we ignore the setting in that case.
+	const bool manual = !pSWExt->SW_ManualFire && pSWExt->SW_AutoFire;
+	const bool unstoppable = pSuper->Type->UseChargeDrain && pSuper->ChargeDrainState == ChargeDrainState::Draining
+		&& pSWExt->SW_Unstoppable;
+
+	// play impatient voice, if this isn't charged yet
+	if (!manual && !pSuper->CanFire())
+	{
+		pSWExt->UneableToFireAtTheMoment(pCurrent);
+		return false;
+	}
+
+	if (!pCurrent->CanTransactMoney(pSWExt->Money_Amount))
+	{
+		pSWExt->UneableToTransactMoney(pCurrent);
+		return false;
+	}
+
+	if (!pHouseExt->CanTransactBattlePoints(pSWExt->BattlePoints_Amount))
+	{
+		pSWExt->UneableToTransactBattlePoints(pCurrent);
+		return false;
+	}
+
+	if (!pSWExt->SW_UseAITargeting || SWTypeExtData::IsTargetConstraintsEligible(pSuper, true))
+	{
+		if (!manual && !unstoppable)
+		{
+			const auto swIndex = pSuper->Type->ArrayIndex;
+
+			if (pSuper->Type->Action == Action::None || pSWExt->SW_UseAITargeting)
+			{
+				EventClass Event { pCurrent->ArrayIndex, EventType::SPECIAL_PLACE, swIndex, CellStruct::Empty };
+				EventClass::AddEvent(&Event);
+			}
+			else
+			{
+				DisplayClass::Instance->CurrentBuilding = nullptr;
+				DisplayClass::Instance->CurrentBuildingType = nullptr;
+				DisplayClass::Instance->CurrentBuildingOwnerArrayIndex = -1;
+				DisplayClass::Instance->SetActiveFoundation(nullptr);
+				MapClass::Instance->SetRepairMode(0);
+				MapClass::Instance->SetSellMode(0);
+				DisplayClass::Instance->PowerToggleMode = false;
+				DisplayClass::Instance->PlanningMode = false;
+				DisplayClass::Instance->PlaceBeaconMode = false;
+				DisplayClass::Instance->CurrentSWTypeIndex = swIndex;
+				MapClass::Instance->UnselectAll();
+				VoxClass::PlayIndex(pSWExt->EVA_SelectTarget);
+			}
+
+			return true;
+		}
+	}
+	else
+	{
+		//const auto pHouseID = pCurrent->get_ID();
+		//Debug::LogInfo("[{} - {}] SW [{} - {}] CannotFire", pHouseID, (void*)pCurrent, pSuper->Type->ID, (void*)pSuper);
+		pSWExt->PrintMessage(pSWExt->Message_CannotFire, pCurrent);
+	}
+
+	return false;
+}
+
+bool SWTypeExtData::DrawDarken(SuperClass* pSuper)
+{
+	const auto pSWExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
+	const auto pHouseExt = HouseExtContainer::Instance.Find(pSuper->Owner);
+	const auto pCurrent = pSuper->Owner;
+
+	if (pSuper->CanFire())
+	{
+		if (!pCurrent->CanTransactMoney(pSWExt->Money_Amount))
+			return true;
+
+		if (!pHouseExt->CanTransactBattlePoints(pSWExt->BattlePoints_Amount))
+			return true;
+	}
+
+	if (pSWExt->SW_UseAITargeting && !SWTypeExtData::IsTargetConstraintsEligible(pSuper, true))
+		return true;
+
+	return false;
+}
+
 bool SWTypeExtData::IsTargetConstraintsEligible(SuperClass* pThis, bool IsPlayer)
 {
 	const auto pExt = SWTypeExtContainer::Instance.Find(pThis->Type);
@@ -370,7 +463,7 @@ bool SWTypeExtData::TryFire(SuperClass* pThis, bool IsPlayer)
 	const auto pExt = SWTypeExtContainer::Instance.Find(pThis->Type);
 
 	// don't try to fire if we obviously haven't enough money
-	if (pThis->Owner->CanTransactMoney(pExt->Money_Amount.Get()))
+	if (SWTypeExtData::IsResourceAvailable(pThis))
 	{
 		if (pExt->SW_AutoFire_CheckAvail && !pExt->IsAvailable(pThis->Owner))
 			return false;
@@ -475,7 +568,7 @@ struct TargetingFuncs
 	{
 		if (first == last) { return nullptr; }
 
-		DiscreteSelectionClass<ObjectClass*, DllAllocator<ObjectClass*>> targets {};
+		DiscreteSelectionClass<ObjectClass*> targets {};
 
 		for (auto it = first; it < last; ++it)
 		{
@@ -491,7 +584,7 @@ struct TargetingFuncs
 	{
 		if (first == last) { return nullptr; }
 
-		DiscreteDistributionClass<ObjectClass*, DllAllocator<ObjectClass*>> targets {};
+		DiscreteDistributionClass<ObjectClass*> targets {};
 
 		for (auto it = first; it < last; ++it)
 		{
@@ -1141,8 +1234,6 @@ void SWTypeExtData::PrintMessage(const CSFText& message, HouseClass* pFirer)
 	message.PrintAsMessage<false>(color);
 }
 
-static inline std::vector <TechnoClass*> targetings;
-
 Iterator<TechnoClass*> SWTypeExtData::GetPotentialAITargets(HouseClass* pTarget, std::vector<TechnoClass*>& outVec) const
 {
 	const auto require = this->GetAIRequiredTarget();
@@ -1328,16 +1419,54 @@ bool SWTypeExtData::Launch(NewSWType* pNewType, SuperClass* pSuper, CellStruct c
 		}
 	}
 
-	if (!pData->SW_ResetType.empty())
-	{
-		for (auto& pHouseSuper : pOwner->Supers)
-		{
-			if (pHouseSuper == pSuper)
-				continue;
+	//if (!pData->SW_ResetType.empty()) {
+	//	for (auto& pHouseSuper : pOwner->Supers) {
+	//		if (pHouseSuper == pSuper)
+	//			continue;
 
-			if (pData->SW_ResetType.Contains(pHouseSuper->Type->ArrayIndex))
-				pHouseSuper->Reset();
+	//		if (pData->SW_ResetType.Contains(pHouseSuper->Type->ArrayIndex))
+	//		{
+	//			pHouseSuper->Reset();
+	//			//auto pTypeExt = SWTypeExtContainer::Instance.Find(pHouseSuper->Type);
+
+	//			//if(pTypeExt->SW_VirtualCharge)
+
+	//		}
+
+	//	}
+	//}
+
+	if ((AresNewSuperType)this->AttachedToObject->Type == AresNewSuperType::EMPulse)
+	{
+		//why this fuckery even exist ,..
+		//the SW can be state can be exploited at some point , smh
+		if (this->EMPulse_SuspendOthers)
+		{
+			auto iter = pHouseExt->SuspendedEMPulseSWs.get_key_iterator(pSuper);
+
+			if (iter != pHouseExt->SuspendedEMPulseSWs.end())
+			{
+				for (auto const& ppSuper : iter->second)
+				{
+					ppSuper->IsOnHold = false;
+				}
+
+				pHouseExt->SuspendedEMPulseSWs.erase(iter);
+			}
 		}
+	}
+
+	for (auto& sw_ : pData->SW_ResetType)
+	{
+		if (size_t(sw_) >= pOwner->Supers.size())
+			continue;
+
+		const auto pHouseSuper = pOwner->Supers[sw_];
+
+		if (pHouseSuper == pSuper)
+			continue;
+
+		pHouseSuper->Reset();
 	}
 
 	return true;
@@ -1592,6 +1721,7 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	IndexFinder<VoxClass>::getindex(pThis->ImpatientVoice, exINI, pSection, "EVA.Impatient");
 	this->EVA_InsufficientFunds.Read(exINI, pSection, "EVA.InsufficientFunds");
+	this->EVA_InsufficientBattlePoints.Read(exINI, pSection, "EVA.InsufficientBattlePoints");
 	this->EVA_SelectTarget.Read(exINI, pSection, "EVA.SelectTarget");
 
 	this->Message_Detected.Read(exINI, pSection, "Message.Detected");
@@ -1599,6 +1729,8 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Message_Launch.Read(exINI, pSection, "Message.Launch");
 	this->Message_CannotFire.Read(exINI, pSection, "Message.CannotFire");
 	this->Message_InsufficientFunds.Read(exINI, pSection, "Message.InsufficientFunds");
+	this->Message_InsufficientBattlePoints.Read(exINI, pSection, "Message.InsufficientBattlePoints");
+	this->Message_Impatient.Read(exINI, pSection, "Message.Impatient");
 
 	this->Text_Preparing.Read(exINI, pSection, "Text.Preparing");
 	this->Text_Ready.Read(exINI, pSection, "Text.Ready");
@@ -1651,6 +1783,12 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->SuperWeaponSidebar_PriorityHouses = pINI->ReadHouseTypesList(pSection, "SuperWeaponSidebar.PriorityHouses", this->SuperWeaponSidebar_PriorityHouses);
 	this->SuperWeaponSidebar_RequiredHouses = pINI->ReadHouseTypesList(pSection, "SuperWeaponSidebar.RequiredHouses", this->SuperWeaponSidebar_RequiredHouses);
 	this->TabIndex.Read(exINI, pSection, "TabIndex");
+
+	this->BattlePoints_Amount.Read(exINI, pSection, "BattlePoints.Amount");
+	this->BattlePoints_DrainAmount.Read(exINI, pSection, "BattlePoints.DrainAmount");
+	this->BattlePoints_DrainDelay.Read(exINI, pSection, "BattlePoints.DrainDelay");
+
+	this->SuperWeaponSidebar_Significance.Read(exINI, pSection, "SuperWeaponSidebar.Significance");
 
 	// SW.GrantOneTime.RandomWeights
 	this->SW_GrantOneTime_RandomWeightsData.clear();
@@ -1897,6 +2035,9 @@ void SWTypeExtData::FireSuperWeapon(SuperClass* pSW, HouseClass* pHouse, const C
 	if (this->SW_GrantOneTime.size() > 0)
 		this->GrantOneTimeFromList(pSW);
 
+	if (this->BattlePoints_Amount != 0)
+		SWTypeExtData::ApplyBattlePoints(pSW);
+
 	if (!this->ConvertsPair.empty())
 	{
 		if (!this->Converts_UseSWRange)
@@ -2049,6 +2190,79 @@ bool SWTypeExtData::IsAvailable(HouseClass* pHouse)
 	return true;
 }
 
+void SWTypeExtData::UneableToTransactMoney(HouseClass* pHouse)
+{
+	VoxClass::PlayIndex(this->EVA_InsufficientFunds);
+	this->PrintMessage(this->Message_InsufficientFunds, pHouse);
+}
+
+void SWTypeExtData::UneableToTransactBattlePoints(HouseClass* pHouse)
+{
+	VoxClass::PlayIndex(this->EVA_InsufficientBattlePoints);
+	this->PrintMessage(this->Message_InsufficientBattlePoints, pHouse);
+}
+
+void SWTypeExtData::UneableToFireAtTheMoment(HouseClass* pHouse)
+{
+	VoxClass::PlayIndex(this->AttachedToObject->ImpatientVoice);
+	this->PrintMessage(this->Message_Impatient, pHouse);
+}
+
+bool SWTypeExtData::ApplyDrainMoney(int timeLeft, HouseClass* pHouse)
+{
+	const int money = this->Money_DrainAmount;
+
+	if (money != 0 && this->Money_DrainDelay > 0)
+	{
+		if (!(timeLeft % this->Money_DrainDelay))
+		{
+			// only abort if SW drains money and there is none
+			if (!pHouse->CanTransactMoney(money))
+			{
+				if (pHouse->IsControlledByHuman())
+				{
+					this->UneableToTransactMoney(pHouse);
+				}
+
+				return false;
+			}
+
+			// apply drain money
+			pHouse->TransactMoney(money);
+		}
+	}
+
+	return true;
+}
+
+bool SWTypeExtData::ApplyDrainBattlePoint(int timeLeft, HouseClass* pHouse)
+{
+	const int money = this->BattlePoints_DrainAmount;
+	auto pExt = HouseExtContainer::Instance.Find(pHouse);
+
+	if (money != 0 && this->BattlePoints_DrainDelay > 0)
+	{
+		if (!(timeLeft % this->BattlePoints_DrainDelay))
+		{
+			// only abort if SW drains and there is none
+			if (!pExt->CanTransactBattlePoints(money))
+			{
+				if (pHouse->IsControlledByHuman())
+				{
+					this->UneableToTransactBattlePoints(pHouse);
+				}
+
+				return false;
+			}
+
+			// apply drain
+			pExt->UpdateBattlePoints(money);
+		}
+	}
+
+	return true;
+}
+
 void SWTypeExtData::ClearChronoAnim(SuperClass* pThis)
 {
 	if (pThis->Animation)
@@ -2195,7 +2409,16 @@ void SWTypeExtData::Launch(SuperClass* pFired, HouseClass* pHouse, SWTypeExtData
 		return;
 
 	const auto pSuperTypeExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
-	if (!pLauncherTypeExt->SW_Next_RealLaunch || (pSuper->IsCharged && pHouse->CanTransactMoney(pSuperTypeExt->Money_Amount)))
+
+	bool can_fire = true;
+
+	if (pLauncherTypeExt->SW_Next_RealLaunch)
+	{
+		if (!pSuper->CanFire() || !SWTypeExtData::IsResourceAvailable(pSuper))
+			can_fire = false;
+	}
+
+	if (can_fire)
 	{
 		if ((pLauncherTypeExt->SW_Next_IgnoreInhibitors || !pSuperTypeExt->HasInhibitor(pHouse, cell))
 			&& (pLauncherTypeExt->SW_Next_IgnoreDesignators || pSuperTypeExt->HasDesignator(pHouse, cell)))
@@ -2369,6 +2592,7 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->EMPulse_PulseBall)
 		.Process(this->EMPulse_Cannons)
 		.Process(this->EMPulse_SuspendOthers)
+		.Process(this->EMPulse_WeaponIndex)
 
 		.Process(this->Mutate_Explosion)
 		.Process(this->Mutate_IgnoreCyborg)
@@ -2384,9 +2608,12 @@ void SWTypeExtData::Serialize(T& Stm)
 
 		.Process(this->AttachedToObject->ImpatientVoice)
 		.Process(this->EVA_InsufficientFunds)
+		.Process(this->EVA_InsufficientBattlePoints)
 		.Process(this->EVA_SelectTarget)
 
 		.Process(this->Message_InsufficientFunds)
+		.Process(this->Message_InsufficientBattlePoints)
+		.Process(this->Message_Impatient)
 		.Process(this->Message_Detected)
 		.Process(this->Message_Ready)
 
@@ -2538,7 +2765,33 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->SuperWeaponSidebar_PriorityHouses)
 		.Process(this->SuperWeaponSidebar_RequiredHouses)
 		.Process(this->TabIndex)
+		.Process(this->BattlePoints_Amount)
+		.Process(this->BattlePoints_DrainAmount)
+		.Process(this->BattlePoints_DrainDelay)
+		.Process(this->SuperWeaponSidebar_Significance)
 		;
+}
+
+void SWTypeExtData::ApplyBattlePoints(SuperClass* pSW)
+{
+	HouseExtContainer::Instance.Find(pSW->Owner)->UpdateBattlePoints
+	(SWTypeExtContainer::Instance.Find(pSW->Type)->BattlePoints_Amount);
+}
+
+bool SWTypeExtData::IsResourceAvailable(SuperClass* pSuper)
+{
+	const auto pExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
+	const auto pHouseExt = HouseExtContainer::Instance.Find(pSuper->Owner);
+
+	if (!pSuper->Owner->CanTransactMoney(pExt->Money_Amount.Get()))
+		return false;
+
+	if (!pHouseExt->CanTransactBattlePoints(pExt->BattlePoints_Amount))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void SWTypeExtData::GrantOneTimeFromList(SuperClass* pSW)
@@ -2607,7 +2860,7 @@ void SWTypeExtData::GrantOneTimeFromList(SuperClass* pSW)
 	if (notObserver && pHouse->IsCurrentPlayer())
 	{
 		if (this->EVA_GrantOneTimeLaunched.isset())
-			VoxClass::PlayIndex(this->EVA_GrantOneTimeLaunched.Get(), -1, -1);
+			VoxClass::PlayIndex(this->EVA_GrantOneTimeLaunched.Get());
 
 		GeneralUtils::PrintMessage(this->Message_GrantOneTimeLaunched.Get());
 	}

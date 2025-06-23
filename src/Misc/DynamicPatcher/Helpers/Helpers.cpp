@@ -981,7 +981,7 @@ TechnoClass* Helpers_DP::CreateAndPutTechno(TechnoTypeClass* pType, HouseClass* 
 
 				if (pTechno)
 				{
-					Debug::LogInfo(__FUNCTION__" Called ");
+					//Debug::LogInfo(__FUNCTION__" Called ");
 					TechnoExtData::HandleRemove(pTechno);
 				}
 			}
@@ -1148,7 +1148,7 @@ void Helpers_DP::DrawWeaponAnim(WeaponTypeClass* pWeapon, CoordStruct& sourcePos
 				pOwner ? pOwner->GetOwningHouse() : nullptr,
 				pTarget ? pTarget->GetOwningHouse() : nullptr,
 				pOwner,
-				false
+				false, false
 			);
 		}
 	}

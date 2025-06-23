@@ -104,6 +104,7 @@ ASMJIT_PATCH(0x73BA4C, UnitClass_DrawVXL_TurretMultiOffset1, 0x6) //0
 	return 0x73BA68;
 }
 
+#ifdef FUCKED
 ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteCalculateTurretMatrix, 0x6)
 {
 	enum { SkipGameCode = 0x73BEA4 };
@@ -227,7 +228,7 @@ ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteCalculateTurretMatrix, 0x6)
 				const auto brlKey = inRecoil ? -1 : flags;
 				const auto brlCache = inRecoil ? nullptr : reinterpret_cast<IndexClass<int, int>*>(&pDrawType->VoxelCaches.TurretBarrel);
 
-				const auto pBarrelVoxel = TechnoTypeExtData::GetBarrelsVoxel(pDrawType, currentTurretNumber);
+				const auto pBarrelVoxel = TechnoTypeExtData::GetBarrelsVoxelFixedUp(pDrawType, currentTurretNumber);
 
 				pThis->Draw_A_VXL(pBarrelVoxel, hvaFrameIdx, brlKey, brlCache, rect, center, pMtx_barrel, brightness,
 					static_cast<DWORD>(static_cast<BlitterFlags>(BlitterFlags::Alpha | BlitterFlags::Flat)), 0);
@@ -240,7 +241,7 @@ ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteCalculateTurretMatrix, 0x6)
 		const auto turKey = inRecoil ? -1 : flags;
 		const auto turCache = inRecoil ? nullptr : reinterpret_cast<IndexClass<int, int>*>(&pDrawType->VoxelCaches.TurretWeapon);
 
-		const auto pTurretVoxel = TechnoTypeExtData::GetTurretsVoxel(pDrawType, currentTurretNumber);
+		const auto pTurretVoxel = TechnoTypeExtData::GetTurretsVoxelFixedUp(pDrawType, currentTurretNumber);
 
 		pThis->Draw_A_VXL(pTurretVoxel, hvaFrameIdx, turKey, turCache, rect, center, pMtx_turret, brightness,
 			static_cast<DWORD>(static_cast<BlitterFlags>(BlitterFlags::Alpha | BlitterFlags::Flat)), 0);
@@ -251,7 +252,7 @@ ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteCalculateTurretMatrix, 0x6)
 			const auto brlKey = inRecoil ? -1 : flags;
 			const auto brlCache = inRecoil ? nullptr : reinterpret_cast<IndexClass<int, int>*>(&pDrawType->VoxelCaches.TurretBarrel);
 
-			const auto pBarrelVoxel = TechnoTypeExtData::GetBarrelsVoxel(pDrawType, currentTurretNumber);
+			const auto pBarrelVoxel = TechnoTypeExtData::GetBarrelsVoxelFixedUp(pDrawType, currentTurretNumber);
 
 			pThis->Draw_A_VXL(pBarrelVoxel, hvaFrameIdx, brlKey, brlCache, rect, center, pMtx_barrel, brightness,
 				static_cast<DWORD>(static_cast<BlitterFlags>(BlitterFlags::Alpha | BlitterFlags::Flat)), 0);
@@ -260,6 +261,8 @@ ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteCalculateTurretMatrix, 0x6)
 
 	return SkipGameCode;
 }
+#endif
+
 #else
 
 Matrix3D NOINLINE getTurretMatrix(const Matrix3D& mtx, UnitClass* pThis, TechnoTypeExtData* pDrawTypeExt)
@@ -275,6 +278,7 @@ Matrix3D NOINLINE getTurretMatrix(const Matrix3D& mtx, UnitClass* pThis, TechnoT
 	return mtx_turret;
 }
 
+//TODO update
 ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteTurretDrawing, 0x6)
 {
 	GET(UnitClass* const, pThis, EBP);
@@ -294,9 +298,8 @@ ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteTurretDrawing, 0x6)
 	const Matrix3D mtx = Game::VoxelDefaultMatrix() * draw_matrix;
 
 	const auto pDrawTypeExt = TechnoTypeExtContainer::Instance.Find(pDrawType);
-	const bool notChargeTurret = pThis->Type->TurretCount <= 0 || pThis->Type->IsGattling;
 
-	VoxelStruct* pTurretVoxel = !notChargeTurret ? &pDrawType->TurretVoxel : TechnoTypeExtData::GetTurretsVoxel(pDrawType, currentTurretNumber);
+	VoxelStruct* pTurretVoxel = TechnoTypeExtData::GetTurretsVoxelFixedUp(pDrawType, currentTurretNumber);
 
 	// When in recoiling or have no cache, need to recalculate drawing matrix
 	const bool inRecoil = pDrawType->TurretRecoil && (pThis->TurretRecoil.State != RecoilData::RecoilState::Inactive || pThis->BarrelRecoil.State != RecoilData::RecoilState::Inactive);
@@ -332,8 +335,7 @@ ASMJIT_PATCH(0x73BA12, UnitClass_DrawAsVXL_RewriteTurretDrawing, 0x6)
 						return mtx_barrel;
 					};
 				auto mtx_barrel = shouldRedraw ? getBarrelMatrix() : mtx;
-
-				const auto pBarrelVoxel = notChargeTurret ? &pDrawType->BarrelVoxel : TechnoTypeExtData::GetBarrelsVoxel(pDrawType, currentTurretNumber);
+				const auto pBarrelVoxel = TechnoTypeExtData::GetBarrelsVoxelFixedUp(pDrawType, currentTurretNumber);
 
 				// draw barrel
 				pThis->Draw_A_VXL(pBarrelVoxel, hvaFrameIdx, brlKey, brlCache, rect, center, &mtx_barrel, brightness, 10240u, 0);
@@ -472,8 +474,8 @@ ASMJIT_PATCH(0x73D223, UnitClass_DrawIt_OreGath, 0x6)
 			if (auto pAnimType = pData->OreGathering_Anims.GetItemAtOrMax(idxArray))
 			{
 				pSHP = pAnimType->GetImage();
-				if (const auto pPalette = AnimTypeExtContainer::Instance.Find(pAnimType)->Palette)
-					pDrawer = pPalette->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(FileSystem::ANIM_PAL);
+				if (const auto pPalette = AnimTypeExtContainer::Instance.Find(pAnimType)->Palette.GetConvert())
+					pDrawer = pPalette;
 			}
 
 			idxFrame = nFramesPerFacing * nFacing + (Unsorted::CurrentFrame + pThis->WalkedFramesSoFar) % nFramesPerFacing;

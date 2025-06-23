@@ -176,7 +176,7 @@ ASMJIT_PATCH(0x4A8EB0, DisplayClass_BuildingProximityCheck_Override, 0x5) {
 }
 
 template<typename Arr>
-void CountPowerOf(HouseClass* pHouse, CounterClass<GameAllocator<int>>& counter) {
+void CountPowerOf(HouseClass* pHouse, CounterClass& counter) {
 	if (counter.IsAllocated) {
 		for (int a = 0; a < counter.Capacity; ++a) {
 			if (counter.Items[a] > 0) {

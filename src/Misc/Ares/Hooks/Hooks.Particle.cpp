@@ -321,9 +321,9 @@ ASMJIT_PATCH(0x62D015, ParticleClass_Draw_Palette, 6)
 
 	ConvertClass* pConvert = FileSystem::ANIM_PAL();
 	const auto pTypeExt = ParticleTypeExtContainer::Instance.Find(pThis->Type);
-	if (const auto pConvertData = pTypeExt->Palette)
+	if (const auto pConvertData = pTypeExt->Palette.GetConvert())
 	{
-		pConvert = pConvertData->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(pConvert);
+		pConvert = pConvertData;
 	}
 
 	R->EDX(pConvert);
@@ -364,7 +364,7 @@ ASMJIT_PATCH(0x62CCB8, ParticleClass_Update_Fire, 7)
 				if (auto pAnimType = MapClass::SelectDamageAnimation(pThis->Type->Damage, pThis->Type->Warhead, pCell->LandType, pThis->Location))
 				{
 					AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, pThis->Location),
-						pOwner, pOccupy->GetOwningHouse(), pAttacker, false);
+						pOwner, pOccupy->GetOwningHouse(), pAttacker, false, false);
 				}
 			}
 		}

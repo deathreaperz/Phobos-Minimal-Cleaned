@@ -110,6 +110,7 @@ public:
 	PhobosMap<BuildingTypeClass*, int> PowerPlantEnhancerBuildings {};
 	PhobosMap<BuildingTypeClass*, int> Building_BuildSpeedBonusCounter {};
 	PhobosMap<BuildingTypeClass*, int> Building_OrePurifiersCounter {};
+	PhobosMap<BuildingTypeClass*, int> BattlePointsCollectors {};
 
 	bool m_ForceOnlyTargetHouseEnemy { false };
 	int ForceOnlyTargetHouseEnemyMode { -1 };
@@ -145,6 +146,7 @@ public:
 	std::set<HouseTypeClass*> FactoryOwners_GatheredPlansOf {};
 	std::set<BuildingClass*> Academies {};
 	std::set<TechnoTypeClass*> Reversed {};
+	std::set<TechnoClass*> OwnedCountedHarvesters {};
 
 	bool Is_NavalYardSpied { false };
 	bool Is_AirfieldSpied { false };
@@ -169,8 +171,7 @@ public:
 
 	OptionalStruct<TechTreeTypeClass*, true> SideTechTree {};
 	CDTimerClass CombatAlertTimer {};
-	int EMPulseWeaponIndex { -1 };
-	HelperedVector<BuildingClass*> RestrictedFactoryPlants {};
+	std::set<BuildingClass*> RestrictedFactoryPlants {};
 	CDTimerClass AISellAllDelayTimer {};
 
 	HelperedVector<UnitClass*> OwnedDeployingUnits {};
@@ -189,6 +190,8 @@ public:
 	PhobosMap<SuperClass*, std::vector<SuperClass*>> SuspendedEMPulseSWs {};
 
 	int ForceEnemyIndex { -1 };
+	int BattlePoints {};
+
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
 
 	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
@@ -230,6 +233,12 @@ public:
 
 	int GetForceEnemyIndex();
 	void SetForceEnemy(int EnemyIndex);
+
+	void UpdateBattlePoints(int modifier);
+	bool AreBattlePointsEnabled();
+	bool CanTransactBattlePoints(int amount);
+	int CalculateBattlePoints(TechnoClass* pTechno);
+	int CalculateBattlePoints(TechnoTypeClass* pTechno, HouseClass* pOwner);
 
 	static SuperClass* IsSuperAvail(int nIdx, HouseClass* pHouse);
 
@@ -375,7 +384,7 @@ public:
 	static std::vector<int> AIProduction_BestChoices;
 	static std::vector<int> AIProduction_BestChoicesNaval;
 	static PhobosMap<TechnoClass*, KillMethod> AutoDeathObjects;
-	static HelperedVector<TechnoClass*> LimboTechno;
+	static std::set<TechnoClass*> LimboTechno;
 
 	static int LastGrindingBlanceUnit;
 	static int LastGrindingBlanceInf;
@@ -398,6 +407,7 @@ public:
 	static HouseClass* Civilian;
 	static HouseClass* Special;
 	static HouseClass* Neutral;
+	static std::unordered_map<HouseClass*, std::set<TeamClass*>> HousesTeams;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);

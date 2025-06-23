@@ -16,8 +16,12 @@ PhobosAttachEffectClass::~PhobosAttachEffectClass()
 {
 	Animation.SetDestroyCondition(!Phobos::Otamaa::ExeTerminated);
 
-	if (this->Invoker)
-		TechnoExtContainer::Instance.Find(this->Invoker)->AttachedEffectInvokerCount--;
+	if (!Phobos::Otamaa::ExeTerminated)
+	{
+		//there an instance where Ext is nullptr
+		if (auto pExt = TechnoExtContainer::Instance.TryFind(this->Invoker))
+			pExt->AttachedEffectInvokerCount--;
+	}
 }
 
 void PhobosAttachEffectClass::Initialize(PhobosAttachEffectTypeClass* pType, TechnoClass* pTechno, HouseClass* pInvokerHouse,
@@ -647,7 +651,7 @@ PhobosAttachEffectClass* PhobosAttachEffectClass::CreateAndAttach(PhobosAttachEf
 		}
 	}
 
-	if (pType->Cumulative)
+	if (!cumulativeMatches->empty())
 	{
 		if (pType->Cumulative_MaxCount >= 0 && currentTypeCount >= pType->Cumulative_MaxCount)
 		{
@@ -660,18 +664,16 @@ PhobosAttachEffectClass* PhobosAttachEffectClass::CreateAndAttach(PhobosAttachEf
 			}
 			else
 			{
-				if (cumulativeMatches->size() > 0)
+				PhobosAttachEffectClass* best = nullptr;
+
+				for (auto const& ae : cumulativeMatches.container())
 				{
-					PhobosAttachEffectClass* best = nullptr;
-
-					for (auto const& ae : cumulativeMatches.container())
-					{
-						if (!best || ae->Duration < best->Duration)
-							best = ae;
-					}
-
-					best->RefreshDuration(attachParams.DurationOverride);
+					if (!best || ae->Duration < best->Duration)
+						best = ae;
 				}
+
+				if (best)
+					best->RefreshDuration(attachParams.DurationOverride);
 			}
 
 			return nullptr;
@@ -769,7 +771,7 @@ int PhobosAttachEffectClass::RemoveAllOfType(PhobosAttachEffectTypeClass* pType,
 
 			if (pType->ExpireWeapon && (pType->ExpireWeapon_TriggerOn & ExpireWeaponCondition::Remove) != ExpireWeaponCondition::None)
 			{
-				if (!pType->Cumulative || !pType->ExpireWeapon_CumulativeOnlyOnce || PhobosAEFunctions::GetAttachedEffectCumulativeCount(pTarget, pType) < 2)
+				if (!pType->Cumulative || !pType->ExpireWeapon_CumulativeOnlyOnce || stackCount == 1)
 					expireWeapons->push_back(pType->ExpireWeapon);
 			}
 
@@ -783,8 +785,11 @@ int PhobosAttachEffectClass::RemoveAllOfType(PhobosAttachEffectTypeClass* pType,
 			}
 
 			it = pTargetExt->PhobosAE.erase(it);
-			if (stackCount-- < 1)
+
+			if (!pType->Cumulative)
 				break;
+
+			stackCount--;
 		}
 		else
 		{

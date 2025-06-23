@@ -287,7 +287,7 @@ ASMJIT_PATCH(0x6F6BC9, TechnoClass_Limbo_AddTracking, 0x6)
 
 	if (pThis->IsAlive)
 	{
-		HouseExtData::LimboTechno.push_back_unique(pThis);
+		HouseExtData::LimboTechno.emplace(pThis);
 	}
 
 	return 0;
@@ -296,7 +296,7 @@ ASMJIT_PATCH(0x6F6BC9, TechnoClass_Limbo_AddTracking, 0x6)
 ASMJIT_PATCH(0x6F6D85, TechnoClass_Unlimbo_RemoveTracking, 0x6)
 {
 	GET(TechnoClass* const, pThis, ESI);
-	HouseExtData::LimboTechno.remove(pThis);
+	HouseExtData::LimboTechno.erase(pThis);
 	return 0;
 }
 
@@ -357,13 +357,21 @@ ASMJIT_PATCH(0x7015EB, TechnoClass_ChangeOwnership_UpdateTracking, 0x7)
 
 	auto const pType = pThis->GetTechnoType();
 	auto pOldOwnerExt = HouseExtContainer::Instance.Find(pThis->Owner);
-	// pNewOwnerExt = HouseExtContainer::Instance.Find(pNewOwner);
-	//const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	auto pNewOwnerExt = HouseExtContainer::Instance.Find(pNewOwner);
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 
 	if (!pNewOwner->Type->MultiplayPassive && pThis->WhatAmI() != BuildingClass::AbsID && TechnoTypeExtContainer::Instance.Find(pType)->IsGenericPrerequisite())
 	{
 		pThis->Owner->RecheckTechTree = true;
 		pNewOwner->RecheckTechTree = true;
+	}
+
+	if (pTypeExt->Harvester_Counted && !HouseClass::IsCurrentPlayerObserver())
+	{
+		auto& vec = pOldOwnerExt->OwnedCountedHarvesters;
+		vec.erase(pThis);
+
+		pNewOwnerExt->OwnedCountedHarvesters.emplace(pThis);
 	}
 
 	//this kind a dangerous

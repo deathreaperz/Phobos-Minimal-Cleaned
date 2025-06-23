@@ -895,8 +895,8 @@ ASMJIT_PATCH(0x70AA60, TechnoClass_DrawExtraInfo, 6)
 				if (SHPStruct* pImage = RulesExtData::Instance()->PrimaryFactoryIndicator)
 				{
 					ConvertClass* pPalette = FileSystem::PALETTE_PAL();
-					if (RulesExtData::Instance()->PrimaryFactoryIndicator_Palette)
-						pPalette = RulesExtData::Instance()->PrimaryFactoryIndicator_Palette->GetOrDefaultConvert<PaletteManager::Mode::Default>(pPalette);
+					if (auto pPall_c = RulesExtData::Instance()->PrimaryFactoryIndicator_Palette.GetConvert())
+						pPalette = pPall_c;
 
 					int const cellsToAdjust = pType->GetFoundationHeight(false) - 1;
 					Point2D pPosition = TacticalClass::Instance->CoordsToClient(pThis->GetCell()->GetCoords());
@@ -1090,6 +1090,9 @@ ASMJIT_PATCH(0x6F3F88, TechnoClass_Init_1, 5)
 
 	//AircraftDiveFunctional::Init(pExt, pTypeExt);
 
+	if (pTypeExt->Harvester_Counted)
+		HouseExtContainer::Instance.Find(pThis->Owner)->OwnedCountedHarvesters.emplace(pThis);
+
 	if (pTypeExt->AttachtoType == AircraftTypeClass::AbsID)
 	{
 		if (pTypeExt->MyFighterData.Enable)
@@ -1185,9 +1188,9 @@ ASMJIT_PATCH(0x6F3F88, TechnoClass_Init_1, 5)
 // 	GET(AbstractType, pTarget, EAX);
 // 	GET(CoordStruct*, pCoord, ESI);
 // 	R->EAX(pCoord->X);
-// 	return pTarget == AbstractType::Aircraft ? 0x6F75B2 : 0x6F7568;
+//	return pTarget == AbstractType::Aircraft ? 0x6F75B2 : 0x6F7568;
 // }
-DEFINE_PATCH(0x6F7563, 0x2);
+DEFINE_PATCH_ADDR_OFFSET(byte, 0x6F7561, 0x2, 0x2);
 
 // No data found on .inj for this
 //ASMJIT_PATCH(0x5F7933, TechnoTypeClass_FindFactory_ExcludeDisabled, 0x6)
@@ -1199,7 +1202,7 @@ DEFINE_PATCH(0x6F7563, 0x2);
 //		0x5F7A57 : 0x5F7941;
 //}
 
-ASMJIT_PATCH(0x6F90F8, TechnoClass_SelectAutoTarget_Demacroize, 0x6)
+ASMJIT_PATCH(0x6F90F8, TechnoClass_GreatestThreat_Demacroize, 0x6)
 {
 	GET(int, nVal1, EDI);
 	GET(int, nVal2, EAX);

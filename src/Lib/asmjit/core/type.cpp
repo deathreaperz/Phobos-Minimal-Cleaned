@@ -1,6 +1,6 @@
 // This file is part of AsmJit project <https://asmjit.com>
 //
-// See asmjit.h or LICENSE.md for license and copyright information
+// See <asmjit/core.h> or LICENSE.md for license and copyright information
 // SPDX-License-Identifier: Zlib
 
 #include "../core/api-build_p.h"
@@ -14,30 +14,25 @@ namespace TypeUtils
 	template<uint32_t Index>
 	struct ScalarOfTypeId
 	{
-		enum : uint32_t
-		{
-			kTypeId = uint32_t(
-			  isScalar(TypeId(Index)) ? TypeId(Index) :
-			  isMask8(TypeId(Index)) ? TypeId::kUInt8 :
-			  isMask16(TypeId(Index)) ? TypeId::kUInt16 :
-			  isMask32(TypeId(Index)) ? TypeId::kUInt32 :
-			  isMask64(TypeId(Index)) ? TypeId::kUInt64 :
-			  isMmx32(TypeId(Index)) ? TypeId::kUInt32 :
-			  isMmx64(TypeId(Index)) ? TypeId::kUInt64 :
-			  isVec32(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec32Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
-			  isVec64(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec64Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
-			  isVec128(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec128Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
-			  isVec256(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec256Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
-			  isVec512(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec512Start) + uint32_t(TypeId::kInt8)) & 0xFF) : TypeId::kVoid)
-		};
+		static inline constexpr uint32_t kTypeId = uint32_t(
+		  isScalar(TypeId(Index)) ? TypeId(Index) :
+		  isMask8(TypeId(Index)) ? TypeId::kUInt8 :
+		  isMask16(TypeId(Index)) ? TypeId::kUInt16 :
+		  isMask32(TypeId(Index)) ? TypeId::kUInt32 :
+		  isMask64(TypeId(Index)) ? TypeId::kUInt64 :
+		  isMmx32(TypeId(Index)) ? TypeId::kUInt32 :
+		  isMmx64(TypeId(Index)) ? TypeId::kUInt64 :
+		  isVec32(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec32Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
+		  isVec64(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec64Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
+		  isVec128(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec128Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
+		  isVec256(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec256Start) + uint32_t(TypeId::kInt8)) & 0xFF) :
+		  isVec512(TypeId(Index)) ? TypeId((Index - uint32_t(TypeId::_kVec512Start) + uint32_t(TypeId::kInt8)) & 0xFF) : TypeId::kVoid);
 	};
 
 	template<uint32_t Index>
 	struct SizeOfTypeId
 	{
-		enum : uint32_t
-		{
-			kTypeSize =
+		static inline constexpr uint32_t kTypeSize =
 			isInt8(TypeId(Index)) ? 1 :
 			isUInt8(TypeId(Index)) ? 1 :
 			isInt16(TypeId(Index)) ? 2 :
@@ -59,8 +54,7 @@ namespace TypeUtils
 			isVec64(TypeId(Index)) ? 8 :
 			isVec128(TypeId(Index)) ? 16 :
 			isVec256(TypeId(Index)) ? 32 :
-			isVec512(TypeId(Index)) ? 64 : 0
-		};
+			isVec512(TypeId(Index)) ? 64 : 0;
 	};
 
 	const TypeData _typeData = {

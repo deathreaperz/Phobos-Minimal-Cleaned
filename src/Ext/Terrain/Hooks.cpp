@@ -79,7 +79,7 @@ ASMJIT_PATCH(0x71C2BC, TerrainClass_Draw_CustomPal, 0x6)
 
 	const auto pTerrainExt = TerrainTypeExtContainer::Instance.Find(pThisType);
 
-	if (const auto pConvertData = pTerrainExt->CustomPalette)
+	if (const auto pConvertData = pTerrainExt->CustomPalette.GetConvert())
 	{
 		auto const pCell = pThis->GetCell();
 		int wallOwnerIndex = pCell->WallOwnerIndex;
@@ -88,7 +88,7 @@ ASMJIT_PATCH(0x71C2BC, TerrainClass_Draw_CustomPal, 0x6)
 		if (wallOwnerIndex >= 0)
 			colorSchemeIndex = HouseClass::Array->GetItem(wallOwnerIndex)->ColorSchemeIndex;
 
-		pConvert = pConvertData->ColorschemeDataVector->Items[colorSchemeIndex]->LightConvert;
+		pConvert = pTerrainExt->CustomPalette.ColorschemeDataVector->Items[colorSchemeIndex]->LightConvert;
 		R->EBP(pCell->Intensity_Normal);
 	}
 

@@ -115,7 +115,7 @@ int AresGlobalData::uiColorDisabledObserver;
 AresGlobalData::ColorData AresGlobalData::Colors[16 + 1];
 
 std::array<MouseClassExt::MappedActions, (size_t)Action::count + 2> MouseClassExt::CursorIdx;
-DynamicVectorClass<BuildType, DllAllocator<BuildType>> MouseClassExt::TabCameos[4u];
+DynamicVectorClass<BuildType> MouseClassExt::TabCameos[4u];
 
 #pragma endregion
 
@@ -263,7 +263,7 @@ void OwnFunc::ApplyHitAnim(ObjectClass* pTarget, args_ReceiveDamage* args)
 			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimTypeDecided, nCoord),
 				args->Attacker ? args->Attacker->GetOwningHouse() : args->SourceHouse, pTarget->GetOwningHouse(),
 				args->Attacker,
-				false
+				false, false
 			);
 		}
 	}
@@ -1466,7 +1466,7 @@ void TechnoExt_ExtData::KickOutClone(BuildingClass* pBuilding, TechnoTypeClass* 
 
 	if (pBuilding->KickOutUnit(Clone, CellStruct::Empty) != KickOutResult::Succeeded)
 	{
-		Debug::LogInfo(__FUNCTION__" Called ");
+		//Debug::LogInfo(__FUNCTION__" Called ");
 		TechnoExtData::HandleRemove(Clone, nullptr, false, false);
 	}
 }
@@ -1654,7 +1654,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 			if (!TechnoExtData::EjectRandomly(pHijacker, pThis->Location, 144, Select))
 			{
 				pHijacker->RegisterDestruction(pKiller);
-				Debug::LogInfo(__FUNCTION__" Hijacker Called ");
+				//" Hijacker Called ");
 				TechnoExtData::HandleRemove(pHijacker, pKiller, false, true);
 			}
 			else
@@ -1699,7 +1699,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 							if (!TechnoExtData::EjectRandomly(pPilot, pThis->Location, 144, Select))
 							{
 								pPilot->RegisterDestruction(pKiller);
-								Debug::LogInfo(__FUNCTION__" Pilot Called ");
+								//Debug::LogInfo(__FUNCTION__" Pilot Called ");
 								TechnoExtData::HandleRemove(pPilot, pKiller, false, false);
 							}
 							else if (auto const pTag = pThis->AttachedTag)
@@ -1750,7 +1750,7 @@ void TechnoExt_ExtData::SpawnSurvivors(FootClass* const pThis, TechnoClass* cons
 
 			// kill passenger, if not spawned
 			pPassenger->RegisterDestruction(pKiller);
-			Debug::LogInfo(__FUNCTION__" Passengers Called ");
+			//Debug::LogInfo(__FUNCTION__" Passengers Called ");
 			TechnoExtData::HandleRemove(pPassenger, pKiller, false, false);
 		}
 	}
@@ -2327,7 +2327,7 @@ void TechnoExt_ExtData::PlantBomb(TechnoClass* pSource, ObjectClass* pTarget, We
 		const auto pTechno = flag_cast_to <TechnoClass*, false>(pTarget);
 
 		//https://bugs.launchpad.net/ares/+bug/1591335
-		if (pTechno && !pWHExt->CanDealDamage(pTechno))
+		if (pTechno && !pWHExt->CanDealDamage(pTechno, false, false, false))
 			return;
 
 		BombListClass::Instance->Plant(pSource, pTarget);
@@ -3144,7 +3144,7 @@ BuildingClass* TechnoExt_ExtData::CreateBuilding(
 
 		if (!res)
 		{
-			Debug::LogInfo(__FUNCTION__" Called ");
+			//Debug::LogInfo(__FUNCTION__" Called ");
 			TechnoExtData::HandleRemove(pRet, nullptr, true, false);
 			pRet = nullptr;
 		}
@@ -3389,6 +3389,583 @@ void NOINLINE SetType(TechnoClass* pThis, AbstractType rtti, TechnoTypeClass* pT
 	}
 }
 
+#include <Locomotor/Cast.h>
+#include <Kamikaze.h>
+
+//TODO jammer , powered , more stuffs that shit itself when change type
+void UpdateTypeData(TechnoClass* pThis, TechnoTypeClass* pOldType, TechnoTypeClass* pCurrentType)
+{
+	//auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+	auto const pOldTypeExt = TechnoTypeExtContainer::Instance.Find(pOldType);
+	auto const pNewTypeExt = TechnoTypeExtContainer::Instance.Find(pCurrentType);
+	auto const pOwner = pThis->Owner;
+	auto& pSlaveManager = pThis->SlaveManager;
+	auto& pSpawnManager = pThis->SpawnManager;
+	auto& pCaptureManager = pThis->CaptureManager;
+	auto& pTemporalImUsing = pThis->TemporalImUsing;
+	auto& pAirstrike = pThis->Airstrike;
+
+	// Remove from harvesters list if no longer a harvester.
+	if (pOldTypeExt->Harvester_Counted && !pNewTypeExt->Harvester_Counted)
+	{
+		HouseExtContainer::Instance.Find(pOwner)->OwnedCountedHarvesters.erase(pThis);
+	}
+
+	// Powered by ststl-s、Fly-Star
+	if (pCurrentType->Enslaves && pCurrentType->SlavesNumber > 0)
+	{
+		// SlaveManager does not exist or they have different slaves.
+		if (!pSlaveManager || pSlaveManager->SlaveType != pCurrentType->Enslaves)
+		{
+			if (pSlaveManager)
+			{
+				// Slaves are not the same, so clear out.
+				pSlaveManager->Killed(nullptr);
+				GameDelete(pSlaveManager);
+				pSlaveManager = nullptr;
+			}
+
+			pSlaveManager = GameCreate<SlaveManagerClass>(pThis, pCurrentType->Enslaves, pCurrentType->SlavesNumber, pCurrentType->SlaveRegenRate, pCurrentType->SlaveReloadRate);
+		}
+		else if (pSlaveManager->SlaveCount != pCurrentType->SlavesNumber)
+		{
+			// Additions/deletions made when quantities are inconsistent.
+			if (pSlaveManager->SlaveCount < pCurrentType->SlavesNumber)
+			{
+				// There are too few slaves here. More are needed.
+				const int count = pCurrentType->SlavesNumber - pSlaveManager->SlaveCount;
+
+				for (int index = 0; index < count; index++)
+				{
+					if (auto pSlaveNode = GameCreate<SlaveControl>())
+					{
+						pSlaveNode->Slave = nullptr;
+						pSlaveNode->State = SlaveControlStatus::Dead;
+						pSlaveNode->RespawnTimer.Start(pCurrentType->SlaveRegenRate);
+						pSlaveManager->SlaveNodes.AddItem(pSlaveNode);
+					}
+				}
+			}
+			else
+			{
+				// Remove excess slaves
+				for (int i = pSlaveManager->SlaveCount - 1; i >= pCurrentType->SlavesNumber; --i)
+				{
+					if (auto pSlaveNode = pSlaveManager->SlaveNodes.GetItem(i))
+					{
+						if (const auto pSlave = pSlaveNode->Slave)
+						{
+							if (pSlave->InLimbo)
+							{
+								// He wasn't killed, just erased.
+								pSlave->RegisterDestruction(pThis);
+								pSlave->UnInit();
+							}
+							else
+							{
+								// Oh, my God, he's been killed.
+								pSlave->ReceiveDamage(&pSlave->Health, 0, RulesClass::Instance->C4Warhead, nullptr, true, false, pOwner);
+							}
+						}
+
+						// Unlink
+						pSlaveNode->Slave = nullptr;
+						pSlaveNode->State = SlaveControlStatus::Dead;
+						GameDelete(pSlaveNode);
+					}
+
+					// Remove it
+					pSlaveManager->SlaveNodes.RemoveAt(i);
+				}
+			}
+
+			pSlaveManager->SlaveCount = pCurrentType->SlavesNumber;
+		}
+	}
+	else if (pSlaveManager)
+	{
+		pSlaveManager->Killed(nullptr);
+		GameDelete(pSlaveManager);
+		pSlaveManager = nullptr;
+	}
+
+	if (pCurrentType->Spawns && pCurrentType->SpawnsNumber > 0)
+	{
+		// No SpawnManager exists, or their SpawnType is inconsistent.
+		if (!pSpawnManager || pCurrentType->Spawns != pSpawnManager->SpawnType)
+		{
+			if (pSpawnManager)
+			{
+				// It may be odd that AircraftType is different, I chose to reset it.
+				pSpawnManager->KillNodes();
+				GameDelete(pSpawnManager);
+			}
+
+			pSpawnManager = GameCreate<SpawnManagerClass>(pThis, pCurrentType->Spawns, pCurrentType->SpawnsNumber, pCurrentType->SpawnRegenRate, pCurrentType->SpawnReloadRate);
+		}
+		else if (pSpawnManager->SpawnCount != pCurrentType->SpawnsNumber)
+		{
+			// Additions/deletions made when quantities are inconsistent.
+			if (pSpawnManager->SpawnCount < pCurrentType->SpawnsNumber)
+			{
+				const int count = pCurrentType->SpawnsNumber - pSpawnManager->SpawnCount;
+				struct SpawnNode_2
+				{
+					AircraftClass* Unit;		//ThisCan be anything Techno that not building ?
+					SpawnNodeStatus Status;
+					CDTimerClass NodeSpawnTimer;
+					BOOL IsSpawnMissile;
+
+					SpawnNode_2() = default;
+					SpawnNode_2(AircraftClass* spwn, SpawnNodeStatus stat, int delay, bool missile) :
+						Unit { spwn },
+						Status { stat },
+						NodeSpawnTimer { delay },
+						IsSpawnMissile { missile }
+					{ }
+
+					~SpawnNode_2() = default;
+				};
+
+				// Add the missing Spawns, but don't intend for them to be born right away.
+				for (int index = 0; index < count; index++)
+				{
+					pSpawnManager->SpawnedNodes.AddItem((SpawnNode*)GameCreate<SpawnNode_2>(nullptr, SpawnNodeStatus::Dead, pCurrentType->SpawnRegenRate, false));
+				}
+			}
+			else
+			{
+				// Remove excess spawns
+				for (int i = pSpawnManager->SpawnCount - 1; i >= pCurrentType->SpawnsNumber; --i)
+				{
+					if (auto pSpawnNode = pSpawnManager->SpawnedNodes.GetItem(i))
+					{
+						auto& pStatus = pSpawnNode->Status;
+
+						// Spawns that don't die get killed.
+						if (const auto pAircraft = pSpawnNode->Unit)
+						{
+							pAircraft->SpawnOwner = nullptr;
+
+							if (pAircraft->InLimbo || pStatus == SpawnNodeStatus::Idle ||
+								pStatus == SpawnNodeStatus::Reloading || pStatus == SpawnNodeStatus::TakeOff)
+							{
+								if (pStatus == SpawnNodeStatus::TakeOff)
+									Kamikaze::Instance->Remove(pAircraft);
+
+								pAircraft->UnInit();
+							}
+							else if (pSpawnNode->IsSpawnMissile)
+							{
+								pAircraft->ReceiveDamage(&pAircraft->Health, 0, RulesClass::Instance->C4Warhead, nullptr, true, false, pOwner);
+							}
+							else
+							{
+								pAircraft->Crash(nullptr);
+							}
+						}
+
+						// Unlink
+						pSpawnNode->Unit = nullptr;
+						pStatus = SpawnNodeStatus::Dead;
+						GameDelete(pSpawnNode);
+					}
+
+					// Remove it
+					pSpawnManager->SpawnedNodes.RemoveAt(i);
+				}
+			}
+
+			pSpawnManager->SpawnCount = pCurrentType->SpawnsNumber;
+		}
+	}
+	else if (pSpawnManager)
+	{
+		// Reset the target.
+		pSpawnManager->ResetTarget();
+
+		// pSpawnManager->KillNodes() kills all Spawns, but it is not necessary to kill the parts that are not performing tasks.
+		for (auto pSpawnNode : pSpawnManager->SpawnedNodes)
+		{
+			const auto pAircraft = pSpawnNode->Unit;
+			auto& pStatus = pSpawnNode->Status;
+
+			// A dead or idle Spawn is not killed.
+			if (!pAircraft || pStatus == SpawnNodeStatus::Dead ||
+				pStatus == SpawnNodeStatus::Idle || pStatus == SpawnNodeStatus::Reloading)
+			{
+				continue;
+			}
+
+			pAircraft->SpawnOwner = nullptr;
+
+			if (pStatus == SpawnNodeStatus::TakeOff)
+			{
+				Kamikaze::Instance->Remove(pAircraft);
+				pAircraft->UnInit();
+			}
+			else if (pSpawnNode->IsSpawnMissile)
+			{
+				pAircraft->ReceiveDamage(&pAircraft->Health, 0, RulesClass::Instance->C4Warhead, nullptr, true, false, pOwner);
+			}
+			else
+			{
+				pAircraft->Crash(nullptr);
+			}
+
+			pSpawnNode->Unit = nullptr;
+			pStatus = SpawnNodeStatus::Dead;
+			pSpawnNode->IsSpawnMissile = false;
+			pSpawnNode->NodeSpawnTimer.Start(pSpawnManager->RegenRate);
+		}
+	}
+
+	// Prepare the variables.
+	int maxCapture = 0;
+	bool infiniteCapture = false;
+	bool hasTemporal = false;
+	bool hasAirstrike = false;
+	bool hasLocomotor = false;
+	bool hasParasite = false;
+
+	auto checkWeapon = [&maxCapture, &infiniteCapture, &hasTemporal,
+		&hasAirstrike, &hasLocomotor, &hasParasite](WeaponTypeClass* pWeaponType)
+		{
+			if (!pWeaponType)
+				return;
+
+			const auto pWH = pWeaponType->Warhead;
+
+			if (pWH->MindControl)
+			{
+				if (pWeaponType->Damage > maxCapture)
+					maxCapture = pWeaponType->Damage;
+
+				if (pWeaponType->InfiniteMindControl)
+					infiniteCapture = true;
+			}
+
+			if (pWH->Temporal)
+				hasTemporal = true;
+
+			if (pWH->Airstrike)
+				hasAirstrike = true;
+
+			if (pWH->IsLocomotor)
+				hasLocomotor = true;
+
+			if (pWH->Parasite)
+				hasParasite = true;
+		};
+
+	for (int index = 0; index < (pCurrentType->WeaponCount > 0 ? pCurrentType->WeaponCount : 2); index++)
+	{
+		checkWeapon(pThis->GetWeapon(index)->WeaponType);
+	}
+
+	if (maxCapture > 0)
+	{
+		if (!pCaptureManager)
+		{
+			// Rebuild a CaptureManager
+			pCaptureManager = GameCreate<CaptureManagerClass>(pThis, maxCapture, infiniteCapture);
+		}
+		else if (pOldTypeExt->Convert_ResetMindControl)
+		{
+			if (!infiniteCapture && pCaptureManager->ControlNodes.Count > maxCapture)
+			{
+				// Remove excess nodes.
+				for (int index = pCaptureManager->ControlNodes.Count - 1; index >= maxCapture; --index)
+				{
+					auto const pControlNode = pCaptureManager->ControlNodes.GetItem(index);
+					pCaptureManager->FreeUnit(pControlNode->Unit);
+				}
+			}
+
+			pCaptureManager->MaxControlNodes = maxCapture;
+			pCaptureManager->InfiniteMindControl = infiniteCapture;
+		}
+	}
+	else if (pCaptureManager && pOldTypeExt->Convert_ResetMindControl)
+	{
+		// Remove CaptureManager completely
+		pCaptureManager->FreeAll();
+		GameDelete(pCaptureManager);
+		pCaptureManager = nullptr;
+	}
+
+	if (hasTemporal)
+	{
+		if (!pTemporalImUsing)
+		{
+			// Rebuild a TemporalClass
+			pTemporalImUsing = GameCreate<TemporalClass>(pThis);
+		}
+	}
+	else if (pTemporalImUsing)
+	{
+		if (pTemporalImUsing->Target)
+		{
+			// Free this afflicted man.
+			pTemporalImUsing->LetGo();
+		}
+
+		// Delete it
+		GameDelete(pTemporalImUsing);
+		pTemporalImUsing = nullptr;
+	}
+
+	if (hasAirstrike && pCurrentType->AirstrikeTeam > 0)
+	{
+		if (!pAirstrike)
+		{
+			// Rebuild a AirstrikeClass
+			pAirstrike = GameCreate<AirstrikeClass>(pThis);
+		}
+		else
+		{
+			// Modify the parameters of AirstrikeClass.
+			pAirstrike->AirstrikeTeam = pCurrentType->AirstrikeTeam;
+			pAirstrike->EliteAirstrikeTeam = pCurrentType->EliteAirstrikeTeam;
+			pAirstrike->AirstrikeTeamType = pCurrentType->AirstrikeTeamType;
+			pAirstrike->EliteAirstrikeTeamType = pCurrentType->EliteAirstrikeTeamType;
+			pAirstrike->AirstrikeRechargeTime = pCurrentType->AirstrikeRechargeTime;
+			pAirstrike->EliteAirstrikeRechargeTime = pCurrentType->EliteAirstrikeRechargeTime;
+		}
+	}
+	else if (pAirstrike)
+	{
+		pAirstrike->DetachTarget(pThis);
+		GameDelete(pAirstrike);
+		pAirstrike = nullptr;
+	}
+
+	if (!hasLocomotor && pThis->LocomotorTarget)
+	{
+		pThis->ReleaseLocomotor(pThis->Target == pThis->LocomotorTarget);
+		pThis->LocomotorTarget->LocomotorSource = nullptr;
+		pThis->LocomotorTarget = nullptr;
+	}
+
+	// Only FootClass* can use this.
+	if (const auto pFoot = flag_cast_to<FootClass*>(pThis))
+	{
+		auto& pParasiteImUsing = pFoot->ParasiteImUsing;
+
+		if (hasParasite)
+		{
+			if (!pParasiteImUsing)
+			{
+				// Rebuild a ParasiteClass
+				pParasiteImUsing = GameCreate<ParasiteClass>(pFoot);
+			}
+		}
+		else if (pParasiteImUsing)
+		{
+			if (pParasiteImUsing->Victim)
+			{
+				// Release of victims.
+				pParasiteImUsing->ExitUnit();
+			}
+
+			// Delete it
+			GameDelete(pParasiteImUsing);
+			pParasiteImUsing = nullptr;
+		}
+	}
+}
+
+void UpdateTypeData_Foot(FootClass* pThis, TechnoTypeClass* pOldType, TechnoTypeClass* pCurrentType)
+{
+	auto const abs = pThis->WhatAmI();
+	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
+	//auto const pOldTypeExt = TechnoTypeExt::ExtMap.Find(pOldType);
+
+	// Update movement sound if still moving while type changed.
+	if (pThis->Locomotor->Is_Moving_Now() && pThis->IsMoveSoundPlaying)
+	{
+		if (pCurrentType->MoveSound != pOldType->MoveSound)
+		{
+			// End the old sound.
+			pThis->MoveSoundAudioController.AudioEventHandleEndLooping();
+
+			if (auto const count = pCurrentType->MoveSound.Count)
+			{
+				// Play a new sound.
+
+				int soundIndex = count == 1 ? 0 : pCurrentType->MoveSound[Random2Class::Global->RandomFromMax(count - 1)];
+				VocClass::PlayAt(soundIndex, pThis->Location, &pThis->MoveSoundAudioController);
+				pThis->IsMoveSoundPlaying = true;
+			}
+			else
+			{
+				pThis->IsMoveSoundPlaying = false;
+			}
+
+			pThis->MoveSoundDelay = 0;
+		}
+	}
+
+	if (abs == AbstractType::Infantry)
+	{
+		auto const pInf = static_cast<InfantryClass*>(pThis);
+
+		// It's still not recommended to have such idea, please avoid using this
+		if (static_cast<InfantryTypeClass*>(pOldType)->Deployer && !static_cast<InfantryTypeClass*>(pCurrentType)->Deployer)
+		{
+			switch (pInf->SequenceAnim)
+			{
+			case DoType::Deploy:
+			case DoType::Deployed:
+			case DoType::DeployedIdle:
+				pInf->PlayAnim(DoType::Ready, true);
+				break;
+			case DoType::DeployedFire:
+				pInf->PlayAnim(DoType::FireUp, true);
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	if (pOldType->Locomotor == TeleportLocomotionClass::ClassGUID() && pCurrentType->Locomotor != TeleportLocomotionClass::ClassGUID() && pThis->WarpingOut)
+		pExt->HasRemainingWarpInDelay = true;
+
+	// Update open topped state of potential passengers if transport's OpenTopped value changes.
+	// OpenTopped does not work properly with buildings to begin with which is why this is here rather than in the Techno update one.
+	if (pThis->Passengers.NumPassengers > 0)
+	{
+		const bool toOpenTopped = pCurrentType->OpenTopped;
+		FootClass* pFirstPassenger = pThis->Passengers.GetFirstPassenger();
+
+		while (true)
+		{
+			if (toOpenTopped)
+			{
+				// Add passengers to the logic layer.
+				pThis->EnteredOpenTopped(pFirstPassenger);
+			}
+			else
+			{
+				// Lose target & destination
+				pFirstPassenger->SetTarget(nullptr);
+				pFirstPassenger->SetCurrentWeaponStage(0);
+				pFirstPassenger->AbortMotion();
+				pThis->ExitedOpenTopped(pFirstPassenger);
+
+				// OpenTopped adds passengers to logic layer when enabled. Under normal conditions this does not need to be removed since
+				// OpenTopped state does not change while passengers are still in transport but in case of type conversion that can happen.
+				LogicClass::Instance->RemoveObject(pFirstPassenger);
+			}
+
+			pFirstPassenger->Transporter = pThis;
+
+			if (const auto pNextPassenger = flag_cast_to<FootClass*>(pFirstPassenger->NextObject))
+				pFirstPassenger = pNextPassenger;
+			else
+				break;
+		}
+
+		if (pCurrentType->Gunner)
+			pThis->ReceiveGunner(pFirstPassenger);
+	}
+	else if (pCurrentType->Gunner)
+	{
+		pThis->RemoveGunner(nullptr);
+	}
+
+	if (!pCurrentType->CanDisguise || (!pThis->Disguise && pCurrentType->PermaDisguise))
+	{
+		// When it can't disguise or has lost its disguise, update its disguise.
+		pThis->ClearDisguise();
+	}
+
+	if (abs != AbstractType::Aircraft)
+	{
+		auto const pLocomotorType = pCurrentType->Locomotor;
+
+		// The Hover movement pattern allows for self-landing.
+		if (pLocomotorType != FlyLocomotionClass::ClassGUID && pLocomotorType != HoverLocomotionClass::ClassGUID)
+		{
+			const bool isinAir = pThis->IsInAir() && !pThis->LocomotorSource;
+
+			if (auto const pJJLoco = locomotion_cast<JumpjetLocomotionClass*>(pThis->Locomotor))
+			{
+				const int turnrate = pCurrentType->JumpJetData.TurnRate >= 127 ? 127 : pCurrentType->JumpJetData.TurnRate;
+				pJJLoco->Speed = pCurrentType->JumpJetData.Speed;
+				pJJLoco->Acceleration = pCurrentType->JumpJetData.Accel;
+				pJJLoco->Crash = pCurrentType->JumpJetData.Crash;
+				pJJLoco->Deviation = pCurrentType->JumpJetData.Deviation;
+				pJJLoco->NoWobbles = pCurrentType->JumpJetData.NoWobbles;
+				pJJLoco->Wobbles = pCurrentType->JumpJetData.Wobbles;
+				pJJLoco->TurnRate = turnrate;
+				pJJLoco->__currentHeight = pCurrentType->JumpJetData.Height;
+				pJJLoco->Height = pCurrentType->JumpJetData.Height;
+				pJJLoco->Facing.Set_ROT(turnrate);
+
+				if (isinAir)
+				{
+					const bool inMove = pJJLoco->Is_Really_Moving_Now();
+
+					if (pCurrentType->BalloonHover)
+					{
+						// Makes the jumpjet think it is hovering without actually moving.
+						pJJLoco->NextState = JumpjetLocomotionClass::State::Hovering;
+						pJJLoco->IsMoving = true;
+
+						if (!inMove)
+							pJJLoco->HeadToCoord = pThis->Location;
+					}
+					else if (!inMove)
+					{
+						pJJLoco->Move_To(pThis->Location);
+					}
+				}
+			}
+			else if (isinAir)
+			{
+				// Let it go into free fall.
+				pThis->FallRate = 0;
+				pThis->IsFallingDown = true;
+
+				const auto pCell = MapClass::Instance->TryGetCellAt(pThis->Location);
+
+				if (pCell && !pCell->IsClearToMove(pCurrentType->SpeedType, true, true,
+					ZoneType::None, pCurrentType->MovementZone, pCell->GetLevel(), pCell->ContainsBridge()))
+				{
+					// If it's landing position cannot be moved, then it is granted a crash death.
+					pThis->IsABomb = true;
+				}
+				else
+				{
+					// If it's gonna land on the bridge, then it needs this.
+					pThis->OnBridge = pCell ? pCell->ContainsBridge() : false;
+				}
+
+				if (abs == AbstractType::Infantry)
+				{
+					// Infantry changed to parachute status (not required).
+					static_cast<InfantryClass*>(pThis)->PlayAnim(DoType::Paradrop, true, false);
+				}
+			}
+		}
+
+		if (abs == AbstractType::Unit)
+		{
+			// Yes, synchronize its turret facing or it will turn strangely.
+			if (pOldType->Turret != pCurrentType->Turret)
+			{
+				const auto primaryFacing = pThis->PrimaryFacing.Current();
+				auto& secondaryFacing = pThis->SecondaryFacing;
+
+				secondaryFacing.Set_Current(primaryFacing);
+				secondaryFacing.Set_Desired(primaryFacing);
+			}
+		}
+	}
+}
+
 bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeClass* pToType, bool AdjustHealth, bool IsChangeOwnership)
 {
 	const auto& [prevType, rtti] = GetOriginalType(pThis, pToType);
@@ -3401,16 +3978,12 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 
 	if (pToType->WhatAmI() != rtti || pOldType->Spawned != pToType->Spawned || pOldType->MissileSpawn != pToType->MissileSpawn)
 	{
-		Debug::LogInfo("Incompatible types between {} and {}", pOldType->ID, pToType->ID);
+		//Debug::LogInfo("Incompatible types between {} and {}", pOldType->ID, pToType->ID);
 		return false;
 	}
 
 	const auto pToTypeExt = TechnoTypeExtContainer::Instance.Find(pToType);
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
-
-	// Detach CLEG targeting
-	if (pThis->TemporalImUsing && pThis->TemporalImUsing->Target)
-		pThis->TemporalImUsing->LetGo();
 
 	HouseClass* const pOwner = pThis->Owner;
 
@@ -3431,8 +4004,9 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 
 	if (AdjustHealth)
 	{
+		pThis->Health = std::max(1, oldHealth * pToType->Strength / pOldType->Strength);
 		// Readjust health according to percentage
-		pThis->SetHealthPercentage((double)(oldHealth) / (double)pOldType->Strength);
+		//pThis->SetHealthPercentage((double)(oldHealth) / (double)pOldType->Strength);
 		pThis->EstimatedHealth = pThis->Health;
 	}
 	else
@@ -3462,24 +4036,6 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 	// remove previous line trail
 	GameDelete<true, true>(pThis->LineTrailer);
 
-	// create new one if new type require it
-	if (pToType->UseLineTrail)
-	{
-		pThis->LineTrailer = GameCreate<LineTrail>();
-
-		if (RulesClass::Instance->LineTrailColorOverride != ColorStruct::Empty)
-		{
-			pThis->LineTrailer->Color = RulesClass::Instance->LineTrailColorOverride;
-		}
-		else
-		{
-			pThis->LineTrailer->Color = pToType->LineTrailColor;
-		}
-
-		pThis->LineTrailer->SetDecrement(pToType->LineTrailColorDecrement);
-		pThis->LineTrailer->Owner = pThis;
-	}
-
 	TechnoExtData::InitializeLaserTrail(pThis, true);
 
 	// Reset AutoDeath Timer
@@ -3494,75 +4050,6 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 		pExt->PassengerDeletionTimer.Stop();
 
 	TrailsManager::Construct(static_cast<TechnoClass*>(pThis), true);
-
-	if (pThis->Passengers.NumPassengers > 0)
-	{
-		const bool toOpenTopped = pToType->OpenTopped && !pOldType->OpenTopped;
-		const bool fromOpenTopped = !pToType->OpenTopped && pOldType->OpenTopped;
-		const bool addGunner = pToType->Gunner && !pOldType->Gunner;
-		const bool removeGunner = !pToType->Gunner && pOldType->Gunner;
-
-		if (toOpenTopped || fromOpenTopped || addGunner || removeGunner)
-		{
-			auto pPassenger = pThis->Passengers.FirstPassenger;
-			FootClass* pLastPassenger = nullptr;
-			// Update open topped state of potential passengers if transport's OpenTopped value changes.
-			while (pPassenger)
-			{
-				if (toOpenTopped)
-				{
-					pThis->EnteredOpenTopped(pPassenger);
-				}
-				else if (fromOpenTopped)
-				{
-					pThis->ExitedOpenTopped(pPassenger);
-					// Lose target & destination
-					pPassenger->Stun();
-					// OpenTopped adds passengers to logic layer when enabled. Under normal conditions this does not need to be removed since
-					// OpenTopped state does not change while passengers are still in transport but in case of type conversion that can happen.
-					LogicClass::Instance->RemoveObject(pPassenger);
-				}
-
-				pLastPassenger = pPassenger;
-				pPassenger = flag_cast_to<FootClass*>(pPassenger->NextObject);
-			}
-
-			// Update Gunner
-			if (auto const pFoot = flag_cast_to<FootClass*>(pThis))
-			{
-				if (addGunner)
-					pFoot->ReceiveGunner(pLastPassenger);
-				else if (removeGunner)
-					pFoot->RemoveGunner(pLastPassenger);
-			}
-		}
-	}
-
-	// replace spawner type and some properties
-	if (auto pSpawnManager = pThis->SpawnManager)
-	{
-		// this check is special for `SupportWeapon`
-		// since it not using the type data spawner
-		// it using the custom made
-		// make sure it wont cause any problem here ,..
-		if (pOldType->Spawns)
-		{
-			if (pToType->Spawns && pSpawnManager->SpawnType != pToType->Spawns)
-				pSpawnManager->SpawnType = pToType->Spawns;
-
-			if (pToType->SpawnsNumber > 0 && pSpawnManager->SpawnCount != pToType->SpawnsNumber)
-				pSpawnManager->SpawnCount = pToType->SpawnsNumber;
-
-			if (pToType->SpawnRegenRate > 0 && pSpawnManager->RegenRate != pToType->SpawnRegenRate)
-				pSpawnManager->RegenRate = pToType->SpawnRegenRate;
-
-			if (pToType->SpawnReloadRate > 0 && pSpawnManager->ReloadRate != pToType->SpawnReloadRate)
-				pSpawnManager->ReloadRate = pToType->SpawnReloadRate;
-		}
-	}
-
-	if (pThis->IsDisguised() && pOldType->DisguiseWhenStill != pToType->DisguiseWhenStill)
-		pThis->ClearDisguise();
 
 	// Adjust ammo
 	int ammoLeft = MinImpl(pThis->Ammo, pToType->Ammo);
@@ -3626,104 +4113,80 @@ bool NOINLINE TechnoExt_ExtData::ConvertToType(TechnoClass* pThis, TechnoTypeCla
 	if (pThis->CurrentTurretNumber >= TurretCount)
 		pThis->CurrentTurretNumber = 0;
 
+	UpdateTypeData(pThis, pOldType, pToType);
+
 	// Update movement sound if still moving while type changed.
 	if (auto const pFoot = flag_cast_to<FootClass*, false>(pThis))
 	{
-		if (pFoot->Locomotor->Is_Moving_Now() && pFoot->__PlayingMovingSound)
+		// create new one if new type require it
+		if (pToType->UseLineTrail)
 		{
-			if (pOldType->MoveSound != pToType->MoveSound)
+			pThis->LineTrailer = GameCreate<LineTrail>();
+
+			if (RulesClass::Instance->LineTrailColorOverride != ColorStruct::Empty)
 			{
-				// End the old sound.
-				pFoot->Audio7.AudioEventHandleStop();
+				pThis->LineTrailer->Color = RulesClass::Instance->LineTrailColorOverride;
+			}
+			else
+			{
+				pThis->LineTrailer->Color = pToType->LineTrailColor;
+			}
 
-				if (auto const count = pOldType->MoveSound.Count)
-				{
-					if (pToType->MoveSound.Count)
-					{
-						// Play a new sound.
-						int soundIndex = pToType->MoveSound[Random2Class::Global->Random() % count];
-						VocClass::PlayAt(soundIndex, pFoot->Location, &pFoot->Audio7);
-						pFoot->__PlayingMovingSound = true;
-					}
-				}
-				else
-				{
-					pFoot->__PlayingMovingSound = false;
-				}
+			pThis->LineTrailer->SetDecrement(pToType->LineTrailColorDecrement);
+			pThis->LineTrailer->Owner = pThis;
+		}
 
-				pFoot->__MovingSoundDelay = 0;
+		UpdateTypeData_Foot(pFoot, pOldType, pToType);
+
+		//if (pThis->LocomotorSource) {
+		//	Debug::LogInfo("Attempt to convert TechnoType[%s] to [%s] when the locomotor is currently manipulated , return", pOldType->ID, pToType->ID);
+		//	return true;
+		//}
+		bool move = true;
+
+		// replace the original locomotor to new one
+		if (pOldType->Locomotor != pToType->Locomotor)
+		{
+			if (pOldType->Locomotor == CLSIDs::Teleport && pToType->Locomotor != CLSIDs::Teleport && pThis->WarpingOut)
+				TechnoExtContainer::Instance.Find(pThis)->HasRemainingWarpInDelay = true;
+
+			//AbstractClass* pTarget = pThis->Target;
+			//AbstractClass* pDest = pThis->ArchiveTarget;
+			//Mission prevMission = pThis->GetCurrentMission();
+
+			// throw away the current locomotor and instantiate
+			// a new one of the default type for this unit.
+			if (auto newLoco = LocomotionClass::CreateInstance(pToType->Locomotor))
+			{
+				newLoco->Link_To_Object(pThis);
+				((FootClass*)pThis)->Locomotor = std::move(newLoco);
+				//pThis->Override_Mission(prevMission, pTarget, pDest);
 			}
 		}
-	}
-
-	//if (pThis->LocomotorSource) {
-	//	Debug::LogInfo("Attempt to convert TechnoType[%s] to [%s] when the locomotor is currently manipulated , return", pOldType->ID, pToType->ID);
-	//	return true;
-	//}
-	bool move = true;
-
-	// replace the original locomotor to new one
-	if (pOldType->Locomotor != pToType->Locomotor)
-	{
-		if (pOldType->Locomotor == CLSIDs::Teleport && pToType->Locomotor != CLSIDs::Teleport && pThis->WarpingOut)
-			TechnoExtContainer::Instance.Find(pThis)->HasRemainingWarpInDelay = true;
-
-		//AbstractClass* pTarget = pThis->Target;
-		//AbstractClass* pDest = pThis->ArchiveTarget;
-		//Mission prevMission = pThis->GetCurrentMission();
-
-		// throw away the current locomotor and instantiate
-		// a new one of the default type for this unit.
-		if (auto newLoco = LocomotionClass::CreateInstance(pToType->Locomotor))
+		else if (pOldType->Locomotor == CLSIDs::Jumpjet() && pToType->Locomotor == CLSIDs::Jumpjet() && !(pOldType->JumpJetData == pToType->JumpJetData))
 		{
-			newLoco->Link_To_Object(pThis);
-			((FootClass*)pThis)->Locomotor = std::move(newLoco);
-			//pThis->Override_Mission(prevMission, pTarget, pDest);
+			move = false;
+			AbstractClass* pTarget = pThis->Target;
+			AbstractClass* pDest = pThis->ArchiveTarget;
+			Mission prevMission = pThis->GetCurrentMission();
+
+			// throw away the current locomotor and instantiate
+			// a new one of the default type for this unit.
+			// throw away old loco to ensure the new loco properties is properly adjusted
+			if (auto newLoco = LocomotionClass::CreateInstance(pToType->Locomotor))
+			{
+				newLoco->Link_To_Object(pThis);
+				((FootClass*)pThis)->Locomotor = std::move(newLoco);
+				((FootClass*)pThis)->Locomotor.GetInterfacePtr()->Move_To(pThis->Location);
+				pThis->Override_Mission(prevMission, pTarget, pDest);
+			}
 		}
-	}
-	else if (pOldType->Locomotor == CLSIDs::Jumpjet() && pToType->Locomotor == CLSIDs::Jumpjet() && !(pOldType->JumpjetData == pToType->JumpjetData))
-	{
-		move = false;
-		AbstractClass* pTarget = pThis->Target;
-		AbstractClass* pDest = pThis->ArchiveTarget;
-		Mission prevMission = pThis->GetCurrentMission();
 
-		// throw away the current locomotor and instantiate
-		// a new one of the default type for this unit.
-		// throw away old loco to ensure the new loco properties is properly adjusted
-		if (auto newLoco = LocomotionClass::CreateInstance(pToType->Locomotor))
+		if (move && pToType->BalloonHover && pToType->DeployToLand && pOldType->Locomotor != CLSIDs::Jumpjet() && pToType->Locomotor == CLSIDs::Jumpjet())
 		{
-			newLoco->Link_To_Object(pThis);
-			((FootClass*)pThis)->Locomotor = std::move(newLoco);
 			((FootClass*)pThis)->Locomotor.GetInterfacePtr()->Move_To(pThis->Location);
-			pThis->Override_Mission(prevMission, pTarget, pDest);
 		}
 	}
-
-	if (move && pToType->BalloonHover && pToType->DeployToLand && pOldType->Locomotor != CLSIDs::Jumpjet() && pToType->Locomotor == CLSIDs::Jumpjet())
-	{
-		((FootClass*)pThis)->Locomotor.GetInterfacePtr()->Move_To(pThis->Location);
-	}
-
-	if (auto pInf = cast_to<InfantryClass*, false>(pThis))
-	{
-		// It's still not recommended to have such idea, please avoid using this
-		if (static_cast<InfantryTypeClass*>(pOldType)->Deployer && !static_cast<InfantryTypeClass*>(pToType)->Deployer)
-		{
-			switch (pInf->SequenceAnim)
-			{
-			case DoType::Deploy:
-			case DoType::Deployed:
-			case DoType::DeployedIdle:
-				pInf->PlayAnim(DoType::Ready, true); break;
-			case DoType::DeployedFire:
-				pInf->PlayAnim(DoType::FireUp, true); break;
-			default:break;
-			}
-		}
-	}
-
-	//pThis->See(0u,0u);
 
 	return true;
 }
@@ -3784,7 +4247,7 @@ void TechnoExt_ExtData::SpawnVisceroid(CoordStruct& crd, UnitTypeClass* pType, i
 
 				if (!created)
 				{
-					Debug::LogInfo(__FUNCTION__" Called ");
+					//Debug::LogInfo(__FUNCTION__" Called ");
 					TechnoExtData::HandleRemove(pVisc, nullptr, true, true);
 				}
 			}
@@ -4214,7 +4677,11 @@ void TechnoExperienceData::PromoteImmedietely(TechnoClass* pExpReceiver, bool bS
 
 			if (!bSilent && pExpReceiver->Owner->ControlledByCurrentPlayer())
 			{
-				VocClass::PlayIndexAtPos(sound, (pExpReceiver->Transporter ? pExpReceiver->Transporter : pExpReceiver)->Location, nullptr);
+				const CoordStruct loc_ = (pExpReceiver->Transporter ? pExpReceiver->Transporter : pExpReceiver)->Location;
+
+				if (loc_.IsValid())
+					VocClass::PlayIndexAtPos(sound, loc_, nullptr);
+
 				VoxClass::PlayIndex(eva);
 			}
 
@@ -4423,7 +4890,7 @@ bool FirewallFunctions::ImmolateVictim(TechnoClass* pThis, ObjectClass* const pV
 				pThis->Owner,
 				pTarget,
 				pThis,
-				false
+				false, false
 			);
 		}
 
@@ -4641,7 +5108,7 @@ void FirewallFunctions::BuildLines(BuildingClass* theBuilding, CellStruct select
 					}
 					else
 					{
-						Debug::LogInfo(__FUNCTION__"Called!");
+						//Debug::LogInfo(__FUNCTION__"Called!");
 						TechnoExtData::HandleRemove(tempBuilding, nullptr, true, true);
 					}
 				}
@@ -4755,7 +5222,7 @@ void AresEMPulse::announceAttack(TechnoClass* Techno)
 	{
 	case AttackEvents::Harvester:
 		if (RadarEventClass::Create(RadarEventType::HarvesterAttacked, Techno->GetMapCoords()))
-			VoxClass::Play(GameStrings::EVA_OreMinerUnderAttack, -1, -1);
+			VoxClass::Play(GameStrings::EVA_OreMinerUnderAttack);
 		break;
 	case AttackEvents::Base:
 		HouseClass::CurrentPlayer->BuildingUnderAttack(cast_to<BuildingClass*, false>(Techno));
@@ -5551,149 +6018,146 @@ bool AresScriptExt::Handle(TeamClass* pTeam, ScriptActionNode* pTeamMission, boo
 		break;
 	}
 
-	if (pTeamMission->Action >= TeamMissionType::count)
+	switch ((AresScripts)pTeamMission->Action)
 	{
-		switch ((AresScripts)pTeamMission->Action)
+	case AresScripts::AuxilarryPower:
+	{
+		HouseExtContainer::Instance.Find(pTeam->Owner)->AuxPower += pTeamMission->Argument;
+		pTeam->Owner->RecheckPower = true;
+		pTeam->StepCompleted = true;
+		return true;
+	}
+	case AresScripts::KillDrivers:
+	{
+		const auto pToHouse = HouseExtData::FindSpecial();
+		FootClass* pCur = nullptr;
+		if (auto pFirst = pTeam->FirstUnit)
 		{
-		case AresScripts::AuxilarryPower:
-		{
-			HouseExtContainer::Instance.Find(pTeam->Owner)->AuxPower += pTeamMission->Argument;
-			pTeam->Owner->RecheckPower = true;
-			pTeam->StepCompleted = true;
-			return true;
-		}
-		case AresScripts::KillDrivers:
-		{
-			const auto pToHouse = HouseExtData::FindSpecial();
-			FootClass* pCur = nullptr;
-			if (auto pFirst = pTeam->FirstUnit)
+			auto pNext = pFirst->NextTeamMember;
+			do
 			{
-				auto pNext = pFirst->NextTeamMember;
-				do
+				if (pFirst->Health > 0 && pFirst->IsAlive && pFirst->IsOnMap && !pFirst->InLimbo)
 				{
-					if (pFirst->Health > 0 && pFirst->IsAlive && pFirst->IsOnMap && !pFirst->InLimbo)
+					if (!TechnoExtContainer::Instance.Find(pFirst)->Is_DriverKilled
+						&& TechnoExt_ExtData::IsDriverKillable(pFirst, 1.0))
 					{
-						if (!TechnoExtContainer::Instance.Find(pFirst)->Is_DriverKilled
-							&& TechnoExt_ExtData::IsDriverKillable(pFirst, 1.0))
-						{
-							TechnoExt_ExtData::ApplyKillDriver(pFirst, nullptr, pToHouse, false, Mission::Harmless);
-						}
-					}
-
-					pCur = pNext;
-
-					if (pNext)
-						pNext = pNext->NextTeamMember;
-
-					pFirst = pCur;
-				}
-				while (pCur);
-			}
-
-			pTeam->StepCompleted = true;
-			return true;
-		}
-		case AresScripts::TakeVehicles:
-		{
-			FootClass* pCur = nullptr;
-			if (auto pFirst = pTeam->FirstUnit)
-			{
-				auto pNext = pFirst->NextTeamMember;
-				do
-				{
-					TechnoExtContainer::Instance.Find(pFirst)->TakeVehicleMode = true;
-
-					if (pFirst->GarrisonStructure())
-						pTeam->RemoveMember(pFirst, -1, 1);
-
-					pCur = pNext;
-
-					if (pNext)
-						pNext = pNext->NextTeamMember;
-
-					pFirst = pCur;
-				}
-				while (pCur);
-			}
-
-			pTeam->StepCompleted = true;
-			return true;
-		}
-		case AresScripts::ConvertType:
-		{
-			FootClass* pCur = nullptr;
-			if (auto pFirst = pTeam->FirstUnit)
-			{
-				auto pNext = pFirst->NextTeamMember;
-				do
-				{
-					const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pFirst->GetTechnoType());
-					if (pTypeExt->Convert_Script)
-					{
-						const auto& pConvertReq = pTypeExt->Convert_Scipt_Prereq;
-						if (pConvertReq.empty() || Prereqs::HouseOwnsAll(pTeam->Owner, (int*)pConvertReq.data(), (int)pConvertReq.size()))
-						{
-							TechnoExt_ExtData::ConvertToType(pFirst, pTypeExt->Convert_Script);
-						}
-					}
-
-					pCur = pNext;
-
-					if (pNext)
-						pNext = pNext->NextTeamMember;
-
-					pFirst = pCur;
-				}
-				while (pCur);
-			}
-
-			pTeam->StepCompleted = true;
-			return true;
-		}
-		case AresScripts::SonarReveal:
-		{
-			const auto nDur = pTeamMission->Argument;
-			for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
-			{
-				auto& nSonarTime = TechnoExtContainer::Instance.Find(pUnit)->CloakSkipTimer;
-				if (nDur > nSonarTime.GetTimeLeft())
-				{
-					nSonarTime.Start(nDur);
-				}
-				else if (nDur <= 0)
-				{
-					if (nDur == 0)
-					{
-						nSonarTime.Stop();
+						TechnoExt_ExtData::ApplyKillDriver(pFirst, nullptr, pToHouse, false, Mission::Harmless);
 					}
 				}
-			}
 
-			pTeam->StepCompleted = true;
-			return true;
+				pCur = pNext;
+
+				if (pNext)
+					pNext = pNext->NextTeamMember;
+
+				pFirst = pCur;
+			}
+			while (pCur);
 		}
-		case AresScripts::DisableWeapons:
+
+		pTeam->StepCompleted = true;
+		return true;
+	}
+	case AresScripts::TakeVehicles:
+	{
+		FootClass* pCur = nullptr;
+		if (auto pFirst = pTeam->FirstUnit)
 		{
-			const auto nDur = pTeamMission->Argument;
-			for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+			auto pNext = pFirst->NextTeamMember;
+			do
 			{
-				auto& nTimer = TechnoExtContainer::Instance.Find(pUnit)->DisableWeaponTimer;
-				if (nDur > nTimer.GetTimeLeft())
+				TechnoExtContainer::Instance.Find(pFirst)->TakeVehicleMode = true;
+
+				if (pFirst->GarrisonStructure())
+					pTeam->RemoveMember(pFirst, -1, 1);
+
+				pCur = pNext;
+
+				if (pNext)
+					pNext = pNext->NextTeamMember;
+
+				pFirst = pCur;
+			}
+			while (pCur);
+		}
+
+		pTeam->StepCompleted = true;
+		return true;
+	}
+	case AresScripts::ConvertType:
+	{
+		FootClass* pCur = nullptr;
+		if (auto pFirst = pTeam->FirstUnit)
+		{
+			auto pNext = pFirst->NextTeamMember;
+			do
+			{
+				const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pFirst->GetTechnoType());
+				if (pTypeExt->Convert_Script)
 				{
-					nTimer.Start(nDur);
+					const auto& pConvertReq = pTypeExt->Convert_Scipt_Prereq;
+					if (pConvertReq.empty() || Prereqs::HouseOwnsAll(pTeam->Owner, (int*)pConvertReq.data(), (int)pConvertReq.size()))
+					{
+						TechnoExt_ExtData::ConvertToType(pFirst, pTypeExt->Convert_Script);
+					}
 				}
-				else if (nDur <= 0 && nDur == 0)
+
+				pCur = pNext;
+
+				if (pNext)
+					pNext = pNext->NextTeamMember;
+
+				pFirst = pCur;
+			}
+			while (pCur);
+		}
+
+		pTeam->StepCompleted = true;
+		return true;
+	}
+	case AresScripts::SonarReveal:
+	{
+		const auto nDur = pTeamMission->Argument;
+		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+		{
+			auto& nSonarTime = TechnoExtContainer::Instance.Find(pUnit)->CloakSkipTimer;
+			if (nDur > nSonarTime.GetTimeLeft())
+			{
+				nSonarTime.Start(nDur);
+			}
+			else if (nDur <= 0)
+			{
+				if (nDur == 0)
 				{
-					nTimer.Stop();
+					nSonarTime.Stop();
 				}
 			}
+		}
 
-			pTeam->StepCompleted = true;
-			return true;
+		pTeam->StepCompleted = true;
+		return true;
+	}
+	case AresScripts::DisableWeapons:
+	{
+		const auto nDur = pTeamMission->Argument;
+		for (auto pUnit = pTeam->FirstUnit; pUnit; pUnit = pUnit->NextTeamMember)
+		{
+			auto& nTimer = TechnoExtContainer::Instance.Find(pUnit)->DisableWeaponTimer;
+			if (nDur > nTimer.GetTimeLeft())
+			{
+				nTimer.Start(nDur);
+			}
+			else if (nDur <= 0 && nDur == 0)
+			{
+				nTimer.Stop();
+			}
 		}
-		default:
-			break;
-		}
+
+		pTeam->StepCompleted = true;
+		return true;
+	}
+	default:
+		break;
 	}
 
 	return false;
@@ -5815,7 +6279,7 @@ bool AresWPWHExt::conductAbduction(WeaponTypeClass* pWeapon, TechnoClass* pOwner
 			Attacker->Owner,
 			Target->Owner,
 			Attacker,
-			false
+			false, false
 		);
 	}
 
@@ -6358,6 +6822,46 @@ bool AresTActionExt::Retint(TActionClass* pAction, HouseClass* pHouse, ObjectCla
 
 bool AresTActionExt::Execute(TActionClass* pAction, HouseClass* pHouse, ObjectClass* pObject, TriggerClass* pTrigger, CellStruct const& location, bool& ret)
 {
+	//we handle some of vanilla TACtion here
+	switch (pAction->ActionKind)
+	{
+	case TriggerAction::PlayAnimAt:
+		ret = PlayAnimAt(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::MeteorShower:
+		ret = MeteorStrike(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::LightningStrike:
+		ret = LightstormStrike(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::ActivateFirestorm:
+		ret = ActivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::DeactivateFirestorm:
+		ret = DeactivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::NukeStrike:
+		ret = LauchhNuke(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::ChemMissileStrike:
+		ret = LauchhChemMissile(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::DoExplosionAt:
+		ret = DoExplosionAt(pAction, pHouse, pObject, pTrigger, location);
+		return true;
+	case TriggerAction::RetintRed:
+		ret = Retint(pAction, pHouse, pObject, pTrigger, location, DefaultColorList::Red);
+		return true;
+	case TriggerAction::RetintGreen:
+		ret = Retint(pAction, pHouse, pObject, pTrigger, location, DefaultColorList::Green);
+		return true;
+	case TriggerAction::RetintBlue:
+		ret = Retint(pAction, pHouse, pObject, pTrigger, location, DefaultColorList::Blue);
+		return true;
+	default:
+		break;
+	}
+
 	switch ((AresNewTriggerAction)pAction->ActionKind)
 	{
 	case AresNewTriggerAction::AuxiliaryPower:
@@ -6382,45 +6886,6 @@ bool AresTActionExt::Execute(TActionClass* pAction, HouseClass* pHouse, ObjectCl
 	}
 	default:
 	{
-		switch (pAction->ActionKind)
-		{
-		case TriggerAction::PlayAnimAt:
-			ret = PlayAnimAt(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::MeteorShower:
-			ret = MeteorStrike(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::LightningStrike:
-			ret = LightstormStrike(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::ActivateFirestorm:
-			ret = ActivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::DeactivateFirestorm:
-			ret = DeactivateFirestorm(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::NukeStrike:
-			ret = LauchhNuke(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::ChemMissileStrike:
-			ret = LauchhChemMissile(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::DoExplosionAt:
-			ret = DoExplosionAt(pAction, pHouse, pObject, pTrigger, location);
-			return true;
-		case TriggerAction::RetintRed:
-			ret = Retint(pAction, pHouse, pObject, pTrigger, location, DefaultColorList::Red);
-			return true;
-		case TriggerAction::RetintGreen:
-			ret = Retint(pAction, pHouse, pObject, pTrigger, location, DefaultColorList::Green);
-			return true;
-		case TriggerAction::RetintBlue:
-			ret = Retint(pAction, pHouse, pObject, pTrigger, location, DefaultColorList::Blue);
-			return true;
-		default:
-			break;
-		}
-
 		return false;
 	}
 	}
@@ -6973,7 +7438,7 @@ void TunnelFuncs::KillFootClass(FootClass* pFoot, TechnoClass* pKiller)
 		return;
 
 	pFoot->RegisterDestruction(pKiller);
-	Debug::LogInfo(__FUNCTION__" Called ");
+	//Debug::LogInfo(__FUNCTION__" Called ");
 	TechnoExtData::HandleRemove(pFoot, pKiller, false, false);
 }
 
@@ -8112,13 +8577,13 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 		auto const section = "UISettings";
 
 		auto const ReadColor = [&Ini, section2, ParseColorInt]
-			(
-				const std::string& name,
-				ColorData& value,
-				int colorRGB,
-				const char* defTooltip,
-				const char* defColorScheme
-			)
+		(
+			const std::string& name,
+			ColorData& value,
+			int colorRGB,
+			const char* defTooltip,
+			const char* defColorScheme
+		)
 			{
 				// load the tooltip string
 
@@ -8133,89 +8598,89 @@ void AresGlobalData::ReadAresRA2MD(CCINIClass* Ini)
 				value.selectedIndex = -1;
 			};
 
-			// menu colors. the color of labels, button texts, list items, stuff and others
-			uiColorText = ParseColorInt(section, "Color.Text", 0xFFFF);
+		// menu colors. the color of labels, button texts, list items, stuff and others
+		uiColorText = ParseColorInt(section, "Color.Text", 0xFFFF);
 
-			// original color schemes
-			static COMPILETIMEEVAL reference<int, 0x8316A8, 0x9> const DefaultColors {};
-			COMPILETIMEEVAL const char* Slot_tags[] = {
-				"Slot1", "Slot2", "Slot3", "Slot4",
-				"Slot5", "Slot6", "Slot7", "Slot8",
-				"Slot9", "Slot10", "Slot11", "Slot12",
-				"Slot13", "Slot14", "Slot15", "Slot16"
-			};
+		// original color schemes
+		static COMPILETIMEEVAL reference<int, 0x8316A8, 0x9> const DefaultColors {};
+		COMPILETIMEEVAL const char* Slot_tags[] = {
+			"Slot1", "Slot2", "Slot3", "Slot4",
+			"Slot5", "Slot6", "Slot7", "Slot8",
+			"Slot9", "Slot10", "Slot11", "Slot12",
+			"Slot13", "Slot14", "Slot15", "Slot16"
+		};
 
-			ReadColor("Observer", Colors[0], DefaultColors[8], GameStrings::STT_PlayerColorObserver, GameStrings::LightGrey);
-			ReadColor(Slot_tags[0], Colors[1], DefaultColors[0], GameStrings::STT_PlayerColorGold, GameStrings::LightGold);
-			ReadColor(Slot_tags[1], Colors[2], DefaultColors[1], GameStrings::STT_PlayerColorRed, GameStrings::DarkRed);
-			ReadColor(Slot_tags[2], Colors[3], DefaultColors[2], GameStrings::STT_PlayerColorBlue, "DarkBlue");
-			ReadColor(Slot_tags[3], Colors[4], DefaultColors[3], GameStrings::STT_PlayerColorGreen, "DarkGreen");
-			ReadColor(Slot_tags[4], Colors[5], DefaultColors[4], GameStrings::STT_PlayerColorOrange, "Orange");
-			ReadColor(Slot_tags[5], Colors[6], DefaultColors[5], GameStrings::STT_PlayerColorSkyBlue, "DarkSky");
-			ReadColor(Slot_tags[6], Colors[7], DefaultColors[6], GameStrings::STT_PlayerColorPurple, "Purple");
-			ReadColor(Slot_tags[7], Colors[8], DefaultColors[7], GameStrings::STT_PlayerColorPink, "Magenta");
+		ReadColor("Observer", Colors[0], DefaultColors[8], GameStrings::STT_PlayerColorObserver, GameStrings::LightGrey);
+		ReadColor(Slot_tags[0], Colors[1], DefaultColors[0], GameStrings::STT_PlayerColorGold, GameStrings::LightGold);
+		ReadColor(Slot_tags[1], Colors[2], DefaultColors[1], GameStrings::STT_PlayerColorRed, GameStrings::DarkRed);
+		ReadColor(Slot_tags[2], Colors[3], DefaultColors[2], GameStrings::STT_PlayerColorBlue, "DarkBlue");
+		ReadColor(Slot_tags[3], Colors[4], DefaultColors[3], GameStrings::STT_PlayerColorGreen, "DarkGreen");
+		ReadColor(Slot_tags[4], Colors[5], DefaultColors[4], GameStrings::STT_PlayerColorOrange, "Orange");
+		ReadColor(Slot_tags[5], Colors[6], DefaultColors[5], GameStrings::STT_PlayerColorSkyBlue, "DarkSky");
+		ReadColor(Slot_tags[6], Colors[7], DefaultColors[6], GameStrings::STT_PlayerColorPurple, "Purple");
+		ReadColor(Slot_tags[7], Colors[8], DefaultColors[7], GameStrings::STT_PlayerColorPink, "Magenta");
 
-			// additional color schemes so just increasing Count will produce nice colors
-			ReadColor(Slot_tags[8], Colors[9], 0xEF5D94, "STT:PlayerColorLilac", "NeonBlue");
-			ReadColor(Slot_tags[9], Colors[10], 0xE7FF73, "STT:PlayerColorLightBlue", "LightBlue");
-			ReadColor(Slot_tags[10], Colors[11], 0x63EFFF, "STT:PlayerColorLime", GameStrings::Yellow);
-			ReadColor(Slot_tags[11], Colors[12], 0x5AC308, "STT:PlayerColorTeal", GameStrings::Green);
-			ReadColor(Slot_tags[12], Colors[13], 0x0055BD, "STT:PlayerColorBrown", GameStrings::Red);
-			ReadColor(Slot_tags[13], Colors[14], 0x808080, "STT:PlayerColorCharcoal", GameStrings::Grey);
+		// additional color schemes so just increasing Count will produce nice colors
+		ReadColor(Slot_tags[8], Colors[9], 0xEF5D94, "STT:PlayerColorLilac", "NeonBlue");
+		ReadColor(Slot_tags[9], Colors[10], 0xE7FF73, "STT:PlayerColorLightBlue", "LightBlue");
+		ReadColor(Slot_tags[10], Colors[11], 0x63EFFF, "STT:PlayerColorLime", GameStrings::Yellow);
+		ReadColor(Slot_tags[11], Colors[12], 0x5AC308, "STT:PlayerColorTeal", GameStrings::Green);
+		ReadColor(Slot_tags[12], Colors[13], 0x0055BD, "STT:PlayerColorBrown", GameStrings::Red);
+		ReadColor(Slot_tags[13], Colors[14], 0x808080, "STT:PlayerColorCharcoal", GameStrings::Grey);
 
-			// blunt stuff
-			ReadColor(Slot_tags[14], Colors[15], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
-			ReadColor(Slot_tags[15], Colors[16], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
+		// blunt stuff
+		ReadColor(Slot_tags[14], Colors[15], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
+		ReadColor(Slot_tags[15], Colors[16], DefaultColors[8], "NOSTR:LightGrey", GameStrings::LightGrey);
 
-			uiColorTextButton = ParseColorInt(section, "Color.Button.Text", uiColorText);
-			uiColorTextRadio = ParseColorInt(section, "Color.Radio.Text", uiColorText);
-			uiColorTextCheckbox = ParseColorInt(section, "Color.Checkbox.Text", uiColorText);
-			uiColorTextLabel = ParseColorInt(section, "Color.Label.Text", uiColorText);
-			uiColorTextList = ParseColorInt(section, "Color.List.Text", uiColorText);
-			uiColorTextCombobox = ParseColorInt(section, "Color.Combobox.Text", uiColorText);
-			uiColorTextGroupbox = ParseColorInt(section, "Color.Groupbox.Text", uiColorText);
-			uiColorTextSlider = ParseColorInt(section, "Color.Slider.Text", uiColorText);
-			uiColorTextEdit = ParseColorInt(section, "Color.Edit.Text", uiColorText);
-			uiColorTextObserver = ParseColorInt(section, "Color.Observer.Text", 0xEEEEEE);
-			uiColorCaret = ParseColorInt(section, "Color.Caret", 0xFFFF);
-			uiColorSelection = ParseColorInt(section, "Color.Selection", 0xFF);
-			uiColorSelectionCombobox = ParseColorInt(section, "Color.Combobox.Selection", uiColorSelection);
-			uiColorSelectionList = ParseColorInt(section, "Color.List.Selection", uiColorSelection);
-			uiColorSelectionObserver = ParseColorInt(section, "Color.Observer.Selection", 0x626262);
-			uiColorBorder1 = ParseColorInt(section, "Color.Border1", 0xC5BEA7);
-			uiColorBorder2 = ParseColorInt(section, "Color.Border2", 0x807A68);
-			uiColorDisabled = ParseColorInt(section, "Color.Disabled", 0x9F);
-			uiColorDisabledLabel = ParseColorInt(section, "Color.Label.Disabled", uiColorDisabled);
-			uiColorDisabledCombobox = ParseColorInt(section, "Color.Combobox.Disabled", uiColorDisabled);
-			uiColorDisabledSlider = ParseColorInt(section, "Color.Slider.Disabled", uiColorDisabled);
-			uiColorDisabledButton = ParseColorInt(section, "Color.Button.Disabled", 0xA7);
-			uiColorDisabledCheckbox = ParseColorInt(section, "Color.Checkbox.Disabled", uiColorDisabled);
-			uiColorDisabledList = ParseColorInt(section, "Color.List.Disabled", uiColorDisabled);
-			uiColorDisabledObserver = ParseColorInt(section, "Color.Observer.Disabled", 0x8F8F8F);
+		uiColorTextButton = ParseColorInt(section, "Color.Button.Text", uiColorText);
+		uiColorTextRadio = ParseColorInt(section, "Color.Radio.Text", uiColorText);
+		uiColorTextCheckbox = ParseColorInt(section, "Color.Checkbox.Text", uiColorText);
+		uiColorTextLabel = ParseColorInt(section, "Color.Label.Text", uiColorText);
+		uiColorTextList = ParseColorInt(section, "Color.List.Text", uiColorText);
+		uiColorTextCombobox = ParseColorInt(section, "Color.Combobox.Text", uiColorText);
+		uiColorTextGroupbox = ParseColorInt(section, "Color.Groupbox.Text", uiColorText);
+		uiColorTextSlider = ParseColorInt(section, "Color.Slider.Text", uiColorText);
+		uiColorTextEdit = ParseColorInt(section, "Color.Edit.Text", uiColorText);
+		uiColorTextObserver = ParseColorInt(section, "Color.Observer.Text", 0xEEEEEE);
+		uiColorCaret = ParseColorInt(section, "Color.Caret", 0xFFFF);
+		uiColorSelection = ParseColorInt(section, "Color.Selection", 0xFF);
+		uiColorSelectionCombobox = ParseColorInt(section, "Color.Combobox.Selection", uiColorSelection);
+		uiColorSelectionList = ParseColorInt(section, "Color.List.Selection", uiColorSelection);
+		uiColorSelectionObserver = ParseColorInt(section, "Color.Observer.Selection", 0x626262);
+		uiColorBorder1 = ParseColorInt(section, "Color.Border1", 0xC5BEA7);
+		uiColorBorder2 = ParseColorInt(section, "Color.Border2", 0x807A68);
+		uiColorDisabled = ParseColorInt(section, "Color.Disabled", 0x9F);
+		uiColorDisabledLabel = ParseColorInt(section, "Color.Label.Disabled", uiColorDisabled);
+		uiColorDisabledCombobox = ParseColorInt(section, "Color.Combobox.Disabled", uiColorDisabled);
+		uiColorDisabledSlider = ParseColorInt(section, "Color.Slider.Disabled", uiColorDisabled);
+		uiColorDisabledButton = ParseColorInt(section, "Color.Button.Disabled", 0xA7);
+		uiColorDisabledCheckbox = ParseColorInt(section, "Color.Checkbox.Disabled", uiColorDisabled);
+		uiColorDisabledList = ParseColorInt(section, "Color.List.Disabled", uiColorDisabled);
+		uiColorDisabledObserver = ParseColorInt(section, "Color.Observer.Disabled", 0x8F8F8F);
 
-			// read the mod's version info
-			if (Ini->ReadString("VersionInfo", GameStrings::Name, Phobos::readDefval, Phobos::readBuffer, std::size(ModName)))
-			{
-				PhobosCRT::strCopy(ModName, Phobos::readBuffer);
-			}
+		// read the mod's version info
+		if (Ini->ReadString("VersionInfo", GameStrings::Name, Phobos::readDefval, Phobos::readBuffer, std::size(ModName)))
+		{
+			PhobosCRT::strCopy(ModName, Phobos::readBuffer);
+		}
 
-			if (Ini->ReadString("VersionInfo", "Version", Phobos::readDefval, Phobos::readBuffer, std::size(ModVersion)))
-			{
-				PhobosCRT::strCopy(ModVersion, Phobos::readBuffer);
-			}
+		if (Ini->ReadString("VersionInfo", "Version", Phobos::readDefval, Phobos::readBuffer, std::size(ModVersion)))
+		{
+			PhobosCRT::strCopy(ModVersion, Phobos::readBuffer);
+		}
 
-			AresSafeChecksummer crc;
-			crc.Add(ModName, strlen(ModName));
-			crc.Commit();
-			crc.Add(ModVersion, strlen(ModVersion));
-			ModIdentifier = Ini->ReadInteger("VersionInfo", "Identifier", static_cast<int>(crc.GetValue()));
+		AresSafeChecksummer crc;
+		crc.Add(ModName, strlen(ModName));
+		crc.Commit();
+		crc.Add(ModVersion, strlen(ModVersion));
+		ModIdentifier = Ini->ReadInteger("VersionInfo", "Identifier", static_cast<int>(crc.GetValue()));
 
-			Debug::LogInfo("Color count is {}", colorCount);
-			Debug::LogInfo("Mod is {0} ({1}) with {2:x}",
-				ModName,
-				ModVersion,
-				(unsigned)ModIdentifier
-			);
+		Debug::LogInfo("Color count is {}", colorCount);
+		Debug::LogInfo("Mod is {0} ({1}) with 0x{2:x}",
+			ModName,
+			ModVersion,
+			(unsigned)ModIdentifier
+		);
 	}
 
 	Debug::LogInfo("-------------------Complete ----------------------");

@@ -17,9 +17,9 @@ ASMJIT_PATCH(0x4236F0, AnimClass_DrawIt_Tiled_Palette, 0x6)
 {
 	GET(FakeAnimClass* const, pThis, ESI);
 
-	if (auto pCustom = pThis->_GetTypeExtData()->Palette)
+	if (auto pCustom = pThis->_GetTypeExtData()->Palette.GetConvert())
 	{
-		R->EDX(pCustom->GetOrDefaultConvert<PaletteManager::Mode::Temperate>(FileSystem::ANIM_PAL()));
+		R->EDX(pCustom);
 		return 0x4236F6;
 	}
 

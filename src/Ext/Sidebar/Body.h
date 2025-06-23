@@ -21,9 +21,6 @@ public:
 	base_type* AttachedToObject {};
 	InitState Initialized { InitState::Blank };
 
-	bool SWSidebar_Enable { true };
-	HelperedVector<int> SWSidebar_Indices {};
-
 public:
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
@@ -36,6 +33,7 @@ private:
 public:
 	static IStream* g_pStm;
 	static std::array<SHPReference*, 4u> TabProducingProgress;
+	static std::array<bool, 4u> TabProducingProgressIsLoaded;
 
 	static void Allocate(SidebarClass* pThis);
 	static void Remove(SidebarClass* pThis);

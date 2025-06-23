@@ -22,9 +22,10 @@ ASMJIT_PATCH(0x74A70E, VoxelAnimClass_AI_Additional, 0x6) // C
 {
 	GET(VoxelAnimClass* const, pThis, EBX);
 
-	const auto pThisExt = VoxelAnimExtContainer::Instance.TryFind(pThis);
+	const auto pThisExt = VoxelAnimExtContainer::Instance.Find(pThis);
+	const auto pTypeExt = VoxelAnimTypeExtContainer::Instance.Find(pThis->Type);
 
-	if (pThisExt && !pThisExt->LaserTrails.empty())
+	if (!pThisExt->LaserTrails.empty())
 	{
 		CoordStruct location = pThis->GetCoords();
 		CoordStruct drawnCoords = location;
@@ -41,7 +42,25 @@ ASMJIT_PATCH(0x74A70E, VoxelAnimClass_AI_Additional, 0x6) // C
 
 	TrailsManager::AI(pThis);
 
-	return 0;
+	if (pThis->Type->TrailerAnim && pTypeExt->TrailerAnim_SpawnDelay >= 1) {
+		auto& timer = pThisExt->TrailerSpawnDelayTimer;
+
+		if (timer.Expired()) {
+			timer.Start(pTypeExt->TrailerAnim_SpawnDelay);
+
+			CoordStruct _coord = pThis->Bounce.GetCoords();
+
+			if (!_coord.IsValid()) //yeah , fuck , lagging the game
+				return 0x74A7AB;
+
+			TechnoClass* const pInvoker = VoxelAnimExtData::GetTechnoOwner(pThis);
+			auto const pOwner = pThis->OwnerHouse ? pThis->OwnerHouse : pInvoker ? pInvoker->GetOwningHouse() : HouseExtData::FindFirstCivilianHouse();
+
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pThis->Type->TrailerAnim, _coord, 1, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0), pOwner, nullptr, pInvoker, false, false);
+		}
+	}
+
+	return 0x74A7AB;
 }
 
 #pragma region Otamaa
@@ -53,9 +72,6 @@ ASMJIT_PATCH(0x74A021, VoxelAnimClass_AI_Expired, 0x6)
 	GET(VoxelAnimClass* const, pThis, EBX);
 
 	auto const pTypeExt = VoxelAnimTypeExtContainer::Instance.TryFind(pThis->Type);
-
-	if (!pTypeExt)
-		return 0x0;
 
 	GET8(bool, LandIsWater, CL);
 	GET8(bool, EligibleHeight, AL);
@@ -77,7 +93,7 @@ ASMJIT_PATCH(0x74A021, VoxelAnimClass_AI_Expired, 0x6)
 				pOwner,
 				nullptr,
 				pInvoker,
-				false
+				false, false
 			);
 		}
 	}
@@ -89,7 +105,7 @@ ASMJIT_PATCH(0x74A021, VoxelAnimClass_AI_Expired, 0x6)
 					pOwner,
 					nullptr,
 					pInvoker,
-					false
+					false, false
 				);
 			}
 		}
@@ -103,7 +119,7 @@ ASMJIT_PATCH(0x74A021, VoxelAnimClass_AI_Expired, 0x6)
 						pOwner,
 						nullptr,
 						pInvoker,
-						false
+						false, false
 					);
 				}
 			}
@@ -125,7 +141,7 @@ ASMJIT_PATCH(0x74A83C, VoxelAnimClass_BounceAnim, 0x5) // A
 		pOwner,
 		nullptr,
 		pInvoker,
-		false
+		false, false
 	);
 
 	return 0x74A884;

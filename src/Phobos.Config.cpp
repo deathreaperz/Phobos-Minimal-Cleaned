@@ -68,6 +68,7 @@ void Phobos::Config::Read()
 	Phobos::Config::DigitalDisplay_Enable = pRA2MD->ReadBool(PHOBOS_STR, "DigitalDisplay.Enable", Phobos::Config::DigitalDisplay_Enable);
 	Phobos::Config::ShowBuildingStatistics = pRA2MD->ReadBool(PHOBOS_STR, "ShowBuildingStatistics", Phobos::Config::ShowBuildingStatistics);
 	Phobos::Config::ShowFlashOnSelecting = pRA2MD->ReadBool(PHOBOS_STR, "ShowFlashOnSelecting", Phobos::Config::ShowFlashOnSelecting);
+	Phobos::Config::SuperWeaponSidebar_RequiredSignificance = pRA2MD->ReadInteger(PHOBOS_STR, "SuperWeaponSidebar.RequiredSignificance", Phobos::Config::SuperWeaponSidebar_RequiredSignificance);
 
 	if (!Phobos::Otamaa::IsAdmin)
 	{
@@ -145,7 +146,10 @@ void Phobos::Config::Read()
 		 Phobos::UI::BuidingRadarJammedLabel = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"Radar Jammed");
 
 		 pINI->ReadString(GameStrings::ToolTips(), "SWShotsFormat", GameStrings::NoneStr(), Phobos::readBuffer);
-		 Phobos::UI::SWShotsFormat = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"{}/{} shots"); // ⌚
+		 Phobos::UI::SWShotsFormat = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"{}/{} shots");
+
+		 pINI->ReadString(GameStrings::ToolTips, "BattlePoints.Label", GameStrings::NoneStr(), Phobos::readBuffer);
+		 Phobos::UI::BattlePoints_Label = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"\u2605: "); // ★:
 	 }
 
 	 // Sidebar
@@ -212,6 +216,18 @@ void Phobos::Config::Read()
 
 		 Phobos::UI::SuperWeaponSidebar_MaxColumns =
 			 pINI->ReadInteger(GameStrings::SideBar(), "SuperWeaponSidebar.MaxColumns", Phobos::UI::SuperWeaponSidebar_MaxColumns);
+
+		 Phobos::UI::SuperWeaponSidebar_Pyramid =
+			 pINI->ReadBool(GameStrings::SideBar(), "SuperWeaponSidebar.Pyramid", Phobos::UI::SuperWeaponSidebar_Pyramid);
+
+		 pINI->ReadString(SIDEBAR_SECTION_T, "BattlePointsSidebar.Label", GameStrings::NoneStr(), Phobos::readBuffer);
+		 Phobos::UI::BattlePointsSidebar_Label = GeneralUtils::LoadStringUnlessMissing(Phobos::readBuffer, L"\u2605: "); // ★:
+
+		 Phobos::UI::BattlePointsSidebar_Label_InvertPosition =
+			 pINI->ReadBool(SIDEBAR_SECTION_T, "BattlePointsSidebar.Label.InvertPosition", Phobos::UI::BattlePointsSidebar_Label_InvertPosition);
+
+		 Phobos::UI::BattlePointsSidebar_AlwaysShow =
+			 pINI->ReadBool(SIDEBAR_SECTION_T, "BattlePointsSidebar.AlwaysVisible", Phobos::UI::BattlePointsSidebar_AlwaysShow);
 	 }
 	});
 

@@ -28,9 +28,7 @@ void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData
 
 				const auto bConvertStatus = TechnoExt_ExtData::ConvertToType(pTarget, pTo);
 
-				if (!bConvertStatus)
-					Debug::LogInfo("Failed to ConvertType From[{}] To [{}]!", pFrm->ID, pTo->ID);
-				else
+				if (bConvertStatus)
 				{
 					if (SucceededAnim)
 					{
@@ -53,9 +51,7 @@ void TechnoTypeConvertData::ApplyConvert(const std::vector<TechnoTypeConvertData
 		{
 			const auto bConvertStatus = TechnoExt_ExtData::ConvertToType(pTarget, pTo);
 
-			if (!bConvertStatus)
-				Debug::LogInfo("Failed to ConvertType From[{}] To [{}]!", pCurType->ID, pTo->ID);
-			else
+			if (bConvertStatus)
 			{
 				if (SucceededAnim)
 				{

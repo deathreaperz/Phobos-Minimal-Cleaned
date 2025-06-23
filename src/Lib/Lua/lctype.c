@@ -9,11 +9,13 @@
 
 #include "lprefix.h"
 
+
 #include "lctype.h"
 
 #if !LUA_USE_CTYPE	/* { */
 
 #include <limits.h>
+
 
 #if defined (LUA_UCID)		/* accept UniCode IDentifiers? */
 /* consider all non-ascii codepoints to be alphabetic */
@@ -21,6 +23,7 @@
 #else
 #define NONA		0x00	/* default */
 #endif
+
 
 LUAI_DDEF const lu_byte luai_ctype_[UCHAR_MAX + 2] = {
   0x00,  /* EOZ */
