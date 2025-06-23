@@ -691,7 +691,7 @@ int NOINLINE GetTypeToProduceNew(HouseClass* pHouse)
 		arr.clear();
 		int TeamCreationFrame = CurrentTeam->CreationFrame;
 
-		if (CurrentTeam->Type->Reinforce && !CurrentTeam->IsFullStrength || !CurrentTeam->IsForcedActive && !CurrentTeam->IsHasBeen)
+		if ((CurrentTeam->Type->Reinforce && !CurrentTeam->IsFullStrength) || (!CurrentTeam->IsForcedActive && !CurrentTeam->IsHasBeen))
 		{
 			GetRemainingTaskForceMembers(CurrentTeam, arr);
 

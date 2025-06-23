@@ -224,7 +224,7 @@ NOINLINE bool EnemyOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClas
 		if (!IsValidTechno(pObject)) continue;
 
 		if (pObject->Owner != pHouse
-			&& (!pEnemy || (pEnemy && !pHouse->IsAlliedWith(pEnemy)))
+			&& (!pEnemy || !pHouse->IsAlliedWith(pEnemy))
 			&& !pObject->Owner->Type->MultiplayPassive
 			&& OwnStuffs(pItem, pObject))
 		{
@@ -252,7 +252,7 @@ NOINLINE bool EnemyOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClas
 			if (!IsValidTechno(pObject)) continue;
 
 			if (pObject->Owner != pHouse
-				&& (!pEnemy || (pEnemy && !pHouse->IsAlliedWith(pEnemy)))
+				&& (!pEnemy || !pHouse->IsAlliedWith(pEnemy))
 				&& !pObject->Owner->Type->MultiplayPassive
 				&& OwnStuffs(pItem, pObject))
 			{
@@ -353,7 +353,7 @@ NOINLINE bool EnemyOwnsAll(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseC
 			if (!IsValidTechno(pObject)) continue;
 
 			if (pObject->Owner != pHouse
-				&& (!pEnemy || (pEnemy && !pHouse->IsAlliedWith(pEnemy)))
+				&& (!pEnemy || !pHouse->IsAlliedWith(pEnemy))
 				&& !pObject->Owner->Type->MultiplayPassive
 				&& pObject->GetTechnoType() == pItem)
 			{
@@ -1097,7 +1097,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		switch (validCategory)
 		{
 		case TeamCategory::None:
-			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeight) * 1.0;
+			weightDice = totalWeight > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeight) * 1.0 : 0.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1121,7 +1121,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Ground:
-			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightGroundOnly) * 1.0;
+			weightDice = totalWeightGroundOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightGroundOnly) * 1.0 : 0.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1145,7 +1145,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Unclassified:
-			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightUnclassifiedOnly) * 1.0;
+			weightDice = totalWeightUnclassifiedOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightUnclassifiedOnly) * 1.0 : 0.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1169,7 +1169,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Naval:
-			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightNavalOnly) * 1.0;
+			weightDice = totalWeightNavalOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightNavalOnly) * 1.0 : 0.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1193,7 +1193,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Air:
-			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightAirOnly) * 1.0;
+			weightDice = totalWeightAirOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightAirOnly) * 1.0 : 0.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
