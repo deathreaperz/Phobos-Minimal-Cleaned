@@ -53,10 +53,17 @@ public:
 		std::lock_guard<std::mutex> lock(LogMutex);
 		if (LogFileActive())
 		{
-			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
-			fmted += "\n";
-			fprintf_s(Debug::LogFile, "%s", fmted.c_str());
-			Debug::Flush();
+			try {
+				std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
+				fmted += "\n";
+				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+					fprintf_s(Debug::LogFile, "%s", fmted.c_str());
+					Debug::Flush();
+				}
+			}
+			catch (...) {
+				// Silently handle any formatting or file write errors
+			}
 		}
 	}
 
@@ -66,24 +73,37 @@ public:
 		std::lock_guard<std::mutex> lock(LogMutex);
 		if (LogFileActive())
 		{
-			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
-			fmted += "\n";
-			fprintf_s(Debug::LogFile, "%s", fmted.c_str());
-			Debug::Flush();
+			try {
+				std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
+				fmted += "\n";
+				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+					fprintf_s(Debug::LogFile, "%s", fmted.c_str());
+					Debug::Flush();
+				}
+			}
+			catch (...) {
+				// Silently handle any formatting or file write errors
+			}
 		}
 	}
 
 	static void Log(const char* pFormat, ...)
 	{
 		std::lock_guard<std::mutex> lock(LogMutex);
-		if (Debug::LogFileActive())
+		if (Debug::LogFileActive() && pFormat)
 		{
-			va_list args;
-			va_start(args, pFormat);
-			vfprintf(Debug::LogFile, pFormat, args);
-			va_end(args);
-
-			Debug::Flush();
+			try {
+				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+					va_list args;
+					va_start(args, pFormat);
+					vfprintf(Debug::LogFile, pFormat, args);
+					va_end(args);
+					Debug::Flush();
+				}
+			}
+			catch (...) {
+				// Silently handle any formatting or file write errors
+			}
 		}
 	}
 
@@ -91,42 +111,69 @@ public:
 	static void __cdecl CLog(const char* pFormat, ...)
 	{
 		std::lock_guard<std::mutex> lock(LogMutex);
-		if (Debug::LogFileActive())
+		if (Debug::LogFileActive() && pFormat)
 		{
-			va_list args;
-			va_start(args, pFormat);
-			vfprintf(Debug::LogFile, pFormat, args);
-			va_end(args);
-
-			Debug::Flush();
+			try {
+				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+					va_list args;
+					va_start(args, pFormat);
+					vfprintf(Debug::LogFile, pFormat, args);
+					va_end(args);
+					Debug::Flush();
+				}
+			}
+			catch (...) {
+				// Silently handle any formatting or file write errors
+			}
 		}
 	}
 
 	// Log file not checked
 	static void LogUnflushed(const char* pFormat, ...)
 	{
-		va_list args;
-		va_start(args, pFormat);
-		vfprintf(Debug::LogFile, pFormat, args);
-		va_end(args);
+		if (Debug::LogFileActive() && pFormat) {
+			try {
+				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+					va_list args;
+					va_start(args, pFormat);
+					vfprintf(Debug::LogFile, pFormat, args);
+					va_end(args);
+				}
+			}
+			catch (...) {
+				// Silently handle any formatting or file write errors
+			}
+		}
 	}
 
 	void Debug::LogFlushed(const char* const pFormat, ...)
 	{
-		if (Debug::LogFileActive())
+		if (Debug::LogFileActive() && pFormat)
 		{
-			va_list args;
-			va_start(args, pFormat);
-			vfprintf(Debug::LogFile, pFormat, args);
-			Debug::Flush();
-			va_end(args);
+			try {
+				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+					va_list args;
+					va_start(args, pFormat);
+					vfprintf(Debug::LogFile, pFormat, args);
+					Debug::Flush();
+					va_end(args);
+				}
+			}
+			catch (...) {
+				// Silently handle any formatting or file write errors
+			}
 		}
 	}
 
 	static FORCEINLINE void Flush()
 	{
-		if (Debug::LogFile) {
-			fflush(Debug::LogFile);
+		if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+			try {
+				fflush(Debug::LogFile);
+			}
+			catch (...) {
+				// Silently handle flush errors
+			}
 		}
 	}
 
@@ -143,12 +190,19 @@ public:
 	{
 		if (Debug::LogFileActive())
 		{
-			for (auto& __log : Debug::DefferedVector)
-			{
-				if (!__log.empty())
-				{
-					fprintf_s(Debug::LogFile, "%s", __log.c_str());
+			try {
+				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
+					for (auto& __log : Debug::DefferedVector)
+					{
+						if (!__log.empty())
+						{
+							fprintf_s(Debug::LogFile, "%s", __log.c_str());
+						}
+					}
 				}
+			}
+			catch (...) {
+				// Silently handle any file write errors
 			}
 		}
 
@@ -171,7 +225,7 @@ public:
 
 	static COMPILETIMEEVAL FORCEDINLINE bool LogFileActive()
 	{
-		return Debug::LogEnabled && Debug::LogFile;
+		return Debug::LogEnabled && Debug::LogFile && fileno(Debug::LogFile) != -1;
 	}
 
 	template <typename... TArgs>

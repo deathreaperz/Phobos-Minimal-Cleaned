@@ -863,7 +863,7 @@ bool TActionExt::PlayAudioAtRandomWP(TActionClass* pThis, HouseClass* pHouse, Ob
 	{
 		VocClass::PlayIndexAtPos(pThis->Value,
 			CellClass::Cell2Coord(ScenarioExtData::Instance()->DefinedAudioWaypoints
-				[pScen->Random.RandomFromMax(ScenarioExtData::Instance()->DefinedAudioWaypoints.size() - 1)]));
+				[pScen->Random.RandomFromMax(ScenarioExtData::Instance()->DefinedAudioWaypoints.size() - 1)]), 0);
 	}
 	else
 	{
