@@ -114,8 +114,6 @@ public:
 		this->Row[2][2] = 1.0;
 		this->RotateZ(rotate_z);
 		this->RotateX(rotate_x);
-		float theta = -rotate_z;
-		this->RotateZ(theta);
 	}
 
 	// rotation ctor
@@ -401,40 +399,32 @@ public:
 
 	COMPILETIMEEVAL float GetXVal() //{ JMP_THIS(0x5AF2C0); }
 	{
-		Vector3D<float> ret_ {};
-		MatrixMultiply(&ret_, this, &Vector3D<float>::Empty);
-		return ret_.X;
+		return GetXTranslation();
 	}
 
 	//float GetYVal() const  { JMP_THIS(0x5AF310); }
 	COMPILETIMEEVAL float GetYVal()
 	{
-		Vector3D<float> ret_ {};
-		MatrixMultiply(&ret_, this, &Vector3D<float>::Empty);
-		return ret_.Y;
+		return GetYTranslation();
 	}
 
 	//float GetZVal() const { JMP_THIS(0x5AF360); }
 	COMPILETIMEEVAL float GetZVal()
 	{
-		Vector3D<float> ret_ {};
-		MatrixMultiply(&ret_, this, &Vector3D<float>::Empty);
-		return ret_.Z;
+		return GetZTranslation();
 	}
 
 	//float GetXRotation() const  { JMP_THIS(0x5AF3B0); }
 	float GetXRotation() {
 		Vector3D<float> rot_ { 0.0f , 1.0f , 0.0f };
-		Vector3D<float> ret_ {};
-		MatrixMultiply(&ret_, this, &rot_);
+		Vector3D<float> ret_ = RotateVector(rot_);
 		return (float)Math::atan2((double)ret_.Z , (double)ret_.Y);
 	}
 
 	//float GetYRotation() const  { JMP_THIS(0x5AF410); }
 	float GetYRotation() {
 		Vector3D<float> rot_ { 0.0f , 0.0f , 1.0f };
-		Vector3D<float> ret_ {};
-		MatrixMultiply(&ret_, this, &rot_);
+		Vector3D<float> ret_ = RotateVector(rot_);
 		return (float)Math::atan2((double)ret_.X, (double)ret_.Z);
 	}
 
@@ -442,8 +432,7 @@ public:
 	float GetZRotation()
 	{
 		Vector3D<float> rot_ { 1.0f , 0.0f , 0.0f };
-		Vector3D<float> ret_ {};
-		MatrixMultiply(&ret_, this, &rot_);
+		Vector3D<float> ret_ = RotateVector(rot_);
 		return (float)Math::atan2((double)ret_.Y, (double)ret_.X);
 	}
 

@@ -134,7 +134,7 @@ public:
 
 	COMPILETIMEEVAL FORCEDINLINE bool IsEmpty() const
 	{
-		return (*this) != Empty;
+		return (*this) == Empty;
 	}
 
 	//operator overloads
@@ -349,7 +349,7 @@ public:
 		X -= v.X;
 		Y -= v.Y;
 		Z -= v.Z;
-		W += v.W;
+		W -= v.W;
 		return *this;
 	}
 	COMPILETIMEEVAL Vector4D &operator*=(float k)
