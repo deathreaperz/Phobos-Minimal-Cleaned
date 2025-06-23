@@ -239,14 +239,14 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 			{
 				// Needs to be added to the logic layer for the anim to work.
 				LogicClass::Instance->AddObject(pThis, false);
-				VocClass::PlayIndexAtPos(pTerrainExt->CrumblingSound, pThis->GetCoords());
+				VocClass::PlayIndexAtPos(pTerrainExt->CrumblingSound, pThis->GetCoords(), 0);
 				pThis->Mark(MarkType::Redraw);
 				pThis->Disappear(true);
 				return 0x71BB79;
 			}
 
 			auto const nCoords = pThis->GetCenterCoords();
-			VocClass::PlayIndexAtPos(pTerrainExt->DestroySound, nCoords);
+			VocClass::PlayIndexAtPos(pTerrainExt->DestroySound, nCoords, 0);
 			const auto pAttackerHoue = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
 
 			if (auto const pAnimType = pTerrainExt->DestroyAnim)
@@ -980,11 +980,11 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 			if (nSound.isset())
 			{
-				VocClass::PlayIndexAtPos(nSound, pThis->Location);
+				VocClass::PlayIndexAtPos(nSound, pThis->Location, 0);
 			}
 			else
 			{
-				VocClass::PlayIndexAtPos(pType->VoiceDie[pType->VoiceDie.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->VoiceDie.Count - 1)], pThis->Location);
+				VocClass::PlayIndexAtPos(pType->VoiceDie[pType->VoiceDie.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->VoiceDie.Count - 1)], pThis->Location, 0);
 			}
 		}
 
@@ -994,11 +994,11 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 			if (nSound.isset())
 			{
-				VocClass::PlayIndexAtPos(nSound, pThis->Location);
+				VocClass::PlayIndexAtPos(nSound, pThis->Location, 0);
 			}
 			else
 			{
-				VocClass::PlayIndexAtPos(pType->DieSound[pType->DieSound.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->DieSound.Count - 1)], pThis->Location);
+				VocClass::PlayIndexAtPos(pType->DieSound[pType->DieSound.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->DieSound.Count - 1)], pThis->Location, 0);
 			}
 		}
 

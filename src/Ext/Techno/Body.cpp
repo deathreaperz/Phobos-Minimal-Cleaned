@@ -2582,7 +2582,7 @@ void TechnoExtData::PutPassengersInCoords(TechnoClass* pTransporter, const Coord
 			}
 		}
 
-		VocClass::PlayIndexAtPos(nSound, nDest);
+		VocClass::PlayIndexAtPos(nSound, nDest, 0);
 
 		if (pAnimToPlay)
 		{
@@ -3922,7 +3922,7 @@ void TechnoExtData::UpdateEatPassengers()
 				pPassenger->LiberateMember();
 
 				auto const& nReportSound = pDelType->ReportSound;
-				VocClass::PlayIndexAtPos(nReportSound.Get(), pThis->Location);
+				VocClass::PlayIndexAtPos(nReportSound.Get(), pThis->Location, 0);
 
 				auto const pThisOwner = pThis->GetOwningHouse();
 

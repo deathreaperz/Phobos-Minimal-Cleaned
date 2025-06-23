@@ -53,7 +53,10 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 					if (nSound == -1)
 						nSound = RulesClass::Instance->MindClearedSound;
 
-					VocClass::PlayIndexAtPos(nSound, pTarget->GetCoords());
+									if (nSound != -1)
+				{
+					VocClass::PlayIndexAtPos(nSound, pTarget->GetCoords(), 0);
+				}
 				}
 
 				// Fix : Player defeated should not get this unit.

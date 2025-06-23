@@ -1121,7 +1121,8 @@ AresHijackActionResult TechnoExt_ExtData::GetActionHijack(InfantryClass* pThis, 
 	// bunkered units can't be hijacked.
 	if (pTarget->BunkerLinkedItem
 		// VehicleThief cannot take `NonVehicle`
-		|| (pType->VehicleThief && pTargetUnit && pTargetUnit->Type->NonVehicle))
+		|| (pType->VehicleThief && pTargetUnit && pTargetUnit->Type->NonVehicle)
+		)
 	{
 		return AresHijackActionResult::None;
 	}
@@ -1951,7 +1952,7 @@ void TechnoExt_ExtData::HandleTunnelLocoStuffs(FootClass* pOwner, bool DugIN, bo
 	const auto pRules = RulesClass::Instance();
 	const auto nSound = (DugIN ? pExt->DigInSound : pExt->DigOutSound).Get(pRules->DigSound);
 
-	VocClass::PlayIndexAtPos(nSound, pOwner->Location);
+			VocClass::PlayIndexAtPos(nSound, pOwner->Location, 0);
 
 	if (PlayAnim)
 	{
@@ -2347,7 +2348,7 @@ void TechnoExt_ExtData::PlantBomb(TechnoClass* pSource, ObjectClass* pTarget, We
 			if (pSource->Owner && pSource->Owner->ControlledByCurrentPlayer())
 			{
 				VocClass::PlayIndexAtPos(pWeaponExt->Ivan_AttachSound.Get(RulesClass::Instance->BombAttachSound)
-				, pBomb->Target->Location);
+				, pBomb->Target->Location, 0);
 			}
 		}
 	}
@@ -6570,7 +6571,7 @@ bool AresTActionExt::LauchhNuke(TActionClass* pAction, HouseClass* pHouse, Objec
 
 	SW_NuclearMissile::DropNukeAt(nullptr, nCoord, nullptr, pHouse, pFind);
 
-	//if (auto pBullet = pFind->Projectile->CreateBullet(MapClass::Instance->GetCellAt(nCoord), nullptr, pFind->Damage, pFind->Warhead, 50, false))
+	//if (auto pBullet = pFind->Projectile->CreateBullet(MapClass::Instance->GetCellAt(nLoc), nullptr, pFind->Damage, pFind->Warhead, 50, false))
 	//{
 	//	pBullet->SetWeaponType(pFind);
 	//	VelocityClass nVel {};
@@ -7477,7 +7478,7 @@ void TunnelFuncs::EnterTunnel(std::vector<FootClass*>* pTunnelData, BuildingClas
 		return;
 	}
 
-	VocClass::PlayIndexAtPos(pTunnel->Type->EnterTransportSound, pTunnel->Location);
+			VocClass::PlayIndexAtPos(pTunnel->Type->EnterTransportSound, pTunnel->Location, 0);
 
 	pFoot->Undiscover();
 
@@ -7712,7 +7713,7 @@ bool TunnelFuncs::UnloadOnce(FootClass* pFoot, BuildingClass* pTunnel, bool sile
 	if (Succeeded)
 	{
 		if (!silent)
-			VocClass::PlayIndexAtPos(pTunnel->Type->LeaveTransportSound, pTunnel->Location);
+			VocClass::PlayIndexAtPos(pTunnel->Type->LeaveTransportSound, pTunnel->Location, 0);
 
 		pFoot->QueueMission(Mission::Move, false);
 		pFoot->SetDestination(IsLessThanseven ? NextCell : CurrentAdj, true);
