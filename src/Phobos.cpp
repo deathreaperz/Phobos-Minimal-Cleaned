@@ -42,6 +42,8 @@
 
 #include <Lib/asmjit/x86.h>
 
+#include <Utilities/SafeLogger .h>
+
 #pragma region defines
 HANDLE Phobos::hInstance;
 char Phobos::readBuffer[readLength] {};
@@ -122,6 +124,8 @@ bool Phobos::Config::RealTimeTimers { false };
 bool Phobos::Config::RealTimeTimers_Adaptive { false };
 int Phobos::Config::CampaignDefaultGameSpeed { 2 };
 bool Phobos::Config::DigitalDisplay_Enable { false };
+bool Phobos::Config::MessageDisplayInCenter { false };
+bool Phobos::Config::MessageApplyHoverState { false };
 bool Phobos::Config::ShowBuildingStatistics { false };
 bool Phobos::Config::ApplyShadeCountFi { true };
 bool Phobos::Config::SaveVariablesOnScenarioEnd { false };
@@ -689,7 +693,19 @@ void Phobos::CmdLineParse(char** ppArgs, int nNumArgs)
 	if (Debug::LogEnabled)
 	{
 		Debug::InitLogger(); //init the real logger
+		//auto& logger = SafeLogger::GetInstance();
+		//LogConfig config;
+		//config.enabled = true;
+		//config.console_output = true;
+		//config.log_filename = "testings.log";
+		//logger.SetConfig(config);
+		//logger.Initialize();
 
+		//LOG_INFO("DLL injection successful, logging enabled via command line");
+		//LOG_INFO("Initialized Phobos " PRODUCT_VERSION ".");
+		//LOG_INFO("args {}", args);
+
+		Debug::Log("DLL injection successful, logging enabled via command line.\n");
 		Debug::Log("Initialized Phobos " PRODUCT_VERSION ".\n");
 		Debug::Log("args %s\n", args.c_str());
 
@@ -988,7 +1004,7 @@ void Phobos::ExeTerminate()
 
 		for (auto& datas : Patch::ModuleDatas)
 		{
-			if (datas.Handle != INVALID_HANDLE_VALUE)
+			if (datas.Handle && datas.Handle != INVALID_HANDLE_VALUE)
 			{
 				CloseHandle(datas.Handle);
 			}

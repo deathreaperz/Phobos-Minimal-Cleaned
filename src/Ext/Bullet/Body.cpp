@@ -804,7 +804,9 @@ void BulletExtData::InitializeLaserTrails()
 
 	for (auto const& idxTrail : pTypeExt->LaserTrail_Types)
 	{
-		this->LaserTrails.emplace_back(LaserTrailTypeClass::Array[idxTrail].get(), pOwner->LaserColor);
+		this->LaserTrails.emplace_back(
+			std::move(std::make_unique<LaserTrailClass>(
+				LaserTrailTypeClass::Array[idxTrail].get(), pOwner->LaserColor)));
 	}
 }
 
@@ -1030,7 +1032,7 @@ void BulletExtData::SimulatedFiringReport(BulletClass* pBullet)
 
 	const auto pFirer = pBullet->Owner;
 	const auto reportIndex = pWeapon->Report[(pFirer ? pFirer->weapon_sound_randomnumber_3C8 : ScenarioClass::Instance->Random.Random()) % pWeapon->Report.Count];
-	VocClass::PlayAt(reportIndex, pBullet->Location, nullptr);
+	VocClass::SafeImmedietelyPlayAt(reportIndex, &pBullet->Location, nullptr);
 }
 
 // Make sure pBullet and pBullet->WeaponType is not empty before call
@@ -1065,6 +1067,8 @@ void BulletExtData::SimulatedFiringLaser(BulletClass* pBullet, HouseClass* pHous
 	}
 }
 
+#include <Ext/Ebolt/Body.h>
+
 // Make sure pBullet and pBullet->WeaponType is not empty before call
 void BulletExtData::SimulatedFiringElectricBolt(BulletClass* pBullet)
 {
@@ -1074,11 +1078,7 @@ void BulletExtData::SimulatedFiringElectricBolt(BulletClass* pBullet)
 	if (!pWeapon->IsElectricBolt)
 		return;
 
-	const auto pEBolt = GameCreate<EBolt>();
-	pEBolt->AlternateColor = pWeapon->IsAlternateColor;
-	auto& weaponStruct = WeaponTypeExtData::boltWeaponTypeExt[pEBolt];
-	weaponStruct.Weapon = WeaponTypeExtContainer::Instance.Find(pWeapon);
-	weaponStruct.BurstIndex = 0;
+	const auto pEBolt = EboltExtData::_CreateOneOf(pWeapon, nullptr);
 	pEBolt->Fire(pBullet->SourceCoords, (pBullet->Type->Inviso ? pBullet->Location : pBullet->TargetCoords), 0);
 }
 

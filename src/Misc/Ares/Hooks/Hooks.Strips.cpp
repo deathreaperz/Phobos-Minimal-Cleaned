@@ -542,32 +542,17 @@ ASMJIT_PATCH(0x6A8710, StripClass_AddCameo_ReplaceItAll, 6)
 	}
 
 	auto& cameo = MouseClassExt::TabCameos[pTab->TabIndex];
-	auto lower = lower_bound(cameo.begin(), cameo.Count, newCameo);
-	int idx = cameo.IsInitialized ? std::distance(cameo.begin(), lower) : 0;
 
-	if (cameo.IsValidArray() && cameo.Count < cameo.Capacity)
+	if (cameo.IsValidArray())
 	{
-		// Ensure we have enough capacity for the new element
-		if (cameo.Count >= cameo.Capacity - 1)
-		{
-			cameo.Reserve(cameo.Capacity + 10); // Add some buffer
-		}
+		auto lower = lower_bound(cameo.begin(), cameo.Count, newCameo);
+		int idx = cameo.IsInitialized ? std::distance(cameo.begin(), lower) : 0;
 
-		if (cameo.IsValidArray()) // Re-check after potential reallocation
-		{
-			BuildType* added = cameo.Items + idx;
-			BuildType* added_plusOne = std::next(added);
-			
-			// Calculate safe copy size
-			int elementsToCopy = cameo.Count - idx;
-			if (elementsToCopy > 0)
-			{
-				std::memmove(added_plusOne, added, elementsToCopy * sizeof(BuildType));
-			}
-			
-			cameo.Items[idx] = std::move_if_noexcept(newCameo);
-			++cameo.Count;
-		}
+		BuildType* added = cameo.Items + idx;
+		BuildType* added_plusOne = std::next(added);
+		std::memcpy(added_plusOne, added, (char*)(cameo.end()) - ((char*)added));
+		cameo.Items[idx] = std::move_if_noexcept(newCameo);
+		++cameo.Count;
 	}
 
 	++pTab->BuildableCount;

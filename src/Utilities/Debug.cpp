@@ -24,7 +24,6 @@
 #include <filesystem>
 #pragma region declarations
 
-std::mutex Debug::LogMutex {};
 FILE* Debug::LogFile {};
 bool Debug::LogEnabled {};
 std::wstring Debug::ApplicationFilePath {};
@@ -66,7 +65,6 @@ void Debug::InitLogger()
 
 void Debug::DeactivateLogger()
 {
-	std::lock_guard<std::mutex> lock(LogMutex);
 	if (Debug::LogFile)
 	{
 		fclose(Debug::LogFile);
@@ -118,66 +116,59 @@ void Debug::PrepareLogFile()
 
 void Debug::DumpStack(REGISTERS* R, size_t len, int startAt)
 {
-	std::lock_guard<std::mutex> lock(LogMutex);
 	if (!Debug::LogFileActive())
 	{
 		return;
 	}
 
-	if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-		fprintf_s(Debug::LogFile, "Dumping %d bytes of stack\n", len);
-		auto const end = len / 4;
-		auto const* const mem = R->lea_Stack<DWORD*>(startAt);
-		for (auto i = 0u; i < end; ++i)
+	fprintf_s(Debug::LogFile, "Dumping %d bytes of stack\n", len);
+	auto const end = len / 4;
+	auto const* const mem = R->lea_Stack<DWORD*>(startAt);
+	for (auto i = 0u; i < end; ++i)
+	{
+		const char* suffix = "";
+		const char* Object = "";
+		const uintptr_t ptr = mem[i];
+		if (ptr >= 0x401000 && ptr <= 0xB79BE4)
+			suffix = "GameMemory!";
+		else
 		{
-			const char* suffix = "";
-			const char* Object = "";
-			const uintptr_t ptr = mem[i];
-			if (ptr >= 0x401000 && ptr <= 0xB79BE4)
-				suffix = "GameMemory!";
-			else
+			for (auto begin = Patch::ModuleDatas.begin() + 1; begin != Patch::ModuleDatas.end(); ++begin)
 			{
-				for (auto begin = Patch::ModuleDatas.begin() + 1; begin != Patch::ModuleDatas.end(); ++begin)
+				if (ptr >= begin->BaseAddr && ptr <= (begin->BaseAddr + begin->Size))
 				{
-					if (ptr >= begin->BaseAddr && ptr <= (begin->BaseAddr + begin->Size))
-					{
-						suffix = (begin->ModuleName + " Memory!").c_str();
-						break;
-					}
-				}
-			}
-
-			if (ptr != 0u && ptr != std::numeric_limits<uintptr_t>::max() && ptr != std::numeric_limits<uintptr_t>::min())
-			{
-				switch (VTable::Get((mem + i)))
-				{
-#define DECLARE_VTABLE_STRING(x) case x::vtable: Object = #x; break;
-					DECLARE_VTABLE_STRING(AnimClass)
-					DECLARE_VTABLE_STRING(UnitClass)
-					DECLARE_VTABLE_STRING(AircraftClass)
-					DECLARE_VTABLE_STRING(InfantryClass)
-					DECLARE_VTABLE_STRING(BuildingClass)
-					DECLARE_VTABLE_STRING(WeaponTypeClass)
-					DECLARE_VTABLE_STRING(WarheadTypeClass)
-					DECLARE_VTABLE_STRING(BulletClass)
-					DECLARE_VTABLE_STRING(BulletTypeClass)
-					DECLARE_VTABLE_STRING(HouseClass)
-					DECLARE_VTABLE_STRING(HouseTypeClass)
-#undef DECLARE_VTABLE_STRING
-				default:
+					suffix = (begin->ModuleName + " Memory!").c_str();
 					break;
 				}
 			}
-			if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-				fprintf_s(Debug::LogFile, "esp+%04X = %08X %s %s\n", i * 4, mem[i], suffix, Object);
-			}
 		}
 
-		if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-			fprintf_s(Debug::LogFile, "====================Done.\n");
-			Debug::Flush();
+		if (ptr != 0u && ptr != std::numeric_limits<uintptr_t>::max() && ptr != std::numeric_limits<uintptr_t>::min())
+		{
+			switch (VTable::Get((mem + i)))
+			{
+#define DECLARE_VTABLE_STRING(x) case x::vtable: Object = #x; break;
+				DECLARE_VTABLE_STRING(AnimClass)
+				DECLARE_VTABLE_STRING(UnitClass)
+				DECLARE_VTABLE_STRING(AircraftClass)
+				DECLARE_VTABLE_STRING(InfantryClass)
+				DECLARE_VTABLE_STRING(BuildingClass)
+				DECLARE_VTABLE_STRING(WeaponTypeClass)
+				DECLARE_VTABLE_STRING(WarheadTypeClass)
+				DECLARE_VTABLE_STRING(BulletClass)
+				DECLARE_VTABLE_STRING(BulletTypeClass)
+				DECLARE_VTABLE_STRING(HouseClass)
+				DECLARE_VTABLE_STRING(HouseTypeClass)
+#undef DECLARE_VTABLE_STRING
+			default:
+				break;
+			}
 		}
+		fprintf_s(Debug::LogFile, "esp+%04X = %08X %s %s\n", i * 4, mem[i], suffix, Object);
 	}
+
+	fprintf_s(Debug::LogFile, "====================Done.\n");
+	Debug::Flush();
 }
 
 std::wstring Debug::PrepareSnapshotDirectory()
@@ -257,12 +248,11 @@ void Debug::FreeMouse()
 
 void Debug::FatalErrorCore(bool Dump, const std::string& msg)
 {
-	std::lock_guard<std::mutex> lock(LogMutex);
 	const bool log = Debug::LogFileActive();
 
 	if (msg.empty())
 	{
-		if (log && Debug::LogFile && fileno(Debug::LogFile) != -1)
+		if (log)
 			fprintf_s(Debug::LogFile, "Fatal Error: %ls\n", DefaultFEMessage.c_str());
 
 		Debug::FreeMouse();
@@ -270,7 +260,7 @@ void Debug::FatalErrorCore(bool Dump, const std::string& msg)
 	}
 	else
 	{
-		if (log && Debug::LogFile && fileno(Debug::LogFile) != -1)
+		if (log)
 			fprintf_s(Debug::LogFile, "Fatal Error: %s\n", msg.c_str());
 
 		Debug::FreeMouse();
@@ -287,17 +277,13 @@ void Debug::INIParseFailed(const char* section, const char* flag, const char* va
 {
 	if (Phobos::Otamaa::TrackParserErrors && Debug::LogEnabled)
 	{
-		std::lock_guard<std::mutex> lock(LogMutex);
-		if (Debug::LogFileActive() && Debug::LogFile && fileno(Debug::LogFile) != -1)
+		if (!Message)
 		{
-			if (!Message)
-			{
-				fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s.\n", section, flag, value);
-			}
-			else
-			{
-				fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s (%s).\n", section, flag, value, Message);
-			}
+			fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s.\n", section, flag, value);
+		}
+		else
+		{
+			fprintf_s(Debug::LogFile, "[Phobos] Failed to parse INI file content: [%s]%s=%s (%s).\n", section, flag, value, Message);
 		}
 
 		Debug::RegisterParserError();

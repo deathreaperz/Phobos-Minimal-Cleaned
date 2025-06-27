@@ -74,10 +74,7 @@ void TerrainTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 void TerrainTypeExtData::PlayDestroyEffects(CoordStruct coords)
 {
-	if (this->DestroySound.Get() != -1)
-	{
-		VocClass::PlayAt(this->DestroySound, coords, nullptr);
-	}
+	VocClass::SafeImmedietelyPlayAt(this->DestroySound, &coords);
 
 	if (auto const pAnimType = this->DestroyAnim)
 		GameCreate<AnimClass>(pAnimType, coords);

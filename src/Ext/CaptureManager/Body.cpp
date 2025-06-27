@@ -53,10 +53,7 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 					if (nSound == -1)
 						nSound = RulesClass::Instance->MindClearedSound;
 
-									if (nSound != -1)
-				{
-					VocClass::PlayAt(nSound, pTarget->GetCoords(), nullptr);
-				}
+					VocClass::SafeImmedietelyPlayAt(nSound, pTarget->GetCoords());
 				}
 
 				// Fix : Player defeated should not get this unit.
@@ -70,7 +67,7 @@ bool CaptureExt::FreeUnit(CaptureManagerClass* pManager, TechnoClass* pTarget, b
 				pManager->DecideUnitFate(pTarget);
 				pTarget->MindControlledBy = nullptr;
 
-				if (pManager->ControlNodes.RemoveAt<true>(i))
+				if (pManager->ControlNodes.RemoveAt(i))
 				{
 					GameDelete<false, false>(pNode);
 				}

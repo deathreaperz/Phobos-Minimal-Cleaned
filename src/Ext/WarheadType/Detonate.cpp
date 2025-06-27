@@ -563,10 +563,7 @@ static bool NOINLINE IsCellSpreadWH(WarheadTypeExtData* pData)
 
 void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, BulletClass* pBullet, CoordStruct coords, int damage)
 {
-	if (Sound.Get() != -1)
-	{
-		VocClass::PlayAt(Sound, coords, nullptr);
-	}
+	VocClass::SafeImmedietelyPlayAt(Sound, &coords);
 	for (auto const& pSys : this->DetonateParticleSystem)
 	{
 		GameCreate<ParticleSystemClass>(pSys, coords, nullptr, nullptr, CoordStruct::Empty, pHouse);

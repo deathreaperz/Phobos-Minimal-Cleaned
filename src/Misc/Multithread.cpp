@@ -14,6 +14,7 @@
 #include <SessionClass.h>
 
 #include <Ext/Techno/Body.h>
+#include <Ext/Scenario/Body.h>
 
 // Wait this long in LockOrDemandMutex before getting impatient. Bigger values = less frequent lock demands.
 const std::chrono::duration MainPatienceDuration = std::chrono::milliseconds(5);
@@ -29,6 +30,101 @@ bool Multithreading::MainThreadDemandsDrawingMutex = false;
 bool Multithreading::DrawingThreadDemandsDrawingMutex = false;
 bool Multithreading::MainThreadDemandsPauseMutex = false;
 bool Multithreading::IsInMultithreadMode = false;
+
+namespace MessageTemp
+{
+	bool OnOldMessages = false;
+	bool OnNewMessages = false;
+	bool NewMessageList = false;
+}
+
+static bool MouseIsOverOldMessageLists()
+{
+	const auto pMousePosition = &WWMouseClass::Instance->XY1;
+	const auto pMessages = &MessageListClass::Instance;
+
+	if (TextLabelClass* pText = pMessages->MessageList)
+	{
+		const int textHeight = pMessages->Height;
+		int height = pMessages->MessagePos.Y;
+
+		for (; pText; pText = static_cast<TextLabelClass*>(pText->GetNext()))
+			height += textHeight;
+
+		if (pMousePosition->Y < (height + 2))
+			return true;
+	}
+
+	return false;
+}
+
+static bool MouseIsOverNewMessageLists()
+{
+	const auto pMousePosition = &WWMouseClass::Instance->XY1;
+
+	if (auto pMessages = ScenarioExtData::Instance()->NewMessageList.get())
+	{
+		if (TextLabelClass* pText = pMessages->MessageList)
+		{
+			if (pMousePosition->Y >= pMessages->MessagePos.Y && pMousePosition->X >= pMessages->MessagePos.X && pMousePosition->X <= pMessages->MessagePos.X + pMessages->Width)
+			{
+				const int textHeight = pMessages->Height;
+				int height = pMessages->MessagePos.Y;
+
+				for (; pText; pText = static_cast<TextLabelClass*>(pText->GetNext()))
+					height += textHeight;
+
+				if (pMousePosition->Y < (height + 2))
+					return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+ASMJIT_PATCH(0x69300B, ScrollClass_MouseUpdate_SkipMouseActionUpdate, 0x6)
+{
+	if (Phobos::Config::MessageApplyHoverState)
+		MessageTemp::OnOldMessages = MouseIsOverOldMessageLists();
+
+	if (Phobos::Config::MessageDisplayInCenter)
+		MessageTemp::OnNewMessages = MouseIsOverNewMessageLists();
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x55DDA0, MainLoop_FrameStep_NewMessageListManage, 0x5)
+{
+	if (!Phobos::Config::MessageApplyHoverState || !MessageTemp::OnOldMessages)
+		MessageListClass::Instance->Manage();
+
+	if (!MessageTemp::OnNewMessages)
+	{
+		if (const auto pList = ScenarioExtData::Instance()->NewMessageList.get())
+			pList->Manage();
+	}
+	return 0x55DDAA;
+}
+
+ASMJIT_PATCH(0x623A9F, DSurface_sub_623880_DrawBitFontStrings, 0x5)
+{
+	if (!MessageTemp::NewMessageList)
+		return 0;
+
+	enum { SkipGameCode = 0x623AAB };
+
+	GET(RectangleStruct* const, pRect, EAX);
+	GET(DSurface* const, pSurface, ECX);
+	GET(const int, height, EBP);
+
+	pRect->Height = height;
+	auto black = ColorStruct { 0, 0, 0 };
+	auto trans = (MessageTemp::OnNewMessages || ScenarioClass::Instance->UserInputLocked) ? 80 : 40;
+	pSurface->Fill_Rect_Trans(pRect, &black, trans);
+
+	return SkipGameCode;
+}
 
 class NOVTABLE FakeGScreenClass final : GScreenClass
 {
@@ -71,6 +167,14 @@ public:
 
 		Phobos::DrawVersionWarning();
 		HugeBar::ProcessHugeBar();
+
+		MessageTemp::NewMessageList = true;
+
+		if (const auto pList = ScenarioExtData::Instance()->NewMessageList.get())
+			pList->Draw();
+
+		MessageTemp::NewMessageList = false;
+
 		WWMouseClass::Instance->func_3C(DSurface::Composite, false);
 		pThis->vt_entry_44();
 

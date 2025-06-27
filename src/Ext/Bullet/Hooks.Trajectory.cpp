@@ -37,10 +37,10 @@ ASMJIT_PATCH(0x4666F7, BulletClass_AI_Trajectories, 0x6)
 
 			for (auto& trail : pExt->LaserTrails)
 			{
-				if (!trail.LastLocation.isset())
-					trail.LastLocation = pThis->Location;
+				if (!trail->LastLocation.isset())
+					trail->LastLocation = pThis->Location;
 
-				trail.Update(futureCoords);
+				trail->Update(futureCoords);
 			}
 		}
 
@@ -134,9 +134,9 @@ ASMJIT_PATCH(0x46745C, BulletClass_AI_Position_Trajectories, 0x7)
 			};
 			for (auto& trail : pExt->LaserTrails)
 			{
-				if (!trail.LastLocation.isset())
-					trail.LastLocation = pThis->Location;
-				trail.Update(futureCoords);
+				if (!trail->LastLocation.isset())
+					trail->LastLocation = pThis->Location;
+				trail->Update(futureCoords);
 			}
 		}
 

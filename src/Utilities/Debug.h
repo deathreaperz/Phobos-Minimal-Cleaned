@@ -10,15 +10,11 @@
 #include <WWMouseClass.h>
 
 #include <chrono>
-#include <mutex>
 
 class AbstractClass;
 class REGISTERS;
 class Debug final
 {
-private:
-	static std::mutex LogMutex;
-
 public:
 	static FILE* LogFile;
 
@@ -50,131 +46,78 @@ public:
 	template <typename... TArgs>
 	static void NOINLINE LogInfo(const fmt::format_string<TArgs...> _Fmt, TArgs&&... _Args)
 	{
-		std::lock_guard<std::mutex> lock(LogMutex);
 		if (LogFileActive())
 		{
-			try {
-				std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
-				fmted += "\n";
-				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-					fprintf_s(Debug::LogFile, "%s", fmted.c_str());
-					Debug::Flush();
-				}
-			}
-			catch (...) {
-				// Silently handle any formatting or file write errors
-			}
+			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
+			fmted += "\n";
+			fprintf_s(Debug::LogFile, "%s", fmted.c_str());
+			Debug::Flush();
 		}
 	}
 
 	template <typename... TArgs>
 	static void NOINLINE LogError(const fmt::format_string<TArgs...> _Fmt, TArgs&&... _Args)
 	{
-		std::lock_guard<std::mutex> lock(LogMutex);
 		if (LogFileActive())
 		{
-			try {
-				std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
-				fmted += "\n";
-				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-					fprintf_s(Debug::LogFile, "%s", fmted.c_str());
-					Debug::Flush();
-				}
-			}
-			catch (...) {
-				// Silently handle any formatting or file write errors
-			}
+			std::string fmted = fmt::vformat(_Fmt.get(), fmt::make_format_args(_Args...));
+			fmted += "\n";
+			fprintf_s(Debug::LogFile, "%s", fmted.c_str());
+			Debug::Flush();
 		}
 	}
 
 	static void Log(const char* pFormat, ...)
 	{
-		std::lock_guard<std::mutex> lock(LogMutex);
-		if (Debug::LogFileActive() && pFormat)
+		if (Debug::LogFileActive())
 		{
-			try {
-				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-					va_list args;
-					va_start(args, pFormat);
-					vfprintf(Debug::LogFile, pFormat, args);
-					va_end(args);
-					Debug::Flush();
-				}
-			}
-			catch (...) {
-				// Silently handle any formatting or file write errors
-			}
+			va_list args;
+			va_start(args, pFormat);
+			vfprintf(Debug::LogFile, pFormat, args);
+			va_end(args);
+
+			Debug::Flush();
 		}
 	}
 
 	//this will be used to replace game debug prints
 	static void __cdecl CLog(const char* pFormat, ...)
 	{
-		std::lock_guard<std::mutex> lock(LogMutex);
-		if (Debug::LogFileActive() && pFormat)
+		if (Debug::LogFileActive())
 		{
-			try {
-				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-					va_list args;
-					va_start(args, pFormat);
-					vfprintf(Debug::LogFile, pFormat, args);
-					va_end(args);
-					Debug::Flush();
-				}
-			}
-			catch (...) {
-				// Silently handle any formatting or file write errors
-			}
+			va_list args;
+			va_start(args, pFormat);
+			vfprintf(Debug::LogFile, pFormat, args);
+			va_end(args);
+
+			Debug::Flush();
 		}
 	}
 
 	// Log file not checked
 	static void LogUnflushed(const char* pFormat, ...)
 	{
-		if (Debug::LogFileActive() && pFormat) {
-			try {
-				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-					va_list args;
-					va_start(args, pFormat);
-					vfprintf(Debug::LogFile, pFormat, args);
-					va_end(args);
-				}
-			}
-			catch (...) {
-				// Silently handle any formatting or file write errors
-			}
-		}
+		va_list args;
+		va_start(args, pFormat);
+		vfprintf(Debug::LogFile, pFormat, args);
+		va_end(args);
 	}
 
 	void Debug::LogFlushed(const char* const pFormat, ...)
 	{
-		if (Debug::LogFileActive() && pFormat)
+		if (Debug::LogFileActive())
 		{
-			try {
-				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-					va_list args;
-					va_start(args, pFormat);
-					vfprintf(Debug::LogFile, pFormat, args);
-					Debug::Flush();
-					va_end(args);
-				}
-			}
-			catch (...) {
-				// Silently handle any formatting or file write errors
-			}
+			va_list args;
+			va_start(args, pFormat);
+			vfprintf(Debug::LogFile, pFormat, args);
+			Debug::Flush();
+			va_end(args);
 		}
 	}
 
 	static FORCEINLINE void Flush()
 	{
-		if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-			try {
-				fflush(Debug::LogFile);
-			}
-			catch (...) {
-				// Silently handle flush errors
-			}
-		}
+		fflush(Debug::LogFile);
 	}
 
 	static void LogDeferred(const char* pFormat, ...)
@@ -190,19 +133,12 @@ public:
 	{
 		if (Debug::LogFileActive())
 		{
-			try {
-				if (Debug::LogFile && fileno(Debug::LogFile) != -1) {
-					for (auto& __log : Debug::DefferedVector)
-					{
-						if (!__log.empty())
-						{
-							fprintf_s(Debug::LogFile, "%s", __log.c_str());
-						}
-					}
+			for (auto& __log : Debug::DefferedVector)
+			{
+				if (!__log.empty())
+				{
+					fprintf_s(Debug::LogFile, "%s", __log.c_str());
 				}
-			}
-			catch (...) {
-				// Silently handle any file write errors
 			}
 		}
 
@@ -225,7 +161,7 @@ public:
 
 	static COMPILETIMEEVAL FORCEDINLINE bool LogFileActive()
 	{
-		return Debug::LogEnabled && Debug::LogFile && fileno(Debug::LogFile) != -1;
+		return Debug::LogEnabled && Debug::LogFile;
 	}
 
 	template <typename... TArgs>

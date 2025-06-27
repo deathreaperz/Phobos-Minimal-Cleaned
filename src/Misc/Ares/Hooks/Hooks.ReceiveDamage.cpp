@@ -239,14 +239,14 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 			{
 				// Needs to be added to the logic layer for the anim to work.
 				LogicClass::Instance->AddObject(pThis, false);
-				VocClass::PlayAt(pTerrainExt->CrumblingSound, pThis->GetCoords(), nullptr);
+				VocClass::SafeImmedietelyPlayAt(pTerrainExt->CrumblingSound, &pThis->GetCoords());
 				pThis->Mark(MarkType::Redraw);
 				pThis->Disappear(true);
 				return 0x71BB79;
 			}
 
 			auto const nCoords = pThis->GetCenterCoords();
-			VocClass::PlayAt(pTerrainExt->DestroySound, nCoords, nullptr);
+			VocClass::SafeImmedietelyPlayAt(pTerrainExt->DestroySound, &nCoords);
 			const auto pAttackerHoue = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
 
 			if (auto const pAnimType = pTerrainExt->DestroyAnim)
@@ -578,6 +578,8 @@ static bool IsTechnoImmuneToAffects(TechnoClass* pTechno, Rank rank, WarheadType
 	return false;
 }
 
+#include <Utilities/DebrisSpawners.h>
+
 ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 {
 	GET(TechnoClass*, pThis, ECX);
@@ -878,7 +880,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 	{
 		if (pType->DamageSound != -1)
 		{
-			VocClass::PlayAt(pType->DamageSound, pThis->Location, nullptr);
+			VocClass::SafeImmedietelyPlayAt(pType->DamageSound, &pThis->Location, 0);
 		}
 
 		if (!pWHExt->Malicious && args.Attacker && args.Attacker->IsAlive && !pWHExt->Nonprovocative)
@@ -898,7 +900,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 			 && pThis->Owner->ControlledByCurrentPlayer())
 		{
 			const int feedbackIndex = pType->VoiceFeedback.Count > 1 ? Random2Class::NonCriticalRandomNumber->RandomRanged(0, pType->VoiceFeedback.Count - 1) : 0;
-			VocClass::PlayAt(pType->VoiceFeedback.Items[feedbackIndex], pThis->Location, nullptr);
+			VocClass::SafeImmedietelyPlayAt(pType->VoiceFeedback.Items[feedbackIndex], &pThis->Location, 0);
 		}
 
 		break;
@@ -910,16 +912,36 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 		GiftBoxFunctional::Destroy(pExt, pTypeExt);
 
-		if (pThis->IsAlive)
+		if (!pExt->PhobosAE.empty())
 		{
-			for (auto const& pWeapon : pExt->AE.ExpireWeaponOnDead)
-			{
-				TechnoClass* pTarget = pThis;
-				if (!pThis->IsAlive)
-					pTarget = nullptr;
+			std::vector<std::pair<WeaponTypeClass*, TechnoClass*>> expireWeapons {};
+			std::set<PhobosAttachEffectTypeClass*> cumulativeTypes {};
 
-				WeaponTypeExtData::DetonateAt(pWeapon, pThis->Location, pTarget, false, pThis->Owner);
+			for (auto const& attachEffect : pExt->PhobosAE)
+			{
+				auto const pAEType = attachEffect->GetType();
+
+				if (pAEType->ExpireWeapon && (pAEType->ExpireWeapon_TriggerOn & ExpireWeaponCondition::Death) != ExpireWeaponCondition::None)
+				{
+					if (!pAEType->Cumulative || !pAEType->ExpireWeapon_CumulativeOnlyOnce || !cumulativeTypes.contains(pAEType))
+					{
+						if (pAEType->Cumulative && pAEType->ExpireWeapon_CumulativeOnlyOnce)
+							cumulativeTypes.insert(pAEType);
+
+						if (pAEType->ExpireWeapon_UseInvokerAsOwner)
+						{
+							if (auto const pInvoker = attachEffect->GetInvoker())
+								expireWeapons.emplace_back(pAEType->ExpireWeapon, pInvoker);
+						}
+						else
+						{
+							expireWeapons.emplace_back(pAEType->ExpireWeapon, pThis);
+						}
+					}
+				}
 			}
+
+			PhobosAttachEffectClass::DetonateExpireWeapon(expireWeapons);
 		}
 
 		if (!pThis->IsAlive)
@@ -980,11 +1002,11 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 			if (nSound.isset())
 			{
-				VocClass::PlayAt(nSound, pThis->Location, nullptr);
+				VocClass::SafeImmedietelyPlayAt(nSound, &pThis->Location);
 			}
 			else
 			{
-				VocClass::PlayAt(pType->VoiceDie[pType->VoiceDie.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->VoiceDie.Count - 1)], pThis->Location, nullptr);
+				VocClass::SafeImmedietelyPlayAt(pType->VoiceDie[pType->VoiceDie.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->VoiceDie.Count - 1)], &pThis->Location);
 			}
 		}
 
@@ -994,11 +1016,11 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 			if (nSound.isset())
 			{
-				VocClass::PlayAt(nSound, pThis->Location, nullptr);
+				VocClass::SafeImmedietelyPlayAt(nSound, &pThis->Location);
 			}
 			else
 			{
-				VocClass::PlayAt(pType->DieSound[pType->DieSound.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->DieSound.Count - 1)], pThis->Location, nullptr);
+				VocClass::SafeImmedietelyPlayAt(pType->DieSound[pType->DieSound.Count == 1 ? 0 : Random2Class::NonCriticalRandomNumber->RandomFromMax(pType->DieSound.Count - 1)], &pThis->Location);
 			}
 		}
 
@@ -1059,60 +1081,15 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 		if (pThis->GetHeight() > 0 || !pThis->IsABomb || pThis->GetCell()->LandType != LandType::Water)
 		{
-			if (pType->MaxDebris > 0)
+			std::optional<bool> limited {};
+			if (pTypeExt->DebrisTypes_Limit.isset())
 			{
-				auto totalSpawnAmount = ScenarioClass::Instance->Random.RandomRanged(pType->MinDebris, pType->MaxDebris);
-				auto nCoords = pThis->GetCoords();
-
-				if (totalSpawnAmount && pType->DebrisTypes.Count > 0 && pType->DebrisMaximums.Count > 0)
-				{
-					for (int currentIndex = 0; currentIndex < pType->DebrisTypes.Count; ++currentIndex)
-					{
-						if (currentIndex >= pType->DebrisMaximums.Count)
-							break;
-
-						if (!pType->DebrisMaximums[currentIndex] || !pType->DebrisTypes.Items[currentIndex])
-							continue;
-
-						//this never goes to 0
-						int amountToSpawn = (Math::abs(int(ScenarioClass::Instance->Random.Random())) % pType->DebrisMaximums[currentIndex]) + 1;
-						amountToSpawn = LessOrEqualTo(amountToSpawn, totalSpawnAmount);
-						totalSpawnAmount -= amountToSpawn;
-
-						for (; amountToSpawn > 0; --amountToSpawn)
-						{
-							auto pVoxAnim = GameCreate<VoxelAnimClass>(pType->DebrisTypes.Items[currentIndex],
-							&nCoords, pThis->Owner);
-
-							VoxelAnimExtContainer::Instance.Find(pVoxAnim)->Invoker = pThis;
-						}
-
-						if (totalSpawnAmount <= 0)
-						{
-							totalSpawnAmount = 0;
-							break;
-						}
-					}
-				}
-
-				if (totalSpawnAmount > 0)
-				{
-					if (const auto pArray = GetDebrisAnim(pType))
-					{
-						auto debrisAnim_Coord = nCoords;
-						debrisAnim_Coord.Z += 20;
-
-						for (int b = 0; b < totalSpawnAmount; ++b)
-						{
-							if (auto pDebrisAnimType = pArray->Items[ScenarioClass::Instance->Random.RandomFromMax(pArray->Count - 1)])
-							{
-								AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pDebrisAnimType, debrisAnim_Coord, 0, 1, AnimFlag::AnimFlag_200 | AnimFlag::AnimFlag_400, 0, 0), args.Attacker ? args.Attacker->GetOwningHouse() : args.SourceHouse,
-								pThis->GetOwningHouse(), false);
-							}
-						}
-					}
-				}
+				limited = pTypeExt->DebrisTypes_Limit.Get();
 			}
+
+			DebrisSpawners::Spawn(pType->MinDebris, pType->MaxDebris,
+			pThis->GetCoords(), pType->DebrisTypes,
+			pType->DebrisAnims, pType->DebrisMaximums, pTypeExt->DebrisMinimums, limited, args.Attacker, args.Attacker ? args.Attacker->GetOwningHouse() : args.SourceHouse, pThis->Owner);
 
 			auto pWeapon = pThis->GetWeapon(pThis->CurrentWeaponNumber)->WeaponType;
 			if (pType->Explodes || pThis->HasAbility(AbilityType::Explodes) || (pWeapon && pWeapon->Suicide))
@@ -1183,10 +1160,10 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		}
 		else
 		{
-					if (pType->DamageSound != -1)
-		{
-			VocClass::PlayAt(pType->DamageSound, pThis->Location, nullptr);
-		}
+			if (pType->DamageSound != -1)
+			{
+				VocClass::SafeImmedietelyPlayAt(pType->DamageSound, &pThis->Location, 0);
+			}
 
 			if (args.Attacker && args.Attacker->IsAlive && (pType->ToProtect || pThis->__ProtectMe_3CF) && !pThis->Owner->IsControlledByHuman())
 			{
@@ -1471,7 +1448,7 @@ DamageState FakeBuildingClass::_ReceiveDamage(int* Damage, int DistanceToEpicent
 		{
 			if (!pTypeExt->DisableDamageSound && pThis->Type->DamageSound == -1)
 			{
-				VocClass::PlayAt(RulesClass::Instance->BuildingDamageSound, &pThis->Location, nullptr);
+				VocClass::SafeImmedietelyPlayAt(RulesClass::Instance->BuildingDamageSound, &pThis->Location, 0);
 			}
 
 			if (WH->Sparky)

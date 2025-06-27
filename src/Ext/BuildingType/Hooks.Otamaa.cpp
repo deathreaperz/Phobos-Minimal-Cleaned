@@ -138,7 +138,7 @@ ASMJIT_PATCH(0x45933D, BuildingClass_BunkerWallUpSound, 0x5)
 {
 	GET(FakeBuildingClass* const, pThis, ESI);
 	const auto nSound = pThis->_GetTypeExtData()->BunkerWallsUpSound.Get(RulesClass::Instance->BunkerWallsUpSound);
-	VocClass::PlayIndexAtPos(nSound, pThis->Location, 0);
+	VocClass::SafeImmedietelyPlayAt(nSound, &pThis->Location);
 	return 0x459374;
 }
 
@@ -146,7 +146,7 @@ ASMJIT_PATCH(0x4595D9, BuildingClass_4595C0_BunkerDownSound, 0x5)
 {
 	GET(FakeBuildingClass* const, pThis, EDI);
 	const auto nSound = pThis->_GetTypeExtData()->BunkerWallsDownSound.Get(RulesClass::Instance->BunkerWallsDownSound);
-	VocClass::PlayIndexAtPos(nSound, pThis->Location, 0);
+	VocClass::SafeImmedietelyPlayAt(nSound, &pThis->Location);
 	return 0x459612;
 }
 
@@ -154,7 +154,7 @@ ASMJIT_PATCH(0x459494, BuildingClass_459470_BunkerDownSound, 0x5)
 {
 	GET(FakeBuildingClass* const, pThis, ESI);
 	const auto nSound = pThis->_GetTypeExtData()->BunkerWallsDownSound.Get(RulesClass::Instance->BunkerWallsDownSound);
-	VocClass::PlayIndexAtPos(nSound, pThis->Location, 0);
+	VocClass::SafeImmedietelyPlayAt(nSound, &pThis->Location);
 	return 0x4594CD;
 }
 #pragma endregion
@@ -174,7 +174,7 @@ ASMJIT_PATCH(0x44A86A, BuildingClass_Mi_Selling_PackupSound, 0xC)
 	auto const pExt = BuildingTypeExtContainer::Instance.Find(pThis->Type);
 
 	pThis->GetCenterCoord(&nBuffer);
-	VocClass::PlayIndexAtPos(pThis->Type->PackupSound, nBuffer, pExt && pExt->PackupSound_PlayGlobal.Get());
+	VocClass::SafeImmedietelyPlayAt(pThis->Type->PackupSound, nBuffer, pExt && pExt->PackupSound_PlayGlobal.Get());
 
 	return Handled;
 }

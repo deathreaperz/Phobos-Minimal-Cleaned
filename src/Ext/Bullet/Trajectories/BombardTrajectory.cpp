@@ -225,7 +225,7 @@ void BombardTrajectory::PrepareForOpenFire()
 		auto const pExt = BulletExtContainer::Instance.Find(pBullet);
 
 		for (auto& trail : pExt->LaserTrails)
-			trail.LastLocation = middleLocation;
+			trail->LastLocation = middleLocation;
 
 		this->RefreshBulletLineTrail();
 
@@ -555,7 +555,7 @@ void BombardTrajectory::BulletVelocityChange()
 				auto const pExt = BulletExtContainer::Instance.Find(pBullet);
 
 				for (auto& trail : pExt->LaserTrails)
-					trail.LastLocation = middleLocation;
+					trail->LastLocation = middleLocation;
 
 				this->RefreshBulletLineTrail();
 				pBullet->SetLocation(middleLocation);

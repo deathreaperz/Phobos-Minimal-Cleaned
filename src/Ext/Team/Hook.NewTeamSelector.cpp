@@ -224,7 +224,7 @@ NOINLINE bool EnemyOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClas
 		if (!IsValidTechno(pObject)) continue;
 
 		if (pObject->Owner != pHouse
-			&& (!pEnemy || !pHouse->IsAlliedWith(pEnemy))
+			&& (!pEnemy || (pEnemy && !pHouse->IsAlliedWith(pEnemy)))
 			&& !pObject->Owner->Type->MultiplayPassive
 			&& OwnStuffs(pItem, pObject))
 		{
@@ -252,7 +252,7 @@ NOINLINE bool EnemyOwns(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseClas
 			if (!IsValidTechno(pObject)) continue;
 
 			if (pObject->Owner != pHouse
-				&& (!pEnemy || !pHouse->IsAlliedWith(pEnemy))
+				&& (!pEnemy || (pEnemy && !pHouse->IsAlliedWith(pEnemy)))
 				&& !pObject->Owner->Type->MultiplayPassive
 				&& OwnStuffs(pItem, pObject))
 			{
@@ -353,7 +353,7 @@ NOINLINE bool EnemyOwnsAll(AITriggerTypeClass* pThis, HouseClass* pHouse, HouseC
 			if (!IsValidTechno(pObject)) continue;
 
 			if (pObject->Owner != pHouse
-				&& (!pEnemy || !pHouse->IsAlliedWith(pEnemy))
+				&& (!pEnemy || (pEnemy && !pHouse->IsAlliedWith(pEnemy)))
 				&& !pObject->Owner->Type->MultiplayPassive
 				&& pObject->GetTechnoType() == pItem)
 			{
@@ -403,6 +403,8 @@ NOINLINE bool CountConditionMet(AITriggerTypeClass* pThis, int nObjects)
 	return result;
 }
 
+#include <TriggerTypeClass.h>
+
 NOINLINE bool UpdateTeam(HouseClass* pHouse)
 {
 	if (!RulesExtData::Instance()->NewTeamsSelector)
@@ -410,15 +412,18 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 	auto pHouseTypeExt = HouseTypeExtContainer::Instance.Find(pHouse->Type);
 	// Reset Team selection countdown
-	int difficultyIndex = (int)pHouse->AIDifficulty;
-	if (difficultyIndex >= 0 && difficultyIndex < 3) // Assuming 3 difficulty levels: Easy, Normal, Hard
-		pHouse->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[difficultyIndex]);
+	pHouse->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[(int)pHouse->AIDifficulty]);
 
 	HelperedVector<TriggerElementWeight> validTriggerCandidates;
+	validTriggerCandidates.reserve(TriggerTypeClass::Array->Count);
 	HelperedVector<TriggerElementWeight> validTriggerCandidatesGroundOnly;
+	validTriggerCandidatesGroundOnly.reserve(TriggerTypeClass::Array->Count);
 	HelperedVector<TriggerElementWeight> validTriggerCandidatesNavalOnly;
+	validTriggerCandidatesNavalOnly.reserve(TriggerTypeClass::Array->Count);
 	HelperedVector<TriggerElementWeight> validTriggerCandidatesAirOnly;
+	validTriggerCandidatesAirOnly.reserve(TriggerTypeClass::Array->Count);
 	HelperedVector<TriggerElementWeight> validTriggerCandidatesUnclassifiedOnly;
+	validTriggerCandidatesUnclassifiedOnly.reserve(TriggerTypeClass::Array->Count);
 
 	int dice = ScenarioClass::Instance->Random.RandomRanged(1, 100);
 
@@ -508,31 +513,21 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			}
 		}
 
-		int parentCountryTypeIdx = pHouse->Type->FindParentCountryIndex(); // ParentCountry can change the House in a SP map
+		auto pParentCntry = pHouse->Type->FindParentCountry();
+
+		int parentCountryTypeIdx = !pParentCntry ? -1 : pParentCntry->ArrayIndex; // ParentCountry can change the House in a SP map
 		int houseTypeIdx = parentCountryTypeIdx >= 0 ? parentCountryTypeIdx : pHouse->Type->ArrayIndex; // Indexes in AITriggers section are 1-based
 		int houseIdx = pHouse->ArrayIndex;
 
-		int parentCountrySideTypeIdx = -1;
-		if (auto parentCountry = pHouse->Type->FindParentCountry()) {
-			parentCountrySideTypeIdx = parentCountry->SideIndex;
-		}
+		int parentCountrySideTypeIdx = !pParentCntry ? -1 : pParentCntry->SideIndex;
 		int sideTypeIdx = parentCountrySideTypeIdx >= 0 ? parentCountrySideTypeIdx + 1 : pHouse->Type->SideIndex + 1; // Side indexes in AITriggers section are 1-based
 		//int sideIdx = pHouse->SideIndex + 1; // Side indexes in AITriggers section are 1-based
 
 		auto houseDifficulty = pHouse->AIDifficulty;
-		int difficultyIdx = (int)houseDifficulty;
-		int minBaseDefenseTeams = 0;
-		int maxBaseDefenseTeams = 0;
-		int maxTeamsLimit = 0;
+		int minBaseDefenseTeams = RulesClass::Instance->MinimumAIDefensiveTeams[(int)houseDifficulty];
+		int maxBaseDefenseTeams = RulesClass::Instance->MaximumAIDefensiveTeams[(int)houseDifficulty];
 		int activeDefenseTeamsCount = 0;
-		
-		// Bounds check for difficulty index
-		if (difficultyIdx >= 0 && difficultyIdx < 3) // Assuming 3 difficulty levels
-		{
-			minBaseDefenseTeams = RulesClass::Instance->MinimumAIDefensiveTeams[difficultyIdx];
-			maxBaseDefenseTeams = RulesClass::Instance->MaximumAIDefensiveTeams[difficultyIdx];
-			maxTeamsLimit = RulesClass::Instance->TotalAITeamCap[difficultyIdx];
-		}
+		int maxTeamsLimit = RulesClass::Instance->TotalAITeamCap[(int)houseDifficulty];
 		double totalWeight = 0.0;
 		double totalWeightGroundOnly = 0.0;
 		double totalWeightNavalOnly = 0.0;
@@ -541,19 +536,11 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 
 		// Check if the running teams by the house already reached all the limits
 		HelperedVector<TeamClass*> activeTeamsList;
+		auto& vec = HouseExtContainer::HousesTeams[HouseClass::Array->Items[houseIdx]];
+		activeTeamsList.reserve(vec.size());
 
-		for (auto const pRunningTeam : *TeamClass::Array)
+		for (auto const pRunningTeam : vec)
 		{
-			int teamHouseIdx = pRunningTeam->Owner->ArrayIndex;
-
-			if (teamHouseIdx != houseIdx)
-				continue;
-
-			// Filter out teams that shouldn't count against limits
-			if (pRunningTeam->NeedsToDisappear
-				|| (!pRunningTeam->IsFullStrength && pRunningTeam->TotalObjects == 0))
-				continue;
-
 			activeTeamsList.push_back(pRunningTeam);
 
 			if (pRunningTeam->Type->IsBaseDefense)
@@ -660,7 +647,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		}
 
 		HouseClass* targetHouse = nullptr;
-		if (pHouse->EnemyHouseIndex >= 0 && pHouse->EnemyHouseIndex < HouseClass::Array->Count)
+		if (pHouse->EnemyHouseIndex >= 0)
 			targetHouse = HouseClass::Array->GetItem(pHouse->EnemyHouseIndex);
 
 		bool onlyCheckImportantTriggers = false;
@@ -668,7 +655,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		// Gather all the trigger candidates into one place for posterior fast calculations
 		for (auto const pTrigger : *AITriggerTypeClass::Array)
 		{
-			if (!pTrigger || (ScenarioClass::Instance->IgnoreGlobalAITriggers && pTrigger->IsGlobal) || !pTrigger->Team1)
+			if (!pTrigger || ScenarioClass::Instance->IgnoreGlobalAITriggers == (bool)pTrigger->IsGlobal || !pTrigger->Team1)
 				continue;
 
 			// Ignore offensive teams if the next trigger must be defensive
@@ -882,8 +869,8 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 					if (splitTriggersByCategory)
 					{
 						//Debug::LogInfo("DEBUG: TaskForce [{}] members:", pTriggerTeam1Type->TaskForce->ID);
-						// Use actual TaskForce entry count instead of hardcoded limit
-						for (int i = 0; i < pTriggerTeam1Type->TaskForce->CountEntries; i++)
+						// TaskForces are limited to 6 entries
+						for (int i = 0; i < 6; i++)
 						{
 							auto entry = pTriggerTeam1Type->TaskForce->Entries[i];
 							TeamCategory entryIsCategory = TeamCategory::Ground;
@@ -1116,7 +1103,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 		switch (validCategory)
 		{
 		case TeamCategory::None:
-			weightDice = totalWeight > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeight) * 1.0 : 0.0;
+			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeight) * 1.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1140,7 +1127,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Ground:
-			weightDice = totalWeightGroundOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightGroundOnly) * 1.0 : 0.0;
+			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightGroundOnly) * 1.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1164,7 +1151,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Unclassified:
-			weightDice = totalWeightUnclassifiedOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightUnclassifiedOnly) * 1.0 : 0.0;
+			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightUnclassifiedOnly) * 1.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1188,7 +1175,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Naval:
-			weightDice = totalWeightNavalOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightNavalOnly) * 1.0 : 0.0;
+			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightNavalOnly) * 1.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1212,7 +1199,7 @@ NOINLINE bool UpdateTeam(HouseClass* pHouse)
 			break;
 
 		case TeamCategory::Air:
-			weightDice = totalWeightAirOnly > 0 ? ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightAirOnly) * 1.0 : 0.0;
+			weightDice = ScenarioClass::Instance->Random.RandomRanged(0, (int)totalWeightAirOnly) * 1.0;
 			/*Debug::LogInfo("Weight Dice: {}", weightDice);
 
 			// Debug
@@ -1316,9 +1303,7 @@ ASMJIT_PATCH(0x4F8A63, HouseClass_AI_Team, 7)
 			possible_teams[i]->CreateTeam(pThis);
 		}
 
-		int difficultyIndex = (int)pThis->AIDifficulty;
-		if (difficultyIndex >= 0 && difficultyIndex < 3) // Assuming 3 difficulty levels
-			pThis->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[difficultyIndex]);
+		pThis->TeamDelayTimer.Start(RulesClass::Instance->TeamDelays[(int)pThis->AIDifficulty]);
 	}
 
 	return 0x4F8B08;
@@ -1339,7 +1324,7 @@ ASMJIT_PATCH(0x687C9B, ReadScenarioINI_AITeamSelector_PreloadValidTriggers, 0x7)
 		{
 			if (auto pTrigger = AITriggerTypeClass::Array->Items[i])
 			{
-				if ((ScenarioClass::Instance->IgnoreGlobalAITriggers && pTrigger->IsGlobal) || !pTrigger->Team1)
+				if (ScenarioClass::Instance->IgnoreGlobalAITriggers == (bool)pTrigger->IsGlobal || !pTrigger->Team1)
 					continue;
 
 				const int triggerHouse = pTrigger->HouseIndex;

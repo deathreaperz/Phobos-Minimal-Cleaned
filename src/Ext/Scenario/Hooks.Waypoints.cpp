@@ -198,7 +198,7 @@ ASMJIT_PATCH(0x68843B, ScenStruct_ScenStruct_2, 0x6)
 	{
 		buffer = ScenarioExtData::Instance()->Waypoints[i];
 		if (waypoints.AddItem(buffer))
-			Debug::LogInfo("Multiplayer start waypoint found at cell [{}][{},{}] , With waypoints Size {} ", i, buffer.X, buffer.Y, waypoints.size());
+			Debug::LogInfo("Multiplayer start waypoint found at cell [{}][{},{}] , With waypoints Size {} ", i, buffer.X, buffer.Y, waypoints.Count);
 	}
 
 	return 0x6884EF;

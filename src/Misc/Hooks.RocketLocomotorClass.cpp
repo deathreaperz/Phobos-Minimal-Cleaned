@@ -345,7 +345,7 @@ struct _RocketLocomotionClass
 					  true);
 				}
 
-				VocClass::PlayAt(pAirType->AuxSound1, pAir->Location);
+				VocClass::SafeImmedietelyPlayAtpAirType->AuxSound1, pAir->Location);
 			}
 
 			break;
@@ -466,7 +466,7 @@ struct _RocketLocomotionClass
 
 				if (Lastflight_coord == CellStruct::Empty)
 				{
-					VocClass::PlayAt(pAirType->AuxSound1, pAir->Location);
+					VocClass::SafeImmedietelyPlayAtpAirType->AuxSound1, pAir->Location);
 					AircraftTrackerClass::Instance->Add(pAir);
 				}
 				pRocket->TrailerTimer.Start(0);

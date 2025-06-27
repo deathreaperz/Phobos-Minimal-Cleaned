@@ -1168,7 +1168,7 @@ int HouseExtData::GetHouseIndex(int param, TeamClass* pTeam = nullptr, TActionCl
 	if (param == 8997)
 	{
 		if (pTAction)
-			return (pTeam ? pTeam->Owner->ArrayIndex : pTAction->TeamType->Owner->ArrayIndex);
+			return (pTeam ? pTeam->OwnerHouse->ArrayIndex : pTAction->TeamType->Owner->ArrayIndex);
 		else
 			return -1;
 	}

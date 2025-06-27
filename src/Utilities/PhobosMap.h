@@ -12,9 +12,9 @@ class PhobosMap
 	using container_t = std::vector<pair_t, customMem>;
 public:
 
-	constexpr FORCEINLINE std::vector<pair_t, customMem>* AsPair()
+	constexpr FORCEINLINE container_t* AsPair()
 	{
-		return &container_t;
+		return &this->values;
 	}
 
 	TValue& operator[] (const TKey& key)

@@ -41,12 +41,11 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 	// This team has no units!
 	if (!pTeam)
 	{
-		// BUG FIX: Cannot access pTeam or pTeamData if pTeam is null
-		// if (pTeamData->CloseEnough > 0)
-		//     pTeamData->CloseEnough = -1;
+		if (pTeamData->CloseEnough > 0)
+			pTeamData->CloseEnough = -1;
 
 		// This action finished
-		// pTeam->StepCompleted = true;  // BUG FIX: Cannot access pTeam if it's null
+		pTeam->StepCompleted = true;
 		//Debug::LogInfo("AI Scripts - Move: {}] {}] (line: {} = {},{}) Jump to next line: {} = {},{} -> (Reason: No team members alive)",
 		//	pTeam->Type->ID,
 		//	pScript->Type->ID,
@@ -97,7 +96,8 @@ void ScriptExtData::Mission_Move(TeamClass* pTeam, DistanceMode calcThreatMode, 
 	if (!pTeamData->TeamLeader)
 	{
 		pTeamData->TeamLeader = ScriptExtData::FindTheTeamLeader(pTeam);
-		if (pTeamData->TeamLeader)  // BUG FIX: Check if FindTheTeamLeader returned valid leader
+
+		if (pTeamData->TeamLeader)
 			pTeamData->TeamLeader->IsTeamLeader = true;
 	}
 
@@ -281,7 +281,7 @@ TechnoClass* ScriptExtData::FindBestObject(TechnoClass* pTechno, int method, Dis
 		if (auto pFoot = flag_cast_to<FootClass*, false>(pTechno))
 		{
 			const int enemyHouseIndex = pFoot->Team->FirstUnit->Owner->EnemyHouseIndex;
-			const auto pHouseExt = HouseExtContainer::Instance.Find(pFoot->Team->Owner);
+			const auto pHouseExt = HouseExtContainer::Instance.Find(pFoot->Team->OwnerHouse);
 			const bool onlyTargetHouseEnemy = pHouseExt->ForceOnlyTargetHouseEnemyMode != -1 ?
 				pFoot->Team->Type->OnlyTargetHouseEnemy : pHouseExt->m_ForceOnlyTargetHouseEnemy;
 
@@ -427,10 +427,9 @@ void ScriptExtData::Mission_Move_List(TeamClass* pTeam, DistanceMode calcThreatM
 	if ((size_t)attackAITargetType < Arr.size() && !Arr[attackAITargetType].empty())
 	{
 		ScriptExtData::Mission_Move(pTeam, calcThreatMode, pickAllies, attackAITargetType, -1);
-		return;  // FIXED: Mission_Move will handle StepCompleted internally
+		return;
 	}
 
-	// Only set StepCompleted if target list is invalid
 	pTeam->StepCompleted = true;
 	// Debug::LogInfo("AI Scripts - Mission_Move_List: {}] {}] (line: {} = {},{}) Failed to get the list index [AITargetTypes][{}]! out of bound: {}",
 	// 	pTeam->Type->ID,
@@ -442,11 +441,10 @@ void ScriptExtData::Mission_Move_List(TeamClass* pTeam, DistanceMode calcThreatM
 	// 	Arr.size());
 }
 
-thread_local std::vector<int> Mission_Move_List1Random_validIndexes;
-
 void ScriptExtData::Mission_Move_List1Random(TeamClass* pTeam, DistanceMode calcThreatMode, bool pickAllies, int attackAITargetType, int idxAITargetTypeItem = -1)
 {
 	auto pScript = pTeam->CurrentScript;
+	std::vector<int> Mission_Move_List1Random_validIndexes;
 	Mission_Move_List1Random_validIndexes.clear();
 	Mission_Move_List1Random_validIndexes.reserve(50);
 	auto pTeamData = TeamExtContainer::Instance.Find(pTeam);

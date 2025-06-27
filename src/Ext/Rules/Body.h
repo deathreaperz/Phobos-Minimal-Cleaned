@@ -532,6 +532,9 @@ public:
 	bool CampaignAllowHarvesterScanUnderShroud[3] {};
 	Valueable<AffectedHouse> BerzerkTargeting { AffectedHouse::All };
 
+	Valueable<bool> AttackMove_IgnoreWeaponCheck { false };
+	Nullable<bool> AttackMove_StopWhenTargetAcquired {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);
 	void ReplaceVoxelLightSources();
