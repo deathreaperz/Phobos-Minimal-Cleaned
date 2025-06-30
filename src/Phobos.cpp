@@ -1117,6 +1117,7 @@ DECLARE_PATCH(_set_fp_mode)
 
 #include <Misc/Multithread.h>
 #include <ExtraHeaders/MemoryPool.h>
+#include <Utilities/PhobosPCXFile.h>
 
 static CriticalSection critSec3, critSec4;
 #ifdef _ReplaceAlloc
@@ -9356,6 +9357,8 @@ BOOL APIENTRY DllMain(HANDLE hInstance, DWORD  ul_reason_for_call, LPVOID lpRese
 		Multithreading::ShutdownMultitheadMode();
 		Debug::DeactivateLogger();
 		gJitRuntime.reset();
+		PCXMemoryPool::Shutdown();
+		PCXPreloader::ClearPreloaded();
 		Mem::shutdownMemoryManager();
 		break;
 	case DLL_THREAD_ATTACH:
@@ -9428,6 +9431,10 @@ ASMJIT_PATCH(0x52F639, _YR_CmdLineParse, 0x5)
 
 	Phobos::CmdLineParse(ppArgs, nNumArgs);
 	Debug::LogDeferredFinalize();
+
+	// Initialize PCX enhancements
+	PCXMemoryPool::Initialize();
+	PCXPreloader::PreloadCommonFiles();
 
 #ifdef EXPERIMENTAL_IMGUI
 	PhobosWindowClass::Create();
