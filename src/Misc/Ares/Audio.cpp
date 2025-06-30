@@ -1,5 +1,6 @@
 // Allows WAV files being placed in Mixes
 #include "Audio.h"
+#include "AudioPreload.h"
 
 #include <CCFileClass.h>
 #include <VocClass.h>
@@ -10,6 +11,11 @@
 
 #include <mutex>
 #include <shared_mutex>
+#include <thread>
+#include <atomic>
+#include <queue>
+#include <unordered_set>
+#include <chrono>
 
 struct FileStruct
 {
@@ -30,7 +36,7 @@ class LooseAudioCache
 {
 public:
 	LooseAudioCache(const char* Title)
-		: Name(Title), WavName(Title), Data {}, IsFail {}
+		: Name(Title), WavName(Title), Data {}, IsFail {}, LastAccess(std::chrono::steady_clock::now())
 	{
 		WavName += ".wav";
 	}
@@ -45,10 +51,10 @@ public:
 	FileStruct GetFileStruct()
 	{
 		std::lock_guard<std::mutex> lock(ObjectMutex);
+		LastAccess = std::chrono::steady_clock::now();
 		CCFileClass* pFile = nullptr;
 
-		if (!this->IsFail.has_value() || !this->IsFail)
-		{
+		if(!this->IsFail.has_value() || !this->IsFail){
 			pFile = GameCreate<CCFileClass>(WavName.c_str());
 
 			if (!pFile->Exists())
@@ -93,6 +99,7 @@ public:
 	AudioSampleData* GetAudioSampleData()
 	{
 		std::lock_guard<std::mutex> lock(ObjectMutex);
+		LastAccess = std::chrono::steady_clock::now();
 		if (Data.Size < 0)
 		{
 			auto file = GetFileStruct();
@@ -105,32 +112,59 @@ public:
 	}
 
 	const std::string& GetName() const { return Name; }
+	
+	std::chrono::steady_clock::time_point GetLastAccess() const 
+	{ 
+		std::lock_guard<std::mutex> lock(ObjectMutex);
+		return LastAccess; 
+	}
+	
+	bool IsLoaded() const 
+	{ 
+		std::lock_guard<std::mutex> lock(ObjectMutex);
+		return Data.Size >= 0; 
+	}
 
 private:
 	std::string Name;
 	std::string WavName;
 	LooseAudioFile Data;
-	std::mutex ObjectMutex;
+	mutable std::mutex ObjectMutex;
 	std::optional<bool> IsFail;
+	std::chrono::steady_clock::time_point LastAccess;
 };
 
 class LooseAudioCacheManager
 {
 	static std::vector<std::unique_ptr<LooseAudioCache>> Array;
+	static std::mutex ArrayMutex;
+	static std::thread PreloadThread;
+	static std::atomic<bool> ShouldStopPreload;
+	static std::queue<std::string> PreloadQueue;
+	static std::mutex PreloadMutex;
+	static std::unordered_set<std::string> PreloadSet;
+	static constexpr size_t MAX_CACHE_SIZE = 256; // Reasonable limit
 
 public:
 
 	static int FindOrAllocateIndex(const char* Title)
 	{
+		std::lock_guard<std::mutex> lock(ArrayMutex);
 		auto& array = Array;
 		auto it = std::find_if(array.begin(), array.end(), [&](const auto& ptr)
- {
-	 return ptr->GetName() == Title;
+		{
+			return ptr->GetName() == Title;
 		});
 
 		if (it != array.end())
 		{
 			return static_cast<int>(std::distance(array.begin(), it));
+		}
+
+		// Check if we need to evict old entries
+		if (array.size() >= MAX_CACHE_SIZE)
+		{
+			EvictOldestEntries();
 		}
 
 		array.emplace_back(std::make_unique<LooseAudioCache>(Title));
@@ -139,6 +173,7 @@ public:
 
 	static LooseAudioCache* Find(int idx)
 	{
+		std::lock_guard<std::mutex> lock(ArrayMutex);
 		auto& array = Array;
 		if (idx < 0 || static_cast<size_t>(idx) >= array.size())
 		{
@@ -159,9 +194,119 @@ public:
 		auto* entry = Find(idx);
 		return entry->GetAudioSampleData();
 	}
+
+	// Async preload functionality
+	static void QueuePreload(const char* Title)
+	{
+		std::lock_guard<std::mutex> lock(PreloadMutex);
+		if (PreloadSet.find(Title) == PreloadSet.end())
+		{
+			PreloadQueue.push(Title);
+			PreloadSet.insert(Title);
+		}
+	}
+
+	static void StartPreloader()
+	{
+		ShouldStopPreload = false;
+		PreloadThread = std::thread(PreloadWorker);
+	}
+
+	static void StopPreloader()
+	{
+		ShouldStopPreload = true;
+		if (PreloadThread.joinable())
+		{
+			PreloadThread.join();
+		}
+	}
+
+private:
+	static void EvictOldestEntries()
+	{
+		// Remove the oldest 25% of entries to make room
+		const size_t numToRemove = MAX_CACHE_SIZE / 4;
+		
+		// Sort by last access time
+		std::vector<std::pair<std::chrono::steady_clock::time_point, size_t>> accessTimes;
+		accessTimes.reserve(Array.size());
+		
+		for (size_t i = 0; i < Array.size(); ++i)
+		{
+			if (Array[i])
+			{
+				accessTimes.emplace_back(Array[i]->GetLastAccess(), i);
+			}
+		}
+		
+		std::sort(accessTimes.begin(), accessTimes.end());
+		
+		// Remove the oldest entries
+		size_t removed = 0;
+		for (const auto& pair : accessTimes)
+		{
+			if (removed >= numToRemove) break;
+			
+			size_t idx = pair.second;
+			if (idx < Array.size() && Array[idx])
+			{
+				Array.erase(Array.begin() + idx);
+				removed++;
+				
+				// Adjust indices in remaining accessTimes
+				for (auto& remainingPair : accessTimes)
+				{
+					if (remainingPair.second > idx)
+					{
+						remainingPair.second--;
+					}
+				}
+			}
+		}
+	}
+
+	static void PreloadWorker()
+	{
+		while (!ShouldStopPreload)
+		{
+			std::string title;
+			{
+				std::lock_guard<std::mutex> lock(PreloadMutex);
+				if (!PreloadQueue.empty())
+				{
+					title = PreloadQueue.front();
+					PreloadQueue.pop();
+					PreloadSet.erase(title);
+				}
+			}
+
+			if (!title.empty())
+			{
+				// Preload the audio file
+				int idx = FindOrAllocateIndex(title.c_str());
+				auto* entry = Find(idx);
+				if (entry && !entry->IsLoaded())
+				{
+					// Trigger loading by accessing the file struct
+					entry->GetFileStruct();
+				}
+			}
+			else
+			{
+				// No work to do, sleep briefly
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
+		}
+	}
 };
 
 std::vector<std::unique_ptr<LooseAudioCache>> LooseAudioCacheManager::Array;
+std::mutex LooseAudioCacheManager::ArrayMutex;
+std::thread LooseAudioCacheManager::PreloadThread;
+std::atomic<bool> LooseAudioCacheManager::ShouldStopPreload{false};
+std::queue<std::string> LooseAudioCacheManager::PreloadQueue;
+std::mutex LooseAudioCacheManager::PreloadMutex;
+std::unordered_set<std::string> LooseAudioCacheManager::PreloadSet;
 
 class AudioLuggage
 {
@@ -176,14 +321,12 @@ public:
 		COMPILETIMEEVAL AudioBag() = default;
 		COMPILETIMEEVAL ~AudioBag() = default;
 
-		explicit AudioBag(const char* pFilename) : AudioBag()
-		{
-			if (!this->Open(pFilename))
-				Debug::LogInfo("Failed To open AudioBag {}", pFilename);
+		explicit AudioBag(const char* pFilename) : AudioBag() {
+			if(!this->Open(pFilename))
+				Debug::LogInfo("Failed To open AudioBag {}" , pFilename);
 		}
 
-		AudioBag(AudioBag&& other) noexcept
-		{
+		AudioBag(AudioBag&& other) noexcept {
 			this->Entries = std::move(other.Entries);
 			this->Bag = std::move(other.Bag);
 			this->BagFile = std::move(other.BagFile);
@@ -197,7 +340,7 @@ public:
 			filename += ".idx";
 			CCFileClass pIndex { filename.c_str() };
 			if (Phobos::Otamaa::OutputAudioLogs)
-				Debug::LogInfo("Reading {}", filename);
+				Debug::LogInfo("Reading {}" , filename);
 
 			if (pIndex.Exists() && pIndex.Open(FileAccessMode::Read))
 			{
@@ -205,8 +348,8 @@ public:
 				filename[filebase_len + 2] = 'a';
 				filename[filebase_len + 3] = 'g';
 
-				if (Phobos::Otamaa::OutputAudioLogs)
-					Debug::LogInfo("Reading {}", filename);
+				if(Phobos::Otamaa::OutputAudioLogs)
+					Debug::LogInfo("Reading {}" , filename);
 
 				auto pBag = UniqueGamePtrC<CCFileClass>(GameCreateUnchecked<CCFileClass>(filename.c_str()));
 
@@ -214,10 +357,9 @@ public:
 					&& pBag->Open(FileAccessMode::Read))
 				{
 					AudioIDXHeader headerIndex {};
-					if (pIndex.ReadBytes(&headerIndex, sizeof(AudioIDXHeader)) == sizeof(AudioIDXHeader))
+					if(pIndex.ReadBytes(&headerIndex, sizeof(AudioIDXHeader)) == sizeof(AudioIDXHeader))
 					{
-						if (Phobos::Otamaa::OutputAudioLogs)
-						{
+						if (Phobos::Otamaa::OutputAudioLogs) {
 							Debug::LogInfo("Reading [{} from {}] file with [{}] samples!.", filename.c_str(), pIndex.GetFileName(), headerIndex.numSamples);
 						}
 
@@ -245,8 +387,8 @@ public:
 
 								if (readed != (int)headerSize)
 								{
-									if (Phobos::Otamaa::OutputAudioLogs)
-										Debug::LogInfo("Failed Reading [{} from {}] file with [{}] samples , due to missmatch header size [readed {} vs intended {}]].", filename.c_str(), pIndex.GetFileName(), headerIndex.numSamples, readed, headerSize);
+									if(Phobos::Otamaa::OutputAudioLogs)
+										Debug::LogInfo("Failed Reading [{} from {}] file with [{}] samples , due to missmatch header size [readed {} vs intended {}]].", filename.c_str(), pIndex.GetFileName(), headerIndex.numSamples , readed, headerSize);
 									return false;
 								}
 							}
@@ -272,34 +414,29 @@ public:
 
 	AudioIDXData* Pack(const char* pPath = nullptr)
 	{
-		std::map<AudioIDXEntry, std::tuple<int, CCFileClass*, std::string>, std::less<AudioIDXEntry>> map;
+		std::map<AudioIDXEntry , std::tuple<int, CCFileClass*, std::string>,std::less<AudioIDXEntry>> map;
 
-		for (size_t i = 0; i < this->Bags.size(); ++i)
-		{
-			if (this->Bags[i].Bag.get())
-			{
-				for (const auto& ent : this->Bags[i].Entries)
-				{
+		for (size_t i = 0; i < this->Bags.size(); ++i) {
+			if (this->Bags[i].Bag.get()) {
+				for (const auto& ent : this->Bags[i].Entries) {
 					auto find = map.find(ent);
 
 					//no entry , put one
-					if (find == map.end())
-					{
-						map.emplace(ent, std::make_tuple(i, this->Bags[i].Bag.get(), this->Bags[i].BagFile));
+					if (find == map.end()) {
+						map.emplace(ent, std::make_tuple(i , this->Bags[i].Bag.get() , this->Bags[i].BagFile));
 					}
 					else
 					{
 						//update the data with the new one
 						auto node = map.extract(find);
 						node.key().update(ent);
-						auto& [idx, file, bagFileName] = node.mapped();
+						auto& [idx, file , bagFileName] = node.mapped();
 
-						if (Phobos::Otamaa::OutputAudioLogs)
-						{
+						if(Phobos::Otamaa::OutputAudioLogs) {
 							Debug::LogInfo("Replacing audio `{}` from : [{} - ({} - {})] to : [{} - ({} - {})].",
 								ent.Name,
 								idx,
-								file->FileName,
+								file->FileName ,
 								bagFileName.c_str(),
 								i,
 								this->Bags[i].Bag->FileName,
@@ -322,8 +459,7 @@ public:
 		Indexes->Samples = GameCreateArray<AudioIDXEntry>(size);
 
 		int i = 0;
-		for (auto const& [entry, data] : map)
-		{
+		for (auto const& [entry, data] : map) {
 			//Debug::LogInfo("Samples[%d] Name [%s][%d , %d , %d ,  %d , %d]",
 			//	i,
 			//	entry.Name,
@@ -335,22 +471,20 @@ public:
 			//);
 			std::memcpy(&Indexes->Samples[i++], &entry, sizeof(AudioIDXEntry));
 
-			this->Files.emplace_back(std::get<0>(data), std::get<1>(data));
+			this->Files.emplace_back(std::get<0>(data) , std::get<1>(data));
 		}
 
 		return Indexes;
 	}
 
-	COMPILETIMEEVAL void Append(const char* pFileBase)
-	{
+	COMPILETIMEEVAL void Append(const char* pFileBase) {
 		this->Bags.emplace_back(pFileBase);
 	}
 
-	COMPILETIMEEVAL std::optional<FileStruct> GetFileStruct(int idx)
-	{
+	COMPILETIMEEVAL std::optional<FileStruct> GetFileStruct(int idx) {
+
 		const auto& files = this->Files;
-		if (size_t(idx) < files.size())
-		{
+		if (size_t(idx) < files.size()) {
 			const auto sample = &AudioIDXData::Instance->Samples[idx];
 			return FileStruct { sample->Size, sample->Offset, files[idx].second, false };
 		}
@@ -358,8 +492,7 @@ public:
 		return {};
 	}
 
-	COMPILETIMEEVAL size_t TotalSampleSizes() const
-	{
+	COMPILETIMEEVAL size_t TotalSampleSizes() const {
 		return this->Files.size();
 	}
 
@@ -368,7 +501,7 @@ private:
 	std::vector<AudioBag> Bags;
 
 	//contains linked real index of bags with files within
-	std::vector<std::pair<int, CCFileClass*>> Files;
+	std::vector<std::pair<int , CCFileClass*>> Files;
 
 public:
 	static AudioLuggage Instance;
@@ -376,11 +509,10 @@ public:
 
 AudioLuggage AudioLuggage::Instance;
 
-bool PlayWavWrapper(int HouseTypeIdx, size_t SampleIdx)
+bool PlayWavWrapper(int HouseTypeIdx , size_t SampleIdx)
 {
 	const auto pAudioStream = AudioStream::Instance();
-	if (!pAudioStream || Unsorted::ScenarioInit_Audio() || SampleIdx > 9 || HouseTypeIdx <= -1)
-	{
+	if(!pAudioStream || Unsorted::ScenarioInit_Audio() || SampleIdx > 9 || HouseTypeIdx <= -1) {
 		return false;
 	}
 
@@ -390,8 +522,7 @@ bool PlayWavWrapper(int HouseTypeIdx, size_t SampleIdx)
 
 	const auto& vec = pExt->TauntFile;
 
-	if (vec.empty() || vec[SampleIdx - 1].empty())
-	{
+	if (vec.empty() || vec[SampleIdx - 1].empty()) {
 		Debug::FatalErrorAndExit("Country [%s] Have Invalid Taunt Name Format [%s]",
 		pExt->AttachedToObject->ID, vec[SampleIdx - 1].c_str());
 	}
@@ -399,25 +530,25 @@ bool PlayWavWrapper(int HouseTypeIdx, size_t SampleIdx)
 	return pAudioStream->PlayWAV(vec[SampleIdx - 1].c_str(), false);
 }
 
-ASMJIT_PATCH(0x752b70, PlayTaunt, 5)
+ASMJIT_PATCH(0x752b70 , PlayTaunt , 5)
 {
-	GET(TauntDataStruct, data, ECX);
+	GET(TauntDataStruct, data , ECX);
 	R->EAX(PlayWavWrapper(data.countryIdx, data.tauntIdx));
 	return 0x752C68;
 }
 
-ASMJIT_PATCH(0x536438, TauntCommandClass_Execute, 5)
+ASMJIT_PATCH(0x536438 , TauntCommandClass_Execute , 5)
 {
-	GET(TauntDataStruct, data, ECX);
-	const auto house = NodeNameType::Array->Items[0]->Country;
-	R->Stack(0x4D, house);
-	PlayWavWrapper(house, data.tauntIdx);
-	return 0x53643D;
+   GET(TauntDataStruct, data , ECX);
+  const auto house =  NodeNameType::Array->Items[0]->Country;
+  R->Stack(0x4D , house);
+  PlayWavWrapper(house, data.tauntIdx);
+  return 0x53643D;
 }
 
-ASMJIT_PATCH(0x48da3b, sub_48D1E0_PlayTaunt, 5)
+ASMJIT_PATCH(0x48da3b , sub_48D1E0_PlayTaunt , 5)
 {
-	GET(TauntDataStruct, data, ECX);
+	GET(TauntDataStruct, data , ECX);
 	PlayWavWrapper(GlobalPacketType::Instance->Command, data.tauntIdx);
 	return 0x48DAD3;
 }
@@ -470,12 +601,24 @@ ASMJIT_PATCH(0x4011C0, Audio_Load, 6)
 
 	// audio01.bag to audio99.bag
 	fmt::memory_buffer buffer {};
-	for (auto i = 1; i < 100; ++i)
-	{
+	for(auto i = 1; i < 100; ++i) {
 		fmt::format_to(std::back_inserter(buffer), "audio{:02}", i);
 		buffer.push_back('\0');
 		instance.Append(buffer.data());
 		buffer.clear();
+	}
+
+	// Start async preloader
+	LooseAudioCacheManager::StartPreloader();
+	
+	// Queue some common audio files for preloading
+	const char* commonAudio[] = {
+		"GenericClick", "GUIMainButtonSound", "GUIBuildSound", "DigSound",
+		"ScoldSound", "BombAttachSound", "ExplosionMed", "ExplosionLarge"
+	};
+	
+	for (const char* audio : commonAudio) {
+		LooseAudioCacheManager::QueuePreload(audio);
 	}
 
 	// cram all luggage datas onto single AudioIdxData pointer
@@ -495,8 +638,7 @@ ASMJIT_PATCH(0x4016F0, IDXContainer_LoadSample, 6)
 
 	pThis->CurrentSampleFile = file->File;
 	pThis->CurrentSampleSize = file->Size;
-	if (file->Allocated)
-	{
+	if (file->Allocated) {
 		pThis->ExternalFile = file->File;
 	}
 
@@ -515,31 +657,26 @@ ASMJIT_PATCH(0x4064A0, VocClassData_AddSample, 6) // Complete rewrite of VocClas
 	if (!AudioIDXData::Instance())
 		Debug::FatalError("AudioIDXData is missing!");
 
-	if (pVoc->NumSamples == 0x20)
-	{
+	if(pVoc->NumSamples == 0x20) {
 		// return false
 		R->EAX(0);
-	}
-	else
-	{
+	} else {
 		const bool AutoEventSet = *reinterpret_cast<int*>(0x87E2A0);
 
-		if (AutoEventSet)
-		{ // I dunno
-			while (*pSampleName == '$' || *pSampleName == '#')
-			{
+		if(AutoEventSet) { // I dunno
+			while(*pSampleName == '$' || *pSampleName == '#') {
 				++pSampleName;
 			}
 
 			auto idxSample = AudioIDXData::Instance->FindSampleIndex(pSampleName);
 
-			if (idxSample == -1)
-			{
+			if(idxSample == -1) {
 				idxSample = LooseAudioCacheManager::FindOrAllocateIndex(pSampleName) + AudioIDXData::Instance->SampleCount;
+				// Queue for preload if it's a new loose audio file
+				LooseAudioCacheManager::QueuePreload(pSampleName);
 			}
 
-			if (Phobos::Otamaa::OutputAudioLogs && idxSample == -1)
-			{
+			if (Phobos::Otamaa::OutputAudioLogs && idxSample == -1) {
 				Debug::LogInfo("Cannot Find [{}] sample!.", pSampleName);
 			}
 
@@ -566,14 +703,10 @@ ASMJIT_PATCH(0x401640, AudioIndex_GetSampleInformation, 5)
 		return 0x0;
 	}
 
-	if (auto const pData = LooseAudioCacheManager::GetAudioSampleDataFromIndex(idxSample - AudioIDXData::Instance->SampleCount))
-	{
-		if (pData->SampleRate)
-		{
+	if(auto const pData = LooseAudioCacheManager::GetAudioSampleDataFromIndex(idxSample - AudioIDXData::Instance->SampleCount)) {
+		if(pData->SampleRate) {
 			std::memcpy(pAudioSample, pData, sizeof(AudioSampleData));
-		}
-		else
-		{
+		} else {
 			pAudioSample->Data = 4;
 			pAudioSample->Format = 0;
 			pAudioSample->SampleRate = 22050;
@@ -595,3 +728,26 @@ ASMJIT_PATCH(0x401640, AudioIndex_GetSampleInformation, 5)
 //	Debug::LogInfo("Playing Audio at idx {}", _IDX);
 //	return 0x0;
 //}
+
+// Cleanup function for audio system
+namespace AudioCleanup {
+	class AudioManager {
+	public:
+		~AudioManager() {
+			// Stop preloader thread when the game shuts down
+			LooseAudioCacheManager::StopPreloader();
+		}
+	};
+	
+	// Static instance to ensure cleanup on program exit
+	static AudioManager cleanup;
+}
+
+// Implementation of AudioPreload interface
+namespace AudioPreload {
+	void QueueFile(const char* filename) {
+		if (filename && filename[0] != '\0') {
+			LooseAudioCacheManager::QueuePreload(filename);
+		}
+	}
+}

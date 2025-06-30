@@ -568,6 +568,7 @@
     <ClCompile Include="src\Utilities\Constructs.cpp" />
     <ClCompile Include="src\Utilities\EnumFunctions.cpp" />
     <ClCompile Include="src\Utilities\GeneralUtils.cpp" />
+    <ClCompile Include="src\Utilities\SHPUtils.cpp" />
     <ClCompile Include="src\Utilities\TechnoTypeConvertData.cpp" />
     <ClCompile Include="src\Utilities\TheaterSpecificSHP.cpp" />
     <ClCompile Include="src\Utilities\VersesData.cpp" />
@@ -868,6 +869,7 @@
     <ClInclude Include="src\Lib\gcem\gcem.hpp" />
     <ClInclude Include="src\Lib\Lua542\include\lua.hpp" />
     <ClInclude Include="src\Misc\Ares\Audio.h" />
+    <ClInclude Include="src\Misc\Ares\AudioPreload.h" />
     <ClInclude Include="src\Misc\Ares\CSF.h" />
     <ClInclude Include="src\Misc\Ares\EVAVoices.h" />
     <ClInclude Include="src\Misc\Ares\Hooks\AresChecksummer.h" />
@@ -1031,6 +1033,8 @@
     <ClInclude Include="src\Utilities\Macro.h" />
     <ClInclude Include="src\Utilities\Parser.h" />
     <ClInclude Include="src\Utilities\Patch.h" />
+    <ClInclude Include="src\Utilities\SHPUtils.h" />
+    <ClInclude Include="src\Utilities\SHPWrapper.h" />
     <ClInclude Include="src\Utilities\TechnoTypeConvertData.h" />
     <ClInclude Include="src\Utilities\Template.h" />
     <ClInclude Include="src\Utilities\TemplateDef.h" />
