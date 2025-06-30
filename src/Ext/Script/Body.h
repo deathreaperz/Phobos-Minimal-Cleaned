@@ -231,7 +231,7 @@ public:
 	static void ChronoshiftToEnemyBase(TeamClass* pTeam, int extraDistance);
 	static void ForceGlobalOnlyTargetHouseEnemy(TeamClass* pTeam, int mode);
 
-	static bool IsExtVariableAction(int action);
+	static inline bool IsExtVariableAction(int action);
 	static bool VariablesHandler(TeamClass* pTeam, PhobosScripts eAction, int nArg);
 
 	template<bool IsGlobal, class _Pr>
