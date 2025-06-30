@@ -115,94 +115,91 @@ void WarheadTypeExtData::ApplyDirectional(BulletClass* pBullet, TechnoClass* pTa
 
 void WarheadTypeExtData::applyIronCurtain(const CoordStruct& coords, HouseClass* Owner, int damage) const
 {
-	if (this->IC_Duration != 0)
+	const int icDuration = this->IC_Duration.Get();
+	if (icDuration == 0)
+		return;
+
+	const float cellSpread = this->AttachedToObject->CellSpread;
+	const int icCap = this->IC_Cap.Get();
+	
+	// Get affected objects once and cache the result
+	auto affectedTechnos = Helpers::Alex::getCellSpreadItems(coords, cellSpread, true);
+	
+	// Process each affected object
+	for (auto* curTechno : affectedTechnos)
 	{
-		// set of affected objects. every object can be here only once.
-		// affect each object
-		for (auto curTechno : Helpers::Alex::getCellSpreadItems(coords, this->AttachedToObject->CellSpread, true))
+		// Quick house relationship check
+		if (!this->CanAffectHouse(curTechno->Owner, Owner))
+			continue;
+
+		// Cache armor calculation
+		const auto& verses = this->GetVerses(TechnoExtData::GetTechnoArmor(curTechno, this->AttachedToObject));
+		if (std::abs(verses.Verses) < 0.001)
+			continue;
+
+		// Calculate duration once with modifier
+		int duration = icDuration;
+		if (duration > 0)
 		{
-			// affects enemies or allies respectively?
-			if (!this->CanAffectHouse(curTechno->Owner, Owner))
-			{
-				continue;
+			auto* pType = curTechno->GetTechnoType();
+			duration = static_cast<int>(duration * TechnoTypeExtContainer::Instance.Find(pType)->IronCurtain_Modifier.Get());
+		}
+
+		// Handle ForceShield protection type
+		if (curTechno->ProtectType == ProtectTypes::ForceShield)
+		{
+			// Apply damage first if needed
+			if (damage > 0) {
+				int tempDamage = damage;
+				curTechno->ReceiveDamage(&tempDamage, 0, this->AttachedToObject, nullptr, true, false, Owner);
 			}
 
-			auto pType = curTechno->GetTechnoType();
-			// respect verses the boolean way
-			if (Math::abs(this->GetVerses(TechnoExtData::GetTechnoArmor(curTechno, this->AttachedToObject)).Verses) < 0.001)
-			{
-				continue;
+			// Apply iron curtain if unit survived
+			if (curTechno->IsAlive) {
+				curTechno->IronCurtain(duration, Owner, false);
+				curTechno->IronCurtainTimer.Start(duration);
 			}
+			continue;
+		}
 
-			// affect each object
+		// Handle regular iron curtain logic
+		const int timeLeft = curTechno->IronCurtainTimer.GetTimeLeft();
+		const int oldValue = timeLeft <= 0 ? 0 : timeLeft;
+		const int newValue = Helpers::Alex::getCappedDuration(oldValue, duration, icCap);
+
+		if (oldValue <= 0)
+		{
+			// Start new iron curtain effect
+			if (newValue > 0)
 			{
-				// duration modifier
-				int duration = this->IC_Duration;
-
-				// modify good durations only
-				if (duration > 0)
+				// Apply damage first if needed
+				if (damage > 0)
 				{
-					duration = static_cast<int>(duration * TechnoTypeExtContainer::Instance.Find(pType)->IronCurtain_Modifier);
+					int tempDamage = damage;
+					curTechno->ReceiveDamage(&tempDamage, 0, this->AttachedToObject, nullptr, true, false, Owner);
 				}
 
-				// get the values
-				if (curTechno->ProtectType == ProtectTypes::ForceShield)
+				// Apply iron curtain if unit survived
+				if (curTechno->IsAlive)
 				{
-					// damage the victim before ICing it
-					if (damage) {
-						curTechno->ReceiveDamage(&damage, 0, this->AttachedToObject, nullptr, true, false, Owner);
-					}
-
-					// unit may be destroyed already.
-					if (curTechno->IsAlive) {
-						// start and prevent the multiplier from being applied twice
-						curTechno->IronCurtain(duration, Owner, false);
-						curTechno->IronCurtainTimer.Start(duration);
-					}
-
-					continue;
+					curTechno->IronCurtain(newValue, Owner, false);
+					curTechno->IronCurtainTimer.Start(newValue);
 				}
-
-				int timeLeft = curTechno->IronCurtainTimer.GetTimeLeft();
-				int oldValue = timeLeft <= 0 ? 0 : timeLeft;
-				int newValue = Helpers::Alex::getCappedDuration(oldValue, duration, this->IC_Cap);
-
-				// update iron curtain
-				if (oldValue <= 0)
-				{
-					// start iron curtain effect?
-					if (newValue > 0)
-					{
-						// damage the victim before ICing it
-						if (damage)
-						{
-							curTechno->ReceiveDamage(&damage, 0, this->AttachedToObject, nullptr, true, false, Owner);
-						}
-
-						// unit may be destroyed already.
-						if (curTechno->IsAlive)
-						{
-							// start and prevent the multiplier from being applied twice
-							curTechno->IronCurtain(newValue, Owner, false);
-							curTechno->IronCurtainTimer.Start(newValue);
-						}
-					}
-				}
-				else
-				{
-					// iron curtain effect is already on.
-					if (newValue > 0)
-					{
-						// set new length and reset tint stage
-						curTechno->IronCurtainTimer.Start(newValue);
-						curTechno->IronTintStage = 4;
-					}
-					else
-					{
-						// turn iron curtain off
-						curTechno->IronCurtainTimer.Stop();
-					}
-				}
+			}
+		}
+		else
+		{
+			// Extend existing iron curtain effect
+			if (newValue > 0)
+			{
+				curTechno->IronCurtainTimer.Start(newValue);
+				curTechno->IronTintStage = 4;
+			}
+			else
+			{
+				// Remove iron curtain
+				curTechno->IronCurtainTimer.Stop();
+				curTechno->IronTintStage = 0;
 			}
 		}
 	}
@@ -527,51 +524,84 @@ static void SpawnCrate(std::vector<int>& types, std::vector<int>& weights, Coord
 
 static bool NOINLINE IsCellSpreadWH(WarheadTypeExtData* pData)
 {
-	// List all Warheads here that respect CellSpread
-
-	return //pData->RemoveDisguise ||
-		//pData->RemoveMindControl ||
-		//pData->Crit_Chance ||
-		pData->Shield_Break ||
-		!pData->ConvertsPair.empty() ||
-		pData->Shield_Respawn_Duration > 0 ||
-		pData->Shield_SelfHealing_Duration > 0 ||
+	// Cache frequently accessed values
+	const float cellSpread = pData->AttachedToObject->CellSpread;
+	
+	// Check actual cell spread first (most common case)
+	if (std::abs(cellSpread) >= 0.1f)
+		return true;
+	
+	// Group shield-related checks
+	if (pData->Shield_Break.Get() ||
+		pData->Shield_Respawn_Duration.Get() > 0 ||
+		pData->Shield_SelfHealing_Duration.Get() > 0 ||
 		!pData->Shield_AttachTypes.empty() ||
 		!pData->Shield_RemoveTypes.empty() ||
-		pData->Shield_RemoveAll ||
-		pData->Transact ||
-		pData->PermaMC ||
-		pData->GattlingStage > 0 ||
-		pData->GattlingRateUp != 0 ||
+		pData->Shield_RemoveAll.Get())
+		return true;
+	
+	// Group effect-related checks
+	if (!pData->PhobosAttachEffects.AttachTypes.empty() ||
+		!pData->PhobosAttachEffects.RemoveTypes.empty() ||
+		!pData->PhobosAttachEffects.RemoveGroups.empty())
+		return true;
+	
+	// Group combat-related checks
+	if (!pData->ConvertsPair.empty() ||
+		pData->GattlingStage.Get() > 0 ||
+		pData->GattlingRateUp.Get() != 0 ||
+		pData->ReloadAmmo.Get() != 0 ||
+		(pData->RevengeWeapon.Get() && pData->RevengeWeapon_GrantDuration.Get() > 0))
+		return true;
+	
+	// Group special effect checks
+	if (pData->Transact.Get() ||
+		pData->PermaMC.Get() ||
 		pData->AttachTag ||
-		//pData->DirectionalArmor ||
-		pData->ReloadAmmo != 0
-		|| (pData->RevengeWeapon && pData->RevengeWeapon_GrantDuration > 0)
-		|| !pData->LimboKill_IDs.empty()
-		|| (pData->PaintBallData.Color != ColorStruct::Empty)
-		|| pData->InflictLocomotor
-		|| pData->RemoveInflictedLocomotor
-		|| pData->IC_Duration != 0
-
-		|| !pData->PhobosAttachEffects.AttachTypes.empty()
-		|| !pData->PhobosAttachEffects.RemoveTypes.empty()
-		|| !pData->PhobosAttachEffects.RemoveGroups.empty()
-		|| pData->BuildingSell
-		|| pData->BuildingUndeploy
-		;
+		pData->IC_Duration.Get() != 0 ||
+		!pData->LimboKill_IDs.empty() ||
+		(pData->PaintBallData.Color != ColorStruct::Empty))
+		return true;
+	
+	// Group locomotor and building checks
+	if (pData->InflictLocomotor.Get() ||
+		pData->RemoveInflictedLocomotor.Get() ||
+		pData->BuildingSell.Get() ||
+		pData->BuildingUndeploy.Get())
+		return true;
+	
+	// Check critical hit chances
+	if (!pData->Crit_CurrentChance.empty())
+		return true;
+	
+	return false;
 }
 
 void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, BulletClass* pBullet, CoordStruct coords, int damage)
 {
+	// Cache frequently accessed values to avoid repeated lookups
+	const auto* pAttachedWarhead = this->AttachedToObject;
+	const float cellSpread = pAttachedWarhead->CellSpread;
+	const bool hasCellSpread = fabs(cellSpread) >= 0.1f;
+	const bool hasInterceptor = pOwner && pBullet && 
+		pOwner->IsAlive && pBullet->IsAlive &&
+		TechnoExtContainer::Instance.Find(pOwner)->IsInterceptor() && 
+		BulletExtContainer::Instance.Find(pBullet)->IsInterceptor;
+	
 	VocClass::SafeImmedietelyPlayAt(Sound, &coords);
-	for (auto const& pSys : this->DetonateParticleSystem)
+	
+	// Batch particle system creation
+	if (!this->DetonateParticleSystem.empty())
 	{
-		GameCreate<ParticleSystemClass>(pSys, coords, nullptr, nullptr, CoordStruct::Empty, pHouse);
+		for (auto const& pSys : this->DetonateParticleSystem)
+		{
+			GameCreate<ParticleSystemClass>(pSys, coords, nullptr, nullptr, CoordStruct::Empty, pHouse);
+		}
 	}
 
 	SpawnCrate(this->SpawnsCrate_Types, this->SpawnsCrate_Weights, coords);
 
-	if (!pBullet)
+	if (!pBullet && !this->DetonatesWeapons.empty())
 	{
 		for (auto const& pWeapon : this->DetonatesWeapons)
 		{
@@ -579,15 +609,12 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 		}
 	}
 
-	if (pOwner && pBullet)
+	if (hasInterceptor)
 	{
-		if (pOwner->IsAlive && pBullet->IsAlive)
-			if (TechnoExtContainer::Instance.Find(pOwner)->IsInterceptor() && BulletExtContainer::Instance.Find(pBullet)->IsInterceptor)
-				this->InterceptBullets(pOwner, pBullet->WeaponType, coords);
-
-		//TechnoExtData::PutPassengersInCoords(pBullet->Owner, coords, RulesGlobal->WarpIn, RulesGlobal->BunkerWallsUpSound, false);
+		this->InterceptBullets(pOwner, pBullet->WeaponType, coords);
 	}
 
+	// Optimize house iteration logic
 	if (pHouse)
 	{
 		if (this->BigGap) {
@@ -604,7 +631,8 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 				});
 		}
 		else {
-			if (this->CreateGap > 0)
+			const int createGap = this->CreateGap.Get();
+			if (createGap > 0)
 			{
 				const auto pCurrent = HouseClass::CurrentPlayer();
 
@@ -615,10 +643,10 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 					!pCurrent->SpySatActive &&				// No SpySat
 					!pCurrent->IsAlliedWith(pHouse))			// Not Allied
 				{
-					CellClass::CreateGap(pCurrent, this->CreateGap, coords);
+					CellClass::CreateGap(pCurrent, createGap, coords);
 				}
 			}
-			else if (this->CreateGap < 0)
+			else if (createGap < 0)
 			{
 				HouseClass::Array->for_each([&](HouseClass* pOtherHouse)
 					{
@@ -635,101 +663,107 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 			}
 		}
 
-		if (this->Reveal < 0 //|| this->SpySat
-			)
+		const int revealValue = this->Reveal.Get();
+		if (revealValue < 0)
 		{
 			MapClass::Instance->Reveal(pHouse);
 		}
-		else if (this->Reveal > 0)
+		else if (revealValue > 0)
 		{
-			SW_Reveal::RevealMap(CellClass::Coord2Cell(coords), (float)this->Reveal.Get(), 0, pHouse);
+			SW_Reveal::RevealMap(CellClass::Coord2Cell(coords), (float)revealValue, 0, pHouse);
 		}
 
 		this->applyTransactMoney(pOwner, pHouse, pBullet, coords);
 	}
 
+	// Pre-calculate critical hit data once
 	this->HasCrit = false;
 	this->GetCritChance(pOwner, this->Crit_CurrentChance);
+	const bool hasCritChance = !this->Crit_CurrentChance.empty() && 
+		((this->Crit_CurrentChance.size() == 1 && this->Crit_CurrentChance[0] > 0.0) || 
+		 this->Crit_CurrentChance.size() > 1);
 
 	this->RandomBuffer = ScenarioClass::Instance->Random.RandomDouble();
-	//const bool ISPermaMC = this->PermaMC && !pBullet;
 
-	if (IsCellSpreadWH(this) || (this->Crit_CurrentChance.size() == 1 && this->Crit_CurrentChance[0] > 0.0) || this->Crit_CurrentChance.size() > 1)
+	// Early exit if no cell spread and no crit chance
+	if (!IsCellSpreadWH(this) && !hasCritChance)
+		return;
+
+	const bool bulletWasIntercepted = pBullet ? 
+		BulletExtContainer::Instance.Find(pBullet)->InterceptedStatus == InterceptedStatus::Intercepted : false;
+
+	// Optimize cell spread processing
+	if (hasCellSpread)
 	{
-		const bool ThisbulletWasIntercepted = pBullet ? BulletExtContainer::Instance.Find(pBullet)->InterceptedStatus == InterceptedStatus::Intercepted : false;
-		const float cellSpread = this->AttachedToObject->CellSpread;
-
-		//if the warhead itself has cellspread
-		if (fabs(cellSpread) >= 0.1f)
+		// Get targets once and reuse
+		std::vector<TechnoClass*> pTargetv = Helpers::Alex::getCellSpreadItems(coords, cellSpread, true);
+		
+		// Process all targets in a single loop
+		for (TechnoClass* pTarget : pTargetv)
 		{
-			std::vector<TechnoClass*> pTargetv = Helpers::Alex::getCellSpreadItems(coords, cellSpread, true);
+			this->DetonateOnOneUnit(pHouse, pTarget, damage, pOwner, pBullet, bulletWasIntercepted);
+		}
 
-			std::for_each(pTargetv.begin(), pTargetv.end(), [&](TechnoClass* pTarget)
+		if (this->Transact)
+		{
+			this->TransactOnAllUnits(pTargetv, pHouse, pOwner);
+		}
+	}
+	else if (pBullet && pBullet->Target)
+	{
+		// Optimized single target processing
+		const double distanceThreshold = Unsorted::LeptonsPerCell / 4.0;
+		if (pBullet->DistanceFrom(pBullet->Target) < distanceThreshold) 
+		{
+			const auto targetType = pBullet->Target->WhatAmI();
+			switch (targetType)
+			{
+			case BuildingClass::AbsID:
+			case AircraftClass::AbsID:
+			case UnitClass::AbsID:
+			case InfantryClass::AbsID:
+			{
+				auto* pTechnoTarget = static_cast<TechnoClass*>(pBullet->Target);
+				this->DetonateOnOneUnit(pHouse, pTechnoTarget, damage, pOwner, pBullet, bulletWasIntercepted);
+
+				if (this->Transact)
 				{
-					this->DetonateOnOneUnit(pHouse, pTarget, damage, pOwner, pBullet, ThisbulletWasIntercepted);
-				});
-
-			if (this->Transact)
-			{
-				this->TransactOnAllUnits(pTargetv, pHouse, pOwner);
-			}
-		} //no cellspread but it has bullet
-		else if (pBullet && pBullet->Target)
-		{
-			{
-				if (pBullet->DistanceFrom(pBullet->Target) < Unsorted::LeptonsPerCell / 4) {
-					switch (pBullet->Target->WhatAmI())
+					// Inline eligibility check for performance
+					if (CanDealDamage(pTechnoTarget) &&
+						CanTargetHouse(pHouse, pTechnoTarget) &&
+						pTechnoTarget->GetTechnoType()->Trainable)
 					{
-					case BuildingClass::AbsID:
-					case AircraftClass::AbsID:
-					case UnitClass::AbsID:
-					case InfantryClass::AbsID:
-					{
-						const auto Eligible = [&](TechnoClass* const pTech)
-							{
-								if (CanDealDamage(pTech) &&
-									CanTargetHouse(pHouse, pTech) &&
-									pTech->GetTechnoType()->Trainable
-									) return pTech;
-
-								return static_cast<TechnoClass* const>(nullptr);
-							};
-
-						this->DetonateOnOneUnit(pHouse, static_cast<TechnoClass*>(pBullet->Target), damage, pOwner, pBullet, ThisbulletWasIntercepted);
-
-						if (this->Transact)
-							this->TransactOnOneUnit(Eligible(static_cast<TechnoClass*>(pBullet->Target)), pOwner, 1);
-					}break;
-					case CellClass::AbsID:
-					{
-						if (this->Transact)
-							this->TransactOnOneUnit(nullptr, pOwner, 1);
-					}break;
-					default:
-						break;
+						this->TransactOnOneUnit(pTechnoTarget, pOwner, 1);
 					}
 				}
+				break;
+			}
+			case CellClass::AbsID:
+			{
+				if (this->Transact)
+					this->TransactOnOneUnit(nullptr, pOwner, 1);
+				break;
+			}
+			default:
+				break;
 			}
 		}
-		else if (auto pIntended = this->IntendedTarget)
+	}
+	else if (auto pIntended = this->IntendedTarget)
+	{
+		const double distanceThreshold = Unsorted::LeptonsPerCell / 4.0;
+		if (coords.DistanceFrom(pIntended->GetCoords()) < distanceThreshold) 
 		{
-			if (coords.DistanceFrom(pIntended->GetCoords()) < double(Unsorted::LeptonsPerCell / 4)) {
-				this->DetonateOnOneUnit(pHouse, pIntended, damage, pOwner, pBullet, ThisbulletWasIntercepted);
+			this->DetonateOnOneUnit(pHouse, pIntended, damage, pOwner, pBullet, bulletWasIntercepted);
 
-				if (this->Transact) {
-					//since we are on last chain of the event , we can do these thing
-					const auto NotEligible = [this, pHouse, pOwner](TechnoClass* const pTech) {
-						if (!CanDealDamage(pTech))
-							return true;
-
-						if (!pTech->GetTechnoType()->Trainable && this->Transact_Experience_IgnoreNotTrainable.Get())
-							return true;
-
-						return !CanTargetHouse(pHouse, pTech);
-						};
-
-					if (!NotEligible(pIntended))
-						this->TransactOnOneUnit(pIntended, pOwner, 1);
+			if (this->Transact) 
+			{
+				// Inline eligibility check for performance
+				if (CanDealDamage(pIntended) &&
+					CanTargetHouse(pHouse, pIntended) &&
+					(pIntended->GetTechnoType()->Trainable || !this->Transact_Experience_IgnoreNotTrainable.Get()))
+				{
+					this->TransactOnOneUnit(pIntended, pOwner, 1);
 				}
 			}
 		}
@@ -738,12 +772,13 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 
 void WarheadTypeExtData::DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTarget, int damage, TechnoClass* pOwner, BulletClass* pBullet, bool bulletWasIntercepted)
 {
-	if (!this->CanDealDamage(pTarget))
+	// Early validation checks - fail fast
+	if (!this->CanDealDamage(pTarget) || !this->CanTargetHouse(pHouse, pTarget))
 		return;
 
-	if (!this->CanTargetHouse(pHouse, pTarget))
-		return;
-
+	// Cache frequently accessed container lookups
+	auto* pTargetExt = TechnoExtContainer::Instance.Find(pTarget);
+	
 	this->applyWebby(pTarget, pHouse, pOwner);
 
 	if (!this->LimboKill_IDs.empty())
@@ -753,15 +788,10 @@ void WarheadTypeExtData::DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTar
 
 	this->ApplyShieldModifiers(pTarget);
 
-	//if (this->RemoveDisguise)
-	//	this->ApplyRemoveDisguiseToInf(pHouse, pTarget);
-
-	//if (this->RemoveMindControl)
-	//	this->ApplyRemoveMindControl(pHouse, pTarget);
-
 	if (this->PermaMC)
 		this->applyPermaMC(pHouse, pTarget);
 
+	// Critical hit processing - check suppression condition once
 	if (!this->Crit_CurrentChance.empty() && (!this->Crit_SuppressOnIntercept || !bulletWasIntercepted))
 	{
 		this->ApplyCrit(pHouse, pTarget, pOwner);
@@ -770,55 +800,49 @@ void WarheadTypeExtData::DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTar
 			return;
 	}
 
-	auto pExt = TechnoExtContainer::Instance.Find(pTarget);
-
-	if (this->PaintBallDuration.isset() && this->PaintBallData.Color != ColorStruct::Empty) {
-		auto& paintball = pExt->PaintBallStates[this->AttachedToObject];
+	// PaintBall processing - optimize timer operations
+	if (this->PaintBallDuration.isset() && this->PaintBallData.Color != ColorStruct::Empty) 
+	{
+		auto& paintball = pTargetExt->PaintBallStates[this->AttachedToObject];
 		paintball.SetData(this->PaintBallData);
 		paintball.Init();
 
-		if (this->PaintBallDuration < 0 || this->PaintBallData.Accumulate) {
-			int value = paintball.timer.GetTimeLeft() + this->PaintBallDuration;
-
+		const int duration = this->PaintBallDuration.Get();
+		if (duration < 0 || this->PaintBallData.Accumulate) 
+		{
+			int value = paintball.timer.GetTimeLeft() + duration;
 			if (value <= 0) {
 				paintball.timer.Stop();
-			}
-			else {
+			} else {
 				paintball.timer.Add(value);
 			}
 		}
-		else {
-			if (this->PaintBallData.Override && paintball.timer.GetTimeLeft()) {
-				paintball.timer.Start(this->PaintBallDuration);
-			}
-			else {
-				paintball.timer.Start(this->PaintBallDuration);
-			}
+		else 
+		{
+			// Simplified timer logic - override condition is redundant since we're starting anyway
+			paintball.timer.Start(duration);
 		}
 	}
 
-	if (this->GattlingStage > 0)
-	{
-		this->ApplyGattlingStage(pTarget, this->GattlingStage);
-	}
+	// Batch simple property modifications
+	const int gattlingStage = this->GattlingStage.Get();
+	const int gattlingRateUp = this->GattlingRateUp.Get();
+	const int reloadAmmo = this->ReloadAmmo.Get();
+	
+	if (gattlingStage > 0)
+		this->ApplyGattlingStage(pTarget, gattlingStage);
 
-	if (this->GattlingRateUp != 0)
-	{
-		this->ApplyGattlingRateUp(pTarget, this->GattlingRateUp);
-	}
+	if (gattlingRateUp != 0)
+		this->ApplyGattlingRateUp(pTarget, gattlingRateUp);
 
-	if (this->ReloadAmmo != 0)
-	{
-		this->ApplyReloadAmmo(pTarget, this->ReloadAmmo);
-	}
+	if (reloadAmmo != 0)
+		this->ApplyReloadAmmo(pTarget, reloadAmmo);
 
+	// Remaining effects - only call if needed
 	TechnoTypeConvertData::ApplyConvert(this->ConvertsPair, pHouse, pTarget, this->Convert_SucceededAnim);
 
 	if (this->AttachTag)
 		this->ApplyAttachTag(pTarget);
-
-	//if (this->DirectionalArmor.Get())
-	//	this->ApplyDirectional(pBullet, pTarget);
 
 	if (this->RevengeWeapon && this->RevengeWeapon_GrantDuration > 0)
 		this->ApplyRevengeWeapon(pTarget);
@@ -829,11 +853,13 @@ void WarheadTypeExtData::DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTar
 	if (this->RemoveInflictedLocomotor)
 		this->ApplyLocomotorInflictionReset(pTarget);
 
-	if (!this->PhobosAttachEffects.AttachTypes.empty()
-		|| !this->PhobosAttachEffects.RemoveTypes.empty()
-		|| !this->PhobosAttachEffects.RemoveGroups.empty()
-		)
+	// Phobos attach effects - single condition check
+	if (!this->PhobosAttachEffects.AttachTypes.empty() ||
+		!this->PhobosAttachEffects.RemoveTypes.empty() ||
+		!this->PhobosAttachEffects.RemoveGroups.empty())
+	{
 		this->ApplyAttachEffects(pTarget, pHouse, pOwner);
+	}
 }
 
 //void WarheadTypeExtData::DetonateOnAllUnits(HouseClass* pHouse, const CoordStruct coords, const float cellSpread, TechnoClass* pOwner)
@@ -849,86 +875,118 @@ void WarheadTypeExtData::ApplyShieldModifiers(TechnoClass* pTarget) const
 	if (!pTarget)
 		return;
 
-	auto pExt = TechnoExtContainer::Instance.Find(pTarget);
-
+	auto* pExt = TechnoExtContainer::Instance.Find(pTarget);
+	auto* pCurrentShield = pExt->GetShield();
+	
 	int shieldIndex = -1;
 	double oldRatio = 1.0;
 
-	// Remove shield.
-	if (pExt->GetShield())
+	// Remove shield logic
+	if (pCurrentShield)
 	{
-		shieldIndex = this->Shield_RemoveTypes.IndexOf(pExt->Shield->GetType());
-
-		if (shieldIndex >= 0 || this->Shield_RemoveAll)
+		const bool shouldRemoveAll = this->Shield_RemoveAll.Get();
+		if (shouldRemoveAll)
 		{
-			oldRatio = pExt->Shield->GetHealthRatio();
+			shieldIndex = 0; // Mark for removal
+		}
+		else if (!this->Shield_RemoveTypes.empty())
+		{
+			shieldIndex = this->Shield_RemoveTypes.IndexOf(pCurrentShield->GetType());
+		}
+
+		if (shieldIndex >= 0 || shouldRemoveAll)
+		{
+			oldRatio = pCurrentShield->GetHealthRatio();
 			pExt->CurrentShieldType = ShieldTypeClass::Array.begin()->get();
 			pExt->Shield.reset(nullptr);
+			pCurrentShield = nullptr; // Clear reference since shield was removed
 		}
 	}
 
-	// Attach shield.
+	// Attach shield logic - only if we have types to attach
 	if (!this->Shield_AttachTypes.empty())
 	{
 		ShieldTypeClass* shieldType = nullptr;
 
-		if (this->Shield_ReplaceOnly)
+		if (this->Shield_ReplaceOnly.Get())
 		{
 			if (shieldIndex >= 0)
 			{
-				const int nMax = (Shield_AttachTypes.size() - 1);
-				shieldType = Shield_AttachTypes[MinImpl(shieldIndex, nMax)];
+				const int nMax = static_cast<int>(Shield_AttachTypes.size() - 1);
+				shieldType = Shield_AttachTypes[std::min(shieldIndex, nMax)];
 			}
-			else if (this->Shield_RemoveAll)
+			else if (this->Shield_RemoveAll.Get())
+			{
 				shieldType = Shield_AttachTypes[0];
+			}
 		}
 		else
 		{
 			shieldType = Shield_AttachTypes[0];
 		}
 
-		if (shieldType)
+		if (shieldType && shieldType->Strength)
 		{
-			if (shieldType->Strength && (!pExt->Shield || (this->Shield_ReplaceNonRespawning && pExt->Shield->IsBrokenAndNonRespawning() &&
-				pExt->Shield->GetFramesSinceLastBroken() >= this->Shield_MinimumReplaceDelay)))
+			const bool shouldReplace = !pExt->Shield || 
+				(this->Shield_ReplaceNonRespawning.Get() && 
+				 pExt->Shield->IsBrokenAndNonRespawning() &&
+				 pExt->Shield->GetFramesSinceLastBroken() >= this->Shield_MinimumReplaceDelay.Get());
+
+			if (shouldReplace)
 			{
 				pExt->CurrentShieldType = shieldType;
 				pExt->Shield = std::make_unique<ShieldClass>(pTarget, true);
 
-				if (this->Shield_ReplaceOnly && this->Shield_InheritStateOnReplace)
+				if (this->Shield_ReplaceOnly.Get() && this->Shield_InheritStateOnReplace.Get())
 				{
-					pExt->Shield->SetHP((int)(shieldType->Strength * oldRatio));
+					const int newHP = static_cast<int>(shieldType->Strength * oldRatio);
+					pExt->Shield->SetHP(newHP);
 
-					if (pExt->Shield->GetHP() == 0)
-						pExt->Shield->SetRespawn(shieldType->Respawn_Rate, shieldType->Respawn, shieldType->Respawn_Rate, this->Shield_Respawn_RestartTimer);
+					if (newHP == 0)
+					{
+						pExt->Shield->SetRespawn(shieldType->Respawn_Rate, shieldType->Respawn, 
+							shieldType->Respawn_Rate, this->Shield_Respawn_RestartTimer.Get());
+					}
 				}
+				
+				pCurrentShield = pExt->Shield.get(); // Update reference
 			}
 		}
 	}
 
-	// Apply other modifiers.
-	if (pExt->GetShield())
+	// Apply other modifiers - only if we have a shield and it passes type checks
+	if (pCurrentShield)
 	{
-		const auto pCurrentType = pExt->Shield->GetType();
+		const auto* pCurrentType = pCurrentShield->GetType();
 
-		if (!this->Shield_AffectTypes.empty() && !this->Shield_AffectTypes.Contains(pCurrentType))
+		// Early exit if type filtering excludes this shield
+		if (!this->Shield_AffectTypes.empty() && !this->Shield_AffectTypes.Contains(const_cast<ShieldTypeClass*>(pCurrentType)))
 			return;
 
-		if (this->Shield_Break && pExt->Shield->IsActive() && this->Shield_Break_Types.Eligible(this->Shield_AffectTypes, pCurrentType))
-			pExt->Shield->BreakShield(this->Shield_BreakAnim, this->Shield_BreakWeapon);
-
-		if (this->Shield_Respawn_Duration > 0 && this->Shield_Respawn_Types.Eligible(this->Shield_AffectTypes, pCurrentType))
+		// Break shield
+		if (this->Shield_Break.Get() && pCurrentShield->IsActive() && 
+			this->Shield_Break_Types.Eligible(this->Shield_AffectTypes, const_cast<ShieldTypeClass*>(pCurrentType)))
 		{
-			double amount = this->Shield_Respawn_Amount.Get(pExt->Shield->GetType()->Respawn);
-			pExt->Shield->SetRespawn(this->Shield_Respawn_Duration, amount, this->Shield_Respawn_Rate, this->Shield_Respawn_RestartTimer);
+			pCurrentShield->BreakShield(this->Shield_BreakAnim.Get(), this->Shield_BreakWeapon.Get());
 		}
 
-		if (this->Shield_SelfHealing_Duration > 0 && this->Shield_SelfHealing_Types.Eligible(this->Shield_AffectTypes, pCurrentType))
+		// Respawn modification
+		const int respawnDuration = this->Shield_Respawn_Duration.Get();
+		if (respawnDuration > 0 && this->Shield_Respawn_Types.Eligible(this->Shield_AffectTypes, const_cast<ShieldTypeClass*>(pCurrentType)))
+		{
+			double amount = this->Shield_Respawn_Amount.Get(pCurrentType->Respawn);
+			pCurrentShield->SetRespawn(respawnDuration, amount, this->Shield_Respawn_Rate.Get(), 
+				this->Shield_Respawn_RestartTimer.Get());
+		}
+
+		// Self-healing modification
+		const int selfHealingDuration = this->Shield_SelfHealing_Duration.Get();
+		if (selfHealingDuration > 0 && this->Shield_SelfHealing_Types.Eligible(this->Shield_AffectTypes, const_cast<ShieldTypeClass*>(pCurrentType)))
 		{
 			double amount = this->Shield_SelfHealing_Amount.Get(pCurrentType->SelfHealing);
-			pExt->Shield->SetSelfHealing(this->Shield_SelfHealing_Duration, amount, this->Shield_SelfHealing_Rate,
-				this->Shield_SelfHealing_RestartInCombat.Get(pExt->Shield->GetType()->SelfHealing_RestartInCombat),
-				this->Shield_SelfHealing_RestartInCombatDelay, this->Shield_SelfHealing_RestartTimer);
+			pCurrentShield->SetSelfHealing(selfHealingDuration, amount, this->Shield_SelfHealing_Rate.Get(),
+				this->Shield_SelfHealing_RestartInCombat.Get(pCurrentType->SelfHealing_RestartInCombat),
+				this->Shield_SelfHealing_RestartInCombatDelay.Get(), this->Shield_SelfHealing_RestartTimer.Get());
 		}
 	}
 }

@@ -770,60 +770,59 @@ bool WarheadTypeExtData::CanAffectHouse(HouseClass* pOwnerHouse, HouseClass* pTa
 
 bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool SkipVerses, bool CheckImmune) const
 {
-	if (pTechno)
+	if (!pTechno)
+		return Bypass;
+
+	// Fast early exit checks - most common failure cases first
+	if (pTechno->InLimbo || 
+		!pTechno->IsAlive || 
+		!pTechno->Health || 
+		pTechno->IsSinking || 
+		pTechno->IsCrashing ||
+		pTechno->IsBeingWarpedOut())
+		return false;
+
+	// Cache techno type since it's used multiple times
+	const auto* pType = pTechno->GetTechnoType();
+
+	if (CheckImmune && pType->Immune)
+		return false;
+
+	// Building-specific checks
+	if (const auto* pBld = cast_to<BuildingClass*, false>(pTechno))
 	{
-		if (pTechno->InLimbo
-			|| !pTechno->IsAlive
-			|| !pTechno->Health
-			|| pTechno->IsSinking
-			|| pTechno->IsCrashing
-			)
+		if (pBld->Type->InvisibleInGame)
 			return false;
 
-		const auto pType = pTechno->GetTechnoType();
-
-		if (CheckImmune && pType->Immune)
+		if (this->LimboKill_IDs.empty())
+		{
+			auto* pBldExt = BuildingExtContainer::Instance.Find(const_cast<BuildingClass*>(pBld));
+			if (pBldExt->LimboID != -1)
+				return false;
+		}
+	}
+	// FootClass-specific checks
+	else if (const auto* pFoot = flag_cast_to<FootClass*, false>(pTechno))
+	{
+		if (TechnoExtData::IsChronoDelayDamageImmune(const_cast<FootClass*>(pFoot)))
 			return false;
 
-		if (auto const pBld = cast_to<BuildingClass*, false>(pTechno))
+		// Unit-specific death frame check
+		if (pFoot->WhatAmI() == UnitClass::AbsID)
 		{
-			auto const pBldExt = BuildingExtContainer::Instance.Find(pBld);
-
-			if (this->LimboKill_IDs.empty() && pBldExt->LimboID != -1)
-			{
-				return false;
-			}
-
-			if (pBld->Type->InvisibleInGame)
+			if (static_cast<const UnitClass*>(pFoot)->DeathFrameCounter > 0)
 				return false;
 		}
-
-		if (const auto pFoot = flag_cast_to<FootClass*, false>(pTechno))
-		{
-			if (TechnoExtData::IsChronoDelayDamageImmune(pFoot))
-				return false;
-
-			if (pFoot->WhatAmI() == UnitClass::AbsID)
-			{
-				if (static_cast<const UnitClass*>(pFoot)->DeathFrameCounter > 0)
-				{
-					return false;
-				}
-			}
-		}
-
-		if (pTechno->IsBeingWarpedOut())
-			return false;
-
-		if (!SkipVerses && EffectsRequireVerses.Get())
-		{
-			return (Math::abs(this->GetVerses(TechnoExtData::GetTechnoArmor(pTechno, this->AttachedToObject)).Verses) >= 0.001);
-		}
-
-		return true;
 	}
 
-	return Bypass;
+		// Verses check - only if required and not skipped
+	if (!SkipVerses && EffectsRequireVerses.Get())
+	{
+		const auto& verses = this->GetVerses(TechnoExtData::GetTechnoArmor(pTechno, this->AttachedToObject));
+		return std::abs(verses.Verses) >= 0.001;
+	}
+
+	return true;
 }
 
 bool WarheadTypeExtData::CanAffectInvulnerable(TechnoClass* pTarget) const
