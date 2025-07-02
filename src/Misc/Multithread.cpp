@@ -94,16 +94,26 @@ ASMJIT_PATCH(0x69300B, ScrollClass_MouseUpdate_SkipMouseActionUpdate, 0x6)
 	return 0;
 }
 
+#include <Ext/Event/Body.h>
+
 ASMJIT_PATCH(0x55DDA0, MainLoop_FrameStep_NewMessageListManage, 0x5)
 {
-	if (!Phobos::Config::MessageApplyHoverState || !MessageTemp::OnOldMessages)
+	if (EventExt::ProtocolZero::Enable)
+	{
+		EventExt::ProtocolZero::Raise();
+	}
+
+	if (!MessageTemp::OnOldMessages)
+	{
 		MessageListClass::Instance->Manage();
+	}
 
 	if (!MessageTemp::OnNewMessages)
 	{
 		if (const auto pList = ScenarioExtData::Instance()->NewMessageList.get())
 			pList->Manage();
 	}
+
 	return 0x55DDAA;
 }
 

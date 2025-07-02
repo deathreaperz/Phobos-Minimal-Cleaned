@@ -683,7 +683,13 @@ struct TargetingFuncs
 
 		 // do not do heavy lifting on objects that
 		 // would not be chosen anyhow
-		 if (value >= curMax && pNewType->CanTargetingFireAt(pTargeting, cell, false)) { return value; }
+		 if (value >= curMax)
+		 {
+			 if (pNewType->CanTargetingFireAt(pTargeting, cell, false))
+			 {
+				 return value;
+			 }
+		 }
 	 }
 
 	 return -1;

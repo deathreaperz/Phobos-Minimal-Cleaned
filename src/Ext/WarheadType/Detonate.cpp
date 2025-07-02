@@ -44,7 +44,7 @@ void WarheadTypeExtData::ApplyLocomotorInfliction(TechnoClass* pTarget) const
 		return;
 
 	// same locomotor? no point to change
-	CLSID targetCLSID{ };
+	CLSID targetCLSID { };
 	CLSID inflictCLSID = this->AttachedToObject->Locomotor;
 	IPersistPtr pLocoPersist = pTargetFoot->Locomotor;
 	if (SUCCEEDED(pLocoPersist->GetClassID(&targetCLSID)) && targetCLSID == inflictCLSID)
@@ -69,7 +69,7 @@ void WarheadTypeExtData::ApplyLocomotorInflictionReset(TechnoClass* pTarget) con
 	CLSID removeCLSID = this->AttachedToObject->Locomotor;
 	if (removeCLSID != CLSID())
 	{
-		CLSID targetCLSID{ };
+		CLSID targetCLSID { };
 		IPersistPtr pLocoPersist = pTargetFoot->Locomotor;
 		if (SUCCEEDED(pLocoPersist->GetClassID(&targetCLSID)) && targetCLSID != removeCLSID)
 			return;
@@ -149,12 +149,14 @@ void WarheadTypeExtData::applyIronCurtain(const CoordStruct& coords, HouseClass*
 				if (curTechno->ProtectType == ProtectTypes::ForceShield)
 				{
 					// damage the victim before ICing it
-					if (damage) {
+					if (damage)
+					{
 						curTechno->ReceiveDamage(&damage, 0, this->AttachedToObject, nullptr, true, false, Owner);
 					}
 
 					// unit may be destroyed already.
-					if (curTechno->IsAlive) {
+					if (curTechno->IsAlive)
+					{
 						// start and prevent the multiplier from being applied twice
 						curTechno->IronCurtain(duration, Owner, false);
 						curTechno->IronCurtainTimer.Start(duration);
@@ -497,29 +499,31 @@ void WarheadTypeExtData::InterceptBullets(TechnoClass* pOwner, WeaponTypeClass* 
 	else
 	{
 		BulletClass::Array->for_each([&](BulletClass* pTargetBullet)
-			{
-				if (pTargetBullet)
-				{
-					const auto pBulletExt = BulletExtContainer::Instance.Find(pTargetBullet);
-					if (pBulletExt->CurrentStrength > 0 && !pTargetBullet->InLimbo)
-					{
-						auto const pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pTargetBullet->Type);
-						// Cells don't know about bullets that may or may not be located on them so it has to be this way.
-						if (pBulletTypeExt->Interceptable &&
-							pTargetBullet->Location.DistanceFrom(coords) <= (cellSpread * Unsorted::LeptonsPerCell))
-							BulletExtData::InterceptBullet(pTargetBullet, pOwner, pWeapon);
-					}
-				}
-			});
+ {
+	 if (pTargetBullet)
+	 {
+		 const auto pBulletExt = BulletExtContainer::Instance.Find(pTargetBullet);
+		 if (pBulletExt->CurrentStrength > 0 && !pTargetBullet->InLimbo)
+		 {
+			 auto const pBulletTypeExt = BulletTypeExtContainer::Instance.Find(pTargetBullet->Type);
+			 // Cells don't know about bullets that may or may not be located on them so it has to be this way.
+			 if (pBulletTypeExt->Interceptable &&
+				 pTargetBullet->Location.DistanceFrom(coords) <= (cellSpread * Unsorted::LeptonsPerCell))
+				 BulletExtData::InterceptBullet(pTargetBullet, pOwner, pWeapon);
+		 }
+	 }
+		});
 	}
 }
 
 static void SpawnCrate(std::vector<int>& types, std::vector<int>& weights, CoordStruct& place)
 {
-	if (!types.empty()) {
+	if (!types.empty())
+	{
 		const int index = GeneralUtils::ChooseOneWeighted(ScenarioClass::Instance->Random.RandomDouble(), weights);
 
-		if ((size_t)index < types.size()) {
+		if ((size_t)index < types.size())
+		{
 			MapClass::Instance->Place_Crate(CellClass::Coord2Cell(place), (PowerupEffects)types[index]);
 		}
 	}
@@ -590,20 +594,23 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 
 	if (pHouse)
 	{
-		if (this->BigGap) {
-			HouseClass::Array->for_each([&](HouseClass* pOtherHouse) {
-				if (pOtherHouse->IsControlledByHuman() &&	  // Not AI
-					!HouseExtData::IsObserverPlayer(pOtherHouse) &&		  // Not Observer
-					!pOtherHouse->Defeated &&			  // Not Defeated
-					pOtherHouse != pHouse &&			  // Not pThisHouse
-					!pOtherHouse->SpySatActive && // No SpySat
-					!pHouse->IsAlliedWith(pOtherHouse))   // Not Allied
-				{
-					pOtherHouse->ReshroudMap();
-				}
-				});
+		if (this->BigGap)
+		{
+			HouseClass::Array->for_each([&](HouseClass* pOtherHouse)
+ {
+	 if (pOtherHouse->IsControlledByHuman() &&	  // Not AI
+		 !HouseExtData::IsObserverPlayer(pOtherHouse) &&		  // Not Observer
+		 !pOtherHouse->Defeated &&			  // Not Defeated
+		 pOtherHouse != pHouse &&			  // Not pThisHouse
+		 !pOtherHouse->SpySatActive && // No SpySat
+		 !pHouse->IsAlliedWith(pOtherHouse))   // Not Allied
+	 {
+		 pOtherHouse->ReshroudMap();
+	 }
+			});
 		}
-		else {
+		else
+		{
 			if (this->CreateGap > 0)
 			{
 				const auto pCurrent = HouseClass::CurrentPlayer();
@@ -621,17 +628,17 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 			else if (this->CreateGap < 0)
 			{
 				HouseClass::Array->for_each([&](HouseClass* pOtherHouse)
+				{
+					if (pOtherHouse->IsControlledByHuman() &&	  // Not AI
+						!HouseExtData::IsObserverPlayer(pOtherHouse) &&		  // Not Observer
+						!pOtherHouse->Defeated &&			  // Not Defeated
+						pOtherHouse != pHouse &&			  // Not pThisHouse
+						!pOtherHouse->SpySatActive && // No SpySat
+						!pHouse->IsAlliedWith(pOtherHouse))   // Not Allied
 					{
-						if (pOtherHouse->IsControlledByHuman() &&	  // Not AI
-							!HouseExtData::IsObserverPlayer(pOtherHouse) &&		  // Not Observer
-							!pOtherHouse->Defeated &&			  // Not Defeated
-							pOtherHouse != pHouse &&			  // Not pThisHouse
-							!pOtherHouse->SpySatActive && // No SpySat
-							!pHouse->IsAlliedWith(pOtherHouse))   // Not Allied
-						{
-							MapClass::Instance->Reshroud(pOtherHouse);
-						}
-					});
+						MapClass::Instance->Reshroud(pOtherHouse);
+					}
+				});
 			}
 		}
 
@@ -665,9 +672,9 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 			std::vector<TechnoClass*> pTargetv = Helpers::Alex::getCellSpreadItems(coords, cellSpread, true);
 
 			std::for_each(pTargetv.begin(), pTargetv.end(), [&](TechnoClass* pTarget)
-				{
-					this->DetonateOnOneUnit(pHouse, pTarget, damage, pOwner, pBullet, ThisbulletWasIntercepted);
-				});
+ {
+	 this->DetonateOnOneUnit(pHouse, pTarget, damage, pOwner, pBullet, ThisbulletWasIntercepted);
+			});
 
 			if (this->Transact)
 			{
@@ -677,7 +684,8 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 		else if (pBullet && pBullet->Target)
 		{
 			{
-				if (pBullet->DistanceFrom(pBullet->Target) < Unsorted::LeptonsPerCell / 4) {
+				if (pBullet->DistanceFrom(pBullet->Target) < Unsorted::LeptonsPerCell / 4)
+				{
 					switch (pBullet->Target->WhatAmI())
 					{
 					case BuildingClass::AbsID:
@@ -688,9 +696,9 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 						const auto Eligible = [&](TechnoClass* const pTech)
 							{
 								if (CanDealDamage(pTech) &&
-									CanTargetHouse(pHouse, pTech) &&
-									pTech->GetTechnoType()->Trainable
-									) return pTech;
+								CanTargetHouse(pHouse, pTech) &&
+								pTech->GetTechnoType()->Trainable
+								) return pTech;
 
 								return static_cast<TechnoClass* const>(nullptr);
 							};
@@ -713,19 +721,22 @@ void WarheadTypeExtData::Detonate(TechnoClass* pOwner, HouseClass* pHouse, Bulle
 		}
 		else if (auto pIntended = this->IntendedTarget)
 		{
-			if (coords.DistanceFrom(pIntended->GetCoords()) < double(Unsorted::LeptonsPerCell / 4)) {
+			if (coords.DistanceFrom(pIntended->GetCoords()) < double(Unsorted::LeptonsPerCell / 4))
+			{
 				this->DetonateOnOneUnit(pHouse, pIntended, damage, pOwner, pBullet, ThisbulletWasIntercepted);
 
-				if (this->Transact) {
+				if (this->Transact)
+				{
 					//since we are on last chain of the event , we can do these thing
-					const auto NotEligible = [this, pHouse, pOwner](TechnoClass* const pTech) {
-						if (!CanDealDamage(pTech))
-							return true;
+					const auto NotEligible = [this, pHouse, pOwner](TechnoClass* const pTech)
+						{
+							if (!CanDealDamage(pTech))
+								return true;
 
-						if (!pTech->GetTechnoType()->Trainable && this->Transact_Experience_IgnoreNotTrainable.Get())
-							return true;
+							if (!pTech->GetTechnoType()->Trainable && this->Transact_Experience_IgnoreNotTrainable.Get())
+								return true;
 
-						return !CanTargetHouse(pHouse, pTech);
+							return !CanTargetHouse(pHouse, pTech);
 						};
 
 					if (!NotEligible(pIntended))
@@ -772,26 +783,33 @@ void WarheadTypeExtData::DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTar
 
 	auto pExt = TechnoExtContainer::Instance.Find(pTarget);
 
-	if (this->PaintBallDuration.isset() && this->PaintBallData.Color != ColorStruct::Empty) {
+	if (this->PaintBallDuration.isset() && this->PaintBallData.Color != ColorStruct::Empty)
+	{
 		auto& paintball = pExt->PaintBallStates[this->AttachedToObject];
 		paintball.SetData(this->PaintBallData);
 		paintball.Init();
 
-		if (this->PaintBallDuration < 0 || this->PaintBallData.Accumulate) {
+		if (this->PaintBallDuration < 0 || this->PaintBallData.Accumulate)
+		{
 			int value = paintball.timer.GetTimeLeft() + this->PaintBallDuration;
 
-			if (value <= 0) {
+			if (value <= 0)
+			{
 				paintball.timer.Stop();
 			}
-			else {
+			else
+			{
 				paintball.timer.Add(value);
 			}
 		}
-		else {
-			if (this->PaintBallData.Override && paintball.timer.GetTimeLeft()) {
+		else
+		{
+			if (this->PaintBallData.Override && paintball.timer.GetTimeLeft())
+			{
 				paintball.timer.Start(this->PaintBallDuration);
 			}
-			else {
+			else
+			{
 				paintball.timer.Start(this->PaintBallDuration);
 			}
 		}
@@ -832,7 +850,7 @@ void WarheadTypeExtData::DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTar
 	if (!this->PhobosAttachEffects.AttachTypes.empty()
 		|| !this->PhobosAttachEffects.RemoveTypes.empty()
 		|| !this->PhobosAttachEffects.RemoveGroups.empty()
-		)
+	)
 		this->ApplyAttachEffects(pTarget, pHouse, pOwner);
 }
 
@@ -963,8 +981,10 @@ void WarheadTypeExtData::ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, Tec
 
 	if (!tresh->isset() || pTarget->GetHealthPercentage() > tresh->Get())
 	{
-		if (!this->Crit_AffectBelowPercent.empty()) {
-			for (; level < this->Crit_AffectBelowPercent.size() - 1; level++) {
+		if (!this->Crit_AffectBelowPercent.empty())
+		{
+			for (; level < this->Crit_AffectBelowPercent.size() - 1; level++)
+			{
 				if (pTarget->GetHealthPercentage() > this->Crit_AffectBelowPercent[level + 1])
 					break;
 			}
@@ -976,17 +996,19 @@ void WarheadTypeExtData::ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, Tec
 		const auto chance = this->Crit_CurrentChance.size() == 1 ? this->Crit_CurrentChance[0] :
 			this->Crit_CurrentChance.size() < level ? this->Crit_CurrentChance[level] : 0.0;
 
-		if (!this->Crit_ActiveChanceAnims.empty() && chance > 0.0) {
+		if (!this->Crit_ActiveChanceAnims.empty() && chance > 0.0)
+		{
 			int idx = ScenarioClass::Instance->Random.RandomRanged(0, this->Crit_ActiveChanceAnims.size() - 1);
 
 			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(this->Crit_ActiveChanceAnims[idx], pTarget->Location),
-				pHouse,
-				pTarget->GetOwningHouse(),
-				pOwner,
-				false, false);
+			pHouse,
+			pTarget->GetOwningHouse(),
+			pOwner,
+			false, false);
 		}
 
-		if (chance < dice) {
+		if (chance < dice)
+		{
 			return;
 		}
 	}
@@ -1023,13 +1045,15 @@ void WarheadTypeExtData::ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, Tec
 				false, false
 			);
 		}
-		else {
-			for (auto const& pType : this->Crit_AnimList) {
+		else
+		{
+			for (auto const& pType : this->Crit_AnimList)
+			{
 				AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pType, pTarget->Location),
-					pHouse,
-					pTarget->GetOwningHouse(),
-					pOwner,
-					false, false
+				pHouse,
+				pTarget->GetOwningHouse(),
+				pOwner,
+				false, false
 				);
 			}
 		}

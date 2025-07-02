@@ -51,7 +51,8 @@ bool NewSWType::CanTargetingFireAt(const TargetingData* pTargeting, CellStruct c
 	if (pTargeting->NeedsDesignator && pTargeting->Designators.none_of
 	([cell](TargetingData::RangedItem const& site)
 		{
-			return cell.DistanceFromSquared(site.Center) <= site.RangeSqr;
+			auto designatorDistance = cell.DistanceFromSquared(site.Center);
+			return designatorDistance <= site.RangeSqr;
 		}))
 	{
 		return false;
@@ -437,7 +438,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 	 }
 		});
 	}
-
+#ifdef _old
 	pResult->NeedsDesignator = (!pData->SW_Designators.empty() || pData->SW_AnyDesignator);
 	pResult->NeedsAttractors = (!pData->SW_Attractors.empty() || pData->SW_AnyAttractor);
 	pResult->NeedsInhibitors = (!pData->SW_Inhibitors.empty() || pData->SW_AnyInhibitor);
@@ -508,10 +509,10 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 		});
 	}
 
-#ifdef _old
+#else
 	if ((!pData->SW_Designators.empty() || pData->SW_AnyDesignator))
 	{
-		result.NeedsDesignator = true;
+		pResult->NeedsDesignator = true;
 
 		for (auto const& pTechno : *TechnoClass::Array)
 		{
@@ -530,7 +531,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 
 				if (range > 0)
 				{
-					result.Designators.emplace_back(range * range, CellClass::Coord2Cell(center));
+					pResult->Designators.emplace_back(range * range, CellClass::Coord2Cell(center));
 				}
 			}
 		}
@@ -538,7 +539,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 
 	if ((!pData->SW_Attractors.empty() || pData->SW_AnyAttractor))
 	{
-		result.NeedsAttractors = true;
+		pResult->NeedsAttractors = true;
 
 		for (auto const& pTechno : *TechnoClass::Array)
 		{
@@ -557,7 +558,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 
 				if (range > 0)
 				{
-					result.Attractors.emplace_back(range * range, CellClass::Coord2Cell(center));
+					pResult->Attractors.emplace_back(range * range, CellClass::Coord2Cell(center));
 				}
 			}
 		}
@@ -565,7 +566,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 
 	if (!pData->SW_Inhibitors.empty() || pData->SW_AnyInhibitor)
 	{
-		result.NeedsInhibitors = true;
+		pResult->NeedsInhibitors = true;
 
 		for (auto const& pTechno : *TechnoClass::Array)
 		{
@@ -584,7 +585,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 
 				if (range > 0)
 				{
-					result.Inhibitors.emplace_back(range * range, CellClass::Coord2Cell(center));
+					pResult->Inhibitors.emplace_back(range * range, CellClass::Coord2Cell(center));
 				}
 			}
 		}
@@ -592,7 +593,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 
 	if (!pData->SW_Suppressors.empty() || pData->SW_AnySuppressor)
 	{
-		result.NeedsSupressors = true;
+		pResult->NeedsSupressors = true;
 
 		for (auto const& pTechno : *TechnoClass::Array)
 		{
@@ -611,7 +612,7 @@ std::unique_ptr<TargetingData> NewSWType::GetTargetingData(SWTypeExtData* pData,
 
 				if (range > 0)
 				{
-					result.Suppressors.emplace_back(range * range, CellClass::Coord2Cell(center));
+					pResult->Suppressors.emplace_back(range * range, CellClass::Coord2Cell(center));
 				}
 			}
 		}

@@ -92,8 +92,9 @@ void EventExt::TrenchRedirectClick::Respond(EventClass* Event)
 }
 
 bool EventExt::ProtocolZero::Enable = false;
-int EventExt::ProtocolZero::WorstMaxAhead = 24;
-unsigned char EventExt::ProtocolZero::MaxLatencyLevel = 0xff;
+int EventExt::ProtocolZero::NextSendFrame = -1;
+int EventExt::ProtocolZero::WorstMaxAhead = LatencyLevel::GetMaxAhead(LatencyLevelEnum::LATENCY_LEVEL_6);
+unsigned char EventExt::ProtocolZero::MaxLatencyLevel = std::numeric_limits<unsigned char>::max();
 
 EventExt::ProtocolZero::ProtocolZero(char maxahead, uint8_t latencylevel)
 	: MaxAhead{ maxahead }, LatencyLevel{ latencylevel }
@@ -105,10 +106,14 @@ void EventExt::ProtocolZero::Raise()
 	if (SessionClass::IsSingleplayer())
 		return;
 
-	static int NextSendFrame = 6 * SendResponseTimeInterval;
 	int currentFrame = Unsorted::CurrentFrame;
 
-	if (NextSendFrame >= currentFrame)
+	if (ProtocolZero::NextSendFrame < 0) {
+		ProtocolZero::NextSendFrame = currentFrame + Game::Network::FrameSendRate + ProtocolZero::SendResponseTimeFrame;
+		return;
+	}
+
+	if (ProtocolZero::NextSendFrame >= currentFrame)
 		return;
 
 	const int ipxResponseTime = IPXManagerClass::Instance->ResponseTime();
@@ -124,7 +129,7 @@ void EventExt::ProtocolZero::Raise()
 
 	if (EventExt::AddToEvent<false, true, ProtocolZero>(event, maxAhead, latencyLevel))
 	{
-		NextSendFrame = currentFrame + SendResponseTimeInterval;
+		ProtocolZero::NextSendFrame = currentFrame + ProtocolZero::SendResponseTimeInterval;
 		Debug::LogInfo("[Spawner] Player {} sending response time of {}, LatencyMode = {}, Frame = {}"
 			, event.HouseIndex
 			, maxAhead
@@ -134,7 +139,7 @@ void EventExt::ProtocolZero::Raise()
 	}
 	else
 	{
-		++NextSendFrame;
+		++ProtocolZero::NextSendFrame;
 	}
 }
 
@@ -165,7 +170,7 @@ void EventExt::ProtocolZero::Respond(EventClass* Event)
 
 	for (char i = 0; i < (char)std::size(PlayerMaxAheads); ++i)
 	{
-		if (Unsorted::CurrentFrame >= (PlayerLastTimingFrame[i] + (SendResponseTimeInterval * 4)))
+		if (Unsorted::CurrentFrame >= (PlayerLastTimingFrame[i] + (ProtocolZero::SendResponseTimeFrame / 2)))
 		{
 			PlayerMaxAheads[i] = 0;
 			PlayerLatencyMode[i] = 0;

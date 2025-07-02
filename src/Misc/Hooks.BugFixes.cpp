@@ -2862,3 +2862,26 @@ ASMJIT_PATCH(0x6F9222, TechnoClass_SelectAutoTarget_HealingTargetAir, 0x6)
 	GET(TechnoClass*, pThis, ESI);
 	return pThis->CombatDamage(-1) < 0 ? 0x6F922E : 0;
 }
+
+ASMJIT_PATCH(0x71A7BC, TemporalClass_Update_DistCheck, 0x6)
+{
+	GET(TemporalClass*, pThis, ESI);
+	GET(TechnoClass*, pTarget, ECX);
+
+	// Vanilla check is incorrect for buildingtargets
+	const auto distance = pThis->Owner->DistanceFrom(pTarget);
+	int disatanceMax = RulesClass::Instance->OpenToppedWarpDistance;
+
+	if (auto const pTransport = pThis->Owner->Transporter)
+	{
+		if (pTransport->IsAlive)
+		{
+			auto& _cDiscance = TechnoTypeExtContainer::Instance.Find(pTransport->GetTechnoType())
+				->OpenTopped_WarpDistance;
+			if (_cDiscance.isset())
+				disatanceMax = _cDiscance.Get();
+		}
+	}
+
+	return distance > (disatanceMax * 256) ? 0x71A83F : 0x71A84E;
+}

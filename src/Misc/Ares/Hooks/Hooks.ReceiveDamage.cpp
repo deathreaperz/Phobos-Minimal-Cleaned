@@ -149,13 +149,17 @@ static void applyCombatAlert(TechnoClass* pThis, args_ReceiveDamage* args)
 
 #pragma region Terrain
 
-ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
+DamageState FakeTerrainClass::__TakeDamage(int* Damage,
+	int DistanceToEpicenter,
+	WarheadTypeClass* WH,
+	TechnoClass* Attacker,
+	bool IgnoreDefenses,
+	bool PreventsPassengerEscape,
+	HouseClass* SourceHouse)
 {
-	GET(TerrainClass*, pThis, ECX);
-	REF_STACK(args_ReceiveDamage, args, 0x4);
-
 	DamageState _res = DamageState::Unaffected;
-	auto pWH = args.WH;
+	auto pThis = this;
+	auto pWH = WH;
 
 	if (pWH->Wood && !pThis->Type->Immune)
 	{
@@ -163,11 +167,11 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 		auto pExt = TerrainExtContainer::Instance.Find(pThis);
 		double PriorHealthRatio = pThis->GetHealthPercentage();
 
-		_res = pThis->ObjectClass::ReceiveDamage(args.Damage, args.DistanceToEpicenter, pWH, args.Attacker, args.IgnoreDefenses, args.PreventsPassengerEscape, args.SourceHouse);
+		_res = pThis->ObjectClass::ReceiveDamage(Damage, DistanceToEpicenter, pWH, Attacker, IgnoreDefenses, PreventsPassengerEscape, SourceHouse);
 
-		if (!pThis->IsBurning && *args.Damage > 0 && args.WH->Sparky)
+		if (!pThis->IsBurning && *Damage > 0 && WH->Sparky)
 		{
-			const auto pWarheadExt = WarheadTypeExtContainer::Instance.Find(args.WH);
+			const auto pWarheadExt = WarheadTypeExtContainer::Instance.Find(WH);
 
 			if (!pWarheadExt->Flammability.isset() || ScenarioClass::Instance->Random.PercentChance(Math::abs(pWarheadExt->Flammability.Get())))
 				pThis->Ignite();
@@ -183,8 +187,7 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 
 		if (_res == DamageState::PostMortem)
 		{
-			R->EAX(_res);
-			return 0x71BB84;
+			return _res;
 		}
 
 		if (_res == DamageState::NowDead)
@@ -242,19 +245,19 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 				VocClass::SafeImmedietelyPlayAt(pTerrainExt->CrumblingSound, &pThis->GetCoords());
 				pThis->Mark(MarkType::Redraw);
 				pThis->Disappear(true);
-				return 0x71BB79;
+				return _res;
 			}
 
 			auto const nCoords = pThis->GetCenterCoords();
 			VocClass::SafeImmedietelyPlayAt(pTerrainExt->DestroySound, &nCoords);
-			const auto pAttackerHoue = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
+			const auto pAttackerHoue = Attacker ? Attacker->Owner : SourceHouse;
 
 			if (auto const pAnimType = pTerrainExt->DestroyAnim)
 			{
 				AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pAnimType, nCoords),
-					args.SourceHouse,
+					SourceHouse,
 					pThis->GetOwningHouse(),
-					args.Attacker,
+					Attacker,
 					false, false
 				);
 			}
@@ -276,9 +279,11 @@ ASMJIT_PATCH(0x71B920, TerrainClass_ReceiveDamage_Handled, 7)
 		}
 	}
 
-	R->EAX(_res);
-	return 0x71BB84;
+	return _res;
 }
+
+DEFINE_FUNCTION_JUMP(LJMP, 0x71B920, FakeTerrainClass::__TakeDamage)
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7F5398, FakeTerrainClass::__TakeDamage)
 
 #pragma endregion
 
