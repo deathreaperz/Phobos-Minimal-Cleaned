@@ -14,6 +14,7 @@ public:
 
 	bool GetTextDimension(const wchar_t* pText, int* pWidth, int* pHeight, int nMaxWidth) { JMP_THIS(0x433CF0); }
 	int Blit(wchar_t wch, int X, int Y, int nColor) { JMP_THIS(0x434120); }
+	int Func_433F50(const wchar_t* chr, int X, int Y, int nColor) { JMP_THIS(0x433F50); }
 
 	bool Lock(Surface* pSurface) { JMP_THIS(0x4348F0); }
 	bool UnLock(Surface* pSurface) { JMP_THIS(0x434990); }
@@ -68,7 +69,7 @@ public:
 	};
 
 	static InternalData* __fastcall LoadInternalData(const char* pFileName)
-		{ JMP_STD(0x433990); }
+		{ JMP_FAST(0x433990); }
 
 	int CharPixelWidth(wchar_t wChar)
 		{ JMP_THIS(0x4349B0); }
@@ -86,10 +87,10 @@ public:
 		{ return bHalf ? InternalPTR->FontHeight / 2 : InternalPTR->FontHeight; }
 
 	static BitFont* __fastcall BitFontPtr(TextPrintType nType)
-		{ JMP_STD(0x4A60D0); }
+		{ JMP_FAST(0x4A60D0); }
 
 	static void __fastcall Print(void* pThis, BitFont* font, Surface* surface, wchar_t* string, int xLeft, int yTop, int a6, int a7)
-		{ JMP_STD(0x434B90); }
+		{ JMP_FAST(0x434B90); }
 
 	InternalData* InternalPTR;
 	void* Pointer_8;

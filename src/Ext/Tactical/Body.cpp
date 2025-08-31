@@ -1,7 +1,8 @@
 #include "Body.h"
 
-#include <Ext/TechnoType/Body.h>
 #include <Ext/Super/Body.h>
+#include <Ext/Techno/Body.h>
+#include <Ext/TechnoType/Body.h>
 
 #include <Utilities/Macro.h>
 #include <Utilities/Cast.h>
@@ -86,10 +87,10 @@ bool FakeTacticalClass::__ClampTacticalPos(Point2D* tacticalPos) {
 
 bool FakeTacticalClass::IsInSelectionRect(LTRBStruct* pRect, const TacticalSelectableStruct& selectable)
 {
-	if (selectable.Techno
-		&& selectable.Techno->IsAlive
-		&& !selectable.Techno->InLimbo
-		&& selectable.Techno->AbstractFlags & AbstractFlags::Techno
+	if (selectable.Object
+		&& selectable.Object->IsAlive
+		&& !selectable.Object->InLimbo
+		&& selectable.Object->AbstractFlags & AbstractFlags::Techno
 		)
 	{
 		int nLocalX = selectable.Point.X - this->TacticalPos.X;
@@ -101,6 +102,7 @@ bool FakeTacticalClass::IsInSelectionRect(LTRBStruct* pRect, const TacticalSelec
 			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -108,9 +110,12 @@ bool FakeTacticalClass::IsHighPriorityInRect(LTRBStruct* rect)
 {
 	for (const auto& selected : Array)
 	{
-		if (this->IsInSelectionRect(rect, selected) && ObjectClass_IsSelectable(selected.Techno))
+		if (this->IsInSelectionRect(rect, selected) && ObjectClass_IsSelectable(selected.Object))
 		{
-			return !TechnoTypeExtContainer::Instance.Find(selected.Techno->GetTechnoType())->LowSelectionPriority;
+			//auto const pExt = TechnoExtContainer::Instance.Find(static_cast<TechnoClass*>(selected.Object));
+			auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(selected.Object->GetTechnoType());
+
+			return !pTypeExt->LowSelectionPriority;
 		}
 	}
 
@@ -125,33 +130,39 @@ void FakeTacticalClass::SelectFiltered(LTRBStruct* pRect, callback_type fpCheckC
 	if (pRect->Right <= 0 || pRect->Bottom <= 0 || this->SelectableCount <= 0)
 		return;
 
-	for (const auto& selected : Array)
-	{
-		if (this->IsInSelectionRect(pRect, selected))
-		{
-			const auto pTechno = selected.Techno;
-			const auto pTechnoType = pTechno->GetTechnoType();
-			const auto TypeExt = TechnoTypeExtContainer::Instance.Find(pTechnoType);
+	for (const auto& selected : Array) {
+		if (this->IsInSelectionRect(pRect, selected)) {
+			const auto pObj = selected.Object;
+			auto pTechno = static_cast<TechnoClass*>(selected.Object);
+			const auto pObjType = pObj->GetType();
 
-			if (bPriorityFiltering && TypeExt->LowSelectionPriority)
-				continue;
-
-			if (TypeExt && Game::IsTypeSelecting())
-				Game::UICommands_TypeSelect_7327D0(TypeExt->GetSelectionGroupID());
-			else if (fpCheckCallback)
-				(*fpCheckCallback)(pTechno);
-			else
 			{
-				const auto pBldType = type_cast<BuildingTypeClass*>(pTechnoType);
-				const auto pOwner = pTechno->GetOwningHouse();
+				const auto TypeExt = TechnoTypeExtContainer::Instance.Find((TechnoTypeClass*)pObjType);
 
-				if (pOwner
-					&& pOwner->ControlledByCurrentPlayer()
-					&& pTechno->CanBeSelected()
-					&& (!pBldType || pBldType->IsUndeployable())
-					)
-				{
-					Unsorted::MoveFeedback = !pTechno->Select();
+				if (bPriorityFiltering) {
+					//auto const pExt = TechnoExtContainer::Instance.Find(pTechno);
+					// Attached units shouldn't be selected regardless of the setting
+					bool isLowPriorityByTechno = Phobos::Config::PrioritySelectionFiltering && TypeExt->LowSelectionPriority;
+
+					if (isLowPriorityByTechno)
+						continue;
+				}
+
+				if (Game::IsTypeSelecting())
+					Game::UICommands_TypeSelect_7327D0(TypeExt->GetSelectionGroupID());
+				else if (fpCheckCallback)
+					(*fpCheckCallback)(pTechno);
+				else {
+					const auto pBldType = type_cast<BuildingTypeClass*>((TechnoTypeClass*)pObjType);
+					const auto pOwner = pTechno->GetOwningHouse();
+
+					if (pOwner
+						&& pOwner->ControlledByCurrentPlayer()
+						&& pTechno->CanBeSelected()
+						&& (!pBldType || pBldType->IsUndeployable())
+						) {
+						Unsorted::MoveFeedback = !pTechno->Select();
+					}
 				}
 			}
 		}
@@ -303,12 +314,12 @@ void FakeTacticalClass::__DrawRadialIndicator(
 		Point2D line_start{};
 		Point2D line_end{};
 
-		if (std::fabs(angle - Math::DEG_TO_RADF(90)) < 0.001)
+		if (Math::abs(angle - Math::DEG_TO_RADF(90)) < 0.001)
 		{
 			line_start = center_pixel;
 			line_end = Point2D(center_pixel.X, int(center_pixel.Y + (-size_half)));
 		}
-		else if (std::fabs(angle - Math::DEG_TO_RADF(270)) < 0.001)
+		else if (Math::abs(angle - Math::DEG_TO_RADF(270)) < 0.001)
 		{
 			line_start = center_pixel;
 			line_end = Point2D(center_pixel.X, int(center_pixel.Y + size_half));
@@ -852,99 +863,161 @@ void FakeTacticalClass::__DrawTimersSW(SuperClass* pSuper, int value, int interv
 
 DEFINE_FUNCTION_JUMP(CALL, 0x6D4B2B, FakeTacticalClass::__DrawAllTacticalText)
 
-//IStream* TacticalExt::g_pStm = nullptr;
-//std::unique_ptr<TacticalExt::ExtData> TacticalExt::Data = nullptr;
-//
-//void TacticalExt::Allocate(TacticalClass* pThis)
-//{
-//	Data = std::make_unique<TacticalExt::ExtData>(pThis);
-//}
-//
-//void TacticalExt::Remove(TacticalClass* pThis)
-//{
-//	Data = nullptr;
-//}
+IStream* TacticalExtData::g_pStm = nullptr;
+std::unique_ptr<TacticalExtData> TacticalExtData::Data = nullptr;
+
+void TacticalExtData::Allocate(TacticalClass* pThis)
+{
+	Data = std::make_unique<TacticalExtData>();
+	Data->AttachedToObject = pThis;
+}
+
+void TacticalExtData::Remove(TacticalClass* pThis)
+{
+	Data = nullptr;
+}
+
+void TacticalExtData::Screen_Flash_AI()
+{
+	static bool _is_fading_in = false;
+	static bool _is_fading_out = false;
+	static MSTimerClass _fading_in_timer;
+	static MSTimerClass _fading_out_timer;
+	static const int FADE_IN_RATE = 1000 / 4;
+	static const int FADE_OUT_RATE = 1000 / 3;
+
+	/**
+	 *  If a screen flash was triggered, initialize the timers.
+	 */
+
+	if (IsPendingScreenFlash)
+	{
+		_is_fading_in = true;
+		_is_fading_out = false;
+		_fading_in_timer = FADE_IN_RATE;
+		IsPendingScreenFlash = false;
+	}
+
+	/**
+	 *  Fading from white to game.
+	 */
+
+	if (_is_fading_out)
+	{
+		if (_fading_out_timer.Expired())
+		{
+			_is_fading_out = false;
+		}
+
+		unsigned adjust = (_fading_out_timer.GetTimeLeft()) * ScreenFlashTrans / FADE_OUT_RATE;
+		DSurface::Composite->Fill_Rect_Trans(&TacticalClass::view_bound(), &ScreenFlashColor, adjust);
+	}
+
+	/**
+	 *  Fading from game to white.
+	 */
+
+	if (_is_fading_in)
+	{
+		if (_fading_in_timer.Expired())
+		{
+			_is_fading_in = false;
+		}
+
+		unsigned adjust = (FADE_IN_RATE - _fading_in_timer.GetTimeLeft()) * ScreenFlashTrans / FADE_IN_RATE;
+		DSurface::Composite->Fill_Rect_Trans(&TacticalClass::view_bound(), &ScreenFlashColor, adjust);
+
+		/**
+		 *  Flag and prepare the fade back timer.
+		 */
+
+		if (!_is_fading_in)
+		{
+			_is_fading_out = true;
+			_fading_out_timer = FADE_OUT_RATE;
+		}
+	}
+}
 
 // =============================
 // load / save
 
-//template <typename T>
-//void TacticalExt::ExtData::Serialize(T& Stm)
-//{
-//	Stm
-//		.Process(this->Initialized)
-//		;
-//}
+template <typename T>
+void TacticalExtData::Serialize(T& Stm)
+{
+	Stm
+		.Process(this->Initialized)
+		;
+}
 
 // =============================
 // container hooks
 
-//ASMJIT_PATCH(0x6D1E24, TacticalClass_CTOR, 0x5)
-//{
-//	GET(TacticalClass*, pItem, ESI);
-//
-//	TacticalExt::Allocate(pItem);
-//
-//	return 0;
-//}
-//
-//ASMJIT_PATCH(0x6DC48E, TacticalClass_DTOR_A, 0xA)
-//{
-//	GET(TacticalClass*, pItem, ESI);
-//	TacticalExt::Remove(pItem);
-//	return 0;
-//}
-//
-//ASMJIT_PATCH(0x6D1E9B, TacticalClass_DTOR_B, 0xA)
-//{
-//	GET(TacticalClass*, pItem, ECX);
-//	TacticalExt::Remove(pItem);
-//	return 0;
-//}
-//
-//ASMJIT_PATCH_AGAIN(0x6DBD20, TacticalClass_SaveLoad_Prefix, 0x7)
-//ASMJIT_PATCH(0x6DBE00, TacticalClass_SaveLoad_Prefix, 0x8)
-//{
-//	GET_STACK(IStream*, pStm, 0x8);
-//
-//	TacticalExt::g_pStm = pStm;
-//
-//	return 0;
-//}
-//
-//ASMJIT_PATCH(0x6DBDED, TacticalClass_Load_Suffix, 0x6)
-//{
-//	auto buffer = TacticalExt::Global();
-//	if (!buffer)
-//		Debug::FatalErrorAndExit("TacticalClassExt_Load Apparently TacticalExt Global Pointer is missing !/n ");
-//
-//	PhobosByteStream Stm(0);
-//	if (Stm.ReadBlockFromStream(TacticalExt::g_pStm))
-//	{
-//		PhobosStreamReader Reader(Stm);
-//
-//		if (Reader.Expect(TacticalExt::ExtData::Canary) && Reader.RegisterChange(buffer))
-//			buffer->LoadFromStream(Reader);
-//	}
-//
-//	return 0;
-//}
-//
-//ASMJIT_PATCH(0x6DBE18, TacticalClass_Save_Suffix, 0x5)
-//{
-//	auto buffer = TacticalExt::Global();
-//
-//	if (!buffer)
-//		Debug::FatalErrorAndExit("TacticalClassExt_Save Apparently TacticalExt Global Pointer is missing !/n ");
-//
-//	PhobosByteStream saver(sizeof(TacticalExt));
-//	PhobosStreamWriter writer(saver);
-//
-// writer.Save(TacticalExt::Canary);
-// writer.Save(buffer);
-//
-//	buffer->SaveToStream(writer);
-//	saver.WriteBlockToStream(TacticalExt::g_pStm);
-//
-//	return 0;
-//}
+ASMJIT_PATCH(0x6D1E24, TacticalClass_CTOR, 0x5)
+{
+	GET(TacticalClass*, pItem, ESI);
+
+	TacticalExtData::Allocate(pItem);
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x6DC48E, TacticalClass_DTOR_A, 0xA)
+{
+	GET(TacticalClass*, pItem, ESI);
+	TacticalExtData::Remove(pItem);
+	return 0;
+}
+
+ASMJIT_PATCH(0x6D1E9B, TacticalClass_DTOR_B, 0xA)
+{
+	GET(TacticalClass*, pItem, ECX);
+	TacticalExtData::Remove(pItem);
+	return 0;
+}
+
+ASMJIT_PATCH(0x6DBE00, TacticalClass_SaveLoad_Prefix, 0x8)
+{
+	GET_STACK(IStream*, pStm, 0x8);
+
+	TacticalExtData::g_pStm = pStm;
+
+	return 0;
+}ASMJIT_PATCH_AGAIN(0x6DBD20, TacticalClass_SaveLoad_Prefix, 0x7)
+
+ASMJIT_PATCH(0x6DBDED, TacticalClass_Load_Suffix, 0x6)
+{
+	auto buffer = TacticalExtData::Instance();
+	if (!buffer)
+		Debug::FatalErrorAndExit("TacticalClassExt_Load Apparently TacticalExtData Global Pointer is missing !/n ");
+
+	PhobosByteStream Stm(0);
+	if (Stm.ReadBlockFromStream(TacticalExtData::g_pStm))
+	{
+		PhobosStreamReader Reader(Stm);
+
+		if (Reader.Expect(TacticalExtData::Canary) && Reader.RegisterChange(buffer))
+			buffer->LoadFromStream(Reader);
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x6DBE18, TacticalClass_Save_Suffix, 0x5)
+{
+	auto buffer = TacticalExtData::Instance();
+
+	if (!buffer)
+		Debug::FatalErrorAndExit("TacticalClassExt_Save Apparently TacticalExtData Global Pointer is missing !/n ");
+
+	PhobosByteStream saver(sizeof(TacticalExtData));
+	PhobosStreamWriter writer(saver);
+
+	writer.Save(TacticalExtData::Canary);
+	writer.Save(buffer);
+
+	buffer->SaveToStream(writer);
+	saver.WriteBlockToStream(TacticalExtData::g_pStm);
+
+	return 0;
+}

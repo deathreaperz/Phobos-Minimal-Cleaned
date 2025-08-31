@@ -9,8 +9,8 @@
 
 #include <Memory.h>
 
-SWColumnClass::SWColumnClass(unsigned int id, int maxButtons, int x, int y, int width, int height)
-	: ControlClass(id, x, y, width, height, static_cast<GadgetFlag>(0), true)
+SWColumnClass::SWColumnClass(int maxButtons, int x, int y, int width, int height)
+	: GadgetClass(x, y, width, height, static_cast<GadgetFlag>(0), true)
 	, MaxButtons(maxButtons)
 {
 	SWSidebarClass::Global()->Columns.emplace_back(this);
@@ -30,7 +30,7 @@ bool SWColumnClass::Draw(bool forced)
 	{
 		const int cameoHarfInterval = (Phobos::UI::SuperWeaponSidebar_CameoHeight - cameoHeight) / 2;
 
-		for (const auto button : this->Buttons)
+		for (const auto& button : this->Buttons)
 		{
 			RectangleStruct drawRect { this->Rect.X, button->Rect.Y - cameoHarfInterval, cameoBackgroundWidth, Phobos::UI::SuperWeaponSidebar_CameoHeight };
 			PCX::Instance->BlitToSurface(&drawRect, DSurface::Composite, pCenterPCX);
@@ -113,13 +113,8 @@ bool SWColumnClass::AddButton(int superIdx)
 		sidebar->DisableEntry = false;
 	}
 
-	int currentID = SWButtonClass::StartID;
-
-	for (const auto& column : sidebar->Columns)
-		currentID += static_cast<int>(column->Buttons.size());
-
 	const int cameoWidth = 60, cameoHeight = 48;
-	const auto button = GameCreate<SWButtonClass>(currentID, superIdx, 0, 0, cameoWidth, cameoHeight);
+	const auto button = GameCreate<SWButtonClass>(superIdx, 0, 0, cameoWidth, cameoHeight);
 
 	if (!button)
 		return false;
@@ -148,13 +143,10 @@ bool SWColumnClass::RemoveButton(int superIdx)
 
 	AnnounceInvalidPointer(sidebar->CurrentButton, *it);
 
-	auto& indices = ScenarioExtData::Instance()->SWSidebar_Indices;
-	const auto it_Idx = std::find(indices.cbegin(), indices.cend(), superIdx);
-
-	if (it_Idx != indices.cend())
-		indices.erase(it_Idx);
-
-	GScreenClass::Instance->RemoveButton(*it);
+	ScenarioExtData::Instance()->SWSidebar_Indices.erase(superIdx);
+	const auto pButton = *it;
+	GScreenClass::Instance->RemoveButton(pButton);
+	GameDelete<true, false>(pButton);
 	buttons.erase(it);
 	return true;
 }
@@ -166,6 +158,7 @@ void SWColumnClass::ClearButtons(bool remove)
 		for (const auto& button : this->Buttons)
 		{
 			GScreenClass::Instance->RemoveButton(button);
+			GameDelete<true, false>(button);
 		}
 	}
 

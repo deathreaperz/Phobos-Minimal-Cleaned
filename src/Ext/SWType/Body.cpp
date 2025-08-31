@@ -1383,10 +1383,7 @@ bool SWTypeExtData::Launch(NewSWType* pNewType, SuperClass* pSuper, CellStruct c
 
 		if (bPlaySound)
 		{
-			const int sound = pNewType->GetSound(pData);
-
-			if (sound >= 0)
-				VocClass::SafeImmedietelyPlayAt(sound, &nCoord, nullptr);
+			VocClass::SafeImmedietelyPlayAt(pNewType->GetSound(pData), &nCoord, nullptr);
 		}
 	}
 
@@ -1778,12 +1775,6 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->UseWeeds_StorageTimer.Read(exINI, pSection, "UseWeeds.StorageTimer");
 	this->UseWeeds_ReadinessAnimationPercentage.Read(exINI, pSection, "UseWeeds.ReadinessAnimationPercentage");
 
-	this->SW_GrantOneTime.Read(exINI, pSection, "SW.GrantOneTime");
-	this->SW_GrantOneTime_InitialReady.Read(exINI, pSection, "SW.GrantOneTime.InitialReady");
-	this->Message_GrantOneTimeLaunched.Read(exINI, pSection, "Message.GrantOneTimeLaunched");
-	this->EVA_GrantOneTimeLaunched.Read(exINI, pSection, "EVA.GrantOneTimeLaunched");
-	this->SW_GrantOneTime_RollChances.Read(exINI, pSection, "SW.GrantOneTime.RollChances");
-
 	this->CrateGoodies.Read(exINI, pSection, "CrateGoodies");
 	this->SuperWeaponSidebar_Allow.Read(exINI, pSection, "SuperWeaponSidebar.Allow");
 	this->SuperWeaponSidebar_PriorityHouses = pINI->ReadHouseTypesList(pSection, "SuperWeaponSidebar.PriorityHouses", this->SuperWeaponSidebar_PriorityHouses);
@@ -1796,28 +1787,33 @@ void SWTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 	this->SuperWeaponSidebar_Significance.Read(exINI, pSection, "SuperWeaponSidebar.Significance");
 
-	// SW.GrantOneTime.RandomWeights
-	this->SW_GrantOneTime_RandomWeightsData.clear();
+	this->SW_Link.Read(exINI, pSection, "SW.Link");
+	this->SW_Link_Grant.Read(exINI, pSection, "SW.Link.Grant");
+	this->SW_Link_Ready.Read(exINI, pSection, "SW.Link.Ready");
+	this->SW_Link_Reset.Read(exINI, pSection, "SW.Link.Reset");
+	this->Message_LinkedSWAcquired.Read(exINI, pSection, "Message.LinkedSWAcquired");
+	this->EVA_LinkedSWAcquired.Read(exINI, pSection, "EVA.LinkedSWAcquired");
+	this->SW_Link_RollChances.Read(exINI, pSection, "SW.Link.RollChances");
 
+	std::string _tag("SW.Link.RandomWeights");
 	for (size_t i = 0; ; ++i)
 	{
 		ValueableVector<int> weights3;
-		weights3.Read(exINI, pSection, (std::string("SW.GrantOneTime.RandomWeights") + std::to_string(i)).c_str());
+		weights3.Read(exINI, pSection, (_tag + std::to_string(i)).c_str());
 
-		if (weights3.empty())
+		if (!weights3.size())
 			break;
 
-		this->SW_GrantOneTime_RandomWeightsData.push_back(std::move(weights3));
+		this->SW_Link_RandomWeightsData.push_back(std::move(weights3));
 	}
-
 	ValueableVector<int> weights3;
-	weights3.Read(exINI, pSection, "SW.GrantOneTime.RandomWeights");
-	if (!weights3.empty())
+	weights3.Read(exINI, pSection, "SW.Link.RandomWeights");
+	if (weights3.size())
 	{
-		if (this->SW_GrantOneTime_RandomWeightsData.size())
-			this->SW_GrantOneTime_RandomWeightsData[0] = std::move(weights3);
+		if (this->SW_Link_RandomWeightsData.size())
+			this->SW_Link_RandomWeightsData[0] = std::move(weights3);
 		else
-			this->SW_GrantOneTime_RandomWeightsData.push_back(std::move(weights3));
+			this->SW_Link_RandomWeightsData.push_back(std::move(weights3));
 	}
 
 	// initialize the NewSWType that handles this SWType.
@@ -2038,8 +2034,8 @@ void SWTypeExtData::FireSuperWeapon(SuperClass* pSW, HouseClass* pHouse, const C
 	if (!this->SW_Next.empty())
 		this->ApplySWNext(pSW, *pCell, IsCurrentPlayer);
 
-	if (this->SW_GrantOneTime.size() > 0)
-		this->GrantOneTimeFromList(pSW);
+	if (this->SW_Link.size() > 0)
+		this->ApplyLinkedSW(pSW);
 
 	if (this->BattlePoints_Amount != 0)
 		SWTypeExtData::ApplyBattlePoints(pSW);
@@ -2472,7 +2468,6 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->SW_Next_IgnoreDesignators)
 		.Process(this->SW_Next_RollChances)
 		.Process(this->SW_Next_RandomWeightsData)
-		.Process(this->SW_GrantOneTime_RandomWeightsData)
 
 		.Process(this->SW_Inhibitors)
 		.Process(this->SW_AnyInhibitor)
@@ -2556,6 +2551,7 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->Chronosphere_KillTeleporters)
 		.Process(this->Chronosphere_AffectUndeployable)
 		.Process(this->Chronosphere_AffectBuildings)
+		.Process(this->Chronosphere_AffectUnwarpable)
 		.Process(this->Chronosphere_AffectIronCurtain)
 		.Process(this->Chronosphere_BlowUnplaceable)
 		.Process(this->Chronosphere_ReconsiderBuildings)
@@ -2760,12 +2756,6 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->UseWeeds_StorageTimer)
 		.Process(this->UseWeeds_ReadinessAnimationPercentage)
 
-		.Process(this->SW_GrantOneTime)
-		.Process(this->SW_GrantOneTime_InitialReady)
-		.Process(this->Message_GrantOneTimeLaunched)
-		.Process(this->EVA_GrantOneTimeLaunched)
-		.Process(this->SW_GrantOneTime_RollChances)
-
 		.Process(this->CrateGoodies)
 		.Process(this->SuperWeaponSidebar_Allow)
 		.Process(this->SuperWeaponSidebar_PriorityHouses)
@@ -2775,6 +2765,15 @@ void SWTypeExtData::Serialize(T& Stm)
 		.Process(this->BattlePoints_DrainAmount)
 		.Process(this->BattlePoints_DrainDelay)
 		.Process(this->SuperWeaponSidebar_Significance)
+
+		.Process(this->SW_Link)
+		.Process(this->SW_Link_Grant)
+		.Process(this->SW_Link_Ready)
+		.Process(this->SW_Link_Reset)
+		.Process(this->SW_Link_RandomWeightsData)
+		.Process(this->SW_Link_RollChances)
+		.Process(this->Message_LinkedSWAcquired)
+		.Process(this->EVA_LinkedSWAcquired)
 		;
 }
 
@@ -2800,75 +2799,85 @@ bool SWTypeExtData::IsResourceAvailable(SuperClass* pSuper)
 	return true;
 }
 
-void SWTypeExtData::GrantOneTimeFromList(SuperClass* pSW)
+void SWTypeExtData::ApplyLinkedSW(SuperClass* pSW)
 {
-	// SW.GrantOneTime proper SW granting mechanic
-	HouseClass* pHouse = pSW->Owner;
-	bool notObserver = !pHouse->IsObserver() || !pHouse->IsCurrentPlayerObserver();
+	const auto pHouse = pSW->Owner;
+	const bool notObserver = !pHouse->IsObserver() || !pHouse->IsCurrentPlayerObserver();
 
-	auto grantTheSW = [=](const int swIdxToAdd) -> bool
+	if (pHouse->Defeated || !notObserver)
+		return;
+
+	auto linkedSW = [=](const int swIdxToAdd)
 		{
 			if (const auto pSuper = pHouse->Supers.GetItem(swIdxToAdd))
 			{
-				bool granted = pSuper->Grant(true, false, false);
+				const bool granted = this->SW_Link_Grant && !pSuper->Granted && pSuper->Grant(true, false, false);
+				bool isActive = granted;
 
-				if (granted)
+				if (pSuper->Granted)
 				{
-					auto const pTypeExt = SWTypeExtContainer::Instance.Find(pSuper->Type);
-					bool isReady = this->SW_GrantOneTime_InitialReady.isset() && this->SW_GrantOneTime_InitialReady.Get() ? true : false;
-					isReady = !this->SW_GrantOneTime_InitialReady.isset() && pTypeExt->SW_InitialReady ? true : isReady;
-
-					if (isReady)
+					// check SW.Link.Reset first
+					if (this->SW_Link_Reset)
+					{
+						pSuper->Reset();
+						isActive = true;
+					}
+					// check SW.Link.Ready, which will default to SW.InitialReady for granted superweapon
+					else if (this->SW_Link_Ready || (granted && SWTypeExtContainer::Instance.Find(pSuper->Type)->SW_InitialReady))
 					{
 						pSuper->RechargeTimer.TimeLeft = 0;
 						pSuper->SetReadiness(true);
+						isActive = true;
 					}
-					else
+					// reset granted superweapon if it doesn't meet above conditions
+					else if (granted)
 					{
 						pSuper->Reset();
 					}
-
-					if (notObserver && pHouse->IsCurrentPlayer())
-					{
-						if (MouseClass::Instance->AddCameo(AbstractType::Special, swIdxToAdd))
-							MouseClass::Instance->RepaintSidebar(1);
-					}
 				}
 
-				return granted;
+				if (granted && notObserver && pHouse->IsCurrentPlayer())
+				{
+					if (MouseClass::Instance->AddCameo(AbstractType::Special, swIdxToAdd))
+						MouseClass::Instance->RepaintSidebar(1);
+				}
+
+				return isActive;
 			}
 
 			return false;
 		};
 
-	bool grantedAnySW = false;
+	bool isActive = false;
 
 	// random mode
-	if (this->SW_GrantOneTime_RandomWeightsData.size())
+	if (this->SW_Link_RandomWeightsData.size())
 	{
-		auto results = this->WeightedRollsHandler(&this->SW_GrantOneTime_RollChances, &this->SW_GrantOneTime_RandomWeightsData, this->SW_GrantOneTime.size());
-		for (int result : results)
+		const auto results = this->WeightedRollsHandler(&this->SW_Link_RollChances, &this->SW_Link_RandomWeightsData, this->SW_Link.size());
+
+		for (const int& result : results)
 		{
-			if (grantTheSW(this->SW_GrantOneTime[result]))
-				grantedAnySW = true;
+			if (linkedSW(this->SW_Link[result]))
+				isActive = true;
 		}
 	}
+
 	// no randomness mode
 	else
 	{
-		for (const auto swType : this->SW_GrantOneTime)
+		for (const auto swType : this->SW_Link)
 		{
-			if (grantTheSW(swType))
-				grantedAnySW = true;
+			if (linkedSW(swType))
+				isActive = true;
 		}
 	}
 
-	if (notObserver && pHouse->IsCurrentPlayer())
+	if (isActive && notObserver && pHouse->IsCurrentPlayer())
 	{
-		if (this->EVA_GrantOneTimeLaunched.isset())
-			VoxClass::PlayIndex(this->EVA_GrantOneTimeLaunched.Get());
+		if (this->EVA_LinkedSWAcquired.isset())
+			VoxClass::PlayIndex(this->EVA_LinkedSWAcquired.Get(), VoxType::none, VoxPriority::none);
 
-		GeneralUtils::PrintMessage(this->Message_GrantOneTimeLaunched.Get());
+		this->PrintMessage(this->Message_LinkedSWAcquired, HouseClass::CurrentPlayer());
 	}
 }
 // =============================
@@ -2935,8 +2944,6 @@ ASMJIT_PATCH(0x6CEFE0, SuperWeaponTypeClass_SDDTOR, 0x8)
 	SWTypeExtContainer::Instance.Remove(pItem);
 	return 0;
 }
-
-#include <Misc/Hooks.Otamaa.h>
 
 HRESULT __stdcall FakeSuperWeaponTypeClass::_Load(IStream* pStm)
 {

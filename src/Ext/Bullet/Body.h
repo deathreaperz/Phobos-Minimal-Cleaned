@@ -2,7 +2,7 @@
 #include <BulletClass.h>
 
 #include <Helpers/Macro.h>
-#include <Utilities/Container.h>
+#include <Utilities/PooledContainer.h>
 #include <Utilities/TemplateDef.h>
 
 #include <New/Entity/LaserTrailClass.h>
@@ -12,6 +12,7 @@
 #include "Trajectories/PhobosTrajectory.h"
 
 class TechnoClass;
+class TechnoTypeClass;
 class BulletExtData
 {
 public:
@@ -22,9 +23,10 @@ public:
 	InitState Initialized { InitState::Blank };
 public:
 	int CurrentStrength { 0 };
-	bool IsInterceptor { false };
+	TechnoTypeClass* InterceptorTechnoType { };
 	InterceptedStatus InterceptedStatus { InterceptedStatus::None };
-	bool Intercepted_Detonate { true };
+	bool DetonateOnInterception { true };
+
 	HelperedVector<std::unique_ptr<LaserTrailClass>> LaserTrails {};
 	bool SnappedToTarget { false };
 	SuperWeaponTypeClass* NukeSW { nullptr };
@@ -44,6 +46,7 @@ public:
 	int DamageNumberOffset { INT32_MIN };
 
 	AbstractClass* OriginalTarget { nullptr };
+	int ParabombFallRate { 0 };
 
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
@@ -79,7 +82,7 @@ public:
 				 );
 	}
 
-	static void InterceptBullet(BulletClass* pThis, TechnoClass* pSource, WeaponTypeClass* pWeapon);
+	static void InterceptBullet(BulletClass* pThis, TechnoClass* pSource, BulletClass* pInterceptor);
 	static void DetonateAt(BulletClass* pThis, AbstractClass* pTarget, TechnoClass* pOwner, CoordStruct nCoord = CoordStruct::Empty, HouseClass* pBulletOwner = nullptr);
 
 	static Fuse FuseCheckup(BulletClass* pBullet, CoordStruct* newlocation);
@@ -114,7 +117,37 @@ class BulletExtContainer final : public Container<BulletExtData>
 {
 public:
 	static BulletExtContainer Instance;
+	static StaticObjectPool<BulletExtData, 10000> pools;
 
+	BulletExtData* AllocateUnchecked(BulletClass* key)
+	{
+		BulletExtData* val = pools.allocate();
+
+		if (val)
+		{
+			val->AttachedToObject = key;
+		}
+		else
+		{
+			Debug::FatalErrorAndExit("The amount of [BulletExtData] is exceeded the ObjectPool size %d !", pools.getPoolSize());
+		}
+
+		return val;
+	}
+
+	void Remove(BulletClass* key)
+	{
+		if (BulletExtData* Item = TryFind(key))
+		{
+			RemoveExtOf(key, Item);
+		}
+	}
+
+	void RemoveExtOf(BulletClass* key, BulletExtData* Item)
+	{
+		pools.deallocate(Item);
+		this->ClearExtAttribute(key);
+	}
 	//CONSTEXPR_NOCOPY_CLASSB(BulletExtContainer, BulletExtData, "BulletClass");
 };
 

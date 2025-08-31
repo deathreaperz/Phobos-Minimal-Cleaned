@@ -260,16 +260,16 @@ static PhobosMap<BuildingClass*, double> MergedDamage {};
 static DynamicVectorClass<ObjectClass*> Targets;
 static DynamicVectorClass<DamageGroup*> Handled;
 
-inline int Distance_Level_Snap(const Coordinate& coord1, const Coordinate& coord2)
-{
-	int z1 = coord1.Z;
-	int z2 = coord2.Z;
-	if (Math::abs(z2 - z1) < 104)
-	{
-		z2 = coord1.Z;
-	}
-	return (int)CoordStruct(coord1.X - coord2.X, coord1.Y - coord2.Y, z1 - z2).Length();
-}
+// inline int Distance_Level_Snap(const Coordinate& coord1, const Coordinate& coord2)
+// {
+// 	int z1 = coord1.Z;
+// 	int z2 = coord2.Z;
+// 	if (Math::abs(z2 - z1) < 104)
+// 	{
+// 		z2 = coord1.Z;
+// 	}
+// 	return (int)CoordStruct(coord1.X - coord2.X, coord1.Y - coord2.Y, z1 - z2).Length();
+// }
 
 // this function is landmines , hooking it breaking other
 
@@ -280,7 +280,7 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 		bool affectTiberium,
 		HouseClass* pHouse)
 {
-	JMP_STD(0x489280);
+	JMP_FAST(0x489280);
 #ifdef _aaa
 	if (!pWarhead)
 	{
@@ -289,9 +289,6 @@ DamageAreaResult __fastcall DamageArea::Apply(CoordStruct* pCoord,
 
 	if (VTable::Get(pWarhead) != WarheadTypeClass::vtable)
 		Debug::FatalErrorAndExit("!");
-
-	//if (IS_SAME_STR_("SA", pWarhead->ID))
-	//	DebugBreak();
 
 	const auto pWHExt = ((FakeWarheadTypeClass*)pWarhead)->_GetExtData();
 	CellStruct cell = CellClass::Coord2Cell(*pCoord);

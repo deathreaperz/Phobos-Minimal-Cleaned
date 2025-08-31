@@ -37,13 +37,13 @@ ASMJIT_PATCH(0x6F3AEB, TechnoClass_GetFLH, 0x6)
 			{
 				_flh = pThis->GetWeapon(weaponIndex)->FLH;
 			}
-
-			flh = _flh;
 		}
 		else
 		{
 			useBurstMirroring = false;
 		}
+
+		flh = _flh;
 	}
 	else
 	{

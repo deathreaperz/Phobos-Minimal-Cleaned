@@ -167,7 +167,7 @@ extern "C" {
 	typedef struct ZydisFormatterBuffer_
 	{
 		/**
-		 * `ZYAN_TRUE`, if the buffer contains a token stream or `ZYAN_FALSE, if it
+		 * `ZYAN_TRUE`, if the buffer contains a token stream or `ZYAN_FALSE`, if it
 		 *  contains a simple string.
 		 */
 		ZyanBool is_token_list;

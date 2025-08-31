@@ -322,7 +322,7 @@ ASMJIT_PATCH(0x5F5390, ObjectClass_ReveiveDamage_Handled, 0x5)
 
 	if (!args.IgnoreDefenses)
 	{
-		MapClass::GetTotalDamage(&args, TechnoExtData::GetTechnoArmor(pThis, args.WH));
+		*args.Damage = FakeWarheadTypeClass::ModifyDamage(*args.Damage, args.WH, TechnoExtData::GetTechnoArmor(pThis, args.WH), args.DistanceToEpicenter);
 		//this already calculate distance damage from epicenter
 		pWHExt->ApplyRecalculateDistanceDamage(pThis, &args);
 	}
@@ -539,13 +539,22 @@ ASMJIT_PATCH(0x5F5390, ObjectClass_ReveiveDamage_Handled, 0x5)
 		return 0x5F584A;
 	}
 
-	int _oldStr = pThis->Health;
-	int _adj = _oldStr - *args.Damage;
+	const int flash = Math::abs(pWHExt->Flash_Duration.Get(7));
+	const int _oldStr = pThis->Health;
+	const int _adj = _oldStr - *args.Damage;
+
 	pThis->Health = MinImpl(_adj, maxstrength);
 
-	if (_oldStr != pThis->Health)
+	if (flash > 0)
 	{
-		pThis->Flash(7);
+		if (auto pTechno = flag_cast_to<TechnoClass*>(pThis))
+		{
+			if ((_oldStr != pThis->Health || pWHExt->Flash_Duration.isset())
+				&& flash > pTechno->Flashing.DurationRemaining)
+			{
+				pThis->Flash(flash);
+			}
+		}
 	}
 
 	R->EAX(_res);
@@ -597,15 +606,51 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 	auto pWHExt = WarheadTypeExtContainer::Instance.Find(args.WH);
 	auto pExt = TechnoExtContainer::Instance.Find(pThis);
 	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	const auto pSourceHouse = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
+
+	//Repair/Destroy bridges at Bridge Repair Huts buildings
+	if (pWHExt->FakeEngineer_CanRepairBridges || pWHExt->FakeEngineer_CanDestroyBridges)
+	{
+		const bool isBridgeDestroyed = MapClass::Instance->IsLinkedBridgeDestroyed(CellClass::Coord2Cell(pThis->GetCenterCoords()));
+		const bool destroyBridge = !isBridgeDestroyed && pWHExt->FakeEngineer_CanRepairBridges ? false : pWHExt->FakeEngineer_CanDestroyBridges;
+		WarheadTypeExtData::DetonateAtBridgeRepairHut(pThis, nullptr, pSourceHouse, destroyBridge);
+	}
+
+	// Capture enemy buildings
+	auto const pBuilding = cast_to<BuildingClass*, false>(pThis);
+
+	if (pBuilding && pWHExt->FakeEngineer_CanCaptureBuildings
+	   && !pSourceHouse->IsAlliedWith(pThis->Owner)
+	   && (pBuilding->Type->Capturable || pBuilding->Type->NeedsEngineer))
+	{
+		// Send engineer's "enter" event
+		auto const pTag = pBuilding->AttachedTag;
+		if (args.Attacker && pTag)
+			pTag->RaiseEvent(TriggerEvent::EnteredBy, args.Attacker, CellStruct::Empty);
+
+		pBuilding->SetOwningHouse(pSourceHouse);
+	}
+
+	// Disarm bomb
+	if (pThis->AttachedBomb && pWHExt->FakeEngineer_BombDisarm)
+		pThis->AttachedBomb->Disarm();
 
 	pWHExt->ApplyDamageMult(pThis, &args);
 	applyCombatAlert(pThis, &args);
 
-	if (pWHExt->CanTargetHouse(args.SourceHouse, pThis))
-		pExt->LastHurtFrame = Unsorted::CurrentFrame;
-
 	if (args.Attacker && (!args.Attacker->IsAlive || args.Attacker->Health <= 0) && !args.Attacker->Owner)
 		args.Attacker = nullptr; //clean up;
+
+	const bool canTergetHouse = pWHExt->CanTargetHouse(pSourceHouse, pThis);
+
+	if (!canTergetHouse)
+	{
+		*args.Damage = 0;
+		R->EAX(DamageState::Unaffected);
+		return 0x702D1F;
+	}
+	else
+		pExt->LastHurtFrame = Unsorted::CurrentFrame;
 
 	if (!pThis || !pThis->IsAlive || pThis->Health <= 0)
 	{
@@ -618,6 +663,8 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 	if (!args.IgnoreDefenses)
 	{
+		*args.Damage = TechnoExtData::CalculateBlockDamage(pThis, &args);
+
 		if (auto pShieldData = pExt->GetShield())
 		{
 			pShieldData->OnReceiveDamage(&args);
@@ -711,15 +758,6 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		return 0x702D1F;
 	}
 
-	const auto pSourceHouse = args.Attacker ? args.Attacker->Owner : args.SourceHouse;
-
-	if (!pWHExt->CanAffectHouse(pThis->Owner, pSourceHouse))
-	{
-		*args.Damage = 0;
-		R->EAX(DamageState::Unaffected);
-		return 0x702D1F;
-	}
-
 	if (args.WH->Psychedelic)
 	{
 		if (TechnoExtData::IsPsionicsImmune(nRank, pThis) || TechnoExtData::IsBerserkImmune(nRank, pThis))
@@ -779,8 +817,8 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 
 	const bool Show = Phobos::Otamaa::IsAdmin || *args.Damage;
 
-	if (Phobos::Debug_DisplayDamageNumbers && Show)
-		FlyingStrings::DisplayDamageNumberString(*args.Damage, DamageDisplayType::Regular, pThis->GetRenderCoords(), TechnoExtContainer::Instance.Find(pThis)->DamageNumberOffset);
+	if (bool(Phobos::Debug_DisplayDamageNumbers > DrawDamageMode::disabled) && Phobos::Debug_DisplayDamageNumbers < DrawDamageMode::count && Show)
+		FlyingStrings::DisplayDamageNumberString(*args.Damage, DamageDisplayType::Regular, pThis->GetRenderCoords(), TechnoExtContainer::Instance.Find(pThis)->DamageNumberOffset, Phobos::Debug_DisplayDamageNumbers, args.WH);
 
 	if (!pThis->Health)
 	{
@@ -883,10 +921,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		break;
 	case DamageState::Unchanged:
 	{
-		if (pType->DamageSound != -1)
-		{
-			VocClass::SafeImmedietelyPlayAt(pType->DamageSound, &pThis->Location, 0);
-		}
+		VocClass::SafeImmedietelyPlayAt(pType->DamageSound, &pThis->Location, 0);
 
 		if (!pWHExt->Malicious && args.Attacker && args.Attacker->IsAlive && !pWHExt->Nonprovocative)
 		{
@@ -1125,7 +1160,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 					pThis->FireDeathWeapon(0);
 			}
 
-			if (args.Attacker)
+			if (args.Attacker && args.Attacker->IsAlive)
 			{
 				auto SourCoords = args.Attacker->Location;
 
@@ -1133,25 +1168,25 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 				{
 					if (pTypeExt->RevengeWeapon &&
 						EnumFunctions::CanTargetHouse(pTypeExt->RevengeWeapon_AffectsHouses, pThis->Owner, args.Attacker->Owner) &&
-						!pWHExt->SuppressRevengeWeapons_Types.empty() && !pWHExt->SuppressRevengeWeapons_Types.Contains(pTypeExt->RevengeWeapon))
+						(pWHExt->SuppressRevengeWeapons_Types.empty() || !pWHExt->SuppressRevengeWeapons_Types.Contains(pTypeExt->RevengeWeapon)))
 					{
 						WeaponTypeExtData::DetonateAt(pTypeExt->RevengeWeapon.Get(), args.Attacker, pThis, true, nullptr);
 					}
 
-					if (pThis->IsAlive)
+					if (args.Attacker->IsAlive)
 					{
 						for (const auto& weapon : pExt->RevengeWeapons)
 						{
-							if (EnumFunctions::CanTargetHouse(weapon.ApplyToHouses, pThis->Owner, args.Attacker->Owner) && !pWHExt->SuppressRevengeWeapons_Types.empty() && !pWHExt->SuppressRevengeWeapons_Types.Contains(weapon.Value))
+							if (EnumFunctions::CanTargetHouse(weapon.ApplyToHouses, pThis->Owner, args.Attacker->Owner) && (pWHExt->SuppressRevengeWeapons_Types.empty() || !pWHExt->SuppressRevengeWeapons_Types.Contains(weapon.Value)))
 								WeaponTypeExtData::DetonateAt(weapon.Value, args.Attacker, pThis, true, nullptr);
 						}
 					}
 				}
 
-				if (pThis->IsAlive)
+				if (args.Attacker->IsAlive)
 					TechnoExtData::ApplyKillWeapon(pThis, args.Attacker, args.WH);
 
-				if (pThis->IsAlive)
+				if (args.Attacker->IsAlive)
 					PhobosAEFunctions::ApplyRevengeWeapon(pThis, args.Attacker, args.WH);
 			}
 
@@ -1165,10 +1200,7 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 		}
 		else
 		{
-			if (pType->DamageSound != -1)
-			{
-				VocClass::SafeImmedietelyPlayAt(pType->DamageSound, &pThis->Location, 0);
-			}
+			VocClass::SafeImmedietelyPlayAt(pType->DamageSound, &pThis->Location, 0);
 
 			if (args.Attacker && args.Attacker->IsAlive && (pType->ToProtect || pThis->__ProtectMe_3CF) && !pThis->Owner->IsControlledByHuman())
 			{
@@ -1248,21 +1280,6 @@ ASMJIT_PATCH(0x701900, TechnoClass_ReceiveDamage_Handle, 0x6)
 			{
 				nTimer.Start(pWHExt->DisableWeapons_Duration);
 			}
-		}
-
-		if (pWHExt->Flash_Duration > 0 && pWHExt->Flash_Duration > pThis->Flashing.DurationRemaining)
-		{
-			pThis->Flash(pWHExt->Flash_Duration);
-		}
-
-		if (pWHExt->RemoveDisguise)
-		{
-			pWHExt->ApplyRemoveDisguise(pHouse, pThis);
-		}
-
-		if (pWHExt->RemoveMindControl)
-		{
-			pWHExt->ApplyRemoveMindControl(pHouse, pThis);
 		}
 	}
 
@@ -1407,6 +1424,14 @@ DamageState FakeBuildingClass::_ReceiveDamage(int* Damage, int DistanceToEpicent
 
 	if (pThis->Type->BridgeRepairHut && pThis->Type->Immune)
 	{
+		if (pWHExt->FakeEngineer_CanRepairBridges || pWHExt->FakeEngineer_CanDestroyBridges)
+		{
+			const bool isBridgeDestroyed = MapClass::Instance->IsLinkedBridgeDestroyed(CellClass::Coord2Cell(pThis->GetCenterCoords()));
+			bool destroyBridge = isBridgeDestroyed && pWHExt->FakeEngineer_CanRepairBridges ? false : pWHExt->FakeEngineer_CanDestroyBridges;			WarheadTypeExtData::DetonateAtBridgeRepairHut(pThis, Attacker, SourceHouse, destroyBridge);
+
+			WarheadTypeExtData::DetonateAtBridgeRepairHut(pThis, Attacker, SourceHouse, destroyBridge);
+		}
+
 		return DamageState::Unaffected;
 	}
 
@@ -1559,7 +1584,7 @@ DamageState FakeBuildingClass::_ReceiveDamage(int* Damage, int DistanceToEpicent
 
 			if (pThis->Type->CanBeOccupied)
 			{
-				pThis->KickAllOccupants(false, false);
+				((FakeBuildingClass*)pThis)->UnloadOccupants(false, false);
 			}
 
 			if (auto pSource = pThis->LightSource)
@@ -2422,7 +2447,8 @@ ASMJIT_PATCH(0x737C90, UnitClass_ReceiveDamage_Handled, 5)
 
 			if (!pTypeExt->Sinkable.Get(ShouldSink)
 			   || pThis->GetCell()->LandType != LandType::Water
-			   || pThis->WarpingOut)
+			   || pThis->WarpingOut
+			   || pThis->OnBridge)
 			{
 				pThis->Destroyed(args.Attacker);
 

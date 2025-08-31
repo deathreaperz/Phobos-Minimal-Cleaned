@@ -55,11 +55,8 @@ public:
 	Valueable<int> Abductor_MaxHealth { 0 };
 	Valueable<bool> Abductor_CheckAbductableWhenTargeting { false };
 
-	Nullable<AnimTypeClass*>DelayedFire_Anim {};
-	Valueable<int> DelayedFire_Anim_LoopCount { 1 };
-	Valueable<bool> DelayedFire_Anim_UseFLH { true };
-	Valueable<int> DelayedFire_DurationTimer { 0 };
 	Valueable<bool> Burst_FireWithinSequence { false };
+	Valueable<bool> Burst_NoDelay { false };
 	Nullable<PartialVector2D<int>> ROF_RandomDelay {};
 	ValueableVector<int> ChargeTurret_Delays {};
 	Valueable<bool> OmniFire_TurnToTarget { false };
@@ -152,7 +149,6 @@ public:
 	Valueable<double> Beam_Amplitude { 40.0 };
 	Valueable<bool> Beam_IsHouseColor { false };
 
-	Valueable<bool> Bolt_ParticleSys_Enabled { true };
 	Nullable<WarheadTypeClass*> AmbientDamage_Warhead {};
 	Valueable<bool> AmbientDamage_IgnoreTarget { false };
 
@@ -176,8 +172,21 @@ public:
 	Valueable<bool> AttachEffect_Enable { false };
 	Valueable<int> NoRepeatFire {};
 
+	bool SkipWeaponPicking { true };
+
+	Valueable<Leptons> KeepRange {};
+	Valueable<bool> KeepRange_AllowAI {};
+	Valueable<bool> KeepRange_AllowPlayer {};
+	Valueable<int> KeepRange_EarlyStopFrame {};
+
+	Valueable<bool> VisualScatter { false };
+	Valueable<bool> TurretRecoil_Suppress { false };
+
+	Valueable<double> CanTarget_MaxHealth { 1.0 };
+	Valueable<double> CanTarget_MinHealth { 0.0 };
+
 	Nullable<PartialVector2D<int>> DelayedFire_Duration {};
-	Valueable<bool> DelayedFire_SkipInTransport {};
+	Valueable<bool> DelayedFire_SkipInTransport { false };
 	Valueable<AnimTypeClass*> DelayedFire_Animation {};
 	Nullable<AnimTypeClass*> DelayedFire_OpenToppedAnimation {};
 	Valueable<bool> DelayedFire_AnimIsAttached { true };
@@ -186,16 +195,9 @@ public:
 	Valueable<bool> DelayedFire_PauseFiringSequence {};
 	Valueable<bool> DelayedFire_OnlyOnInitialBurst {};
 	Nullable<CoordStruct> DelayedFire_AnimOffset {};
+	Valueable<bool> DelayedFire_AnimOnTurret { true };
 
-	bool SkipWeaponPicking { true };
-
-	Valueable<Leptons> KeepRange {};
-	Valueable<bool> KeepRange_AllowAI {};
-	Valueable<bool> KeepRange_AllowPlayer {};
-
-	Valueable<bool> VisualScatter { false };
-	Valueable<bool> TurretRecoil_Suppress { false };
-
+	Valueable<bool> OnlyAttacker { false };
 #pragma endregion
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
@@ -216,6 +218,7 @@ public:
 
 	ColorStruct GetBeamColor() const;
 	bool HasRequiredAttachedEffects(TechnoClass* pTarget, TechnoClass* pFirer);
+	bool IsHealthInThreshold(ObjectClass* pTarget) const;
 
 	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{

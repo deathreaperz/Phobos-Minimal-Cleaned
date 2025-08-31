@@ -8,6 +8,7 @@
 #include <Utilities/Container.h>
 #include <Utilities/TemplateDef.h>
 #include <Utilities/VectorHelper.h>
+#include <Utilities/VectorSet.h>
 
 #include <New/Entity/NewTiberiumStorageClass.h>
 #include <New/Entity/TrackerClass.h>
@@ -51,7 +52,7 @@ struct LauchData
 
 struct TunnelData
 {
-	std::vector<FootClass*> Vector;
+	HelperedVector<FootClass*> Vector;
 	int MaxCap;
 
 	COMPILETIMEEVAL TunnelData() noexcept : Vector {}, MaxCap { 1 } { }
@@ -143,10 +144,11 @@ public:
 
 	std::bitset<MaxHouseCount> StolenTech {};
 	IndexBitfield<HouseClass*> RadarPersist {};
-	std::set<HouseTypeClass*> FactoryOwners_GatheredPlansOf {};
-	std::set<BuildingClass*> Academies {};
-	std::set<TechnoTypeClass*> Reversed {};
-	std::set<TechnoClass*> OwnedCountedHarvesters {};
+	VectorSet<HouseTypeClass*> FactoryOwners_GatheredPlansOf {};
+	VectorSet<BuildingClass*> Academies {};
+	VectorSet<BuildingClass*> TunnelsBuildings {};
+	VectorSet<TechnoTypeClass*> Reversed {};
+	VectorSet<TechnoClass*> OwnedCountedHarvesters {};
 
 	bool Is_NavalYardSpied { false };
 	bool Is_AirfieldSpied { false };
@@ -171,7 +173,7 @@ public:
 
 	OptionalStruct<TechTreeTypeClass*, true> SideTechTree {};
 	CDTimerClass CombatAlertTimer {};
-	std::set<BuildingClass*> RestrictedFactoryPlants {};
+	VectorSet<BuildingClass*> RestrictedFactoryPlants {};
 	CDTimerClass AISellAllDelayTimer {};
 
 	HelperedVector<UnitClass*> OwnedDeployingUnits {};
@@ -192,6 +194,36 @@ public:
 	int ForceEnemyIndex { -1 };
 	int BattlePoints {};
 
+	struct ProductionData
+	{
+		std::vector<int> CreationFrames {};
+		std::vector<int> Values {};
+		std::vector<int> BestChoices {};
+
+		bool Load(PhobosStreamReader& stm, bool registerForChange)
+		{
+			return this->Serialize(stm);
+		}
+
+		bool Save(PhobosStreamWriter& stm) const
+		{
+			return const_cast<ProductionData*>(this)->Serialize(stm);
+		}
+
+	private:
+		template <typename T>
+		bool Serialize(T& stm)
+		{
+			return stm
+				.Process(this->CreationFrames)
+				.Process(this->Values)
+				.Process(this->BestChoices)
+				.Success();
+		}
+	}; std::array<ProductionData, 3u> Productions {};
+
+	std::vector<int> BestChoicesNaval {};
+
 	void InvalidatePointer(AbstractClass* ptr, bool bRemoved);
 
 	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
@@ -201,14 +233,16 @@ public:
 			 );
 	}
 
+	void GetUnitTypeToProduce();
+	int GetAircraftTypeToProduce();
+	int GetInfantryTypeToProduce();
+
 	TechTreeTypeClass* GetTechTreeType();
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void InitializeConstant();
-
-	void UpdateVehicleProduction();
 
 	void UpdateShotCount(SuperWeaponTypeClass* pFor);
 	void UpdateShotCountB(SuperWeaponTypeClass* pFor);
@@ -239,6 +273,8 @@ public:
 	bool CanTransactBattlePoints(int amount);
 	int CalculateBattlePoints(TechnoClass* pTechno);
 	int CalculateBattlePoints(TechnoTypeClass* pTechno, HouseClass* pOwner);
+
+	bool ReverseEngineer(TechnoClass* Victim);
 
 	static SuperClass* IsSuperAvail(int nIdx, HouseClass* pHouse);
 
@@ -379,12 +415,8 @@ private:
 	void Serialize(T& Stm);
 
 public:
-	static std::vector<int> AIProduction_CreationFrames;
-	static std::vector<int> AIProduction_Values;
-	static std::vector<int> AIProduction_BestChoices;
-	static std::vector<int> AIProduction_BestChoicesNaval;
 	static PhobosMap<TechnoClass*, KillMethod> AutoDeathObjects;
-	static std::set<TechnoClass*> LimboTechno;
+	static HelperedVector<TechnoClass*> LimboTechno;
 
 	static int LastGrindingBlanceUnit;
 	static int LastGrindingBlanceInf;
@@ -407,7 +439,9 @@ public:
 	static HouseClass* Civilian;
 	static HouseClass* Special;
 	static HouseClass* Neutral;
-	static std::unordered_map<HouseClass*, std::set<TeamClass*>> HousesTeams;
+	static SideClass* CivilianSide;
+
+	static PhobosMap<HouseClass*, VectorSet<TeamClass*>> HousesTeams;
 
 	static bool LoadGlobals(PhobosStreamReader& Stm);
 	static bool SaveGlobals(PhobosStreamWriter& Stm);
@@ -426,6 +460,10 @@ public:
 	bool _IsIonCannonEligibleTarget(TechnoClass* pTechno) const;
 	void _UpdateAngerNodes(int score_add, HouseClass* pHouse);
 	void _AITryFireSW();
+	void _BlowUpAll();
+	void _BlowUpAllBuildings();
+	void _UpdateRadar();
+	void _UpdateSpySat();
 
 	HouseExtData* _GetExtData()
 	{

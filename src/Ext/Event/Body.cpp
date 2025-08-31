@@ -44,7 +44,7 @@ void EventExt::ManualReload::Respond(EventClass* Event)
 					WarheadTypeExtData::DetonateAt(pTypeExt->CanManualReload_DetonateWarhead, pTechno->Target, pTechno->GetCoords(), pTechno, 1, pTechno->Owner);
 
 				if (pTypeExt->CanManualReload_ResetROF)
-					pTechno->DiskLaserTimer.Stop();
+					pTechno->RearmTimer.Stop();
 
 				pTechno->Ammo = 0;
 
@@ -145,7 +145,7 @@ void EventExt::ProtocolZero::Raise()
 
 void EventExt::ProtocolZero::Respond(EventClass* Event)
 {
-	if (ProtocolZero::Enable == false || SessionClass::IsSingleplayer())
+	if (!ProtocolZero::Enable || SessionClass::IsSingleplayer())
 		return;
 
 	const ProtocolZero* netData = Event->Data.nothing.As<ProtocolZero>();

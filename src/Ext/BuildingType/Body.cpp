@@ -381,7 +381,7 @@ bool BuildingTypeExtData::AutoPlaceBuilding(BuildingClass* pBuilding)
 
 	auto addPlaceEvent = [&pType, &pHouse](CellStruct cell)
 		{
-			const EventClass event
+			EventClass event
 			(
 				HouseClass::CurrentPlayer->ArrayIndex,
 				EventType::PLACE,
@@ -536,7 +536,7 @@ bool BuildingTypeExtData::BuildLimboBuilding(BuildingClass* pBuilding)
 
 	if (BuildingTypeExtContainer::Instance.Find(pBuildingType)->LimboBuild)
 	{
-		const EventClass event
+		EventClass event
 		(
 			pBuilding->Owner->ArrayIndex,
 			EventType::PLACE,
@@ -610,11 +610,11 @@ void BuildingTypeExtData::CreateLimboBuilding(BuildingClass* pBuilding, Building
 		{
 			KillMethod nMethod = pBuildingExt->Type->Type->Death_Method.Get();
 
-			if (nMethod != KillMethod::None
-				&& pBuildingExt->Type->Type->Death_Countdown > 0
-				&& !pBuildingExt->TechnoExt->Death_Countdown.HasStarted())
+			if (nMethod != KillMethod::None)
 			{
-				pBuildingExt->TechnoExt->Death_Countdown.Start(pBuildingExt->Type->Type->Death_Countdown);
+				if (pBuildingExt->Type->Type->Death_Countdown > 0)
+					pBuildingExt->TechnoExt->Death_Countdown.Start(pBuildingExt->Type->Type->Death_Countdown);
+
 				HouseExtData::AutoDeathObjects.emplace_unchecked(pBuilding, nMethod);
 			}
 		}
@@ -1590,6 +1590,7 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->FactoryPlant_RequirePower.Read(exINI, pSection, "FactoryPlant.RequirePower");
 		this->SpySat_RequirePower.Read(exINI, pSection, "SpySat.RequirePower");
 		this->Cloning_RequirePower.Read(exINI, pSection, "Cloning.RequirePower");
+		this->Radar_RequirePower.Read(exINI, pSection, "Radar.RequirePower");
 		this->SpawnCrewOnlyOnce.Read(exINI, pSection, "SpawnCrewOnlyOnce");
 		this->IsDestroyableObstacle.Read(exINI, pSection, "IsDestroyableObstacle");
 
@@ -1711,7 +1712,9 @@ void BuildingTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		}
 
 		this->BuildUp_UseNormalLIght.Read(exArtINI, pArtSection, "Buildup.UseNormalLight");
-		this->RubblePalette.Read(exArtINI, pArtSection, "Rubble.Palette");
+		this->RubblePalette.Read(exArtINI, pArtSection,
+			(!Phobos::Otamaa::CompatibilityMode ?
+				"Rubble.Palette" : "RubblePalette"));
 
 		if (!Phobos::Otamaa::CompatibilityMode)
 		{
@@ -1829,7 +1832,7 @@ CanBuildResult BuildingTypeExtData::CheckAlwaysExistCameo(TechnoTypeClass* pType
 				{
 					vec.push_back(pType);
 					SidebarClass::Instance->SidebarNeedsRepaint();
-					const EventClass event
+					EventClass event
 					(
 						HouseClass::CurrentPlayer->ArrayIndex,
 						EventType::ABANDON_ALL,
@@ -2048,6 +2051,7 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->FactoryPlant_RequirePower)
 		.Process(this->SpySat_RequirePower)
 		.Process(this->Cloning_RequirePower)
+		.Process(this->Radar_RequirePower)
 		.Process(this->DisplayIncome)
 		.Process(this->DisplayIncome_Houses)
 		.Process(this->DisplayIncome_Offset)
@@ -2116,6 +2120,7 @@ void BuildingTypeExtData::Serialize(T& Stm)
 		.Process(this->BuildingRepairedSound)
 
 		.Process(this->Refinery_UseNormalActiveAnim)
+		.Process(this->HasPowerUpAnim)
 		;
 }
 

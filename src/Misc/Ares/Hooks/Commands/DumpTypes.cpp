@@ -107,7 +107,7 @@ void DumperTypesCommandClass::Execute(WWKey dwUnk) const
 		{
 			if (*((unsigned int*)sectionNode) == 0x7EB73C)
 			{
-				INIClass::INISection* section = (INIClass::INISection*)sectionNode;
+				INISection* section = (INISection*)sectionNode;
 				Debug::LogInfo("[{}]", section->Name);
 
 				GenericNode* entryNode = section->Entries.GenericList::First();
@@ -115,7 +115,7 @@ void DumperTypesCommandClass::Execute(WWKey dwUnk) const
 				{
 					if (*((unsigned int*)entryNode) == 0x7EB734)
 					{
-						INIClass::INIEntry* entry = (INIClass::INIEntry*)entryNode;
+						INIEntry* entry = (INIEntry*)entryNode;
 						unsigned int checksum = 0xAFFEAFFE;
 
 						for (int i = 0; i < section->EntryIndex.Count(); i++)

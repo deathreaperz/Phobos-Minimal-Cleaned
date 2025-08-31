@@ -7,6 +7,7 @@
 #include <Utilities/TemplateDef.h>
 
 #include <New/AnonymousType/AresAttachEffectTypeClass.h>
+#include <New/AnonymousType/BlockTypeClass.h>
 
 #include <New/Type/ShieldTypeClass.h>
 #include <New/Type/ArmorTypeClass.h>
@@ -78,25 +79,27 @@ public:
 	Valueable<bool> ShakeIsLocal { false };
 	Valueable<bool> Shake_UseAlternativeCalculation { false };
 
-	ValueableVector<double> Crit_Chance { };
+	Valueable<double> Crit_Chance { 0.0 };
 	Valueable<bool> Crit_ApplyChancePerTarget { false };
-	ValueableVector<int> Crit_ExtraDamage { };
+	Valueable<int> Crit_ExtraDamage;
 	Valueable<bool> Crit_ExtraDamage_ApplyFirepowerMult { false };
-	Valueable<WarheadTypeClass*> Crit_Warhead { nullptr };
+	Valueable<WarheadTypeClass*> Crit_Warhead;
+	Valueable<bool> Crit_Warhead_FullDetonation { true };
 	Valueable<AffectedTarget> Crit_Affects { AffectedTarget::All };
 	Valueable<AffectedHouse> Crit_AffectsHouses { AffectedHouse::All };
-	ValueableVector<AnimTypeClass*> Crit_AnimList {};
-	Nullable<bool> Crit_AnimList_PickRandom {};
-	Nullable<bool> Crit_AnimList_CreateAll {};
-	ValueableVector<AnimTypeClass*> Crit_ActiveChanceAnims {};
+	ValueableVector<AnimTypeClass*> Crit_AnimList;
+	Nullable<bool> Crit_AnimList_PickRandom { false };
+	Nullable<bool> Crit_AnimList_CreateAll { false };
+	ValueableVector<AnimTypeClass*> Crit_ActiveChanceAnims;
 	Valueable<bool> Crit_AnimOnAffectedTargets { false };
-	ValueableVector<double> Crit_AffectBelowPercent { };
-	Valueable<bool> Crit_SuppressOnIntercept { false };
-	NullablePromotable<double> Crit_GuaranteeAfterHealthTreshold {};
+	Valueable<double> Crit_AffectBelowPercent { 1.0 };
+	Valueable<double> Crit_AffectAbovePercent { 0.0 };
+	Valueable<bool> Crit_SuppressWhenIntercepted { false };
 
-	double RandomBuffer { 0.0 };
-	bool HasCrit { false };
-	std::vector<double> Crit_CurrentChance { };
+	bool CritActive {};
+	double CritRandomBuffer { 0.0 };
+	double CritCurrentChance { 0.0 };
+
 	Nullable<AnimTypeClass*> MindControl_Anim {};
 
 	// Ares tags
@@ -123,6 +126,8 @@ public:
 	Valueable<int> Shield_Respawn_Duration { 0 };
 	Nullable<double> Shield_Respawn_Amount { 0.0 };
 	Valueable<int> Shield_Respawn_Rate { -1 };
+	Nullable<bool> Shield_Respawn_RestartInCombat { };
+	Valueable<int> Shield_Respawn_RestartInCombatDelay { -1 };
 
 private:
 	Valueable<double> Shield_Respawn_Rate_InMinutes { -1.0 };
@@ -131,6 +136,8 @@ private:
 public:
 
 	Valueable<bool> Shield_Respawn_RestartTimer { false };
+	ValueableVector<AnimTypeClass*> Shield_Respawn_Anim { };
+	Valueable<WeaponTypeClass*> Shield_Respawn_Weapon { };
 	Valueable<int> Shield_SelfHealing_Duration { 0 };
 	Nullable<double> Shield_SelfHealing_Amount { };
 	Valueable<int> Shield_SelfHealing_Rate { -1 };
@@ -148,6 +155,8 @@ public:
 	ValueableVector<ShieldTypeClass*> Shield_AffectTypes { };
 
 	NullableVector<ShieldTypeClass*> Shield_Penetrate_Types { };
+	ValueableVector<ShieldTypeClass*> Shield_Penetrate_Types_Disallowed_Types { };
+	ValueableVector<ArmorTypeClass*> Shield_Penetrate_Armor_Types { };
 	NullableVector<ShieldTypeClass*> Shield_Break_Types { };
 	NullableVector<ShieldTypeClass*> Shield_Respawn_Types { };
 	NullableVector<ShieldTypeClass*> Shield_SelfHealing_Types { };
@@ -303,7 +312,7 @@ public:
 
 	Valueable<int> Sonar_Duration { 0 };
 	Valueable<int> DisableWeapons_Duration { 0 };
-	Valueable<int> Flash_Duration { 0 };
+	Nullable<int> Flash_Duration { };
 
 	NullableIdx<ImmunityTypeClass> ImmunityType {};
 
@@ -437,6 +446,38 @@ public:
 	Valueable<double> DamageSourceHealthMultiplier { 0.0 };
 	Valueable<double> DamageTargetHealthMultiplier { 0.0 };
 
+	Valueable<double> AffectsBelowPercent { 1.0 };
+	Valueable<double> AffectsAbovePercent { 0.0 };
+	Valueable<bool> AffectsNeutral { true };
+
+	Valueable<int> PenetratesTransport_Level { 0 };
+	Valueable<double> PenetratesTransport_PassThrough { 1.0 };
+	Valueable<double> PenetratesTransport_FatalRate { 0.0 };
+	Valueable<double> PenetratesTransport_DamageMultiplier { 1.0 };
+	Valueable<bool> PenetratesTransport_DamageAll { false };
+	ValueableIdx<VocClass> PenetratesTransport_CleanSound { -1 };
+
+	Valueable<bool> FakeEngineer_CanRepairBridges { false };
+	Valueable<bool> FakeEngineer_CanDestroyBridges { false };
+	Valueable<bool> FakeEngineer_CanCaptureBuildings { false };
+	Valueable<bool> FakeEngineer_BombDisarm { false };
+	Valueable<bool> ReverseEngineer { false };
+
+	Valueable<bool> UnlimboDetonate { false };
+	Valueable<bool> UnlimboDetonate_Force { false };
+	Valueable<bool> UnlimboDetonate_KeepTarget { true };
+	Valueable<bool> UnlimboDetonate_KeepSelected { true };
+
+	std::unique_ptr<BlockTypeClass> BlockType {};
+	Valueable<bool> Block_BasedOnWarhead { false };
+	Valueable<bool> Block_AllowOverride { true };
+	Valueable<bool> Block_IgnoreChanceModifier { true };
+	Valueable<double> Block_ChanceMultiplier { 1.0 };
+	Valueable<double> Block_ExtraChance { 0.0 };
+	Valueable<bool> ImmuneToBlock { false };
+
+	bool IsCellSpreadWH { false };
+	bool IsFakeEngineer { false };
 #pragma endregion
 
 public:
@@ -453,13 +494,14 @@ public:
 	void applyIronCurtain(TechnoClass* items, HouseClass* Owner, int damage) const;
 	void applyIronCurtain(const CoordStruct& coords, HouseClass* pOwner, int damage) const;
 
+	void ApplyPenetratesTransport(TechnoClass* pTarget, TechnoClass* pInvoker, HouseClass* pInvokerHouse, const CoordStruct& coords, int damage) const;
 private:
 
 	void EvaluateArmor(WarheadTypeClass* OwnerObject);
-	void DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTarget, int damage, TechnoClass* pOwner = nullptr, BulletClass* pBullet = nullptr, bool bulletWasIntercepted = false);
+	void DetonateOnOneUnit(HouseClass* pHouse, TechnoClass* pTarget, const CoordStruct& coords, int damage, TechnoClass* pOwner = nullptr, BulletClass* pBullet = nullptr, bool bulletWasIntercepted = false);
 
 	void ApplyCrit(HouseClass* pHouse, TechnoClass* pTarget, TechnoClass* Owner);
-	void ApplyShieldModifiers(TechnoClass* pTarget) const;
+	void ApplyShieldModifiers(TechnoClass* pTarget);
 
 	void ApplyGattlingStage(TechnoClass* pTarget, int Stage) const;
 	void ApplyGattlingRateUp(TechnoClass* pTarget, int RateUp) const;
@@ -484,10 +526,10 @@ private:
 public:
 	void Detonate(TechnoClass* pOwner, HouseClass* pHouse, BulletClass* pBullet, CoordStruct coords, int damage);
 	bool CanTargetHouse(HouseClass* pHouse, TechnoClass* pTechno) const;
-	void InterceptBullets(TechnoClass* pOwner, WeaponTypeClass* pWeapon, CoordStruct coords) const;
+	void InterceptBullets(TechnoClass* pOwner, BulletClass* pBullet, CoordStruct coords);
 	bool CanAffectHouse(HouseClass* pOwnerHouse, HouseClass* pTargetHouse) const;
 	bool CanDealDamage(TechnoClass* pTechno, int damageIn, int distanceFromEpicenter, int& DamageResult, bool effectsRequireDamage = false) const;
-	bool CanDealDamage(TechnoClass* pTechno, bool Bypass = false, bool SkipVerses = false, bool checkImmune = true) const;
+	bool CanDealDamage(TechnoClass* pTechno, bool Bypass = false, bool SkipVerses = false, bool checkImmune = true, bool checkLimbo = true) const;
 	bool CanAffectInvulnerable(TechnoClass* pTarget) const;
 	FullMapDetonateResult EligibleForFullMapDetonation(TechnoClass* pTechno, HouseClass* pOwner) const;
 	void ApplyDamageMult(TechnoClass* pVictim, args_ReceiveDamage* pArgs) const;
@@ -499,7 +541,7 @@ public:
 	bool ApplySuppressDeathWeapon(TechnoClass* pVictim) const;
 	void ApplyBuildingUndeploy(TechnoClass* pTarget);
 	void ApplyAttachEffects(TechnoClass* pTarget, HouseClass* pInvokerHouse, TechnoClass* pInvoker);
-	void GetCritChance(TechnoClass* pFirer, std::vector<double>& chances) const;
+	void GetCritChance(TechnoClass* pFirer, double& chances) const;
 
 	COMPILETIMEEVAL VersesData& GetVerses(Armor armor)
 	{
@@ -515,6 +557,7 @@ public:
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
 	void Initialize();
+	bool IsHealthInThreshold(ObjectClass* pTarget) const;
 
 	AnimTypeClass* GetArmorHitAnim(int Armor);
 
@@ -563,6 +606,8 @@ public:
 	static void CreateIonBlast(WarheadTypeClass* pThis, const CoordStruct& coords);
 
 	static void applyEMP(WarheadTypeClass* pWH, const CoordStruct& coords, TechnoClass* source);
+
+	static void DetonateAtBridgeRepairHut(AbstractClass* pTarget, TechnoClass* pOwner = nullptr, HouseClass* pFiringHouse = nullptr, bool destroyBridge = false);
 };
 
 class WarheadTypeExtContainer final : public Container<WarheadTypeExtData>
@@ -584,6 +629,13 @@ public:
 
 	HRESULT __stdcall _Load(IStream* pStm);
 	HRESULT __stdcall _Save(IStream* pStm, bool clearDirty);
+
+	static int __fastcall ModifyDamageA(int damage, FakeWarheadTypeClass* pWH, Armor armor, int distance);
+
+	static FORCEDINLINE int ModifyDamage(int damage, WarheadTypeClass* pWH, Armor armor, int distance)
+	{
+		return ModifyDamageA(damage, (FakeWarheadTypeClass*)pWH, armor, distance);
+	}
 
 	WarheadTypeExtData* _GetExtData() const
 	{

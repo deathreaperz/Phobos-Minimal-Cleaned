@@ -51,34 +51,34 @@ ASMJIT_PATCH(0x7461C5, UnitClass_BallooonHoverExplode_OverrideCheck, 0x6)
 
 #include <TeamClass.h>
 
-ASMJIT_PATCH(0x73F7DD, UnitClass_IsCellOccupied_Bib, 0x8)
-{
-	GET(BuildingClass*, pBuilding, ESI);
-	GET(UnitClass*, pThis, EBX);
+// ASMJIT_PATCH(0x73F7DD, UnitClass_IsCellOccupied_Bib, 0x8)
+// {
+// 	GET(BuildingClass*, pBuilding, ESI);
+// 	GET(UnitClass*, pThis, EBX);
 
-	if (pThis && pBuilding->Owner->IsAlliedWith(pThis))
-	{
-		// if (pThis->Type->Passengers > 0)
-		// {
-		// 	if (auto pTeam = pThis->Team)
-		// 	{
-		// 		if (auto pScript = pTeam->CurrentScript)
-		// 		{
-		// 			auto mission = pScript->GetCurrentAction();
-		// 			if (mission.Action == TeamMissionType::Gather_at_base && TeamMissionType((int)mission.Action + 1) == TeamMissionType::Load)
-		// 			{
-		// 				//dont fucking load the passenger here
-		// 				return 0x73F823;
-		// 			}
-		// 		}
-		// 	}
-		// }
+// 	if (pThis && pBuilding->Owner->IsAlliedWith(pThis))
+// 	{
+// 		// if (pThis->Type->Passengers > 0)
+// 		// {
+// 		// 	if (auto pTeam = pThis->Team)
+// 		// 	{
+// 		// 		if (auto pScript = pTeam->CurrentScript)
+// 		// 		{
+// 		// 			auto mission = pScript->GetCurrentAction();
+// 		// 			if (mission.Action == TeamMissionType::Gather_at_base && TeamMissionType((int)mission.Action + 1) == TeamMissionType::Load)
+// 		// 			{
+// 		// 				//dont fucking load the passenger here
+// 		// 				return 0x73F823;
+// 		// 			}
+// 		// 		}
+// 		// 	}
+// 		// }
 
-		return 0x0;
-	}
+// 		return 0x0;
+// 	}
 
-	return 0x73F823;
-}
+// 	return 0x73F823;
+// }
 
 // #1171643: keep the last passenger if this is a gunner, not just
 // when it has multiple turrets. gattling and charge turret is no
@@ -224,9 +224,9 @@ ASMJIT_PATCH(0x74653C, UnitClass_RemoveGunner, 0xA)
 //			//pThis->SwitchTurretWeapon(7);
 //		}
 //
-//		if (Gunner->DiskLaserTimer.HasTimeLeft()) {
+//		if (Gunner->RearmTimer.HasTimeLeft()) {
 //			++pThis->CurrentBurstIndex;
-//			pThis->DiskLaserTimer.Start(pThis->GetROF(7)); //hardcoded it seems
+//			pThis->RearmTimer.Start(pThis->GetROF(7)); //hardcoded it seems
 //		}
 //
 //		pThis->SwitchTurretWeapon(Gunner->GetTechnoType()->IFVMode);
@@ -242,9 +242,9 @@ ASMJIT_PATCH(0x74653C, UnitClass_RemoveGunner, 0xA)
 //
 //	if(Gunner) {
 //
-//		if(!pThis->DiskLaserTimer.GetTimeLeft()) {
+//		if(!pThis->RearmTimer.GetTimeLeft()) {
 //			++pThis->CurrentBurstIndex;
-//			pThis->DiskLaserTimer.Start(pThis->GetROF(0));
+//			pThis->RearmTimer.Start(pThis->GetROF(0));
 //		}
 //
 //		if (pThis->TemporalImUsing)
@@ -269,6 +269,10 @@ ASMJIT_PATCH(0x73769E, UnitClass_ReceivedRadioCommand_SpecificPassengers, 8)
 {
 	GET(UnitClass* const, pThis, ESI);
 	GET(TechnoClass const* const, pSender, EDI);
+	GET(TechnoClass* const, pCall, EDI);
+
+	if (pThis->OnBridge && pCall->OnBridge)
+		return 0x73780F;
 
 	auto const pSenderType = pSender->GetTechnoType();
 
@@ -352,13 +356,6 @@ ASMJIT_PATCH(0x730EE5, StopCommandClass_Execute_Berzerk, 6)
 {
 	GET(TechnoClass*, pTechno, ESI);
 	return pTechno->Berzerk || TechnoExtContainer::Instance.Find(pTechno)->Is_DriverKilled ? 0x730EF7 : 0;
-}
-
-ASMJIT_PATCH(0x6F3283, TechnoClass_CanScatter_KillDriver, 8)
-{
-	// prevent units with killed drivers from scattering when attacked.
-	GET(TechnoClass*, pThis, ESI);
-	return (TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled ? 0x6F32C5u : 0u);
 }
 
 ASMJIT_PATCH(0x7091D6, TechnoClass_CanPassiveAquire_KillDriver, 6)
@@ -516,7 +513,9 @@ ASMJIT_PATCH(0x73DE90, UnitClass_Mi_Unload_SimpleDeployer, 0x6)
 	//LineTrailExt::DeallocateLineTrail(pUnit);
 	//LineTrailExt::ConstructLineTrails(pUnit);
 
-	return pThis->Locomotor.GetInterfacePtr()->Is_Moving_Now() ? 0x73E5B1 : 0x0;
+	// Phobos fix disable these
+	//return pThis->Locomotor.GetInterfacePtr()->Is_Moving_Now() ? 0x73E5B1 : 0x0;
+	return 0;
 }
 
 #include <Ext/CaptureManager/Body.h>
@@ -813,7 +812,7 @@ ASMJIT_PATCH(0x746C55, UnitClass_GetUIName_Space, 6)
 
 	const auto pName = pThis->Type->UIName;
 	const auto pSpace = (pName && *pName && pGunnerName && *pGunnerName) ? L" " : L"";
-	fmt::format_to_n(pThis->ToolTipText, std::size(pThis->ToolTipText) - 1, L"{}{}{}", pGunnerName, pSpace, pName);
+	_snwprintf_s(pThis->ToolTipText, sizeof(pThis->ToolTipText) - 1, L"%s%s%s", pGunnerName, pSpace, pName);
 
 	R->EAX(pThis->ToolTipText);
 	return 0x746C76;
@@ -860,11 +859,20 @@ ASMJIT_PATCH(0x73D800, UnitClass_MI_Unload_NoManualUnload, 0x5)
 
 ASMJIT_PATCH(0x700EEC, TechnoClass_CanDeploySlashUnload_NoManualUnload, 6)
 {
-	// this techno is known to be a unit
-	GET(UnitClass const* const, pThis, ESI);
+	GET(TechnoClass const* const, pThis, ESI);
+	const bool disallowed = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType())->NoManualUnload
+		|| pThis->BunkerLinkedItem
+		|| pThis->OnBridge;
 
-	return !TechnoTypeExtContainer::Instance.Find(pThis->Type)->NoManualUnload || pThis->BunkerLinkedItem
-		? 0u : 0x700DCEu;
+	if (!disallowed)
+		return 0x700EFAu;
+
+	//if (auto pUnit = cast_to<UnitClass*>(pThis)){
+	//	if (!pUnit->InAir && pUnit->Deployed && pUnit->Type->DeployToLand) {
+	//	}
+	//}
+
+	return 0x700DCEu;
 }
 
 ASMJIT_PATCH(0x53C450, TechnoClass_CanBePermaMC, 5)
@@ -890,13 +898,6 @@ ASMJIT_PATCH(0x53C450, TechnoClass_CanBePermaMC, 5)
 	return 0x53C4BA;
 }
 
-ASMJIT_PATCH(0x700536, TechnoClass_GetActionOnObject_NoManualFire, 6)
-{
-	GET(TechnoClass const* const, pThis, ESI);
-	auto const pType = pThis->GetTechnoType();
-	return TechnoTypeExtContainer::Instance.Find(pType)->NoManualFire ? 0x70056Cu : 0u;
-}
-
 ASMJIT_PATCH(0x7008D4, TechnoClass_GetCursorOverCell_NoManualFire, 6)
 {
 	GET(TechnoClass const* const, pThis, ESI);
@@ -913,19 +914,18 @@ ASMJIT_PATCH(0x74031A, UnitClass_GetActionOnObject_NoManualEnter, 6)
 	return enterable ? 0x740324u : 0x74037Au;
 }
 
-//TechnoClass_CanAutoTargetObject_Heal
+//TechnoClass_EvaluateObject_Heal
 DEFINE_JUMP(LJMP, 0x6F7FC5, 0x6F7FDF);
 
-//ASMJIT_PATCH_AGAIN(0x6F8F1F, TechnoClass_FindTargetType_Heal, 6)
-//ASMJIT_PATCH(0x6F8EE3, TechnoClass_FindTargetType_Heal, 6)
-//{
-//	GET(unsigned int, nVal, EBX);
+// ASMJIT_PATCH(0x6F8EE3, TechnoClass_GreatestThereat_Heal, 6)
+// {
+// 	GET(unsigned int, nVal, EBX);
 //
-//	nVal |= 0x403Cu;
+// 	nVal |= 0x403Cu;
 //
-//	R->EBX(nVal);
-//	return 0x6F8F25;
-//}
+// 	R->EBX(nVal);
+// 	return 0x6F8F25;
+// }ASMJIT_PATCH_AGAIN(0x6F8F1F, TechnoClass_GreatestThereat_Heal, 6)
 
 DEFINE_PATCH_ADDR_OFFSET(byte, 0x6F8F1F, 0x2, 0x3C);
 DEFINE_PATCH_ADDR_OFFSET(byte, 0x6F8EE3, 0x2, 0x3C);
@@ -1156,6 +1156,12 @@ ASMJIT_PATCH(0x73C725, UnitClass_DrawSHP_DrawShadowEarlier, 6)
 {
 	GET(UnitClass*, U, EBP);
 
+	if (UnitTypeClass* pCustomType = TechnoExt_ExtData::GetUnitTypeImage(U))
+	{
+		if (!pCustomType->Turret)
+			return 0x73CE0D;
+	}
+
 	DWORD retAddr = (U->IsClearlyVisibleTo(HouseClass::CurrentPlayer))
 		? 0
 		: 0x73CE0D
@@ -1218,6 +1224,101 @@ ASMJIT_PATCH(0x705FF3, TechnoClass_Draw_A_SHP_File_SkipUnitShadow, 6)
 
 	return 0;
 }
+
+ASMJIT_PATCH(0x73BDA3, UnitClass_DrawVoxel_TurretFacing, 0x5)
+{
+	GET(UnitClass*, pThis, EBP);
+
+	if (!pThis->Type->Turret)
+	{
+		if (UnitTypeClass* pCustomType = TechnoExt_ExtData::GetUnitTypeImage(pThis))
+		{
+			if (pCustomType->Turret)
+			{
+				GET(DirStruct*, dir, EAX);
+				*dir = pThis->PrimaryFacing.Current();
+			}
+		}
+	}
+
+	return 0;
+}ASMJIT_PATCH_AGAIN(0x73B765, UnitClass_DrawVoxel_TurretFacing, 0x5)
+ASMJIT_PATCH_AGAIN(0x73BA78, UnitClass_DrawVoxel_TurretFacing, 0x6)
+ASMJIT_PATCH_AGAIN(0x73BD8B, UnitClass_DrawVoxel_TurretFacing, 0x5)
+
+ASMJIT_PATCH(0x73B8E3, UnitClass_DrawVoxel_HasChargeTurret, 0x5)
+{
+	GET(UnitClass*, pThis, EBP);
+	GET(UnitTypeClass*, pType, EBX);
+
+	if (pType != pThis->Type)
+	{
+		if (pType->TurretCount > 0 && !pType->IsGattling)
+			return 0x73B8EC;
+		else
+			return 0x73B92F;
+	}
+	else
+	{
+		if (!pType->HasMultipleTurrets() || pType->IsGattling)
+			return 0x73B92F;
+		else
+			return 0x73B8FC;
+	}
+}
+
+ASMJIT_PATCH(0x73BC28, UnitClass_DrawVoxel_HasChargeTurret2, 0x5)
+{
+	GET(UnitClass*, pThis, EBP);
+	GET(UnitTypeClass*, pType, EBX);
+
+	if (pType != pThis->Type)
+	{
+		if (pType->TurretCount > 0 && !pType->IsGattling)
+		{
+			if (pThis->CurrentTurretNumber < 0)
+				R->Stack<int>(0x1C, 0);
+
+			return 0x73BC35;
+		}
+		else
+		{
+			return 0x73BD79;
+		}
+	}
+	else
+	{
+		if (!pType->HasMultipleTurrets() || pType->IsGattling)
+			return 0x73BD79;
+		else
+			return 0x73BC49;
+	}
+}
+
+ASMJIT_PATCH(0x73BA63, UnitClass_DrawVoxel_TurretOffset, 0x5)
+{
+	GET(UnitClass*, pThis, EBP);
+	GET(UnitTypeClass*, pType, EBX);
+
+	if (pType != pThis->Type)
+	{
+		if (pType->TurretCount > 0 && !pType->IsGattling)
+		{
+			if (pThis->CurrentTurretNumber < 0)
+				R->Stack<int>(0x1C, 0);
+
+			return 0x73BC35;
+		}
+		else
+		{
+			return 0x73BD79;
+		}
+	}
+
+	return 0;
+}
+
+DEFINE_JUMP(LJMP, 0x706724, 0x706731);
 
 ASMJIT_PATCH(0x739956, DeploysInto_UndeploysInto_SyncStatuses, 0x6) //UnitClass_Deploy_SyncShieldStatus
 {

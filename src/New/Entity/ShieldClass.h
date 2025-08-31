@@ -59,11 +59,11 @@ public:
 	void OnUpdate();
 
 	void BreakShield(AnimTypeClass* pBreakAnim = nullptr, WeaponTypeClass* pBreakWeapon = nullptr);
-	void SetRespawn(int duration, double amount, int rate, bool resetTimer);
+	void SetRespawn(int duration, double amount, int rate, bool restartInCombat, int restartInCombatDelay, bool resetTimer, std::vector<AnimTypeClass*>* anim, WeaponTypeClass* weapon = nullptr);
 	void SetSelfHealing(int duration, double amount, int rate, bool restartInCombat, int restartInCombatDelay, bool resetTimer);
 
 	void KillAnim();
-
+	void SetRespawnRestartInCombat();
 	void DrawShieldBar(int iLength, Point2D* pLocation, RectangleStruct* pBound);
 
 	COMPILETIMEEVAL FORCEDINLINE double GetHealthRatio() const
@@ -125,6 +125,8 @@ public:
 		return pShieldType->Armor.Get();
 	}
 
+	Armor GetOrInheritArmor() const;
+
 	COMPILETIMEEVAL FORCEDINLINE int GetFramesSinceLastBroken() const
 	{
 		return Unsorted::CurrentFrame - this->LastBreakFrame;
@@ -156,7 +158,7 @@ public:
 		return HP <= (RulesExtData::Instance()->Shield_ConditionRed * Type->Strength.Get());
 	}
 
-	void UpdateTint();
+	void UpdateTint(bool forceUpdate = false);
 
 	void InvalidateAnimPointer(AnimClass* ptr);
 
@@ -247,6 +249,7 @@ public:
 				.Process(this->SelfHealing_CombatRestart)
 				.Process(this->SelfHealing)
 				.Process(this->SelfHealing_Warhead)
+				.Process(this->Respawn_CombatRestart)
 				.Process(this->Respawn)
 				.Process(this->Respawn_Warhead)
 				.Success();
@@ -255,6 +258,7 @@ public:
 		CDTimerClass SelfHealing_CombatRestart;
 		CDTimerClass SelfHealing;
 		CDTimerClass SelfHealing_Warhead;
+		CDTimerClass Respawn_CombatRestart;
 		CDTimerClass Respawn;
 		CDTimerClass Respawn_Warhead;
 	} Timers;
@@ -273,6 +277,11 @@ public:
 	int SelfHealing_RestartInCombatDelay_Warhead;
 	double Respawn_Warhead;
 	int Respawn_Rate_Warhead;
+
+	bool Respawn_RestartInCombat_Warhead;
+	int Respawn_RestartInCombatDelay_Warhead;
+	Iterator<AnimTypeClass*> Respawn_Anim_Warhead;
+	WeaponTypeClass* Respawn_Weapon_Warhead;
 
 	int LastBreakFrame;
 	double LastTechnoHealthRatio;

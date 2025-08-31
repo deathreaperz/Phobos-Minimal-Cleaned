@@ -79,8 +79,16 @@ bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 		if (!pData->EMPulse_TargetSelf)
 		{
 			// set extended properties
+			// need to validate this before set
+			if (auto pWNStruct = pBld->GetWeapon(pData->EMPulse_WeaponIndex))
+			{
+				if (auto pWeapon = pWNStruct->WeaponType)
+				{
+					TechnoExtContainer::Instance.Find(pBld)->idxSlot_EMPulse = pData->EMPulse_WeaponIndex;
+				}
+			}
+
 			TechnoExtContainer::Instance.Find(pBld)->SuperTarget = Coords;
-			TechnoExtContainer::Instance.Find(pBld)->LinkedSW = pThis;
 			// setup the cannon and start the fire mission
 			pBld->FiringSWType = pThis->Type->ArrayIndex;
 			pBld->QueueMission(Mission::Missile, false);
@@ -89,13 +97,16 @@ bool SW_EMPulse::Activate(SuperClass* pThis, const CellStruct& Coords, bool IsPl
 		else
 		{
 			// create a bullet and detonate immediately
-			if (auto pWeapon = pBld->GetWeapon(0)->WeaponType)
+			if (auto pWNStruct = pBld->GetWeapon(pData->EMPulse_WeaponIndex))
 			{
-				if (auto pBullet = BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->CreateBullet(pBld, pBld, pWeapon, false, true))
+				if (auto pWeapon = pWNStruct->WeaponType)
 				{
-					pBullet->Limbo();
-					pBullet->Detonate(BuildingExtData::GetCenterCoords(pBld));
-					pBullet->Release();
+					if (auto pBullet = BulletTypeExtContainer::Instance.Find(pWeapon->Projectile)->CreateBullet(pBld, pBld, pWeapon, false, true))
+					{
+						pBullet->Limbo();
+						pBullet->Detonate(BuildingExtData::GetCenterCoords(pBld));
+						pBullet->Release();
+					}
 				}
 			}
 		}

@@ -8,6 +8,8 @@
 
 #include <Helpers/Macro.h>
 
+#include <Phobos.Lua.h>
+
 #pragma region defines
 int CSFLoader::CSFCount {};
 int CSFLoader::NextValueIndex {};
@@ -85,7 +87,7 @@ ASMJIT_PATCH(0x7349cf, StringTable_ParseFile_Buffer, 7)
 		const auto size = pFile->GetFileSize();
 		void* ptr = nullptr;
 		if (size > 0)
-			ptr = YRMemory::Allocate(size);
+			ptr = YRMemory::AllocateChecked(size);
 
 		pFile->ReadBytes(ptr, size);
 		const auto IsAllocated = R->Stack<bool>(0x88);
@@ -184,7 +186,6 @@ ASMJIT_PATCH(0x734A97, CSF_SetIndex, 6)
 
 static COMPILETIMEEVAL constant_ptr<const char, 0x840D40> const ra2md_str {};
 
-#include <Phobos.Lua.h>
 ASMJIT_PATCH(0x6BD84E, CSF_LoadExtraFiles, 5)
 {
 	if (!StringTable::LoadFile(ra2md_str()))

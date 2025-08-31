@@ -36,6 +36,104 @@ bool SpawnerMain::Configs::DoSave;
 int SpawnerMain::Configs::NextAutoSaveFrame { -1 };
 int SpawnerMain::Configs::NextAutoSaveNumber;
 
+SpawnerMain::GameConfigs::GameConfigs()
+	: MPModeIndex { 1 }
+	, Bases { true }
+	, Credits { 10000 }
+	, BridgeDestroy { true }
+	, Crates { false }
+	, ShortGame { false }
+	, SuperWeapons { true }
+	, BuildOffAlly { false }
+	, GameSpeed { 0 }
+	, MultiEngineer { false }
+	, UnitCount { 0 }
+	, AIPlayers { 0 }
+	, AIDifficulty { 1 }
+	, AlliesAllowed { false }
+	, HarvesterTruce { false }
+	, FogOfWar { false }
+	, MCVRedeploy { true }
+	, UIGameMode { L"" }
+	, SpecialHouseIsAlly { true }
+
+	// SaveGame
+	, LoadSaveGame { false }
+	, SavedGameDir { "Saved Games" }
+	, SaveGameName { "" }
+
+	, AutoSaveCount { -1 }
+	, AutoSaveInterval { 7200 }
+	, NextAutoSaveNumber { 0 }
+
+	, CustomMissionID { 0 }
+	// Scenario Options
+	, Seed { 0 }
+	, TechLevel { 10 }
+	, IsCampaign { false }
+	, Tournament { 0 }
+	, WOLGameID { 0xDEADBEEF }
+	, ScenarioName { "spawnmap.ini" }
+	, MapHash { "" }
+	, UIMapName { L"" }
+
+	// Network Options
+	, Protocol { 2 }
+	, FrameSendRate { 4 }
+	, ReconnectTimeout { 2400 }
+	, ConnTimeout { 3600 }
+	, MaxAhead { -1 }
+	, PreCalcMaxAhead { 0 }
+	, MaxLatencyLevel { 0xFF }
+	, ForceMultiplayer { false }
+
+	// Tunnel Options
+	, TunnelId { 0 }
+	, TunnelIp { "0.0.0.0" }
+	, TunnelPort { 0 }
+	, ListenPort { 1234 }
+
+	// Players Options
+	, Players {
+		PlayerConfig(),
+		PlayerConfig(),
+		PlayerConfig(),
+		PlayerConfig(),
+
+		PlayerConfig(),
+		PlayerConfig(),
+		PlayerConfig(),
+		PlayerConfig()
+	}
+
+	// Houses Options
+	, Houses {
+		HouseConfig(),
+		HouseConfig(),
+		HouseConfig(),
+		HouseConfig(),
+
+		HouseConfig(),
+		HouseConfig(),
+		HouseConfig(),
+		HouseConfig()
+	}
+
+	// Extended Options
+	, QuickMatch { false }
+	, SpawnerHackMPNodes { false }
+	, SkipScoreScreen { Configs::m_Ptr.SkipScoreScreen }
+	, WriteStatistics { false }
+	, AINamesByDifficulty { false }
+	, ContinueWithoutHumans { false }
+	, DefeatedBecomesObserver { false }
+	, Observer_ShowAIOnSidebar { true }
+	, Observer_ShowMultiplayPassive { false }
+	// Custom Mixes
+	, PreloadMixes {}
+	, PostloadMixes {}
+{ }
+
 #pragma endregion
 
 FORCEDINLINE void ReadListFromSection(CCINIClass* pINI, const char* pSection, std::list<std::string>& strings)
@@ -338,6 +436,7 @@ void SpawnerMain::GameConfigs::LoadFromINIFile(CCINIClass* pINI)
 		MaxAhead = pINI->ReadInteger(GameStrings::Settings(), "MaxAhead", MaxAhead);
 		PreCalcMaxAhead = pINI->ReadInteger(GameStrings::Settings(), "PreCalcMaxAhead", PreCalcMaxAhead);
 		MaxLatencyLevel = (byte)pINI->ReadInteger(GameStrings::Settings(), "MaxLatencyLevel", (int)MaxLatencyLevel);
+		ForceMultiplayer = pINI->ReadBool(GameStrings::Settings(), "ForceMultiplayer", ForceMultiplayer);
 	}
 
 	{ // Tunnel Options
@@ -448,7 +547,9 @@ void SpawnerMain::GameConfigs::Init()
 
 		Patch::Apply_LJMP(0x5D74A0, 0x5D7570); // MPGameModeClass_AllyTeams
 		Patch::Apply_LJMP(0x501721, 0x501736); // HouseClass_ComputerParanoid
-		Patch::Apply_LJMP(0x686A9E, 0x686AC6); // RemoveAIPlayers
+		//Patch::Apply_LJMP(0x686A9E, 0x686AC6);
+		// // ReadScenario_InitSomeThings -
+		// Moved to a hook to allow conditional toggling of Special house's alliances.
 	}
 
 	{ // NetHack
@@ -473,6 +574,9 @@ void SpawnerMain::GameConfigs::Init()
 
 	// Leaves bottom bar closed for losing players during last game frames
 	Patch::Apply_LJMP(0x6D1639, 0x6D1640); // TabClass_6D1610
+
+	// Skip load *.PKT, *.YRO and *.YRM map files
+	Patch::Apply_LJMP(0x699AE0, 0x69A1B2); // SessionClass::Read_Scenario_Descriptions
 }
 
 bool SpawnerMain::GameConfigs::StartGame()
@@ -527,11 +631,7 @@ void SpawnerMain::GameConfigs::AssignHouses()
 
 		const auto pHousesConfig = &SpawnerMain::GameConfigs::m_Ptr.Houses[indexOfHouseArray];
 		const int nSpawnLocations = pHousesConfig->SpawnLocations;
-		const bool isObserver = pHouse->IsHumanPlayer && (
-			pHousesConfig->IsObserver
-			|| nSpawnLocations == -1
-			|| nSpawnLocations == 90
-			);
+		const bool isObserver = pHouse->IsHumanPlayer && pHousesConfig->IsObserver;
 
 		// Set Alliances
 		for (char i = 0; i < (char)std::size(pHousesConfig->Alliances); ++i)
@@ -567,9 +667,8 @@ void SpawnerMain::GameConfigs::AssignHouses()
 		// Set SpawnLocations
 		if (!isObserver)
 		{
-			pHouse->StartingPoint = (nSpawnLocations != -2)
-				? std::clamp(nSpawnLocations, 0, 7)
-				: nSpawnLocations;
+			pHouse->StartingPoint = (nSpawnLocations < 0)
+				? -2 : std::clamp(nSpawnLocations, 0, 7);
 		}
 		else
 		{
@@ -705,45 +804,100 @@ void SpawnerMain::GameConfigs::After_Main_Loop()
 {
 	auto pConfig = &GameConfigs::m_Ptr;
 
-	const bool doSaveCampaign = SessionClass::Instance->GameMode == GameMode::Campaign && pConfig->AutoSaveCount > 0 && pConfig->AutoSaveInterval > 0;
+	const bool doSaveCampaign = SessionClass::IsSingleplayer() && pConfig->AutoSaveCount > 0 && pConfig->AutoSaveInterval > 0;
 	const bool doSaveMP = SpawnerMain::Configs::Active && SessionClass::Instance->GameMode == GameMode::LAN && pConfig->AutoSaveInterval > 0;
+	const bool isAutoSaving = (doSaveCampaign || doSaveMP) && Unsorted::CurrentFrame == SpawnerMain::Configs::NextAutoSaveFrame;
 
-	if (doSaveCampaign || doSaveMP)
-	{
-		if (Unsorted::CurrentFrame == SpawnerMain::Configs::NextAutoSaveFrame)
-		{
-			SpawnerMain::Configs::DoSave = true;
-		}
-	}
+	// Schedule to make a save if it's time to autosave.
+	// The save might be triggered manually, so we have to OR it.
+	SpawnerMain::Configs::DoSave |= isAutoSaving;
 
 	if (SpawnerMain::Configs::DoSave)
 	{
-		Print_Saving_Game_Message2();
+		auto PrintMessage = [](const wchar_t* pMessage)
+			{
+				MessageListClass::Instance->PrintMessage(
+					pMessage,
+					RulesClass::Instance->MessageDelay,
+					HouseClass::CurrentPlayer->ColorSchemeIndex,
+					/* bSilent: */ true
+				);
 
-		// Force a redraw so that our message gets printed.
-		if (Game::SpecialDialog == 0)
+				// Force a redraw so that our message gets printed.
+				if (Game::SpecialDialog == 0)
+				{
+					MapClass::Instance->MarkNeedsRedraw(2);
+					MapClass::Instance->Render();
+				}
+			};
+
+		auto SaveGame = [PrintMessage](const char* fName, const wchar_t* description)
+			{
+				if (ScenarioClass::SaveGame(fName, description))
+					PrintMessage(StringTable::FetchString(GameStrings::TXT_GAME_WAS_SAVED));
+				else
+					PrintMessage(StringTable::FetchString(GameStrings::TXT_ERROR_SAVING_GAME));
+			};
+
+		// Send the message.
+		PrintMessage(StringTable::FetchString(GameStrings::TXT_SAVING_GAME));
+		std::wstring saveGameDescription;
+		if (SessionClass::IsCampaign())
+			saveGameDescription = ScenarioClass::Instance->UINameLoaded;
+		else
+			saveGameDescription = ScenarioClass::Instance->Name;
+		saveGameDescription += L" - ";
+
+		// This whole situation is a mess, but basically there's a myriad of ways to save
+		// scattered across Phobos (quicksave hotkey and save trigger action) and spawner
+		// (autosave), all in different conditions (multi- or singleplayer).
+
+		// Previously everything only supported singleplayer, so Phobos didn't have to
+		// account for multiplayer. Now we have to support both singleplayer and multiplayer,
+		// but only spawner can do proper multiplayer saves on-demand, *and* also without
+		// spawner there is no point in doing multiplayer saves at all.
+
+		// What I came up with is: for synced situations (trigger action) we save on Phobos
+		// side only if save event code (0x4C7A14) is patched (heuristic, any better ideas
+		// are welcome), and for unsynced situations (quicksave) we also check for that patch
+		// and emit the event that uses it.
+
+		// If anyone wants to untangle that mess in a nice way - be my guest.
+		// - Kerbiter
+
+		// Singleplayer autosave.
+		if (SessionClass::Instance->IsSingleplayer())
 		{
-			MapClass::Instance->MarkNeedsRedraw(2);
-			MapClass::Instance->Render();
-		}
+			// ASSUMPTION: There will be no save events emitted in singleplayer
+			// situations, and the only other way for the spawner to save is
+			// through the autosave, which is what we are doing here.
 
-		if (SessionClass::Instance->GameMode == GameMode::Campaign)
-		{
-			const std::string saveFileName = fmt::format("AUTOSAVE{}.SAV", SpawnerMain::Configs::NextAutoSaveNumber + 1);
-			const std::wstring saveDescription = fmt::format(L"Mission Auto-Save (Slot {})", SpawnerMain::Configs::NextAutoSaveNumber + 1);
+			// If you want to fixup this - again, be my guest.
+			// - Kerbiter
 
-			ScenarioClass::PauseGame();
-			Game::CallBack();
+			assert(isAutoSaving);
 
-			ScenarioClass::Instance->SaveGame(saveFileName.c_str(), saveDescription.c_str());
-			ScenarioClass::ResumeGame();
+			static char saveFileName[32];
+			static wchar_t saveDescription[128];
+
+			saveGameDescription += StringTable::TryFetchStringOrReturnDefaultIfMissing("TXT_AUTOSAVE_SUFFIX", L"Autosave (slot %d)");
+			std::sprintf(saveFileName, "AUTOSAVE%d.SAV", SpawnerMain::Configs::NextAutoSaveNumber + 1);
+			std::swprintf(saveDescription, saveGameDescription.c_str(), SpawnerMain::Configs::NextAutoSaveNumber + 1);
+
+			SaveGame(saveFileName, saveDescription);
+
 			SpawnerMain::Configs::NextAutoSaveNumber = (SpawnerMain::Configs::NextAutoSaveNumber + 1) % pConfig->AutoSaveCount;
-
 			SpawnerMain::Configs::NextAutoSaveFrame = Unsorted::CurrentFrame + pConfig->AutoSaveInterval;
 		}
 		else if (SessionClass::Instance->GameMode == GameMode::LAN)
 		{
-			ScenarioClass::Instance->SaveGame("SAVEGAME.NET", StringTable::TryFetchStringOrReturnDefaultIfMissing("TXT_AUTOSAVE_DESCRIPTION_MULTIPLAYER", L"Multiplayer Game"));
+			// CnCNet client follows the legacy approach of fixed save name and copies it
+			// over to it's own directory. The description isn't read now, but we write it
+			// regardless as it shouldn't impact anything. The suffix for it is unavailable
+			// though as it would require a custom event (seems overkill for such).
+			saveGameDescription += StringTable::FetchString(GameStrings::TXT_MULTIPLAYER_GAME);
+			SaveGame(GameStrings::SAVEGAME_NET, saveGameDescription.c_str());
+
 			SpawnerMain::Configs::NextAutoSaveFrame = Unsorted::CurrentFrame + pConfig->AutoSaveInterval;
 		}
 
@@ -869,7 +1023,7 @@ bool SpawnerMain::GameConfigs::StartScenario(const char* pScenarioName)
 	{ // Set SessionType
 		if (SpawnerMain::GameConfigs::m_Ptr.IsCampaign)
 			pSession->GameMode = GameMode::Campaign;
-		else if (Game::PlayerCount > 1)
+		else if (Game::PlayerCount > 1 || SpawnerMain::GameConfigs::m_Ptr.ForceMultiplayer)
 			pSession->GameMode = GameMode::Internet; // HACK: will be set to LAN later
 		else
 			pSession->GameMode = GameMode::Skirmish;
@@ -1099,7 +1253,7 @@ ASMJIT_PATCH(0x4FC262, HouseClass_MPlayerDefeated_SkipObserver, 0x6)
 	if (!MPlayerDefeated::pThis)
 		return 0;
 
-	return MPlayerDefeated::pThis->IsObserver()
+	return MPlayerDefeated::pThis->IsInitiallyObserver()
 		? ProcEpilogue
 		: 0;
 }ASMJIT_PATCH_AGAIN(0x4FC332, HouseClass_MPlayerDefeated_SkipObserver, 0x5)
@@ -1140,8 +1294,24 @@ ASMJIT_PATCH(0x4FC57C, HouseClass_MPlayerDefeated_CheckAliveAndHumans, 0x7)
 	GET_STACK(int, numHumans, STACK_OFFSET(0xC0, -0xA8));
 	GET_STACK(int, numAlive, STACK_OFFSET(0xC0, -0xAC));
 
-	bool continueWithoutHumans = SpawnerMain::GameConfigs::m_Ptr.ContinueWithoutHumans ||
-		(SessionClass::IsSkirmish() && HouseClass::CurrentPlayer->IsInitiallyObserver());
+	bool continueWithoutHumans = SpawnerMain::GameConfigs::m_Ptr.ContinueWithoutHumans
+		|| MPlayerDefeated::pThis->IsInitiallyObserver();
+
+	if (!continueWithoutHumans && !MPlayerDefeated::pThis->IsHumanPlayer)
+	{
+		bool isHasAliveHumanPlayers = false;
+		for (auto& pHouse : *HouseClass::Array)
+		{
+			if (pHouse->IsHumanPlayer && !pHouse->Defeated)
+			{
+				isHasAliveHumanPlayers = true;
+				break;
+			}
+		}
+
+		if (!isHasAliveHumanPlayers)
+			continueWithoutHumans = true;
+	}
 
 	if (numAlive > 1 && (numHumans != 0 || continueWithoutHumans))
 	{
@@ -1257,3 +1427,9 @@ ASMJIT_PATCH(0x700594, TechnoClass_WhatAction_AllowAlliesRepair, 0x5)
 //
 // 	return sequence == DoType::Down && !pThis->Crawling ? DisAllow : Allow;
 // }
+
+ASMJIT_PATCH(0x686A9E, ReadScenario_InitSomeThings_SpecialHouseIsAlly, 0x6)
+{
+	return !SpawnerMain::GetGameConfigs()->SpecialHouseIsAlly ?
+		0x686AC6 : 0u;
+}

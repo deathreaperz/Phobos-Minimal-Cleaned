@@ -23,7 +23,7 @@ TechnoClass* VoxelAnimExtData::GetTechnoOwner(VoxelAnimClass* pThis)
 
 	auto const pExt = VoxelAnimExtContainer::Instance.TryFind(pThis);
 
-	if (!pExt || pExt->Initialized < InitState::Constanted || !pExt->Invoker)
+	if (!pExt || !pExt->Invoker)
 		return nullptr;
 
 	const auto pAddr = pExt->Invoker->WhatAmI();
@@ -83,7 +83,9 @@ void VoxelAnimExtData::Serialize(T& Stm)
 // =============================
 // container
 VoxelAnimExtContainer VoxelAnimExtContainer::Instance;
+ObjectPool<VoxelAnimExtData> VoxelAnimExtContainer::pools;
 
+// =================================
 ASMJIT_PATCH(0x7494CE, VoxelAnimClass_CTOR, 0x6)
 {
 	GET(VoxelAnimClass*, pItem, ESI);

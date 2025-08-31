@@ -7,6 +7,9 @@
 #include <Utilities/TemplateDef.h>
 #include <Utilities/VectorHelper.h>
 
+#include <Utilities/PhobosFixedString.h>
+#include <Utilities/VectorSet.h>
+
 struct ExtendedVariable
 {
 	char Name[0x100];
@@ -70,9 +73,15 @@ public:
 
 	HelperedVector<TechnoTypeClass*> OwnedExistCameoTechnoTypes {};
 	bool SWSidebar_Enable { true };
-	HelperedVector<int> SWSidebar_Indices {};
+	VectorSet<int> SWSidebar_Indices {};
 
-	UniqueGamePtr<MessageListClass> NewMessageList;
+	std::vector<std::wstring> RecordMessages {};
+
+	PhobosFixedString<64u> DefaultLS640BkgdName {};
+	PhobosFixedString<64u> DefaultLS800BkgdName {};
+	PhobosFixedString<64u> DefaultLS800BkgdPal {};
+
+	BulletClass* MasterDetonationBullet {}; // Used to do warhead/weapon detonations on spot without having to create new BulletClass instance every time.
 
 	void SetVariableToByID(const bool IsGlobal, int nIndex, char bState);
 	void GetVariableStateByID(const bool IsGlobal, int nIndex, char* pOut);
@@ -86,6 +95,8 @@ public:
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }
 	void SaveToStream(PhobosStreamWriter& Stm) { this->Serialize(Stm); }
+
+	static void DetonateMasterBuller(const CoordStruct& coords, TechnoClass* pOwner, int damage, HouseClass* pFiringHouse, AbstractClass* pTarget, bool isBright, WeaponTypeClass* pWeapon, WarheadTypeClass* pWarhead);
 
 private:
 	template <typename T>

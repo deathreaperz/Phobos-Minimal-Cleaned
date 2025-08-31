@@ -27,17 +27,17 @@ namespace Helper
 		{
 			if (pWarhead)
 			{
-				nDamage = static_cast<int>(nDamage * TechnoExtData::GetDamageMult(pInvoker, !DamageConsiderVet));
+				auto nResultDamage = static_cast<int>(TechnoExtData::GetDamageMult(pInvoker, nDamage, !DamageConsiderVet));
 
 				if (bWarheadDetonate)
 				{
-					WarheadTypeExtData::DetonateAt(pWarhead, Where, pInvoker, nDamage, pOwner);
+					WarheadTypeExtData::DetonateAt(pWarhead, Where, pInvoker, nResultDamage, pOwner);
 				}
 				else
 				{
-					DamageArea::Apply(&Where, nDamage, pInvoker, pWarhead, pWarhead->Tiberium, pOwner);
-					MapClass::FlashbangWarheadAt(nDamage, pWarhead, Where);
-					return { true, nDamage };
+					DamageArea::Apply(&Where, nResultDamage, pInvoker, pWarhead, pWarhead->Tiberium, pOwner);
+					MapClass::FlashbangWarheadAt(nResultDamage, pWarhead, Where);
+					return { true, nResultDamage };
 				}
 			}
 
@@ -51,8 +51,8 @@ namespace Helper
 				return DetonateWarhead(nDamage, pWarhead, bWarheadDetonate, Where, pInvoker, pOwner, DamageConsiderVet);
 			}
 
-			nDamage = static_cast<int>(nDamage * TechnoExtData::GetDamageMult(pInvoker, !DamageConsiderVet));
-			WeaponTypeExtData::DetonateAt(pWeapon, Where, pInvoker, nDamage, false);
+			auto nResultDamage = static_cast<int>(TechnoExtData::GetDamageMult(pInvoker, nDamage, !DamageConsiderVet));
+			WeaponTypeExtData::DetonateAt(pWeapon, Where, pInvoker, nResultDamage, false);
 			return { false , 0 };
 		}
 
@@ -90,28 +90,26 @@ namespace Helper
 			}
 		}
 
-		OPTIONALINLINE std::tuple<bool, int, int> CheckMinMax(double nMin, double nMax)
+		OPTIONALINLINE std::expected<Point2D, bool> CheckMinMax(double nMin, double nMax)
 		{
 			int nMinL = (int)(Math::abs(nMin) * 256.0);
 			int nMaxL = (int)(Math::abs(nMax) * 256.0);
 
 			if (!nMinL && !nMaxL)
-				return { false ,0,0 };
+				return std::unexpected(false);
 
 			if (nMinL > nMaxL)
 				std::swap(nMinL, nMaxL);
 
-			return { true ,nMinL,nMaxL };
+			return Point2D { nMinL,nMaxL };
 		}
 
 		OPTIONALINLINE CoordStruct GetRandomCoordsInsideLoops(double nMin, double nMax, CoordStruct nPos, int Increment)
 		{
-			auto const& [nMinMax, nMinL, nMaxL] = CheckMinMax(nMin, nMax);
-
-			if (nMinMax)
+			if (auto nMinMax = CheckMinMax(nMin, nMax))
 			{
 				auto nRandomCoords = MapClass::GetRandomCoordsNear(nPos,
-					(Math::abs(ScenarioClass::Instance->Random.RandomRanged(nMinL, nMaxL)) *
+					(Math::abs(ScenarioClass::Instance->Random.RandomRanged(nMinMax->Y, nMinMax->X)) *
 						MaxImpl(Increment, 1)),
 					ScenarioClass::Instance->Random.RandomBool());
 

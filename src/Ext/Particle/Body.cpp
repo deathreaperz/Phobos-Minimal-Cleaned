@@ -53,7 +53,7 @@ void ParticleExtData::Serialize(T& Stm)
 // =============================
 // container
 ParticleExtContainer ParticleExtContainer::Instance;
-
+StaticObjectPool<ParticleExtData, 10000> ParticleExtContainer::pools;
 // =============================
 // container hooks
 

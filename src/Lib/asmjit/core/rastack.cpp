@@ -129,7 +129,7 @@ Error RAStackAllocator::calculateStackFrame() noexcept
 		}
 
 		uint32_t slotAlignment = slot->alignment();
-		uint32_t alignedOffset = Support::alignUp(offset, slotAlignment);
+		uint32_t alignedOffset = Support::align_up(offset, slotAlignment);
 
 		// Try to find a slot within gaps first, before advancing the `offset`.
 		bool foundGap = false;
@@ -148,7 +148,7 @@ Error RAStackAllocator::calculateStackFrame() noexcept
 					{
 						RAStackGap gap = gaps[index].pop();
 
-						ASMJIT_ASSERT(Support::isAligned(gap.offset, slotAlignment));
+						ASMJIT_ASSERT(Support::is_aligned(gap.offset, slotAlignment));
 						slot->setOffset(int32_t(gap.offset));
 
 						gapSize = gap.size - slotSize;
@@ -193,13 +193,13 @@ Error RAStackAllocator::calculateStackFrame() noexcept
 
 		if (!foundGap)
 		{
-			ASMJIT_ASSERT(Support::isAligned(offset, slotAlignment));
+			ASMJIT_ASSERT(Support::is_aligned(offset, slotAlignment));
 			slot->setOffset(int32_t(offset));
 			offset += slot->size();
 		}
 	}
 
-	_stackSize = Support::alignUp(offset, _alignment);
+	_stackSize = Support::align_up(offset, _alignment);
 	return kErrorOk;
 }
 

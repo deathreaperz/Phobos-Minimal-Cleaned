@@ -33,10 +33,9 @@ ASMJIT_PATCH(0x6F3339, TechnoClass_WhatWeaponShouldIUse_Interceptor, 0x8)
 		}
 	}
 
-	if (pThis->HasTurret() && !pThis->GetTechnoType()->IsGattling)
+	if (pTypeExt->AttachedToObject->TurretCount > 0 && !pTypeExt->AttachedToObject->IsGattling)
 	{
-		if (pTypeExt->MultiWeapon.Get()
-		&& (pThis->WhatAmI() != AbstractType::Unit || !pTypeExt->AttachedToObject->Gunner))
+		if (pTypeExt->MultiWeapon && (pThis->WhatAmI() != AbstractType::Unit || !pTypeExt->AttachedToObject->Gunner))
 		{
 			return CheckOccupy;
 		}
@@ -82,69 +81,6 @@ ASMJIT_PATCH(0x6F33CD, TechnoClass_WhatWeaponShouldIUse_ForceFire, 0x6)
 	return 0;
 }
 
-int ApplyForceWeaponInRange(TechnoClass* pThis, AbstractClass* pTarget)
-{
-	int forceWeaponIndex = -1;
-	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-
-	const bool useAASetting = !pTypeExt->ForceAAWeapon_InRange.empty() && pTarget->IsInAir();
-	auto const& weaponIndices = useAASetting ? pTypeExt->ForceAAWeapon_InRange : pTypeExt->ForceWeapon_InRange;
-	auto const& rangeOverrides = useAASetting ? pTypeExt->ForceAAWeapon_InRange_Overrides : pTypeExt->ForceWeapon_InRange_Overrides;
-	const bool applyRangeModifiers = useAASetting ? pTypeExt->ForceAAWeapon_InRange_ApplyRangeModifiers : pTypeExt->ForceWeapon_InRange_ApplyRangeModifiers;
-
-	const int defaultWeaponIndex = pThis->SelectWeapon(pTarget);
-	const int currentDistance = pThis->DistanceFrom(pTarget);
-	auto const pDefaultWeapon = pThis->GetWeapon(defaultWeaponIndex)->WeaponType;
-
-	for (size_t i = 0; i < weaponIndices.size(); i++)
-	{
-		int range = 0;
-
-		// Value below 0 means Range won't be overriden
-		if (i < rangeOverrides.size() && rangeOverrides[i] > 0)
-			range = static_cast<int>(rangeOverrides[i] * Unsorted::LeptonsPerCell);
-
-		if (weaponIndices[i] >= 0)
-		{
-			if (range > 0 || applyRangeModifiers)
-			{
-				auto const pWeapon = weaponIndices[i] == defaultWeaponIndex ? pDefaultWeapon : pThis->GetWeapon(weaponIndices[i])->WeaponType;
-				range = range > 0 ? range : pWeapon->Range;
-
-				if (applyRangeModifiers)
-					range = WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis, range);
-			}
-
-			if (currentDistance <= range)
-			{
-				forceWeaponIndex = weaponIndices[i];
-				break;
-			}
-		}
-		else
-		{
-			if (range > 0 || applyRangeModifiers)
-			{
-				range = range > 0 ? range : pDefaultWeapon->Range;
-
-				if (applyRangeModifiers)
-					range = WeaponTypeExtData::GetRangeWithModifiers(pDefaultWeapon, pThis, range);
-			}
-
-			// Don't force weapon if range satisfied
-			if (currentDistance <= range)
-				break;
-		}
-	}
-
-	return forceWeaponIndex;
-}
-
-namespace ForceWeaponInRangeTemp
-{
-	bool SelectWeaponByRange = false;
-}
-
 //this hook disregard everything and return weapon index
 ASMJIT_PATCH(0x6F3428, TechnoClass_WhatWeaponShouldIUse_ForceWeapon, 0x6)
 {
@@ -157,96 +93,19 @@ ASMJIT_PATCH(0x6F3428, TechnoClass_WhatWeaponShouldIUse_ForceWeapon, 0x6)
 
 	const auto pTechnoTypeExt = TechnoTypeExtContainer::Instance.Find(pThisTechnoType);
 
-	if (ForceWeaponInRangeTemp::SelectWeaponByRange || !pTechnoTypeExt->ForceWeapon_Check || !pAbsTarget)
-		return 0x0;
-
-	int forceWeaponIndex = -1;
-	auto const pTarget = flag_cast_to<TechnoClass*, false>(pAbsTarget);
-	TechnoTypeClass* pTargetType = nullptr;
-
-	if (pTarget)
-	{
-		pTargetType = pTarget->GetTechnoType();
-
-		if (pTechnoTypeExt->ForceWeapon_Naval_Decloaked >= 0
-			&& pTargetType->Cloakable
-			&& pTargetType->Naval
-			&& pTarget->CloakState == CloakState::Uncloaked)
-		{
-			forceWeaponIndex = pTechnoTypeExt->ForceWeapon_Naval_Decloaked;
-		}
-		else if (pTechnoTypeExt->ForceWeapon_Cloaked >= 0
-			&& pTarget->CloakState == CloakState::Cloaked)
-		{
-			forceWeaponIndex = pTechnoTypeExt->ForceWeapon_Cloaked;
-		}
-		else if (pTechnoTypeExt->ForceWeapon_Disguised >= 0
-			&& pTarget->IsDisguised())
-		{
-			forceWeaponIndex = pTechnoTypeExt->ForceWeapon_Disguised;
-		}
-		else if (pTechnoTypeExt->ForceWeapon_UnderEMP >= 0
-			&& pTarget->IsUnderEMP())
-		{
-			forceWeaponIndex = pTechnoTypeExt->ForceWeapon_UnderEMP;
-		}
-	}
-
-	if (forceWeaponIndex == -1
-		&& (pTarget || !pTechnoTypeExt->ForceWeapon_InRange_TechnoOnly)
-		&& (!pTechnoTypeExt->ForceWeapon_InRange.empty() || !pTechnoTypeExt->ForceAAWeapon_InRange.empty()))
-	{
-		ForceWeaponInRangeTemp::SelectWeaponByRange = true;
-		forceWeaponIndex = ApplyForceWeaponInRange(pThis, pAbsTarget);
-		ForceWeaponInRangeTemp::SelectWeaponByRange = false;
-	}
-
-	if (forceWeaponIndex == -1 && pTargetType)
-	{
-		switch (pTarget->WhatAmI())
-		{
-		case AbstractType::Building:
-		{
-			forceWeaponIndex = pTechnoTypeExt->ForceWeapon_Buildings;
-
-			if (pTechnoTypeExt->ForceWeapon_Defenses >= 0)
-			{
-				auto const pBuildingType = static_cast<BuildingTypeClass*>(pTargetType);
-
-				if (pBuildingType->BuildCat == BuildCat::Combat)
-					forceWeaponIndex = pTechnoTypeExt->ForceWeapon_Defenses;
-			}
-
-			break;
-		}
-		case AbstractType::Infantry:
-		{
-			forceWeaponIndex = (pTechnoTypeExt->ForceAAWeapon_Infantry >= 0 && pTarget->IsInAir())
-				? pTechnoTypeExt->ForceAAWeapon_Infantry : pTechnoTypeExt->ForceWeapon_Infantry;
-
-			break;
-		}
-		case AbstractType::Unit:
-		{
-			forceWeaponIndex = (pTechnoTypeExt->ForceAAWeapon_Units >= 0 && pTarget->IsInAir())
-				? pTechnoTypeExt->ForceAAWeapon_Units : ((pTechnoTypeExt->ForceWeapon_Naval_Units >= 0 && pTargetType->Naval)
-				? pTechnoTypeExt->ForceWeapon_Naval_Units : pTechnoTypeExt->ForceWeapon_Units);
-
-			break;
-		}
-		case AbstractType::Aircraft:
-		{
-			forceWeaponIndex = (pTechnoTypeExt->ForceAAWeapon_Aircraft >= 0 && pTarget->IsInAir())
-				? pTechnoTypeExt->ForceAAWeapon_Aircraft : pTechnoTypeExt->ForceWeapon_Aircraft;
-
-			break;
-		}
-		}
-	}
+	const int forceWeaponIndex = pTechnoTypeExt->SelectForceWeapon(pThis, pAbsTarget);
 
 	if (forceWeaponIndex >= 0)
 	{
 		R->EAX(forceWeaponIndex);
+		return 0x6F37AF;
+	}
+
+	const int multiWeaponIndex = pTechnoTypeExt->SelectMultiWeapon(pThis, pAbsTarget);
+
+	if (multiWeaponIndex >= 0)
+	{
+		R->EAX(multiWeaponIndex);
 		return 0x6F37AF;
 	}
 
@@ -353,13 +212,21 @@ ASMJIT_PATCH(0x6F3428, TechnoClass_WhatWeaponShouldIUse_ForceWeapon, 0x6)
 //	return 0x0;
 //}
 //
+
 //ASMJIT_PATCH(0x6F3330, TechnoClass_SelectWeapon_IsTechnoTargetAlive, 5)
 //{
 //	GET(TechnoClass*, pThis, ECX);
 //	GET_STACK(AbstractClass*, pTarget, 0x4);
 //	GET_STACK(uintptr_t, callerAddress, 0x0);
 //
-//	calleraddr = callerAddress;
+//	if(auto pObj = flag_cast_to<ObjectClass*>(pTarget)){
+//		if(!pObj->IsAlive) {
+//			Debug::LogInfo("[{}] {} {} Attempt to target death Object of {}!"
+//				, callerAddress ,(void*)pThis , pThis->get_ID() , (void*)pTarget);
+//
+//			R->Stack(0x4 , nullptr);
+//		}
+//	}
 //
 //	return 0x0;
 //}

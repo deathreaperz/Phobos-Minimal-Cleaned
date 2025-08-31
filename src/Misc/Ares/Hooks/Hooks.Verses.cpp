@@ -50,6 +50,14 @@ void Debug(ObjectClass* pTarget, int nArmor, VersesData* pData, WarheadTypeClass
 }
 
 #ifndef _test
+
+DEFINE_FUNCTION_JUMP(LJMP, 0x489180, FakeWarheadTypeClass::ModifyDamageA);
+DEFINE_FUNCTION_JUMP(CALL, 0x5F540F, FakeWarheadTypeClass::ModifyDamageA);
+DEFINE_FUNCTION_JUMP(CALL, 0x6FDD29, FakeWarheadTypeClass::ModifyDamageA);
+DEFINE_FUNCTION_JUMP(CALL, 0x701D64, FakeWarheadTypeClass::ModifyDamageA);
+
+#else
+
 ASMJIT_PATCH(0x489180, MapClass_GetTotalDamage, 0x6)
 {
 	GET(int, damage, ECX);
@@ -116,7 +124,7 @@ ASMJIT_PATCH(0x489180, MapClass_GetTotalDamage, 0x6)
 	R->EAX(res);
 	return 0x48926A;
 }
-#else
+
 ASMJIT_PATCH(0x489235, GetTotalDamage_Verses, 0x8)
 {
 	GET(FakeWarheadTypeClass*, pWH, EDI);
@@ -130,15 +138,18 @@ ASMJIT_PATCH(0x489235, GetTotalDamage_Verses, 0x8)
 }
 #endif
 
-ASMJIT_PATCH(0x6F7D3D, TechnoClass_Evaluate_Verses, 0x7)
+WeaponTypeClass* LastWeapon = nullptr;
+
+ASMJIT_PATCH(0x6F7D3D, TechnoClass_EvaluateObject_Verses, 0x7)
 {
 	enum { ReturnFalse = 0x6F894F, ContinueCheck = 0x6F7D55, };
 
 	GET(ObjectClass*, pTarget, ESI);
 	GET(FakeWarheadTypeClass*, pWH, ECX);
-	//GET(WeaponTypeClass*, pWeapon , EBP);
+	GET(WeaponTypeClass*, pWeapon, EBP);
 	//GET(int, nArmor, EAX);
 
+	LastWeapon = pWeapon;
 	//const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
 	Armor armor = TechnoExtData::GetTechnoArmor(pTarget, pWH);
 	return pWH->GetVersesData(armor)->Flags.PassiveAcquire  //|| !(vsData->Verses <= 0.02)
@@ -147,13 +158,54 @@ ASMJIT_PATCH(0x6F7D3D, TechnoClass_Evaluate_Verses, 0x7)
 		;
 }
 
+ASMJIT_PATCH(0x6F85AB, TechnoClass_EvaluateObject_AggressiveAttackMove, 0x6)
+{
+	enum { ContinueCheck = 0x6F85E2, CanTarget = 0x6F8604 };
+
+	GET(TechnoClass* const, pThis, EDI);
+	GET(TechnoClass*, pTarget, ESI);
+
+	if (!pThis->Owner->IsControlledByHuman())
+		return CanTarget;
+
+	if (pThis->MegaMissionIsAttackMove())
+	{
+		const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+		if (pTypeExt->AttackMove_Aggressive.Get(RulesExtData::Instance()->AttackMove_UpdateTarget))
+			return CanTarget;
+	}
+
+	if (pThis->IsStrange())
+		return CanTarget;
+
+	AffectedTechno aff = AffectedTechno::Aircraft | AffectedTechno::Infantry | AffectedTechno::Unit;
+	if (LastWeapon)
+	{
+		auto pExt = WarheadTypeExtContainer::Instance.Find(LastWeapon->Warhead);
+		if (pExt->IsFakeEngineer)
+			aff |= AffectedTechno::Building;
+	}
+
+	if (EnumFunctions::CanAffectTechnoResult(pTarget->WhatAmI(), aff))
+		return CanTarget;
+
+	return ContinueCheck;
+}
+
 ASMJIT_PATCH(0x6FCB6A, TechnoClass_CanFire_Verses, 0x7)
 {
-	enum { FireIllegal = 0x6FCB7E, ContinueCheck = 0x6FCBCD, };
+	enum
+	{
+		FireIllegal = 0x6FCB7E,
+		ContinueCheck = 0x6FCBCD,
+		ForceNewValue = 0x6FCBA6,
+	};
 
+	GET(TechnoClass*, pThis, ESI);
 	GET(ObjectClass*, pTarget, EBP);
 	GET(FakeWarheadTypeClass*, pWH, EDI);
-	//GET(WeaponTypeClass*, pWeapon, EBX);
+	GET(WeaponTypeClass*, pWeapon, EBX);
 	//GET(int, nArmor, EAX);
 
 	//const auto pData = WarheadTypeExtContainer::Instance.Find(pWH);
@@ -163,6 +215,46 @@ ASMJIT_PATCH(0x6FCB6A, TechnoClass_CanFire_Verses, 0x7)
 	// i think there is no way for the techno know if it attack using force fire or not
 	if (vsData->Flags.ForceFire || vsData->Verses != 0.0)
 	{
+		const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWH);
+
+		if (pWHExt->FakeEngineer_CanCaptureBuildings || pWHExt->FakeEngineer_BombDisarm)
+		{
+			const int weaponRange = WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis);
+			const int currentRange = pThis->DistanceFrom(pTarget);
+
+			if (pWHExt->FakeEngineer_BombDisarm
+				&& pTarget->AttachedBomb
+				&& BombExtContainer::Instance.Find(pTarget->AttachedBomb)->Weapon->Ivan_Detachable)
+			{
+				if (currentRange <= weaponRange)
+					R->EAX(FireError::OK);
+				else
+					R->EAX(FireError::RANGE); // Out of range
+
+				return ForceNewValue;
+			}
+
+			if (pWHExt->FakeEngineer_CanCaptureBuildings)
+			{
+				const auto pBuilding = cast_to<BuildingClass*, false>(pTarget);
+				const bool UneableToCapture = !pBuilding
+					|| !pBuilding->IsAlive
+					|| pBuilding->Health <= 0
+					|| pThis->Owner->IsAlliedWith(pTarget)
+					|| (!pBuilding->Type->Capturable && !pBuilding->Type->NeedsEngineer);
+
+				if (!UneableToCapture)
+				{
+					if (currentRange <= weaponRange)
+						R->EAX(FireError::OK);
+					else
+						R->EAX(FireError::RANGE); // Out of range
+
+					return ForceNewValue;
+				}
+			}
+		}
+
 		if (pWH->BombDisarm &&
 			(!pTarget->AttachedBomb ||
 				!BombExtContainer::Instance.Find(pTarget->AttachedBomb)->Weapon->Ivan_Detachable)

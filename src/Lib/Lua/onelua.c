@@ -20,6 +20,7 @@
 #endif
 #endif
 
+
 /*
 ** Choose suitable platform-specific features. Default is no
 ** platform-specific features. Some of these options may need extra
@@ -31,6 +32,7 @@
 #define LUA_USE_POSIX
 #define LUA_ANSI
 #endif
+
 
 /* no need to change anything below this line ----------------------------- */
 
@@ -51,6 +53,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
 
 /* setup for luaconf.h */
 #define LUA_CORE

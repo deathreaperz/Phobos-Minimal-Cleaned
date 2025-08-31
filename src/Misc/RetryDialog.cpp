@@ -15,10 +15,10 @@ namespace RetryDialogFlag
 {
 	bool IsCalledFromRetryDialog = false;
 
-	void ReloadUIParts() JMP_STD(0x72DFB0);
+	void __cdecl ReloadUIParts() { JMP_STD(0x72DFB0); }
 }
 
-ASMJIT_PATCH(0x686092, DoLose_RetryDialogForCampaigns, 0x7)
+DEFINE_HOOK(0x686092, DoLose_RetryDialogForCampaigns, 0x7)
 {
 	enum { OK = 0x6860F6, Cancel = 0x6860EE, LoadGame = 0x686231 };
 
@@ -39,11 +39,12 @@ ASMJIT_PATCH(0x686092, DoLose_RetryDialogForCampaigns, 0x7)
 		case WWMessageBox::Result::Button3:
 			return OK;
 
-		default:
 		case WWMessageBox::Result::Button2:
 			return Cancel;
 
+		default:
 		case WWMessageBox::Result::Button1:
+		{
 			auto pDialog = GameCreate<LoadOptionsClass>();
 			RetryDialogFlag::IsCalledFromRetryDialog = true;
 			const bool bIsAboutToLoad = pDialog->LoadDialog();
@@ -56,6 +57,9 @@ ASMJIT_PATCH(0x686092, DoLose_RetryDialogForCampaigns, 0x7)
 			ThemeClass::Instance->Stop();
 			break;
 		}
+		}
+
+		break;
 	}
 
 	EvadeClass::Instance->Do();

@@ -321,7 +321,7 @@ namespace Formatter
 			return DebugUtils::errored(kErrorInvalidState);
 		}
 
-		if (!Support::isPowerOf2(typeSize))
+		if (!Support::is_power_of_2(typeSize))
 		{
 			itemCount *= typeSize;
 			typeSize = 1;
@@ -349,19 +349,19 @@ namespace Formatter
 	  FormatFlags formatFlags,
 	  const BaseEmitter* emitter,
 	  Arch arch,
-	  const BaseInst& inst, const Operand_* operands, size_t opCount) noexcept
+	  const BaseInst& inst, Span<const Operand_> operands) noexcept
 	{
 #if !defined(ASMJIT_NO_X86)
 		if (Environment::isFamilyX86(arch))
 		{
-			return x86::FormatterInternal::formatInstruction(sb, formatFlags, emitter, arch, inst, operands, opCount);
+			return x86::FormatterInternal::formatInstruction(sb, formatFlags, emitter, arch, inst, operands);
 		}
 #endif
 
 #if !defined(ASMJIT_NO_AARCH64)
 		if (Environment::isFamilyAArch64(arch))
 		{
-			return a64::FormatterInternal::formatInstruction(sb, formatFlags, emitter, arch, inst, operands, opCount);
+			return a64::FormatterInternal::formatInstruction(sb, formatFlags, emitter, arch, inst, operands);
 		}
 #endif
 
@@ -514,7 +514,7 @@ namespace Formatter
 	{
 		if (node->hasPosition() && formatOptions.hasFlag(FormatFlags::kPositions))
 		{
-			ASMJIT_PROPAGATE(sb.appendFormat("<%05u> ", node->position()));
+			ASMJIT_PROPAGATE(sb.appendFormat("<%05u> ", uint32_t(node->position())));
 		}
 
 		size_t startLineIndex = sb.size();
@@ -525,9 +525,7 @@ namespace Formatter
 		case NodeType::kJump:
 		{
 			const InstNode* instNode = node->as<InstNode>();
-			ASMJIT_PROPAGATE(builder->_funcs.formatInstruction(sb, formatOptions.flags(), builder,
-				builder->arch(),
-				instNode->baseInst(), instNode->operands(), instNode->opCount()));
+			ASMJIT_PROPAGATE(builder->_funcs.formatInstruction(sb, formatOptions.flags(), builder, builder->arch(), instNode->baseInst(), instNode->operands()));
 			break;
 		}
 
@@ -658,9 +656,7 @@ namespace Formatter
 		case NodeType::kInvoke:
 		{
 			const InvokeNode* invokeNode = node->as<InvokeNode>();
-			ASMJIT_PROPAGATE(builder->_funcs.formatInstruction(sb, formatOptions.flags(), builder,
-				builder->arch(),
-				invokeNode->baseInst(), invokeNode->operands(), invokeNode->opCount()));
+			ASMJIT_PROPAGATE(builder->_funcs.formatInstruction(sb, formatOptions.flags(), builder, builder->arch(), invokeNode->baseInst(), invokeNode->operands()));
 			break;
 		}
 #endif

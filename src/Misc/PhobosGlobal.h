@@ -3,6 +3,7 @@
 #include <Utilities/SavegameDef.h>
 #include <Utilities/Constructs.h>
 #include <Utilities/PhobosMap.h>
+#include <Utilities/VectorHelper.h>
 
 struct ColorsData
 {
@@ -11,6 +12,28 @@ struct ColorsData
 	DWORD LaserTarget_Color;
 	DWORD Berserk_Color;
 	bool Initialized;
+
+	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
+		return Stm
+			.Process(Forceshield_Color)
+			.Process(IronCurtain_Color)
+			.Process(LaserTarget_Color)
+			.Process(Berserk_Color)
+			.Process(Initialized)
+			.Success();
+	}
+
+	bool Save(PhobosStreamWriter& Stm) const
+	{
+		return Stm
+			.Process(Forceshield_Color)
+			.Process(IronCurtain_Color)
+			.Process(LaserTarget_Color)
+			.Process(Berserk_Color)
+			.Process(Initialized)
+			.Success();
+	}
 
 	COMPILETIMEEVAL void reset()
 	{

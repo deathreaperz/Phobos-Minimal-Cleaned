@@ -121,6 +121,13 @@ public:
 
 	Valueable<int> EMPulseCannon_InaccurateRadius {};
 
+	Valueable<int> Parachuted_FallRate { 1 };
+	Nullable<int> Parachuted_MaxFallRate {};
+	Valueable<bool> Parachuted_Remap { true };
+
+	Valueable<bool> Vertical_AircraftFix { true };
+	Nullable<bool> VerticalInitialFacing {};
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 
 	void LoadFromStream(PhobosStreamReader& Stm) { this->Serialize(Stm); }

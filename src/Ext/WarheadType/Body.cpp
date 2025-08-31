@@ -26,7 +26,64 @@
 PhobosMap<IonBlastClass*, WarheadTypeExtData*> WarheadTypeExtData::IonBlastExt;
 
 #pragma endregion
+int __fastcall FakeWarheadTypeClass::ModifyDamageA(int damage, FakeWarheadTypeClass* pWH, Armor armor, int distance)
+{
+	int res = 0;
 
+	if (damage == 0
+		|| ScenarioClass::Instance->SpecialFlags.StructEd.Inert
+		|| !pWH
+		)
+	{
+		return res;
+	}
+
+	const auto pExt = pWH->_GetExtData();
+
+	if (damage > 0 || pExt->ApplyModifiersOnNegativeDamage)
+	{
+		if (pExt->ApplyMindamage)
+			damage = MaxImpl(pExt->MinDamage >= 0 ? pExt->MinDamage : RulesClass::Instance->MinDamage, damage);
+
+		const double dDamage = (double)damage;
+		const float fDamage = (float)damage;
+		const double dCellSpreadRadius = pWH->CellSpread * Unsorted::d_LeptonsPerCell;
+		const int cellSpreadRadius = int(dCellSpreadRadius);
+
+		const float Atmax = float(dDamage * pWH->PercentAtMax);
+		const auto vsData = pWH->GetVersesData(armor);
+
+		if (Atmax != dDamage && cellSpreadRadius)
+		{
+			res = int((fDamage - Atmax) * (double)(cellSpreadRadius - distance) / (double)cellSpreadRadius + Atmax);
+		}
+		else
+		{
+			res = damage;
+		}
+
+		if (!pExt->ApplyModifiersOnNegativeDamage)
+			res = int(double(res <= 0 ? 0 : res) * vsData->Verses);
+		else
+			res = int(res * vsData->Verses);
+
+		/**
+		 *	Allow damage to drop to zero only if the distance would have
+		 *	reduced damage to less than 1/4 full damage. Otherwise, ensure
+		 *	that at least one damage point is done.
+		 */
+		if (pExt->ApplyMindamage && distance < 4)
+			damage = MaxImpl(damage, pExt->MinDamage >= 0 ? pExt->MinDamage : RulesClass::Instance->MinDamage);
+
+		damage = MinImpl(damage, RulesClass::Instance->MaxDamage);
+	}
+	else
+	{
+		res = distance >= 8 ? 0 : damage;
+	}
+
+	return res;
+}
 void WarheadTypeExtData::InitializeConstant()
 {
 	this->AttachedEffect.Owner = this->AttachedToObject;
@@ -119,9 +176,10 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	// Crits
 	this->Crit_Chance.Read(exINI, pSection, "Crit.Chance");
 	this->Crit_ApplyChancePerTarget.Read(exINI, pSection, "Crit.ApplyChancePerTarget");
-	this->Crit_ExtraDamage_ApplyFirepowerMult.Read(exINI, pSection, "Crit.ExtraDamage.ApplyFirepowerMult");
 	this->Crit_ExtraDamage.Read(exINI, pSection, "Crit.ExtraDamage");
-	this->Crit_Warhead.Read(exINI, pSection, "Crit.Warhead");
+	this->Crit_ExtraDamage_ApplyFirepowerMult.Read(exINI, pSection, "Crit.ExtraDamage.ApplyFirepowerMult");
+	this->Crit_Warhead.Read(exINI, pSection, "Crit.Warhead", true);
+	this->Crit_Warhead_FullDetonation.Read(exINI, pSection, "Crit.Warhead.FullDetonation");
 	this->Crit_Affects.Read(exINI, pSection, "Crit.Affects");
 	this->Crit_AffectsHouses.Read(exINI, pSection, "Crit.AffectsHouses");
 	this->Crit_AnimList.Read(exINI, pSection, "Crit.AnimList");
@@ -130,8 +188,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Crit_ActiveChanceAnims.Read(exINI, pSection, "Crit.ActiveChanceAnims");
 	this->Crit_AnimOnAffectedTargets.Read(exINI, pSection, "Crit.AnimOnAffectedTargets");
 	this->Crit_AffectBelowPercent.Read(exINI, pSection, "Crit.AffectBelowPercent");
-	this->Crit_SuppressOnIntercept.Read(exINI, pSection, "Crit.SuppressWhenIntercepted");
-	this->Crit_GuaranteeAfterHealthTreshold.Read(exINI, pSection, "Crit.%sGuaranteeAfterVictimHealthTreshold");
+	this->Crit_AffectAbovePercent.Read(exINI, pSection, "Crit.AffectAbovePercent");
+	this->Crit_SuppressWhenIntercepted.Read(exINI, pSection, "Crit.SuppressWhenIntercepted");
 
 	this->MindControl_Anim.Read(exINI, pSection, "MindControl.Anim");
 
@@ -160,7 +218,11 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Shield_Respawn_Amount.Read(exINI, pSection, "Shield.Respawn.Amount");
 	this->Shield_Respawn_Rate_InMinutes.Read(exINI, pSection, "Shield.Respawn.Rate");
 	this->Shield_Respawn_Rate = (int)(this->Shield_Respawn_Rate_InMinutes * 900);
+	this->Shield_Respawn_RestartInCombat.Read(exINI, pSection, "Shield.Respawn.RestartInCombat");
+	this->Shield_Respawn_RestartInCombatDelay.Read(exINI, pSection, "Shield.Respawn.RestartInCombatDelay");
 	this->Shield_Respawn_RestartTimer.Read(exINI, pSection, "Shield.Respawn.RestartTimer");
+	this->Shield_Respawn_Anim.Read(exINI, pSection, "Shield.Respawn.Anim");
+	this->Shield_Respawn_Weapon.Read(exINI, pSection, "Shield.Respawn.Weapon");
 	this->Shield_SelfHealing_Duration.Read(exINI, pSection, "Shield.SelfHealing.Duration");
 	this->Shield_SelfHealing_Amount.Read(exINI, pSection, "Shield.SelfHealing.Amount");
 	this->Shield_SelfHealing_Rate_InMinutes.Read(exINI, pSection, "Shield.SelfHealing.Rate");
@@ -177,6 +239,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Shield_AffectTypes.Read(exINI, pSection, "Shield.AffectTypes");
 
 	this->Shield_Penetrate_Types.Read(exINI, pSection, "Shield.Penetrate.Types");
+	this->Shield_Penetrate_Types_Disallowed_Types.Read(exINI, pSection, "Shield.Penetrate.Disallow.Types");
+	this->Shield_Penetrate_Armor_Types.Read(exINI, pSection, "Shield.Penetrates.ArmorTypes");
 	this->Shield_Break_Types.Read(exINI, pSection, "Shield.Break.Types");
 	this->Shield_Respawn_Types.Read(exINI, pSection, "Shield.Respawn.Types");
 	this->Shield_SelfHealing_Types.Read(exINI, pSection, "Shield.SelfHealing.Types");
@@ -423,19 +487,8 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->ImmunityType.Read(exINI, pSection, "ImmunityType");
 	this->Malicious.Read(exINI, pSection, "Malicious");
 	this->PreImpact_Moves.Read(exINI, pSection, "PreImpactAnim.Moves");
-	this->Launchs.clear();
 
-	for (size_t i = 0; ; ++i)
-	{
-		SuperWeaponTypeClass* LaunchWhat_Dummy;
-		std::string _base_key("LaunchSW");
-		_base_key += std::to_string(i);
-
-		if (!detail::read(LaunchWhat_Dummy, exINI, pSection, (_base_key + ".Type").c_str(), true) || !LaunchWhat_Dummy)
-			break;
-
-		this->Launchs.emplace_back().Read(exINI, pSection, i, LaunchWhat_Dummy);
-	}
+	LauchSWData::ReadVector(this->Launchs, exINI, pSection, Phobos::Otamaa::CompatibilityMode);
 
 	this->Conventional_IgnoreUnits.Read(exINI, pSection, "Conventional.IgnoreUnits");
 
@@ -616,7 +669,82 @@ void WarheadTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->AirstrikeTargets.Read(exINI, pSection, "AirstrikeTargets");
 	this->CanKill.Read(exINI, pSection, "CanKill");
 
+	this->AffectsBelowPercent.Read(exINI, pSection, "AffectsBelowPercent");
+	this->AffectsAbovePercent.Read(exINI, pSection, "AffectsAbovePercent");
+	this->AffectsNeutral.Read(exINI, pSection, "AffectsNeutral");
+
 	this->ElectricAssault_Requireverses.Read(exINI, pSection, "ElectricAssault.Requireverses");
+
+	this->PenetratesTransport_Level.Read(exINI, pSection, "PenetratesTransport.Level");
+	this->PenetratesTransport_PassThrough.Read(exINI, pSection, "PenetratesTransport.PassThrough");
+	this->PenetratesTransport_FatalRate.Read(exINI, pSection, "PenetratesTransport.FatalRate");
+	this->PenetratesTransport_DamageMultiplier.Read(exINI, pSection, "PenetratesTransport.DamageMultiplier");
+	this->PenetratesTransport_DamageAll.Read(exINI, pSection, "PenetratesTransport.DamageAll");
+	this->PenetratesTransport_CleanSound.Read(exINI, pSection, "PenetratesTransport.CleanSound");
+
+	this->FakeEngineer_CanRepairBridges.Read(exINI, pSection, "FakeEngineer.CanRepairBridges");
+	this->FakeEngineer_CanDestroyBridges.Read(exINI, pSection, "FakeEngineer.CanDestroyBridges");
+	this->FakeEngineer_CanCaptureBuildings.Read(exINI, pSection, "FakeEngineer.CanCaptureBuildings");
+	this->FakeEngineer_BombDisarm.Read(exINI, pSection, "FakeEngineer.BombDisarm");
+
+	this->UnlimboDetonate.Read(exINI, pSection, "UnlimboDetonate");
+	this->UnlimboDetonate_Force.Read(exINI, pSection, "UnlimboDetonate.Force");
+	this->UnlimboDetonate_KeepTarget.Read(exINI, pSection, "UnlimboDetonate.KeepTarget");
+	this->UnlimboDetonate_KeepSelected.Read(exINI, pSection, "UnlimboDetonate.KeepSelected");
+
+	this->ReverseEngineer.Read(exINI, pSection, "ReverseEngineer");
+
+	this->Block_BasedOnWarhead.Read(exINI, pSection, "Block.BasedOnWarhead");
+	this->Block_AllowOverride.Read(exINI, pSection, "Block.AllowOverride");
+	this->Block_IgnoreChanceModifier.Read(exINI, pSection, "Block.IgnoreChanceModifier");
+	this->Block_ChanceMultiplier.Read(exINI, pSection, "Block.ChanceMultiplier");
+	this->Block_ExtraChance.Read(exINI, pSection, "Block.ExtraChance");
+	this->ImmuneToBlock.Read(exINI, pSection, "ImmuneToBlock");
+
+	if (!this->BlockType)
+		this->BlockType = std::make_unique<BlockTypeClass>();
+
+	this->BlockType->LoadFromINI(pINI, pSection);
+
+	this->IsCellSpreadWH =
+		this->RemoveDisguise ||
+		this->RemoveMindControl ||
+		//this->Crit_Chance ||
+		this->Shield_Break ||
+		!this->ConvertsPair.empty() ||
+		this->Shield_Respawn_Duration > 0 ||
+		this->Shield_SelfHealing_Duration > 0 ||
+		!this->Shield_AttachTypes.empty() ||
+		!this->Shield_RemoveTypes.empty() ||
+		this->Shield_RemoveAll ||
+		this->Transact ||
+		this->PermaMC ||
+		this->GattlingStage > 0 ||
+		this->GattlingRateUp != 0 ||
+		this->AttachTag ||
+		//this->DirectionalArmor ||
+		this->ReloadAmmo != 0
+		|| (this->RevengeWeapon && this->RevengeWeapon_GrantDuration > 0)
+		|| !this->LimboKill_IDs.empty()
+		|| (this->PaintBallData.Color != ColorStruct::Empty)
+		//|| this->InflictLocomotor
+		//|| this->RemoveInflictedLocomotor
+		|| this->PenetratesTransport_Level > 0
+		|| this->IC_Duration != 0
+
+		|| !this->PhobosAttachEffects.AttachTypes.empty()
+		|| !this->PhobosAttachEffects.RemoveTypes.empty()
+		|| !this->PhobosAttachEffects.RemoveGroups.empty()
+		|| this->BuildingSell
+		|| this->BuildingUndeploy
+		|| this->ReverseEngineer
+		;
+
+	this->IsFakeEngineer =
+		this->FakeEngineer_CanRepairBridges ||
+		this->FakeEngineer_CanDestroyBridges ||
+		this->FakeEngineer_CanCaptureBuildings ||
+		this->FakeEngineer_BombDisarm;
 }
 
 //https://github.com/Phobos-developers/Phobos/issues/629
@@ -665,6 +793,7 @@ void WarheadTypeExtData::ApplyDamageMult(TechnoClass* pVictim, args_ReceiveDamag
 	//Calculate Damage Multiplier
 	if (pVictimHouse && (this->DamageOwnerMultiplier != 1.0 || this->DamageAlliesMultiplier != 1.0 || this->DamageEnemiesMultiplier != 1.0))
 	{
+		const auto pRulesExt = RulesExtData::Instance();
 		const int sgnDamage = *pArgs->Damage > 0 ? 1 : -1;
 
 		if (pVictimHouse == pArgs->SourceHouse)
@@ -674,13 +803,19 @@ void WarheadTypeExtData::ApplyDamageMult(TechnoClass* pVictim, args_ReceiveDamag
 		}
 		else if (pVictimHouse->IsAlliedWith(pArgs->SourceHouse))
 		{
-			if (this->DamageAlliesMultiplier != 1.0)
-				*pArgs->Damage = static_cast<int>(*pArgs->Damage * this->DamageAlliesMultiplier.Get(RulesExtData::Instance()->DamageAlliesMultiplier));
+			const auto allyDamage = this->DamageAlliesMultiplier.Get(!this->AffectsEnemies ? pRulesExt->DamageAlliesMultiplier_NotAffectsEnemies
+					.Get(pRulesExt->DamageAlliesMultiplier) : pRulesExt->DamageAlliesMultiplier);
+
+			if (allyDamage != 1.0)
+				*pArgs->Damage = static_cast<int>(*pArgs->Damage * allyDamage);
 		}
 		else
 		{
-			if (this->DamageEnemiesMultiplier != 1.0)
-				*pArgs->Damage = static_cast<int>(*pArgs->Damage * this->DamageEnemiesMultiplier.Get(RulesExtData::Instance()->DamageEnemiesMultiplier));
+			const auto enemyDamage = this->DamageOwnerMultiplier
+				.Get(!this->AffectsEnemies ? pRulesExt->DamageOwnerMultiplier_NotAffectsEnemies.Get(pRulesExt->DamageOwnerMultiplier) : pRulesExt->DamageOwnerMultiplier);
+
+			if (enemyDamage != 1.0)
+				*pArgs->Damage = static_cast<int>(*pArgs->Damage * enemyDamage);
 		}
 
 		if (this->DamageSourceHealthMultiplier && pArgs->Attacker)
@@ -762,6 +897,9 @@ bool WarheadTypeExtData::CanAffectHouse(HouseClass* pOwnerHouse, HouseClass* pTa
 {
 	if (pOwnerHouse && pTargetHouse)
 	{
+		if (!this->AffectsNeutral && pTargetHouse->IsNeutral())
+			return false;
+
 		const bool affect_ally = this->AttachedToObject->AffectsAllies;
 
 		if (pTargetHouse == pOwnerHouse)
@@ -776,12 +914,14 @@ bool WarheadTypeExtData::CanAffectHouse(HouseClass* pOwnerHouse, HouseClass* pTa
 	return true;
 }
 
-bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool SkipVerses, bool CheckImmune) const
+bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, bool Bypass, bool SkipVerses, bool CheckImmune, bool checkLimbo) const
 {
 	if (pTechno)
 	{
-		if (pTechno->InLimbo
-			|| !pTechno->IsAlive
+		if (checkLimbo && pTechno->InLimbo)
+			return false;
+
+		if (!pTechno->IsAlive
 			|| !pTechno->Health
 			|| pTechno->IsSinking
 			|| pTechno->IsCrashing
@@ -848,9 +988,9 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, int damageIn, int d
 	auto nArmor = TechnoExtData::GetTechnoArmor(pTechno, this->AttachedToObject);
 
 	if (damageIn > 0)
-		DamageResult = MapClass::GetTotalDamage(damageIn, this->AttachedToObject, nArmor, distanceFromEpicenter);
+		DamageResult = FakeWarheadTypeClass::ModifyDamage(damageIn, this->AttachedToObject, nArmor, distanceFromEpicenter);
 	else
-		DamageResult = -MapClass::GetTotalDamage(-damageIn, this->AttachedToObject, nArmor, distanceFromEpicenter);
+		DamageResult = -FakeWarheadTypeClass::ModifyDamage(-damageIn, this->AttachedToObject, nArmor, distanceFromEpicenter);
 
 	if (damageIn == 0)
 	{
@@ -860,7 +1000,7 @@ bool WarheadTypeExtData::CanDealDamage(TechnoClass* pTechno, int damageIn, int d
 	{
 		if (EffectsRequireVerses)
 		{
-			if (MapClass::GetTotalDamage(RulesClass::Instance->MaxDamage, this->AttachedToObject, nArmor, 0) == 0.0)
+			if (FakeWarheadTypeClass::ModifyDamage(RulesClass::Instance->MaxDamage, this->AttachedToObject, nArmor, 0) == 0)
 			{
 				return false;
 			}
@@ -1112,7 +1252,7 @@ bool WarheadTypeExtData::GoBerzerkFor(FootClass* pVictim, int* damage) const
 		}
 
 		//Default way game modify duration
-		nDur = MapClass::GetTotalDamage(nDur, this->AttachedToObject,
+		nDur = FakeWarheadTypeClass::ModifyDamage(nDur, this->AttachedToObject,
 					TechnoExtData::GetTechnoArmor(pVictim, this->AttachedToObject), 0);
 
 		const int oldValue = (!pVictim->Berzerk ? 0 : pVictim->BerzerkDurationLeft);
@@ -1274,6 +1414,126 @@ void WarheadTypeExtData::applyEMP(WarheadTypeClass* pWH, const CoordStruct& coor
 		AresEMPulse::CreateEMPulse(pWH, coords, source);
 }
 
+void WarheadTypeExtData::ApplyPenetratesTransport(TechnoClass* pTarget, TechnoClass* pInvoker, HouseClass* pInvokerHouse, const CoordStruct& coords, int damage) const
+{
+	auto& passengers = pTarget->Passengers;
+	auto passenger = passengers.GetFirstPassenger();
+
+	if (!passenger)
+		return;
+
+	const auto pTargetType = pTarget->GetTechnoType();
+	const auto pTargetTypeExt = TechnoTypeExtContainer::Instance.Find(pTargetType);
+
+	if (this->PenetratesTransport_Level <= pTargetTypeExt->PenetratesTransport_Level.Get(RulesExtData::Instance()->PenetratesTransport_Level))
+		return;
+
+	const double passThrough = this->PenetratesTransport_PassThrough * pTargetTypeExt->PenetratesTransport_PassThroughMultiplier;
+
+	if (passThrough < 1.0 && ScenarioClass::Instance->Random.RandomDouble() > passThrough)
+		return;
+
+	const double fatalRate = this->PenetratesTransport_FatalRate * pTargetTypeExt->PenetratesTransport_FatalRateMultiplier;
+	const bool fatal = fatalRate > 0.0 && ScenarioClass::Instance->Random.RandomDouble() <= fatalRate;
+	const auto pTargetFoot = flag_cast_to<FootClass*, false>(pTarget);
+	const int distance = static_cast<int>(coords.DistanceFrom(pTarget->GetCoords()));
+	const auto pWH = this->AttachedToObject;
+	bool gunnerRemoved = false;
+
+	if (this->PenetratesTransport_DamageAll)
+	{
+		bool isFirst = true;
+
+		if (fatal)
+		{
+			while (passenger)
+			{
+				const auto nextPassenger = flag_cast_to<FootClass*>(passenger->NextObject);
+
+				if (this->PenetratesTransport_Level > TechnoTypeExtContainer::Instance.Find(passenger->GetTechnoType())->PenetratesTransport_Level.Get(RulesExtData::Instance()->PenetratesTransport_Level))
+				{
+					if (passenger->ReceiveDamage(&passenger->Health, distance, pWH, pInvoker, false, true, pInvokerHouse) == DamageState::NowDead && isFirst && pTargetType->Gunner && pTargetFoot)
+					{
+						pTargetFoot->RemoveGunner(passenger);
+						gunnerRemoved = true;
+					}
+				}
+
+				passenger = nextPassenger;
+				isFirst = false;
+			}
+		}
+		else
+		{
+			const int adjustedDamage = static_cast<int>(std::ceil(damage * this->PenetratesTransport_DamageMultiplier * pTargetTypeExt->PenetratesTransport_DamageMultiplier));
+
+			while (passenger)
+			{
+				const auto nextPassenger = flag_cast_to<FootClass*>(passenger->NextObject);
+
+				if (this->PenetratesTransport_Level > TechnoTypeExtContainer::Instance.Find(passenger->GetTechnoType())->PenetratesTransport_Level.Get(RulesExtData::Instance()->PenetratesTransport_Level))
+				{
+					int applyDamage = adjustedDamage;
+
+					if (passenger->ReceiveDamage(&applyDamage, distance, pWH, pInvoker, false, true, pInvokerHouse) == DamageState::NowDead && isFirst && pTargetType->Gunner && pTargetFoot)
+					{
+						pTargetFoot->RemoveGunner(passenger);
+						gunnerRemoved = true;
+					}
+				}
+
+				passenger = nextPassenger;
+				isFirst = false;
+			}
+		}
+	}
+	else
+	{
+		int poorBastardIdx = ScenarioClass::Instance->Random(0, passengers.NumPassengers - 1);
+		const bool isFirst = poorBastardIdx == 0;
+
+		while (poorBastardIdx > 0 && flag_cast_to<FootClass*>(passenger->NextObject))
+		{
+			passenger = static_cast<FootClass*>(passenger->NextObject);
+			--poorBastardIdx;
+		}
+
+		if (this->PenetratesTransport_Level <= TechnoTypeExtContainer::Instance.Find(passenger->GetTechnoType())->PenetratesTransport_Level.Get(RulesExtData::Instance()->PenetratesTransport_Level))
+			return;
+
+		if (fatal)
+		{
+			if (passenger->ReceiveDamage(&passenger->Health, distance, pWH, pInvoker, false, true, pInvokerHouse) == DamageState::NowDead && isFirst && pTargetType->Gunner && pTargetFoot)
+			{
+				pTargetFoot->RemoveGunner(passenger);
+				gunnerRemoved = true;
+			}
+		}
+		else
+		{
+			int adjustedDamage = static_cast<int>(std::ceil(damage * this->PenetratesTransport_DamageMultiplier * pTargetTypeExt->PenetratesTransport_DamageMultiplier));
+
+			if (passenger->ReceiveDamage(&adjustedDamage, distance, pWH, pInvoker, false, true, pInvokerHouse) == DamageState::NowDead && isFirst && pTargetType->Gunner && pTargetFoot)
+			{
+				pTargetFoot->RemoveGunner(passenger);
+				gunnerRemoved = true;
+			}
+		}
+	}
+
+	passenger = passengers.GetFirstPassenger();
+
+	if (passenger)
+	{
+		if (gunnerRemoved)
+			pTargetFoot->ReceiveGunner(passenger);
+	}
+	else
+	{
+		VocClass::SafeImmedietelyPlayAt(this->PenetratesTransport_CleanSound, coords);
+	}
+}
+
 // =============================
 // load / save
 
@@ -1314,24 +1574,27 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->DecloakDamagedTargets)
 		.Process(this->ShakeIsLocal)
 		.Process(this->Shake_UseAlternativeCalculation)
+
 		.Process(this->Crit_Chance)
 		.Process(this->Crit_ApplyChancePerTarget)
 		.Process(this->Crit_ExtraDamage)
 		.Process(this->Crit_ExtraDamage_ApplyFirepowerMult)
 		.Process(this->Crit_Warhead)
+		.Process(this->Crit_Warhead_FullDetonation)
 		.Process(this->Crit_Affects)
 		.Process(this->Crit_AffectsHouses)
 		.Process(this->Crit_AnimList)
 		.Process(this->Crit_AnimList_PickRandom)
+		.Process(this->Crit_AnimList_CreateAll)
 		.Process(this->Crit_ActiveChanceAnims)
 		.Process(this->Crit_AnimOnAffectedTargets)
 		.Process(this->Crit_AffectBelowPercent)
-		.Process(this->Crit_SuppressOnIntercept)
-		.Process(this->Crit_GuaranteeAfterHealthTreshold)
-		.Process(this->RandomBuffer)
-		.Process(this->HasCrit)
-		.Process(this->Crit_CurrentChance)
-		.Process(this->Crit_AnimList_CreateAll)
+		.Process(this->Crit_AffectAbovePercent)
+		.Process(this->Crit_SuppressWhenIntercepted)
+		.Process(this->CritActive)
+		.Process(this->CritRandomBuffer)
+		.Process(this->CritCurrentChance)
+
 		.Process(this->MindControl_Anim)
 
 		// Ares tags
@@ -1355,10 +1618,16 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->Shield_Respawn_Duration)
 		.Process(this->Shield_Respawn_Amount)
 		.Process(this->Shield_Respawn_Rate)
+		.Process(this->Shield_Respawn_Rate_InMinutes)
+		.Process(this->Shield_Respawn_RestartInCombat)
+		.Process(this->Shield_Respawn_RestartInCombatDelay)
 		.Process(this->Shield_Respawn_RestartTimer)
+		.Process(this->Shield_Respawn_Anim)
+		.Process(this->Shield_Respawn_Weapon)
 		.Process(this->Shield_SelfHealing_Duration)
 		.Process(this->Shield_SelfHealing_Amount)
 		.Process(this->Shield_SelfHealing_Rate)
+		.Process(this->Shield_SelfHealing_Rate_InMinutes)
 		.Process(this->Shield_SelfHealing_RestartInCombat)
 		.Process(this->Shield_SelfHealing_RestartInCombatDelay)
 		.Process(this->Shield_SelfHealing_RestartTimer)
@@ -1370,6 +1639,8 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->Shield_MinimumReplaceDelay)
 		.Process(this->Shield_AffectTypes)
 		.Process(this->Shield_Penetrate_Types)
+		.Process(this->Shield_Penetrate_Types_Disallowed_Types)
+		.Process(this->Shield_Penetrate_Armor_Types)
 		.Process(this->Shield_Break_Types)
 		.Process(this->Shield_Respawn_Types)
 		.Process(this->Shield_SelfHealing_Types)
@@ -1635,12 +1906,112 @@ void WarheadTypeExtData::Serialize(T& Stm)
 		.Process(this->ElectricAssault_Requireverses)
 		.Process(this->DamageSourceHealthMultiplier)
 		.Process(this->DamageTargetHealthMultiplier)
+
+		.Process(this->AffectsBelowPercent)
+		.Process(this->AffectsAbovePercent)
+		.Process(this->AffectsNeutral)
+
+		.Process(this->PenetratesTransport_Level)
+		.Process(this->PenetratesTransport_PassThrough)
+		.Process(this->PenetratesTransport_FatalRate)
+		.Process(this->PenetratesTransport_DamageMultiplier)
+		.Process(this->PenetratesTransport_DamageAll)
+		.Process(this->PenetratesTransport_CleanSound)
+
+		.Process(this->FakeEngineer_CanRepairBridges)
+		.Process(this->FakeEngineer_CanDestroyBridges)
+		.Process(this->FakeEngineer_CanCaptureBuildings)
+		.Process(this->FakeEngineer_BombDisarm)
+		.Process(this->ReverseEngineer)
+
+		.Process(this->UnlimboDetonate)
+		.Process(this->UnlimboDetonate_Force)
+		.Process(this->UnlimboDetonate_KeepTarget)
+		.Process(this->UnlimboDetonate_KeepSelected)
+
+		.Process(this->BlockType)
+		.Process(this->Block_BasedOnWarhead)
+		.Process(this->Block_AllowOverride)
+		.Process(this->Block_IgnoreChanceModifier)
+		.Process(this->Block_ChanceMultiplier)
+		.Process(this->Block_ExtraChance)
+		.Process(this->ImmuneToBlock)
+
+		.Process(this->IsCellSpreadWH)
+		.Process(this->IsFakeEngineer)
 		;
 
 	PaintBallData.Serialize(Stm);
 }
 
-void WarheadTypeExtData::GetCritChance(TechnoClass* pFirer, std::vector<double>& chances) const
+#include <RadarEventClass.h>
+
+void WarheadTypeExtData::DetonateAtBridgeRepairHut(AbstractClass* pTarget, TechnoClass* pOwner, HouseClass* pFiringHouse, bool destroyBridge)
+{
+	auto const pBuilding = cast_to<BuildingClass*>(pTarget);
+
+	if (!pBuilding || !pBuilding->Type->BridgeRepairHut || !pBuilding->IsAlive || pBuilding->Health <= 0)
+		return;
+
+	const CoordStruct targetCoords = pTarget->GetCenterCoords();
+	const CellStruct baseCell = CellClass::Coord2Cell(targetCoords);
+
+	// Send engineer's "enter" event
+	auto const pTag = pBuilding->AttachedTag;
+
+	if (pTag && pOwner)
+		pTag->RaiseEvent(TriggerEvent::EnteredBy, pOwner, CellStruct::Empty);
+
+	// Check a 5x5 area for bridge tiles to determine if we should repair or destroy
+	bool foundWoodBridge = false;
+
+	for (int y = -2; y <= 2; ++y)
+	{
+		for (int x = -2; x <= 2; ++x)
+		{
+			CellStruct checkCellCoords = { static_cast<short>(baseCell.X + x), static_cast<short>(baseCell.Y + y) };
+			auto const checkCell = MapClass::Instance->GetCellAt(checkCellCoords);
+
+			if (checkCell->Tile_Is_WoodBridge() || (checkCell->OverlayTypeIndex >= 74 && checkCell->OverlayTypeIndex <= 101))
+				foundWoodBridge = true;
+
+			if (foundWoodBridge)
+				break;
+		}
+
+		if (foundWoodBridge)
+			break;
+	}
+
+	// Destroying bridges
+	if (destroyBridge)
+	{
+		if (foundWoodBridge) // Repair wood bridges
+			MapClass::Instance->DestroyWoodBridgeAt(baseCell);
+		else // Destroy concrete bridges
+			MapClass::Instance->DestroyConcreteBridgeAt(baseCell);
+
+		return;
+	}
+
+	auto const pFiringOwner = pOwner ? pOwner->Owner : pFiringHouse;
+
+	// Repairing bridges
+	if (pFiringOwner && pFiringOwner->ControlledByCurrentPlayer())
+	{
+		if (RadarEventClass::Create(RadarEventType::BridgeRepaired, CellClass::Coord2Cell(targetCoords)))
+			VoxClass::PlayIndex(VoxClass::FindIndexById("EVA_BridgeRepaired"));
+	}
+
+	VocClass::SafeImmedietelyPlayAt(RulesClass::Instance->RepairBridgeSound, targetCoords, nullptr);
+
+	if (foundWoodBridge) // Repair wood bridges
+		MapClass::Instance->RepairWoodBridgeAt(baseCell);
+	else // Repair concrete bridges
+		MapClass::Instance->RepairConcreteBridgeAt(baseCell);
+}
+
+void WarheadTypeExtData::GetCritChance(TechnoClass* pFirer, double& chances) const
 {
 	chances = this->Crit_Chance;
 
@@ -1649,20 +2020,13 @@ void WarheadTypeExtData::GetCritChance(TechnoClass* pFirer, std::vector<double>&
 		return;
 	}
 
-	if (chances.empty())
-		chances.push_back(0.0);
-
 	const auto pExt = TechnoExtContainer::Instance.Find(pFirer);
 
 	if (pExt->AE.ExtraCrit.Enabled())
 	{
 		std::vector<AEProperties::ExtraCrit::CritDataOut> valids;
 		pExt->AE.ExtraCrit.FillEligible(this->AttachedToObject, valids);
-
-		for (auto& curChances : chances)
-		{
-			curChances = AEProperties::ExtraCrit::Count(curChances, valids);
-		}
+		chances = AEProperties::ExtraCrit::Count(chances, valids);
 	}
 }
 
@@ -1675,6 +2039,14 @@ void WarheadTypeExtData::ApplyAttachEffects(TechnoClass* pTarget, HouseClass* pI
 	PhobosAttachEffectClass::Attach(pTarget, pInvokerHouse, pInvoker, this->AttachedToObject, info);
 	PhobosAttachEffectClass::Detach(pTarget, info);
 	PhobosAttachEffectClass::DetachByGroups(pTarget, info);
+}
+
+bool WarheadTypeExtData::IsHealthInThreshold(ObjectClass* pTarget) const
+{
+	if (!(this->AffectsAbovePercent > 0.0 || this->AffectsBelowPercent < 1.0))
+		return true;
+
+	return TechnoExtData::IsHealthInThreshold(pTarget, this->AffectsAbovePercent, this->AffectsBelowPercent);
 }
 
 bool WarheadTypeExtData::ApplySuppressDeathWeapon(TechnoClass* pVictim) const

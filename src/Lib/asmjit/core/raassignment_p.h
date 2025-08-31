@@ -10,6 +10,7 @@
 #ifndef ASMJIT_NO_COMPILER
 
 #include "../core/radefs_p.h"
+#include "../core/rareg_p.h"
 
 ASMJIT_BEGIN_NAMESPACE
 
@@ -27,11 +28,7 @@ class RAAssignment
 public:
 	ASMJIT_NONCOPYABLE(RAAssignment)
 
-		enum Ids : uint32_t
-	{
-		kPhysNone = 0xFF,
-		kWorkNone = RAWorkReg::kIdNone
-	};
+		static inline constexpr uint32_t kPhysNone = 0xFF;
 
 	enum DirtyBit : uint32_t
 	{
@@ -50,7 +47,7 @@ public:
 		//! Count of work registers.
 		uint32_t workCount;
 		//! WorkRegs data (vector).
-		const RAWorkRegs* workRegs;
+		const ZoneVector<RAWorkReg*>* workRegs;
 
 		inline void reset() noexcept
 		{
@@ -69,12 +66,12 @@ public:
 		//! Dirty registers (spill slot out of sync or no spill slot).
 		RARegMask dirty;
 		//! PhysReg to WorkReg mapping.
-		uint32_t workIds[1 /* ... */];
+		RAWorkId workIds[1 /* ... */];
 
 		[[nodiscard]]
 		static ASMJIT_INLINE_NODEBUG size_t sizeOf(size_t count) noexcept
 		{
-			return Support::alignUp(sizeof(PhysToWorkMap) - sizeof(uint32_t) + count * sizeof(uint32_t), Globals::kZoneAlignment);
+			return Support::align_up(sizeof(PhysToWorkMap) - sizeof(uint32_t) + count * sizeof(uint32_t), Globals::kZoneAlignment);
 		}
 
 		ASMJIT_INLINE void reset(size_t count) noexcept
@@ -84,7 +81,7 @@ public:
 
 			for (size_t i = 0; i < count; i++)
 			{
-				workIds[i] = kWorkNone;
+				workIds[i] = kBadWorkId;
 			}
 		}
 
@@ -96,9 +93,9 @@ public:
 
 		ASMJIT_INLINE void unassign(RegGroup group, uint32_t physId, uint32_t indexInWorkIds) noexcept
 		{
-			assigned.clear(group, Support::bitMask(physId));
-			dirty.clear(group, Support::bitMask(physId));
-			workIds[indexInWorkIds] = kWorkNone;
+			assigned.clear(group, Support::bitMask<RegMask>(physId));
+			dirty.clear(group, Support::bitMask<RegMask>(physId));
+			workIds[indexInWorkIds] = kBadWorkId;
 		}
 	};
 
@@ -110,7 +107,7 @@ public:
 		[[nodiscard]]
 		static ASMJIT_INLINE_NODEBUG size_t sizeOf(size_t count) noexcept
 		{
-			return Support::alignUp(size_t(count) * sizeof(uint8_t), Globals::kZoneAlignment);
+			return Support::align_up(size_t(count) * sizeof(uint8_t), Globals::kZoneAlignment);
 		}
 
 		ASMJIT_INLINE void reset(size_t count) noexcept
@@ -140,7 +137,7 @@ public:
 	//! PhysReg to WorkReg mapping and assigned/dirty bits.
 	PhysToWorkMap* _physToWorkMap;
 	//! Optimization to translate PhysRegs to WorkRegs faster.
-	Support::Array<uint32_t*, Globals::kNumVirtGroups> _physToWorkIds;
+	Support::Array<RAWorkId*, Globals::kNumVirtGroups> _physToWorkIds;
 
 	//! \}
 
@@ -152,7 +149,7 @@ public:
 		resetMaps();
 	}
 
-	ASMJIT_INLINE void initLayout(const RARegCount& physCount, const RAWorkRegs& workRegs) noexcept
+	ASMJIT_INLINE void initLayout(const RARegCount& physCount, const ZoneVector<RAWorkReg*>& workRegs) noexcept
 	{
 		// Layout must be initialized before data.
 		ASMJIT_ASSERT(_physToWorkMap == nullptr);
@@ -162,7 +159,7 @@ public:
 		_layout.physCount = physCount;
 		_layout.physTotal = uint32_t(_layout.physIndex[RegGroup::kMaxVirt]) +
 			uint32_t(_layout.physCount[RegGroup::kMaxVirt]);
-		_layout.workCount = workRegs.size();
+		_layout.workCount = uint32_t(workRegs.size());
 		_layout.workRegs = &workRegs;
 	}
 
@@ -170,7 +167,7 @@ public:
 	{
 		_physToWorkMap = physToWorkMap;
 		_workToPhysMap = workToPhysMap;
-		for (RegGroup group : RegGroupVirtValues {})
+		for (RegGroup group : Support::enumerate(RegGroup::kMaxVirt))
 		{
 			_physToWorkIds[group] = physToWorkMap->workIds + _layout.physIndex.get(group);
 		}
@@ -212,16 +209,16 @@ public:
 	ASMJIT_INLINE_NODEBUG RegMask dirty(RegGroup group) const noexcept { return _physToWorkMap->dirty[group]; }
 
 	[[nodiscard]]
-	inline uint32_t workToPhysId(RegGroup group, uint32_t workId) const noexcept
+	inline uint32_t workToPhysId(RegGroup group, RAWorkId workId) const noexcept
 	{
 		DebugUtils::unused(group);
-		ASMJIT_ASSERT(workId != kWorkNone);
-		ASMJIT_ASSERT(workId < _layout.workCount);
-		return _workToPhysMap->physIds[workId];
+		ASMJIT_ASSERT(workId != kBadWorkId);
+		ASMJIT_ASSERT(uint32_t(workId) < _layout.workCount);
+		return _workToPhysMap->physIds[uint32_t(workId)];
 	}
 
 	[[nodiscard]]
-	inline uint32_t physToWorkId(RegGroup group, uint32_t physId) const noexcept
+	inline RAWorkId physToWorkId(RegGroup group, uint32_t physId) const noexcept
 	{
 		ASMJIT_ASSERT(physId < Globals::kMaxPhysRegs);
 		return _physToWorkIds[group][physId];
@@ -231,14 +228,14 @@ public:
 	inline bool isPhysAssigned(RegGroup group, uint32_t physId) const noexcept
 	{
 		ASMJIT_ASSERT(physId < Globals::kMaxPhysRegs);
-		return Support::bitTest(_physToWorkMap->assigned[group], physId);
+		return Support::bit_test(_physToWorkMap->assigned[group], physId);
 	}
 
 	[[nodiscard]]
 	inline bool isPhysDirty(RegGroup group, uint32_t physId) const noexcept
 	{
 		ASMJIT_ASSERT(physId < Globals::kMaxPhysRegs);
-		return Support::bitTest(_physToWorkMap->dirty[group], physId);
+		return Support::bit_test(_physToWorkMap->dirty[group], physId);
 	}
 
 	//! \}
@@ -251,25 +248,25 @@ public:
 	//!
 	//! \{
 	//! Assign [VirtReg/WorkReg] to a physical register.
-	inline void assign(RegGroup group, uint32_t workId, uint32_t physId, bool dirty) noexcept
+	inline void assign(RegGroup group, RAWorkId workId, uint32_t physId, bool dirty) noexcept
 	{
 		ASMJIT_ASSERT(workToPhysId(group, workId) == kPhysNone);
-		ASMJIT_ASSERT(physToWorkId(group, physId) == kWorkNone);
+		ASMJIT_ASSERT(physToWorkId(group, physId) == kBadWorkId);
 		ASMJIT_ASSERT(!isPhysAssigned(group, physId));
 		ASMJIT_ASSERT(!isPhysDirty(group, physId));
 
-		_workToPhysMap->physIds[workId] = uint8_t(physId);
+		_workToPhysMap->physIds[uint32_t(workId)] = uint8_t(physId);
 		_physToWorkIds[group][physId] = workId;
 
-		RegMask regMask = Support::bitMask(physId);
+		RegMask regMask = Support::bitMask<RegMask>(physId);
 		_physToWorkMap->assigned[group] |= regMask;
-		_physToWorkMap->dirty[group] |= regMask & Support::bitMaskFromBool<RegMask>(dirty);
+		_physToWorkMap->dirty[group] |= regMask & Support::bool_as_mask<RegMask>(dirty);
 
 		verify();
 	}
 
 	//! Reassign [VirtReg/WorkReg] to `dstPhysId` from `srcPhysId`.
-	inline void reassign(RegGroup group, uint32_t workId, uint32_t dstPhysId, uint32_t srcPhysId) noexcept
+	inline void reassign(RegGroup group, RAWorkId workId, uint32_t dstPhysId, uint32_t srcPhysId) noexcept
 	{
 		ASMJIT_ASSERT(dstPhysId != srcPhysId);
 		ASMJIT_ASSERT(workToPhysId(group, workId) == srcPhysId);
@@ -277,23 +274,23 @@ public:
 		ASMJIT_ASSERT(isPhysAssigned(group, srcPhysId) == true);
 		ASMJIT_ASSERT(isPhysAssigned(group, dstPhysId) == false);
 
-		_workToPhysMap->physIds[workId] = uint8_t(dstPhysId);
-		_physToWorkIds[group][srcPhysId] = kWorkNone;
+		_workToPhysMap->physIds[uint32_t(workId)] = uint8_t(dstPhysId);
+		_physToWorkIds[group][srcPhysId] = kBadWorkId;
 		_physToWorkIds[group][dstPhysId] = workId;
 
-		RegMask srcMask = Support::bitMask(srcPhysId);
-		RegMask dstMask = Support::bitMask(dstPhysId);
+		RegMask srcMask = Support::bitMask<RegMask>(srcPhysId);
+		RegMask dstMask = Support::bitMask<RegMask>(dstPhysId);
 
 		bool dirty = (_physToWorkMap->dirty[group] & srcMask) != 0;
 		RegMask regMask = dstMask | srcMask;
 
 		_physToWorkMap->assigned[group] ^= regMask;
-		_physToWorkMap->dirty[group] ^= regMask & Support::bitMaskFromBool<RegMask>(dirty);
+		_physToWorkMap->dirty[group] ^= regMask & Support::bool_as_mask<RegMask>(dirty);
 
 		verify();
 	}
 
-	inline void swap(RegGroup group, uint32_t aWorkId, uint32_t aPhysId, uint32_t bWorkId, uint32_t bPhysId) noexcept
+	inline void swap(RegGroup group, RAWorkId aWorkId, uint32_t aPhysId, RAWorkId bWorkId, uint32_t bPhysId) noexcept
 	{
 		ASMJIT_ASSERT(aPhysId != bPhysId);
 		ASMJIT_ASSERT(workToPhysId(group, aWorkId) == aPhysId);
@@ -303,14 +300,14 @@ public:
 		ASMJIT_ASSERT(isPhysAssigned(group, aPhysId));
 		ASMJIT_ASSERT(isPhysAssigned(group, bPhysId));
 
-		_workToPhysMap->physIds[aWorkId] = uint8_t(bPhysId);
-		_workToPhysMap->physIds[bWorkId] = uint8_t(aPhysId);
+		_workToPhysMap->physIds[uint32_t(aWorkId)] = uint8_t(bPhysId);
+		_workToPhysMap->physIds[uint32_t(bWorkId)] = uint8_t(aPhysId);
 		_physToWorkIds[group][aPhysId] = bWorkId;
 		_physToWorkIds[group][bPhysId] = aWorkId;
 
-		RegMask aMask = Support::bitMask(aPhysId);
-		RegMask bMask = Support::bitMask(bPhysId);
-		RegMask flipMask = Support::bitMaskFromBool<RegMask>(((_physToWorkMap->dirty[group] & aMask) != 0) ^ ((_physToWorkMap->dirty[group] & bMask) != 0));
+		RegMask aMask = Support::bitMask<RegMask>(aPhysId);
+		RegMask bMask = Support::bitMask<RegMask>(bPhysId);
+		RegMask flipMask = Support::bool_as_mask<RegMask>(((_physToWorkMap->dirty[group] & aMask) != 0) ^ ((_physToWorkMap->dirty[group] & bMask) != 0));
 		RegMask regMask = aMask | bMask;
 		_physToWorkMap->dirty[group] ^= regMask & flipMask;
 
@@ -318,34 +315,34 @@ public:
 	}
 
 	//! Unassign [VirtReg/WorkReg] from a physical register.
-	inline void unassign(RegGroup group, uint32_t workId, uint32_t physId) noexcept
+	inline void unassign(RegGroup group, RAWorkId workId, uint32_t physId) noexcept
 	{
 		ASMJIT_ASSERT(physId < Globals::kMaxPhysRegs);
 		ASMJIT_ASSERT(workToPhysId(group, workId) == physId);
 		ASMJIT_ASSERT(physToWorkId(group, physId) == workId);
 		ASMJIT_ASSERT(isPhysAssigned(group, physId));
 
-		_workToPhysMap->physIds[workId] = kPhysNone;
-		_physToWorkIds[group][physId] = kWorkNone;
+		_workToPhysMap->physIds[uint32_t(workId)] = kPhysNone;
+		_physToWorkIds[group][physId] = kBadWorkId;
 
-		RegMask regMask = Support::bitMask(physId);
+		RegMask regMask = Support::bitMask<RegMask>(physId);
 		_physToWorkMap->assigned[group] &= ~regMask;
 		_physToWorkMap->dirty[group] &= ~regMask;
 
 		verify();
 	}
 
-	inline void makeClean(RegGroup group, uint32_t workId, uint32_t physId) noexcept
+	inline void makeClean(RegGroup group, RAWorkId workId, uint32_t physId) noexcept
 	{
 		DebugUtils::unused(workId);
-		RegMask regMask = Support::bitMask(physId);
+		RegMask regMask = Support::bitMask<RegMask>(physId);
 		_physToWorkMap->dirty[group] &= ~regMask;
 	}
 
-	inline void makeDirty(RegGroup group, uint32_t workId, uint32_t physId) noexcept
+	inline void makeDirty(RegGroup group, RAWorkId workId, uint32_t physId) noexcept
 	{
 		DebugUtils::unused(workId);
-		RegMask regMask = Support::bitMask(physId);
+		RegMask regMask = Support::bitMask<RegMask>(physId);
 		_physToWorkMap->dirty[group] |= regMask;
 	}
 
@@ -364,7 +361,7 @@ public:
 	{
 		memset(_workToPhysMap, uint8_t(Reg::kIdBad), WorkToPhysMap::sizeOf(_layout.workCount));
 
-		for (RegGroup group : RegGroupVirtValues {})
+		for (RegGroup group : Support::enumerate(RegGroup::kMaxVirt))
 		{
 			uint32_t physBaseIndex = _layout.physIndex[group];
 			Support::BitWordIterator<RegMask> it(_physToWorkMap->assigned[group]);
@@ -372,10 +369,10 @@ public:
 			while (it.hasNext())
 			{
 				uint32_t physId = it.next();
-				uint32_t workId = _physToWorkMap->workIds[physBaseIndex + physId];
+				RAWorkId workId = _physToWorkMap->workIds[physBaseIndex + physId];
 
-				ASMJIT_ASSERT(workId != kWorkNone);
-				_workToPhysMap->physIds[workId] = uint8_t(physId);
+				ASMJIT_ASSERT(workId != kBadWorkId);
+				_workToPhysMap->physIds[uint32_t(workId)] = uint8_t(physId);
 			}
 		}
 	}
@@ -414,8 +411,8 @@ public:
 
 		for (uint32_t physId = 0; physId < physTotal; physId++)
 		{
-			uint32_t thisWorkId = _physToWorkMap->workIds[physId];
-			uint32_t otherWorkId = other._physToWorkMap->workIds[physId];
+			RAWorkId thisWorkId = _physToWorkMap->workIds[physId];
+			RAWorkId otherWorkId = other._physToWorkMap->workIds[physId];
 			if (thisWorkId != otherWorkId)
 			{
 				return false;
@@ -426,6 +423,7 @@ public:
 		{
 			uint32_t thisPhysId = _workToPhysMap->physIds[workId];
 			uint32_t otherPhysId = other._workToPhysMap->physIds[workId];
+
 			if (thisPhysId != otherPhysId)
 			{
 				return false;
@@ -451,22 +449,22 @@ public:
 				{
 					const RAWorkReg* workReg = _layout.workRegs->at(workId);
 					RegGroup group = workReg->group();
-					ASMJIT_ASSERT(_physToWorkIds[group][physId] == workId);
+					ASMJIT_ASSERT(_physToWorkIds[group][physId] == RAWorkId(workId));
 				}
 			}
 		}
 
 		// Verify PhysToWorkMap.
 		{
-			for (RegGroup group : RegGroupVirtValues {})
+			for (RegGroup group : Support::enumerate(RegGroup::kMaxVirt))
 			{
 				uint32_t physCount = _layout.physCount[group];
 				for (uint32_t physId = 0; physId < physCount; physId++)
 				{
-					uint32_t workId = _physToWorkIds[group][physId];
-					if (workId != kWorkNone)
+					RAWorkId workId = _physToWorkIds[group][physId];
+					if (workId != kBadWorkId)
 					{
-						ASMJIT_ASSERT(_workToPhysMap->physIds[workId] == physId);
+						ASMJIT_ASSERT(_workToPhysMap->physIds[uint32_t(workId)] == physId);
 					}
 				}
 			}
@@ -475,6 +473,53 @@ public:
 #else
 	inline void verify() noexcept { }
 #endif
+
+	//! \}
+};
+
+//! Intersection of multiple register assignments.
+//!
+//! See \ref RAAssignment for more information about register assignments.
+class RASharedAssignment
+{
+public:
+	//! \name Types
+	//! \{
+	using PhysToWorkMap = RAAssignment::PhysToWorkMap;
+	using WorkToPhysMap = RAAssignment::WorkToPhysMap;
+
+	//! \}
+
+	//! \name Members
+	//! \{
+	//! Bit-mask of registers that cannot be used upon a block entry, for each block that has this shared assignment.
+	//! Scratch registers can come from ISA limits (like jecx/loop instructions on x86) or because the registers are
+	//! used by jump/branch instruction that uses registers to perform an indirect jump.
+	RegMask _entryScratchGpRegs = 0;
+	//! Union of all live-in registers.
+	ZoneBitVector _liveIn {};
+	//! Register assignment (PhysToWork).
+	PhysToWorkMap* _physToWorkMap = nullptr;
+
+	//! \}
+
+	//! \name Accessors
+	//! \{
+	[[nodiscard]]
+	ASMJIT_INLINE_NODEBUG bool empty() const noexcept { return _physToWorkMap == nullptr; }
+
+	[[nodiscard]]
+	ASMJIT_INLINE_NODEBUG RegMask entryScratchGpRegs() const noexcept { return _entryScratchGpRegs; }
+
+	ASMJIT_INLINE_NODEBUG void addEntryScratchGpRegs(RegMask mask) noexcept { _entryScratchGpRegs |= mask; }
+
+	[[nodiscard]]
+	ASMJIT_INLINE_NODEBUG Span<const BitWord> liveIn() const noexcept { return _liveIn.as_span(); }
+
+	[[nodiscard]]
+	ASMJIT_INLINE_NODEBUG PhysToWorkMap* physToWorkMap() const noexcept { return _physToWorkMap; }
+
+	ASMJIT_INLINE_NODEBUG void assignPhysToWorkMap(PhysToWorkMap* physToWorkMap) noexcept { _physToWorkMap = physToWorkMap; }
 
 	//! \}
 };

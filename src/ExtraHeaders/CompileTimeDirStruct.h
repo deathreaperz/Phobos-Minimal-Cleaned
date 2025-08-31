@@ -11,7 +11,7 @@ struct CTimeDirStruct
 
 	COMPILETIMEEVAL CTimeDirStruct(const size_t bits, const DirType value) noexcept :
 		Raw { 0 }
-	{
+	{ 
 		Raw = (unsigned short)(TranslateFixedPoint::CompileTime(bits, 16u, (size_t)value));
 	}
 
@@ -25,5 +25,5 @@ struct CTimeDirStruct
 public:
 	unsigned short Raw;
 private:
-	unsigned short Padding { 0 };
+	unsigned short Padding {0};
 };

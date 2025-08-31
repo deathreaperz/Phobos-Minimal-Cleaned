@@ -28,6 +28,18 @@ bool DisguiseAllowed(const TechnoTypeExtData* pThis, ObjectTypeClass* pThat)
 	return true;
 }
 
+ASMJIT_PATCH(0x6FED2F, TechnoClass_FireAt_VerticalInitialFacing, 0x6)
+{
+	enum { Continue = 0x6FED39, SkipGameCode = 0x6FED8F };
+
+	GET(FakeBulletTypeClass*, pBulletType, EAX);
+
+	if (pBulletType->_GetExtData()->VerticalInitialFacing.Get(pBulletType->Voxel || pBulletType->Vertical))
+		return Continue;
+
+	return SkipGameCode;
+}
+
 ASMJIT_PATCH(0x6FF0DD, TechnoClass_FireAt_TurretRecoil, 0x6)
 {
 	enum { SkipGameCode = 0x6FF15B };
@@ -279,6 +291,11 @@ ASMJIT_PATCH(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 
 	if (pTargetTechno)
 	{
+		const auto pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
+
+		if (pWeaponExt->OnlyAttacker.Get() && !pTargetExt->ContainFirer(pWeapon, pThis))
+			return FireIllegal;
+
 		if (pThis->Berzerk && !EnumFunctions::CanTargetHouse(RulesExtData::Instance()->BerzerkTargeting, pThis->Owner, pTargetTechno->Owner))
 			return FireIllegal;
 
@@ -299,13 +316,30 @@ ASMJIT_PATCH(0x6FC339, TechnoClass_CanFire_PreFiringChecks, 0x6) //8
 
 			if (!TechnoTypeExtContainer::Instance.Find(
 				pTargetTechno->GetTechnoType())->AllowAirstrike.Get(
-					pTargetTechno->AbstractFlags & AbstractFlags::Foot ?
-					true : static_cast<BuildingClass*>(pTargetTechno)->Type->CanC4))
+					pTargetTechno->AbstractFlags & AbstractFlags::Foot || static_cast<BuildingClass*>(pTargetTechno)->Type->CanC4))
 				return FireIllegal;
 		}
 	}
 
 	return Continue;
+}
+
+ASMJIT_PATCH(0x6FDE0E, TechnoClass_FireAt_OnlyAttacker, 0x6)
+{
+	GET(TechnoClass* const, pThis, ESI);
+	GET(WeaponTypeClass*, pWeapon, EBX);
+	GET_BASE(AbstractClass* const, pTarget, 0x8);
+
+	const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+
+	if (pWeaponExt->OnlyAttacker.Get() && pTarget == pThis->Target
+		&& pTarget->AbstractFlags & AbstractFlags::Techno)
+	{
+		const auto pTargetExt = TechnoExtContainer::Instance.Find(static_cast<TechnoClass*>(pTarget));
+		pTargetExt->AddFirer(pWeapon, pThis);
+	}
+
+	return 0;
 }
 
 ASMJIT_PATCH(0x6FE19A, TechnoClass_FireAt_AreaFire, 0x6) //7
@@ -564,6 +598,52 @@ ASMJIT_PATCH(0x6FDDC0, TechnoClass_FireAt_Early, 0x6)
 	if (pWeapon)
 	{
 		auto pWeaponExt = pWeapon->_GetExtData();
+
+		auto& timer = pExt->DelayedFireTimer;
+		if (pExt->DelayedFireWeaponIndex >= 0 && pExt->DelayedFireWeaponIndex != weaponIndex)
+			pExt->ResetDelayedFireTimer();
+
+		if (pWeaponExt->DelayedFire_Duration.isset() && (!pThis->Transporter || !pWeaponExt->DelayedFire_SkipInTransport))
+		{
+			auto const rtti = pThis->WhatAmI();
+
+			if (pWeaponExt->DelayedFire_PauseFiringSequence && (rtti == AbstractType::Infantry
+				|| (rtti == AbstractType::Unit && !pThis->HasTurret() && !pThis->GetTechnoType()->Voxel)))
+			{
+				return 0;
+			}
+
+			if (pWeapon->Burst <= 1 || !pWeaponExt->DelayedFire_OnlyOnInitialBurst || pThis->CurrentBurstIndex == 0)
+			{
+				if (timer.InProgress())
+					return 0x6FDE03;
+
+				if (!timer.HasStarted())
+				{
+					pExt->DelayedFireWeaponIndex = weaponIndex;
+					timer.Start(MaxImpl(GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->DelayedFire_Duration), 0));
+					auto pAnimType = pWeaponExt->DelayedFire_Animation;
+
+					if (pThis->Transporter && pWeaponExt->DelayedFire_OpenToppedAnimation.isset())
+						pAnimType = pWeaponExt->DelayedFire_OpenToppedAnimation;
+
+					auto firingCoords = pThis->GetWeapon(weaponIndex)->FLH;
+
+					if (pWeaponExt->DelayedFire_AnimOffset.isset())
+						firingCoords = pWeaponExt->DelayedFire_AnimOffset;
+
+					pExt->CreateDelayedFireAnim(pAnimType, weaponIndex, pWeaponExt->DelayedFire_AnimIsAttached, pWeaponExt->DelayedFire_CenterAnimOnFirer,
+					pWeaponExt->DelayedFire_RemoveAnimOnNoDelay, pWeaponExt->DelayedFire_AnimOnTurret, firingCoords);
+
+					return 0x6FDE03;
+				}
+				else
+				{
+					pExt->ResetDelayedFireTimer();
+				}
+			}
+		}
+
 		if (const auto pTargetTechno = flag_cast_to<TechnoClass*>(pTarget))
 		{
 			auto const pTargetExt = TechnoExtContainer::Instance.Find(pTargetTechno);
@@ -580,55 +660,20 @@ ASMJIT_PATCH(0x6FDDC0, TechnoClass_FireAt_Early, 0x6)
 				PhobosAttachEffectClass::DetachByGroups(pTargetTechno, info);
 			}
 		}
-
-		auto& timer = pExt->DelayedFireTimer;
-
-		if (pExt->DelayedFireWeaponIndex >= 0 && pExt->DelayedFireWeaponIndex != weaponIndex)
-			pExt->ResetDelayedFireTimer();
-
-		if (pWeaponExt->DelayedFire_Duration.isset() && (!pThis->Transporter || !pWeaponExt->DelayedFire_SkipInTransport))
-		{
-			if (pThis->WhatAmI() == AbstractType::Infantry && pWeaponExt->DelayedFire_PauseFiringSequence)
-				return 0;
-
-			if (pWeapon->Burst <= 1 || !pWeaponExt->DelayedFire_OnlyOnInitialBurst || pThis->CurrentBurstIndex == 0)
-			{
-				if (timer.InProgress())
-					return 0x6FDE03;
-
-				if (!timer.HasStarted())
-				{
-					pExt->DelayedFireWeaponIndex = weaponIndex;
-					timer.Start(MaxImpl(GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->DelayedFire_Duration), 0));
-					auto pAnimType = pWeaponExt->DelayedFire_Animation;
-
-					if (pThis->Transporter && pWeaponExt->DelayedFire_OpenToppedAnimation.isset())
-						pAnimType = pWeaponExt->DelayedFire_OpenToppedAnimation;
-
-					pExt->CreateDelayedFireAnim(pAnimType, weaponIndex, pWeaponExt->DelayedFire_AnimIsAttached, pWeaponExt->DelayedFire_CenterAnimOnFirer,
-						pWeaponExt->DelayedFire_RemoveAnimOnNoDelay, pWeaponExt->DelayedFire_AnimOffset.isset(), pWeaponExt->DelayedFire_AnimOffset.Get());
-
-					return 0x6FDE03;
-				}
-				else
-				{
-					pExt->ResetDelayedFireTimer();
-				}
-			}
-		}
 	}
+
 	return 0x0;
 }
 
-ASMJIT_PATCH(0x5206B7, InfantryClass_FiringAI_Entry, 0x6)
-{
-	GET(InfantryClass*, pThis, EBP);
-
-	if (!pThis->Target || !pThis->IsFiring)
-		TechnoExtContainer::Instance.Find(pThis)->FiringSequencePaused = false;
-
-	return 0;
-}
+// ASMJIT_PATCH(0x5206B7, InfantryClass_FiringAI_Entry, 0x6)
+// {
+// 	GET(InfantryClass*, pThis, EBP);
+//
+// 	if (!pThis->Target || !pThis->IsFiring)
+// 		TechnoExtContainer::Instance.Find(pThis)->DelayedFireSequencePaused = false;
+//
+// 	return 0;
+// }
 
 ASMJIT_PATCH(0x6FABC4, TechnoClass_AI_AnimationPaused, 0x6)
 {
@@ -638,7 +683,7 @@ ASMJIT_PATCH(0x6FABC4, TechnoClass_AI_AnimationPaused, 0x6)
 
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
-	if (pExt->FiringSequencePaused)
+	if (pExt->DelayedFireSequencePaused)
 		return SkipGameCode;
 
 	return 0;
@@ -679,7 +724,7 @@ ASMJIT_PATCH(0x6FDD7D, TechnoClass_FireAt_UpdateWeaponType, 0x5)
 				if (rof > 0)
 				{
 					pThis->ROF = rof;
-					pThis->DiskLaserTimer.Start(rof);
+					pThis->RearmTimer.Start(rof);
 					pThis->CurrentBurstIndex = 0;
 					pExt->LastWeaponType = pWeapon;
 

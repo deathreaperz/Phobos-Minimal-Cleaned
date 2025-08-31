@@ -100,60 +100,66 @@ extern "C" {
     ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x05u)
 
 		   /**
-			* A rex-prefix was found while decoding a XOP/VEX/EVEX/MVEX instruction.
+			* A REX-prefix was found while decoding a REX2/XOP/VEX/EVEX/MVEX instruction.
 			*/
 #define ZYDIS_STATUS_ILLEGAL_REX \
     ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x06u)
 
 			/**
-			 * An invalid opcode-map value was found while decoding a XOP/VEX/EVEX/MVEX-prefix.
+			 * A REX2-prefix was found while decoding a REX/XOP/VEX/EVEX/MVEX instruction.
 			 */
-#define ZYDIS_STATUS_INVALID_MAP \
+#define ZYDIS_STATUS_ILLEGAL_REX2 \
     ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x07u)
 
 			 /**
-			  * An error occured while decoding the EVEX-prefix.
+			  * An invalid opcode-map value was found while decoding a XOP/VEX/EVEX/MVEX-prefix.
 			  */
-#define ZYDIS_STATUS_MALFORMED_EVEX \
+#define ZYDIS_STATUS_INVALID_MAP \
     ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x08u)
 
 			  /**
-			   * An error occured while decoding the MVEX-prefix.
+			   * An error occured while decoding the EVEX-prefix.
 			   */
-#define ZYDIS_STATUS_MALFORMED_MVEX \
+#define ZYDIS_STATUS_MALFORMED_EVEX \
     ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x09u)
 
 			   /**
-				* An invalid write-mask was specified for an EVEX/MVEX instruction.
+				* An error occured while decoding the MVEX-prefix.
 				*/
-#define ZYDIS_STATUS_INVALID_MASK \
+#define ZYDIS_STATUS_MALFORMED_MVEX \
     ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x0Au)
 
-				/* ---------------------------------------------------------------------------------------------- */
-				/* Formatter                                                                                      */
-				/* ---------------------------------------------------------------------------------------------- */
-
 				/**
-				 * Returning this status code in some specified formatter callbacks will cause
-				 * the formatter to omit the corresponding token.
-				 *
-				 * Valid callbacks:
-				 * - `ZYDIS_FORMATTER_FUNC_PRE_OPERAND`
-				 * - `ZYDIS_FORMATTER_FUNC_POST_OPERAND`
-				 * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_REG`
-				 * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_MEM`
-				 * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_PTR`
-				 * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_IMM`
+				 * An invalid write-mask was specified for an EVEX/MVEX instruction.
 				 */
-#define ZYDIS_STATUS_SKIP_TOKEN \
-    ZYAN_MAKE_STATUS(0u, ZYAN_MODULE_ZYDIS, 0x0Bu)
+#define ZYDIS_STATUS_INVALID_MASK \
+    ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x0Bu)
 
 				 /* ---------------------------------------------------------------------------------------------- */
-				 /* Encoder                                                                                        */
+				 /* Formatter                                                                                      */
 				 /* ---------------------------------------------------------------------------------------------- */
+
+				 /**
+				  * Returning this status code in some specified formatter callbacks will cause
+				  * the formatter to omit the corresponding token.
+				  *
+				  * Valid callbacks:
+				  * - `ZYDIS_FORMATTER_FUNC_PRE_OPERAND`
+				  * - `ZYDIS_FORMATTER_FUNC_POST_OPERAND`
+				  * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_REG`
+				  * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_MEM`
+				  * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_PTR`
+				  * - `ZYDIS_FORMATTER_FUNC_FORMAT_OPERAND_IMM`
+				  */
+#define ZYDIS_STATUS_SKIP_TOKEN \
+    ZYAN_MAKE_STATUS(0u, ZYAN_MODULE_ZYDIS, 0x0Cu)
+
+				  /* ---------------------------------------------------------------------------------------------- */
+				  /* Encoder                                                                                        */
+				  /* ---------------------------------------------------------------------------------------------- */
 
 #define ZYDIS_STATUS_IMPOSSIBLE_INSTRUCTION \
-    ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x0Cu)
+    ZYAN_MAKE_STATUS(1u, ZYAN_MODULE_ZYDIS, 0x0Du)
 
 /* ---------------------------------------------------------------------------------------------- */
 

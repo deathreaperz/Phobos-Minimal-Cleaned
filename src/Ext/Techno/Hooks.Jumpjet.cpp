@@ -168,8 +168,18 @@ ASMJIT_PATCH(0x70B649, TechnoClass_RigidBodyDynamics_NoTiltCrashBlyat, 0x6)
 // 	return 0x54DE88;
 // }
 
+namespace JumpjetTiltReference
+{
+	constexpr auto BaseSpeed = 32;
+	constexpr auto BaseTilt = Math::HalfPi / 4;
+	constexpr auto BaseTurnRaw = 32768;
+	constexpr auto MaxTilt = static_cast<float>(Math::HalfPi);
+	constexpr auto ForwardBaseTilt = BaseTilt / BaseSpeed;
+	constexpr auto SidewaysBaseTilt = BaseTilt / (BaseTurnRaw * BaseSpeed);
+}
+
 // Just rewrite this completely to avoid headache
-Matrix3D* __stdcall JumpjetLocomotionClass_Draw_Matrix(ILocomotion* iloco, Matrix3D* ret, int* pIndex)
+Matrix3D* __stdcall JumpjetLocomotionClass_Draw_Matrix(ILocomotion* iloco, Matrix3D* ret, PhobosVoxelIndexKey* pIndex)
 {
 	auto const pThis = static_cast<JumpjetLocomotionClass*>(iloco);
 	auto linked = pThis->LinkedTo;
@@ -186,10 +196,12 @@ Matrix3D* __stdcall JumpjetLocomotionClass_Draw_Matrix(ILocomotion* iloco, Matri
 
 	float arf = linked->AngleRotatedForwards;
 	float ars = linked->AngleRotatedSideways;
+	size_t arfFace = 0;
+	size_t arsFace = 0;
 
 	if (Math::abs(ars) >= 0.005 || Math::abs(arf) >= 0.005)
 	{
-		if (pIndex) *pIndex = -1;
+		if (pIndex) pIndex->Base.Invalidate();
 
 		if (onGround)
 		{
@@ -223,37 +235,78 @@ Matrix3D* __stdcall JumpjetLocomotionClass_Draw_Matrix(ILocomotion* iloco, Matri
 			constexpr auto forwardBaseTilt = baseTilt / baseSpeed;
 			const auto forwardSpeedFactor = pThis->Speed * pTypeExt->JumpjetTilt_ForwardSpeedFactor;
 			const auto forwardAccelFactor = pThis->Acceleration * pTypeExt->JumpjetTilt_ForwardAccelFactor;
-			arf += static_cast<float>(MinImpl(32.0, forwardAccelFactor + forwardSpeedFactor) * forwardBaseTilt);
+			arf = std::clamp(static_cast<float>((forwardAccelFactor + forwardSpeedFactor)
+				* forwardBaseTilt), -maxTilt, maxTilt);
 
 			const auto& locoFace = pThis->Facing;
 
 			if (locoFace.Is_Rotating())
 			{
-				constexpr auto baseTurnRaw = 32768;
-				constexpr auto sidewaysBaseTilt = baseTilt / (baseTurnRaw * baseSpeed);
-				const auto sidewaysSpeedFactor = pThis->Speed * pTypeExt->JumpjetTilt_SidewaysSpeedFactor;
-				const auto sidewaysRotationFactor = static_cast<short>(locoFace.Difference().Raw) * pTypeExt->JumpjetTilt_SidewaysRotationFactor;
-				ars += std::clamp(static_cast<float>(sidewaysSpeedFactor * sidewaysRotationFactor * sidewaysBaseTilt), -maxTilt, maxTilt);
+				const float sidewaysSpeedFactor = static_cast<float>(pThis->Speed * pTypeExt->JumpjetTilt_SidewaysSpeedFactor);
+				const float sidewaysRotationFactor = static_cast<float>(static_cast<short>(locoFace.Difference().Raw)
+					* pTypeExt->JumpjetTilt_SidewaysRotationFactor);
+
+				ars = std::clamp(static_cast<float>(sidewaysSpeedFactor * sidewaysRotationFactor
+					* JumpjetTiltReference::SidewaysBaseTilt), -JumpjetTiltReference::MaxTilt, JumpjetTiltReference::MaxTilt);
+
+				const auto arsDir = DirStruct(ars);
+				// When changing the radian to DirStruct, it will rotate 90 degrees.
+				// To ensure that 0 is still 0, it needs to be rotated back
+				arsFace = arsDir.GetFacing<128>(96);
+
+				if (arsFace)
+					ret->RotateX(static_cast<float>(arsDir.GetRadian<128>()));
 			}
 		}
 
-		if (Math::abs(ars) >= 0.005 || Math::abs(arf) >= 0.005)
-		{
-			if (pIndex) *pIndex = -1;
+		const auto arfDir = DirStruct(arf);
 
-			ret->RotateX(ars);
-			ret->RotateY(arf);
+		// Similarly, turn it back
+		arfFace = arfDir.GetFacing<128>(96);
+
+		if (arfFace)
+			ret->RotateY(static_cast<float>(arfDir.GetRadian<128>()));
+	}
+
+	if (pIndex && pIndex->Base.Is_Valid_Key())
+	{
+		// It is currently unclear whether the passed key only has two situations:
+		// all 0s and all 1s, so I use the safest approach for now
+		if (pIndex->IsCleanKey() && (arfFace || arsFace))
+		{
+			pIndex->CustomIndexKey.JumpjetTiltVoxel.forwards = arfFace;
+			pIndex->CustomIndexKey.JumpjetTiltVoxel.sideways = arsFace;
+
+			if (onGround)
+				pIndex->CustomIndexKey.JumpjetTiltVoxel.slopeIndex = slope_idx;
+
+			pIndex->CustomIndexKey.JumpjetTiltVoxel.bodyFace = curf->Current().GetFacing<32>();
+
+			// Outside the function, there is another step to add a frame number to the key for drawing
+			pIndex->Base.Value >>= 5;
+		}
+		else // Keep the original code
+		{
+			if (onGround)
+				pIndex->Base.Value = slope_idx + (pIndex->Base.Value << 6);
+
+			pIndex->Base.Value <<= 5;
+			pIndex->Base.Value |= curf->Current().GetFacing<32>();;
 		}
 	}
 
-	if (pIndex && *pIndex != -1)
-	{
-		if (onGround) *pIndex = slope_idx + (*pIndex << 6);
-		*pIndex *= 32;
-		*pIndex |= curf->Current().GetFacing<32>();
-	}
-
 	return ret;
+}
+
+ASMJIT_PATCH(0x73B748, UnitClass_DrawVXL_ResetKeyForTurretUse, 0x7)
+{
+	REF_STACK(PhobosVoxelIndexKey, key, STACK_OFFSET(0x1C4, -0x1B0));
+
+	// Main body drawing completed, then enable accurate drawing of turrets and barrels
+	if (key.Base.Is_Valid_Key() && key.IsJumpjetKey()) // Flags used by JumpjetTilt units
+		key.Base.Invalidate();
+
+	return 0;
 }
 
 DEFINE_FUNCTION_JUMP(VTABLE, 0x7ECD8C, JumpjetLocomotionClass_Draw_Matrix);
@@ -380,82 +433,131 @@ ASMJIT_PATCH(0x54B6E0, JumpjetLocomotionClass_DoTurn, 0x8)
 namespace JumpjetRushHelpers
 {
 	bool Skip = false;
-	int GetJumpjetHeightWithOccupyTechno(Point2D location); // Replace sub_485080
+	int GetJumpjetHeightWithOccupyTechno(const CellClass* pCell); // Replace sub_485080
 	int JumpjetLocomotionPredictHeight(JumpjetLocomotionClass* pThis); // Replace sub_54D820
 }
 
-int JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(Point2D location)
+int JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(const CellClass* pCell)
 {
-	CellClass* const pCell = MapClass::Instance->TryGetCellAt(CellStruct { short(location.X >> 8) , short(location.Y >> 8) });
-	if (!pCell)
-		return -1;
-
-	int height = pCell->GetFloorHeight({ location.X & 0xFF, location.Y & 0xFF });
-
-	for (auto pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject)
+	if (const auto pBuilding = pCell->GetBuilding())
 	{
-		if (auto pBld = cast_to<BuildingClass*, false>(pObject))
-		{
-			CoordStruct dim2 = CoordStruct::Empty;
-			pBld->Type->Dimension2(&dim2);
-			return dim2.Z + height;
-		}
+		auto dim2 = CoordStruct::Empty;
+		pBuilding->Type->Dimension2(&dim2);
+		return dim2.Z;
 	}
 
-	if (pCell->FindTechnoNearestTo(Point2D::Empty, false))
-		height += 85;
+	int height = 0;
 
-	if (pCell->Flags & CellFlags::BridgeHead)
-		height += Unsorted::BridgeHeight;
+	if (pCell->FindTechnoNearestTo(Point2D::Empty, false))
+		height += 85; // Vanilla
+
+	if (pCell->ContainsBridge())
+		height += CellClass::BridgeHeight;
 
 	return height;
 }
 
 int JumpjetRushHelpers::JumpjetLocomotionPredictHeight(JumpjetLocomotionClass* pThis)
 {
-	FootClass* const pFoot = pThis->LinkedTo;
-	const CoordStruct location = pFoot->Location;
-	const int curHeight = location.Z - pFoot->GetTechnoType()->JumpJetData.Height;
-	Point2D curCoord = { location.X, location.Y };
-	int maxHeight = JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(curCoord);
+	const auto pFoot = pThis->LinkedTo;
+	const auto pLocation = &pFoot->Location;
 
-	if (pThis->NextState == JumpjetLocomotionClass::State::Cruising)
-	{
-		const double checkLength = Unsorted::BridgeHeight / pThis->Climb * pThis->__currentSpeed;
-		const double angle = -pThis->Facing.Current().GetRadian<32>();
-		Point2D stepCoord { static_cast<int>(checkLength * Math::cos(angle)), static_cast<int>(checkLength * Math::sin(angle)) };
-		const int largeStep = std::max(Math::abs(stepCoord.X), Math::abs(stepCoord.Y));
-
-		if (largeStep)
+	constexpr int shift = 8; // >> shift -> / Unsorted::LeptonsPerCell
+	constexpr auto point2Cell = [](const Point2D& point) -> CellStruct
 		{
-			const double stepMult = static_cast<double>(Unsorted::LeptonsPerCell / 2) / largeStep;
-			stepCoord = { static_cast<int>(stepCoord.X * stepMult), static_cast<int>(stepCoord.Y * stepMult) };
+			return CellStruct { static_cast<short>(point.X >> shift), static_cast<short>(point.Y >> shift) };
+		};
+	auto getJumpjetHeight = [](const CellClass* const pCell, const Point2D& point) -> int
+		{
+			return pCell->GetFloorHeight(Point2D { point.X, point.Y }) + JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(pCell);
+		};
 
-			curCoord += stepCoord;
-			int height = JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(curCoord);
+	// Initialize
+	auto curCoord = Point2D { pLocation->X, pLocation->Y };
+	const CellClass* pCurCell = MapClass::Instance->GetCellAt(point2Cell(curCoord));
+	int maxHeight = getJumpjetHeight(pCurCell, curCoord);
 
-			if (height > maxHeight)
-				maxHeight = height;
-			else
-				JumpjetRushHelpers::Skip = true;
+	// If is moving
+	if (pThis->Speed > 0.0)
+	{
+		// Prepare for prediction
+		auto lastCoord = Point2D::Empty;
+		const int checkLength = (pThis->Facing.Is_Rotating() || !pFoot->Destination)
+			? Unsorted::LeptonsPerCell
+			: MinImpl((Unsorted::LeptonsPerCell * 5), pFoot->DistanceFrom(pFoot->Destination)); // Predict the distance of 5 cells ahead
+		const double angle = -pThis->Facing.Current().GetRadian<65536>();
+		const auto checkCoord = Point2D { static_cast<int>(checkLength * Math::cos(angle) + 0.5), static_cast<int>(checkLength * Math::sin(angle) + 0.5) };
+		const int largeStep = MaxImpl(Math::abs(checkCoord.X), Math::abs(checkCoord.Y));
+		const int checkSteps = (largeStep > Unsorted::LeptonsPerCell) ? (largeStep / Unsorted::LeptonsPerCell + 1) : 1;
+		const auto stepCoord = Point2D { (checkCoord.X / checkSteps), (checkCoord.Y / checkSteps) };
 
-			if (maxHeight <= curHeight)
-				JumpjetRushHelpers::Skip = true;
-
-			const int checkStep = (largeStep >> 7) + ((largeStep & 0x7F) ? 2 : 1);
-
-			for (int i = 0; i < checkStep && height >= 0; ++i)
+		auto getSideHeight = [](const CellClass* const pCell) -> int
 			{
-				curCoord += stepCoord;
-				height = JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(curCoord);
+				return (pCell->Level * Unsorted::LevelHeight) + JumpjetRushHelpers::GetJumpjetHeightWithOccupyTechno(pCell);
+			};
+		auto getAntiAliasingCell = [&stepCoord, &checkCoord](const Point2D& curCoord, const Point2D& lastCoord) -> CellClass*
+			{
+				// Check if it is a diagonal relationship
+				if ((curCoord.X >> shift) == (lastCoord.X >> shift) || (curCoord.Y >> shift) == (lastCoord.Y >> shift))
+					return nullptr;
 
-				if (height > maxHeight)
-					maxHeight = height;
-			}
+				constexpr int mask = 0xFF; // & mask -> % Unsorted::LeptonsPerCell
+				bool lastX = false;
+
+				// Calculate the bias of the previous cell
+				if (Math::abs(stepCoord.X) > Math::abs(stepCoord.Y))
+				{
+					const int offsetX = curCoord.X & mask;
+					const int deltaX = (stepCoord.X > 0) ? offsetX : (offsetX - Unsorted::LeptonsPerCell);
+					const int projectedY = curCoord.Y - deltaX * checkCoord.Y / checkCoord.X;
+					lastX = (projectedY ^ curCoord.Y) >> shift == 0;
+				}
+				else
+				{
+					const int offsetY = curCoord.Y & mask;
+					const int deltaY = (stepCoord.Y > 0) ? offsetY : (offsetY - Unsorted::LeptonsPerCell);
+					const int projectedX = curCoord.X - deltaY * checkCoord.X / checkCoord.Y;
+					lastX = (projectedX ^ curCoord.X) >> shift != 0;
+				}
+
+				// Get cell
+				return MapClass::Instance->TryGetCellAt(lastX
+					? CellStruct { static_cast<short>(lastCoord.X >> shift), static_cast<short>(curCoord.Y >> shift) }
+				: CellStruct { static_cast<short>(curCoord.X >> shift), static_cast<short>(lastCoord.Y >> shift) });
+			};
+		auto checkStepHeight = [&maxHeight, &curCoord, &lastCoord, &pCurCell, &stepCoord,
+			&getJumpjetHeight, &getAntiAliasingCell, &getSideHeight]() -> bool
+			{
+				// Check forward
+				lastCoord = curCoord;
+				curCoord += stepCoord;
+				pCurCell = MapClass::Instance->TryGetCellAt(point2Cell(curCoord));
+
+				if (!pCurCell)
+					return false;
+
+				maxHeight = MaxImpl(maxHeight, getJumpjetHeight(pCurCell, curCoord));
+
+				// "Anti-Aliasing"
+				if (const auto pCheckCell = getAntiAliasingCell(curCoord, lastCoord))
+					maxHeight = MaxImpl(maxHeight, getSideHeight(pCheckCell));
+
+				return true;
+			};
+
+		// Predict height
+		if (checkStepHeight())
+		{
+			// The forward cell is not so high, keep moving
+			if ((pLocation->Z - maxHeight) >= pFoot->GetTechnoType()->JumpJetData.Height)
+				JumpjetRushHelpers::Skip = true;
+
+			// Check further
+			for (int i = 1; i < checkSteps && checkStepHeight(); ++i);
 		}
 	}
 
-	return maxHeight >= 0 ? maxHeight : curHeight;
+	return maxHeight;
 }
 
 ASMJIT_PATCH(0x54D827, JumpjetLocomotionClass_sub_54D820_PredictHeight, 0x8)

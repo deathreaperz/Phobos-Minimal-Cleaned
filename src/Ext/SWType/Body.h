@@ -39,28 +39,24 @@ public:
 	Valueable<AircraftTypeClass*> Aircraft;
 	ValueableVector<TechnoTypeClass*> Types;
 	ValueableVector<int> Num;
-};
 
-template <>
-struct Savegame::PhobosStreamObject<ParadropData>
-{
-	bool ReadFromStream(PhobosStreamReader& Stm, ParadropData& Value, bool RegisterForChange) const
+	bool load(PhobosStreamReader& Stm, bool RegisterForChange)
 	{
 		return Stm
-			.Process(Value.Aircraft, RegisterForChange)
-			.Process(Value.Types, RegisterForChange)
-			.Process(Value.Num, RegisterForChange)
+			.Process(Aircraft, RegisterForChange)
+			.Process(Types, RegisterForChange)
+			.Process(Num, RegisterForChange)
 			.Success();
-	};
+	}
 
-	bool WriteToStream(PhobosStreamWriter& Stm, const ParadropData& Value) const
+	bool save(PhobosStreamWriter& Stm) const
 	{
 		return Stm
-			.Process(Value.Aircraft)
-			.Process(Value.Types)
-			.Process(Value.Num)
+			.Process(Aircraft)
+			.Process(Types)
+			.Process(Num)
 			.Success();
-	};
+	}
 };
 
 struct AITargetingModeInfo
@@ -147,7 +143,7 @@ public:
 	Valueable<bool> SW_Next_IgnoreDesignators { true };
 	ValueableVector<float> SW_Next_RollChances {};
 	std::vector<std::vector<int>> SW_Next_RandomWeightsData {};
-	std::vector<std::vector<int>> SW_GrantOneTime_RandomWeightsData {};
+	std::vector<std::vector<int>> SW_Link_RandomWeightsData {};
 #pragma endregion
 
 	ValueableVector<TechnoTypeClass*> SW_Inhibitors {};
@@ -463,11 +459,13 @@ public:
 	Valueable<bool> UseWeeds_StorageTimer { false };
 	Valueable<int> UseWeeds_ReadinessAnimationPercentage { 90 };
 
-	ValueableIdxVector<SuperWeaponTypeClass> SW_GrantOneTime {};
-	Nullable<bool> SW_GrantOneTime_InitialReady {};
-	ValueableVector<float> SW_GrantOneTime_RollChances {};
-	Valueable<CSFText> Message_GrantOneTimeLaunched {};
-	NullableIdx<VoxClass> EVA_GrantOneTimeLaunched {};
+	ValueableIdxVector<SuperWeaponTypeClass> SW_Link {};
+	Valueable<bool> SW_Link_Grant {};
+	Valueable<bool> SW_Link_Ready {};
+	Valueable<bool> SW_Link_Reset {};
+	ValueableVector<float> SW_Link_RollChances {};
+	Valueable<CSFText> Message_LinkedSWAcquired {};
+	NullableIdx<VoxClass> EVA_LinkedSWAcquired {};
 
 	Valueable<bool> CrateGoodies { false };
 	Nullable<bool> SuperWeaponSidebar_Allow { };
@@ -550,7 +548,7 @@ public:
 	bool IsOriginalType() const;
 	NewSWType* GetNewSWType() const;
 
-	void GrantOneTimeFromList(SuperClass* pSW);
+	void ApplyLinkedSW(SuperClass* pSW);
 
 	//statics
 	static bool Deactivate(SuperClass* pSuper, CellStruct const cell, bool const isPlayer);

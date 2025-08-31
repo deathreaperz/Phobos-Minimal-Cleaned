@@ -94,26 +94,32 @@ ASMJIT_VARAPI const ArchTraits _archTraits[uint32_t(Arch::kMaxValue) + 1] = {
 	noArchTraits
 };
 
-ASMJIT_FAVOR_SIZE Error ArchUtils::typeIdToRegSignature(Arch arch, TypeId typeId, TypeId* typeIdOut, OperandSignature* regSignatureOut) noexcept {
+ASMJIT_FAVOR_SIZE Error ArchUtils::typeIdToRegSignature(Arch arch, TypeId typeId, TypeId* typeIdOut, OperandSignature* regSignatureOut) noexcept
+{
 	const ArchTraits& archTraits = ArchTraits::byArch(arch);
 
 	// TODO: Remove this, should never be used like this.
 	// Passed RegType instead of TypeId?
-	if (uint32_t(typeId) <= uint32_t(RegType::kMaxValue)) {
+	if (uint32_t(typeId) <= uint32_t(RegType::kMaxValue))
+	{
 		typeId = RegUtils::typeIdOf(RegType(uint32_t(typeId)));
 	}
 
-	if (ASMJIT_UNLIKELY(!TypeUtils::isValid(typeId))) {
+	if (ASMJIT_UNLIKELY(!TypeUtils::isValid(typeId)))
+	{
 		return DebugUtils::errored(kErrorInvalidTypeId);
 	}
 
 	// First normalize architecture dependent types.
-	if (TypeUtils::isAbstract(typeId)) {
+	if (TypeUtils::isAbstract(typeId))
+	{
 		bool is32Bit = Environment::is32Bit(arch);
-		if (typeId == TypeId::kIntPtr) {
+		if (typeId == TypeId::kIntPtr)
+		{
 			typeId = is32Bit ? TypeId::kInt32 : TypeId::kInt64;
 		}
-		else {
+		else
+		{
 			typeId = is32Bit ? TypeId::kUInt32 : TypeId::kUInt64;
 		}
 	}
@@ -121,40 +127,52 @@ ASMJIT_FAVOR_SIZE Error ArchUtils::typeIdToRegSignature(Arch arch, TypeId typeId
 	// Type size helps to construct all groups of registers.
 	// TypeId is invalid if the size is zero.
 	uint32_t size = TypeUtils::sizeOf(typeId);
-	if (ASMJIT_UNLIKELY(!size)) {
+	if (ASMJIT_UNLIKELY(!size))
+	{
 		return DebugUtils::errored(kErrorInvalidTypeId);
 	}
 
-	if (ASMJIT_UNLIKELY(typeId == TypeId::kFloat80)) {
+	if (ASMJIT_UNLIKELY(typeId == TypeId::kFloat80))
+	{
 		return DebugUtils::errored(kErrorInvalidUseOfF80);
 	}
 
 	RegType regType = RegType::kNone;
-	if (TypeUtils::isBetween(typeId, TypeId::_kBaseStart, TypeId::_kVec32Start)) {
+	if (TypeUtils::is_between(typeId, TypeId::_kBaseStart, TypeId::_kVec32Start))
+	{
 		regType = archTraits._typeIdToRegType[uint32_t(typeId) - uint32_t(TypeId::_kBaseStart)];
-		if (regType == RegType::kNone) {
-			if (typeId == TypeId::kInt64 || typeId == TypeId::kUInt64) {
+		if (regType == RegType::kNone)
+		{
+			if (typeId == TypeId::kInt64 || typeId == TypeId::kUInt64)
+			{
 				return DebugUtils::errored(kErrorInvalidUseOfGpq);
 			}
-			else {
+			else
+			{
 				return DebugUtils::errored(kErrorInvalidTypeId);
 			}
 		}
 	}
-	else {
-		if (size <= 8 && archTraits.hasRegType(RegType::kVec64)) {
+	else
+	{
+		if (size <= 8 && archTraits.hasRegType(RegType::kVec64))
+		{
 			regType = RegType::kVec64;
 		}
-		else if (size <= 16 && archTraits.hasRegType(RegType::kVec128)) {
+		else if (size <= 16 && archTraits.hasRegType(RegType::kVec128))
+		{
 			regType = RegType::kVec128;
 		}
-		else if (size == 32 && archTraits.hasRegType(RegType::kVec256)) {
+		else if (size == 32 && archTraits.hasRegType(RegType::kVec256))
+		{
 			regType = RegType::kVec256;
 		}
-		else if (archTraits.hasRegType(RegType::kVec512)) {
+		else if (archTraits.hasRegType(RegType::kVec512))
+		{
 			regType = RegType::kVec512;
 		}
-		else {
+		else
+		{
 			return DebugUtils::errored(kErrorInvalidTypeId);
 		}
 	}

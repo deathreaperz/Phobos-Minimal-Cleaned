@@ -32,7 +32,8 @@ public:
 	LooseAudioCache(const char* Title)
 		: Name(Title), WavName(Title), Data {}
 	{
-		WavName += ".wav";
+		WavName.reserve(Name.length() + 6);  // Pre-allocate
+		WavName = Name + ".wav";
 	}
 
 	LooseAudioCache(const LooseAudioCache&) = delete;
@@ -49,7 +50,10 @@ public:
 		if (!pFile->Exists())
 		{
 			if (Phobos::Otamaa::IsAdmin)
-				Debug::Log("LooseAudioCache: File does not exist: %s\n", WavName.c_str());
+			{
+				Debug::Log("LooseAudioCache: File does not exist: %s\n",
+				WavName.c_str());
+			}
 
 			GameDelete<true, false>(pFile);
 			pFile = nullptr;
@@ -100,11 +104,14 @@ private:
 class LooseAudioCacheManager
 {
 	static std::vector<std::unique_ptr<LooseAudioCache>> Array;
+	static std::mutex arrayMutex;
 
 public:
 
 	static int NameToIndex(const char* Title)
 	{
+		std::lock_guard<std::mutex> lock(arrayMutex);  // Lock here
+
 		const auto it = std::find_if(Array.begin(), Array.end(), [&](const auto& ptr)
  {
 	 return ptr->GetName() == Title;
@@ -121,6 +128,8 @@ public:
 
 	static LooseAudioCache* FindByIndexPtr(UINT_PTR idxptr)
 	{
+		std::lock_guard<std::mutex> lock(arrayMutex);  // Lock here
+
 		if (idxptr >= 0x10000)
 		{
 			const auto it = std::find_if(Array.begin(), Array.end(), [&](const auto& ptr)
@@ -141,6 +150,7 @@ public:
 };
 
 std::vector<std::unique_ptr<LooseAudioCache>> LooseAudioCacheManager::Array;
+std::mutex LooseAudioCacheManager::arrayMutex;
 
 class AudioLuggage
 {
@@ -187,7 +197,7 @@ public:
 				if (Phobos::Otamaa::OutputAudioLogs)
 					Debug::LogInfo("Reading {}", filename);
 
-				auto pBag = UniqueGamePtrC<CCFileClass>(GameCreateUnchecked<CCFileClass>(filename.c_str()));
+				auto pBag = UniqueGamePtr<CCFileClass>(GameCreateUnchecked<CCFileClass>(filename.c_str()));
 
 				if (pBag->Exists()
 					&& pBag->Open(FileAccessMode::Read))
@@ -245,12 +255,13 @@ public:
 
 	public:
 		std::string BagFile;
-		UniqueGamePtrC<CCFileClass> Bag; //big file that contains the audios
+		UniqueGamePtr<CCFileClass> Bag; //big file that contains the audios
 		std::vector<AudioIDXEntry> Entries; //every audio data that sit inside the file above
 	};
 
 	AudioIDXData* Pack(const char* pPath = nullptr)
 	{
+		std::lock_guard<std::mutex> lock(luggageMutex);  // Lock here
 		std::map<AudioIDXEntry, std::tuple<int, CCFileClass*, std::string>, std::less<AudioIDXEntry>> map;
 
 		for (size_t i = 0; i < this->Bags.size(); ++i)
@@ -299,6 +310,7 @@ public:
 		const int size = static_cast<int>(map.size());
 		Indexes->SampleCount = size;
 		Indexes->Samples = GameCreateArray<AudioIDXEntry>(size);
+		this->Files.reserve(size);  // Pre-allocate Files vector
 
 		int i = 0;
 		for (auto const& [entry, data] : map)
@@ -322,11 +334,14 @@ public:
 
 	COMPILETIMEEVAL void Append(const char* pFileBase)
 	{
+		std::lock_guard<std::mutex> lock(luggageMutex);  // Lock here
 		this->Bags.emplace_back(pFileBase);
 	}
 
 	COMPILETIMEEVAL std::optional<FileStruct> GetFileStruct(int idx)
 	{
+		std::lock_guard<std::mutex> lock(luggageMutex);  // Lock here
+
 		const auto& files = this->Files;
 		if (size_t(idx) < files.size())
 		{
@@ -342,6 +357,7 @@ public:
 
 	COMPILETIMEEVAL size_t TotalSampleSizes() const
 	{
+		std::lock_guard<std::mutex> lock(luggageMutex);  // Lock here
 		return this->Files.size();
 	}
 
@@ -351,6 +367,7 @@ private:
 
 	//contains linked real index of bags with files within
 	std::vector<std::pair<int, CCFileClass*>> Files;
+	mutable std::mutex luggageMutex;
 
 public:
 	static AudioLuggage Instance;
@@ -431,13 +448,6 @@ ASMJIT_PATCH(0x720F2E, ThemeClass_Stop_DisableStopLog, 0x9)
 	GET(ThemeClass*, pThis, ESI);
 	R->ECX(pThis->Stream);
 	return 0x720F42;
-}
-
-ASMJIT_PATCH(0x720A58, ThemeClass_AI_DisableLog, 0x6)
-{
-	GET(ThemeClass*, pThis, ESI);
-	pThis->QueuedTheme = R->EAX<int>();
-	return 0x720A69;
 }
 
 // load more than one audio bag and index.

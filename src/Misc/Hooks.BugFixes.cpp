@@ -237,21 +237,18 @@ ASMJIT_PATCH(0x480534, CellClass_AttachesToNeighbourOverlay, 5)
 		return 0x480549;
 	}
 
-	for (auto pObject = pThis->FirstObject; pObject; pObject = pObject->NextObject)
+	if (auto pBuilding = pThis->GetBuilding())
 	{
-		if (pObject->Health > 0)
+		if (pBuilding->Health > 0)
 		{
-			if (const auto pBuilding = cast_to<BuildingClass*, false>(pObject))
-			{
-				const auto pBType = pBuilding->Type;
+			const auto pBType = pBuilding->Type;
 
-				if ((RulesClass::Instance->EWGates.Contains(pBType)) && (state == 2 || state == 6))
-					return 0x480549;
-				else if ((RulesClass::Instance->NSGates.Contains(pBType)) && (state == 0 || state == 4))
-					return 0x480549;
-				else if (RulesExtData::Instance()->WallTowers.Contains(pBType))
-					return 0x480549;
-			}
+			if ((RulesClass::Instance->EWGates.Contains(pBType)) && (state == 2 || state == 6))
+				return 0x480549;
+			else if ((RulesClass::Instance->NSGates.Contains(pBType)) && (state == 0 || state == 4))
+				return 0x480549;
+			else if (RulesExtData::Instance()->WallTowers.Contains(pBType))
+				return 0x480549;
 		}
 	}
 
@@ -618,7 +615,7 @@ ASMJIT_PATCH(0x519F84, InfantryClass_UpdatePosition_EngineerPreUninit, 0x6)
 // }
 
 // Fixes C4=no amphibious infantry being killed in water if Chronoshifted/Paradropped there.
-ASMJIT_PATCH(0x51A996, InfantryClass_PerCellProcess_KillOnImpassable, 0x5)
+ASMJIT_PATCH(0x51A996, InfantryClass_UpdatePositio_KillOnImpassable, 0x5)
 {
 	enum { ContinueChecks = 0x51A9A0, SkipKilling = 0x51A9EB };
 
@@ -976,28 +973,6 @@ ASMJIT_PATCH(0x4D580B, FootClass_ApproachTarget_DeployToFire, 0x6)
 	return SkipGameCode;
 }
 
-ASMJIT_PATCH(0x741050, UnitClass_CanFire_DeployToFire, 0x6)
-{
-	enum { NoNeedToCheck = 0x74132B, SkipGameCode = 0x7410B7, MustDeploy = 0x7410A8 };
-
-	GET(UnitClass*, pThis, ESI);
-
-	if (pThis->Type->DeployToFire
-		&& pThis->CanDeployNow()
-		&& !TechnoExtData::CanDeployIntoBuilding(pThis, true)
-		)
-	{
-		return MustDeploy;
-	}
-
-	auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->Type);
-
-	if (!pTypeExt->NoTurret_TrackTarget.Get(RulesExtData::Instance()->NoTurret_TrackTarget))
-		return NoNeedToCheck;
-
-	return SkipGameCode;
-}
-
 #include <VeinholeMonsterClass.h>
 
 ASMJIT_PATCH(0x5349A5, Map_ClearVectors_Veinhole, 0x5)
@@ -1211,7 +1186,7 @@ struct OverlayByteReader
 	OverlayByteReader(CCINIClass* pINI, const char* pSection)
 		:
 		uuLength { 0u },
-		pBuffer { YRMemory::Allocate(512000) },
+		pBuffer { YRMemory::AllocateChecked(512000) },
 		ls { TRUE, 0x2000 },
 		bs { nullptr, 0 }
 	{
@@ -1331,7 +1306,7 @@ ASMJIT_PATCH(0x5FD2E0, OverlayClass_ReadINI, 0x7)
 			}
 		}
 
-		auto pBuffer = YRMemory::Allocate(256000);
+		auto pBuffer = YRMemory::AllocateChecked(256000);
 		size_t uuLength = pINI->ReadUUBlock(GameStrings::OverlayDataPack(), pBuffer, 256000);
 
 		if (uuLength > 0)
@@ -1370,7 +1345,7 @@ struct OverlayByteWriter
 	OverlayByteWriter(const char* pSection, size_t nBufferLength)
 		: lpSectionName { pSection }, uuLength { 0 }, bp { nullptr,0 }, lp { FALSE,0x2000 }
 	{
-		this->Buffer = YRMemory::Allocate(nBufferLength);
+		this->Buffer = YRMemory::AllocateChecked(nBufferLength);
 		bp.Buffer.Buffer = this->Buffer;
 		bp.Buffer.Size = nBufferLength;
 		bp.Buffer.Allocated = false;
@@ -1469,7 +1444,11 @@ ASMJIT_PATCH(0x74691D, UnitClass_UpdateDisguise_EMP, 0x6)
 {
 	GET(UnitClass*, pThis, ESI);
 	// Remove mirage disguise if under emp or being flipped, approximately 15 deg
-	if (pThis->IsUnderEMP() || TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled || Math::abs(pThis->AngleRotatedForwards) > 0.25 || Math::abs(pThis->AngleRotatedSideways) > 0.25)
+	if (pThis->Deactivated
+		|| pThis->IsUnderEMP()
+		|| TechnoExtContainer::Instance.Find(pThis)->Is_DriverKilled
+		|| Math::abs(pThis->AngleRotatedForwards) > 0.25
+		|| Math::abs(pThis->AngleRotatedSideways) > 0.25)
 	{
 		pThis->ClearDisguise();
 		R->Stack(0x7, false);
@@ -1482,7 +1461,7 @@ ASMJIT_PATCH(0x74691D, UnitClass_UpdateDisguise_EMP, 0x6)
 
 bool FakeHouseClass::_IsAlliedWith(HouseClass* pOther)
 {
-	return Phobos::Config::DevelopmentCommands
+	return (Phobos::Config::DevelopmentCommands && SessionClass::IsSingleplayer())
 		|| this->ControlledByCurrentPlayer()
 		|| this->IsAlliedWith(pOther);
 }
@@ -1985,7 +1964,7 @@ ASMJIT_PATCH(0x743664, UnitClass_ReadFromINI_Follower3, 0x6)
 		{
 			auto const pFollower = units[followerIndex];
 			pUnit->FollowerCar = pFollower;
-			pFollower->HasFollowerCar = true;
+			pFollower->IsFollowerCar = true;
 		}
 	}
 	units.clear();
@@ -2112,7 +2091,7 @@ ASMJIT_PATCH(0x4C75DA, EventClass_RespondToEvent_Stop, 0x6)
 
 size_t __fastcall Gamestrtohex(char* str)
 {
-	JMP_STD(0x412610);
+	JMP_FAST(0x412610);
 }
 
 #include <TaskForceClass.h>
@@ -2168,79 +2147,6 @@ DEFINE_FUNCTION_JUMP(CALL, 0x6EBCC9, Check2DDistanceInsteadOf3D);
 
 #pragma endregion
 
-static void KickOutStuckUnits(BuildingClass* pThis)
-{
-	if (const auto pTechno = pThis->GetNthLink())
-	{
-		if (const auto pUnit = cast_to<UnitClass*>(pTechno))
-		{
-			if (!pUnit->IsTethered && pUnit->GetCurrentSpeed() <= 0)
-			{
-				if (const auto pTeam = pUnit->Team)
-					pTeam->LiberateMember(pUnit);
-
-				pThis->SendCommand(RadioCommand::NotifyUnlink, pUnit);
-				pUnit->QueueMission(Mission::Guard, false);
-				return; // one after another
-			}
-		}
-	}
-
-	auto buffer = CoordStruct::Empty;
-	auto pCell = MapClass::Instance->GetCellAt(pThis->GetExitCoords(&buffer, 0));
-	int i = 0;
-
-	while (true)
-	{
-		for (auto pObject = pCell->FirstObject; pObject; pObject = pObject->NextObject)
-		{
-			if (const auto pUnit = cast_to<UnitClass*>(pObject))
-			{
-				if (pThis->Owner != pUnit->Owner || pUnit->IsTethered)
-					continue;
-
-				const auto height = pUnit->GetHeight();
-
-				if (height < 0 || height > Unsorted::CellHeight)
-					continue;
-
-				if (const auto pTeam = pUnit->Team)
-					pTeam->LiberateMember(pUnit);
-
-				pThis->SendCommand(RadioCommand::RequestLink, pUnit);
-				pThis->QueueMission(Mission::Unload, false);
-				return; // one after another
-			}
-		}
-
-		if (++i >= 2)
-			return; // no stuck
-
-		pCell = pCell->GetNeighbourCell(FacingType::East);
-	}
-}
-
-// Kick out stuck units when the factory building is not busy
-ASMJIT_PATCH(0x450248, BuildingClass_UpdateFactory_KickOutStuckUnits, 0x6)
-{
-	GET(BuildingClass*, pThis, ESI);
-
-	if (!(Unsorted::CurrentFrame % 15))
-	{
-		const auto pType = pThis->Type;
-
-		if (pType->Factory == AbstractType::UnitType && pType->WeaponsFactory && !pType->Naval && pThis->QueuedMission != Mission::Unload)
-		{
-			const auto mission = pThis->CurrentMission;
-
-			if (mission == Mission::Guard || (mission == Mission::Unload && pThis->MissionStatus == 1))
-				KickOutStuckUnits(pThis);
-		}
-	}
-
-	return 0;
-}
-
 // Should not kick out units if the factory building is in construction process
 ASMJIT_PATCH(0x4444A0, BuildingClass_KickOutUnit_NoKickOutInConstruction, 0xA)
 {
@@ -2253,17 +2159,17 @@ ASMJIT_PATCH(0x4444A0, BuildingClass_KickOutUnit_NoKickOutInConstruction, 0xA)
 	return (mission == Mission::Unload || mission == Mission::Construction) ? ThisIsNotOK : ThisIsOK;
 }
 
-ASMJIT_PATCH(0x6B7CC1, SpawnManagerClass_Detach_ExitGame, 0x7)
-{
-	GET(SpawnManagerClass*, pThis, ESI);
-
-	if (Phobos::Otamaa::ExeTerminated)
-		return 0x6B7CCF;
-
-	pThis->KillNodes();
-	pThis->ResetTarget();
-	return 0x6B7CCF;
-}
+// ASMJIT_PATCH(0x6B7CC1, SpawnManagerClass_Detach_ExitGame, 0x7)
+// {
+// 	GET(SpawnManagerClass*, pThis, ESI);
+//
+// 	if (Phobos::Otamaa::ExeTerminated)
+// 		return 0x6B7CCF;
+//
+// 	pThis->KillNodes();
+// 	pThis->ResetTarget();
+// 	return 0x6B7CCF;
+// }
 
 ASMJIT_PATCH(0x71872C, TeleportLocomotionClass_MakeRoom_OccupationFix, 0x9)
 {
@@ -2351,49 +2257,59 @@ ASMJIT_PATCH(0x75EE49, WaveClass_DrawSonic_CrashFix, 0x7)
 	return 0;
 }
 
+ASMJIT_PATCH(0x73AE70, UnitClass_UpdatePosition_Bridge, 0x5)
+{
+	GET(UnitClass*, pThis, EBP);
+	return pThis->OnBridge
+		&& GroundType::Array[static_cast<int>(LandType::Road)].
+		Cost[static_cast<int>(pThis->Type->SpeedType)] == 0.0f ? 0x73AEB4 : 0;
+}
+
 // Change enter to move when unlink
-//ASMJIT_PATCH(0x6F4C50, TechnoClass_ReceiveCommand_NotifyUnlink, 0x6)
-//{
-//	GET(TechnoClass* const, pThis, ESI);
-//	GET_STACK(TechnoClass* const, pCall, STACK_OFFSET(0x18, 0x4));
-//	// If the link connection is cancelled and foot A is entering techno B, it may cause A and B to overlap
-//	if (!pCall->InLimbo // Has not already entered
-//		&& (pCall->AbstractFlags & AbstractFlags::Foot) // Is foot
-//		&& pCall->CurrentMission == Mission::Enter // Is entering
-//		&& static_cast<FootClass*>(pCall)->Destination == pThis // Is entering techno B
-//		&& pCall->WhatAmI() != AbstractType::Aircraft // Not aircraft
-//		&& pThis->GetTechnoType()->Passengers > 0) // Have passenger seats
-//	{
-//		pCall->SetDestination(pThis->GetCell(), false); // Set the destination at its feet
-//		pCall->QueueMission(Mission::Move, false); // Replace entering with moving
-//		pCall->NextMission(); // Immediately respond to the Mission::Move
-//	}
-//
-//	return 0;
-//}
+ASMJIT_PATCH(0x6F4C50, TechnoClass_ReceiveCommand_NotifyUnlink, 0x6)
+{
+	GET(TechnoClass* const, pThis, ESI);
+	GET_STACK(TechnoClass* const, pCall, STACK_OFFSET(0x18, 0x4));
+	// If the link connection is cancelled and foot A is entering techno B, it may cause A and B to overlap
+	if (!pCall->InLimbo // Has not already entered
+		&& (pCall->AbstractFlags & AbstractFlags::Foot) // Is foot
+		&& pCall->CurrentMission == Mission::Enter // Is entering
+		&& static_cast<FootClass*>(pCall)->Destination == pThis // Is entering techno B
+		&& pCall->WhatAmI() != AbstractType::Aircraft // Not aircraft
+		&& pThis->GetTechnoType()->Passengers > 0) // Have passenger seats
+	{
+		pCall->SetDestination(pThis->GetCell(), false); // Set the destination at its feet
+		pCall->QueueMission(Mission::Move, false); // Replace entering with moving
+		pCall->NextMission(); // Immediately respond to the Mission::Move
+	}
+
+	return 0;
+}
 
 // Radio: do not untether techno who have other tether link
-//ASMJIT_PATCH(0x6F4BB3, TechnoClass_ReceiveCommand_RequestUntether, 0x7)
-//{
-//	// Place the hook after processing to prevent functions from calling each other and getting stuck in a dead loop.
-//	GET(TechnoClass* const, pThis, ESI);
-//	// The radio link capacity of some technos can be greater than 1 (like airport)
-//	// Here is a specific example, there may be other situations as well:
-//	// - Untether without check may result in `AirportBound=no` aircraft being unable to release from `IsTether` status.
-//	// - Specifically, all four aircraft are connected to the airport and have `RadioLink` settings, but when the first aircraft
-//	//   is `Unlink` from the airport, all subsequent aircraft will be stuck in `IsTether` status.
-//	// - This is because when both parties who are `RadioLink` to each other need to `Unlink`, they need to `Untether` first,
-//	//   and this requires ensuring that both parties have `IsTether` flag (0x6F4C50), otherwise `Untether` cannot be successful,
-//	//   which may lead to some unexpected situations.
-//	for (int i = 0; i < pThis->RadioLinks.Capacity; ++i) {
-//		if (const auto pLink = pThis->RadioLinks.Items[i]) {
-//			if (pLink->IsTethered) // If there's another tether link, reset flag to true
-//				pThis->IsTethered = true; // Ensures that other links can be properly untether afterwards
-//		}
-//	}
-//
-//	return 0;
-//}
+ASMJIT_PATCH(0x6F4BB3, TechnoClass_ReceiveCommand_RequestUntether, 0x7)
+{
+	// Place the hook after processing to prevent functions from calling each other and getting stuck in a dead loop.
+	GET(TechnoClass* const, pThis, ESI);
+	// The radio link capacity of some technos can be greater than 1 (like airport)
+	// Here is a specific example, there may be other situations as well:
+	// - Untether without check may result in `AirportBound=no` aircraft being unable to release from `IsTether` status.
+	// - Specifically, all four aircraft are connected to the airport and have `RadioLink` settings, but when the first aircraft
+	//   is `Unlink` from the airport, all subsequent aircraft will be stuck in `IsTether` status.
+	// - This is because when both parties who are `RadioLink` to each other need to `Unlink`, they need to `Untether` first,
+	//   and this requires ensuring that both parties have `IsTether` flag (0x6F4C50), otherwise `Untether` cannot be successful,
+	//   which may lead to some unexpected situations.
+	for (int i = 0; i < pThis->RadioLinks.Capacity; ++i)
+	{
+		if (const auto pLink = pThis->RadioLinks.Items[i])
+		{
+			if (pLink->IsTethered) // If there's another tether link, reset flag to true
+				pThis->IsTethered = true; // Ensures that other links can be properly untether afterwards
+		}
+	}
+
+	return 0;
+}
 
 ASMJIT_PATCH(0x6FC617, TechnoClass_GetFireError_AirCarrierSkipCheckNearBridge, 0x8)
 {
@@ -2545,20 +2461,31 @@ ASMJIT_PATCH(0x4D7005, FootClass_ElectricAssultFix, 0x5)			// Mission_AreaGuard
 		: 0;
 }ASMJIT_PATCH_AGAIN(0x4D51B2, FootClass_ElectricAssultFix, 0x5)	// Mission_Guard
 
+ASMJIT_PATCH(0x7077FD, TechnoClass_PointerExpired_SpawnOwnerFix, 0x6)
+{
+	GET_STACK(bool, removed, STACK_OFFSET(0x20, 0x8));
+	// Skip the reset for SpawnOwner if !removed.
+	return removed ? 0 : 0x707803;
+}
+
+ASMJIT_PATCH(0x44E910, BuildingClass_PointerExpired_C4ExpFix, 0x6)
+{
+	GET_STACK(bool, removed, STACK_OFFSET(0xC, 0x8));
+	// Skip the reset for C4AppliedBy if !removed.
+	return removed ? 0 : 0x44E916;
+}
+
 // I think no one wants to see wild pointers caused by WW's negligence
-//ASMJIT_PATCH(0x4D9A1B, FootClass_PointerExpired_RemoveDestination, 0x6)
-//{
-//
-//	GET_STACK(bool, removed, STACK_OFFSET(0x1C, 0x8));
-//
-//	if (removed)
-//		return 0x4D9ABD;
-//
-//
-//	R->BL(true);
-//
-//	return 0x4D9A25;
-//}
+ASMJIT_PATCH(0x4D9A1B, FootClass_PointerExpired_RemoveDestination, 0x6)
+{
+	GET_STACK(bool, removed, STACK_OFFSET(0x1C, 0x8));
+
+	if (removed)
+		return 0x4D9ABD;
+
+	R->BL(true);
+	return 0x4D9A25;
+}
 
 //namespace RemoveSpawneeHelper
 //{
@@ -2583,7 +2510,7 @@ ASMJIT_PATCH(0x4D7005, FootClass_ElectricAssultFix, 0x5)			// Mission_AreaGuard
 //	return RemoveSpawneeHelper::removed ? 0x6B7CF4 : 0;
 //}
 
-#ifdef _BalloonHoverFix
+#ifndef _BalloonHoverFix
 ASMJIT_PATCH(0x64D592, Game_PreProcessMegaMissionList_CheckForTargetCrdRecal1, 0x6)
 {
 	enum { SkipTargetCrdRecal = 0x64D598 };
@@ -2620,10 +2547,11 @@ ASMJIT_PATCH(0x73F0A7, UnitClass_IsCellOccupied_Start, 0x9)
 }
 #endif
 
-#ifdef PassengerRelatedFix
+#ifndef PassengerRelatedFix
 
 #include <Locomotor/LocomotionClass.h>
 #include <Locomotor/ShipLocomotionClass.h>
+#include <Ext/Infantry/Body.h>
 
 DEFINE_FUNCTION_JUMP(CALL6, 0x51A657, FakeInfantryClass::_DummyScatter);
 
@@ -2714,7 +2642,7 @@ ASMJIT_PATCH(0x737945, UnitClass_ReceiveCommand_MoveTransporter, 0x7)
 	return SkipGameCode;
 }
 
-ASMJIT_PATCH(0x710352, FootClass_ImbueLocomotor_ResetUnloadingHarvester, 0x7)
+ASMJIT_PATCH(0x710352, FootClass_ImbueLocomotor_ResetStatusses, 0x7)
 {
 	GET(FootClass*, pTarget, ESI);
 
@@ -2722,6 +2650,8 @@ ASMJIT_PATCH(0x710352, FootClass_ImbueLocomotor_ResetUnloadingHarvester, 0x7)
 	if (const auto pUnit = cast_to<UnitClass*, false>(pTarget))
 		pUnit->Unloading = false;
 
+	pTarget->Mark(MarkType::Up);
+	pTarget->OnBridge = false;
 	return 0;
 }
 
@@ -2746,16 +2676,6 @@ ASMJIT_PATCH(0x7196BB, TeleportLocomotionClass_Process_MarkDown, 0xA)
 		pLinkedTo->Mark(MarkType::Put);
 
 	return 0x7196C5;
-}
-
-ASMJIT_PATCH(0x73769E, UnitClass_ReceiveCommand_NoEnterOnBridge, 0x6)
-{
-	enum { NoEnter = 0x73780F };
-
-	GET(UnitClass* const, pThis, ESI);
-	GET(TechnoClass* const, pCall, EDI);
-
-	return pThis->OnBridge && pCall->OnBridge ? NoEnter : 0;
 }
 
 ASMJIT_PATCH(0x70D842, FootClass_UpdateEnter_NoMoveToBridge, 0x5)
@@ -2833,6 +2753,17 @@ ASMJIT_PATCH(0x489E47, DamageArea_RockerItemsFix2, 0x6)
 
 #endif
 
+ASMJIT_PATCH(0x51A298, InfantryClass_UpdatePosition_EnterBuilding_CheckSize, 0x6)
+{
+	enum { CannotEnter = 0x51A4BF };
+
+	GET(InfantryClass*, pThis, ESI);
+	GET(BuildingClass*, pDestination, EDI);
+	// Compared to `Vehicle entering building` / `Infantry entering vehicle` / `Vehicle entering vehicle`,
+	// `Infantry entering building` lacks the judgment of this
+	return (pThis->SendCommand(RadioCommand::QueryCanEnter, pDestination) == RadioCommand::AnswerPositive) ? 0 : CannotEnter;
+}
+
 DEFINE_JUMP(LJMP, 0x4C752A, 0x4C757D); // Skip cell under bridge check
 
 // Fix a potential edge case where aircraft gets stuck in 'sleep' (reload/repair) on dock if it gets assigned target from team mission etc.
@@ -2846,15 +2777,6 @@ ASMJIT_PATCH(0x41915D, AircraftClass_ReceiveCommand_QueryPreparedness, 0x8)
 		return CheckAmmo;
 
 	return 0;
-}
-
-ASMJIT_PATCH(0x418CF3, AircraftClass_Mission_Attack_PlanningFix, 0x5)
-{
-	enum { SkipIdle = 0x418D00 };
-
-	GET(AircraftClass*, pThis, ESI);
-
-	return pThis->Ammo <= 0 || !pThis->TryNextPlanningTokenNode() ? 0 : SkipIdle;
 }
 
 ASMJIT_PATCH(0x6F9222, TechnoClass_SelectAutoTarget_HealingTargetAir, 0x6)
@@ -2885,3 +2807,138 @@ ASMJIT_PATCH(0x71A7BC, TemporalClass_Update_DistCheck, 0x6)
 
 	return distance > (disatanceMax * 256) ? 0x71A83F : 0x71A84E;
 }
+
+ASMJIT_PATCH(0x418CF3, AircraftClass_Mission_Attack_ReturnToSpawnOwner, 0x5)
+{
+	GET(AircraftClass* const, pThis, ESI);
+
+	const auto pSpawnOwner = pThis->SpawnOwner;
+
+	if (!pSpawnOwner || pThis->Ammo <= 0 || !pThis->TryNextPlanningTokenNode())
+		return 0;
+
+	if (pSpawnOwner)
+	{
+		pThis->SetDestination(pSpawnOwner, true);
+		pThis->QueueMission(Mission::Move, false);
+	}
+
+	return 0x418D00;
+}
+
+#include <WWMouseClass.h>
+
+DWORD WINAPI Mouse_Thread(MouseThreadParameter* lpThreadParameter)
+{
+	lpThreadParameter->dword14 = 1;
+	lpThreadParameter->SkipSleep = 0;
+
+	if (lpThreadParameter->SkipProcessing)
+	{
+		lpThreadParameter->SkipSleep = 1;
+	}
+	else
+	{
+		do
+		{
+			if (Imports::WaitForSingleObject.invoke()(MouseThreadParameter::Mutex(), 10000u) == 258)
+			{
+				Debug::LogInfo("Warning: Probable deadlock occurred on MouseMutex.");
+			}
+
+			if (WWMouseClass::Thread_Instance())
+			{
+				WWMouseClass::Thread_Instance->Process();
+			}
+
+			Imports::ReleaseMutex.invoke()(MouseThreadParameter::Mutex());
+			Imports::Sleep.invoke()(lpThreadParameter->SleepTime);
+			++lpThreadParameter->RefCount;
+		}
+		while (!lpThreadParameter->SkipProcessing);
+		lpThreadParameter->SkipSleep = 1;
+	}
+
+	return 0;
+}
+
+void __fastcall StartMouseThread()
+{
+	HANDLE MutexA = MouseThreadParameter::Mutex();
+	char Buffer[1024];
+
+	if (!MouseThreadParameter::Mutex())
+	{
+		MutexA = Imports::CreateMutexA.invoke()(0, 0, 0);
+		MouseThreadParameter::Mutex = MutexA;
+	}
+
+	if (!MouseThreadParameter::ThreadNotActive())
+	{
+		if (MutexA)
+		{
+			MouseThreadParameter::Thread = MouseThreadParameter {
+				.SleepTime = 1
+			};
+
+			HANDLE Thread = Imports::CreateThread.invoke()(0, 0x1000u, (LPTHREAD_START_ROUTINE)Mouse_Thread, &MouseThreadParameter::Thread, 0, &MouseThreadParameter::Thread->ThreadID);
+			MouseThreadParameter::Thread->SomeState18 = Thread;
+			if (Thread)
+			{
+				MouseThreadParameter::ThreadNotActive = 1;
+				if (!Imports::SetThreadPriority.invoke()(Thread, 15))
+				{
+					DWORD LastError = GetLastError();
+					Imports::FormatMessageA.invoke()(0x1000u, 0, LastError, 0, Buffer, 0x400u, 0);
+					Debug::LogInfo("Unable to change the priority of the mouse thread - %s\n", Buffer);
+					while (!MouseThreadParameter::Thread->SkipSleep)
+					{
+						Imports::Sleep.invoke()(0);
+					}
+					Imports::WaitForSingleObject.invoke()(MouseThreadParameter::Thread->SomeState18, 5000u);
+					Imports::CloseHandle.invoke()(MouseThreadParameter::Thread->SomeState18);
+					MouseThreadParameter::ThreadNotActive = 0;
+				}
+			}
+		}
+	}
+}
+
+//massive FPS losses
+//DEFINE_FUNCTION_JUMP(CALL , 0x6BD849 , StartMouseThread)
+
+ASMJIT_PATCH(0x70E126, TechnoClass_GetDeployWeapon_InfantryDeployFireWeapon, 0x6)
+{
+	GET(TechnoClass*, pThis, ESI);
+
+	if (const auto pInfantry = cast_to<InfantryClass*>(pThis))
+	{
+		const int deployFireWeapon = pInfantry->Type->DeployFireWeapon;
+
+		R->EAX(deployFireWeapon == -1 ? pInfantry->SelectWeapon(pInfantry->Target) : deployFireWeapon);
+	}
+	else
+	{
+		R->EAX(pThis->IsNotSprayAttack());
+	}
+
+	return 0x70E12C;
+}
+
+DEFINE_JUMP(LJMP, 0x6FBC0B, 0x6FBC38) // TechnoClass::UpdateCloak
+
+//ASMJIT_PATCH(0x457DEB, BuildingClass_ClearOccupants_Redraw, 0xA)
+//{
+//	GET(BuildingClass*, pThis, ESI);
+//	pThis->Mark(MarkType::Change);
+//	return 0;
+//}
+
+#pragma region AStarBuffer
+
+// Buffer doubled
+DEFINE_PATCH(0x42A752, 0x08);
+DEFINE_PATCH(0x42A765, 0x02);
+DEFINE_PATCH(0x42A7E3, 0x20);
+
+#pragma endregion

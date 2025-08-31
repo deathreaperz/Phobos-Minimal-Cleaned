@@ -4,14 +4,12 @@
 
 #include "Savegame.h"
 
-#include <Utilities/GameUniquePointers.h>
-#include <Utilities/VectorHelper.h>
-
 #include <unordered_map>
 #include <map>
 #include <set>
 #include <bitset>
 #include <memory>
+#include <string>
 
 #include <ArrayClasses.h>
 #include <FileSystem.h>
@@ -130,8 +128,11 @@ namespace Savegame
 	{
 		bool ret = Stm.Load(Value);
 
-		if (RegisterForChange)
-			Swizzle swizzle(Value);
+		if constexpr (std::is_pointer<T>::value)
+		{
+			if (RegisterForChange)
+				PHOBOS_SWIZZLE_REQUEST_POINTER_REMAP(Value, PhobosCRT::GetTypeIDName<T>().c_str());
+		}
 
 		return ret;
 	}
@@ -537,7 +538,7 @@ namespace Savegame
 			return false;
 		}
 
-		bool WriteToStream(PhobosStreamWriter& Stm, const std::string& Value) const
+		bool WriteToStream(PhobosStreamWriter& Stm, const std::wstring& Value) const
 		{
 			Stm.Save(Value.size());
 
@@ -639,6 +640,7 @@ namespace Savegame
 		}
 	};
 
+	/*
 	template <typename T>
 	struct Savegame::PhobosStreamObject<UniqueGamePtrC<T>>
 	{
@@ -667,7 +669,7 @@ namespace Savegame
 		{
 			return PersistObject(Stm, Value.get());
 		}
-	};
+	};*/
 
 	template <>
 	struct Savegame::PhobosStreamObject<UniqueGamePtr<BytePalette>>
@@ -814,9 +816,9 @@ namespace Savegame
 				return false;
 
 			if (RegisterForChange)
-				Swizzle swizzle(Value.Type);
+				PHOBOS_SWIZZLE_REQUEST_POINTER_REMAP(Value.Type, "RocketStruct::AircraftType")
 
-			return true;
+				return true;
 		}
 
 		bool WriteToStream(PhobosStreamWriter& Stm, const RocketStruct& Value) const
@@ -835,9 +837,9 @@ namespace Savegame
 				return false;
 
 			if (RegisterForChange)
-				Swizzle swizzle(Value.CurrentFactory);
+				PHOBOS_SWIZZLE_REQUEST_POINTER_REMAP(Value.CurrentFactory, "BuildType::Factory")
 
-			return true;
+				return true;
 		}
 
 		bool WriteToStream(PhobosStreamWriter& Stm, const BuildType& Value) const
@@ -934,7 +936,7 @@ namespace Savegame
 			if (!Stm.Load(Count))
 				return false;
 
-			if (!Count)
+			if (((int)Count) <= 0)
 				return true;
 
 			Value.resize(Count);
@@ -949,46 +951,6 @@ namespace Savegame
 		}
 
 		bool WriteToStream(PhobosStreamWriter& Stm, const std::vector<T, Alloc>& Value) const
-		{
-			Stm.Save(Value.size());
-
-			for (auto ix = 0u; ix < Value.size(); ++ix)
-			{
-				if (!Savegame::WritePhobosStream(Stm, Value[ix]))
-					return false;
-			}
-
-			return true;
-		}
-	};
-
-	template <typename T, typename Alloc>
-	struct Savegame::PhobosStreamObject<HelperedVector<T, Alloc>>
-	{
-		bool ReadFromStream(PhobosStreamReader& Stm, HelperedVector<T, Alloc>& Value, bool RegisterForChange) const
-		{
-			Value.clear();
-
-			size_t Count = 0;
-
-			if (!Stm.Load(Count))
-				return false;
-
-			if (!Count)
-				return true;
-
-			Value.resize(Count);
-
-			for (auto ix = 0u; ix < Count; ++ix)
-			{
-				if (!Savegame::ReadPhobosStream(Stm, Value[ix], RegisterForChange))
-					return false;
-			}
-
-			return true;
-		}
-
-		bool WriteToStream(PhobosStreamWriter& Stm, const HelperedVector<T, Alloc>& Value) const
 		{
 			Stm.Save(Value.size());
 
@@ -1037,7 +999,7 @@ namespace Savegame
 			if (!Stm.Load(Count))
 				return false;
 
-			if (Count <= 0)
+			if (((int)Count) <= 0)
 				return true;
 
 			for (auto ix = 0u; ix < Count; ++ix)
@@ -1087,21 +1049,36 @@ namespace Savegame
 				return false;
 			}
 
-			//Debug::LogInfo("Loading std::set with(%s) size %d", typeid(T).name(), Count);
-
-			if (!Count)
+			if (((int)Count) <= 0)
 				return true;
 
-			for (auto ix = 0u; ix < Count; ++ix)
-			{
-				T buffer = T();
-				if (!Savegame::ReadPhobosStream(Stm, buffer, RegisterForChange))
-				{
-					return false;
-				}
-				Value.insert(buffer);
-			}
+			//Debug::LogInfo("Loading std::set with(%s) size %d", typeid(T).name(), Count);
 
+			if COMPILETIMEEVAL(std::is_pointer<T>::value)
+			{
+				std::vector<T> buffer(Count, nullptr);
+				for (auto ix = 0u; ix < Count; ++ix)
+				{
+					if (!Savegame::ReadPhobosStream(Stm, buffer[ix], RegisterForChange))
+					{
+						return false;
+					}
+				}
+
+				Value.insert(buffer.begin(), buffer.end());
+			}
+			else
+			{
+				for (auto ix = 0u; ix < Count; ++ix)
+				{
+					T buffer = T();
+					if (!Savegame::ReadPhobosStream(Stm, buffer, RegisterForChange))
+					{
+						return false;
+					}
+					Value.insert(buffer);
+				}
+			}
 			return true;
 		}
 
@@ -1134,6 +1111,9 @@ namespace Savegame
 			{
 				return false;
 			}
+
+			if (((int)Count) <= 0)
+				return true;
 
 			for (auto ix = 0u; ix < Count; ++ix)
 			{
@@ -1175,6 +1155,9 @@ namespace Savegame
 			if (!Stm.Load(count))
 				return false;
 
+			if (((int)count) <= 0)
+				return true;
+
 			Value.resize(count);
 
 			for (auto ix = 0u; ix < count; ++ix)
@@ -1209,7 +1192,7 @@ namespace Savegame
 			if (!Stm.Load(nSize))
 				return false;
 
-			if (nSize <= 0) //we loaded an queue but it is empty , just return true
+			if (((int)nSize) <= 0)
 				return true;
 
 			for (size_t ix = 0u; ix < nSize; ++ix)
@@ -1255,7 +1238,7 @@ namespace Savegame
 			if (!Stm.Load(nSize))
 				return false;
 
-			if (nSize <= 0)
+			if (((int)nSize) <= 0)
 				return true;
 
 			for (size_t ix = 0u; ix < nSize; ++ix)
@@ -1336,7 +1319,7 @@ namespace Savegame
 				return false;
 			}
 
-			if (Count <= 0)
+			if (((int)Count) <= 0)
 				return true;
 
 			for (auto ix = 0u; ix < Count; ++ix)
@@ -1385,6 +1368,9 @@ namespace Savegame
 			{
 				return false;
 			}
+
+			if (((int)Count) <= 0)
+				return true;
 
 			for (auto ix = 0u; ix < Count; ++ix)
 			{

@@ -23,6 +23,7 @@
 
 #include <New/AnonymousType/PassengerDeletionTypeClass.h>
 #include <New/AnonymousType/TiberiumEaterTypeClass.h>
+#include <New/AnonymousType/BlockTypeClass.h>
 
 #include <FileSystem.h>
 
@@ -41,6 +42,36 @@
 #include <Utilities/MultiBoolFixedArray.h>
 
 #include <Misc/Defines.h>
+
+struct JumpjetTiltVoxelIndexKey
+{
+	unsigned bodyFrame : 5;
+	unsigned bodyFace : 5;
+	unsigned slopeIndex : 6;
+	unsigned isSpawnAlt : 1;
+	unsigned forwards : 7;
+	unsigned sideways : 7;
+	unsigned reserved : 1;
+};
+
+struct PhobosVoxelIndexKey
+{
+	union
+	{
+		VoxelIndexKey Base;
+		union
+		{
+			JumpjetTiltVoxelIndexKey JumpjetTiltVoxel;
+			// add other definitions here as needed
+		} CustomIndexKey;
+	};
+
+	// add funcs here if needed
+	constexpr bool IsCleanKey() const { return Base.Value == 0; }
+	constexpr bool IsJumpjetKey() const { return Base.MainVoxel.Reserved != 0; }
+};
+
+static_assert(sizeof(PhobosVoxelIndexKey) == sizeof(VoxelIndexKey), "PhobosVoxelIndexKey size mismatch");
 
 class ArmorTypeClass;
 struct ImageStatusses
@@ -112,6 +143,9 @@ public:
 
 	AbstractType AttachtoType { AbstractType::None };
 	Valueable<bool> HealthBar_Hide { false };
+	Valueable<bool> HealthBar_HidePips { false };
+	Valueable<bool> HealthBar_Permanent { false };
+	Valueable<bool> HealthBar_Permanent_PipScale { false };
 	Valueable<CSFText> UIDescription {};
 	Valueable<bool> LowSelectionPriority { false };
 	PhobosFixedString<0x20> GroupAs { GameStrings::NoneStrb() };
@@ -165,7 +199,7 @@ public:
 
 	Valueable<bool> Death_NoAmmo { false };
 	Valueable<int> Death_Countdown { 0 };
-	Valueable<KillMethod> Death_Method { KillMethod::Explode };
+	Valueable<KillMethod> Death_Method { KillMethod::None };
 	Valueable<bool> Death_WithMaster { false };
 	Valueable<int> AutoDeath_MoneyExceed { -1 };
 	Valueable<int> AutoDeath_MoneyBelow { -1 };
@@ -173,7 +207,7 @@ public:
 	Valueable<bool> AutoDeath_FullPower { false };
 	Valueable<int> AutoDeath_PassengerExceed { -1 };
 	Valueable<int> AutoDeath_PassengerBelow { -1 };
-	Valueable<bool> AutoDeath_ContentIfAnyMatch { true };
+	Valueable<bool> AutoDeath_ContentIfAnyMatch { false };
 	Valueable<bool> AutoDeath_OwnedByPlayer { false };
 	Valueable<bool> AutoDeath_OwnedByAI { false };
 
@@ -409,7 +443,7 @@ public:
 	Valueable<bool> NoAirportBound_DisableRadioContact { false };
 	Nullable<AnimTypeClass*> SinkAnim { };
 	Nullable<double> Tunnel_Speed { };
-	Nullable<HoverTypeClass*> HoverType { };
+	Valueable<HoverTypeClass*> HoverType { };
 
 	Valueable<bool> Gattling_Overload { false };
 	Nullable<int> Gattling_Overload_Damage { };
@@ -543,8 +577,8 @@ public:
 	Valueable<UnitTypeClass*> WaterImage_Yellow { nullptr };
 	Valueable<UnitTypeClass*> WaterImage_Red { nullptr };
 
-	Valueable<UnitTypeClass*> Image_Yellow { nullptr };
-	Valueable<UnitTypeClass*> Image_Red { nullptr };
+	Valueable<TechnoTypeClass*> Image_Yellow { nullptr };
+	Valueable<TechnoTypeClass*> Image_Red { nullptr };
 
 	Valueable<int> FallRate_Parachute { 1 };
 	Valueable<int> FallRate_NoParachute { 1 };
@@ -986,6 +1020,8 @@ public:
 	Nullable<int> AIGuardAreaTargetingDelay {};
 	Nullable<int> PlayerGuardAreaTargetingDelay {};
 	Nullable<bool> DistributeTargetingFrame {};
+	Nullable<int> PlayerAttackMoveTargetingDelay {};
+	Nullable<int> AIAttackMoveTargetingDelay {};
 
 	Valueable<bool> CanBeBuiltOn { false };
 	Valueable<bool> UnitBaseNormal { false };
@@ -1087,10 +1123,20 @@ public:
 
 	Nullable<AffectedHouse> RadarInvisibleToHouse {};
 
-	Valueable<double> AdvancedDrive_ReverseSpeed { 0.85 };
-	Valueable<Leptons> AdvancedDrive_FaceTargetRange { Leptons(4096) };
-	Valueable<bool> AdvancedDrive_ConfrontEnemies { true };
-	Valueable<int> AdvancedDrive_RetreatDuration { 150 };
+	Valueable<bool> AdvancedDrive_Reverse { true };
+	Valueable<bool> AdvancedDrive_Reverse_FaceTarget { true };
+	Valueable<Leptons> AdvancedDrive_Reverse_FaceTargetRange { Leptons(4096) };
+	Valueable<Leptons> AdvancedDrive_Reverse_MinimumDistance { Leptons(640) };
+	Valueable<int> AdvancedDrive_Reverse_RetreatDuration { 150 };
+	Valueable<double> AdvancedDrive_Reverse_Speed { 0.85 };
+	Valueable<bool> AdvancedDrive_Hover {};
+	Valueable<bool> AdvancedDrive_Hover_Sink { true };
+	Valueable<bool> AdvancedDrive_Hover_Spin { true };
+	Valueable<bool> AdvancedDrive_Hover_Tilt { true };
+	Nullable<int> AdvancedDrive_Hover_Height {};
+	Nullable<double> AdvancedDrive_Hover_Dampen {};
+	Nullable<double> AdvancedDrive_Hover_Bob {};
+
 	Valueable<bool> Harvester_CanGuardArea {};
 
 	std::unique_ptr<TiberiumEaterTypeClass> TiberiumEaterType {};
@@ -1134,8 +1180,23 @@ public:
 	Valueable<int> ForceAAWeapon_Infantry { -1 };
 	Valueable<int> ForceAAWeapon_Units { -1 };
 	Valueable<int> ForceAAWeapon_Aircraft { -1 };
+	Valueable<int> ForceWeapon_Capture { -1 };
 
 	Valueable<bool> AttackMove_Follow_IfMindControlIsFull { };
+
+	Nullable<int> PenetratesTransport_Level { };
+	Valueable<double> PenetratesTransport_PassThroughMultiplier { 1.0 };
+	Valueable<double> PenetratesTransport_FatalRateMultiplier { 1.0 };
+	Valueable<double> PenetratesTransport_DamageMultiplier { 1.0 };
+
+	ValueableIdx<VocClass> VoiceIFVRepair { -1 };
+	ValueableVector<int> VoiceWeaponAttacks { };
+	ValueableVector<int> VoiceEliteWeaponAttacks { };
+	Valueable<UnitTypeClass*> DefaultVehicleDisguise { };
+	Nullable<bool> TurretResponse { };
+
+	std::unique_ptr<BlockTypeClass> BlockType {};
+	Valueable<bool> CanBlock {};
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadFromINIFile_Aircraft(CCINIClass* pINI);
@@ -1177,6 +1238,7 @@ private:
 public:
 	static COMPILETIMEEVAL double TurretMultiOffsetDefaultMult { 1.0 };
 	static COMPILETIMEEVAL double TurretMultiOffsetOneByEightMult { 0.125 };
+	static bool SelectWeaponMutex;
 
 	// Ares 0.A
 	static const char* GetSelectionGroupID(ObjectTypeClass* pType);
@@ -1197,7 +1259,10 @@ public:
 
 	static bool CanBeBuiltAt(TechnoTypeClass* pProduct, BuildingTypeClass* pFactoryType);
 
+	int SelectForceWeapon(TechnoClass* pThis, AbstractClass* pTarget);
 	int SelectMultiWeapon(TechnoClass* const pThis, AbstractClass* const pTarget);
+
+	void ParseVoiceWeaponAttacks(INI_EX& exINI, const char* pSection, ValueableVector<int>& n, ValueableVector<int>& nE);
 };
 
 class NOVTABLE FakeTechnoTypeClass : public TechnoTypeClass

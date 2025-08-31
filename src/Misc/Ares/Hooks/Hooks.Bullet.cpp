@@ -39,7 +39,7 @@ ASMJIT_PATCH(0x5f4fe7, ObjectClass_Put, 8)
 	return 0x5F5210;
 }
 
-ASMJIT_PATCH(0x469467, BulletClass_DetonateAt_CanTemporalTarget, 0x5)
+ASMJIT_PATCH(0x469467, BulletClass_Logics_CanTemporalTarget, 0x5)
 {
 	GET(TechnoClass* const, Target, ECX);
 
@@ -55,7 +55,7 @@ ASMJIT_PATCH(0x469467, BulletClass_DetonateAt_CanTemporalTarget, 0x5)
 }
 
 // Overpowerer no longer just infantry
-ASMJIT_PATCH(0x4693B0, BulletClass_DetonateAt_Overpower, 0x6)
+ASMJIT_PATCH(0x4693B0, BulletClass_Logics_Overpower, 0x6)
 {
 	GET(TechnoClass* const, pT, ECX);
 	switch (pT->WhatAmI())
@@ -96,107 +96,147 @@ ASMJIT_PATCH(0x46837F, BulletClass_DrawSHP_SetAnimPalette, 6)
 }
 
 #include <Ext/Techno/Body.h>
+#include <Utilities/DebrisSpawners.h>
 
-ASMJIT_PATCH(0x469C4E, BulletClass_DetonateAt_DamageAnimSelected, 5)
+ASMJIT_PATCH(0x469C46, BulletClass_Logics_ApplyMoreLogics, 0x8)
 {
-	enum { Continue = 0x469D06, NukeWarheadExtras = 0x469CAF };
-
-	GET(BulletClass* const, pThis, ESI);
+	GET(FakeBulletClass* const, pThis, ESI);
 	GET(AnimTypeClass* const, AnimType, EBX);
 	LEA_STACK(CoordStruct*, XYZ, 0x64);
 
-	const auto pWarheadExt = WarheadTypeExtContainer::Instance.Find(pThis->WH);
-	bool createdAnim = false;
-
-	int creationInterval = pWarheadExt->Splashed ?
-		pWarheadExt->SplashList_CreationInterval : pWarheadExt->AnimList_CreationInterval;
-
-	int* remainingInterval = &pWarheadExt->RemainingAnimCreationInterval;
-	int scatterMin = pWarheadExt->Splashed ? pWarheadExt->SplashList_ScatterMin.Get() : pWarheadExt->AnimList_ScatterMin.Get();
-	int scatterMax = pWarheadExt->Splashed ? pWarheadExt->SplashList_ScatterMax.Get() : pWarheadExt->AnimList_ScatterMax.Get();
-	bool allowScatter = scatterMax != 0 || scatterMin != 0;
-
-	if (creationInterval > 0 && pThis->Owner)
-		remainingInterval = &TechnoExtContainer::Instance.Find(pThis->Owner)->WHAnimRemainingCreationInterval;
-
-	if (creationInterval < 1 || *remainingInterval <= 0)
+	if (AnimType)
 	{
-		HouseClass* pInvoker = nullptr;
-		HouseClass* pVictim = nullptr;
+		const auto pWarheadExt = WarheadTypeExtContainer::Instance.Find(pThis->WH);
+		bool createdAnim = false;
 
-		if (const TechnoClass* Target = flag_cast_to<TechnoClass*>(pThis->Target))
-		{
-			pVictim = Target->Owner;
-		}
+		int creationInterval = pWarheadExt->Splashed ?
+			pWarheadExt->SplashList_CreationInterval : pWarheadExt->AnimList_CreationInterval;
 
-		if (const auto pTech = pThis->Owner)
+		int* remainingInterval = &pWarheadExt->RemainingAnimCreationInterval;
+		int scatterMin = pWarheadExt->Splashed ? pWarheadExt->SplashList_ScatterMin.Get() : pWarheadExt->AnimList_ScatterMin.Get();
+		int scatterMax = pWarheadExt->Splashed ? pWarheadExt->SplashList_ScatterMax.Get() : pWarheadExt->AnimList_ScatterMax.Get();
+		bool allowScatter = scatterMax != 0 || scatterMin != 0;
+
+		if (creationInterval > 0 && pThis->Owner)
+			remainingInterval = &TechnoExtContainer::Instance.Find(pThis->Owner)->WHAnimRemainingCreationInterval;
+
+		if (creationInterval < 1 || *remainingInterval <= 0)
 		{
-			pInvoker = pThis->Owner->GetOwningHouse();
+			HouseClass* pInvoker = nullptr;
+			HouseClass* pVictim = nullptr;
+
+			if (const TechnoClass* Target = flag_cast_to<TechnoClass*>(pThis->Target))
+			{
+				pVictim = Target->Owner;
+			}
+
+			if (const auto pTech = pThis->Owner)
+			{
+				pInvoker = pThis->Owner->GetOwningHouse();
+			}
+			else
+			{
+				if (auto const pBulletExt = BulletExtContainer::Instance.Find(pThis))
+					pInvoker = pBulletExt->Owner;
+			}
+
+			auto types = make_iterator_single(AnimType);
+
+			if (pWarheadExt->SplashList_CreateAll && pWarheadExt->Splashed)
+				types = pWarheadExt->SplashList.GetElements(RulesClass::Instance->SplashList);
+			else if (!pWarheadExt->Splashed)
+			{
+				bool createAll = pWarheadExt->AnimList_CreateAll;
+				if (pWarheadExt->CritActive && !pWarheadExt->Crit_AnimList.empty() && !pWarheadExt->Crit_AnimOnAffectedTargets)
+				{
+					createAll = pWarheadExt->Crit_AnimList_CreateAll.Get(createAll);
+					if (createAll)
+						types = pWarheadExt->Crit_AnimList;
+				}
+				else if (createAll)
+				{
+					types = pWarheadExt->AttachedToObject->AnimList;
+				}
+			}
+
+			for (auto pType : types)
+			{
+				if (!pType)
+					continue;
+
+				auto animCoords = *XYZ;
+
+				if (allowScatter)
+				{
+					int distance = ScenarioClass::Instance->Random.RandomRanged(scatterMin, scatterMax);
+					animCoords = MapClass::GetRandomCoordsNear(animCoords, distance, false);
+				}
+
+				{
+					auto const pAnim = GameCreate<AnimClass>(pType, animCoords, 0, 1, (AnimFlag)0x2600, -15, false);
+					createdAnim = true;
+
+					if (const auto pTech = pThis->Owner)
+					{
+						((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pTech;
+					}
+
+					if (pAnim->Type->MakeInfantry > -1)
+					{
+						AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim, nullptr, true, false);
+					}
+					else
+					{
+						AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim, pInvoker);
+					}
+				}
+			}
 		}
 		else
 		{
-			if (auto const pBulletExt = BulletExtContainer::Instance.Find(pThis))
-				pInvoker = pBulletExt->Owner;
+			(*remainingInterval)--;
 		}
 
-		auto types = make_iterator_single(AnimType);
-
-		if (pWarheadExt->SplashList_CreateAll && pWarheadExt->Splashed)
-			types = pWarheadExt->SplashList.GetElements(RulesClass::Instance->SplashList);
-		else if (!pWarheadExt->Splashed)
+		if (!createdAnim && pWarheadExt->IsNukeWarhead.Get())
 		{
-			bool createAll = pWarheadExt->AnimList_CreateAll;
-			if (pWarheadExt->HasCrit && !pWarheadExt->Crit_AnimList.empty() && !pWarheadExt->Crit_AnimOnAffectedTargets)
-			{
-				createAll = pWarheadExt->Crit_AnimList_CreateAll.Get(createAll);
-				if (createAll)
-					types = pWarheadExt->Crit_AnimList;
-			}
-			else if (createAll)
-			{
-				types = pWarheadExt->AttachedToObject->AnimList;
-			}
-		}
-
-		for (auto pType : types)
-		{
-			if (!pType)
-				continue;
-
-			auto animCoords = *XYZ;
-
-			if (allowScatter)
-			{
-				int distance = ScenarioClass::Instance->Random.RandomRanged(scatterMin, scatterMax);
-				animCoords = MapClass::GetRandomCoordsNear(animCoords, distance, false);
-			}
-
-			{
-				auto const pAnim = GameCreate<AnimClass>(pType, animCoords, 0, 1, (AnimFlag)0x2600, -15, false);
-				createdAnim = true;
-
-				if (const auto pTech = pThis->Owner)
-				{
-					((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pTech;
-				}
-
-				if (pAnim->Type->MakeInfantry > -1)
-				{
-					AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim, nullptr, true, false);
-				}
-				else
-				{
-					AnimExtData::SetAnimOwnerHouseKind(pAnim, pInvoker, pVictim, pInvoker);
-				}
-			}
+			int HouseIdx = pThis->Owner ? pThis->Owner->Owner->ArrayIndex : -1;
+			auto _loc = pThis->GetCoords();
+			MapClass::AtomDamage(HouseIdx, CellClass::Coord2Cell(_loc));
 		}
 	}
-	else
+
+	auto pWHExt = pThis->_GetWarheadTypeExtData();
+	auto pWarhead = pWHExt->AttachedToObject;
+
+	if (pWarhead->MaxDebris > 0)
 	{
-		(*remainingInterval)--;
+		auto const pCell = pThis->GetCell();
+		const bool isLand = !pCell ? true : pCell->LandType != LandType::Water || pCell->ContainsBridge();
+
+		if (isLand || !pWHExt->Debris_Conventional)
+		{
+			std::optional<bool> limited {};
+			if (pWHExt->DebrisTypes_Limit.isset())
+			{
+				limited = pWHExt->DebrisTypes_Limit.Get();
+			}
+
+			auto pExt = pThis->_GetExtData();
+			HouseClass* const pOwner = pThis->Owner ? pThis->Owner->GetOwningHouse() : (pExt->Owner ? pExt->Owner : HouseExtData::FindFirstCivilianHouse());
+			HouseClass* const pVictim = (pThis->Target) ? pThis->Target->GetOwningHouse() : nullptr;
+			DebrisSpawners::Spawn(pWarhead->MinDebris, pWarhead->MaxDebris,
+				pThis->GetCoords(), pWarhead->DebrisTypes,
+				pWHExt->DebrisAnimTypes.GetElements(RulesClass::Instance->MetallicDebris)
+				, pWarhead->DebrisMaximums, pWHExt->DebrisMinimums, limited, pThis->Owner, pOwner, pVictim);
+		}
 	}
 
-	return (!createdAnim && pWarheadExt->IsNukeWarhead.Get()) ? NukeWarheadExtras : Continue;
+	if (pThis->_GetTypeExtData()->HasSplitBehavior())
+	{
+		BulletExtData::ApplyAirburst(pThis);
+	}
+
+	return 0x46A290;
 }
 
 ASMJIT_PATCH(0x46670F, BulletClass_Update_PreImpactAnim, 6)
@@ -238,7 +278,7 @@ ASMJIT_PATCH(0x46867F, BulletClass_SetMovement_Parachute, 5)
 	if (pBulletData->Parachuted)
 	{
 		result = Bullet->SpawnParachuted(*XYZ);
-		Bullet->IsABomb = true;
+		//Bullet->IsABomb = true; dev phobos remove this
 	}
 	else
 	{
@@ -267,13 +307,6 @@ ASMJIT_PATCH(0x468FFA, BulletClass_Fire_SplitsB, 6)
 	GET(BulletTypeClass* const, pType, EAX);
 	return BulletTypeExtContainer::Instance.Find(pType)->HasSplitBehavior()
 		? 0x46909Au : 0x469008u;
-}
-
-ASMJIT_PATCH(0x469EBA, BulletClass_DetonateAt_Splits, 6)
-{
-	GET(BulletClass*, pThis, ESI);
-	BulletExtData::ApplyAirburst(pThis);
-	return 0x46A290;
 }
 
 ASMJIT_PATCH(0x468000, BulletClass_GetAnimFrame, 6)

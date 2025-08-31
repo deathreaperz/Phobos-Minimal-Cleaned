@@ -19,6 +19,8 @@
 #include <Utilities/Cast.h>
 #include <Utilities/EnumFunctions.h>
 
+bool TechnoTypeExtData::SelectWeaponMutex = false;
+
 bool TechnoTypeExtData::IsSecondary(int nWeaponIndex)
 {
 	const auto pThis = this->AttachedToObject;
@@ -33,6 +35,167 @@ bool TechnoTypeExtData::IsSecondary(int nWeaponIndex)
 	}
 
 	return nWeaponIndex != 0;
+}
+
+#include <Ext/WeaponType/Body.h>
+
+int ApplyForceWeaponInRange(TechnoClass* pThis, AbstractClass* pTarget)
+{
+	int forceWeaponIndex = -1;
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	const bool useAASetting = !pTypeExt->ForceAAWeapon_InRange.empty() && pTarget->IsInAir();
+	auto const& weaponIndices = useAASetting ? pTypeExt->ForceAAWeapon_InRange : pTypeExt->ForceWeapon_InRange;
+	auto const& rangeOverrides = useAASetting ? pTypeExt->ForceAAWeapon_InRange_Overrides : pTypeExt->ForceWeapon_InRange_Overrides;
+	const bool applyRangeModifiers = useAASetting ? pTypeExt->ForceAAWeapon_InRange_ApplyRangeModifiers : pTypeExt->ForceWeapon_InRange_ApplyRangeModifiers;
+
+	const int defaultWeaponIndex = pThis->SelectWeapon(pTarget);
+	const int currentDistance = pThis->DistanceFrom(pTarget);
+	auto const pDefaultWeapon = pThis->GetWeapon(defaultWeaponIndex)->WeaponType;
+
+	for (size_t i = 0; i < weaponIndices.size(); i++)
+	{
+		int range = 0;
+
+		// Value below 0 means Range won't be overriden
+		if (i < rangeOverrides.size() && rangeOverrides[i] > 0)
+			range = static_cast<int>(rangeOverrides[i] * Unsorted::LeptonsPerCell);
+
+		if (weaponIndices[i] >= 0)
+		{
+			if (range > 0 || applyRangeModifiers)
+			{
+				auto const pWeapon = weaponIndices[i] == defaultWeaponIndex ? pDefaultWeapon : pThis->GetWeapon(weaponIndices[i])->WeaponType;
+				range = range > 0 ? range : pWeapon->Range;
+
+				if (applyRangeModifiers)
+					range = WeaponTypeExtData::GetRangeWithModifiers(pWeapon, pThis, range);
+			}
+
+			if (currentDistance <= range)
+			{
+				forceWeaponIndex = weaponIndices[i];
+				break;
+			}
+		}
+		else
+		{
+			if (range > 0 || applyRangeModifiers)
+			{
+				range = range > 0 ? range : pDefaultWeapon->Range;
+
+				if (applyRangeModifiers)
+					range = WeaponTypeExtData::GetRangeWithModifiers(pDefaultWeapon, pThis, range);
+			}
+
+			// Don't force weapon if range satisfied
+			if (currentDistance <= range)
+				break;
+		}
+	}
+
+	return forceWeaponIndex;
+}
+
+int TechnoTypeExtData::SelectForceWeapon(TechnoClass* pThis, AbstractClass* pTarget)
+{
+	if (TechnoTypeExtData::SelectWeaponMutex || !this->ForceWeapon_Check || !pTarget) // In theory, pTarget must exist
+		return -1;
+
+	int forceWeaponIndex = -1;
+	const auto pTargetTechno = flag_cast_to<TechnoClass*>(pTarget);
+	TechnoTypeClass* pTargetType = nullptr;
+
+	if (pTargetTechno)
+	{
+		pTargetType = pTargetTechno->GetTechnoType();
+
+		if (this->ForceWeapon_Naval_Decloaked >= 0
+			&& pTargetType->Cloakable
+			&& pTargetType->Naval
+			&& pTargetTechno->CloakState == CloakState::Uncloaked)
+		{
+			forceWeaponIndex = this->ForceWeapon_Naval_Decloaked;
+		}
+		else if (this->ForceWeapon_Cloaked >= 0
+			&& pTargetTechno->CloakState == CloakState::Cloaked)
+		{
+			forceWeaponIndex = this->ForceWeapon_Cloaked;
+		}
+		else if (this->ForceWeapon_Disguised >= 0
+			&& pTargetTechno->IsDisguised())
+		{
+			forceWeaponIndex = this->ForceWeapon_Disguised;
+		}
+		else if (this->ForceWeapon_UnderEMP >= 0
+			&& pTargetTechno->IsUnderEMP())
+		{
+			forceWeaponIndex = this->ForceWeapon_UnderEMP;
+		}
+		else if (this->ForceWeapon_Capture >= 0)
+		{
+			if (const auto pBuilding = cast_to<BuildingClass*, false>(pTarget))
+			{
+				if ((pBuilding->Type->Capturable || pBuilding->Type->NeedsEngineer)
+					&& !pThis->Owner->IsAlliedWith(pBuilding->Owner))
+					forceWeaponIndex = this->ForceWeapon_Capture;
+			}
+		}
+	}
+
+	if (forceWeaponIndex == -1
+		&& (pTargetTechno || !this->ForceWeapon_InRange_TechnoOnly)
+		&& (!this->ForceWeapon_InRange.empty() || !this->ForceAAWeapon_InRange.empty()))
+	{
+		TechnoTypeExtData::SelectWeaponMutex = true;
+		forceWeaponIndex = ApplyForceWeaponInRange(pThis, pTarget);
+		TechnoTypeExtData::SelectWeaponMutex = false;
+	}
+
+	if (forceWeaponIndex == -1 && pTargetType)
+	{
+		switch (pTarget->WhatAmI())
+		{
+		case AbstractType::Building:
+		{
+			forceWeaponIndex = this->ForceWeapon_Buildings;
+
+			if (this->ForceWeapon_Defenses >= 0)
+			{
+				auto const pBuildingType = static_cast<BuildingTypeClass*>(pTargetType);
+
+				if (pBuildingType->BuildCat == BuildCat::Combat)
+					forceWeaponIndex = this->ForceWeapon_Defenses;
+			}
+
+			break;
+		}
+		case AbstractType::Infantry:
+		{
+			forceWeaponIndex = (this->ForceAAWeapon_Infantry >= 0 && pTarget->IsInAir())
+				? this->ForceAAWeapon_Infantry : this->ForceWeapon_Infantry;
+
+			break;
+		}
+		case AbstractType::Unit:
+		{
+			forceWeaponIndex = (this->ForceAAWeapon_Units >= 0 && pTarget->IsInAir())
+				? this->ForceAAWeapon_Units : ((this->ForceWeapon_Naval_Units >= 0 && pTargetType->Naval)
+				? this->ForceWeapon_Naval_Units : this->ForceWeapon_Units);
+
+			break;
+		}
+		case AbstractType::Aircraft:
+		{
+			forceWeaponIndex = (this->ForceAAWeapon_Aircraft >= 0 && pTarget->IsInAir())
+				? this->ForceAAWeapon_Aircraft : this->ForceWeapon_Aircraft;
+
+			break;
+		}
+		}
+	}
+
+	return forceWeaponIndex;
 }
 
 int TechnoTypeExtData::SelectMultiWeapon(TechnoClass* const pThis, AbstractClass* const pTarget)
@@ -190,7 +353,7 @@ void TechnoTypeExtData::Initialize()
 
 void TechnoTypeExtData::CalculateSpawnerRange()
 {
-	auto pTechnoType = this->AttachedToObject;
+	auto pTechnoType = (FakeTechnoTypeClass*)this->AttachedToObject;
 	int weaponRangeExtra = this->Spawn_LimitedExtraRange * Unsorted::LeptonsPerCell;
 
 	auto setWeaponRange = [](int& weaponRange, WeaponTypeClass* pWeaponType)
@@ -199,20 +362,11 @@ void TechnoTypeExtData::CalculateSpawnerRange()
 				weaponRange = pWeaponType->Range;
 		};
 
-	if (pTechnoType->IsGattling)
+	const int wpCount = pTechnoType->IsGattling ? pTechnoType->WeaponCount : 2;
+	for (int i = 0; i < wpCount; i++)
 	{
-		for (int i = 0; i < pTechnoType->WeaponCount; i++)
-		{
-			setWeaponRange(this->SpawnerRange, pTechnoType->Weapon[i].WeaponType);
-			setWeaponRange(this->EliteSpawnerRange, pTechnoType->EliteWeapon[i].WeaponType);
-		}
-	}
-	else
-	{
-		setWeaponRange(this->SpawnerRange, pTechnoType->Weapon[0].WeaponType);
-		setWeaponRange(this->SpawnerRange, pTechnoType->Weapon[1].WeaponType);
-		setWeaponRange(this->EliteSpawnerRange, pTechnoType->EliteWeapon[0].WeaponType);
-		setWeaponRange(this->EliteSpawnerRange, pTechnoType->EliteWeapon[1].WeaponType);
+		setWeaponRange(this->SpawnerRange, pTechnoType->GetWeapon(i)->WeaponType);
+		setWeaponRange(this->EliteSpawnerRange, pTechnoType->GetEliteWeapon(i)->WeaponType);
 	}
 
 	this->SpawnerRange += weaponRangeExtra;
@@ -460,6 +614,50 @@ void TechnoTypeExtData::GetFLH(INI_EX& exArtINI, const char* pArtSection, Nullab
 		nEFlh = nFlh;
 }
 
+void TechnoTypeExtData::ParseVoiceWeaponAttacks(INI_EX& exINI, const char* pSection, ValueableVector<int>& n, ValueableVector<int>& nE)
+{
+	if (!this->ReadMultiWeapon)
+	{
+		n.clear();
+		nE.clear();
+		return;
+	}
+
+	const auto pThis = this->AttachedToObject;
+	const auto WeaponCount = MaxImpl(pThis->WeaponCount, 0);
+
+	while (int(n.size()) > WeaponCount)
+		n.erase(n.begin() + int(n.size()) - 1);
+
+	while (int(nE.size()) > WeaponCount)
+		nE.erase(nE.begin() + int(nE.size()) - 1);
+
+	char tempBuff[64];
+	for (int index = 0; index < WeaponCount; index++)
+	{
+		NullableIdx<VocClass> VoiceAttack;
+		IMPL_SNPRNINTF(tempBuff, sizeof(tempBuff), "VoiceWeapon%dAttack", index + 1);
+		VoiceAttack.Read(exINI, pSection, tempBuff);
+
+		NullableIdx<VocClass> VoiceEliteAttack;
+		IMPL_SNPRNINTF(tempBuff, sizeof(tempBuff), "VoiceEliteWeapon%dAttack", index + 1);
+		VoiceAttack.Read(exINI, pSection, tempBuff);
+
+		if (int(n.size()) > index)
+		{
+			n[index] = VoiceAttack.Get(n[index]);
+			nE[index] = VoiceEliteAttack.Get(nE[index]);
+		}
+		else
+		{
+			int voiceattack = VoiceAttack.Get(-1);
+
+			n.push_back(voiceattack);
+			nE.push_back(VoiceEliteAttack.Get(voiceattack));
+		}
+	}
+}
+
 void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 {
 	auto pThis = this->AttachedToObject;
@@ -474,6 +672,9 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->Survivors_Pilots.resize(SideClass::Array->Count, nullptr);
 		this->Survivors_PassengerChance.Read(exINI, pSection, "Survivor.%sPassengerChance");
 		this->HealthBar_Hide.Read(exINI, pSection, "HealthBar.Hide");
+		this->HealthBar_HidePips.Read(exINI, pSection, "HealthBar.HidePips");
+		this->HealthBar_Permanent.Read(exINI, pSection, "HealthBar.Permanent");
+		this->HealthBar_Permanent_PipScale.Read(exINI, pSection, "HealthBar.Permanent.PipScale");
 		this->UIDescription.Read(exINI, pSection, "UIDescription");
 		this->LowSelectionPriority.Read(exINI, pSection, "LowSelectionPriority");
 		this->MindControlRangeLimit.Read(exINI, pSection, "MindControlRangeLimit");
@@ -531,7 +732,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		bool Death_Peaceful;
 		if (detail::read(Death_Peaceful, exINI, pSection, "Death.Peaceful"))
-			this->Death_Method = Death_Peaceful ? KillMethod::Vanish : KillMethod::Explode;
+			this->Death_Method = Death_Peaceful ? KillMethod::Vanish : this->Death_Method;
 
 		this->AutoDeath_Nonexist.Read(exINI, pSection, "AutoDeath.Nonexist");
 		this->AutoDeath_Nonexist.Read(exINI, pSection, "AutoDeath.TechnosDontExist");
@@ -676,6 +877,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->ForceAAWeapon_Infantry.Read(exINI, pSection, "ForceAAWeapon.Infantry");
 		this->ForceAAWeapon_Units.Read(exINI, pSection, "ForceAAWeapon.Units");
 		this->ForceAAWeapon_Aircraft.Read(exINI, pSection, "ForceAAWeapon.Aircraft");
+		this->ForceWeapon_Capture.Read(exINI, pSection, "ForceWeapon.Capture");
 
 		this->Ammo_Shared.Read(exINI, pSection, "Ammo.Shared");
 		this->Ammo_Shared_Group.Read(exINI, pSection, "Ammo.Shared.Group");
@@ -1140,6 +1342,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->CloakSound.Read(exINI, pSection, "CloakSound");
 		this->DecloakSound.Read(exINI, pSection, "DecloakSound");
 		this->VoiceRepair.Read(exINI, pSection, "VoiceIFVRepair");
+		this->ParseVoiceWeaponAttacks(exINI, pSection, this->VoiceWeaponAttacks, this->VoiceEliteWeaponAttacks);
 		this->ReloadAmount.Read(exINI, pSection, "ReloadAmount");
 		this->EmptyReloadAmount.Read(exINI, pSection, "EmptyReloadAmount");
 
@@ -1444,6 +1647,9 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->AIGuardAreaTargetingDelay.Read(exINI, pSection, "AIGuardAreaTargetingDelay");
 		this->PlayerGuardAreaTargetingDelay.Read(exINI, pSection, "PlayerGuardAreaTargetingDelay");
 		this->DistributeTargetingFrame.Read(exINI, pSection, "DistributeTargetingFrame");
+		this->AIAttackMoveTargetingDelay.Read(exINI, pSection, "AIAttackMoveTargetingDelay");
+		this->PlayerAttackMoveTargetingDelay.Read(exINI, pSection, "PlayerAttackMoveTargetingDelay");
+
 		this->CanBeBuiltOn.Read(exINI, pSection, "CanBeBuiltOn");
 		this->UnitBaseNormal.Read(exINI, pSection, "UnitBaseNormal");
 		this->UnitBaseForAllyBuilding.Read(exINI, pSection, "UnitBaseForAllyBuilding");
@@ -1683,11 +1889,19 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		// Spawner range
 		this->ResetSpawnerRange();
 
-		this->AdvancedDrive_ReverseSpeed.Read(exINI, pSection, "AdvancedDrive.ReverseSpeed");
-		this->AdvancedDrive_FaceTargetRange.Read(exINI, pSection, "AdvancedDrive.FaceTargetRange");
-		this->AdvancedDrive_ConfrontEnemies.Read(exINI, pSection, "AdvancedDrive.ConfrontEnemies");
-		this->AdvancedDrive_RetreatDuration.Read(exINI, pSection, "AdvancedDrive.RetreatDuration");
-
+		this->AdvancedDrive_Reverse.Read(exINI, pSection, "AdvancedDrive.Reverse");
+		this->AdvancedDrive_Reverse_FaceTarget.Read(exINI, pSection, "AdvancedDrive.Reverse.FaceTarget");
+		this->AdvancedDrive_Reverse_FaceTargetRange.Read(exINI, pSection, "AdvancedDrive.Reverse.FaceTargetRange");
+		this->AdvancedDrive_Reverse_MinimumDistance.Read(exINI, pSection, "AdvancedDrive.Reverse.MinimumDistance");
+		this->AdvancedDrive_Reverse_RetreatDuration.Read(exINI, pSection, "AdvancedDrive.Reverse.RetreatDuration");
+		this->AdvancedDrive_Reverse_Speed.Read(exINI, pSection, "AdvancedDrive.Reverse.Speed");
+		this->AdvancedDrive_Hover.Read(exINI, pSection, "AdvancedDrive.Hover");
+		this->AdvancedDrive_Hover_Sink.Read(exINI, pSection, "AdvancedDrive.Hover.Sink");
+		this->AdvancedDrive_Hover_Spin.Read(exINI, pSection, "AdvancedDrive.Hover.Spin");
+		this->AdvancedDrive_Hover_Tilt.Read(exINI, pSection, "AdvancedDrive.Hover.Tilt");
+		this->AdvancedDrive_Hover_Height.Read(exINI, pSection, "AdvancedDrive.Hover.Height");
+		this->AdvancedDrive_Hover_Dampen.Read(exINI, pSection, "AdvancedDrive.Hover.Dampen");
+		this->AdvancedDrive_Hover_Bob.Read(exINI, pSection, "AdvancedDrive.Hover.Bob");
 		this->Harvester_CanGuardArea.Read(exINI, pSection, "Harvester.CanGuardArea");
 
 		Nullable<int> transDelay {};
@@ -1720,7 +1934,7 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			for (size_t i = 0; i < passengers; i++)
 			{
 				Nullable<InsigniaTypeClass*> InsigniaType_Passengers;
-				_snprintf_s(tempBuffer, sizeof(tempBuffer), "InsigniaType.Passengers%d", i);
+				IMPL_SNPRNINTF(tempBuffer, sizeof(tempBuffer), "InsigniaType.Passengers%d", i);
 				InsigniaType_Passengers.Read(exINI, pSection, tempBuffer);
 
 				if (InsigniaType_Passengers.isset())
@@ -1731,19 +1945,22 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 				}
 				else
 				{
-					_snprintf_s(tempBuffer, sizeof(tempBuffer), "Insignia.Passengers%d.%s", i, "%s");
+					IMPL_SNPRNINTF(tempBuffer, sizeof(tempBuffer), "Insignia.Passengers%d.%s", i, "%s");
 					this->Insignia_Passengers[i].Read(exINI, pSection, tempBuffer);
 
-					_snprintf_s(tempBuffer, sizeof(tempBuffer), "InsigniaFrame.Passengers%d.%s", i, "%s");
+					IMPL_SNPRNINTF(tempBuffer, sizeof(tempBuffer), "InsigniaFrame.Passengers%d.%s", i, "%s");
 					this->InsigniaFrame_Passengers[i].Read(exINI, pSection, tempBuffer);
 
-					_snprintf_s(tempBuffer, sizeof(tempBuffer), "InsigniaFrames.Passengers%d", i);
+					IMPL_SNPRNINTF(tempBuffer, sizeof(tempBuffer), "InsigniaFrames.Passengers%d", i);
 					this->InsigniaFrames_Passengers[i].Read(exINI, pSection, tempBuffer);
 				}
 			}
 		}
 
 		this->BattlePoints.Read(exINI, pSection, "BattlePoints");
+		this->DefaultVehicleDisguise.Read(exINI, pSection, "DefaultVehicleDisguise");
+		this->TurretResponse.Read(exINI, pSection, "TurretResponse");
+
 		this->ForceWeapon_Check = (
 			this->ForceWeapon_Naval_Decloaked >= 0 ||
 			this->ForceWeapon_Cloaked >= 0 ||
@@ -1759,7 +1976,8 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 			this->ForceWeapon_Aircraft >= 0 ||
 			this->ForceAAWeapon_Infantry >= 0 ||
 			this->ForceAAWeapon_Units >= 0 ||
-			this->ForceAAWeapon_Aircraft >= 0
+			this->ForceAAWeapon_Aircraft >= 0 ||
+			this->ForceWeapon_Capture >= 0
 		);
 
 		this->FiringForceScatter.Read(exINI, pSection, "FiringForceScatter");
@@ -1782,6 +2000,16 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->RecuitedAs.Read(exINI, pSection, "Recruited.As");
 
 		this->AttackMove_Follow_IfMindControlIsFull.Read(exINI, pSection, "AttackMove.Follow.IfMindControlIsFull");
+		this->PenetratesTransport_Level.Read(exINI, pSection, "PenetratesTransport.Level");
+		this->PenetratesTransport_PassThroughMultiplier.Read(exINI, pSection, "PenetratesTransport.PassThroughMultiplier");
+		this->PenetratesTransport_FatalRateMultiplier.Read(exINI, pSection, "PenetratesTransport.FatalRateMultiplier");
+		this->PenetratesTransport_DamageMultiplier.Read(exINI, pSection, "PenetratesTransport.DamageMultiplier");
+		this->CanBlock.Read(exINI, pSection, "CanBlock");
+
+		if (this->BlockType == nullptr)
+			this->BlockType = std::make_unique<BlockTypeClass>();
+
+		this->BlockType->LoadFromINI(pINI, pSection);
 	}
 
 	// Art tags
@@ -1963,6 +2191,9 @@ void TechnoTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		this->AltCameoPCX.Read(exArtINI.GetINI(), pArtSection, "AltCameoPCX");
 		this->CameoPal.Read(exArtINI, pArtSection, "CameoPalette");
 	}
+
+	if (GeneralUtils::IsValidString(pThis->PaletteFile) && !pThis->Palette)
+		Debug::Log("[Developer warning] [%s] has Palette=%s set but no palette file was loaded (missing file or wrong filename). Missing palettes cause issues with lighting recalculations.\n", pArtSection, pThis->PaletteFile);
 }
 
 void TechnoTypeExtData::LoadFromINIFile_Aircraft(CCINIClass* pINI)
@@ -2110,6 +2341,9 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Initialized)
 		.Process(this->AttachtoType)
 		.Process(this->HealthBar_Hide)
+		.Process(this->HealthBar_HidePips)
+		.Process(this->HealthBar_Permanent)
+		.Process(this->HealthBar_Permanent_PipScale)
 		.Process(this->UIDescription)
 		.Process(this->LowSelectionPriority)
 		.Process(this->MindControlRangeLimit)
@@ -2144,10 +2378,19 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->Spawn_LimitedRange)
 		.Process(this->Spawn_LimitedExtraRange)
 
-		.Process(this->AdvancedDrive_ReverseSpeed)
-		.Process(this->AdvancedDrive_FaceTargetRange)
-		.Process(this->AdvancedDrive_ConfrontEnemies)
-		.Process(this->AdvancedDrive_RetreatDuration)
+		.Process(this->AdvancedDrive_Reverse)
+		.Process(this->AdvancedDrive_Reverse_FaceTarget)
+		.Process(this->AdvancedDrive_Reverse_FaceTargetRange)
+		.Process(this->AdvancedDrive_Reverse_MinimumDistance)
+		.Process(this->AdvancedDrive_Reverse_RetreatDuration)
+		.Process(this->AdvancedDrive_Reverse_Speed)
+		.Process(this->AdvancedDrive_Hover)
+		.Process(this->AdvancedDrive_Hover_Sink)
+		.Process(this->AdvancedDrive_Hover_Spin)
+		.Process(this->AdvancedDrive_Hover_Tilt)
+		.Process(this->AdvancedDrive_Hover_Height)
+		.Process(this->AdvancedDrive_Hover_Dampen)
+		.Process(this->AdvancedDrive_Hover_Bob)
 
 		.Process(this->Harvester_CanGuardArea)
 		.Process(this->TiberiumEaterType)
@@ -2731,7 +2974,6 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->VoiceCantDeploy)
 		.Process(this->DigitalDisplay_Disable)
 		.Process(this->DigitalDisplayTypes)
-		.Process(this->AmmoPip)
 		.Process(this->EmptyAmmoPip)
 		.Process(this->PipWrapAmmoPip)
 		.Process(this->AmmoPipSize)
@@ -2889,6 +3131,8 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->AIGuardAreaTargetingDelay)
 		.Process(this->PlayerGuardAreaTargetingDelay)
 		.Process(this->DistributeTargetingFrame)
+		.Process(this->AIAttackMoveTargetingDelay)
+		.Process(this->PlayerAttackMoveTargetingDelay)
 		.Process(this->CanBeBuiltOn)
 		.Process(this->UnitBaseNormal)
 		.Process(this->UnitBaseForAllyBuilding)
@@ -3020,6 +3264,26 @@ void TechnoTypeExtData::Serialize(T& Stm)
 		.Process(this->ForceAAWeapon_Aircraft)
 
 		.Process(this->AttackMove_Follow_IfMindControlIsFull)
+
+		.Process(this->PenetratesTransport_Level)
+		.Process(this->PenetratesTransport_PassThroughMultiplier)
+		.Process(this->PenetratesTransport_FatalRateMultiplier)
+		.Process(this->PenetratesTransport_DamageMultiplier)
+
+		.Process(this->VoiceIFVRepair)
+		.Process(this->VoiceWeaponAttacks)
+		.Process(this->VoiceEliteWeaponAttacks)
+		.Process(this->DefaultVehicleDisguise)
+		.Process(this->TurretResponse)
+
+		.Process(this->BlockType)
+		.Process(this->CanBlock)
+
+		.Process(this->ForceWeapon_Capture)
+		.Process(this->MultiWeapon)
+		.Process(this->MultiWeapon_IsSecondary)
+		.Process(this->MultiWeapon_SelectCount)
+		.Process(this->ReadMultiWeapon)
 		;
 }
 

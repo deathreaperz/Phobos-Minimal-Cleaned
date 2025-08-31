@@ -10,6 +10,8 @@
 
 #include <Utilities/Macro.h>
 
+#include <InfantryClass.h>
+
 class NOVTABLE EBoltFake final : public EBolt
 {
 public:
@@ -37,7 +39,9 @@ void EBoltFake::_SetOwner(TechnoClass* pTechno, int weaponIndex)
 
 void EBoltFake::_RemoveFromOwner()
 {
-	TechnoExtContainer::Instance.Find(this->Owner)->ElectricBolts.remove(this);
+	if (!Phobos::Otamaa::ExeTerminated)
+		TechnoExtContainer::Instance.Find(this->Owner)->ElectricBolts.remove(this);
+
 	this->Owner = nullptr;
 }
 
@@ -75,14 +79,28 @@ ASMJIT_PATCH(0x4C285D, EBolt_DrawAll_BurstIndex, 0x5)
 	GET(TechnoClass*, pTechno, ECX);
 	GET_STACK(EBolt*, pThis, STACK_OFFSET(0x34, -0x24));
 
-	int burstIndex = pTechno->CurrentBurstIndex;
-	pTechno->CurrentBurstIndex = EboltExtData::Container[pThis].BurstIndex;
-	CoordStruct fireCoords {};
-	pTechno->GetFLH(&fireCoords, pThis->WeaponSlot, CoordStruct::Empty);
-	pTechno->CurrentBurstIndex = burstIndex;
-	R->EAX(&fireCoords);
+	const auto vtable = VTable::Get(pTechno);
+	const bool isAllowed = pTechno->IsAlive &&
+		(
+			vtable == BuildingClass::vtable ||
+			vtable == UnitClass::vtable ||
+			vtable == AircraftClass::vtable ||
+			vtable == InfantryClass::vtable
+		);
 
-	return SkipGameCode;
+	if (isAllowed)
+	{
+		int burstIndex = pTechno->CurrentBurstIndex;
+		pTechno->CurrentBurstIndex = EboltExtData::Container[pThis].BurstIndex;
+		CoordStruct fireCoords {};
+		pTechno->GetFLH(&fireCoords, pThis->WeaponSlot, CoordStruct::Empty);
+		pTechno->CurrentBurstIndex = burstIndex;
+		R->EAX(&fireCoords);
+		return SkipGameCode;
+	}
+
+	pThis->Owner = nullptr;
+	return 0x4C28B6;
 }
 
 ASMJIT_PATCH(0x4C299F, EBolt_DrawAll_EndOfLife, 0x6)
@@ -204,8 +222,6 @@ ASMJIT_PATCH(0x4C2AFF, EBolt_Fire_Particles, 5)
 {
 	GET(EBolt*, pThis, ESI);
 
-	auto pParticleSys = RulesClass::Instance->DefaultSparkSystem;
-
 	if (auto pData = EboltExtData::Container.tryfind(pThis))
 	{
 		if (!pData->ParticleSysEnabled)
@@ -213,10 +229,11 @@ ASMJIT_PATCH(0x4C2AFF, EBolt_Fire_Particles, 5)
 			return DWORD(_EBolt_Fire_Particles_RET);
 		}
 
-		pParticleSys = pData->pSys;
+		GameCreate<ParticleSystemClass>(pData->pSys, pThis->Point2, nullptr, pThis->Owner, CoordStruct::Empty, pThis->Owner ? pThis->Owner->GetOwningHouse() : nullptr);
+		return DWORD(_EBolt_Fire_Particles_RET);
 	}
 
-	if (pParticleSys)
+	if (auto pParticleSys = RulesClass::Instance->DefaultSparkSystem)
 		GameCreate<ParticleSystemClass>(pParticleSys, pThis->Point2, nullptr, pThis->Owner, CoordStruct::Empty, pThis->Owner ? pThis->Owner->GetOwningHouse() : nullptr);
 
 	return DWORD(_EBolt_Fire_Particles_RET);

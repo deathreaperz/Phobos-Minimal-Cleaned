@@ -34,7 +34,7 @@ bool SWSidebarClass::AddColumn()
 		return false;
 
 	const int cameoWidth = 60;
-	const auto column = GameCreate<SWColumnClass>(SWColumnClass::StartID + columnsCount, maxButtons, 0, 0, cameoWidth + Phobos::UI::SuperWeaponSidebar_Interval, Phobos::UI::SuperWeaponSidebar_CameoHeight);
+	const auto column = GameCreate<SWColumnClass>(maxButtons, 0, 0, cameoWidth + Phobos::UI::SuperWeaponSidebar_Interval, Phobos::UI::SuperWeaponSidebar_CameoHeight);
 
 	column->Zap();
 	GScreenClass::Instance->AddButton(column);
@@ -52,6 +52,7 @@ bool SWSidebarClass::RemoveColumn()
 	{
 		AnnounceInvalidPointer(SWSidebarClass::Global()->CurrentColumn, backColumn);
 		GScreenClass::Instance->RemoveButton(backColumn);
+		GameDelete<true, false>(backColumn);
 		columns.pop_back();
 		return true;
 	}
@@ -67,12 +68,14 @@ void SWSidebarClass::InitClear()
 	if (const auto toggleButton = std::exchange(this->ToggleButton, nullptr))
 	{
 		GScreenClass::Instance->RemoveButton(toggleButton);
+		GameDelete<true, false>(toggleButton);
 	}
 
 	for (auto& column : this->Columns)
 	{
 		column->ClearButtons();
 		GScreenClass::Instance->RemoveButton(column);
+		GameDelete<true, false>(column);
 	}
 
 	this->Columns.clear();
@@ -113,7 +116,7 @@ void SWSidebarClass::InitIO()
 
 		if (width > 0 && height > 0)
 		{
-			if (const auto toggleButton = GameCreate<ToggleSWButtonClass>(SWColumnClass::StartID - 1, 0, 0, width, height))
+			if (const auto toggleButton = GameCreate<ToggleSWButtonClass>(0, 0, width, height))
 			{
 				toggleButton->Zap();
 				GScreenClass::Instance->AddButton(toggleButton);
@@ -124,7 +127,7 @@ void SWSidebarClass::InitIO()
 	}
 
 	for (const auto& superIdx : ScenarioExtData::Instance()->SWSidebar_Indices)
-		SWSidebarClass::Global()->AddButton(superIdx);
+		SWSidebarClass::Instance.AddButton(superIdx);
 }
 
 bool SWSidebarClass::AddButton(int superIdx)
@@ -138,7 +141,7 @@ bool SWSidebarClass::AddButton(int superIdx)
 
 	const auto pSWExt = SWTypeExtContainer::Instance.Find(pSWType);
 
-	if (!pSWExt->SW_ShowCameo || !pSWExt->SuperWeaponSidebar_Allow.Get(RulesExtData::Instance()->SuperWeaponSidebar_AllowByDefault))
+	if (!pSWExt->SW_ShowCameo || pSWExt->SW_AutoFire || !pSWExt->SuperWeaponSidebar_Allow.Get(RulesExtData::Instance()->SuperWeaponSidebar_AllowByDefault))
 		return false;
 
 	const unsigned int ownerBits = 1u << HouseClass::CurrentPlayer->Type->ArrayIndex;
@@ -151,15 +154,16 @@ bool SWSidebarClass::AddButton(int superIdx)
 
 	auto& columns = this->Columns;
 
+	for (auto& col : columns)
+	{
+		if (std::any_of(col->Buttons.begin(), col->Buttons.end(),
+			[superIdx](SWButtonClass* const button) { return button->SuperIndex == superIdx; }))
+			return true; //already exist
+	}
 	if (columns.empty() && !this->AddColumn())
 		return false;
 
-	const bool success = columns.back()->AddButton(superIdx);
-
-	if (success)
-		ScenarioExtData::Instance()->SWSidebar_Indices.push_back_unique(superIdx);
-
-	return success;
+	return columns.back()->AddButton(superIdx);
 }
 
 void SWSidebarClass::SortButtons()
@@ -205,7 +209,7 @@ void SWSidebarClass::SortButtons()
 	const int cameoWidth = 60, cameoHeight = 48;
 	const int firstColumn = Phobos::UI::SuperWeaponSidebar_Max;
 	const int cameoHarfInterval = (Phobos::UI::SuperWeaponSidebar_CameoHeight - cameoHeight) / 2;
-	int location_Y = (DSurface::ViewBounds().Height - std::min(buttonCount, firstColumn) * Phobos::UI::SuperWeaponSidebar_CameoHeight) / 2;
+	int location_Y = (DSurface::ViewBounds->Height - std::min(buttonCount, firstColumn) * Phobos::UI::SuperWeaponSidebar_CameoHeight) / 2;
 	Point2D location = { Phobos::UI::SuperWeaponSidebar_LeftOffset, location_Y + cameoHarfInterval };
 	int rowIdx = 0, columnIdx = 0;
 
@@ -272,6 +276,7 @@ void SWSidebarClass::RecheckCameo()
 	for (const auto& column : sidebar->Columns)
 	{
 		std::vector<int> removeButtons;
+		removeButtons.reserve(column->Buttons.size());
 
 		for (const auto& button : column->Buttons)
 		{
@@ -306,17 +311,12 @@ void SWSidebarClass::RecheckCameo()
 
 // Hooks
 
-ASMJIT_PATCH(0x692419, DisplayClass_ProcessClickCoords_SWSidebar, 0x7)
+ASMJIT_PATCH(0x4E1A84, GadgetClass_DTOR_ClearCurrentOverGadget, 0x6)
 {
-	enum { Nothing = 0x6925FC };
-
-	if (SWSidebarClass::IsEnabled() && SWSidebarClass::Global()->CurrentColumn)
-		return Nothing;
-
-	const auto toggleButton = SWSidebarClass::Global()->ToggleButton;
-
-	return toggleButton && toggleButton->IsHovering ? Nothing : 0;
-}
+	GadgetClass* const pThis = (R->Origin() == 0x4E1A84) ? R->ESI<GadgetClass*>() : R->ECX<GadgetClass*>();
+	AnnounceInvalidPointer(Make_Global<GadgetClass*>(0x8B3E94), pThis);
+	return 0;
+}ASMJIT_PATCH_AGAIN(0x4E13B2, GadgetClass_DTOR_ClearCurrentOverGadget, 0x6)
 
 ASMJIT_PATCH(0x4F92FB, HouseClass_UpdateTechTree_SWSidebar, 0x7)
 {
@@ -346,22 +346,10 @@ ASMJIT_PATCH(0x6A6316, SidebarClass_AddCameo_SuperWeapon_SWSidebar, 0x6)
 
 	if (SWSidebarClass::Global()->AddButton(index))
 	{
-		ScenarioExtData::Instance()->SWSidebar_Indices.emplace_back(index);
+		ScenarioExtData::Instance()->SWSidebar_Indices.emplace(index);
 		return ReturnFalse;
 	}
 
-	return 0;
-}
-
-ASMJIT_PATCH(0x6A5082, SidebarClass_Init_Clear_InitializeSWSidebar, 0x5)
-{
-	SWSidebarClass::Global()->InitClear();
-	return 0;
-}
-
-ASMJIT_PATCH(0x6A5839, SidebarClass_Init_IO_InitializeSWSidebar, 0x5)
-{
-	SWSidebarClass::Global()->InitIO();
 	return 0;
 }
 
@@ -378,7 +366,7 @@ ASMJIT_PATCH(0x6AA790, StripClass_RecheckCameo_RemoveCameo, 0x6)
 	if (supers.ValidIndex(pItem->ItemIndex) && supers[pItem->ItemIndex]->Granted)
 	{
 		if (SWSidebarClass::Global()->AddButton(pItem->ItemIndex))
-			ScenarioExtData::Instance()->SWSidebar_Indices.emplace_back(pItem->ItemIndex);
+			ScenarioExtData::Instance()->SWSidebar_Indices.emplace(pItem->ItemIndex);
 		else
 			return ShouldNotRemove;
 	}

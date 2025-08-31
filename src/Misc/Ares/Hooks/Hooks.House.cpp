@@ -66,7 +66,7 @@ ASMJIT_PATCH(0x6AA164, StripClass_Draw_DrawObserverFlag, 6)
 
 	GET(HouseTypeClass*, pCountry, EAX);
 
-	const auto idx = pCountry->ArrayIndex2;
+	const auto idx = pCountry->ParentIdx;
 
 	//special cases
 	if (idx == -2)
@@ -442,13 +442,23 @@ ASMJIT_PATCH(0x5227A3, Sides_Disguise, 6) // InfantryClass_SetDefaultDisguise
 	{
 		GET(TechnoClass*, pTech, ESI);
 
-		if (pTech->WhatAmI() != InfantryClass::AbsID)
+		if (pTech->WhatAmI() == UnitClass::AbsID)
+		{
+			if (const auto pDefault = TechnoTypeExtContainer::Instance.Find(((UnitClass*)pTech)->Type)->DefaultVehicleDisguise.Get())
+			{
+				pTech->Disguise = pDefault;
+				return 0x6F4277;
+			}
+		}
+		else if (pTech->WhatAmI() == InfantryClass::AbsID)
+		{
+			pThis = (InfantryClass*)pTech;
+			dwReturnAddress = 0x6F4277;
+		}
+		else
 		{
 			return 0x0;
 		}
-
-		pThis = (InfantryClass*)pTech;
-		dwReturnAddress = 0x6F4277;
 	}
 
 	if (pThis)
@@ -560,9 +570,9 @@ ASMJIT_PATCH(0x4FE782, HouseClass_AI_BaseConstructionUpdate_PickPowerplant, 6)
 
 ASMJIT_PATCH(0x4F8EBD, HouseClass_Update_HasBeenDefeated, 5)
 {
-	GET(HouseClass*, pThis, ESI);
+	GET(FakeHouseClass*, pThis, ESI);
 
-	if (HouseExtContainer::Instance.Find(pThis)->KeepAliveCount)
+	if (pThis->_GetExtData()->KeepAliveCount)
 	{
 		return 0x4F8F87;
 	}
@@ -626,7 +636,7 @@ ASMJIT_PATCH(0x4F8EBD, HouseClass_Update_HasBeenDefeated, 5)
 		}
 	}
 
-	pThis->DestroyAll();
+	pThis->_BlowUpAll();
 	pThis->AcceptDefeat();
 
 	return 0x4F8F87;
@@ -1087,78 +1097,6 @@ ASMJIT_PATCH(0x4FAF2A, HouseClass_SWDefendAgainst_Aborted, 0x8)
 	return (pSW && !pSW->IsCharged) ? 0x4FAF32 : 0x4FB0CF;
 }
 
-// restored from TS
-void FakeHouseClass::_GiveTiberium(float amount, int type)
-{
-	this->SiloMoney += int(amount * 5.0);
-
-	if (SessionClass::Instance->GameMode == GameMode::Campaign || this->IsHumanPlayer)
-	{
-		// don't change, old values are needed for silo update
-		const double lastStorage = (this->_GetExtData()->TiberiumStorage.GetAmounts());
-		const auto lastTotalStorage = this->TotalStorage;
-		const auto curStorage = (double)lastTotalStorage - lastStorage;
-		double rest = 0.0;
-
-		// this is the upper limit for stored tiberium
-		if (amount > curStorage)
-		{
-			rest = amount - curStorage;
-			amount = float(curStorage);
-		}
-
-		// go through all buildings and fill them up until all is in there
-		for (auto const& pBuilding : this->Buildings)
-		{
-			if (amount <= 0.0)
-			{
-				break;
-			}
-
-			auto const storage = pBuilding->Type->Storage;
-			if (pBuilding->IsOnMap && storage > 0)
-			{
-				auto storage_ = &TechnoExtContainer::Instance.Find(pBuilding)->TiberiumStorage;
-				// put as much tiberium into this silo
-				double freeSpace = (double)storage - storage_->GetAmounts();
-
-				if (freeSpace > 0.0)
-				{
-					if (freeSpace > amount)
-					{
-						freeSpace = amount;
-					}
-
-					storage_->IncreaseAmount((float)freeSpace, type);
-					this->_GetExtData()->TiberiumStorage.IncreaseAmount((float)freeSpace, type);
-					amount -= (float)freeSpace;
-				}
-			}
-		}
-
-		if (RulesExtData::Instance()->GiveMoneyIfStorageFull)
-		{
-			amount += (float)rest;
-
-			//no free space , just give the money ,..
-			if (amount > 0.0)
-			{
-				auto const pTib = TiberiumClass::Array->Items[type];
-				this->Balance += int(amount * pTib->Value * this->Type->IncomeMult);
-			}
-		}
-
-		// redraw silos
-		this->UpdateAllSilos((int)lastStorage, lastTotalStorage);
-	}
-	else
-	{
-		// just add the money. this is the only original YR logic
-		auto const pTib = TiberiumClass::Array->Items[type];
-		this->Balance += int(amount * pTib->Value * this->Type->IncomeMult);
-	}
-}
-
 DEFINE_FUNCTION_JUMP(LJMP, 0x4F9610, FakeHouseClass::_GiveTiberium);
 DEFINE_FUNCTION_JUMP(CALL, 0x44A272, FakeHouseClass::_GiveTiberium)
 DEFINE_FUNCTION_JUMP(CALL, 0x522E11, FakeHouseClass::_GiveTiberium)
@@ -1280,75 +1218,72 @@ ASMJIT_PATCH(0x50610E, HouseClass_FindPositionForBuilding_FixShipyard, 7)
 	return 0x5060CE;
 }
 
-ASMJIT_PATCH(0x4FC731, HouseClass_DestroyAll_ReturnStructures, 7)
-{
-	GET_STACK(HouseClass*, pThis, STACK_OFFS(0x18, 0x8));
-	GET(TechnoClass*, pTechno, ESI);
+// ASMJIT_PATCH(0x4FC731, HouseClass_DestroyAll_ReturnStructures, 7)
+// {
+// 	GET_STACK(HouseClass*, pThis, STACK_OFFS(0x18, 0x8));
+// 	GET(TechnoClass*, pTechno, ESI);
 
-	if (!pTechno->IsAlive || pTechno->Health <= 0)
-		return 0x4FC770;
+// 	if(!pTechno->IsAlive || pTechno->Health <= 0)
+// 		return 0x4FC770;
 
-	// check whether this is a building
-	if (auto pBld = cast_to<BuildingClass*>(pTechno))
-	{
-		//auto pBldExt = BuildingExtContainer::Instance.Find(pBld);
+// 	// check whether this is a building
+// 	if (auto pBld = cast_to<BuildingClass*>(pTechno)) {
+// 		//auto pBldExt = BuildingExtContainer::Instance.Find(pBld);
 
-		// if(pBldExt->LimboID != -1) {
-		// 	BuildingExtData::LimboKill(pBld);
-		// 	return 0x4FC770;
-		// }
+// 		// if(pBldExt->LimboID != -1) {
+// 		// 	BuildingExtData::LimboKill(pBld);
+// 		// 	return 0x4FC770;
+// 		// }
 
-		// do not return structures in campaigns
-		if (!SessionClass::Instance->IsCampaign())
-		{
-			// was the building owned by a neutral country?
-			auto pInitialOwner = pBld->InitialOwner;
+// 		// do not return structures in campaigns
+// 		if(!SessionClass::Instance->IsCampaign()) {
+// 			// was the building owned by a neutral country?
+// 			auto pInitialOwner = pBld->InitialOwner;
 
-			if (!pInitialOwner || pInitialOwner->Type->MultiplayPassive)
-			{
-				auto pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
+// 			if (!pInitialOwner || pInitialOwner->Type->MultiplayPassive)
+// 			{
+// 				auto pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
 
-				auto occupants = pBld->GetOccupantCount();
-				auto canReturn = (pInitialOwner != pThis) || occupants > 0;
+// 				auto occupants = pBld->GetOccupantCount();
+// 				auto canReturn = (pInitialOwner != pThis) || occupants > 0;
 
-				if (canReturn && pExt->Returnable.Get(RulesExtData::Instance()->ReturnStructures))
-				{
-					// this may change owner
-					if (occupants)
-					{
-						pBld->KillOccupants(nullptr);
-					}
+// 				if (canReturn && pExt->Returnable.Get(RulesExtData::Instance()->ReturnStructures))
+// 				{
+// 					// this may change owner
+// 					if (occupants) {
+// 						pBld->KillOccupants(nullptr);
+// 					}
 
-					// don't do this when killing occupants already changed owner
-					if (pBld->GetOwningHouse() == pThis)
-					{
-						// fallback to first civilian side house, same logic SlaveManager uses
-						if (!pInitialOwner)
-						{
-							pInitialOwner = HouseClass::FindCivilianSide();
-						}
+// 					// don't do this when killing occupants already changed owner
+// 					if (pBld->GetOwningHouse() == pThis)
+// 					{
+// 						// fallback to first civilian side house, same logic SlaveManager uses
+// 						if (!pInitialOwner)
+// 						{
+// 							pInitialOwner = HouseClass::FindCivilianSide();
+// 						}
 
-						// give to other house and disable
-						if (pInitialOwner && pBld->SetOwningHouse(pInitialOwner, false))
-						{
-							pBld->Guard();
+// 						// give to other house and disable
+// 						if (pInitialOwner && pBld->SetOwningHouse(pInitialOwner, false))
+// 						{
+// 							pBld->Guard();
 
-							if (pBld->Type->NeedsEngineer)
-							{
-								pBld->HasEngineer = false;
-								pBld->DisableStuff();
-							}
+// 							if (pBld->Type->NeedsEngineer)
+// 							{
+// 								pBld->HasEngineer = false;
+// 								pBld->DisableStuff();
+// 							}
 
-							return 0x4FC770;
-						}
-					}
-				}
-			}
-		}
-	}
+// 							return 0x4FC770;
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
 
-	return 0;
-}
+// 	return 0;
+// }
 
 ASMJIT_PATCH(0x4FB2FD, HouseClass_UnitFromFactory_BuildingSlam, 6)
 {

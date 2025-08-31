@@ -369,7 +369,7 @@ void CloneableLighningStormStateMachine::Update()
 					auto const pCellBld = pCell->GetBuilding();
 					const auto& nRodTypes = pExt->Weather_LightningRodTypes;
 
-					if (pCellBld && pCellBld->Type->LightningRod)
+					if (pCellBld && pCellBld->IsAlive && pCellBld->Type->LightningRod)
 					{
 						if (nRodTypes.empty() || nRodTypes.Contains(pCellBld->Type))
 							return ret;
@@ -381,7 +381,7 @@ void CloneableLighningStormStateMachine::Update()
 					{
 						if (auto const pBld = cast_to<BuildingClass*, false>(pObj))
 						{
-							if (pBld->Type->LightningRod)
+							if (pBld->IsAlive && pBld->Type->LightningRod)
 							{
 								if (nRodTypes.empty() || nRodTypes.Contains(pBld->Type))
 								{
@@ -470,7 +470,7 @@ void CloneableLighningStormStateMachine::Strike2(CoordStruct const& nCoord)
 		auto const isInfantry = cast_to<InfantryClass*>(pObj) != nullptr;
 
 		// empty cell action
-		if (!pBld && !pObj)
+		if ((!pBld || !pBld->IsAlive) && (!pObj || !pObj->IsAlive))
 		{
 			debris = Helpers::Alex::is_any_of(
 				pCell->LandType,
@@ -484,16 +484,19 @@ void CloneableLighningStormStateMachine::Strike2(CoordStruct const& nCoord)
 		auto damage = Type->GetDamage(pData);
 		if (!pData->Weather_IgnoreLightningRod)
 		{
-			if (auto const pBldObj = cast_to<BuildingClass*>(pObj))
+			if (pObj->IsAlive)
 			{
-				const auto& nRodTypes = pData->Weather_LightningRodTypes;
-				auto const pBldType = pBldObj->Type;
-
-				if (pBldType->LightningRod && (nRodTypes.empty() || nRodTypes.Contains(pBldType)))
+				if (auto const pBldObj = cast_to<BuildingClass*>(pObj))
 				{
-					// multiply the damage, but never go below zero.
-					auto const pBldExt = BuildingTypeExtContainer::Instance.Find(pBldType);
-					damage = MaxImpl(int(damage * pBldExt->LightningRod_Modifier), 0);
+					const auto& nRodTypes = pData->Weather_LightningRodTypes;
+					auto const pBldType = pBldObj->Type;
+
+					if (pBldType->LightningRod && (nRodTypes.empty() || nRodTypes.Contains(pBldType)))
+					{
+						// multiply the damage, but never go below zero.
+						auto const pBldExt = BuildingTypeExtContainer::Instance.Find(pBldType);
+						damage = MaxImpl(int(damage * pBldExt->LightningRod_Modifier), 0);
+					}
 				}
 			}
 		}

@@ -64,7 +64,7 @@ ASMJIT_PATCH(0x641EE0, PreviewClass_ReadPreview, 0x6)
 		ini.CurrentSection = nullptr;
 		ini.CurrentSectionName = nullptr;
 
-		ScenarioClass::Instance->ReadStartPoints(ini);
+		ScenarioClass::Instance->ReadStartPoints(&ini);
 
 		bResult = pThis->ReadPreviewPack(ini);
 	}
@@ -99,9 +99,9 @@ ASMJIT_PATCH(0x4A25E3, CreditsClass_GraphicLogic_Additionals, 0x8)
 		int points = pHouseExt->BattlePoints;
 
 		if (Phobos::UI::BattlePointsSidebar_Label_InvertPosition)
-			fmt::format_to(std::back_inserter(counter), L"{} {}", points, Phobos::UI::BattlePointsSidebar_Label);
+			fmt::format_to(std::back_inserter(counter), L"{}{}", points, Phobos::UI::BattlePointsSidebar_Label);
 		else
-			fmt::format_to(std::back_inserter(counter), L"{} {}", Phobos::UI::BattlePointsSidebar_Label, points);
+			fmt::format_to(std::back_inserter(counter), L"{}{}", Phobos::UI::BattlePointsSidebar_Label, points);
 
 		counter.push_back(L'\0');
 		Point2D vPos = {

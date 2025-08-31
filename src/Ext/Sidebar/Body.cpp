@@ -10,8 +10,8 @@
 
 std::unique_ptr<SidebarExtData> SidebarExtData::Data;
 IStream* SidebarExtData::g_pStm;
-std::array<SHPReference*, 4u> SidebarExtData::TabProducingProgress{};
-std::array<bool, 4u> SidebarExtData::TabProducingProgressIsLoaded{};
+std::array<SHPReference*, 4u> SidebarExtData::TabProducingProgress {};
+std::array<bool, 4u> SidebarExtData::TabProducingProgressIsLoaded {};
 
 void SidebarExtData::Allocate(SidebarClass* pThis)
 {
@@ -31,7 +31,8 @@ void SidebarExtData::DrawProducingProgress()
 	if (HouseExtData::IsObserverPlayer(pPlayer))
 		return;
 
-	if (Phobos::UI::ShowProducingProgress) {
+	if (Phobos::UI::ShowProducingProgress)
+	{
 		const auto pSideExt = SideExtContainer::Instance.Find(SideClass::Array->Items[pPlayer->SideIndex]);
 
 		if (!pSideExt)
@@ -41,15 +42,19 @@ void SidebarExtData::DrawProducingProgress()
 		const int XBase = (pSideExt->Sidebar_GDIPositions ? 26 : 20) + pSideExt->Sidebar_ProducingProgress_Offset.Get().X;
 		const int YBase = 197 + pSideExt->Sidebar_ProducingProgress_Offset.Get().Y;
 
-		for (int i = 0; i < (int)SidebarExtData::TabProducingProgress.size(); i++) {
-			if (auto pSHP = SidebarExtData::TabProducingProgress[i]) {
+		for (int i = 0; i < (int)SidebarExtData::TabProducingProgress.size(); i++)
+		{
+			if (auto pSHP = SidebarExtData::TabProducingProgress[i])
+			{
 				const auto rtti = i == 0 || i == 1 ? AbstractType::BuildingType : AbstractType::InfantryType;
 				FactoryClass* pFactory = nullptr;
 
-				if (i != 3) {
+				if (i != 3)
+				{
 					pFactory = pPlayer->GetPrimaryFactory(rtti, false, i == 1 ? BuildCat::Combat : BuildCat::DontCare);
 				}
-				else {
+				else
+				{
 					pFactory = pPlayer->GetPrimaryFactory(AbstractType::UnitType, false, BuildCat::DontCare);
 					if (!pFactory || !pFactory->Object)
 						pFactory = pPlayer->GetPrimaryFactory(AbstractType::UnitType, true, BuildCat::DontCare);
@@ -57,7 +62,8 @@ void SidebarExtData::DrawProducingProgress()
 						pFactory = pPlayer->GetPrimaryFactory(AbstractType::AircraftType, false, BuildCat::DontCare);
 				}
 
-				if (pFactory) {
+				if (pFactory)
+				{
 					int idxFrame = (int)(((double)pFactory->GetProgress() / 54) * (pSHP->Frames - 1));
 					idxFrame = idxFrame > pSHP->Frames ? pSHP->Frames : idxFrame;
 

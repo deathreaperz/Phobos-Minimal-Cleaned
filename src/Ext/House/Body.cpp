@@ -20,13 +20,9 @@
 #include <Utilities/Cast.h>
 
 #pragma region defines
-std::vector<int> HouseExtData::AIProduction_CreationFrames;
-std::vector<int> HouseExtData::AIProduction_Values;
-std::vector<int> HouseExtData::AIProduction_BestChoices;
-std::vector<int> HouseExtData::AIProduction_BestChoicesNaval;
 PhobosMap<TechnoClass*, KillMethod> HouseExtData::AutoDeathObjects;
-std::set<TechnoClass*> HouseExtData::LimboTechno;
-std::unordered_map<HouseClass*, std::set<TeamClass*>> HouseExtContainer::HousesTeams;
+HelperedVector<TechnoClass*> HouseExtData::LimboTechno;
+PhobosMap<HouseClass*, VectorSet<TeamClass*>> HouseExtContainer::HousesTeams;
 
 int HouseExtData::LastGrindingBlanceUnit;
 int HouseExtData::LastGrindingBlanceInf;
@@ -39,6 +35,7 @@ CDTimerClass HouseExtData::SubTerraneanEVASpeak;
 bool HouseExtData::IsAnyFirestormActive;
 
 HouseClass* HouseExtContainer::Civilian = nullptr;
+SideClass* HouseExtContainer::CivilianSide = nullptr;
 HouseClass* HouseExtContainer::Special = nullptr;
 HouseClass* HouseExtContainer::Neutral = nullptr;
 
@@ -74,6 +71,78 @@ void HouseExtData::InitializeTrackers(HouseClass* pHouse)
 	//pExt->KilledBuildingTypes.PopulateCounts(BuildingTypeClass::Array->Count);
 	//pExt->CapturedBuildings.PopulateCounts(BuildingTypeClass::Array->Count);
 	//pExt->CollectedCrates.PopulateCounts(CrateTypeClass::Array.size());
+}
+
+// restored from TS
+void FakeHouseClass::_GiveTiberium(float amount, int type)
+{
+	this->SiloMoney += int(amount * 5.0);
+
+	if (SessionClass::Instance->GameMode == GameMode::Campaign || this->IsHumanPlayer)
+	{
+		// don't change, old values are needed for silo update
+		const double lastStorage = (this->_GetExtData()->TiberiumStorage.GetAmounts());
+		const auto lastTotalStorage = this->TotalStorage;
+		const auto curStorage = (double)lastTotalStorage - lastStorage;
+		double rest = 0.0;
+
+		// this is the upper limit for stored tiberium
+		if (amount > curStorage)
+		{
+			rest = amount - curStorage;
+			amount = float(curStorage);
+		}
+
+		// go through all buildings and fill them up until all is in there
+		for (auto const& pBuilding : this->Buildings)
+		{
+			if (amount <= 0.0)
+			{
+				break;
+			}
+
+			auto const storage = pBuilding->Type->Storage;
+			if (pBuilding->IsOnMap && storage > 0)
+			{
+				auto storage_ = &TechnoExtContainer::Instance.Find(pBuilding)->TiberiumStorage;
+				// put as much tiberium into this silo
+				double freeSpace = (double)storage - storage_->GetAmounts();
+
+				if (freeSpace > 0.0)
+				{
+					if (freeSpace > amount)
+					{
+						freeSpace = amount;
+					}
+
+					storage_->IncreaseAmount((float)freeSpace, type);
+					this->_GetExtData()->TiberiumStorage.IncreaseAmount((float)freeSpace, type);
+					amount -= (float)freeSpace;
+				}
+			}
+		}
+
+		if (RulesExtData::Instance()->GiveMoneyIfStorageFull)
+		{
+			amount += (float)rest;
+
+			//no free space , just give the money ,..
+			if (amount > 0.0)
+			{
+				auto const pTib = TiberiumClass::Array->Items[type];
+				this->Balance += int(amount * pTib->Value * this->Type->IncomeMult);
+			}
+		}
+
+		// redraw silos
+		this->UpdateAllSilos((int)lastStorage, lastTotalStorage);
+	}
+	else
+	{
+		// just add the money. this is the only original YR logic
+		auto const pTib = TiberiumClass::Array->Items[type];
+		this->Balance += int(amount * pTib->Value * this->Type->IncomeMult);
+	}
 }
 
 bool HouseExtData::IsMutualAllies(HouseClass const* pThis, HouseClass const* pHouse)
@@ -901,6 +970,370 @@ bool HouseExtData::GetParadropContent(HouseClass* pHouse, Iterator<TechnoTypeCla
 	return (Types && Num);
 }
 
+#include <Ext/Team/Body.h>
+
+NOINLINE void GetRemainingTaskForceMembers(TeamClass* pTeam, std::vector<TechnoTypeClass*>& missings)
+{
+	const auto pType = pTeam->Type;
+	const auto pTaskForce = pType->TaskForce;
+
+	for (int a = 0; a < pTaskForce->CountEntries; ++a)
+	{
+		for (int i = 0; i < pTaskForce->Entries[a].Amount; ++i)
+		{
+			if (auto pTaskType = pTaskForce->Entries[a].Type)
+			{
+				missings.emplace_back(pTaskType);
+			}
+		}
+	}
+
+	//remove first finded similarity
+	for (auto pMember = pTeam->FirstUnit; pMember; pMember = pMember->NextTeamMember)
+	{
+		auto it = std::find_if(missings.begin(), missings.end(), [&](TechnoTypeClass* pMissType)
+ {
+	 return pMember->GetTechnoType() == pMissType || TeamExtData::IsEligible(pMember, pMissType);
+		});
+
+		if (it != missings.end())
+			missings.erase(it);
+	}
+}
+
+void HouseExtData::GetUnitTypeToProduce()
+{
+	auto pThis = this->AttachedToObject;
+	const auto AIDifficulty = static_cast<int>(pThis->GetAIDifficultyIndex());
+	bool skipGround = pThis->ProducingUnitTypeIndex != -1;
+	bool skipNaval = this->ProducingNavalUnitTypeIndex != -1;
+
+	if ((skipGround && skipNaval) || (!skipGround && this->UpdateHarvesterProduction()))
+		return;
+
+	auto& creationFrames = this->Productions[0].CreationFrames;
+	auto& values = this->Productions[0].Values;
+	auto& bestChoices = this->Productions[0].BestChoices;
+	auto& bestChoicesNaval = this->BestChoicesNaval;
+
+	auto count = static_cast<size_t>(UnitTypeClass::Array->Count);
+	creationFrames.assign(count, 0x7FFFFFFF);
+	values.assign(count, 0);
+	std::vector<TechnoTypeClass*> taskForceMembers;
+	taskForceMembers.reserve(UnitTypeClass::Array->Count);
+
+	for (auto& currentTeam : HouseExtContainer::HousesTeams[pThis])
+	{
+		taskForceMembers.clear();
+		int teamCreationFrame = currentTeam->CreationFrame;
+
+		if ((!currentTeam->Type->Reinforce || currentTeam->IsFullStrength)
+			&& (currentTeam->IsForcedActive || currentTeam->IsHasBeen))
+		{
+			continue;
+		}
+
+		GetRemainingTaskForceMembers(currentTeam, taskForceMembers);
+
+		for (auto& currentMember : taskForceMembers)
+		{
+			const auto what = currentMember->WhatAmI();
+
+			if (what != UnitTypeClass::AbsID ||
+				(skipGround && !currentMember->Naval) ||
+				(skipNaval && currentMember->Naval))
+				continue;
+
+			const auto index = static_cast<size_t>(((UnitTypeClass*)currentMember)->ArrayIndex);
+			++values[index];
+
+			if (teamCreationFrame < creationFrames[index])
+				creationFrames[index] = teamCreationFrame;
+		}
+	}
+
+	for (int i = 0; i < UnitClass::Array->Count; ++i)
+	{
+		const auto pUnit = UnitClass::Array->Items[i];
+
+		if (values[pUnit->Type->ArrayIndex] > 0 && pUnit->CanBeRecruited(pThis))
+			--values[pUnit->Type->ArrayIndex];
+	}
+
+	bestChoices.clear();
+	bestChoicesNaval.clear();
+
+	int bestValue = -1;
+	int bestValueNaval = -1;
+	int earliestTypenameIndex = -1;
+	int earliestTypenameIndexNaval = -1;
+	int earliestFrame = 0x7FFFFFFF;
+	int earliestFrameNaval = 0x7FFFFFFF;
+
+	for (auto i = 0u; i < count; ++i)
+	{
+		auto type = UnitTypeClass::Array->Items[static_cast<int>(i)];
+		int currentValue = values[i];
+
+		if (currentValue <= 0)
+			continue;
+
+		const auto buildableResult = pThis->CanBuild(type, false, false);
+
+		if (buildableResult == CanBuildResult::Unbuildable
+			|| type->GetActualCost(pThis) > pThis->Available_Money())
+		{
+			continue;
+		}
+
+		bool isNaval = type->Naval;
+		int* cBestValue = !isNaval ? &bestValue : &bestValueNaval;
+		std::vector<int>* cBestChoices = !isNaval ? &bestChoices : &bestChoicesNaval;
+
+		if (*cBestValue < currentValue || *cBestValue == -1)
+		{
+			*cBestValue = currentValue;
+			cBestChoices->clear();
+		}
+
+		cBestChoices->push_back(static_cast<int>(i));
+
+		int* cEarliestTypeNameIndex = !isNaval ? &earliestTypenameIndex : &earliestTypenameIndexNaval;
+		int* cEarliestFrame = !isNaval ? &earliestFrame : &earliestFrameNaval;
+
+		if (*cEarliestFrame > creationFrames[i] || *cEarliestTypeNameIndex == -1)
+		{
+			*cEarliestTypeNameIndex = static_cast<int>(i);
+			*cEarliestFrame = creationFrames[i];
+		}
+	}
+
+	if (!skipGround)
+	{
+		int result_ground = earliestTypenameIndex;
+		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
+		{
+			if (!bestChoices.empty())
+				result_ground = bestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(bestChoices.size() - 1))];
+			else
+				result_ground = -1;
+		}
+
+		pThis->ProducingUnitTypeIndex = result_ground;
+	}
+
+	if (!skipNaval)
+	{
+		int result_naval = earliestTypenameIndexNaval;
+		if (ScenarioClass::Instance->Random.RandomFromMax(99) >= RulesClass::Instance->FillEarliestTeamProbability[AIDifficulty])
+		{
+			if (!bestChoicesNaval.empty())
+				result_naval = bestChoicesNaval[ScenarioClass::Instance->Random.RandomFromMax(int(bestChoicesNaval.size() - 1))];
+			else
+				result_naval = -1;
+		}
+
+		this->ProducingNavalUnitTypeIndex = result_naval;
+	}
+}
+
+int HouseExtData::GetAircraftTypeToProduce()
+{
+	auto& CreationFrames = this->Productions[1].CreationFrames;
+	auto& Values = this->Productions[1].Values;
+	auto& BestChoices = this->Productions[1].BestChoices;
+
+	auto const count = static_cast<unsigned int>(AircraftTypeClass::Array->Count);
+	CreationFrames.assign(count, 0x7FFFFFFF);
+	Values.assign(count, 0);
+	BestChoices.clear();
+	std::vector<TechnoTypeClass*> taskForceMembers;
+	taskForceMembers.reserve(AircraftTypeClass::Array->Count);
+
+	//Debug::LogInfo(__FUNCTION__" Executing with Current TeamArrayCount[%d] for[%s][House %s - %x] ", TeamClass::Array->Count, AbstractClass::GetAbstractClassName(Ttype::AbsID), pHouse->get_ID() , pHouse);
+	for (auto& CurrentTeam : HouseExtContainer::HousesTeams[this->AttachedToObject])
+	{
+		taskForceMembers.clear();
+		int TeamCreationFrame = CurrentTeam->CreationFrame;
+
+		if (CurrentTeam->Type->Reinforce && !CurrentTeam->IsFullStrength || !CurrentTeam->IsForcedActive && !CurrentTeam->IsHasBeen)
+		{
+			GetRemainingTaskForceMembers(CurrentTeam, taskForceMembers);
+
+			for (auto& pMember : taskForceMembers)
+			{
+				if (pMember->WhatAmI() != AircraftTypeClass::AbsID)
+				{
+					continue;
+				}
+
+				auto const Idx = static_cast<unsigned int>(((AircraftTypeClass*)pMember)->ArrayIndex);
+
+				++Values[Idx];
+				if (TeamCreationFrame < CreationFrames[Idx])
+				{
+					CreationFrames[Idx] = TeamCreationFrame;
+				}
+			}
+		}
+	}
+
+	for (auto classPos = AircraftClass::Array->begin(); classPos != AircraftClass::Array->end(); ++classPos)
+	{
+		auto const Idx = static_cast<unsigned int>((*classPos)->Type->ArrayIndex);
+		if (Values[Idx] > 0 && (*classPos)->CanBeRecruited(this->AttachedToObject))
+		{
+			--Values[Idx];
+		}
+	}
+
+	int BestValue = -1;
+	int EarliestTypenameIndex = -1;
+	int EarliestFrame = 0x7FFFFFFF;
+
+	for (auto i = 0u; i < count; ++i)
+	{
+		auto const TT = AircraftTypeClass::Array->Items[static_cast<int>(i)];
+
+		int CurrentValue = Values[i];
+
+		if (CurrentValue <= 0)
+			continue;
+
+		const auto buildableResult = this->AttachedToObject->CanBuild(TT, false, false);
+
+		if (buildableResult != CanBuildResult::Buildable || TT->GetActualCost(this->AttachedToObject) > this->AttachedToObject->Available_Money())
+		{
+			continue;
+		}
+
+		//yes , we checked this fucking twice just to make sure
+		const auto factoryresult = HouseExtData::HasFactory(this->AttachedToObject, TT, false, true, false, true).first;
+
+		if (factoryresult == NewFactoryState::NotFound || factoryresult == NewFactoryState::NoFactory)
+		{
+			continue;
+		}
+
+		if (BestValue < CurrentValue || BestValue == -1)
+		{
+			BestValue = CurrentValue;
+			BestChoices.clear();
+		}
+		BestChoices.push_back(static_cast<int>(i));
+		if (EarliestFrame > CreationFrames[i] || EarliestTypenameIndex < 0)
+		{
+			EarliestTypenameIndex = static_cast<int>(i);
+			EarliestFrame = CreationFrames[i];
+		}
+	}
+
+	const auto AIDiff = static_cast<int>(this->AttachedToObject->GetAIDifficultyIndex());
+
+	if (ScenarioClass::Instance->Random.RandomFromMax(99) < RulesClass::Instance->FillEarliestTeamProbability[AIDiff])
+		return EarliestTypenameIndex;
+
+	if (!BestChoices.empty())
+		return BestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(BestChoices.size() - 1))];
+
+	return -1;
+}
+
+int HouseExtData::GetInfantryTypeToProduce()
+{
+	auto& CreationFrames = this->Productions[2].CreationFrames;
+	auto& Values = this->Productions[2].Values;
+	auto& BestChoices = this->Productions[2].BestChoices;
+
+	auto const count = static_cast<unsigned int>(InfantryTypeClass::Array->Count);
+	CreationFrames.assign(count, 0x7FFFFFFF);
+	Values.assign(count, 0);
+	BestChoices.clear();
+	std::vector<TechnoTypeClass*> taskForceMembers;
+	taskForceMembers.reserve(InfantryTypeClass::Array->Count);
+
+	//Debug::LogInfo(__FUNCTION__" Executing with Current TeamArrayCount[%d] for[%s][House %s - %x] ", TeamClass::Array->Count, AbstractClass::GetAbstractClassName(Ttype::AbsID), pHouse->get_ID() , pHouse);
+	for (auto& CurrentTeam : HouseExtContainer::HousesTeams[this->AttachedToObject])
+	{
+		taskForceMembers.clear();
+		int TeamCreationFrame = CurrentTeam->CreationFrame;
+
+		if (CurrentTeam->Type->Reinforce && !CurrentTeam->IsFullStrength || !CurrentTeam->IsForcedActive && !CurrentTeam->IsHasBeen)
+		{
+			GetRemainingTaskForceMembers(CurrentTeam, taskForceMembers);
+
+			for (auto& pMember : taskForceMembers)
+			{
+				if (pMember->WhatAmI() != InfantryTypeClass::AbsID)
+				{
+					continue;
+				}
+
+				auto const Idx = static_cast<unsigned int>(((InfantryTypeClass*)pMember)->ArrayIndex);
+
+				++Values[Idx];
+				if (TeamCreationFrame < CreationFrames[Idx])
+				{
+					CreationFrames[Idx] = TeamCreationFrame;
+				}
+			}
+		}
+	}
+
+	for (auto classPos = InfantryClass::Array->begin(); classPos != InfantryClass::Array->end(); ++classPos)
+	{
+		auto const Idx = static_cast<unsigned int>((*classPos)->Type->ArrayIndex);
+		if (Values[Idx] > 0 && (*classPos)->CanBeRecruited(this->AttachedToObject))
+		{
+			--Values[Idx];
+		}
+	}
+
+	int BestValue = -1;
+	int EarliestTypenameIndex = -1;
+	int EarliestFrame = 0x7FFFFFFF;
+
+	for (auto i = 0u; i < count; ++i)
+	{
+		auto const TT = InfantryTypeClass::Array->Items[static_cast<int>(i)];
+
+		int CurrentValue = Values[i];
+
+		if (CurrentValue <= 0)
+			continue;
+
+		const auto buildableResult = this->AttachedToObject->CanBuild(TT, false, false);
+
+		if (buildableResult == CanBuildResult::Unbuildable
+			|| TT->GetActualCost(this->AttachedToObject) > this->AttachedToObject->Available_Money())
+		{
+			continue;
+		}
+
+		if (BestValue < CurrentValue || BestValue == -1)
+		{
+			BestValue = CurrentValue;
+			BestChoices.clear();
+		}
+		BestChoices.push_back(static_cast<int>(i));
+		if (EarliestFrame > CreationFrames[i] || EarliestTypenameIndex < 0)
+		{
+			EarliestTypenameIndex = static_cast<int>(i);
+			EarliestFrame = CreationFrames[i];
+		}
+	}
+
+	const auto AIDiff = static_cast<int>(this->AttachedToObject->GetAIDifficultyIndex());
+
+	if (ScenarioClass::Instance->Random.RandomFromMax(99) < RulesClass::Instance->FillEarliestTeamProbability[AIDiff])
+		return EarliestTypenameIndex;
+
+	if (!BestChoices.empty())
+		return BestChoices[ScenarioClass::Instance->Random.RandomFromMax(int(BestChoices.size() - 1))];
+
+	return -1;
+}
+
 TechTreeTypeClass* HouseExtData::GetTechTreeType()
 {
 	if (!this->SideTechTree.isset())
@@ -939,12 +1372,16 @@ void HouseExtData::InvalidatePointer(AbstractClass* ptr, bool bRemoved)
 	AnnounceInvalidPointer(Factory_VehicleType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_NavyType, ptr, bRemoved);
 	AnnounceInvalidPointer(Factory_AircraftType, ptr, bRemoved);
-	AnnounceInvalidPointer(Academies, ptr, bRemoved);
-	AnnounceInvalidPointer<BuildingClass*>(RestrictedFactoryPlants, ptr, bRemoved);
-	AnnounceInvalidPointer(OwnedCountedHarvesters, ptr, bRemoved);
+
+	Academies.InvalidatePointer(ptr, bRemoved);
+	TunnelsBuildings.InvalidatePointer(ptr, bRemoved);
+	RestrictedFactoryPlants.InvalidatePointer(ptr, bRemoved);
+	OwnedCountedHarvesters.InvalidatePointer(ptr, bRemoved);
 
 	for (auto& nTun : Tunnels)
-		AnnounceInvalidPointer(nTun.Vector, ptr, bRemoved);
+	{
+		AnnounceInvalidPointer<FootClass*>(nTun.Vector, ptr, bRemoved);
+	}
 
 	AnnounceInvalidPointer<SuperClass*>(Batteries, ptr);
 }
@@ -1014,12 +1451,31 @@ CellClass* HouseExtData::GetEnemyBaseGatherCell(HouseClass* pTargetHouse, HouseC
 
 HouseClass* HouseExtData::FindFirstCivilianHouse()
 {
-	if (RulesExtData::Instance()->CivilianSideIndex == -1)
-		RulesExtData::Instance()->CivilianSideIndex = SideClass::FindIndexById(GameStrings::Civilian());
-
 	if (!HouseExtContainer::Civilian)
 	{
-		HouseExtContainer::Civilian = HouseClass::FindBySideIndex(RulesExtData::Instance()->CivilianSideIndex);
+		auto idx = SideClass::FindIndexById(GameStrings::Civilian);
+
+		if (RulesExtData::Instance()->CivilianSideIndex == -1 || RulesExtData::Instance()->CivilianSideIndex != idx)
+			RulesExtData::Instance()->CivilianSideIndex = idx;
+
+		if (!HouseExtContainer::Civilian)
+		{
+			HouseExtContainer::CivilianSide = SideClass::Array->Items[idx];
+
+			for (auto pHouse : *HouseClass::Array)
+			{
+				if (pHouse->Type->SideIndex == idx)
+				{
+					HouseExtContainer::Civilian = pHouse;
+					break;
+				}
+			}
+		}
+
+		if (!HouseExtContainer::Civilian)
+		{
+			Debug::FatalErrorAndExit("Failed to find Civilian House !!");
+		}
 	}
 
 	return HouseExtContainer::Civilian;
@@ -1027,12 +1483,30 @@ HouseClass* HouseExtData::FindFirstCivilianHouse()
 
 HouseClass* HouseExtData::FindSpecial()
 {
-	if (RulesExtData::Instance()->SpecialCountryIndex == -1)
-		Debug::FatalError("Special Index is invalid !");
-
 	if (!HouseExtContainer::Special)
 	{
-		HouseExtContainer::Special = HouseClass::FindByCountryIndex(RulesExtData::Instance()->SpecialCountryIndex);
+		auto idx = HouseTypeClass::FindIndexByIdAndName(GameStrings::Special);
+
+		if (RulesExtData::Instance()->SpecialCountryIndex == -1 || RulesExtData::Instance()->SpecialCountryIndex != idx)
+			RulesExtData::Instance()->SpecialCountryIndex = idx;
+
+		if (!HouseExtContainer::Special)
+		{
+			for (auto pHouse : *HouseClass::Array)
+			{
+				if (pHouse->Type->ArrayIndex == idx || pHouse->Type->ParentIdx == idx)
+				{
+					HouseExtContainer::Special = pHouse;
+					break;
+				}
+			}
+		}
+
+		if (!HouseExtContainer::Special)
+		{
+			//HouseExtContainer::Special = GameCreate<HouseClass>(HouseTypeClass::Array->Items[idx]);
+			Debug::FatalErrorAndExit("Cannot Find House with Special Country !");
+		}
 	}
 
 	return HouseExtContainer::Special;
@@ -1040,12 +1514,34 @@ HouseClass* HouseExtData::FindSpecial()
 
 HouseClass* HouseExtData::FindNeutral()
 {
-	if (RulesExtData::Instance()->NeutralCountryIndex == -1)
-		Debug::FatalError("Neutral Index is invalid !");
-
 	if (!HouseExtContainer::Neutral)
 	{
-		HouseExtContainer::Neutral = HouseClass::FindByCountryIndex(RulesExtData::Instance()->NeutralCountryIndex);
+		auto idx = HouseTypeClass::FindIndexByIdAndName(GameStrings::Neutral);
+
+		if (RulesExtData::Instance()->NeutralCountryIndex == -1 || RulesExtData::Instance()->NeutralCountryIndex != idx)
+			RulesExtData::Instance()->NeutralCountryIndex = idx;
+
+		if (!HouseExtContainer::Neutral)
+		{
+			for (auto pHouse : *HouseClass::Array)
+			{
+				//Debug::LogInfo("House [{} - {}/{}] , side {} country {} parent {}/{}", (void*)pHouse , pHouse->Type->ID , pHouse->Type->Name
+				 ///,	pHouse->Type->SideIndex , pHouse->Type->ArrayIndex, pHouse->Type->ParentIdx , pHouse->Type->ParentCountry.data()
+				//);
+
+				if (pHouse->Type->ArrayIndex == idx || pHouse->Type->ParentIdx == idx)
+				{
+					HouseExtContainer::Neutral = pHouse;
+					break;
+				}
+			}
+		}
+
+		if (!HouseExtContainer::Neutral)
+		{
+			//HouseExtContainer::Neutral = GameCreate<HouseClass>(HouseTypeClass::Array->Items[idx]);
+			Debug::FatalErrorAndExit("Cannot Find House with Neutral Country !");
+		}
 	}
 
 	return HouseExtContainer::Neutral;
@@ -1360,18 +1856,8 @@ void HouseExtData::UpdateAutoDeathObjects()
 
 	auto const pExt = TechnoExtContainer::Instance.Find(item.first);
 
-	if (!item.first->IsInLogic && pExt->Death_Countdown.Completed())
+	if (!item.first->IsInLogic && pExt->CheckDeathConditions())
 	{
-		if (auto const pBuilding = cast_to<BuildingClass*, false>(item.first))
-		{
-			if (BuildingExtContainer::Instance.Find(pBuilding)->LimboID != -1)
-			{
-				BuildingExtData::LimboKill(pBuilding);
-				return true;
-			}
-		}
-
-		TechnoExtData::KillSelf(item.first, item.second, true, TechnoTypeExtContainer::Instance.Find(pExt->Type)->AutoDeath_VanishAnimation);
 		return true;
 	}
 	return false;
@@ -1885,20 +2371,29 @@ int HouseExtData::CountOwnedNowTotal(
 
 void HouseExtData::UpdateTransportReloaders()
 {
-	for (auto& pTech : HouseExtData::LimboTechno)
-	{
-		if (pTech && pTech->IsAlive // the null check is only for Save game load , for some reason it contains nullptr ,...
-			&& pTech->WhatAmI() != AircraftClass::AbsID
-			&& pTech->WhatAmI() != BuildingClass::AbsID
-			&& pTech->Transporter && pTech->Transporter->IsAlive && pTech->Transporter->IsInLogic)
-		{
-			//const auto pType = pTech->GetTechnoType();
-			if (TechnoTypeExtContainer::Instance.Find(pTech->GetTechnoType())->ReloadInTransport)
-			{
-				pTech->Reload();
-			}
-		}
-	}
+	HouseExtData::LimboTechno.remove_all_if([](TechnoClass* pTech)
+ {
+	 if (!pTech || !pTech->IsAlive)
+		 return true;
+
+	 auto vtable = VTable::Get(pTech);
+
+	 if (vtable != UnitClass::vtable
+		 && vtable != InfantryClass::vtable
+		 && vtable != AircraftClass::vtable
+		 && vtable != BuildingClass::vtable)
+		 return true;
+
+	 if (pTech->Transporter && pTech->Transporter->IsAlive && pTech->Transporter->IsInLogic)
+	 {
+		 if (TechnoTypeExtContainer::Instance.Find(pTech->GetTechnoType())->ReloadInTransport)
+		 {
+			 pTech->Reload();
+		 }
+	 }
+
+	 return false;
+	});
 }
 
 void HouseExtData::UpdateNonMFBFactoryCounts(AbstractType rtti, bool remove, bool isNaval)
@@ -2035,6 +2530,32 @@ int HouseExtData::CalculateBattlePoints(TechnoTypeClass* pTechno, HouseClass* pO
 	return !pThisTypeExt->BattlePoints_CanUseStandardPoints ? 0 : pTechno->Points;
 }
 
+bool HouseExtData::ReverseEngineer(TechnoClass* Victim)
+{
+	auto VictimType = Victim->GetTechnoType();
+	auto pVictimData = TechnoTypeExtContainer::Instance.Find(VictimType);
+
+	if (!pVictimData->CanBeReversed)
+		return false;
+
+	auto VictimAs = pVictimData->ReversedAs.Get(VictimType);
+
+	if (!VictimAs)
+		return false;
+
+	if (HouseExtData::PrereqValidate(this->AttachedToObject, VictimType, false, true) != CanBuildResult::Buildable)
+	{
+		this->Reversed.emplace(VictimAs);
+		if (HouseExtData::RequirementsMet(this->AttachedToObject, VictimType) != RequirementStatus::Forbidden)
+		{
+			this->AttachedToObject->RecheckTechTree = true;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 //void HouseExtData::AddToLimboTracking(TechnoTypeClass* pTechnoType)
 //{
 //	if (pTechnoType)
@@ -2129,38 +2650,40 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->BattlePointsCollectors)
 		.Process(this->m_ForceOnlyTargetHouseEnemy)
 		.Process(this->ForceOnlyTargetHouseEnemyMode)
-		//.Process(this->RandomNumber)
-		.Process(this->Factory_BuildingType, true)
-		.Process(this->Factory_InfantryType, true)
-		.Process(this->Factory_VehicleType, true)
-		.Process(this->Factory_NavyType, true)
-		.Process(this->Factory_AircraftType, true)
+		.Process(this->Factory_BuildingType)
+		.Process(this->Factory_InfantryType)
+		.Process(this->Factory_VehicleType)
+		.Process(this->Factory_NavyType)
+		.Process(this->Factory_AircraftType)
 		.Process(this->AllRepairEventTriggered)
-		.Process(this->LastBuildingTypeArrayIdx)
-		.Process(this->RepairBaseNodes)
+		.Process(this->LastBuildingTypeArrayIdx);
+
+	for (auto& node : this->RepairBaseNodes)
+		Stm.Process(node);
+	Stm
 		.Process(this->LastBuiltNavalVehicleType)
 		.Process(this->ProducingNavalUnitTypeIndex)
-
-		.Process(this->AutoDeathObjects, true)
 		.Process(this->LaunchDatas)
 		.Process(this->CaptureObjectExecuted)
 		.Process(this->DiscoverEvaDelay)
-
 		.Process(this->Tunnels)
 		.Process(this->Seed)
-
 		.Process(this->SWLastIndex)
-		.Process(this->Batteries, true)
-
+		.Process(this->Batteries)
 		.Process(this->AvaibleDocks)
-
 		.Process(this->StolenTech)
 		.Process(this->RadarPersist)
-		.Process(this->FactoryOwners_GatheredPlansOf, true)
-		.Process(this->Academies, true)
-		.Process(this->Reversed, true)
-		.Process(this->OwnedCountedHarvesters)
+		.Process(this->FactoryOwners_GatheredPlansOf)
+		.Process(this->Academies)
+		.Process(this->TunnelsBuildings)
+		.Process(this->Reversed);
 
+	//Debug::LogInfo("Before doing OwnedCountedHarvesters");
+	Stm
+		.Process(this->OwnedCountedHarvesters);
+
+	//Debug::LogInfo("After doing OwnedCountedHarvesters for");
+	Stm
 		.Process(this->Is_NavalYardSpied)
 		.Process(this->Is_AirfieldSpied)
 		.Process(this->Is_ConstructionYardSpied)
@@ -2168,64 +2691,68 @@ void HouseExtData::Serialize(T& Stm)
 		.Process(this->KeepAliveCount)
 		.Process(this->KeepAliveBuildingCount)
 		.Process(this->TiberiumStorage)
-
-		.Process(this->SideTechTree, true)
+		.Process(this->SideTechTree)
 		.Process(this->CombatAlertTimer)
-		.Process(this->RestrictedFactoryPlants, true)
+		.Process(this->RestrictedFactoryPlants)
 		.Process(this->AISellAllDelayTimer)
-		//.Process(this->BuiltAircraftTypes)
-		//.Process(this->BuiltInfantryTypes)
-		//.Process(this->BuiltUnitTypes)
-		//.Process(this->BuiltBuildingTypes)
-		//.Process(this->KilledAircraftTypes)
-		//.Process(this->KilledInfantryTypes)
-		//.Process(this->KilledUnitTypes)
-		//.Process(this->KilledBuildingTypes)
-		//.Process(this->CapturedBuildings)
-		//.Process(this->CollectedCrates)
-
-		.Process(this->OwnedDeployingUnits, true)
-
+		.Process(this->OwnedDeployingUnits)
 		.Process(this->Common)
 		.Process(this->Combat)
-
 		.Process(this->AISuperWeaponDelayTimer)
-
 		.Process(this->NumAirpads_NonMFB)
 		.Process(this->NumBarracks_NonMFB)
 		.Process(this->NumWarFactories_NonMFB)
 		.Process(this->NumConYards_NonMFB)
 		.Process(this->NumShipyards_NonMFB)
-
 		.Process(this->SuspendedEMPulseSWs)
 		.Process(this->ForceEnemyIndex)
 		.Process(this->BattlePoints)
+		.Process(this->Productions)
+		.Process(this->BestChoicesNaval)
 		;
 }
 
 bool HouseExtContainer::LoadGlobals(PhobosStreamReader& Stm)
 {
 	return Stm
+		.Process(HouseExtData::LimboTechno)
+		.Process(HouseExtData::AutoDeathObjects)
 		.Process(HouseExtData::LastGrindingBlanceUnit)
 		.Process(HouseExtData::LastGrindingBlanceInf)
 		.Process(HouseExtData::LastHarvesterBalance)
 		.Process(HouseExtData::LastSlaveBalance)
 		.Process(HouseExtData::IsAnyFirestormActive)
-		.Process(HouseExtData::LimboTechno)
-		.Process(HouseExtData::AutoDeathObjects)
+		.Process(HouseExtData::CloakEVASpeak)
+		.Process(HouseExtData::SubTerraneanEVASpeak)
+
+		.Process(HouseExtContainer::HousesTeams)
+		.Process(HouseExtContainer::Civilian)
+		.Process(HouseExtContainer::Special)
+		.Process(HouseExtContainer::Neutral)
+		.Process(HouseExtContainer::CivilianSide)
+
 		.Success();
 }
 
 bool HouseExtContainer::SaveGlobals(PhobosStreamWriter& Stm)
 {
 	return Stm
+		.Process(HouseExtData::LimboTechno)
+		.Process(HouseExtData::AutoDeathObjects)
 		.Process(HouseExtData::LastGrindingBlanceUnit)
 		.Process(HouseExtData::LastGrindingBlanceInf)
 		.Process(HouseExtData::LastHarvesterBalance)
 		.Process(HouseExtData::LastSlaveBalance)
 		.Process(HouseExtData::IsAnyFirestormActive)
-		.Process(HouseExtData::LimboTechno)
-		.Process(HouseExtData::AutoDeathObjects)
+		.Process(HouseExtData::CloakEVASpeak)
+		.Process(HouseExtData::SubTerraneanEVASpeak)
+
+		.Process(HouseExtContainer::HousesTeams)
+		.Process(HouseExtContainer::Civilian)
+		.Process(HouseExtContainer::Special)
+		.Process(HouseExtContainer::Neutral)
+		.Process(HouseExtContainer::CivilianSide)
+
 		.Success();
 }
 
@@ -2236,11 +2763,6 @@ HouseExtContainer HouseExtContainer::Instance;
 
 void HouseExtContainer::Clear()
 {
-	HouseExtData::AIProduction_CreationFrames.clear();
-	HouseExtData::AIProduction_Values.clear();
-	HouseExtData::AIProduction_BestChoices.clear();
-	HouseExtData::AIProduction_BestChoicesNaval.clear();
-
 	HouseExtData::LastGrindingBlanceUnit = 0;
 	HouseExtData::LastGrindingBlanceInf = 0;
 	HouseExtData::LastHarvesterBalance = 0;
@@ -2252,6 +2774,7 @@ void HouseExtContainer::Clear()
 	Civilian = 0;
 	Special = 0;
 	Neutral = 0;
+	CivilianSide = 0;
 
 	HouseExtData::LimboTechno.clear();
 	HouseExtData::AutoDeathObjects.clear();
@@ -2532,6 +3055,489 @@ void FakeHouseClass::_AITryFireSW()
 }
 
 DEFINE_FUNCTION_JUMP(LJMP, 0x504790, FakeHouseClass::_UpdateAngerNodes)
+
+void FakeHouseClass::_BlowUpAll()
+{
+	//safer way
+	std::set<TechnoClass*> toBlowUp;
+
+	for (int i = 0; i < TechnoClass::Array->Count; ++i)
+	{
+		TechnoClass* techno = TechnoClass::Array->Items[i];
+
+		if (!techno->IsAlive || techno->IsCrashing || techno->IsSinking)
+		{
+			continue;
+		}
+
+		const auto nUnit = cast_to<UnitClass*, false>(techno);
+		if (nUnit && nUnit->DeathFrameCounter > 0)
+		{
+			continue;
+		}
+
+		HouseClass* myOwner = techno->GetOriginalOwner();
+		HouseClass* currentHouse = this;
+
+		const bool isNotOwnedByCurrentHouse = (myOwner != techno->Owner);
+		const bool hasOriginalOwner = (techno->MindControlledBy != nullptr);
+		const bool shouldSetToCivilian = hasOriginalOwner && techno->MindControlledBy->CaptureManager->SetOriginalOwnerToCivilian(techno);
+
+		if (isNotOwnedByCurrentHouse &&
+			(myOwner != currentHouse || shouldSetToCivilian)
+			|| myOwner != currentHouse)
+		{
+			continue;
+		}
+
+		toBlowUp.emplace(techno);
+	}
+
+	// Blow them up afterwards
+	for (TechnoClass* techno : toBlowUp)
+	{
+		if (!techno->IsAlive || techno->IsCrashing || techno->IsSinking)
+		{
+			continue;
+		}
+
+		const auto nUnit = cast_to<UnitClass*, false>(techno);
+		if (nUnit && nUnit->DeathFrameCounter > 0)
+		{
+			continue;
+		}
+
+		if (TemporalClass* temporal = techno->TemporalTargetingMe)
+		{
+			temporal->JustLetGo();
+		}
+
+		bool skipDoingDamage = false;
+
+		if (auto pBld = cast_to<BuildingClass*, false>(techno))
+		{
+			// do not return structures in campaigns
+			if (!SessionClass::Instance->IsCampaign())
+			{
+				// was the building owned by a neutral country?
+				auto pInitialOwner = pBld->InitialOwner;
+
+				if (!pInitialOwner || pInitialOwner->Type->MultiplayPassive)
+				{
+					auto pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
+
+					auto occupants = pBld->GetOccupantCount();
+					auto canReturn = (pInitialOwner != this) || occupants > 0;
+
+					if (canReturn && pExt->Returnable.Get(RulesExtData::Instance()->ReturnStructures))
+					{
+						// this may change owner
+						if (occupants)
+						{
+							pBld->KillOccupants(nullptr);
+						}
+
+						// don't do this when killing occupants already changed owner
+						if (pBld->GetOwningHouse() == this)
+						{
+							// fallback to first civilian side house, same logic SlaveManager uses
+							if (!pInitialOwner)
+							{
+								pInitialOwner = HouseClass::FindCivilianSide();
+							}
+
+							// give to other house and disable
+							if (pInitialOwner && pBld->SetOwningHouse(pInitialOwner, false))
+							{
+								pBld->Guard();
+
+								if (pBld->Type->NeedsEngineer)
+								{
+									pBld->HasEngineer = false;
+									pBld->DisableStuff();
+								}
+
+								skipDoingDamage = true;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (!skipDoingDamage)
+		{
+			int damage = techno->GetTechnoType()->Strength;
+			techno->ReceiveDamage(&damage, 0, RulesClass::Instance->C4Warhead, nullptr, true, true, nullptr);
+		}
+	}
+}
+
+DEFINE_FUNCTION_JUMP(CALL, 0x4F87FA, FakeHouseClass::_BlowUpAll)
+DEFINE_FUNCTION_JUMP(CALL, 0x4F8F7B, FakeHouseClass::_BlowUpAll)
+DEFINE_FUNCTION_JUMP(CALL, 0x6E31C8, FakeHouseClass::_BlowUpAll)
+DEFINE_FUNCTION_JUMP(LJMP, 0x4FC6D0, FakeHouseClass::_BlowUpAll)
+
+void FakeHouseClass::_BlowUpAllBuildings()
+{
+	//safer way
+	std::set<BuildingClass*> toBlowUp;
+
+	for (int i = 0; i < BuildingClass::Array->Count; ++i)
+	{
+		BuildingClass* techno = BuildingClass::Array->Items[i];
+
+		if (!techno->IsAlive)
+		{
+			continue;
+		}
+
+		HouseClass* myOwner = techno->GetOriginalOwner();
+		HouseClass* currentHouse = this;
+
+		const bool isNotOwnedByCurrentHouse = (myOwner != techno->Owner);
+		const bool hasOriginalOwner = (techno->MindControlledBy != nullptr);
+		const bool shouldSetToCivilian = hasOriginalOwner && techno->MindControlledBy->CaptureManager->SetOriginalOwnerToCivilian(techno);
+
+		if (isNotOwnedByCurrentHouse &&
+			(myOwner != currentHouse || shouldSetToCivilian)
+			|| myOwner != currentHouse)
+		{
+			continue;
+		}
+
+		toBlowUp.emplace(techno);
+	}
+
+	// Blow them up afterwards
+	for (BuildingClass* pBld : toBlowUp)
+	{
+		if (!pBld->IsAlive)
+		{
+			continue;
+		}
+
+		if (TemporalClass* temporal = pBld->TemporalTargetingMe)
+		{
+			temporal->JustLetGo();
+		}
+
+		bool skipDoingDamage = false;
+
+		{
+			// do not return structures in campaigns
+			if (!SessionClass::Instance->IsCampaign())
+			{
+				// was the building owned by a neutral country?
+				auto pInitialOwner = pBld->InitialOwner;
+
+				if (!pInitialOwner || pInitialOwner->Type->MultiplayPassive)
+				{
+					auto pExt = BuildingTypeExtContainer::Instance.Find(pBld->Type);
+
+					auto occupants = pBld->GetOccupantCount();
+					auto canReturn = (pInitialOwner != this) || occupants > 0;
+
+					if (canReturn && pExt->Returnable.Get(RulesExtData::Instance()->ReturnStructures))
+					{
+						// this may change owner
+						if (occupants)
+						{
+							pBld->KillOccupants(nullptr);
+						}
+
+						// don't do this when killing occupants already changed owner
+						if (pBld->GetOwningHouse() == this)
+						{
+							// fallback to first civilian side house, same logic SlaveManager uses
+							if (!pInitialOwner)
+							{
+								pInitialOwner = HouseClass::FindCivilianSide();
+							}
+
+							// give to other house and disable
+							if (pInitialOwner && pBld->SetOwningHouse(pInitialOwner, false))
+							{
+								pBld->Guard();
+
+								if (pBld->Type->NeedsEngineer)
+								{
+									pBld->HasEngineer = false;
+									pBld->DisableStuff();
+								}
+
+								skipDoingDamage = true;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (!skipDoingDamage)
+		{
+			int damage = pBld->GetTechnoType()->Strength;
+			pBld->ReceiveDamage(&damage, 0, RulesClass::Instance->C4Warhead, nullptr, true, true, nullptr);
+		}
+	}
+}
+
+DEFINE_FUNCTION_JUMP(CALL, 0x6E3228, FakeHouseClass::_BlowUpAllBuildings)
+DEFINE_FUNCTION_JUMP(LJMP, 0x4FC790, FakeHouseClass::_BlowUpAllBuildings)
+
+void FakeHouseClass::_UpdateRadar()
+{
+	bool radarAvailable = ScenarioClass::Instance->FreeRadar || !this->_GetExtData()->Batteries.empty();
+	this->RecheckRadar = 0;
+
+	if (this != HouseClass::CurrentPlayer())
+	{
+		return;
+	}
+
+	// If blackout still has time remaining,
+	// just update tactical map availability and exit
+	if (this->RadarBlackoutTimer.GetTimeLeft() > 0)
+	{
+		if (RadarClass::Instance->IsAvailableNow != 0)
+		{
+			RadarClass::Instance->UpdateRadarStatus(0);
+		}
+		return;
+	}
+
+	if (!radarAvailable)
+	{
+		int power = this->PowerOutput;
+		int drain = this->PowerDrain;
+
+		if (power >= drain || !drain || (power > 0 && (double)power / (double)drain >= 1.0))
+		{
+			const bool campaignAI = this->IsControlledByHuman();
+
+			for (int i = 0; i < this->Buildings.Count; ++i)
+			{
+				FakeBuildingClass* building = (FakeBuildingClass*)this->Buildings.Items[i];
+
+				if (!building)
+				{
+					continue;
+				}
+
+				if (!building->IsAlive) continue;
+				if (building->InLimbo) continue;
+				if (!building->IsOnMap) continue;
+				if (TechnoExtContainer::Instance.Find(building)->AE.DisableRadar) continue;
+
+				const auto pExt = building->_GetExtData();
+
+				if (!pExt->RegisteredJammers.empty()) continue;
+				if (building->EMPLockRemaining > 0) continue;
+				if (building->IsBeingWarpedOut()) continue;
+				if (building->CurrentMission == Mission::Selling) continue;
+				if (building->QueuedMission == Mission::Selling) continue;
+
+				BuildingTypeClass* pRadar = nullptr;
+
+				const auto pTypes = building->GetTypes(); // building types include upgrades
+
+				for (auto begin = pTypes.begin(); begin != pTypes.end() && *begin; ++begin)
+				{
+					if (!(*begin)->Radar)
+						continue;
+
+					const auto pTypeExt = BuildingTypeExtContainer::Instance.Find(*begin);
+					if (!pTypeExt->Radar_RequirePower || ((*begin)->Powered && building->HasPower))
+					{
+						pRadar = (*begin);
+						break;
+					}
+				}
+
+				if (pRadar)
+				{
+					if (pExt->LimboID != -1)
+					{
+						radarAvailable = true;
+						break;
+					}
+
+					// Extra campaign/player checks
+					const bool discoveredOrNonCampaign = building->DiscoveredByCurrentPlayer
+						|| SessionClass::Instance->GameMode != GameMode::Campaign;
+
+					if (!(campaignAI || discoveredOrNonCampaign)) continue;
+
+					radarAvailable = true;
+					break; // Found a valid radar
+				}
+			}
+		}
+	}
+
+	if (RadarClass::Instance->IsAvailableNow != radarAvailable)
+	{
+		RadarClass::Instance->UpdateRadarStatus(radarAvailable);
+	}
+}
+
+DEFINE_FUNCTION_JUMP(CALL, 0x4F8505, FakeHouseClass::_UpdateRadar)
+DEFINE_FUNCTION_JUMP(LJMP, 0x508DF0, FakeHouseClass::_UpdateRadar)
+
+void FakeHouseClass::_UpdateSpySat()
+{
+	const bool IsCurrentPlayer = this->ControlledByCurrentPlayer();
+	const bool ItIsCurrentPlayer = this == HouseClass::CurrentPlayer();
+	const bool IsCampaign = SessionClass::Instance->GameMode == GameMode::Campaign;
+	const bool IsSpysatActulallyAllowed = !IsCampaign ? ItIsCurrentPlayer : IsCurrentPlayer;
+
+	//===============reset all
+	this->CostDefensesMult = 1.0;
+	this->CostUnitsMult = 1.0;
+	this->CostInfantryMult = 1.0;
+	this->CostBuildingsMult = 1.0;
+	this->CostAircraftMult = 1.0;
+	BuildingClass* Spysat = nullptr;
+
+	const auto pHouseExt = this->_GetExtData();
+
+	pHouseExt->Building_BuildSpeedBonusCounter.clear();
+	pHouseExt->Building_OrePurifiersCounter.clear();
+	pHouseExt->RestrictedFactoryPlants.clear();
+	pHouseExt->BattlePointsCollectors.clear();
+
+	this->RecheckRadar = 0;
+
+	int activeCount = this->Buildings.Count;
+
+	if (activeCount <= 0)
+	{
+		// No buildings, remove shroud if active
+		if (this->SpySatActive)
+		{
+			MapClass::Instance->Reshroud(this);
+			this->SpySatActive = 0;
+
+			if (ItIsCurrentPlayer)
+			{
+				VocClass::PlayGlobal(RulesClass::Instance->SpySatDeactivationSound, Panning::Center, 1.0, 0);
+			}
+		}
+
+		return;
+	}
+
+	for (auto const& pBld : this->Buildings)
+	{
+		if (pBld && pBld->IsAlive && !pBld->InLimbo && pBld->IsOnMap)
+		{
+			const auto pExt = BuildingExtContainer::Instance.Find(pBld);
+			const bool IsLimboDelivered = pExt->LimboID != -1;
+
+			if (pBld->GetCurrentMission() == Mission::Selling || pBld->QueuedMission == Mission::Selling)
+				continue;
+
+			if (pBld->TemporalTargetingMe
+				|| pExt->AboutToChronoshift
+				|| pBld->IsBeingWarpedOut())
+				continue;
+
+			//const bool Online = pBld->IsPowerOnline(); // check power
+			const auto pTypes = pBld->GetTypes(); // building types include upgrades
+			const bool Jammered = !pExt->RegisteredJammers.empty();  // is this building jammed
+
+			for (auto begin = pTypes.begin(); begin != pTypes.end() && *begin; ++begin)
+			{
+				const auto pTypeExt = BuildingTypeExtContainer::Instance.Find(*begin);
+				//const auto Powered_ = pBld->IsOverpowered || (!PowerDown && !((*begin)->PowerDrain && LowpOwerHouse));
+
+				const bool IsBattlePointsCollectorPowered = !pTypeExt->BattlePointsCollector_RequirePower || ((*begin)->Powered && pBld->HasPower);
+				if (pTypeExt->BattlePointsCollector && IsBattlePointsCollectorPowered)
+				{
+					++pHouseExt->BattlePointsCollectors[(*begin)];
+				}
+
+				const bool IsFactoryPowered = !pTypeExt->FactoryPlant_RequirePower || ((*begin)->Powered && pBld->HasPower);
+
+				//recalculate the multiplier
+				if ((*begin)->FactoryPlant && IsFactoryPowered)
+				{
+					if (pTypeExt->FactoryPlant_AllowTypes.size() > 0 || pTypeExt->FactoryPlant_DisallowTypes.size() > 0)
+					{
+						pHouseExt->RestrictedFactoryPlants.emplace(pBld);
+					}
+
+					this->CostDefensesMult *= (*begin)->DefensesCostBonus;
+					this->CostUnitsMult *= (*begin)->UnitsCostBonus;
+					this->CostInfantryMult *= (*begin)->InfantryCostBonus;
+					this->CostBuildingsMult *= (*begin)->BuildingsCostBonus;
+					this->CostAircraftMult *= (*begin)->AircraftCostBonus;
+				}
+
+				if (IsSpysatActulallyAllowed && !Spysat)
+				{
+					//only pick avaible spysat
+					if (!TechnoExtContainer::Instance.Find(pBld)->AE.DisableSpySat)
+					{
+						const bool IsSpySatPowered = !pTypeExt->SpySat_RequirePower || ((*begin)->Powered && pBld->HasPower);
+						if ((*begin)->SpySat && !Jammered && IsSpySatPowered)
+						{
+							if (IsLimboDelivered || !IsCampaign || pBld->DiscoveredByCurrentPlayer)
+							{
+								Spysat = pBld;
+							}
+						}
+					}
+				}
+
+				// add eligible building
+				if (pTypeExt->SpeedBonus.Enabled && pBld->HasPower)
+					++pHouseExt->Building_BuildSpeedBonusCounter[(*begin)];
+
+				const bool IsPurifierRequirePower = !pTypeExt->PurifierBonus_RequirePower || ((*begin)->Powered && pBld->HasPower);
+				// add eligible purifier
+				if ((*begin)->OrePurifier && IsPurifierRequirePower)
+					++pHouseExt->Building_OrePurifiersCounter[(*begin)];
+			}
+		}
+	}
+
+	//count them
+	for (auto& purifier : pHouseExt->Building_OrePurifiersCounter)
+		this->NumOrePurifiers += purifier.second;
+
+	// If no valid spy sat found, turn off
+	if (!Spysat)
+	{
+		if (this->SpySatActive)
+		{
+			MapClass::Instance->Reshroud(this);
+			this->SpySatActive = 0;
+
+			if (ItIsCurrentPlayer)
+			{
+				VocClass::PlayGlobal(RulesClass::Instance->SpySatDeactivationSound, Panning::Center, 1.0, 0);
+			}
+		}
+
+		return;
+	}
+
+	// If valid spy sat found and shroud not yet cleared
+	if (!this->SpySatActive)
+	{
+		MapClass::Instance->Reveal(this);
+		this->SpySatActive = 1;
+
+		if (ItIsCurrentPlayer)
+		{
+			VocClass::PlayGlobal(RulesClass::Instance->SpySatActivationSound, Panning::Center, 1.0, 0);
+		}
+	}
+}
+
+DEFINE_FUNCTION_JUMP(CALL, 0x4F850C, FakeHouseClass::_UpdateSpySat)
+DEFINE_FUNCTION_JUMP(LJMP, 0x508F60, FakeHouseClass::_UpdateSpySat)
 
 #include <Ext/Infantry/Body.h>
 

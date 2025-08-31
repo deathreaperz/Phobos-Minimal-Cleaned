@@ -101,7 +101,7 @@ void RulesExtData::LoadEndOfAudioVisual(RulesClass* pRules, CCINIClass* pINI)
 	pData->Shield_ConditionGreen = Shield_ConditionGreen_d.Get(pRules->ConditionGreen);
 	pData->Shield_ConditionYellow = Shield_ConditionYellow_d.Get(pRules->ConditionYellow);
 	pData->Shield_ConditionRed = Shield_ConditionRed_d.Get(pRules->ConditionRed);
-	pData->ConditionYellow_Terrain = ConditionYellow_Terrain_d.Get(pRules->ConditionRed);
+	pData->ConditionYellow_Terrain = ConditionYellow_Terrain_d.Get(pRules->ConditionYellow);
 }
 
 ASMJIT_PATCH(0x66B8E2, RulesClass_ReadAudioVisual_End, 0x5)
@@ -213,8 +213,6 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 	pData->VoxelShadowLightSource.Read(iniEX, GameStrings::AudioVisual, "VoxelShadowLightSource");
 	pData->UseFixedVoxelLighting.Read(iniEX, GameStrings::AudioVisual, "UseFixedVoxelLighting");
 
-	pData->ReplaceVoxelLightSources();
-
 	//got invalidated early , so parse it again
 	detail::ParseVector(iniEX, pData->AITargetTypesLists, "AITargetTypes");
 	detail::ParseVector<ScriptTypeClass*, true>(iniEX, pData->AIScriptsLists, "AIScriptsList");
@@ -229,6 +227,8 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 	pData->DamageOwnerMultiplier.Read(iniEX, GameStrings::CombatDamage, "DamageOwnerMultiplier");
 	pData->DamageAlliesMultiplier.Read(iniEX, GameStrings::CombatDamage, "DamageAlliesMultiplier");
 	pData->DamageEnemiesMultiplier.Read(iniEX, GameStrings::CombatDamage, "DamageEnemiesMultiplier");
+	pData->DamageOwnerMultiplier_NotAffectsEnemies.Read(iniEX, GameStrings::CombatDamage, "DamageOwnerMultiplier.NotAffectsEnemies");
+	pData->DamageAlliesMultiplier_NotAffectsEnemies.Read(iniEX, GameStrings::CombatDamage, "DamageAlliesMultiplier.NotAffectsEnemies");
 
 	pData->FactoryProgressDisplay.Read(iniEX, GameStrings::AudioVisual, "FactoryProgressDisplay");
 	pData->MainSWProgressDisplay.Read(iniEX, GameStrings::AudioVisual, "MainSWProgressDisplay");
@@ -293,6 +293,8 @@ void RulesExtData::LoadAfterTypeData(RulesClass* pThis, CCINIClass* pINI)
 		BuildingTypeExtContainer::Instance.Find(BuildingTypeClass::Array->Items[i])
 			->CompleteInitialization();
 	}
+
+	pData->ReplaceVoxelLightSources();
 }
 
 static bool NOINLINE IsVanillaDummy(const char* ID)
@@ -313,9 +315,9 @@ static bool NOINLINE IsVanillaDummy(const char* ID)
 template<typename T>
 static COMPILETIMEEVAL FORCEDINLINE void FillSecrets(DynamicVectorClass<T>& secrets)
 {
-	for (auto Option : secrets)
+	for (auto opt : secrets)
 	{
-		RulesExtData::Instance()->Secrets.emplace_back(Option);
+		RulesExtData::Instance()->Secrets.emplace_back(opt);
 		//Debug::LogInfo("Adding [{} - {}] onto Global Secrets pool" , Option->ID, Option->GetThisClassName());
 	}
 }
@@ -348,6 +350,22 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		auto pExt = TechnoTypeExtContainer::Instance.Find(pItem);
 		const auto myClassName = pItem->GetThisClassName();
 		bool WeederAndHarvesterWarning = false;
+
+		if (pExt->Image_Yellow && pExt->Image_Yellow->WhatAmI() != what)
+		{
+			Debug::LogInfo("[{} - {}] has Image.ConditionYellow [{} - {}] but it different ClassType from it!",
+				pItem->ID, myClassName, pExt->Image_Yellow->ID, pExt->Image_Yellow->GetThisClassName());
+			pExt->Image_Yellow = nullptr;
+			Debug::RegisterParserError();
+		}
+
+		if (pExt->Image_Red && pExt->Image_Red->WhatAmI() != what)
+		{
+			Debug::LogInfo("[{} - {}] has Image.ConditionRed [{} - {}] but it different ClassType from it!",
+				pItem->ID, myClassName, pExt->Image_Red->ID, pExt->Image_Red->GetThisClassName());
+			pExt->Image_Red = nullptr;
+			Debug::RegisterParserError();
+		}
 
 		if (pItem->Strength <= 0)
 		{
@@ -660,6 +678,9 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 				Debug::LogInfo("Inconsistent verses size of [{} - {}] Warhead with ArmorType Array[{}]", pWH->ID, versesSize, ArmorTypeClass::Array.size());
 				Debug::RegisterParserError();
 			}
+
+			if (pWHExt->Crit_AffectAbovePercent > pWHExt->Crit_AffectBelowPercent)
+				Debug::Log("[Developer warning][%s] Crit.AffectsAbovePercent is bigger than Crit.AffectsBelowPercent, crit will never activate!\n", pWH->ID);
 		}
 	}
 
@@ -675,15 +696,32 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 		}
 	}
 
-	// for (auto pBullet : *BulletTypeClass::Array) {
-	//
-	// 	auto pExt = BulletTypeExtContainer::Instance.Find(pBullet);
-	//
-	// 	if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke) {
-	// 		Debug::LogInfo("Bullet[{}] With AttachedSystem[{}] is not BehavesLike=Smoke!", pBullet->ID, pExt->AttachedSystem->ID);
-	// 		Debug::RegisterParserError();
-	// 	}
-	// }
+	for (auto pBullet : *BulletTypeClass::Array)
+	{
+		if (pBullet->Voxel && !pBullet->MainVoxel.VXL)
+		{
+			Debug::LogInfo("Bullet[{}] has no valid VXL !", pBullet->ID);
+			pBullet->Voxel = false;//shp bullet has image checking
+			Debug::RegisterParserError();
+		}
+		else if (pBullet->Voxel && pBullet->MainVoxel.VXL && !pBullet->MainVoxel.HVA)
+		{
+			Debug::LogInfo("Bullet[{}] has no valid HVA !", pBullet->ID);
+			Debug::RegisterParserError();
+		}
+		else if (!pBullet->Voxel && !pBullet->GetImage())
+		{
+			Debug::LogInfo("Bullet[{}] has no valid SHP !", pBullet->ID);
+			Debug::RegisterParserError();
+		}
+
+		//auto pExt = BulletTypeExtContainer::Instance.Find(pBullet);
+
+		//if (pExt->AttachedSystem && pExt->AttachedSystem->BehavesLike != ParticleSystemTypeBehavesLike::Smoke) {
+		//	Debug::LogInfo("Bullet[{}] With AttachedSystem[{}] is not BehavesLike=Smoke!", pBullet->ID, pExt->AttachedSystem->ID);
+		//	Debug::RegisterParserError();
+		//}
+	}
 
 	for (auto pHouse : *HouseTypeClass::Array)
 	{
@@ -736,6 +774,9 @@ ASMJIT_PATCH(0x687C16, INIClass_ReadScenario_ValidateThings, 6)
 
 	for (auto pAnim : *AnimTypeClass::Array)
 	{
+		if (!pAnim->ID || !strlen(pAnim->ID))
+			Debug::FatalError("Empty name Anim [%x]! ", pAnim);
+
 		if (!pAnim->GetImage())
 		{
 			Debug::LogInfo("Anim[{}] Has no proper Image!", pAnim->ID);
@@ -797,7 +838,11 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 
 	this->AttackMove_IgnoreWeaponCheck.Read(exINI, GameStrings::General, "AttackMove.IgnoreWeaponCheck");
 	this->AttackMove_StopWhenTargetAcquired.Read(exINI, GameStrings::General, "AttackMove.StopWhenTargetAcquired");
-
+	this->PenetratesTransport_Level.Read(exINI, GameStrings::CombatDamage, "PenetratesTransport.Level");
+	this->DamageWallRecursivly.Read(exINI, GameStrings::CombatDamage, "DamageWallRecursivly");
+	this->AirstrikeLineZAdjust.Read(exINI, GameStrings::AudioVisual, "AirstrikeLineZAdjust");
+	this->AdjacentWallDamage.Read(exINI, GameStrings::CombatDamage, "AdjacentWallDamage");
+	this->InfantryAutoDeploy.Read(exINI, GameStrings::General, "InfantryAutoDeploy");
 	this->BerzerkTargeting.Read(exINI, GameStrings::CombatDamage, "BerzerkTargeting");
 	this->Infantry_IgnoreBuildingSizeLimit.Read(exINI, GameStrings::CombatDamage, "InfantryIgnoreBuildingSizeLimit");
 	this->HarvesterDumpAmount.Read(exINI, GameStrings::General, "HarvesterDumpAmount");
@@ -817,6 +862,8 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	this->AISetBaseCenter.Read(exINI, GameStrings::AI, "AISetBaseCenter");
 	this->AIBiasSpawnCell.Read(exINI, GameStrings::AI, "AIBiasSpawnCell");
 	this->AIForbidConYard.Read(exINI, GameStrings::AI, "AIForbidConYard");
+	this->AINodeWallsOnly.Read(exINI, GameStrings::AI, "AINodeWallsOnly");
+	this->AICleanWallNode.Read(exINI, GameStrings::AI, "AICleanWallNode");
 
 	this->JumpjetTilt.Read(exINI, GameStrings::AudioVisual, "JumpjetTilt");
 	this->NoTurret_TrackTarget.Read(exINI, GameStrings::General, "NoTurret.TrackTarget");
@@ -877,6 +924,8 @@ void RulesExtData::LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI)
 	this->PlayerNormalTargetingDelay.Read(exINI, GameStrings::General, "PlayerNormalTargetingDelay");
 	this->AIGuardAreaTargetingDelay.Read(exINI, GameStrings::General, "AIGuardAreaTargetingDelay");
 	this->PlayerGuardAreaTargetingDelay.Read(exINI, GameStrings::General, "PlayerGuardAreaTargetingDelay");
+	this->AIAttackMoveTargetingDelay.Read(exINI, GameStrings::General, "AIAttackMoveTargetingDelay");
+	this->PlayerAttackMoveTargetingDelay.Read(exINI, GameStrings::General, "PlayerAttackMoveTargetingDelay");
 	this->DistributeTargetingFrame.Read(exINI, GameStrings::General, "DistributeTargetingFrame");
 	this->DistributeTargetingFrame_AIOnly.Read(exINI, GameStrings::General, "DistributeTargetingFrame.AIOnly");
 
@@ -1199,14 +1248,6 @@ void RulesExtData::Serialize(T& Stm)
 	Stm
 		.Process(this->Initialized)
 
-		.Process(Phobos::Config::ArtImageSwap)
-
-		.Process(Phobos::Config::ShowTechnoNamesIsActive)
-		.Process(Phobos::Misc::CustomGS)
-		.Process(Phobos::Config::ApplyShadeCountFix)
-		.Process(Phobos::Otamaa::CompatibilityMode)
-		.Process(Phobos::Config::UnitPowerDrain)
-
 		.Process(this->Pips_Shield)
 		.Process(this->Pips_Shield_Buildings)
 
@@ -1492,6 +1533,8 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->DamageOwnerMultiplier)
 		.Process(this->DamageAlliesMultiplier)
 		.Process(this->DamageEnemiesMultiplier)
+		.Process(this->DamageOwnerMultiplier_NotAffectsEnemies)
+		.Process(this->DamageAlliesMultiplier_NotAffectsEnemies)
 		.Process(this->FactoryProgressDisplay)
 		.Process(this->MainSWProgressDisplay)
 		.Process(this->CombatAlert)
@@ -1506,7 +1549,11 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->SubterraneanSpeed)
 		.Process(this->InfantrySpeedData)
 		.Process(this->DamagedSpeed)
+		.Process(this->DefaultInfantrySelectBox)
+		.Process(this->DefaultUnitSelectBox)
 		.Process(this->ColorAddUse8BitRGB)
+		.Process(this->IronCurtain_ExtraTintIntensity)
+		.Process(this->ForceShield_ExtraTintIntensity)
 		.Process(this->VoxelLightSource)
 		.Process(this->VoxelShadowLightSource)
 		.Process(this->UseFixedVoxelLighting)
@@ -1525,11 +1572,12 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->JumpjetCellLightLevelMultiplier)
 		.Process(this->JumpjetCellLightApplyBridgeHeight)
 
-		.Process(this->UseFixedVoxelLighting)
 		.Process(this->AINormalTargetingDelay)
 		.Process(this->PlayerNormalTargetingDelay)
 		.Process(this->AIGuardAreaTargetingDelay)
 		.Process(this->PlayerGuardAreaTargetingDelay)
+		.Process(this->AIAttackMoveTargetingDelay)
+		.Process(this->PlayerAttackMoveTargetingDelay)
 		.Process(this->DistributeTargetingFrame)
 		.Process(this->DistributeTargetingFrame_AIOnly)
 		.Process(this->CheckUnitBaseNormal)
@@ -1543,7 +1591,6 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->ChronoSphereDelay)
 		.Process(this->EnablePowerSurplus)
 		.Process(this->ShakeScreenUseTSCalculation)
-		.Process(this->SubterraneanSpeed)
 		.Process(this->UnitIdleRotateTurret)
 		.Process(this->UnitIdlePointToMouse)
 		.Process(this->UnitIdleActionRestartMin)
@@ -1580,6 +1627,8 @@ void RulesExtData::Serialize(T& Stm)
 		.Process(this->AISetBaseCenter)
 		.Process(this->AIBiasSpawnCell)
 		.Process(this->AIForbidConYard)
+		.Process(this->AINodeWallsOnly)
+		.Process(this->AICleanWallNode)
 
 		.Process(this->JumpjetTilt)
 		.Process(this->NoTurret_TrackTarget)
@@ -1612,6 +1661,11 @@ void RulesExtData::Serialize(T& Stm)
 
 		.Process(this->AttackMove_IgnoreWeaponCheck)
 		.Process(this->AttackMove_StopWhenTargetAcquired)
+		.Process(this->PenetratesTransport_Level)
+		.Process(this->DamageWallRecursivly)
+		.Process(this->AirstrikeLineZAdjust)
+		.Process(this->AdjacentWallDamage)
+		.Process(this->InfantryAutoDeploy)
 		;
 
 	MyPutData.Serialize(Stm);
@@ -1680,16 +1734,8 @@ ASMJIT_PATCH(0x678841, RulesClass_Load_Suffix, 0x7)
 ASMJIT_PATCH(0x675205, RulesClass_Save_Suffix, 0x8)
 {
 	auto buffer = RulesExtData::Instance();
-	/* 7 extra boolean that added to the save
-		.Process(Phobos::Config::ArtImageSwap)
-		.Process(Phobos::Config::ShowTechnoNamesIsActive)
-		.Process(Phobos::Misc::CustomGS)
-		.Process(Phobos::Config::ApplyShadeCountFix)
-		.Process(Phobos::Otamaa::CompatibilityMode)
-		.Process(Phobos::Config::UnitPoweDrain)
-	*/
 	// negative 4 for the AttachedToObjectPointer , it doesnot get S/L
-	PhobosByteStream saver((sizeof(RulesExtData) - 4u) + (6 * (sizeof(bool))));
+	PhobosByteStream saver((sizeof(RulesExtData) - 4u));
 	PhobosStreamWriter writer(saver);
 
 	writer.Save(RulesExtData::Canary);
@@ -1827,7 +1873,34 @@ void FakeRulesClass::_ReadGeneral(CCINIClass* pINI)
 
 DEFINE_FUNCTION_JUMP(CALL, 0x668BFE, FakeRulesClass::_ReadColors);
 DEFINE_FUNCTION_JUMP(CALL, 0x668EE8, FakeRulesClass::_ReadGeneral);
-DEFINE_JUMP(LJMP, 0x668EED, 0x668F6A);
+
+#include <Misc/PhobosGlobal.h>
+
+void RulesExtData::InitializeAfterAllRulesLoaded()
+{
+	auto g_instance = PhobosGlobal::Instance();
+
+	// tint color
+	if (!g_instance->ColorDatas.Initialized)
+	{
+		g_instance->ColorDatas.Initialized = true;
+		g_instance->ColorDatas.Forceshield_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->ForceShieldColor);
+		g_instance->ColorDatas.IronCurtain_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->IronCurtainColor);
+		g_instance->ColorDatas.LaserTarget_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->LaserTargetColor);
+		g_instance->ColorDatas.Berserk_Color = GeneralUtils::GetColorFromColorAdd(RulesClass::Instance->BerserkColor);
+	}
+
+	auto g_scenario_instance = ScenarioExtData::Instance();
+
+	// Init master bullet
+	g_scenario_instance->MasterDetonationBullet = BulletTypeExtData::GetDefaultBulletType()->CreateBullet(nullptr, nullptr, 0, nullptr, 0, false);
+}
+
+DEFINE_HOOK(0x668EED, RulesData_InitializeAfterAllLoaded, 0x8)
+{
+	RulesExtData::InitializeAfterAllRulesLoaded();
+	return 0x668F6A;
+}
 
 ASMJIT_PATCH(0x6744E4, RulesClass_ReadJumpjetControls_Extra, 0x7)
 {

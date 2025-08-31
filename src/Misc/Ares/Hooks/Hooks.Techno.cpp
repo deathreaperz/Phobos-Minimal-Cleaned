@@ -563,7 +563,10 @@ ASMJIT_PATCH(0x6F6F20, TechnoClass_Put_BuildingLight, 6)
 	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
 	if (R->Origin() == 0x6F6F20)
+	{
 		HugeBar::InitializeHugeBar(pThis);
+		//TechnoExtData::UnlimboAttachments(pThis);
+	}
 
 	//only update the SW if really needed it
 	if (pThis->Owner && pThis->WhatAmI() != BuildingClass::AbsID && !pTypeExt->Linked_SW.empty())
@@ -669,7 +672,7 @@ ASMJIT_PATCH(0x70FBE0, TechnoClass_Activate_AresReplace, 6)
 		if (auto const wasDeactivated = std::exchange(pThis->Deactivated, false))
 		{
 			// change: don't play sound when mutex active
-			if (!Unsorted::ScenarioInit && pType->ActivateSound != -1)
+			if (!Unsorted::ScenarioInit)
 			{
 				VocClass::SafeImmedietelyPlayAt(pType->ActivateSound, &pThis->Location, nullptr);
 			}
@@ -968,7 +971,7 @@ ASMJIT_PATCH(0x70FC90, TechnoClass_Deactivate_AresReplace, 6)
 	if (!wasDeactivated)
 	{
 		// change: don't play sound when mutex active
-		if (!Unsorted::ScenarioInit && pType->DeactivateSound != -1)
+		if (!Unsorted::ScenarioInit)
 		{
 			VocClass::SafeImmedietelyPlayAt(pType->DeactivateSound, &pThis->Location, nullptr);
 		}
@@ -1081,6 +1084,8 @@ ASMJIT_PATCH(0x6F3F88, TechnoClass_Init_1, 5)
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
 
+	//TechnoExtData::InitializeAttachments(pThis);
+
 	CaptureManagerClass* pCapturer = nullptr;
 	ParasiteClass* pParasite = nullptr;
 	TemporalClass* pTemporal = nullptr;
@@ -1167,12 +1172,12 @@ ASMJIT_PATCH(0x6F3F88, TechnoClass_Init_1, 5)
 
 	const auto pPrimary = pThis->GetWeapon(0)->WeaponType;
 
-	if (pPrimary && pThis->GetTechnoType()->LandTargeting != LandTargetingType::Land_not_okay)
-		pThis->DiskLaserTimer.TimeLeft = pPrimary->ROF;
+	if (pPrimary && pType->LandTargeting != LandTargetingType::Land_not_okay)
+		pThis->RearmTimer.TimeLeft = pPrimary->ROF;
 	else if (const auto pSecondary = pThis->GetWeapon(1)->WeaponType)
-		pThis->DiskLaserTimer.TimeLeft = pSecondary->ROF;
+		pThis->RearmTimer.TimeLeft = pSecondary->ROF;
 
-	pThis->DiskLaserTimer.StartTime = MinImpl(-2, -pThis->DiskLaserTimer.TimeLeft);
+	pThis->RearmTimer.StartTime = MinImpl(-2, -pThis->RearmTimer.TimeLeft);
 
 	TechnoExtData::InitializeUnitIdleAction(pThis, pType);
 
@@ -1368,7 +1373,7 @@ ASMJIT_PATCH(0x6FE53F, TechnoClass_FireAt_CreateBullet, 0x6)
 	return 0x6FE562;
 }
 
-ASMJIT_PATCH(0x6F826E, TechnoClass_CanAutoTargetObject_CivilianEnemy, 0x5)
+ASMJIT_PATCH(0x6F826E, TechnoClass_EvaluateObject_CivilianEnemy, 0x5)
 {
 	GET(TechnoClass*, pThis, EDI);
 	GET(TechnoClass*, pTarget, ESI);
@@ -1581,6 +1586,19 @@ ASMJIT_PATCH(0x4DF3A0, FootClass_UpdateAttackMove_SelectNewTarget, 0x6)
 
 #include <Locomotor/Cast.h>
 
+ASMJIT_PATCH(0x4DF4DB, FootClass_RefreshMegaMission_CheckMissionFix, 0xA)
+{
+	enum { ClearMegaMission = 0x4DF4F9, ContinueMegaMission = 0x4DF4CF };
+	GET(FootClass*, pThis, ESI);
+
+	auto const pType = pThis->GetTechnoType();
+	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	auto const mission = pThis->GetCurrentMission();
+	return (pTypeExt->AttackMove_StopWhenTargetAcquired.Get(RulesExtData::Instance()->AttackMove_StopWhenTargetAcquired.Get(!pType->OpportunityFire))
+		? (!(mission == Mission::Move && pThis->MegaDestination && pThis->DistanceFrom(pThis->MegaDestination) > 256) && mission != Mission::Guard) : mission != Mission::Guard)
+		? ClearMegaMission : ContinueMegaMission;
+}
+
 ASMJIT_PATCH(0x4DF410, FootClass_UpdateAttackMove_TargetAcquired, 0x6)
 {
 	GET(FootClass* const, pThis, ESI);
@@ -1625,6 +1643,12 @@ ASMJIT_PATCH(0x4DF3A6, FootClass_UpdateAttackMove_Follow, 0x6)
 	enum { FuncRet = 0x4DF425 };
 
 	GET(FootClass*, pThis, ESI);
+
+	Mission mission = pThis->GetCurrentMission();
+
+	// Refresh mega mission if mission is somehow changed to incorrect missions.
+	if (mission != Mission::Attack && mission != Mission::Move)
+		pThis->ContinueMegaMission();
 
 	auto const pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
 
@@ -1687,21 +1711,4 @@ ASMJIT_PATCH(0x4DF3A6, FootClass_UpdateAttackMove_Follow, 0x6)
 	}
 
 	return 0;
-}
-
-ASMJIT_PATCH(0x6F85AB, TechnoClass_CanAutoTargetObject_AggressiveAttackMove, 0x6)
-{
-	enum { ContinueCheck = 0x6F85BA, CanTarget = 0x6F8604 };
-
-	GET(TechnoClass* const, pThis, EDI);
-
-	if (!pThis->Owner->IsControlledByHuman())
-		return CanTarget;
-
-	if (!pThis->MegaMissionIsAttackMove())
-		return ContinueCheck;
-
-	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
-
-	return pTypeExt->AttackMove_Aggressive.Get(RulesExtData::Instance()->AttackMove_UpdateTarget) ? CanTarget : ContinueCheck;
 }

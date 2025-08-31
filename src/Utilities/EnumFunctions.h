@@ -16,7 +16,12 @@ class EnumFunctions final
 	NO_CONSTRUCT_CLASS(EnumFunctions)
 public:
 
+	static constexpr auto AffectedTechno_ToStrings = magic_enum::enum_entries<AffectedTechno>();
+	static constexpr auto AttachedAnimPosition_ToStrings = magic_enum::enum_entries<AttachedAnimPosition>();
 	static constexpr auto LaserTrailDrawType_ToStrings = magic_enum::enum_entries<LaserTrailDrawType>();
+	static constexpr auto OwnerHouseKind_ToStrings = magic_enum::enum_entries<OwnerHouseKind>();
+	static constexpr auto AttachmentYSortPosition_ToStrings = magic_enum::enum_entries<AttachmentYSortPosition>();
+	static std::array<const char* const, 6u>  DisplayShowType_ToStrings;
 	static std::array<const char* const, (size_t)FullMapDetonateResult::count> FullMapDetonateResult_ToStrings;
 	static std::array<const char* const, (size_t)PhobosAbilityType::count> PhobosAbilityType_ToStrings;
 	static std::array<const char* const, 3u> Rank_ToStrings;
@@ -36,7 +41,6 @@ public:
 	static std::array<std::pair<const char* const, AffectedHouse>, 11u> AffectedHouse_ToStrings;
 	static std::array<std::pair<const char* const, AffectedTarget>, 15u> AffectedTarget_ToStrings;
 	static std::array<std::pair<const char* const, SuperWeaponAITargetingMode>, 24u> SuperWeaponAITargetingMode_ToStrings;
-	static std::array<const char* const, 8u> OwnerHouseKind_ToStrings;
 	static std::array<std::pair<const char* const, IronCurtainFlag>, 6u> IronCurtainFlag_ToStrings;
 	static std::array<std::pair<const char* const, KillMethod>, 6u> KillMethod_ToStrings;
 	static std::array<std::pair<const char* const, SlaveReturnTo>, 9u> SlaveReturnTo_ToStrings;
@@ -73,6 +77,7 @@ public:
 	static bool IsCellEligible(CellClass* const pCell, AffectedTarget const& allowed, bool explicitEmptyCells = false, bool considerBridgesLand = false);
 	static bool IsTechnoEligible(TechnoClass* const pTechno, AffectedTarget  const& allowed, bool considerAircraftSeparately = false);
 	static bool IsTechnoEligibleB(TechnoClass* const pTechno, AffectedTarget const& allowed);
+	static bool CanAffectTechnoResult(AbstractType type, AffectedTechno allowed);
 	static bool AreCellAndObjectsEligible(CellClass* const pCell, AffectedTarget  const& allowed, AffectedHouse  const& allowedHouses, HouseClass* owner, bool explicitEmptyCells = false, bool considerAircraftSeparately = false, bool allowBridges = false);
 	static BlitterFlags GetTranslucentLevel(int const& nInt);
 	static TextPrintType CastAlignToFlags(HorizontalPosition const& pos);

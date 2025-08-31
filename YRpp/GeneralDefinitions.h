@@ -19,6 +19,21 @@
 #define SDDTOR_NODELETE				0x00
 #define SDDTOR_DELETE				0x01
 
+enum PlayerColorSlot : int
+{
+	Gold = 0,
+	Red = 1,
+	Blue = 2,
+	Green = 3,
+	Orange = 4,
+	SkyBlue = 5,
+	Purple = 6,
+	Pink = 7,
+	White = 8,
+	Random = -2,
+	None = -1
+};
+
 enum ProdFailType : byte
 {
 	OK = 0x0,
@@ -517,7 +532,9 @@ enum class AbilityType : int {
 	C4 = 14,
 	TiberiumHeal = 15,
 	GuardArea = 16,
-	Crusher = 17
+	Crusher = 17,
+
+	count
 };
 
 enum class AIDifficulty : unsigned int {
@@ -1150,6 +1167,7 @@ enum class InfDeath : unsigned int {
 };
 
 enum class LandType : int {
+	None = -1,
 	Clear = 0,
 	Road = 1,
 	Water = 2,

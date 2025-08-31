@@ -89,8 +89,8 @@ public:
 	void APCCloseDoor() JMP_THIS(0x740E60); // inlined in game
 	void APCOpenDoor() JMP_THIS(0x740E80); // inlined in game
 
-	static void __fastcall ReadINI(CCINIClass* pINI) JMP_STD(0x743270);
-	static void __fastcall WriteINI(CCINIClass* pINI) JMP_STD(0x7436E0);
+	static void __fastcall ReadINI(CCINIClass* pINI) JMP_FAST(0x743270);
+	static void __fastcall WriteINI(CCINIClass* pINI) JMP_FAST(0x7436E0);
 
 	bool ShouldCrushIt(TechnoClass* pTarget) JMP_THIS(0x7438F0);
 
@@ -116,7 +116,7 @@ public:
 	UnitTypeClass* Type;
 	UnitClass* FollowerCar; // groovy - link defined in the map's [Units] section, looked up on startup
 	int FlagHouseIndex; //Carrying the flag of this House
-	bool HasFollowerCar; // yes, this vehicle has a another vehicle (a train's locomotive towing the cars)
+	bool IsFollowerCar; // yes, this vehicle has a another vehicle (a train's locomotive towing the cars)
 	bool Unloading;
 	bool IsHarvesting; //6D2
 	bool TerrainPalette;

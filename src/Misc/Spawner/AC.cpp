@@ -13,7 +13,7 @@ ASMJIT_PATCH(0x4FA35D, L48XN65KU0NYTS523HY8GJEDY63KH, 0x0)
 	if (idx >= 0)
 	{
 		auto pTechnoType = ObjectTypeClass::FetchTechnoType(type, idx);
-
+		
 		if (pHouse->CanBuild(pTechnoType, false, false) == CanBuildResult::Buildable) {
 			return 0x4FA36D;
 		}
@@ -59,7 +59,7 @@ ASMJIT_PATCH(0x64BE75, B8DM32NIB8J4ND8DNBNTIBIE, 0x8)
 {
 	GET_STACK(int, expected, 0x3E);
 
-	if (Original != expected) {
+	if (Original != expected){
 		Debug::Log("Forged house ID detected. Expected: %d, Actual: %d\n", Original, expected);
 		return 0x64C370;
 	}
@@ -86,8 +86,7 @@ ASMJIT_PATCH(0x4C782B, B63N75N698FNE63JF87EN, 0x6)
 	{
 		if (pBombOwner != HouseClass::CurrentPlayer()) {
 			houseArray = pBombOwner->ArrayIndex;
-		}
-		else {
+		} else {
 			houseArray = HouseClass::CurrentPlayer->ArrayIndex;
 		}
 	}
@@ -98,8 +97,7 @@ ASMJIT_PATCH(0x4C782B, B63N75N698FNE63JF87EN, 0x6)
 		}
 		else if (HouseClass::CurrentPlayer()) {
 			houseArray = HouseClass::CurrentPlayer->ArrayIndex;
-		}
-		else {
+		} else {
 			houseArray = pBombOwner->ArrayIndex;
 		}
 	}

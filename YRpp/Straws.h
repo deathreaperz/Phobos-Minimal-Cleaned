@@ -67,10 +67,7 @@ public:
 	explicit BufferStraw(void* pBuffer, int nLength) : Straw {}, Buffer { pBuffer,nLength }
 	{ }
 
-	virtual ~BufferStraw() override final { }
-
-	void Destroy() {
-		JMP_THIS(0x4AEC30);
+	virtual ~BufferStraw() override final {
 	}
 
 	virtual int Get(void* pBuffer, int slen) override final
@@ -117,9 +114,9 @@ public:
 		this->Buffer = nullptr;
 		this->Buffer2 = nullptr;
 		this->BlockSize = nBlockSize;
-		this->Buffer = YRMemory::Allocate(this->BlockSize + this->SafetyMargin);
+		this->Buffer = YRMemory::AllocateChecked(this->BlockSize + this->SafetyMargin);
 		if (!this->Control)
-			this->Buffer2 = YRMemory::Allocate(this->BlockSize + this->SafetyMargin);
+			this->Buffer2 = YRMemory::AllocateChecked(this->BlockSize + this->SafetyMargin);
 	}
 
 	virtual ~LCWStraw() override final {
@@ -130,10 +127,6 @@ public:
 
 	virtual int Get(void* pBuffer, int slen) override final {
 		JMP_THIS(0x552490);
-	}
-
-	void Destroy() {
-		JMP_THIS(0x552450);
 	}
 
 public:
@@ -150,3 +143,32 @@ private:
 	LCWStraw(LCWStraw& rvalue) = delete;
 	LCWStraw& operator=(LCWStraw const& pipe) = delete;
 };
+
+class FileStraw :public Straw
+{
+public:
+
+	static OPTIONALINLINE COMPILETIMEEVAL DWORD vtable = 0x7E4D90;
+
+	virtual ~FileStraw() override final {
+		if (this->File && this->HasOpened)
+		{
+			this->File->Close();
+			this->HasOpened = 0;
+			this->File = 0;
+		}
+		this->Straw::~Straw();
+	}
+
+	virtual int Get(void* pBuffer, int slen) override final {
+		JMP_THIS(0x7BA530);
+	}
+
+	void Destroy() {
+		JMP_THIS(0x7BA590);
+	}
+
+	FileClass* File;
+	bool HasOpened;
+};
+static_assert(sizeof(FileStraw) == 0x14);

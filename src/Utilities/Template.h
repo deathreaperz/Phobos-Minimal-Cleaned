@@ -462,6 +462,16 @@ public:
 
 	//~ValueableVector() = default;
 
+	std::vector<T>& AsVector()
+	{
+		return *reinterpret_cast<std::vector<T>*>(this);
+	}
+
+	const std::vector<T>& AsVector() const
+	{
+		return *reinterpret_cast<const std::vector<T>*>(this);
+	}
+
 	OPTIONALINLINE void Read(INI_EX& parser, const char* pSection, const char* pKey, bool bAllocate = false);
 
 	COMPILETIMEEVAL FORCEDINLINE bool Eligible(const T& other) const

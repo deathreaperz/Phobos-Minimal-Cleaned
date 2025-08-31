@@ -1,7 +1,8 @@
 #include "Body.h"
 #include <Ext/TechnoType/Body.h>
+#include <Ext/Infantry/Body.h>
 
-#include <InfantryClass.h>
+#include <Utilities/Macro.h>
 
 //Author : Otamaa
 ASMJIT_PATCH(0x5223B3, InfantryClass_Approach_Target_DeployFireWeapon, 0x6)
@@ -11,42 +12,41 @@ ASMJIT_PATCH(0x5223B3, InfantryClass_Approach_Target_DeployFireWeapon, 0x6)
 	int weapon = pThis->Type->DeployFireWeapon;
 	if (pThis->Type->DeployFireWeapon == -1)
 	{
-		if (const auto pTarget = flag_cast_to<TechnoClass*>(pThis->Target))
-		{
-			if (pTarget->IsAlive)
-			{
-				weapon = pThis->SelectWeapon(pTarget);
-			}
-		}
-		else if (pThis->Target && pThis->Target->WhatAmI() == CellClass::AbsID)
+		if (pThis->Target && (pThis->Target->WhatAmI() == CellClass::AbsID || pThis->Target->AbstractFlags & AbstractFlags::Techno && ((TechnoClass*)pThis->Target)->IsAlive))
 		{
 			weapon = pThis->SelectWeapon(pThis->Target);
 		}
-
-		weapon = 0;
+		else
+		{
+			weapon = 0;
+		}
 	}
 
 	R->EDI(weapon);
 	return 0x5223B9;
 }
 
-ASMJIT_PATCH(0x52190D, InfantryClass_WhatWeaponShouldIUse_DeployFireWeapon, 0x6) //7
+#include <Ext/InfantryType/Body.h>
+
+ASMJIT_PATCH(0x5218F3, InfantryClass_WhatWeaponShouldIUse_DeployFireWeapon, 0x6)
 {
 	GET(InfantryClass*, pThis, ESI);
-	GET(InfantryTypeClass*, pThisType, ECX);
-	GET_STACK(AbstractClass*, pTarget, 0x8);
 
-	if (pThisType->DeployFireWeapon == -1 || (pThisType->IsGattling && !pThis->IsDeployed()))
-	{
-		R->EAX(pThis->TechnoClass::SelectWeapon(pTarget));
-	}
-	else
-	{
-		R->EAX(pThisType->DeployFireWeapon);
-	}
+	if (pThis->Type->DeployFireWeapon == -1)
+		return 0x52194E;
 
-	return 0x521913;
+	if (pThis->Type->IsGattling || TechnoTypeExtContainer::Instance.Find(pThis->Type)->MultiWeapon.Get())
+		return !pThis->IsDeployed() ? 0x52194E : 0x52190D;
+
+	if (pThis->IsDeployed())
+		return 0x52190D;
+
+	return 0x521917;
 }
+
+//fuckin broken !
+//DEFINE_FUNCTION_JUMP(LJMP , 0x5218E0 , FakeInfantryClass::_SelectWeaponAgainst)
+//DEFINE_FUNCTION_JUMP(VTABLE , 0x7EB33C , FakeInfantryClass::_SelectWeaponAgainst)
 
 #ifndef DISABLEFORTESTINGS
 ASMJIT_PATCH(0x6FF923, TechnoClass_FireaAt_FireOnce, 0x6)
@@ -169,6 +169,7 @@ ASMJIT_PATCH(0x746CD0, UnitClass_SelectWeapon_Replacements, 0x6)
 {
 	GET(UnitClass*, pThis, ECX);
 	GET_STACK(AbstractClass*, pTarget, 0x4);
+	//GET_STACK(uintptr_t, callerAddress, 0x0);
 
 	if (pThis->Deployed && pThis->Type->DeployFire)
 	{
@@ -179,7 +180,50 @@ ASMJIT_PATCH(0x746CD0, UnitClass_SelectWeapon_Replacements, 0x6)
 		}
 	}
 
+	//if(auto pObj = flag_cast_to<ObjectClass*>(pTarget)){
+	//	if(!pObj->IsAlive) {
+	//		//Debug::LogInfo("[{}] {} {} Attempt to target death Object of {}!"
+	//		//	, callerAddress ,(void*)pThis , pThis->get_ID() , (void*)pTarget);
+
+	//		pTarget = nullptr;
+	//	}
+	//}
+
 	R->EAX(pThis->TechnoClass::SelectWeapon(pTarget));
 	return 0x746CFD;
 }
 #endif
+
+ASMJIT_PATCH(0x51ECC0, InfantryClass_MouseOverObject_IsAreaFire, 0xA)
+{
+	enum { IsAreaFire = 0x51ECE5, NotAreaFire = 0x51ECEC };
+
+	GET(InfantryClass*, pThis, EDI);
+	GET(ObjectClass*, pObject, ESI);
+	const int deployWeaponIdx = pThis->Type->DeployFireWeapon;
+	const auto deployWeapon = pThis->GetWeapon(deployWeaponIdx >= 0 ? deployWeaponIdx : pThis->SelectWeapon(pObject))->WeaponType;
+
+	return deployWeapon && deployWeapon->AreaFire ? IsAreaFire : NotAreaFire;
+}
+
+ASMJIT_PATCH(0x6F7666, TechnoClass_TriggersCellInset_DeployWeapon, 0x8)
+{
+	enum { NotAreaFire = 0x6F7776, ContinueIn = 0x6F7682 };
+
+	GET(TechnoClass*, pThis, ESI);
+	int weaponIdx;
+
+	if (const auto pInfantry = cast_to<InfantryClass*>(pThis))
+	{
+		GET_STACK(AbstractClass*, pTarget, STACK_OFFSET(0x28, 0x4));
+		const int deployWeaponIdx = pThis->GetTechnoType()->DeployFireWeapon;
+		weaponIdx = deployWeaponIdx >= 0 ? deployWeaponIdx : pThis->SelectWeapon(pTarget);
+	}
+	else
+	{
+		weaponIdx = pThis->IsNotSprayAttack();
+	}
+
+	const auto deployWeaponStruct = pThis->GetWeapon(weaponIdx);
+	return deployWeaponStruct && deployWeaponStruct->WeaponType && deployWeaponStruct->WeaponType->AreaFire ? ContinueIn : NotAreaFire;
+}

@@ -50,7 +50,7 @@ struct MultiBoolFixedArray
 
 		for (int i = 0; i < Amount; ++i)
 		{
-			if (!Savegame::ReadPhobosStream(Stm, this->Datas[i]))
+			if (!Stm.Process(this->Datas[i], RegisterForChange))
 				return false;
 		}
 
@@ -59,9 +59,9 @@ struct MultiBoolFixedArray
 
 	OPTIONALINLINE bool Save(PhobosStreamWriter& Stm) const
 	{
-		for (auto nData : this->Datas)
+		for (auto& nData : this->Datas)
 		{
-			if (!Savegame::WritePhobosStream(Stm, nData))
+			if (!Stm.Process(nData))
 				return false;
 		}
 

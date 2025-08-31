@@ -285,7 +285,7 @@ void PhobosAEFunctions::ApplyRevengeWeapon(TechnoClass* pThis, TechnoClass* pSou
 		if (!pType->RevengeWeapon)
 			continue;
 
-		if (pWHExt->SuppressRevengeWeapons && (!pWHExt->SuppressRevengeWeapons_Types.empty() || pWHExt->SuppressRevengeWeapons_Types.Contains(pType->RevengeWeapon)))
+		if (pWHExt->SuppressRevengeWeapons || (!pWHExt->SuppressRevengeWeapons_Types.empty() && pWHExt->SuppressRevengeWeapons_Types.Contains(pType->RevengeWeapon)))
 			continue;
 
 		if (pType->RevengeWeapon_UseInvokerAsOwner)

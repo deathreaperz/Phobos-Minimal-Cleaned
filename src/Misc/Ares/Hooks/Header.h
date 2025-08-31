@@ -140,7 +140,7 @@ struct StaticVars
 	static PhobosMap<ObjectClass*, AlphaShapeClass*> ObjectLinkedAlphas;
 	static std::vector<unsigned char> ShpCompression1Buffer;
 	static std::map<const TActionClass*, int> TriggerCounts;
-	static UniqueGamePtrC<MixFileClass> aresMIX;
+	static UniqueGamePtr<MixFileClass> aresMIX;
 	static std::string MovieMDINI;
 	static WaveColorData TempColor;
 
@@ -153,7 +153,7 @@ struct StaticVars
 
 struct TechnoExt_ExtData
 {
-	static void AddPassengers(BuildingClass* const Grinder, FootClass* Vic);
+	static void AddPassengers(BuildingClass* const Grinder, FootClass* Vic, bool ParentReversed);
 
 	static bool IsSabotagable(BuildingClass const* const pThis);
 	static Action GetiInfiltrateActionResult(InfantryClass* pInf, BuildingClass* pBuilding);

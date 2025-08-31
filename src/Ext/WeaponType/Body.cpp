@@ -73,7 +73,6 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 
 		this->Bolt_Arcs.Read(exINI, pSection, "Bolt.Arcs");
 		this->Bolt_Duration.Read(exINI, pSection, "Bolt.Duration");
-		this->Bolt_ParticleSys_Enabled.Read(exINI, pSection, "Bolt.DisableParticleSystems");
 		this->Bolt_ParticleSys.Read(exINI, pSection, "Bolt.ParticleSystem");
 		this->Bolt_FollowFLH.Read(exINI, pSection, "Bolt.FollowFLH");
 	}
@@ -104,11 +103,8 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->Abductor_MaxHealth.Read(exINI, pSection, "Abductor.MaxHealth");
 	this->Abductor_CheckAbductableWhenTargeting.Read(exINI, pSection, "Abductor.CheckAbductableWhenTargeting");
 
-	this->DelayedFire_Anim.Read(exINI, pSection, "DelayedFire.Anim");
-	this->DelayedFire_Anim_LoopCount.Read(exINI, pSection, "DelayedFire.Anim.LoopCount");
-	this->DelayedFire_Anim_UseFLH.Read(exINI, pSection, "DelayedFire.Anim.UseFLH");
-	this->DelayedFire_DurationTimer.Read(exINI, pSection, "DelayedFire.DurationTimer");
 	this->Burst_FireWithinSequence.Read(exINI, pSection, "Burst.FireWithinSequence");
+	this->Burst_NoDelay.Read(exINI, pSection, "Burst.NoDelay");
 	this->ROF_RandomDelay.Read(exINI, pSection, "ROF.RandomDelay");
 	this->ChargeTurret_Delays.Read(exINI, pSection, "ChargeTurret.Delays");
 	this->OmniFire_TurnToTarget.Read(exINI, pSection, "OmniFire.TurnToTarget");
@@ -234,7 +230,18 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->FireOnce_ResetSequence.Read(exINI, pSection, "FireOnce.ResetSequence");
 	this->NoRepeatFire.Read(exINI, pSection, "NoRepeatFire");
 
+	this->KeepRange.Read(exINI, pSection, "KeepRange");
+	this->KeepRange_AllowAI.Read(exINI, pSection, "KeepRange.AllowAI");
+	this->KeepRange_AllowPlayer.Read(exINI, pSection, "KeepRange.AllowPlayer");
+	this->KeepRange_EarlyStopFrame.Read(exINI, pSection, "KeepRange.EarlyStopFrame");
+	this->VisualScatter.Read(exINI, pSection, "VisualScatter");
+	this->TurretRecoil_Suppress.Read(exINI, pSection, "TurretRecoil.Suppress");
+
+	this->CanTarget_MaxHealth.Read(exINI, pSection, "CanTarget.MaxHealth");
+	this->CanTarget_MinHealth.Read(exINI, pSection, "CanTarget.MinHealth");
+
 	this->DelayedFire_Duration.Read(exINI, pSection, "DelayedFire.Duration");
+	this->DelayedFire_AnimOnTurret.Read(exINI, pSection, "DelayedFire.AnimOnTurret");
 	this->DelayedFire_SkipInTransport.Read(exINI, pSection, "DelayedFire.SkipInTransport");
 	this->DelayedFire_Animation.Read(exINI, pSection, "DelayedFire.Animation");
 	this->DelayedFire_OpenToppedAnimation.Read(exINI, pSection, "DelayedFire.OpenToppedAnimation");
@@ -245,11 +252,7 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->DelayedFire_OnlyOnInitialBurst.Read(exINI, pSection, "DelayedFire.OnlyOnInitialBurst");
 	this->DelayedFire_AnimOffset.Read(exINI, pSection, "DelayedFire.AnimOffset");
 
-	this->KeepRange.Read(exINI, pSection, "KeepRange");
-	this->KeepRange_AllowAI.Read(exINI, pSection, "KeepRange.AllowAI");
-	this->KeepRange_AllowPlayer.Read(exINI, pSection, "KeepRange.AllowPlayer");
-	this->VisualScatter.Read(exINI, pSection, "VisualScatter");
-	this->TurretRecoil_Suppress.Read(exINI, pSection, "TurretRecoil.Suppress");
+	this->OnlyAttacker.Read(exINI, pSection, "OnlyAttacker");
 
 	this->SkipWeaponPicking = true;
 	if (this->CanTarget != AffectedTarget::All ||
@@ -258,7 +261,9 @@ void WeaponTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 		|| this->AttachEffect_RequiredTypes.size()
 		|| this->AttachEffect_RequiredGroups.size()
 		|| this->AttachEffect_DisallowedTypes.size()
-		|| this->AttachEffect_DisallowedGroups.size())
+		|| this->AttachEffect_DisallowedGroups.size()
+		|| this->CanTarget_MaxHealth < 1.0 || this->CanTarget_MinHealth > 0.0
+		)
 	{
 		this->SkipWeaponPicking = false;
 	}
@@ -335,7 +340,9 @@ int WeaponTypeExtData::GetTechnoKeepRange(WeaponTypeClass* pThis, TechnoClass* p
 		return 0;
 	}
 
-	if (!pFirer->DiskLaserTimer.InProgress())
+	if (pFirer->RearmTimer.GetTimeLeft() < pExt->KeepRange_EarlyStopFrame)
+		return 0;
+
 	{
 		const auto spawnManager = pFirer->SpawnManager;
 
@@ -412,6 +419,14 @@ bool WeaponTypeExtData::HasRequiredAttachedEffects(TechnoClass* pTarget, TechnoC
 	return true;
 }
 
+bool WeaponTypeExtData::IsHealthInThreshold(ObjectClass* pTarget) const
+{
+	if (!(this->CanTarget_MinHealth > 0.0 || this->CanTarget_MaxHealth < 1.0))
+		return true;
+
+	return TechnoExtData::IsHealthInThreshold(pTarget, this->CanTarget_MinHealth, this->CanTarget_MaxHealth);
+}
+
 ColorStruct WeaponTypeExtData::GetBeamColor() const
 {
 	const auto pThis = this->AttachedToObject;
@@ -461,11 +476,8 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->Abductor_Temporal)
 		.Process(this->Abductor_MaxHealth)
 		.Process(this->Abductor_CheckAbductableWhenTargeting)
-		.Process(this->DelayedFire_Anim)
-		.Process(this->DelayedFire_Anim_LoopCount)
-		.Process(this->DelayedFire_Anim_UseFLH)
-		.Process(this->DelayedFire_DurationTimer)
 		.Process(this->Burst_FireWithinSequence)
+		.Process(this->Burst_NoDelay)
 		.Process(this->ROF_RandomDelay)
 		.Process(this->ChargeTurret_Delays)
 		.Process(this->OmniFire_TurnToTarget)
@@ -538,8 +550,6 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->Beam_Amplitude)
 		.Process(this->Beam_IsHouseColor)
 
-		.Process(this->Bolt_ParticleSys_Enabled)
-
 		.Process(this->AmbientDamage_Warhead)
 		.Process(this->AmbientDamage_IgnoreTarget)
 		.Process(this->RecoilForce)
@@ -562,6 +572,18 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->AttachEffect_Enable)
 		.Process(this->NoRepeatFire)
 
+		.Process(this->SkipWeaponPicking)
+
+		.Process(this->KeepRange)
+		.Process(this->KeepRange_AllowAI)
+		.Process(this->KeepRange_AllowPlayer)
+		.Process(this->KeepRange_EarlyStopFrame)
+		.Process(this->VisualScatter)
+		.Process(this->TurretRecoil_Suppress)
+
+		.Process(this->CanTarget_MaxHealth)
+		.Process(this->CanTarget_MinHealth)
+
 		.Process(this->DelayedFire_Duration)
 		.Process(this->DelayedFire_SkipInTransport)
 		.Process(this->DelayedFire_Animation)
@@ -572,13 +594,8 @@ void WeaponTypeExtData::Serialize(T& Stm)
 		.Process(this->DelayedFire_PauseFiringSequence)
 		.Process(this->DelayedFire_OnlyOnInitialBurst)
 		.Process(this->DelayedFire_AnimOffset)
-		.Process(this->SkipWeaponPicking)
-
-		.Process(this->KeepRange)
-		.Process(this->KeepRange_AllowAI)
-		.Process(this->KeepRange_AllowPlayer)
-		.Process(this->VisualScatter)
-		.Process(this->TurretRecoil_Suppress)
+		.Process(this->DelayedFire_AnimOnTurret)
+		.Process(this->OnlyAttacker)
 		;
 
 	MyAttachFireDatas.Serialize(Stm);

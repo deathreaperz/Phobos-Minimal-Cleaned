@@ -142,10 +142,7 @@ void EngraveTrajectory::OnUnlimbo(CoordStruct* pCoord, VelocityClass* pVelocity)
 					}
 				}
 
-				if (FLHFound)
-					this->FLHCoord = FLH;
-				else
-					this->FLHCoord = pBullet->Owner->GetWeapon(WeaponIndex)->FLH;
+				this->FLHCoord = pBullet->Owner->GetWeapon(WeaponIndex)->FLH;
 			}
 		}
 		else

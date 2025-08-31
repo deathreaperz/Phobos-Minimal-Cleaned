@@ -47,8 +47,7 @@ struct AStarQueueNodeHierarchical
 	int Number;
 };
 
-struct PathType
-{
+struct PathType {
 	CellStruct Start;                // Starting cell number.
 	int Cost;                    // Accumulated terrain cost.
 	int Length;                // Command string length.
@@ -67,8 +66,7 @@ struct PriorityQueueClass_AStarHierarchical
 	void* MaxNodePointer;
 	void* MinNodePointer;
 
-	void Heapify(bool shortitems = true)
-	{
+	void Heapify(bool shortitems = true) {
 		JMP_THIS(0x42DCA0);
 	}
 };
@@ -82,7 +80,7 @@ public:
 	AStarPathFinderClass() JMP_THIS(0x42A6D0);
 	~AStarPathFinderClass() JMP_THIS(0x42A900);
 
-	static CellStruct* __fastcall Find_Some_Cell(CellStruct* retstr, CellStruct* cell, int count, int path) JMP_STD(0x429780);
+	static CellStruct* __fastcall Find_Some_Cell(CellStruct* retstr, CellStruct* cell, int count, int path) JMP_FAST(0x429780);
 	/*
 	AStarClass__Get_Movement_Cost        00429830
 	AStarClass__AStar_Find_Path_Regular        00429A90
@@ -171,6 +169,7 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 		if (threat <= 0.00001)
 		{
 			Avaible = false;
+
 		}
 
 		int some_startIndex = 2;
@@ -205,6 +204,7 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 
 				pThis->somearray_BC[500 * some_startIndex] = CellsArray_From;
 				pThis->maxvalues_field_C74[some_startIndex] = 0;
+
 			}
 
 			pThis->BufferForHierarchicalQueue->BufferDelta = -1;
@@ -255,6 +255,7 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 					pThis->HierarchicalQueue->Heapify();
 				}
 
+
 				if (!someIdx_here)
 				{
 					return false;
@@ -272,6 +273,7 @@ bool Find_Path_Hierarchical(AStarPathFinderClass* pThis, CellStruct* from, CellS
 					const auto data_Item = data->SubzoneConnections.Items + someIdx_here->Index;
 
 					for (int i = data->SubzoneConnections.Count; i > 0; --i) {
+
 					}
 				}
 			}

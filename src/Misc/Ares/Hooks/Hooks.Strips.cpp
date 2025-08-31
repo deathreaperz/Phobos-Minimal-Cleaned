@@ -1011,7 +1011,7 @@ bool NOINLINE RemoveCameo(BuildType* item)
 				{
 					if (SWSidebarClass::Global()->AddButton(item->ItemIndex))
 					{
-						ScenarioExtData::Instance()->SWSidebar_Indices.emplace_back(item->ItemIndex);
+						ScenarioExtData::Instance()->SWSidebar_Indices.emplace(item->ItemIndex);
 						return true;
 					}
 					else

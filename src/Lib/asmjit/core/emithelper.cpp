@@ -295,7 +295,7 @@ ASMJIT_FAVOR_SIZE Error BaseEmitHelper::emitArgsAssignment(const FuncFrame& fram
 						if (archTraits.hasInstRegSwap(curGroup))
 						{
 							RegType highestType = Support::max(cur.regType(), altVar.cur.regType());
-							if (Support::isBetween(highestType, RegType::kGp8Lo, RegType::kGp16))
+							if (Support::is_between(highestType, RegType::kGp8Lo, RegType::kGp16))
 							{
 								highestType = RegType::kGp32;
 							}

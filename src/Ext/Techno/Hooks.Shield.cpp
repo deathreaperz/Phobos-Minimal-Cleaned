@@ -46,7 +46,7 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 
 				if (pWHExt->CanRemoveParasytes.Get())
 				{
-					if (pWHExt->CanRemoveParasytes_ReportSound.isset() && pWHExt->CanRemoveParasytes_ReportSound.Get() >= 0)
+					if (pWHExt->CanRemoveParasytes_ReportSound.isset())
 						VocClass::SafeImmedietelyPlayAt(pWHExt->CanRemoveParasytes_ReportSound.Get(), &parasyte->GetCoords(), nullptr);
 
 					// Kill the parasyte
@@ -75,7 +75,7 @@ static void applyRemoveParasite(TechnoClass* pThis, args_ReceiveDamage* args)
 						if (paralysisCountdown > 0)
 						{
 							parasyte->ParalysisTimer.Start(paralysisCountdown);
-							parasyte->DiskLaserTimer.Start(paralysisCountdown);
+							parasyte->RearmTimer.Start(paralysisCountdown);
 						}
 
 						if (pWHExt->CanRemoveParasytes_KickOut_Anim.isset() && pWHExt->CanRemoveParasytes_KickOut_Anim)

@@ -88,26 +88,6 @@ bool PhobosTrajectoryType::UpdateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 	return true;
 }
 
-std::array<const char*, (size_t)TrajectoryFlag::Count> PhobosTrajectoryType::TrajectoryTypeToSrings
-{ {
-	{"Straight"} ,
-	{"Bombard"} ,
-	{"Artillery"} ,
-	{"Bounce"} ,
-	{"Vertical"} ,
-	{"Meteor"} ,
-	{"Spiral"} ,
-	{"Wave"} ,
-	{"Arcing" },
-	{"StraightVarianB" },
-	{"StraightVarianC" },
-	{"Disperse" },
-	{"Engrave" },
-	{"Parabola" },
-	{"Tracing" },
- }
-};
-
 bool PhobosTrajectory::CanSnap(std::unique_ptr<PhobosTrajectory>& traj)
 {
 	COMPILETIMEEVAL TrajectoryFlag flags[] = {
@@ -190,16 +170,16 @@ void PhobosTrajectoryType::CreateType(std::unique_ptr<PhobosTrajectoryType>& pTy
 		{
 			for (size_t i = 0; i < TrajectoryTypeToSrings.size(); ++i)
 			{
-				if (IS_SAME_STR_(Phobos::readBuffer, TrajectoryTypeToSrings[i]))
+				if (IS_SAME_STR_(Phobos::readBuffer, TrajectoryTypeToSrings[i].second.data()))
 				{
-					nFlag = static_cast<TrajectoryFlag>(i);
+					nFlag = TrajectoryTypeToSrings[i].first;
 					break;
 				}
 			}
 		}
 	}
 
-	if (pType && pType->Flag == nFlag)
+	if (pType && pType->Flag == nFlag || nFlag == TrajectoryFlag::Invalid)
 		return;
 	else
 	{
@@ -270,7 +250,7 @@ bool PhobosTrajectoryType::TrajectoryValidation(BulletTypeClass* pAttached)
 			return ret;
 
 		const char* pSection = pAttached->ID;
-		const char* pTrjType = PhobosTrajectoryType::TrajectoryTypeToSrings[(int)pTraj->Flag];
+		auto& pTrjType = PhobosTrajectoryType::TrajectoryTypeToSrings[(int)pTraj->Flag].second;
 
 		if (pAttached->Arcing)
 		{

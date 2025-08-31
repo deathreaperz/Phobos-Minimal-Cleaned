@@ -6,6 +6,7 @@
 #include "../core/api-build_p.h"
 #include "../core/codeholder.h"
 #include "../core/codewriter_p.h"
+
 //#include "../arm/armutils.h"
 
 ASMJIT_BEGIN_NAMESPACE
@@ -44,14 +45,14 @@ bool CodeWriterUtils::encodeOffset32(uint32_t* dst, int64_t offset64, const Offs
 		if (discardLsb)
 		{
 			ASMJIT_ASSERT(discardLsb <= 32);
-			if ((offset64 & Support::lsbMask<uint32_t>(discardLsb)) != 0)
+			if ((offset64 & Support::lsb_mask<uint32_t>(discardLsb)) != 0)
 			{
 				return false;
 			}
 			offset64 = int64_t(uint64_t(offset64) >> discardLsb);
 		}
 
-		value = uint32_t(offset64 & Support::lsbMask<uint32_t>(bitCount));
+		value = uint32_t(offset64 & Support::lsb_mask<uint32_t>(bitCount));
 		if (value != offset64)
 		{
 			return false;
@@ -63,20 +64,20 @@ bool CodeWriterUtils::encodeOffset32(uint32_t* dst, int64_t offset64, const Offs
 		if (discardLsb)
 		{
 			ASMJIT_ASSERT(discardLsb <= 32);
-			if ((offset64 & Support::lsbMask<uint32_t>(discardLsb)) != 0)
+			if ((offset64 & Support::lsb_mask<uint32_t>(discardLsb)) != 0)
 			{
 				return false;
 			}
 			offset64 >>= discardLsb;
 		}
 
-		if (!Support::isInt32(offset64))
+		if (!Support::is_int_n<32>(offset64))
 		{
 			return false;
 		}
 
 		value = uint32_t(int32_t(offset64));
-		if (!Support::isEncodableOffset32(int32_t(value), bitCount))
+		if (!Support::is_encodable_offset_32(int32_t(value), bitCount))
 		{
 			return false;
 		}
@@ -87,7 +88,7 @@ bool CodeWriterUtils::encodeOffset32(uint32_t* dst, int64_t offset64, const Offs
 	case OffsetType::kSignedOffset:
 	case OffsetType::kUnsignedOffset:
 	{
-		*dst = (value & Support::lsbMask<uint32_t>(bitCount)) << bitShift;
+		*dst = (value & Support::lsb_mask<uint32_t>(bitCount)) << bitShift;
 		return true;
 	}
 
@@ -159,7 +160,7 @@ bool CodeWriterUtils::encodeOffset32(uint32_t* dst, int64_t offset64, const Offs
 	//    return false;
 	//  }
 
-	//  *dst = (Support::bitMask(22) << u) | (encodedImm << bitShift);
+	//  *dst = (Support::bitMask<uint32_t>(22) << u) | (encodedImm << bitShift);
 	//  return true;
 	//}
 
@@ -209,7 +210,7 @@ bool CodeWriterUtils::encodeOffset32(uint32_t* dst, int64_t offset64, const Offs
 		}
 
 		uint32_t immLo = value & 0x3u;
-		uint32_t immHi = (value >> 2) & Support::lsbMask<uint32_t>(19);
+		uint32_t immHi = (value >> 2) & Support::lsb_mask<uint32_t>(19);
 
 		*dst = (immLo << 29) | (immHi << 5);
 		return true;
@@ -238,14 +239,14 @@ bool CodeWriterUtils::encodeOffset64(uint64_t* dst, int64_t offset64, const Offs
 		if (discardLsb)
 		{
 			ASMJIT_ASSERT(discardLsb <= 32);
-			if ((offset64 & Support::lsbMask<uint32_t>(discardLsb)) != 0)
+			if ((offset64 & Support::lsb_mask<uint32_t>(discardLsb)) != 0)
 			{
 				return false;
 			}
 			offset64 = int64_t(uint64_t(offset64) >> discardLsb);
 		}
 
-		value = uint64_t(offset64) & Support::lsbMask<uint64_t>(bitCount);
+		value = uint64_t(offset64) & Support::lsb_mask<uint64_t>(bitCount);
 		if (value != uint64_t(offset64))
 		{
 			return false;
@@ -257,14 +258,14 @@ bool CodeWriterUtils::encodeOffset64(uint64_t* dst, int64_t offset64, const Offs
 		if (discardLsb)
 		{
 			ASMJIT_ASSERT(discardLsb <= 32);
-			if ((offset64 & Support::lsbMask<uint32_t>(discardLsb)) != 0)
+			if ((offset64 & Support::lsb_mask<uint32_t>(discardLsb)) != 0)
 			{
 				return false;
 			}
 			offset64 >>= discardLsb;
 		}
 
-		if (!Support::isEncodableOffset64(offset64, bitCount))
+		if (!Support::is_encodable_offset_64(offset64, bitCount))
 		{
 			return false;
 		}
@@ -277,7 +278,7 @@ bool CodeWriterUtils::encodeOffset64(uint64_t* dst, int64_t offset64, const Offs
 	case OffsetType::kSignedOffset:
 	case OffsetType::kUnsignedOffset:
 	{
-		*dst = (value & Support::lsbMask<uint64_t>(bitCount)) << format.immBitShift();
+		*dst = (value & Support::lsb_mask<uint64_t>(bitCount)) << format.immBitShift();
 		return true;
 	}
 

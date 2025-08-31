@@ -59,8 +59,10 @@
 #include <New/Type/BarTypeClass.h>
 #include <New/Type/InsigniaTypeClass.h>
 #include <New/Type/SelectBoxTypeClass.h>
+//#include <New/Type/AttachmentTypeClass.h>
 
 #include <New/Entity/BannerClass.h>
+//#include <New/Entity/AttachmentClass.h>
 
 #include <New/HugeBar.h>
 
@@ -314,73 +316,62 @@ FORCEDINLINE void Process_InvalidatePtr(AbstractClass* pInvalid, bool const remo
 	}
 }
 
-ASMJIT_PATCH(0x7258D0, AnnounceInvalidPointer_PhobosGlobal, 0x6)
+ASMJIT_PATCH(0x7258DE, AnnounceInvalidPointer_PhobosGlobal, 0x7)
 {
 	GET(AbstractClass* const, pInvalid, ECX);
 	GET(bool const, removed, EDX);
+	GET(AbstractType, type, EAX);
 
 	if (Phobos::Otamaa::ExeTerminated)
 		return 0;
 
+	TActionExtData::InvalidatePointer(pInvalid, removed);
 	PhobosGlobal::PointerGotInvalid(pInvalid, removed);
 	SWStateMachine::PointerGotInvalid(pInvalid, removed);
-	Process_InvalidatePtr<SWTypeExtContainer>(pInvalid, removed);
+
+	AnnounceInvalidPointer(SWTypeExtData::TempSuper, pInvalid);
+	AnnounceInvalidPointer(SWTypeExtData::LauchData, pInvalid);
+
 	if (removed)
 	{
+		HouseExtContainer::HousesTeams.erase_all_if([pInvalid](std::pair<HouseClass*, VectorSet<TeamClass*>>& item)
+ {
+	 if (item.first != pInvalid)
+	 {
+		 item.second.erase((TeamClass*)pInvalid);
+		 return false;
+	 }
+
+	 return true;
+		});
+
 		HouseExtData::AutoDeathObjects.erase_all_if([pInvalid](std::pair<TechnoClass*, KillMethod>& item)
  {
 	 return item.first == pInvalid;
 		});
-	}
 
-	HugeBar::InvalidatePointer(pInvalid, removed);
-	ShieldClass::Array.for_each([pInvalid, removed](ShieldClass* pShield)
+		HouseExtData::LimboTechno.remove((TechnoClass*)pInvalid);
+
+		if (type == AnimClass::AbsID)
+		{
+			ShieldClass::Array.for_each([pInvalid](ShieldClass* pShield)
  {
 	 if (pShield->IdleAnim.get() == pInvalid)
 	 {
 		 pShield->IdleAnim.release();
 	 }
-	 });
+			});
 
-	//SpawnManagerClass::Array->for_each([&](SpawnManagerClass* pThis) {
-	//	if (pThis->Owner && removed) {
-	//		for (int i = 0; i < pThis->SpawnedNodes.Count; ++i) {
-	//			if (pThis->SpawnedNodes[i] && pThis->SpawnedNodes[i]->Unit == pInvalid) {
-	//				pThis->SpawnedNodes[i]->Unit = nullptr;
-	//				pThis->SpawnedNodes[i]->Status = SpawnNodeStatus::Dead;
-	//			}
-	//		}
-	//	}
-	//});
+			LightningStorm::CloudsPresent->Remove((AnimClass*)pInvalid);
+			LightningStorm::CloudsManifesting->Remove((AnimClass*)pInvalid);;
+			LightningStorm::BoltsPresent->Remove((AnimClass*)pInvalid);
+		}
+	}
 
-	//for (int i = 0; i < MapClass::Instance->Cells.Capacity; i++) {
-	//	if (auto pCell = MapClass::Instance->Cells.Items[i]) {
-	//		fast_remove_if(CellExtContainer::Instance.Find(pCell)->RadSites,
-	//		[pInvalid](auto _el) { return pInvalid == _el; });
-	//	}
-	//}
+	HugeBar::InvalidatePointer(pInvalid, removed);
 
-	// EBolt::Array->for_each([&](EBolt* pThis) {
-	// 	if (removed && pThis->Owner == pInvalid) {
-	// 		pThis->Owner = nullptr;
-	// 	}
-	// });
-
-	//PrismForwarding::Array.for_each([&](auto& pThis) {
-	//	if (pThis) {
-	//		pThis->InvalidatePointer(pInvalid, removed);
-	//	}
-	//});
-	//Process_InvalidatePtr<TActionExt>(pInvalid, removed);
 	return 0;
 }
-
-//ASMJIT_PATCH(0x48CFB7, Game_Exit_RecordPoolSize, 0x6)
-//{
-//	TheMemoryPoolFactory->reportAllocation();
-//	Debug::Log("PaletteManager %d\n", PaletteManager::Array.size());
-//	return 0x0;
-//}
 
 #include <New/Interfaces/AdvancedDriveLocomotionClass.h>
 #include <New/Interfaces/LevitateLocomotionClass.h>
@@ -439,6 +430,8 @@ unsigned Phobos::GetVersionNumber()
 	version += sizeof(LaserTrailClass);
 	version += sizeof(LauchSWData);
 
+	version += sizeof(TActionExtData);
+
 	version += sizeof(ShieldClass);
 	version += sizeof(SWFirerClass);
 
@@ -452,9 +445,11 @@ unsigned Phobos::GetVersionNumber()
 	version += sizeof(StaticVars);
 
 	version += sizeof(BannerClass);
+	//version += sizeof(AttachmentClass);
 
 #define AddTypeOf(cccc) version += sizeof(cccc##TypeClass);
 	AddTypeOf(Armor)
+		//	AddTypeOf(Attachment)
 		AddTypeOf(Banner)
 		AddTypeOf(Bar)
 		AddTypeOf(Color)
@@ -482,6 +477,7 @@ unsigned Phobos::GetVersionNumber()
 // this function is executed after all game classes already cleared
 ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 {
+	TActionExtData::Clear();
 	CellExtContainer::Instance.Clear();
 	PrismForwarding::Array.clear();
 	MouseClassExt::ClearCameos();
@@ -534,12 +530,22 @@ ASMJIT_PATCH(0x685659, Scenario_ClearClasses_PhobosGlobal, 0xA)
 	InsigniaTypeClass::Clear();
 	SelectBoxTypeClass::Clear();
 	BannerClass::Clear();
+	//AttachmentClass::Array.clear();
+	//AttachmentTypeClass::Clear();
 
 	if (!Phobos::Otamaa::ExeTerminated)
 	{
 		if (TheMemoryPoolFactory)
 			TheMemoryPoolFactory->reset();
 
+		VoxelAnimExtContainer::pools.init(4026);
+		TeamExtContainer::pools.reInit();
+		RadSiteExtContainer::pools.reInit();
+		ParticleSystemExtContainer::pools.reInit();
+		ParticleExtContainer::pools.reInit();
+		BulletExtContainer::pools.reInit();
+		FakeAnimClass::pools.reInit();
+		TechnoExtContainer::pools.reInit();
 		SWFirerClass::Array.reserve(1000);
 		CellExtContainer::Array.reserve(2000);
 	}
@@ -695,6 +701,7 @@ ASMJIT_PATCH(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 	VoxClass::EVAIndex = value;
 
 	bool ret =
+		Process_Load<Phobos>(pStm) &&
 		Process_Load<FakeAnimClass>(pStm) &&
 		Process_Load<CursorTypeClass>(pStm) &&
 		Process_Load<MouseClassExt>(pStm) &&
@@ -732,7 +739,10 @@ ASMJIT_PATCH(0x67F7C8, LoadGame_Phobos_Global_EndPart, 5)
 		Process_Load<SelectBoxTypeClass>(pStm) &&
 		Process_Load<ShieldClass>(pStm) &&
 		Process_Load<PrismForwarding>(pStm) &&
-		Process_Load<BannerClass>(pStm)
+		Process_Load<BannerClass>(pStm) &&
+		Process_Load<TActionExtData>(pStm) //&&
+		//Process_Load<AttachmentClass> (pStm) &&
+		//Process_Load<AttachmentTypeClass> (pStm)
 		;
 
 	if (!ret)
@@ -772,6 +782,7 @@ ASMJIT_PATCH(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 		}
 
 		bool ret =
+			Process_Save<Phobos>(pStm) &&
 			Process_Save<FakeAnimClass>(pStm) &&
 			Process_Save<CursorTypeClass>(pStm) &&
 			Process_Save<MouseClassExt>(pStm) &&
@@ -809,7 +820,10 @@ ASMJIT_PATCH(0x67E42E, SaveGame_Phobos_Global_EndPart, 5)
 			Process_Save<SelectBoxTypeClass>(pStm) &&
 			Process_Save<ShieldClass>(pStm) &&
 			Process_Save<PrismForwarding>(pStm) &&
-			Process_Save<BannerClass>(pStm)
+			Process_Save<BannerClass>(pStm) &&
+			Process_Save<TActionExtData>(pStm) //&&
+			//Process_Save<AttachmentClass>(pStm) &&
+			//Process_Save<AttachmentTypeClass>(pStm)
 			;
 
 		if (!ret)

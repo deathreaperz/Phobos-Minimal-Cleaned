@@ -4,6 +4,7 @@
 #include <Helpers/Macro.h>
 #include <Utilities/Container.h>
 #include <Utilities/SavegameDef.h>
+#include <Utilities/VectorHelper.h>
 
 struct RadLevel
 {
@@ -145,7 +146,7 @@ public:
 
 	FORCEDINLINE CellExtData* _GetExtData()
 	{
-		return *reinterpret_cast<CellExtData**>(((DWORD)this) + AbstractExtOffset);
+		return *reinterpret_cast<CellExtData**>(((DWORD)this) + CellExtData::ExtOffset);
 	}
 };
 static_assert(sizeof(FakeCellClass) == sizeof(CellClass), "Missmathc size !");

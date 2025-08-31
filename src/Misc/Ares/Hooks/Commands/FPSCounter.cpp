@@ -25,5 +25,15 @@ const wchar_t* FPSCounterCommandClass::GetUIDescription() const
 
 void FPSCounterCommandClass::Execute(WWKey dwUnk) const
 {
-	RulesExtData::Instance()->FPSCounter = !RulesExtData::Instance()->FPSCounter;
+	const BYTE mode = (BYTE)(RulesExtData::Instance()->FPSCounter);
+	RulesExtData::Instance()->FPSCounter = (FPSCounterMode)((mode + 1) % (BYTE)FPSCounterMode::count);
+
+	// Debug print
+	//switch (RulesExtData::Instance()->FPSCounter)
+	//{
+	//case FPSCounterMode::disabled: Debug::Log("FPS Counter: Disabled\n"); break;
+	//case FPSCounterMode::Full:  Debug::Log("FPS Counter: Full\n"); break;
+	//case FPSCounterMode::FPSOnly: Debug::Log("FPS Counter: FPS Only\n"); break;
+	//case FPSCounterMode::FPSandAVG: Debug::Log("FPS Counter: FPS and AVG\n"); break;
+	//}
 }

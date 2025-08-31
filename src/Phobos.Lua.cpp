@@ -1,7 +1,5 @@
 #include "Phobos.Lua.h"
 
-#include <map>
-#include <string>
 #include "Phobos.h"
 
 #include <Ext/Script/Lua/Wrapper.h>
@@ -18,13 +16,13 @@
 
 // TODO : encryption support
 // Otamaa : change this variable if you want to load desired name lua file
-std::string filename = "\\renameinternal.lua";
+std::string LuaData::filename = "\\renameinternal.lua";
 std::string LuaData::LuaDir;
-std::string CoreHandles;
-HelperedVector<std::pair<uintptr_t, std::string>> map_replaceAddrTo;
+std::string LuaData::CoreHandles;
+std::vector<std::pair<uintptr_t, std::string>> LuaData::map_replaceAddrTo;
 std::string LuaData::MainWindowStr;
-std::map<std::string, bool> SafeFiles {};
-bool IsActive;
+std::map<std::string, bool> LuaData::SafeFiles;
+bool LuaData::IsActive;
 
 auto MessageLog = [](const std::string& first, const std::string& second)
 	{
@@ -164,23 +162,23 @@ std::string derive_key(const std::string& first, uint32_t crc, const std::string
 
 void ApplyCore(char* pBuffer, char* content, size_t size)
 {
-	if (CoreHandles.empty()) return;
+	if (LuaData::CoreHandles.empty()) return;
 
-	size_t key_len = CoreHandles.length();
+	size_t key_len = LuaData::CoreHandles.length();
 	for (size_t i = 0; i < size; ++i)
 	{
-		pBuffer[i] = content[i] ^ CoreHandles[i % key_len];
+		pBuffer[i] = content[i] ^ LuaData::CoreHandles[i % key_len];
 	}
 }
 
 void ApplyCore(char* content, size_t size)
 {
-	if (CoreHandles.empty()) return;
+	if (LuaData::CoreHandles.empty()) return;
 
-	size_t key_len = CoreHandles.length();
+	size_t key_len = LuaData::CoreHandles.length();
 	for (size_t i = 0; i < size; ++i)
 	{
-		content[i] ^= CoreHandles[i % key_len];
+		content[i] ^= LuaData::CoreHandles[i % key_len];
 	}
 }
 
@@ -275,8 +273,8 @@ std::unordered_map<HANDLE, HandleData> HandleDataKeeper;
 
 HANDLE __stdcall _CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
-	auto it = SafeFiles.find(lpFileName);
-	if (it != SafeFiles.end())
+	auto it = LuaData::SafeFiles.find(lpFileName);
+	if (it != LuaData::SafeFiles.end())
 	{
 		auto it_cache = &keeper[lpFileName];
 
@@ -621,7 +619,7 @@ inline void lua_get_string_array_of_SafeFiles(lua_State* L, const char* global_t
 		{
 			std::string val = lua_tostring(L, -1);
 			PhobosCRT::uppercase(val);
-			SafeFiles[val] = false;
+			LuaData::SafeFiles[val] = false;
 		}
 
 		lua_pop(L, 1); // pop value
@@ -730,7 +728,7 @@ void Phobos::ExecuteLua()
 		}
 	}
 
-	const auto _renamer = LuaData::LuaDir + filename;
+	const auto _renamer = LuaData::LuaDir + LuaData::filename;
 
 	if (Lua.loadfile(_renamer, nullptr))
 	{
@@ -759,7 +757,7 @@ void Phobos::ExecuteLua()
 
 						{
 							bool found = false;
-							for (auto begin = map_replaceAddrTo.begin(); begin != map_replaceAddrTo.end(); ++begin)
+							for (auto begin = LuaData::map_replaceAddrTo.begin(); begin != LuaData::map_replaceAddrTo.end(); ++begin)
 							{
 								if (begin->first == addr)
 								{
@@ -770,7 +768,7 @@ void Phobos::ExecuteLua()
 							}
 
 							if (!found)
-								result = &map_replaceAddrTo.emplace_back(addr, "");
+								result = &LuaData::map_replaceAddrTo.emplace_back(addr, "");
 						}
 
 						const auto maxlen = strlen((const char*)result->first);

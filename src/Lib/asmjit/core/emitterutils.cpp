@@ -93,7 +93,7 @@ namespace EmitterUtils
 		opArrayFromEmitArgs(opArray, o0, o1, o2, opExt);
 
 		sb.appendChars(' ', logger->indentation(FormatIndentationGroup::kCode));
-		self->_funcs.formatInstruction(sb, formatFlags, self, self->arch(), BaseInst(instId, options, self->extraReg()), opArray, Globals::kMaxOpCount);
+		self->_funcs.formatInstruction(sb, formatFlags, self, self->arch(), BaseInst(instId, options, self->extraReg()), Span<Operand_>(opArray, Globals::kMaxOpCount));
 
 		if (Support::test(formatFlags, FormatFlags::kMachineCode))
 		{
@@ -120,7 +120,7 @@ namespace EmitterUtils
 		Operand_ opArray[Globals::kMaxOpCount];
 		opArrayFromEmitArgs(opArray, o0, o1, o2, opExt);
 
-		self->_funcs.formatInstruction(sb, FormatFlags::kRegType, self, self->arch(), BaseInst(instId, options, self->extraReg()), opArray, Globals::kMaxOpCount);
+		self->_funcs.formatInstruction(sb, FormatFlags::kRegType, self, self->arch(), BaseInst(instId, options, self->extraReg()), Span<Operand_>(opArray, Globals::kMaxOpCount));
 
 		if (self->inlineComment())
 		{

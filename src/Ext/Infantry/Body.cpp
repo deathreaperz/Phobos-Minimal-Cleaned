@@ -1,6 +1,40 @@
 #include "Body.h"
 
 #include <Utilities/Macro.h>
+#include <Ext/TechnoType/Body.h>
+
+WeaponStruct* FakeInfantryClass::_GetDeployWeapon()
+{
+	int deployFireWeapon = this->Type->DeployFireWeapon;
+	int weaponIndex = deployFireWeapon == -1 ? this->SelectWeapon(this->Target) : deployFireWeapon;
+	return this->GetWeapon(weaponIndex);
+}
+
+int FakeInfantryClass::_SelectWeaponAgainst(AbstractClass* pTarget)
+{
+	auto pThisType = this->Type;
+	int wp = -1;
+	if (!pThisType->DeployFire || pThisType->DeployFireWeapon == -1)
+	{
+		return this->TechnoClass::SelectWeapon(pTarget);
+	}
+
+	if ((pThisType->IsGattling || TechnoTypeExtContainer::Instance.Find(pThisType)->MultiWeapon.Get()) && !this->IsDeployed())
+	{
+		return pThisType->DeployFireWeapon;
+	}
+
+	if (!this->InOpenToppedTransport || pThisType->OpenTransportWeapon == -1)
+	{
+		wp = 0;
+	}
+	else
+	{
+		wp = pThisType->OpenTransportWeapon;
+	}
+
+	return wp;
+}
 
 // =============================
 // load / save

@@ -26,7 +26,7 @@ public:
 	//! \{
 	//! \cond INTERNAL
 	static inline constexpr uint32_t kMaxFeatures = 256;
-	static inline constexpr uint32_t kNumBitWords = kMaxFeatures / Support::kBitWordSizeInBits;
+	static inline constexpr uint32_t kNumBitWords = kMaxFeatures / Support::bit_size_of<Support::BitWord>;
 	//! \endcond
 
 	//! \}
@@ -93,8 +93,8 @@ public:
 		{
 			ASMJIT_ASSERT(uint32_t(featureId) < kMaxFeatures);
 
-			uint32_t idx = uint32_t(featureId) / Support::kBitWordSizeInBits;
-			uint32_t bit = uint32_t(featureId) % Support::kBitWordSizeInBits;
+			uint32_t idx = uint32_t(featureId) / Support::bit_size_of<BitWord>;
+			uint32_t bit = uint32_t(featureId) % Support::bit_size_of<BitWord>;
 
 			return bool((_bits[idx] >> bit) & 0x1);
 		}
@@ -141,8 +141,8 @@ public:
 		{
 			ASMJIT_ASSERT(uint32_t(featureId) < kMaxFeatures);
 
-			uint32_t idx = uint32_t(featureId) / Support::kBitWordSizeInBits;
-			uint32_t bit = uint32_t(featureId) % Support::kBitWordSizeInBits;
+			uint32_t idx = uint32_t(featureId) / Support::bit_size_of<BitWord>;
+			uint32_t bit = uint32_t(featureId) % Support::bit_size_of<BitWord>;
 
 			_bits[idx] |= BitWord(1) << bit;
 		}
@@ -159,8 +159,8 @@ public:
 		{
 			ASMJIT_ASSERT(uint32_t(featureId) < kMaxFeatures);
 
-			uint32_t idx = uint32_t(featureId) / Support::kBitWordSizeInBits;
-			uint32_t bit = uint32_t(featureId) % Support::kBitWordSizeInBits;
+			uint32_t idx = uint32_t(featureId) / Support::bit_size_of<BitWord>;
+			uint32_t bit = uint32_t(featureId) % Support::bit_size_of<BitWord>;
 
 			_bits[idx] |= BitWord(condition) << bit;
 		}
@@ -178,8 +178,8 @@ public:
 		{
 			ASMJIT_ASSERT(uint32_t(featureId) < kMaxFeatures);
 
-			uint32_t idx = uint32_t(featureId) / Support::kBitWordSizeInBits;
-			uint32_t bit = uint32_t(featureId) % Support::kBitWordSizeInBits;
+			uint32_t idx = uint32_t(featureId) / Support::bit_size_of<BitWord>;
+			uint32_t bit = uint32_t(featureId) % Support::bit_size_of<BitWord>;
 
 			_bits[idx] &= ~(BitWord(1) << bit);
 		}

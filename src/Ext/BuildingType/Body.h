@@ -64,7 +64,7 @@ public:
 	NullableIdx<VocClass> Grinding_Sound {};
 	Valueable<WeaponTypeClass*> Grinding_Weapon { nullptr };
 
-	Valueable<bool> Grinding_PlayDieSound { false };
+	Valueable<bool> Grinding_PlayDieSound { true };
 	Valueable<int> Grinding_Weapon_RequiredCredits { 0 };
 
 	Nullable<bool> PlacementPreview_Show { };
@@ -275,6 +275,7 @@ public:
 	Valueable<bool> FactoryPlant_RequirePower { false };
 	Valueable<bool> SpySat_RequirePower { false };
 	Valueable<bool> Cloning_RequirePower { false };
+	Valueable<bool> Radar_RequirePower { true };
 
 	Nullable<bool> DisplayIncome {};
 	Nullable<AffectedHouse> DisplayIncome_Houses {};
@@ -353,6 +354,8 @@ public:
 
 	NullableIdx<VocClass> BuildingRepairedSound {};
 	Valueable<bool> Refinery_UseNormalActiveAnim { false };
+
+	ValueableVector<bool> HasPowerUpAnim {};
 
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void Initialize();

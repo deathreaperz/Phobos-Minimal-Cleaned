@@ -29,9 +29,9 @@ class NOVTABLE GadgetClass : public LinkClass
 {
 public:
 	static COMPILETIMEEVAL reference<GadgetClass*, 0x8B3E90> Focused {};
-
+	static COMPILETIMEEVAL reference<GadgetClass*, 0x8B3E88> StickyButton {};
 	//Destructor
-	virtual ~GadgetClass() RX;
+	virtual ~GadgetClass() override { JMP_THIS(0x4E1390); }
 
 	//LinkClass
 	virtual GadgetClass* GetNext() override JMP_THIS(0x4E14A0);
@@ -68,7 +68,7 @@ public:
 	GadgetClass* ExtractGadgetAt(int nX, int nY) { JMP_THIS(0x4E15A0); }
 
 	//Statics
-	static int __fastcall GetColorScheme() { JMP_STD(0x4E12D0); }
+	static int __fastcall GetColorScheme() { JMP_FAST(0x4E12D0); }
 
 	//Constructors
 	GadgetClass(int nX,int nY,int nWidth,int nHeight,GadgetFlag eFlag, bool bSticky) noexcept

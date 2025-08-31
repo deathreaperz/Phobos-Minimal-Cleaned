@@ -49,7 +49,7 @@ EBolt* EboltExtData::_CreateOneOf(WeaponTypeClass* pWeapon, TechnoClass* pFirer)
 	if (pFirer)
 		map->BurstIndex = pFirer->CurrentBurstIndex;
 
-	map->ParticleSysEnabled = pWpExt->Bolt_ParticleSys_Enabled;
+	map->ParticleSysEnabled = !pWpExt->Bolt_ParticleSys.isset() || pWpExt->Bolt_ParticleSys;
 	map->pSys = pWpExt->Bolt_ParticleSys.Get(RulesClass::Instance->DefaultSparkSystem);
 
 	map->Disable[0] = pWpExt->Bolt_Disables[0];

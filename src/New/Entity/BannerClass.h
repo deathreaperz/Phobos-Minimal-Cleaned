@@ -18,6 +18,8 @@ public:
 	int Variable {};
 	int ShapeFrameIndex {};
 	bool IsGlobalVariable {};
+	int Duration { -1 };
+	int Delay { -1 };
 
 	BannerClass() = default;
 

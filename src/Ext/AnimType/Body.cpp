@@ -53,7 +53,18 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->XDrawOffset.Read(exINI, pID, "XDrawOffset");
 	this->HideIfNoOre_Threshold.Read(exINI, pID, "HideIfNoOre.Threshold");
 	this->Layer_UseObjectLayer.Read(exINI, pID, "Layer.UseObjectLayer");
-	this->UseCenterCoordsIfAttached.Read(exINI, pID, "UseCenterCoordsIfAttached");
+
+	Nullable<bool> UseCenterCoordsIfAttached{};
+
+	UseCenterCoordsIfAttached.Read(exINI, pID, "UseCenterCoordsIfAttached");
+
+	auto att = this->AttachedAnimPosition.Get();
+	if (UseCenterCoordsIfAttached.isset() && UseCenterCoordsIfAttached.Get()) {
+		att |= AttachedAnimPosition::Center;
+		this->AttachedAnimPosition = att;
+	}
+
+	this->AttachedAnimPosition.Read(exINI, pID, "AttachedAnimPosition");
 
 	this->Weapon.Read(exINI, pID, "Weapon", true);
 	this->WeaponToCarry.Read(exINI, pID, "WeaponToCarry", true);
@@ -169,20 +180,7 @@ void AnimTypeExtData::LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr)
 	this->AltPalette_ApplyLighting.Read(exINI, pID, "AltPalette.ApplyLighting");
 
 	//Launchs
-	this->Launchs.clear();
-	for (size_t i = 0; ; ++i)
-	{
-		//char nBuff[0x30];
-		SuperWeaponTypeClass* LaunchWhat_Dummy;
-		std::string _buffer = "LaunchSW";
-		_buffer += std::to_string(i);
-		_buffer += ".Type";
-
-		if (!detail::read(LaunchWhat_Dummy, exINI, pID, _buffer.c_str(), true) || !LaunchWhat_Dummy)
-			break;
-
-		this->Launchs.emplace_back().Read(exINI, pID, i, LaunchWhat_Dummy);
-	}
+	LauchSWData::ReadVector(this->Launchs, exINI, pID, Phobos::Otamaa::CompatibilityMode);
 
 	this->RemapAnim.Read(exINI, pID, "RemapAnim");
 	this->ExtraShadow.Read(exINI, pID, "ExtraShadow");
@@ -572,7 +570,7 @@ void AnimTypeExtData::Serialize(T& Stm)
 		.Process(this->XDrawOffset)
 		.Process(this->HideIfNoOre_Threshold)
 		.Process(this->Layer_UseObjectLayer)
-		.Process(this->UseCenterCoordsIfAttached)
+		.Process(this->AttachedAnimPosition)
 		.Process(this->Weapon)
 		.Process(this->WeaponToCarry)
 		.Process(this->Damage_Delay)

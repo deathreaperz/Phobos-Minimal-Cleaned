@@ -101,9 +101,15 @@ ASMJIT_PATCH(0x7209B0, ThemeClass_GetUIName, 0x7)
 	return 0x7209C6;
 }
 
-ASMJIT_PATCH(0x720A69, ThemeClass_AI_Play, 0x6)
+ASMJIT_PATCH(0x720A48, ThemeClass_AI_Play, 0x5)
 {
+	GET(int, pending, EAX);
 	GET(ThemeClass*, pThis, ESI);
+
+	if (pending == -2)
+	{
+		pThis->QueuedTheme = pThis->GetRandomIndex(pThis->LastTheme);
+	}
 
 	int idx = pThis->QueuedTheme;
 

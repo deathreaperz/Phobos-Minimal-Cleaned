@@ -6,14 +6,30 @@
 #include <Utilities/Patch.h>
 
 #include <Wstring.h>
-#include <format>
 #include <random>
 #include <ColorStruct.h>
+#include <MessageBoxLogging.h>
 
+#include <expected>
+#include <filesystem>
+#include <mutex>
+#include <unordered_map>
+
+#include <Lib/asmjit/x86.h>
 #include <Lib/fmt/core.h>
 #include <Lib/fmt/xchar.h>
 #include <Lib/fmt/printf.h>
 #include <Lib/magic_enum/magic_enum_all.hpp>
+
+enum class DrawDamageMode : BYTE
+{
+	disabled, damageOnly, withWH, count
+};
+
+enum class FPSCounterMode
+{
+	disabled, Full, FPSOnly, FPSandAVG, count
+};
 
 template <typename E>
 struct fmt::formatter<E, std::enable_if_t<std::is_enum_v<std::decay_t<E>>, char>> : fmt::formatter<std::string_view, char>
@@ -35,6 +51,8 @@ enum class ExceptionHandlerMode
 	NoRemove = 2
 };
 
+class PhobosStreamWriter;
+class PhobosStreamReader;
 struct Phobos final
 {
 	static unsigned GetVersionNumber();
@@ -87,7 +105,7 @@ struct Phobos final
 	static const char readDelims[4];
 	static const char readDefval[4];
 	static std::string AppIconPath;
-	static bool Debug_DisplayDamageNumbers;
+	static DrawDamageMode Debug_DisplayDamageNumbers;
 	static const wchar_t* VersionDescription;
 	static bool ShouldQuickSave;
 	static std::wstring CustomGameSaveDescription;
@@ -171,6 +189,9 @@ struct Phobos final
 		static bool DigitalDisplay_Enable;
 		static bool MessageDisplayInCenter;
 		static bool MessageApplyHoverState;
+		static int MessageDisplayInCenter_LabelsCount;
+		static int MessageDisplayInCenter_RecordsCount;
+
 		static bool ShowBuildingStatistics;
 
 		static bool ApplyShadeCountFi;
@@ -200,6 +221,8 @@ struct Phobos final
 
 		static bool UnitPowerDrain;
 		static int SuperWeaponSidebar_RequiredSignificance;
+
+		static bool SuperWeaponSidebarCommands;
 	};
 
 	struct Misc
@@ -239,4 +262,7 @@ struct Phobos final
 		static OPTIONALINLINE COMPILETIMEEVAL ColorStruct InterceptedPositiveDamageColor = ColorStruct { 255, 128, 128 };
 		static OPTIONALINLINE COMPILETIMEEVAL ColorStruct InterceptedNegativeDamageColor = ColorStruct { 128, 255, 128 };
 	};
+
+	static bool SaveGlobals(PhobosStreamWriter& stm);
+	static bool LoadGlobals(PhobosStreamReader& stm);
 };

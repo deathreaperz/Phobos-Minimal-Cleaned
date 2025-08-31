@@ -115,38 +115,40 @@ void NOINLINE FakeAnimClass::_Start()
 	if (!this->IsPlaying && this->Type->TiberiumChainReaction)
 	{
 		auto gCoords = this->GetCoords();
-		CellClass* cptr = MapClass::Instance->GetCellAt(gCoords);
-		int tib = cptr->GetContainedTiberiumIndex();
-
-		if (tib != -1)
+		if (CellClass* cptr = MapClass::Instance->TryGetCellAt(gCoords))
 		{
-			TiberiumClass* tiberium = TiberiumClass::Array->Items[tib];
-			auto pExt = TiberiumExtContainer::Instance.Find(tiberium);
+			int tib = cptr->GetContainedTiberiumIndex();
 
-			cptr->ReduceTiberium(cptr->OverlayData + 1);
-
-			if (tiberium->Debris.size() > 0)
+			if (tib != -1)
 			{
-				int chance = pExt->GetDebrisChance();
-				if (ScenarioClass::Instance->Random.RandomFromMax(99) < chance)
+				TiberiumClass* tiberium = TiberiumClass::Array->Items[tib];
+				auto pExt = TiberiumExtContainer::Instance.Find(tiberium);
+
+				cptr->ReduceTiberium(cptr->OverlayData + 1);
+
+				if (tiberium->Debris.size() > 0)
 				{
-					auto SpawnLoc = gCoords;
-					SpawnLoc.Z += 10;
+					int chance = pExt->GetDebrisChance();
+					if (ScenarioClass::Instance->Random.RandomFromMax(99) < chance)
+					{
+						auto SpawnLoc = gCoords;
+						SpawnLoc.Z += 10;
 
-					auto pSpawn = GameCreate<AnimClass>(tiberium->Debris[ScenarioClass::Instance->Random.RandomFromMax(tiberium->Debris.size() - 1)], SpawnLoc);
-					pSpawn->LightConvert = ColorScheme::Array->Items[tiberium->Color]->LightConvert;
-					pSpawn->TintColor = cptr->Intensity_Normal;
+						auto pSpawn = GameCreate<AnimClass>(tiberium->Debris[ScenarioClass::Instance->Random.RandomFromMax(tiberium->Debris.size() - 1)], SpawnLoc);
+						pSpawn->LightConvert = ColorScheme::Array->Items[tiberium->Color]->LightConvert;
+						pSpawn->TintColor = cptr->Intensity_Normal;
+					}
 				}
+
+				int damage = pExt->GetExplosionDamage();
+				auto pWarhead = pExt->GetExplosionWarhead();
+
+				DamageArea::Apply(&gCoords, damage, nullptr, pWarhead, false, nullptr);
+
+				cptr->RecalcAttributes(-1);
+				MapClass::Instance->ResetZones(cptr->MapCoords);
+				MapClass::Instance->RecalculateSubZones(cptr->MapCoords);
 			}
-
-			int damage = pExt->GetExplosionDamage();
-			auto pWarhead = pExt->GetExplosionWarhead();
-
-			DamageArea::Apply(&gCoords, damage, nullptr, pWarhead, false, nullptr);
-
-			cptr->RecalcAttributes(-1);
-			MapClass::Instance->ResetZones(cptr->MapCoords);
-			MapClass::Instance->RecalculateSubZones(cptr->MapCoords);
 		}
 	}
 
@@ -155,7 +157,7 @@ void NOINLINE FakeAnimClass::_Start()
 
 bool __fastcall Is_Visible_To_Psychic(HouseClass* house, CellClass* cell)
 {
-	JMP_STD(0x43B4C0);
+	JMP_FAST(0x43B4C0);
 }
 
 void NOINLINE AnimExtData::OnTypeChange()
@@ -373,6 +375,45 @@ void NOINLINE FakeAnimClass::_DrawTrailerAnim()
 	}
 }
 
+CoordStruct* FakeAnimClass::__GetCenterCoords(CoordStruct* pBuffer)
+{
+	if (auto pObj = this->OwnerObject)
+	{
+		pObj->GetRenderCoords(pBuffer);
+		*pBuffer = pBuffer->operator+(this->Location);
+
+		if (this->Type)
+		{
+			auto pTypeExt = this->_GetTypeExtData();
+
+			if (pTypeExt->AttachedAnimPosition != AttachedAnimPosition::Default)
+			{
+				//save original coords because centering it broke damage
+				//pThis->_GetExtData()->BackupCoords = pCoords->operator+(pThis->Location);
+
+				if (pTypeExt->AttachedAnimPosition & AttachedAnimPosition::Ground)
+				{
+					pBuffer->Z = MapClass::Instance->GetCellFloorHeight(pBuffer);
+				}
+
+				if (pTypeExt->AttachedAnimPosition & AttachedAnimPosition::Center)
+				{
+					pBuffer->X += 128;
+					pBuffer->Y += 128;
+				}
+			}
+		}
+	}
+	else
+	{
+		*pBuffer = this->Location;
+	}
+
+	return pBuffer;
+}
+
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E339C, FakeAnimClass::__GetCenterCoords)
+
 void NOINLINE FakeAnimClass::_ApplyHideIfNoOre()
 {
 	if (!this->Type->HideIfNoOre)
@@ -385,11 +426,11 @@ void NOINLINE FakeAnimClass::_ApplyHideIfNoOre()
 
 void NOINLINE FakeAnimClass::_CreateFootApplyOccupyBits()
 {
+	if (!this->Location.IsValid())
+		return;
+
 	if (this->Type->MakeInfantry != -1)
 	{
-		if (!this->Location.IsValid())
-			return;
-
 		this->MarkAllOccupationBits(this->Location);
 		this->_GetExtData()->CreateUnitLocation = this->Location;
 	}
@@ -531,7 +572,7 @@ void FakeAnimClass::_AI()
 			return;
 		}
 
-		if (!this->IsPlaying && this->Type->Report != -1)
+		if (!this->IsPlaying)
 		{
 			VocClass::SafeImmedietelyPlayAt(this->Type->Report, &this->GetCoords(), &this->Audio3);
 		}

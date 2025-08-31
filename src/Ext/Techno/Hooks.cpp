@@ -172,6 +172,11 @@ ASMJIT_PATCH(0x708FC0, TechnoClass_ResponseMove_Pickup, 0x5)
 			}
 		}
 	}
+	else if (auto const pUnit = cast_to<UnitClass*, false>(pThis))
+	{
+		if (pUnit->Type->Speed == 0)
+			return SkipResponse;
+	}
 
 	return 0;
 }
@@ -725,6 +730,31 @@ ASMJIT_PATCH(0x6B7600, SpawnManagerClass_AI_InitDestination, 0x6)
 	return R->Origin() == 0x6B7600 ? SkipGameCode1 : SkipGameCode2;
 }ASMJIT_PATCH_AGAIN(0x6B769F, SpawnManagerClass_AI_InitDestination, 0x7)
 
+ASMJIT_PATCH(0x6B7663, SpawnManageClass_AI_Label55, 0x5)
+{
+	GET(SpawnManagerClass* const, pThis, ESI);
+	GET(AircraftClass* const, pSpawned, EDI);
+	GET(int, idx, EBX);
+
+	if (!pSpawned || !pSpawned->IsAlive || (VTable::Get(pSpawned) != AircraftClass::vtable
+		&& VTable::Get(pSpawned) != UnitClass::vtable
+		&& VTable::Get(pSpawned) != InfantryClass::vtable)
+	)
+	{
+		pThis->SpawnedNodes.Items[idx]->Status = SpawnNodeStatus::Dead;
+		pThis->SpawnedNodes.Items[idx]->Unit = nullptr;
+
+		if (!pSpawned->IsAlive || (VTable::Get(pSpawned) != AircraftClass::vtable
+			&& VTable::Get(pSpawned) != UnitClass::vtable
+			&& VTable::Get(pSpawned) != InfantryClass::vtable))
+			pThis->SpawnedNodes.Items[idx]->NodeSpawnTimer.Start(pThis->RegenRate);
+
+		return 0x6B795A;
+	}
+
+	return 0x0;
+}
+
 void DrawFactoryProgress(TechnoClass* pThis, Point2D* pLocation, RectangleStruct* pBounds)
 {
 	if (pThis->WhatAmI() != AbstractType::Building)
@@ -863,17 +893,35 @@ ASMJIT_PATCH(0x6F5EE3, TechnoClass_DrawExtras_DrawAboveHealth, 0x9)
 	return 0;
 }
 
-ASMJIT_PATCH(0x6B77B4, SpawnManagerClass_Update_RecycleSpawned, 0x7)
+ASMJIT_PATCH(0x6B7793, SpawnManagerClass_Update_RecycleSpawned, 0x7)
 {
 	enum { Recycle = 0x6B77FF, NoRecycle = 0x6B7838 };
 
 	GET(SpawnManagerClass* const, pThis, ESI);
-	GET(TechnoClass* const, pSpawner, EDI);
-	GET(CellStruct* const, pCarrierMapCrd, EBP);
+	GET(TechnoClass* const, pSpawned, EDI);
+	GET(int, idx, EBX);
+
+	if (!pSpawned || !pSpawned->IsAlive || (VTable::Get(pSpawned) != AircraftClass::vtable
+		&& VTable::Get(pSpawned) != UnitClass::vtable
+		&& VTable::Get(pSpawned) != InfantryClass::vtable)
+	)
+	{
+		pThis->SpawnedNodes.Items[idx]->Status = SpawnNodeStatus::Dead;
+		pThis->SpawnedNodes.Items[idx]->Unit = nullptr;
+
+		if (!pSpawned->IsAlive || (VTable::Get(pSpawned) != AircraftClass::vtable
+			&& VTable::Get(pSpawned) != UnitClass::vtable
+			&& VTable::Get(pSpawned) != InfantryClass::vtable))
+			pThis->SpawnedNodes.Items[idx]->NodeSpawnTimer.Start(pThis->RegenRate);
+
+		return 0x6B795A;
+	}
+
+	auto CarrierMapCrd = pThis->Owner->GetMapCoords();
 
 	auto const pCarrier = pThis->Owner;
 	auto const pCarrierTypeExt = TechnoTypeExtContainer::Instance.Find(pCarrier->GetTechnoType());
-	auto const spawnerCrd = pSpawner->GetCoords();
+	auto const spawnerCrd = pSpawned->GetCoords();
 
 	auto shouldRecycleSpawned = [&]()
 		{
@@ -890,7 +938,7 @@ ASMJIT_PATCH(0x6B77B4, SpawnManagerClass_Update_RecycleSpawned, 0x7)
 				// 182 is √2/2 * 256. 20 is same to vanilla behavior.
 				return (pCarrier->WhatAmI() == AbstractType::Building)
 					? (deltaCrd.X <= 182 && deltaCrd.Y <= 182 && deltaCrd.Z < 20)
-					: (pSpawner->GetMapCoords() == *pCarrierMapCrd && deltaCrd.Z < 20);
+					: (pSpawned->GetMapCoords() == CarrierMapCrd && deltaCrd.Z < 20);
 			}
 			return deltaCrd.Length() <= recycleRange;
 		};
@@ -899,10 +947,10 @@ ASMJIT_PATCH(0x6B77B4, SpawnManagerClass_Update_RecycleSpawned, 0x7)
 	{
 		if (pCarrierTypeExt->Spawner_RecycleAnim)
 		{
-			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pCarrierTypeExt->Spawner_RecycleAnim, spawnerCrd), pSpawner->Owner, nullptr, pSpawner, false, true);
+			AnimExtData::SetAnimOwnerHouseKind(GameCreate<AnimClass>(pCarrierTypeExt->Spawner_RecycleAnim, spawnerCrd), pSpawned->Owner, nullptr, pSpawned, false, true);
 		}
 
-		pSpawner->SetLocation(pCarrier->GetCoords());
+		pSpawned->SetLocation(pCarrier->GetCoords());
 		return Recycle;
 	}
 
@@ -942,7 +990,7 @@ ASMJIT_PATCH(0x6FA540, TechnoClass_AI_ChargeTurret, 0x6)
 
 	auto const pType = pThis->GetTechnoType();
 	auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-	int timeLeft = pThis->DiskLaserTimer.GetTimeLeft();
+	int timeLeft = pThis->RearmTimer.GetTimeLeft();
 
 	if (pExt->ChargeTurretTimer.HasStarted())
 		timeLeft = pExt->ChargeTurretTimer.GetTimeLeft();
@@ -1444,6 +1492,9 @@ ASMJIT_PATCH(0x736F61, UnitClass_UpdateFiring_FireUp, 0x6)
 			}
 		}
 
+		if (TechnoExtData::HandleDelayedFireWithPauseSequence(pThis, weaponIndex, fireUp + cumulativeDelay))
+			return 0x736F73;
+
 		const int frame = (Timer.TimeLeft - Timer.GetTimeLeft());
 
 		if (frame % 2 != 0)
@@ -1595,6 +1646,9 @@ ASMJIT_PATCH(0x6FCF3E, TechnoClass_SetTarget_After, 0x6)
 
 	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
 
+	if (pThis->LocomotorTarget != pTarget)
+		pThis->ReleaseLocomotor(true);
+
 	if (const auto pUnit = cast_to<UnitClass*, false>(pThis))
 	{
 		const auto pUnitType = pUnit->Type;
@@ -1615,7 +1669,206 @@ ASMJIT_PATCH(0x6FCF3E, TechnoClass_SetTarget_After, 0x6)
 	pThis->Target = pTarget;
 	pExt->UpdateGattlingRateDownReset();
 
+	if (!pThis->Target)
+		pExt->ResetDelayedFireTimer();
+
 	return 0x6FCF44;
 }
 
 #pragma endregion
+
+// Skip incorrect retn to restore the auto deploy behavior of infantry
+ASMJIT_PATCH(0x522373, InfantryClass_ApproachTarget_InfantryAutoDeploy, 0x5)
+{
+	enum { Deploy = 0x522378 };
+	GET(FakeInfantryClass*, pThis, ESI);
+	return pThis->_GetTypeExtData()->InfantryAutoDeploy.Get(RulesExtData::Instance()->InfantryAutoDeploy)
+		? Deploy : 0;
+}
+
+ASMJIT_PATCH(0x746720, UnitClass_ClearDisguise_DefaultDisguise, 0x5)
+{
+	GET(UnitClass*, pThis, ECX);
+	const auto pType = pThis->Type;
+
+	if (!pType->PermaDisguise)
+		return 0;
+
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pType);
+	const auto pDefault = pTypeExt->DefaultVehicleDisguise.Get();
+	pThis->Disguise = pDefault ? pDefault : pType;
+	pThis->DisguisedAsHouse = pThis->Owner;
+	pThis->Disguised = true;
+	return 0x746747;
+}
+
+ASMJIT_PATCH(0x7466DC, UnitClass_DisguiseAs_DisguiseAsVehicle, 0x6)
+{
+	GET(UnitClass*, pThis, EDI);
+	GET(UnitClass*, pTarget, ESI);
+	const bool targetDisguised = pTarget->IsDisguised();
+
+	pThis->Disguise = targetDisguised ? pTarget->GetDisguise(true) : pTarget->Type;
+	pThis->DisguisedAsHouse = targetDisguised ? pTarget->GetDisguiseHouse(true) : pTarget->Owner;
+	pThis->TechnoClass::DisguiseAs(pTarget);
+	return 0x746712;
+}
+
+ASMJIT_PATCH(0x74659B, UnitClass_RemoveGunner_ClearDisguise, 0x6)
+{
+	GET(UnitClass*, pThis, EDI);
+
+	if (!pThis->IsDisguised())
+		return 0;
+
+	if (const auto pWeapon = pThis->GetWeapon(pThis->CurrentWeaponNumber)->WeaponType)
+	{
+		const auto pWarhead = pWeapon->Warhead;
+
+		if (pWarhead && pWarhead->MakesDisguise)
+			return 0;
+	}
+
+	pThis->ClearDisguise();
+	return 0;
+}
+
+#ifndef _disabled
+
+ASMJIT_PATCH(0x740414, UnitClass_WhatAction_Immune_FakeEngineer1, 0x5)
+{
+	enum { ForceNewValue = 0x74049F };
+
+	GET(TechnoClass* const, pThis, ESI);
+	GET(TechnoClass* const, pTarget, EDI);
+
+	if (const auto pBuilding = cast_to<BuildingClass*>(pTarget))
+	{
+		const auto& [allow1, allow2, canBeDefused] = TechnoExtData::CanBeAffectedByFakeEngineer(pThis, pBuilding, true, true, true);
+
+		if (allow1 || allow2 || canBeDefused)
+		{
+			if (canBeDefused)
+				R->EBX(Action::DisarmBomb);
+			else
+				R->EBX(Action::Attack);
+
+			return ForceNewValue;
+		}
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x74049A, UnitClass_WhatAction_Immune_FakeEngineer2, 0x5)
+{
+	enum { ForceNewValue = 0x74049F };
+
+	GET(TechnoClass* const, pThis, ESI);
+	GET(TechnoClass* const, pTarget, EDI);
+
+	if (const auto pBuilding = cast_to<BuildingClass*>(pTarget))
+	{
+		const auto& [allow1, allow2, canBeDefused] = TechnoExtData::CanBeAffectedByFakeEngineer(pThis, pBuilding, true, true, true);
+
+		if (allow1 || allow2 || canBeDefused)
+		{
+			if (canBeDefused)
+				R->EBX(Action::DisarmBomb);
+			else
+				R->EBX(Action::Attack);
+
+			return ForceNewValue;
+		}
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x417F63, AircraftClass_WhatAction_Immune_FakeEngineer, 0x5)
+{
+	enum { ForceNewValue = 0x417F68 };
+
+	GET(TechnoClass* const, pThis, ESI);
+	GET(BuildingClass* const, pBuilding, EDI);
+
+	const auto& [allow1, allow2, canBeDefused] = TechnoExtData::CanBeAffectedByFakeEngineer(pThis, pBuilding, true, true, true);
+
+	if (allow1 || allow2 || canBeDefused)
+		return ForceNewValue;
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x447527, BuildingClass_WhatAction_Immune_FakeEngineer, 0x5)
+{
+	enum { ForceNewValue = 0x44752C };
+
+	GET(TechnoClass* const, pThis, ESI);
+	GET(BuildingClass* const, pBuilding, EBP);
+
+	const auto& [allow1, allow2, canBeDefused] = TechnoExtData::CanBeAffectedByFakeEngineer(pThis, pBuilding, true, true, true);
+
+	if (allow1 || allow2 || canBeDefused)
+	{
+		if (canBeDefused)
+			R->EBP(Action::DisarmBomb);
+		else
+			R->EBP(Action::Attack);
+
+		return ForceNewValue;
+	}
+
+	return 0;
+}
+
+ASMJIT_PATCH(0x51F179, InfantryClass_WhatAction_Immune_FakeEngineer, 0x5)
+{
+	enum { ForceNewValue = 0x51F17E };
+
+	GET(TechnoClass* const, pThis, EDI);
+	GET(BuildingClass* const, pBuilding, ESI);
+
+	const auto& [allow1, allow2, canBeDefused] = TechnoExtData::CanBeAffectedByFakeEngineer(pThis, pBuilding, true, true, true);
+
+	if (allow1 || allow2 || canBeDefused)
+	{
+		if (canBeDefused)
+			R->EBP(Action::DisarmBomb);
+		else
+			R->EBP(Action::Attack);
+
+		return ForceNewValue;
+	}
+	return 0;
+}
+
+ASMJIT_PATCH(0x6FC31C, TechnoClass_CanFire_ForceWeapon, 0xF)
+{
+	enum { UseWeaponIndex = 0x0 };
+
+	GET(TechnoClass* const, pThis, ESI);
+	GET(AbstractClass* const, pTarget, EBX);
+	REF_STACK(int, nWeaponIdx, STACK_OFFSET(0x10, 0xC));
+
+	const auto pTypeExt = TechnoTypeExtContainer::Instance.Find(pThis->GetTechnoType());
+
+	// Force weapon check
+	int newIndex = pTypeExt->SelectForceWeapon(pThis, pTarget);
+
+	if (newIndex >= 0)
+	{
+		nWeaponIdx = newIndex;
+	}
+	else
+	{
+		// Multi weapon check
+		newIndex = pTypeExt->SelectMultiWeapon(pThis, pTarget);
+
+		if (newIndex >= 0)
+			nWeaponIdx = newIndex;
+	}
+
+	return 0;
+}
+#endif

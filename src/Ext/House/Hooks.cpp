@@ -287,7 +287,7 @@ ASMJIT_PATCH(0x6F6BC9, TechnoClass_Limbo_AddTracking, 0x6)
 
 	if (pThis->IsAlive)
 	{
-		HouseExtData::LimboTechno.emplace(pThis);
+		HouseExtData::LimboTechno.push_back_unique(pThis);
 	}
 
 	return 0;
@@ -296,7 +296,7 @@ ASMJIT_PATCH(0x6F6BC9, TechnoClass_Limbo_AddTracking, 0x6)
 ASMJIT_PATCH(0x6F6D85, TechnoClass_Unlimbo_RemoveTracking, 0x6)
 {
 	GET(TechnoClass* const, pThis, ESI);
-	HouseExtData::LimboTechno.erase(pThis);
+	HouseExtData::LimboTechno.remove(pThis);
 	return 0;
 }
 

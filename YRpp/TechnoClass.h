@@ -532,7 +532,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 		{ JMP_THIS(0x70DE00); }
 
 	int __fastcall ClearPlanningTokens(EventClass* pEvent)
-		{ JMP_STD(0x6386E0); }
+		{ JMP_FAST(0x6386E0); }
 
 	void SetTargetForPassengers(AbstractClass* pTarget)
 		{ JMP_THIS(0x710550); }
@@ -627,7 +627,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	int TimeToBuild() const
 	{ JMP_THIS(0x6F47A0); }
 
-	CellStruct* NearbyLocation(CellStruct* pRet, TechnoClass* pOtherTechno)
+	CellStruct* NearbyLocation(CellStruct* pRet, AbstractClass* pDest)
 	{ JMP_THIS(0x703590); }
 
 	bool MoveOnToLinkedBuilding() const
@@ -691,7 +691,7 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 	}
 
 	static void __fastcall ClearWhoTargetingThis(AbstractClass*) {
-		JMP_STD(0x70D4A0);
+		JMP_FAST(0x70D4A0);
 	}
 
 	void SetTargetingDelay() const {
@@ -786,6 +786,9 @@ ObjectClass* Attacker, bool IgnoreDefenses, bool PreventPassengerEscape, HouseCl
 
 	void ReleaseLocomotor(bool setTarget)
 	{ JMP_THIS(0x70FEE0); }
+
+	void DistributedFire()
+	{ JMP_THIS(0x709550); }
 
 		// changes locomotor to the given one, Magnetron style
 		//	// mind that this locks up the source too, Magnetron style
@@ -914,7 +917,7 @@ public:
 	TechnoClass*     BunkerLinkedItem;
 
 	float            PitchAngle; // not exactly, and it doesn't affect the drawing, only internal state of a dropship
-	DECLARE_PROPERTY(CDTimerClass, DiskLaserTimer);
+	DECLARE_PROPERTY(CDTimerClass, RearmTimer);
 	int           	 ROF;
 	int              Ammo;
 	int              Value; //,PurchasePrice set to actual cost when this gets queued in factory, updated only in building's 42C

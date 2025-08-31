@@ -19,8 +19,9 @@ public:
 		{
 			*ppvObject = static_cast<IPiggyback*>(this);
 
-			if (*ppvObject)
-				this->AddRef();
+		if (*ppvObject)
+		{
+			this->AddRef();
 
 			return S_OK;
 		}
@@ -42,10 +43,10 @@ public:
 	}
 
 	// IPersistStream
-	virtual HRESULT __stdcall IsDirty() { return LocomotionClass::IsDirty(); }
+//	virtual HRESULT __stdcall IsDirty() override { return !this->Dirty; }
 	virtual HRESULT __stdcall Load(IStream * pStm) override
 	{
-		HRESULT hr = this->LocomotionClass::Internal_Load(this, pStm);
+		HRESULT hr = LocomotionClass::Internal_Load(this, pStm);
 
 		if (FAILED(hr))
 			return hr;
@@ -68,7 +69,7 @@ public:
 	}
 	virtual HRESULT __stdcall Save(IStream * pStm, BOOL fClearDirty) override
 	{
-		HRESULT hr = this->LocomotionClass::Internal_Save(this, pStm, fClearDirty);
+		HRESULT hr = LocomotionClass::Internal_Save(this, pStm, fClearDirty);
 
 		if (FAILED(hr))
 			return hr;
@@ -93,76 +94,42 @@ public:
 	virtual int Size() override { return sizeof(*this); }
 
 	// ILocomotion
-	virtual HRESULT __stdcall Link_To_Object(void* pointer) override
+/*	virtual HRESULT __stdcall Link_To_Object(void* pointer) override
 	{
-		return LocomotionClass::Link_To_Object(pointer);
-	}
-	virtual bool __stdcall Is_Moving() override
-	{
-		if (this->TargetCoord != CoordStruct::Empty)
-			return true;
-
-		return this->HeadToCoord != CoordStruct::Empty
-			&& (this->HeadToCoord.X != this->LinkedTo->Location.X
-				|| this->HeadToCoord.Y != this->LinkedTo->Location.Y);
-	}
-	virtual CoordStruct __stdcall Destination() override { return this->TargetCoord; } // CoordStruct*
-	virtual CoordStruct __stdcall Head_To_Coord() override // CoordStruct*
-	{
-		if (this->HeadToCoord == CoordStruct::Empty)
-			return this->LinkedTo->Location;
-
-		return this->HeadToCoord;
-	}
+		HRESULT hr = this->LocomotionClass::Link_To_Object(pointer);
+		if (SUCCEEDED(hr))
+			Debug::Log("AdvancedDriveLocomotionClass - Sucessfully linked to \"%s\"\n", Owner->get_ID());
+		return hr;
+	}*/
+	virtual bool __stdcall Is_Moving() override;
+	virtual CoordStruct __stdcall Destination() override { return this->TargetCoord; }
+	virtual CoordStruct __stdcall Head_To_Coord() override { return this->HeadToCoord == CoordStruct::Empty ? this->LinkedTo->Location : this->HeadToCoord; }
 	//	virtual Move __stdcall Can_Enter_Cell(CellStruct cell) override { return Move::OK; }
 	//	virtual bool __stdcall Is_To_Have_Shadow() override { return true; }
-	virtual Matrix3D* __stdcall Draw_Matrix(Matrix3D * pMatrix, VoxelIndexKey * key) override { JMP_STD(0x4AFF60); } // TODO but lazy
-	virtual Matrix3D* __stdcall Shadow_Matrix(Matrix3D * pMatrix, VoxelIndexKey * key) override { JMP_STD(0x4B0410); } // TODO but lazy
-	//	virtual Point2D __stdcall Draw_Point() override { return this->LocomotionClass::Draw_Point(); } // Point2D*
-	//	virtual Point2D __stdcall Shadow_Point() override { return this->LocomotionClass::Shadow_Point(); } // Point2D*
+	virtual Matrix3D* __stdcall Draw_Matrix(Matrix3D*, VoxelIndexKey * key) override;
+	virtual Matrix3D* __stdcall Shadow_Matrix(Matrix3D*, VoxelIndexKey * key) override;
+	//	virtual Point2D __stdcall Draw_Point() override { return this->LocomotionClass::Draw_Point(); }
+	//	virtual Point2D __stdcall Shadow_Point() override { return this->LocomotionClass::Shadow_Point(); }
 	//	virtual VisualType __stdcall Visual_Character(bool raw) override { return VisualType::Normal; }
 	virtual int __stdcall Z_Adjust() override { return 0; }
 	virtual ZGradient __stdcall Z_Gradient() override { return ZGradient::Deg90; }
 	virtual bool __stdcall Process() override;
 	virtual void __stdcall Move_To(CoordStruct to) override;
 	virtual void __stdcall Stop_Moving() override;
-	virtual void __stdcall Do_Turn(DirStruct dir) override;
+	virtual void __stdcall Do_Turn(DirStruct dir) override { this->LinkedTo->PrimaryFacing.Set_Desired(dir); }
 	virtual void __stdcall Unlimbo() override { this->Force_New_Slope(this->LinkedTo->GetCell()->SlopeIndex); }
 	//	virtual void __stdcall Tilt_Pitch_AI() override {}
-	/*	virtual bool __stdcall Power_On() override
-		{
-			this->Powered = true;
-			return this->Is_Powered();
-		}*/
-		/*	virtual bool __stdcall Power_Off() override
-			{
-				this->Powered = false;
-				return this->Is_Powered();
-			}*/
-			//	virtual bool __stdcall Is_Powered() override { return this->Powered; }
-			//	virtual bool __stdcall Is_Ion_Sensitive() override { return false; }
-			//	virtual bool __stdcall Push(DirStruct dir) override { return false; }
-			//	virtual bool __stdcall Shove(DirStruct dir) override { return false; }
+	//	virtual bool __stdcall Power_On() override { this->Powered = true; return this->Is_Powered(); }
+	virtual bool __stdcall Power_Off() override;
+	virtual bool __stdcall Is_Powered() override;
+	//	virtual bool __stdcall Is_Ion_Sensitive() override { return false; }
+	//	virtual bool __stdcall Push(DirStruct dir) override { return false; }
+	//	virtual bool __stdcall Shove(DirStruct dir) override { return false; }
 	virtual void __stdcall Force_Track(int track, CoordStruct coord) override;
 	virtual Layer __stdcall In_Which_Layer() override { return Layer::Ground; }
 	//	virtual void __stdcall Force_Immediate_Destination(CoordStruct coord) override {}
-	virtual void __stdcall Force_New_Slope(int ramp) override
-	{
-		this->PreviousRamp = ramp;
-		this->CurrentRamp = ramp;
-		this->SlopeTimer.Start(0);
-	}
-	virtual bool __stdcall Is_Moving_Now() override
-	{
-		if (this->LinkedTo->PrimaryFacing.Is_Rotating())
-			return true;
-
-		return (this->TargetCoord != CoordStruct::Empty
-				|| this->HeadToCoord.X != this->LinkedTo->Location.X
-				|| this->HeadToCoord.Y != this->LinkedTo->Location.Y)
-			&& this->HeadToCoord != CoordStruct::Empty
-			&& this->LinkedTo->GetCurrentSpeed() > 0;
-	}
+	virtual void __stdcall Force_New_Slope(int ramp) override;
+	virtual bool __stdcall Is_Moving_Now() override;
 	//	virtual int __stdcall Apparent_Speed() override { return this->LinkedTo->GetCurrentSpeed(); }
 	//	virtual int __stdcall Drawing_Code() override { return 0; }
 	//	virtual FireError __stdcall Can_Fire() override { return FireError::OK; }
@@ -188,7 +155,6 @@ public:
 			return E_POINTER;
 
 		if (this->Piggybacker)
-
 			return E_FAIL;
 
 		this->Piggybacker = pointer;
@@ -215,12 +181,10 @@ public:
 
 		return S_OK;
 	}
-
 	virtual bool __stdcall Is_Ok_To_End() override
 	{
 		return !this->Is_Moving() && this->Piggybacker && this->UnLocked && !this->LinkedTo->IsAttackedByLocomotor;
 	}
-
 	virtual HRESULT __stdcall Piggyback_CLSID(GUID * classid) override
 	{
 		if (classid == nullptr)
@@ -242,13 +206,14 @@ public:
 
 		return thisAsPersist->GetClassID(classid);
 	}
-
 	virtual bool __stdcall Is_Piggybacking() override
 	{
 		return this->Piggybacker != nullptr;
 	}
 
-	AdvancedDriveLocomotionClass() : LocomotionClass { }
+	// Constructors
+	inline AdvancedDriveLocomotionClass(noinit_t) : LocomotionClass { noinit_t() } { }
+	inline AdvancedDriveLocomotionClass() : LocomotionClass { }
 		, CurrentRamp { 0 }
 		, PreviousRamp { 0 }
 		, SlopeTimer {}
@@ -270,16 +235,13 @@ public:
 		, ForwardTo { CoordStruct::Empty }
 		, TargetFrame { 0 }
 		, TargetDistance { 0 }
+		, Wobbles { 0.0 }
+		, OutOfControl { false }
+		, TailSpin { 0 }
 	{ }
 
 	// Destructor
-	virtual ~AdvancedDriveLocomotionClass() override = default;
-
-public:
-	AdvancedDriveLocomotionClass(const AdvancedDriveLocomotionClass&) = delete;
-	AdvancedDriveLocomotionClass(noinit_t) : LocomotionClass { noinit_t() } { }
-	AdvancedDriveLocomotionClass& operator=(const AdvancedDriveLocomotionClass&) = delete;
-public:
+	inline virtual ~AdvancedDriveLocomotionClass() override = default;
 
 	// Properties
 	int CurrentRamp;
@@ -303,10 +265,9 @@ public:
 	CoordStruct ForwardTo;
 	int TargetFrame;
 	int TargetDistance;
-
-public:
-
-	static bool IsReversing(FootClass * pFoot);
+	double Wobbles;
+	bool OutOfControl;
+	int TailSpin;
 
 private:
 	// Vanilla auxiliary function
@@ -315,9 +276,19 @@ private:
 	void MarkOccupation(const CoordStruct & to, MarkType mark); // 0x4B0AD0
 	CoordStruct GetTrackOffset(const Point2D & base, int& face, int z = 0); // 0x4B4780
 
+	void UpdateHoverState(); // 0x513D20
+
 	static CoordStruct CoordLerp(const CoordStruct & crd1, const CoordStruct & crd2, float alpha); // 0x75F540
 
 	// Added inline auxiliary function
+	static inline void SetAdjacentCoord(CoordStruct & coords, int dir)
+	{
+		const auto& adjCoords = Unsorted::AdjacentCoord[dir];
+		coords.X += adjCoords.X;
+		coords.Y += adjCoords.Y;
+	}
+	inline void UpdateSituation();
+	inline void UpdateForwardState(int desiredRaw);
 	template <bool check = false>
 	inline void StopDriving()
 	{
@@ -378,6 +349,7 @@ private:
 				pLinked->OnBridge = false;
 		}
 	}
-
 	inline int UpdateSpeedAccum(int& speedAccum); // Avoid using goto
+public:
+	static bool IsReversing(FootClass * pFoot);
 };

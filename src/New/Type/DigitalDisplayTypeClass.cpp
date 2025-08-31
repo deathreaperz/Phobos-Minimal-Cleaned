@@ -43,12 +43,43 @@ void DigitalDisplayTypeClass::LoadFromINI(CCINIClass* pINI)
 	this->InfoIndex.Read(exINI, section, "InfoIndex");
 	this->ValueScaleDivisor.Read(exINI, section, "ValueScaleDivisor");
 	this->ValueAsTimer.Read(exINI, section, "ValueAsTimer");
+	this->ShowType.Read(exINI, section, "ShowType");
+}
+
+bool DigitalDisplayTypeClass::CanShow(TechnoClass* pThis)
+{
+	if (HouseClass::IsCurrentPlayerObserver() && !this->VisibleToHouses_Observer)
+	{
+		return false;
+	}
+	else if (!EnumFunctions::CanTargetHouse(this->VisibleToHouses, pThis->Owner, HouseClass::CurrentPlayer))
+	{
+		return false;
+	}
+
+	if (!this->VisibleInSpecialState && (pThis->TemporalTargetingMe || pThis->IsIronCurtained()))
+		return false;
+
+	const DisplayShowType flags = this->ShowType;
+
+	if (flags == DisplayShowType::All)
+		return true;
+
+	DisplayShowType current = pThis->IsMouseHovering ? DisplayShowType::CursorHover : DisplayShowType::None;
+
+	if (pThis->IsSelected)
+		current |= DisplayShowType::Selected;
+
+	if (current != DisplayShowType::None) // is hovering | is selected
+		return (current & flags) != DisplayShowType::None;
+
+	return (flags & DisplayShowType::Idle) != DisplayShowType::None; // not hovering & not selected
 }
 
 void DigitalDisplayTypeClass::Draw(Point2D position, int length, int value, int maxValue, bool isBuilding, bool isInfantry, bool hasShield)
 {
 	position.X += this->Offset->X;
-	position.Y -= this->Offset->Y;
+	position.Y += this->Offset->Y;
 
 	if (hasShield)
 	{
@@ -94,7 +125,7 @@ void DigitalDisplayTypeClass::DisplayText(Point2D& position, int length, int val
 	{
 		if (Percentage)
 		{
-			fmt::format_to(std::back_inserter(wbuf), L"{}%", static_cast<int>(static_cast<double>(value) / maxValue * 100));
+			fmt::format_to(std::back_inserter(wbuf), L"%{}", static_cast<int>(static_cast<double>(value) / maxValue * 100));
 		}
 		else if (!HideMaxValue.Get(isInfantry))
 		{
@@ -128,10 +159,7 @@ COMPILETIMEEVAL Point2D GetSpacing(const Nullable<Point2D>& shapeSpace, bool isB
 	if (shapeSpace.isset())
 		return shapeSpace.Get();
 
-	if (isBuilding)
-		return { 4, -2 };
-
-	return { 4 , 0 };
+	return isBuilding ? Point2D { 4, -2 } : Point2D { 4 , 0 };
 }
 
 struct FrameData
@@ -277,6 +305,7 @@ void DigitalDisplayTypeClass::Serialize(T& Stm)
 		.Process(this->InfoIndex)
 		.Process(this->ValueScaleDivisor)
 		.Process(this->ValueAsTimer)
+		.Process(this->ShowType)
 		;
 }
 

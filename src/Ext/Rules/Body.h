@@ -8,6 +8,7 @@
 #include <Utilities/TemplateDefB.h>
 
 #include <Utilities/Debug.h>
+#include <Utilities/VectorHelper.h>
 
 #include <ScriptTypeClass.h>
 
@@ -307,7 +308,7 @@ public:
 	Valueable<bool> TypeSelectUseDeploy { true };
 	Nullable<int> StartInMultiplayerUnitCost { };
 
-	bool FPSCounter { false };
+	FPSCounterMode FPSCounter { FPSCounterMode::disabled };
 
 	Valueable<int> SelectFlashTimer { 0 };
 
@@ -346,6 +347,8 @@ public:
 	Valueable<double> DamageOwnerMultiplier { 1.0 };
 	Valueable<double> DamageAlliesMultiplier { 1.0 };
 	Valueable<double> DamageEnemiesMultiplier { 1.0 };
+	Nullable<double> DamageOwnerMultiplier_NotAffectsEnemies {};
+	Nullable<double> DamageAlliesMultiplier_NotAffectsEnemies {};
 
 	Valueable<bool> FactoryProgressDisplay { false };
 	Valueable<bool> MainSWProgressDisplay { false };
@@ -385,6 +388,8 @@ public:
 	Nullable<int> PlayerNormalTargetingDelay { };
 	Nullable<int> AIGuardAreaTargetingDelay { };
 	Nullable<int> PlayerGuardAreaTargetingDelay { };
+	Nullable<int> AIAttackMoveTargetingDelay { };
+	Nullable<int> PlayerAttackMoveTargetingDelay { };
 	Valueable<bool> DistributeTargetingFrame { false };
 	Valueable<bool> DistributeTargetingFrame_AIOnly { true };
 
@@ -465,6 +470,8 @@ public:
 	Valueable<bool> AISetBaseCenter { true };
 	Valueable<bool> AIBiasSpawnCell { false };
 	Valueable<bool> AIForbidConYard { false };
+	Valueable<bool> AINodeWallsOnly { false };
+	Valueable<bool> AICleanWallNode { false };
 
 	Valueable<bool> JumpjetTilt {};
 
@@ -535,6 +542,12 @@ public:
 	Valueable<bool> AttackMove_IgnoreWeaponCheck { false };
 	Nullable<bool> AttackMove_StopWhenTargetAcquired {};
 
+	Valueable<int> PenetratesTransport_Level { 10 };
+	Valueable<bool> DamageWallRecursivly { true };
+	Valueable<int> AirstrikeLineZAdjust { 0 };
+	Valueable<int> AdjacentWallDamage { 200 };
+	Valueable<bool> InfantryAutoDeploy { false };
+
 	void LoadFromINIFile(CCINIClass* pINI, bool parseFailAddr);
 	void LoadBeforeTypeData(RulesClass* pThis, CCINIClass* pINI);
 	void ReplaceVoxelLightSources();
@@ -550,7 +563,6 @@ public:
 	void SaveToStream(PhobosStreamWriter& Stm)
 	{
 		this->Serialize(Stm);
-		this->ReplaceVoxelLightSources();
 	}
 
 private:
@@ -572,6 +584,7 @@ public:
 	static void LoadEarlyOptios(RulesClass* pThis, CCINIClass* pINI);
 	static void LoadVeryEarlyBeforeAnyData(RulesClass* pRules, CCINIClass* pINI);
 	static void LoadEndOfAudioVisual(RulesClass* pRules, CCINIClass* pINI);
+	static void InitializeAfterAllRulesLoaded();
 
 	static RulesExtData* Instance()
 	{

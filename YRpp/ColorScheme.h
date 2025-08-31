@@ -29,10 +29,12 @@ public:
 
 	//global array
 	static COMPILETIMEEVAL constant_ptr<DynamicVectorClass<ColorScheme*>, 0xB054D0u> const Array{};
+	// Player color scheme slot index to color scheme index lookup table.
+	static COMPILETIMEEVAL reference<byte , 0x83ED14u, 9u> const PlayerColorToColorSchemeLUT {};
 
 	// Game uses a hash table to store color scheme vectors for extra palettes, this table can be iterated by calling this function.
 	static DynamicVectorClass<ColorScheme*>* __fastcall GetPaletteSchemesFromIterator(HashIterator* it)
-	{ JMP_STD(0x626690); }
+	{ JMP_FAST(0x626690); }
 
 /*
  * trap! most schemes are duplicated - ShadeCount 1 and ShadeCount 53
@@ -86,10 +88,10 @@ public:
 		{ JMP_THIS(0x68C9C0); }
 
 	static DynamicVectorClass<ColorScheme*>* __fastcall GeneratePalette(char* name)
-		{ JMP_STD(0x6263D0); }
+		{ JMP_FAST(0x6263D0); }
 
 	static int __fastcall GetNumberOfSchemes()
-		{ JMP_STD(0x626C60); }
+		{ JMP_FAST(0x626C60); }
 
 	void CreateLightConvert(const BytePalette& Pal1, const BytePalette& Pal2, const ColorStruct& basecolor) const
 		{ JMP_THIS(0x68C860); }

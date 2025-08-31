@@ -3,7 +3,7 @@
 #include <AnimClass.h>
 
 #include <Helpers/Macro.h>
-#include <Utilities/Container.h>
+#include <Utilities/PooledContainer.h>
 #include <Utilities/TemplateDef.h>
 //#include <Utilities/EventHandler.h>
 
@@ -52,8 +52,8 @@ struct AEProperties
 		{
 			double rangeMult { 1.0 };
 			double extraRange { 0.0 };
-			std::set<WeaponTypeClass*> allow {};
-			std::set<WeaponTypeClass*> disallow {};
+			VectorSet<WeaponTypeClass*> allow {};
+			VectorSet<WeaponTypeClass*> disallow {};
 
 			bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
@@ -198,8 +198,8 @@ struct AEProperties
 		{
 			double Mult { 1.0 };
 			double extra { 0.0 };
-			std::set<WarheadTypeClass*> allow {};
-			std::set<WarheadTypeClass*> disallow {};
+			VectorSet<WarheadTypeClass*> allow {};
+			VectorSet<WarheadTypeClass*> disallow {};
 
 			bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
@@ -343,8 +343,8 @@ struct AEProperties
 		struct MultData
 		{
 			double Mult { 1.0 };
-			std::set<WarheadTypeClass*> allow {};
-			std::set<WarheadTypeClass*> disallow {};
+			VectorSet<WarheadTypeClass*> allow {};
+			VectorSet<WarheadTypeClass*> disallow {};
 
 			bool FORCEDINLINE Load(PhobosStreamReader& Stm, bool RegisterForChange)
 			{
@@ -560,6 +560,32 @@ protected:
 	}
 };
 
+struct OnlyAttackStruct
+{
+	WeaponTypeClass* Weapon { nullptr };
+	TechnoClass* Attacker { nullptr };
+
+	bool Load(PhobosStreamReader& Stm, bool RegisterForChange)
+	{
+		return Serialize(Stm);
+	}
+
+	bool Save(PhobosStreamWriter& Stm) const
+	{
+		return const_cast<OnlyAttackStruct*>(this)->Serialize(Stm);
+	}
+
+private:
+	template <typename T>
+	bool Serialize(T& Stm)
+	{
+		return Stm
+			.Process(this->Weapon)
+			.Process(this->Attacker)
+			.Success();
+	}
+};
+
 class TechnoExtData
 {
 public:
@@ -577,7 +603,7 @@ public:
 	OptionalStruct<AbstractType, true> AbsType {};
 
 	AEProperties AE {};
-
+	BYTE idxSlot_EMPulse { 0 };
 	BYTE idxSlot_Wave { 0 }; //5
 	BYTE idxSlot_Beam { 0 }; //6
 	BYTE idxSlot_Warp { 0 }; //7
@@ -665,6 +691,7 @@ public:
 	bool SupressEVALost { false };
 	CDTimerClass SelfHealing_CombatDelay { };
 	bool PayloadCreated { false };
+	bool PayloadTriggered { false };
 	SuperClass* LinkedSW { nullptr };
 	CellStruct SuperTarget { };
 
@@ -684,7 +711,7 @@ public:
 	bool FreeUnitDone { false };
 	AresAEData AeData {};
 
-	int StrafeFireCunt { -1 };
+	int Strafe_BombsDroppedThisRound { 0 };
 	CDTimerClass MergePreventionTimer {};
 
 	NewTiberiumStorageClass TiberiumStorage {};
@@ -731,7 +758,7 @@ public:
 
 	bool KeepTargetOnMove { false };
 
-	bool FiringSequencePaused { false };
+	bool DelayedFireSequencePaused { false };
 	int DelayedFireWeaponIndex { -1 };
 	CDTimerClass DelayedFireTimer {};
 	Handle<AnimClass*, UninitAnim> CurrentDelayedFireAnim { nullptr };
@@ -748,6 +775,9 @@ public:
 	CDTimerClass FiringAnimationTimer {};
 	bool ForceFullRearmDelay { false };
 	int AttackMoveFollowerTempCount {};
+	HelperedVector<OnlyAttackStruct> OnlyAttackData {};
+
+	bool IsSelected {};
 
 	~TechnoExtData()
 	{
@@ -830,12 +860,17 @@ public:
 
 	void CreateDelayedFireAnim(AnimTypeClass* pAnimType, int weaponIndex, bool attach, bool center, bool removeOnNoDelay, bool useOffsetOverride, CoordStruct offsetOverride);
 
+	void AddFirer(WeaponTypeClass* const Weapon, TechnoClass* const Attacker);
+	bool ContainFirer(WeaponTypeClass* const Weapon, TechnoClass* const Attacker) const;
+	int FindFirer(WeaponTypeClass* const Weapon) const;
+
+	static bool HandleDelayedFireWithPauseSequence(TechnoClass* pThis, int weaponIndex, int firingFrame);
+
 	COMPILETIMEEVAL FORCEDINLINE static size_t size_Of()
 	{
 		return sizeof(TechnoExtData) -
 			(4u //AttachedToObject
 			+ 4u //DamageNumberOffset
-			- 4u //inheritance
 			 );
 	}
 
@@ -864,6 +899,9 @@ public:
 		else if (cellMult < 0.0)
 			cellIntensity = 1000;
 	}
+
+	static int CalculateBlockDamage(TechnoClass* pThis, args_ReceiveDamage* args);
+	static std::vector<double> GetBlockChance(TechnoClass* pThis, std::vector<double>& blockChance);
 
 private:
 	template <typename T>
@@ -909,6 +947,7 @@ public:
 	static void ObjectKilledBy(TechnoClass* pThis, HouseClass* pKiller);
 
 	static void DisplayDamageNumberString(TechnoClass* pThis, int damage, bool isShieldDamage, WarheadTypeClass* pWH);
+	static void Kill(TechnoClass* pThis, TechnoClass* pKiller);
 	static void KillSelf(TechnoClass* pThis, bool isPeaceful = false);
 	static void KillSelf(TechnoClass* pThis, const KillMethod& deathOption, bool RegisterKill = true, AnimTypeClass* pVanishAnim = nullptr);
 	static void ForceJumpjetTurnToTarget(TechnoClass* pThis);
@@ -1053,7 +1092,7 @@ public:
 	static Point2D GetBuildingSelectBracketPosition(TechnoClass* pThis, BuildingSelectBracketPosition bracketPosition, Point2D offset = Point2D::Empty);
 	static void ProcessDigitalDisplays(TechnoClass* pThis);
 	static void GetValuesForDisplay(TechnoClass* pThis, DisplayInfoType infoType, int& value, int& maxValue, int infoIndex);
-	static Iterator<DigitalDisplayTypeClass*> GetDisplayType(TechnoClass* pThis, TechnoTypeClass* pType, int& length);
+	static std::vector<DigitalDisplayTypeClass*>* GetDisplayType(TechnoClass* pThis, TechnoTypeClass* pType, int& length);
 
 	static void RestoreLastTargetAndMissionAfterWebbed(InfantryClass* pThis);
 	static void StoreLastTargetAndMissionAfterWebbed(InfantryClass* pThis);
@@ -1069,6 +1108,10 @@ public:
 	static void ApplyKillWeapon(TechnoClass* pThis, TechnoClass* pSource, WarheadTypeClass* pWH);
 	static bool MultiWeaponCanFire(TechnoClass* const pThis, AbstractClass* const pTarget, WeaponTypeClass* const pWeaponType);
 
+	static bool IsHealthInThreshold(ObjectClass* pObject, double min, double max);
+	static std::tuple<bool, bool, bool> CanBeAffectedByFakeEngineer(TechnoClass* pThis, TechnoClass* pTarget, bool checkBridge = false, bool checkCapturableBuilding = false, bool checkAttachedBombs = false);
+
+	static bool CannotMove(UnitClass* pThis);
 public:
 	static UnitClass* Deployer;
 };
@@ -1077,13 +1120,49 @@ class TechnoExtContainer final : public Container<TechnoExtData>
 {
 public:
 	static TechnoExtContainer Instance;
+	static StaticObjectPool<TechnoExtData, 10000> pools;
 
-	//CONSTEXPR_NOCOPY_CLASSB(TechnoExtContainer, TechnoExtData, "TechnoClass");
+	TechnoExtData* AllocateUnchecked(TechnoClass* key)
+	{
+		TechnoExtData* val = pools.allocate();
+
+		if (val)
+		{
+			val->AttachedToObject = key;
+			if (!Phobos::Otamaa::DoingLoadGame)
+				val->InitializeConstant();
+		}
+		else
+		{
+			Debug::FatalErrorAndExit("The amount of [TecnoExtData] is exceeded the ObjectPool size %d !", pools.getPoolSize());
+		}
+
+		return val;
+	}
+
+	void Remove(TechnoClass* key)
+	{
+		if (TechnoExtData* Item = TryFind(key))
+		{
+			RemoveExtOf(key, Item);
+		}
+	}
+
+	void RemoveExtOf(TechnoClass* key, TechnoExtData* Item)
+	{
+		pools.deallocate(Item);
+		this->ClearExtAttribute(key);
+	}
 };
 
-class NOVTABLE FakeTechnoClass final : TechnoClass
+//we cannot inherit this
+class NOVTABLE FakeTechnoClass //final: TechnoClass
 {
 public:
 
-	int _EvaluateJustCell(CellStruct* where);
+	virtual TechnoTypeClass* GetTechnoType() { JMP_THIS(0x6F3270); }
+
+	static int __fastcall _EvaluateJustCell(TechnoClass* pThis, discard_t, CellStruct* where);
+	static bool __fastcall __TargetSomethingNearby(TechnoClass* pThis, discard_t, CoordStruct* coord, ThreatType threat);
+	static int __fastcall __AdjustDamage(TechnoClass* pThis, discard_t, TechnoClass* pTarget, WeaponTypeClass* pWeapon);
 };

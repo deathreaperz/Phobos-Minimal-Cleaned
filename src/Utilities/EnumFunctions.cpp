@@ -35,6 +35,17 @@ std::array<const char*, 6u>  EnumFunctions::ExpireWeaponCondition_to_strings {
  }
 };
 
+std::array<const char* const, 6u> EnumFunctions::DisplayShowType_ToStrings {
+{
+	{ "none" } ,
+	{ "cursorhover" } ,
+	{ "selected" } ,
+	{ "idle" } ,
+	{ "select" } ,
+	{ "all" } ,
+}
+};
+
 std::array<const char* const, (size_t)FullMapDetonateResult::count> EnumFunctions::FullMapDetonateResult_ToStrings {
  {
 	{ "TargetNotDamageable" } ,
@@ -342,20 +353,6 @@ std::array<std::pair<const char* const, SuperWeaponAITargetingMode>, 24u> EnumFu
 	{"launchsite", SuperWeaponAITargetingMode::LauchSite },
 	{"findauxtechno", SuperWeaponAITargetingMode::FindAuxTechno },
 	{"ioncannon", SuperWeaponAITargetingMode::IonCannon }
-}
-};
-
-std::array<const char* const, 8u> EnumFunctions::OwnerHouseKind_ToStrings
-{
-{
-	{"default"} ,
-	{"invoker"} ,
-	{"killer"} ,
-	{"victim"} ,
-	{"civilian"} ,
-	{"special"} ,
-	{"neutral"} ,
-	{"random"}
 }
 };
 
@@ -668,6 +665,25 @@ bool EnumFunctions::IsTechnoEligibleB(TechnoClass* const pTechno, AffectedTarget
 		return true;
 	}
 
+	return false;
+}
+
+bool EnumFunctions::CanAffectTechnoResult(AbstractType type, AffectedTechno allowed)
+{
+	if (allowed != AffectedTechno::None)
+	{
+		switch (type)
+		{
+		case AbstractType::Building:
+			return (allowed & AffectedTechno::Building) != AffectedTechno::None;
+		case AbstractType::Infantry:
+			return (allowed & AffectedTechno::Infantry) != AffectedTechno::None;
+		case AbstractType::Unit:
+			return (allowed & AffectedTechno::Unit) != AffectedTechno::None;
+		case AbstractType::Aircraft:
+			return (allowed & AffectedTechno::Aircraft) != AffectedTechno::None;
+		}
+	}
 	return false;
 }
 

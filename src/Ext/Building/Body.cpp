@@ -14,6 +14,8 @@
 
 void BuildingExtData::InitializeConstant()
 {
+	FakeHouseClass* pHouse = (FakeHouseClass*)this->AttachedToObject->Owner;
+
 	this->MyPrismForwarding = std::make_unique<PrismForwarding>();
 	this->MyPrismForwarding->Owner = this->AttachedToObject;
 	this->TechnoExt = TechnoExtContainer::Instance.Find(this->AttachedToObject);
@@ -22,6 +24,8 @@ void BuildingExtData::InitializeConstant()
 
 	if (!pTypeExt->DamageFire_Offs.empty())
 		this->DamageFireAnims.resize(pTypeExt->DamageFire_Offs.size());
+
+	pHouse->_GetExtData()->TunnelsBuildings.emplace(this->AttachedToObject);
 }
 
 void BuildingExtData::UpdateMainEvaVoice()
@@ -227,34 +231,11 @@ bool BuildingExtData::ReverseEngineer(BuildingClass* pBuilding, TechnoClass* Vic
 		return false;
 	}
 
-	auto VictimType = Victim->GetTechnoType();
-	auto pVictimData = TechnoTypeExtContainer::Instance.Find(VictimType);
-	if (!pVictimData->CanBeReversed)
-		return false;
-
-	auto VictimAs = pVictimData->ReversedAs.Get(VictimType);
-
-	if (!VictimAs)
-		return false;
-
 	const auto pBldOwner = pBuilding->Owner;
 	auto pBldOwnerExt = HouseExtContainer::Instance.Find(pBldOwner);
 
-	if (HouseExtData::PrereqValidate(pBldOwner, VictimType, false, true) != CanBuildResult::Buildable)
-	{
-		pBldOwnerExt->Reversed.emplace(VictimAs);
-
-		if (HouseExtData::RequirementsMet(pBldOwner, VictimType) != RequirementStatus::Forbidden)
-		{
-			pBldOwner->RecheckTechTree = true;
-			return true;
-		}
-	}
-
-	return false;
+	return pBldOwnerExt->ReverseEngineer(Victim);
 }
-
-#include <ExtraHeaders/StackVector.h>
 
 void BuildingExtData::ApplyLimboKill(ValueableVector<int>& LimboIDs, Valueable<AffectedHouse>& Affects, HouseClass* pTargetHouse, HouseClass* pAttackerHouse)
 {
@@ -596,6 +577,7 @@ void BuildingExtData::UpdatePrimaryFactoryAI(BuildingClass* pThis)
 	AircraftTypeClass* pAircraft = AircraftTypeClass::Array->Items[pOwner->ProducingAircraftTypeIndex];
 	FactoryClass* currFactory = pOwner->GetFactoryProducing(pAircraft);
 	airFactoryBuilding.clear();
+	airFactoryBuilding.reserve(pOwner->Buildings.Count);
 	BuildingClass* newBuilding = nullptr;
 
 	// Update what is the current air factory for future comparisons
@@ -900,11 +882,11 @@ void BuildingExtData::LimboDeliver(BuildingTypeClass* pType, HouseClass* pOwner,
 		{
 			KillMethod nMethod = pBuildingExt->Type->Type->Death_Method.Get();
 
-			if (nMethod != KillMethod::None
-				&& pBuildingExt->Type->Type->Death_Countdown > 0
-				&& !pBuildingExt->TechnoExt->Death_Countdown.HasStarted())
+			if (nMethod != KillMethod::None)
 			{
-				pBuildingExt->TechnoExt->Death_Countdown.Start(pBuildingExt->Type->Type->Death_Countdown);
+				if (pBuildingExt->Type->Type->Death_Countdown > 0)
+					pBuildingExt->TechnoExt->Death_Countdown.Start(pBuildingExt->Type->Type->Death_Countdown);
+
 				HouseExtData::AutoDeathObjects.emplace_unchecked(pBuilding, nMethod);
 			}
 		}
@@ -1057,6 +1039,605 @@ void FakeBuildingClass::_OnFinishRepair()
 	VocClass::SafeImmedietelyPlayAt(sound, &this->GetCoords());
 }
 
+void FakeBuildingClass::UnloadOccupants(bool assignMission, bool killIfStuck)
+{
+	this->FiringOccupantIndex = 0;
+
+	if (!this->Occupants.Count)
+		return;
+
+	this->Mark(MarkType::Change);
+	CoordStruct defaultCoord = CoordStruct::Empty;
+	CellStruct originCell = this->GetMapCoords();
+	CoordStruct scatterCoord {};
+	CellStruct fallbackCell {};
+	bool foundValidCell = false;
+
+	const int width = this->Type->GetFoundationWidth();
+	const int height = this->Type->GetFoundationHeight(false);
+	const int startX = originCell.X;
+	const int startY = originCell.Y;
+	const int endX = startX + width;
+	const int endY = startY + height;
+
+	InfantryClass* firstOccupant = this->Occupants.Items[0];
+	// Define directional priority: up, left, right, down
+	static std::array<CellStruct, 4u> directions = {
+		CellStruct{0, -1},  // up
+		CellStruct{-1, 0},  // left
+		CellStruct{1, 0},   // right
+		CellStruct{0, 1}   // down
+	};
+
+	// Try to find a valid adjacent cell to unload into
+	for (const auto& [dx, dy] : directions)
+	{
+		CellStruct tryCell = { endX, endY };
+
+		while (true)
+		{
+			tryCell.X += dx;
+			tryCell.Y += dy;
+
+			// Stop if out of building bounds
+			if (tryCell.X < startX || tryCell.X >= endX ||
+				tryCell.Y < startY || tryCell.Y >= endY)
+				break;
+
+			CellClass* mapCell = MapClass::Instance->GetCellAt(tryCell);
+			if (firstOccupant->IsCellOccupied(mapCell, FacingType::None, -1, false, true) == Move::OK)
+			{
+				fallbackCell = tryCell;
+				foundValidCell = true;
+				break;
+			}
+		}
+
+		if (foundValidCell)
+			break;
+	}
+
+	if (!foundValidCell)
+	{
+		if (killIfStuck)
+		{
+			this->KillOccupants(nullptr);
+			return;
+		}
+
+		fallbackCell.X = originCell.X + width - 1;
+		fallbackCell.Y = originCell.Y + height - 1;
+	}
+
+	// Unload logic begins
+	CellClass* unloadCell = MapClass::Instance->GetCellAt(fallbackCell);
+	scatterCoord = unloadCell->GetCoords();
+
+	++Unsorted::ScenarioInit;
+
+	for (int i = this->Occupants.Count - 1; i >= 0; --i)
+	{
+		FootClass* foot = this->Occupants.Items[i];
+
+		if (foot->Unlimbo(scatterCoord, DirType::North))
+		{
+			if (!foot->Owner)
+			{
+				Debug::FatalErrorAndExit("BuildingClass::KickAllOccupants for [%x(%s)] Missing Occupier [%x(%s)] House Pointer !",
+					this,
+					this->get_ID(),
+					foot,
+					foot->get_ID()
+				);
+			}
+
+			if (foot->Owner->IsInPlayerControl)
+			{
+				foot->ShouldGarrisonStructure = 0;
+				foot->ShouldEnterOccupiable = 0;
+			}
+
+			foot->SetTarget(nullptr);
+			CoordStruct originCenter = this->GetCoords();
+			foot->Scatter(originCenter, true, true);
+
+			if (assignMission)
+			{
+				if (TeamClass* team = foot->Team)
+					team->RemoveMember(foot, -1, false);
+
+				foot->QueueMission(Mission::Hunt, 0);
+			}
+		}
+		else
+		{
+			foot->UnInit();
+		}
+	}
+
+	--Unsorted::ScenarioInit;
+
+	// Reset Occupants vector while keeping capacity
+	this->Occupants.Reset();
+
+	// Update threat map
+	this->UpdateThreatInCell(this->GetCell());
+}
+
+#include <Ext/BulletType/Body.h>
+#include <Ext/Bullet/Body.h>
+#include <Ext/WeaponType/Body.h>
+
+int ProcessNukeSilo(BuildingClass* pThis, SuperClass* pLinked, SWTypeExtData* pLinkedTypeExt)
+{
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	enum class NukeFiringState : int
+	{
+		PsiWarn, Aux1, SentWeaponPayload, Aux2, Idle
+	};
+	switch ((NukeFiringState)pThis->MissionStatus)
+	{
+	case NukeFiringState::PsiWarn:
+	{
+		pThis->IsReadyToCommence = false;
+		pThis->BeginMode(BStateType::Active);
+
+		HouseClass* house = pThis->Owner;
+		pThis->MissionStatus = 1;
+
+		const auto targetCell = pExt->SuperTarget.IsValid()
+			? pExt->SuperTarget : pThis->Owner->NukeTarget;
+		CellClass* v3 = MapClass::Instance->GetCellAt(targetCell);
+
+		if (AnimClass* anim =
+			BulletClass::CreateDamagingBulletAnim(house,
+				v3,
+				nullptr,
+				SWTypeExtContainer::Instance.Find(pLinked->Type)->Nuke_PsiWarning
+			))
+		{
+			anim->SetBullet(nullptr);
+			anim->SetHouse(house);
+			anim->Invisible = true;
+			pThis->PsiWarnAnim = anim;
+		}
+
+		// fall through to case 1
+	}
+	case NukeFiringState::Aux1:
+	{
+		if (pThis->IsReadyToCommence)
+		{
+			pThis->BeginMode(BStateType::Aux1);
+			pThis->MissionStatus = 2;
+		}
+		// fall through to case 2
+	}
+	case NukeFiringState::SentWeaponPayload:
+	{
+		//HouseClass* house = pThis->Owner;
+		const auto targetCell = pExt->SuperTarget.IsValid()
+			? pExt->SuperTarget : pThis->Owner->NukeTarget;
+		CellClass* v3 = MapClass::Instance->GetCellAt(targetCell);
+
+		if (WeaponTypeClass* pWeapon = pLinked->Type->WeaponType)
+		{
+			//speed harcoded to 255
+			if (auto pCreated = pWeapon->Projectile->CreateBullet(v3, pThis, pWeapon->Damage, pWeapon->Warhead, 255, pWeapon->Bright || pWeapon->Warhead->Bright))
+			{
+				BulletExtContainer::Instance.Find(pCreated)->NukeSW = pLinkedTypeExt->AttachedToObject;
+				pCreated->Range = WeaponTypeExtContainer::Instance.Find(pWeapon)->GetProjectileRange();
+				pCreated->SetWeaponType(pWeapon);
+
+				if (pThis->PsiWarnAnim)
+				{
+					pThis->PsiWarnAnim->SetBullet(pCreated);
+					pThis->PsiWarnAnim = nullptr;
+				}
+
+				//Limbo-in the bullet will remove the `TechnoClass` owner from the bullet !
+				//pThis->Limbo();
+
+				CoordStruct nFLH;
+				pThis->GetFLH(&nFLH, 0, CoordStruct::Empty);
+
+				// Otamaa : the original calculation seems causing missile to be invisible
+				//auto nCos = 0.00004793836;
+				//auto nCos = Math::cos(1.570748388432313); // Accuracy is different from the game
+				//auto nSin = 0.99999999885;
+				//auto nSin = Math::sin(1.570748388432313);// Accuracy is different from the game
+
+				const auto nMult = pCreated->Type->Vertical ? 10.0 : 100.0;
+				//const auto nX = nCos * nCos * nMult;
+				//const auto nY = nCos * nSin * nMult;
+				//const auto nZ = nSin * nMult;
+
+				if (!pCreated->MoveTo(nFLH, { 0.0, 0.0 , nMult }))
+				{
+					GameDelete<true, false>(pCreated);
+				}
+				else
+				{
+					if (auto const pAnimType = SWTypeExtContainer::Instance.Find(pLinked->Type)->Nuke_TakeOff.Get(RulesClass::Instance->NukeTakeOff))
+					{
+						auto pAnim = GameCreate<AnimClass>(pAnimType, nFLH);
+						if (!pAnim->ZAdjust)
+							pAnim->ZAdjust = -100;
+
+						pAnim->SetHouse(pThis->GetOwningHouse());
+						((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pThis;
+					}
+				}
+
+				pThis->MissionStatus = 3;
+			}
+		}
+
+#ifdef _OriginalGameCode
+		WeaponTypeClass* WeaponType = SuperWeaponTypeClass::Array->Items[pThis->FiringSWType]->WeaponType;
+
+		if (BulletClass* Bullet = WeaponType->Projectile->CreateBullet(v3,
+			pThis,
+			WeaponType->Damage,
+			WeaponType->Warhead,
+			255,
+			true)
+			)
+		{
+			Bullet->SetWeaponType(WeaponType);
+
+			if (auto pPSIWarn = pThis->PsiWarnAnim)
+			{
+				pPSIWarn->SetBullet(Bullet);
+				pThis->PsiWarnAnim = nullptr;
+			}
+
+			Bullet->Limbo();
+
+			CoordStruct coord {};
+			pThis->GetFLH(&coord, 0, CoordStruct::Empty);
+
+			VelocityClass velocity {};
+			double angle = 1.570748388432313; // ~90 degrees
+			double speed = 10.0;
+
+			double sinA = Math::sin(angle);
+			double cosA = Math::cos(angle);
+
+			velocity.X = cosA * sinA * speed;
+			velocity.Y = sinA * speed;
+			velocity.Z = cosA * cosA * speed;
+
+			if (Bullet->MoveTo(coord, velocity))
+			{
+				CoordStruct coord = v3->GetCoords();
+				AnimClass* anim = GameCreate<AnimClass>(RulesClass::Instance->NukeTakeOff, coord, 0, 1, AnimFlag::AnimFlag_400 | AnimFlag::AnimFlag_200, 0, 0);
+				anim->ZAdjust = -100;
+				pThis->MissionStatus = 3;
+			}
+			else
+			{
+				GameDelete<true, false>(Bullet);
+				pThis->MissionStatus = 3;
+			}
+		}
+#endif
+
+		return 1;
+	}
+	case  NukeFiringState::Aux2:
+		pThis->BeginMode(BStateType::Aux2);
+		pThis->MissionStatus = 4;
+		return TIMER_SECOND / 10;
+	case  NukeFiringState::Idle:
+		pThis->BeginMode(BStateType::Idle);
+		pThis->QueueMission(Mission::Guard, false);
+		return TIMER_SECOND;
+	default:
+		//apply the missioncontrol rate as delay
+		return int(pThis->GetCurrentMissionControl()->Rate * TICKS_PER_MINUTE);
+	}
+}
+
+int ProcessEMPUlseCannon(BuildingClass* pThis, SuperClass* pLinked, SWTypeExtData* pLinkedTypeExt)
+{
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+	enum class EMPulseFiringState : int
+	{
+		Preparing, PlayPulseBall, SentWeaponPayload, RestoreFacing
+	};
+
+	switch ((EMPulseFiringState)pThis->MissionStatus)
+	{
+	case EMPulseFiringState::Preparing: //sync the facing and preparing the weapon
+	{
+		//HouseClass* house = pThis->Owner;
+
+		const auto celltarget = pExt->SuperTarget.IsValid()
+			? pExt->SuperTarget : pThis->Owner->EMPTarget;
+
+		CellClass* v21 = MapClass::Instance->GetCellAt(celltarget);
+		DirStruct dirPrimary = pThis->FireAngleTo(v21);
+
+		auto& prim = pThis->PrimaryFacing;
+
+		if (Math::abs(prim.Current().Raw - dirPrimary.Raw))
+		{
+			prim.Set_Desired(dirPrimary);
+		}
+		else
+		{
+			DirStruct dirBarrel {};
+			pThis->GetFacingAgainst(&dirBarrel, v21);
+			auto& barr = pThis->BarrelFacing;
+
+			if (Math::abs(barr.Current().Raw - dirBarrel.Raw))
+			{
+				barr.Set_Desired(dirBarrel);
+			}
+			else
+			{
+				pThis->MissionStatus = 1;
+			}
+		}
+
+		return 1;
+	}
+	case EMPulseFiringState::PlayPulseBall:
+	{
+		if (auto pPulseBall = pLinkedTypeExt->EMPulse_PulseBall)
+		{
+			CoordStruct flh {};
+			pThis->GetFLH(&flh, pExt->idxSlot_EMPulse, CoordStruct::Empty);
+			auto pAnim = GameCreate<AnimClass>(pPulseBall, flh);
+			pAnim->Owner = pThis->GetOwningHouse();
+			((FakeAnimClass*)pAnim)->_GetExtData()->Invoker = pThis;
+		}
+
+		pThis->MissionStatus = 2;
+
+		if (pLinkedTypeExt->EMPulse_PulseDelay >= 0) //if negative value are used , just fallthru the function
+			return pLinkedTypeExt->EMPulse_PulseDelay;
+	}
+	case EMPulseFiringState::SentWeaponPayload:
+	{
+		//HouseClass* house = pThis->Owner;
+		const auto celltarget = pExt->SuperTarget.IsValid()
+			? pExt->SuperTarget : pThis->Owner->EMPTarget;
+
+		// If no valid target or destination, reset to idle
+		if (Unsorted::ArmageddonMode() || !celltarget.IsValid())
+		{
+			pThis->BeginMode(BStateType::Idle);
+			pThis->QueueMission(Mission::Guard, false);
+			return 60;
+		}
+		WeaponTypeClass* weaponType = pThis->GetWeapon(pExt->idxSlot_EMPulse)->WeaponType;
+		AbstractClass* target = MapClass::Instance->GetCellAt(celltarget);
+
+		// Aim the barrel
+		DirStruct dirBarrel {};
+		pThis->GetFacingAgainst(&dirBarrel, target);
+		pThis->BarrelFacing.Set_Desired(dirBarrel);
+
+		// Prepare bullet trajectory
+		CoordStruct flhCoord {};
+		pThis->GetFLH(&flhCoord, pExt->idxSlot_EMPulse, CoordStruct::Empty);
+
+		CoordStruct targetCoord = CellClass::Cell2Coord(celltarget);
+		targetCoord.Z = MapClass::Instance->GetZPos(&targetCoord);
+
+		// Compute angles and bullet speed
+		int range = pThis->DistanceFromSquared(target);
+		const auto gravity = BulletTypeExtData::GetAdjustedGravity(weaponType->Projectile);
+		int speed = Game::AdjustRangeWithGravity(range, gravity);
+
+		BulletClass* bullet = weaponType->Projectile->CreateBullet(target,
+			pThis,
+			weaponType->Damage,
+			weaponType->Warhead,
+			(3 * speed) / 4,
+			weaponType->Bright);
+
+		if (!bullet)
+		{
+			// No bullet created, return to idle
+			pThis->BeginMode(BStateType::Idle);
+			pThis->QueueMission(Mission::Guard, false);
+			return 60;
+		}
+
+		bullet->SetWeaponType(weaponType);
+
+		// --- Compute horizontal angle ---
+		double targetRadX = (targetCoord.X);
+		double targetRadY = (targetCoord.Y);
+
+		double angleToTarget = Math::atan2(
+			((double)flhCoord.Y - targetRadY),
+			(targetRadX - (double)flhCoord.X)
+		);
+
+		// Offset by -90 degrees
+		angleToTarget -= Math::DEG90_AS_RAD;
+
+		// Convert to binary angle
+		int binaryAngle = (int)(angleToTarget * Math::BINARY_ANGLE_MAGIC);
+
+		// --- Base velocity calculation ---
+		double magnitude = Math::sqrt(10000.0);
+		double radians = (double)(binaryAngle - 16383) * -0.00009587672516830327;
+
+		VelocityClass vel { Math::cos(radians) * magnitude  , -(Math::sin(radians) * magnitude)  , 0.0 };
+		vel.SetIfZeroXYZ();
+
+		// Normalize and scale to projectile speed
+		double length = vel.Length();
+		double scale = speed / length;
+
+		vel *= scale;
+
+		// --- Adjust for weapon direction ---
+		CoordStruct barrelDir {};
+		pThis->vt_entry_300(&barrelDir, pExt->idxSlot_EMPulse);
+		CoordStruct bulletPos = bullet->GetCoords();
+		double dz = bulletPos.Z - barrelDir.Z;
+		double xyDistSq = (bulletPos.X - barrelDir.X) * (bulletPos.X - barrelDir.X) +
+			(bulletPos.Y - barrelDir.Y) * (bulletPos.Y - barrelDir.Y);
+
+		double xyDist = Math::sqrt(xyDistSq);
+
+		// Recalculate direction if needed
+		DirStruct legal;
+		const bool canReach = pThis->CanReachTarget(pExt->idxSlot_EMPulse);
+		if (!Game::func_48A8D0_Legal(canReach, speed, xyDist, dz, gravity, &legal))
+		{
+			if (!Game::func_48A8D0_Legal(canReach, (10 * speed) / 8, xyDist, dz, gravity, &legal))
+			{
+				legal = DirStruct((unsigned short)-1536);
+			}
+		}
+
+		// --- Pitch adjustment ---
+		double pitch = Math::atan2(vel.Z, vel.LengthXY()) - Math::DEG90_AS_RAD;
+		int pitchBinary = (int)(pitch * Math::BINARY_ANGLE_MAGIC) - 0x3FFF;
+		double pitchRad = (double)pitchBinary * -0.00009587672516830327;
+
+		if (pitchRad != 0.0)
+		{
+			vel.X /= Math::cos(pitchRad);
+			vel.Y /= Math::cos(pitchRad);
+		}
+
+		// --- Facing adjustment ---
+		double dirRad = ((double)legal.Raw - 0x3FFF) * -0.00009587672516830327;
+		vel.X *= Math::cos(dirRad);
+		vel.Y *= Math::cos(dirRad);
+		vel.Z = Math::sin(dirRad) * speed;
+
+		auto pBulletTypeExt = BulletTypeExtContainer::Instance.Find(bullet->Type);
+		auto pBulletExt = BulletExtContainer::Instance.Find(bullet);
+
+		if (bullet->Type->Arcing && !pBulletTypeExt->Arcing_AllowElevationInaccuracy)
+		{
+			pBulletExt->ApplyArcingFix(flhCoord, targetCoord, vel);
+		}
+
+		BulletExtData::SimulatedFiringEffects(bullet, pThis->Owner, pThis, true, true);
+
+		// Fire the bullet
+		if (!bullet->MoveTo(flhCoord, vel))
+		{
+			GameDelete<true, false>(bullet);
+			pThis->BeginMode(BStateType::Idle);
+			pThis->QueueMission(Mission::Guard, false);
+			return TIMER_SECOND;
+		}
+
+		// Turret recoil if applicable
+		if (pThis->HasTurret() &&
+			pThis->Type->TurretRecoil)
+		{
+			pThis->TurretRecoil.Update();
+			pThis->BarrelRecoil.Update();
+		}
+
+		// Play sound if not gattling , this will played twice
+		if (!pThis->Type->IsGattling && weaponType->Report.Count > 0)
+		{
+			const int soundIdx = weaponType->Report.Count > 1 ? ScenarioClass::Instance->Random.RandomFromMax(weaponType->Report.Count - 1) : 0;
+			VocClass::SafeImmedietelyPlayAt(soundIdx, flhCoord);
+		}
+
+		if (pThis->Type->Ammo > 0 && pThis->Ammo > 0)
+		{
+			int ammo = WeaponTypeExtContainer::Instance.Find(weaponType)->Ammo.Get();
+			pThis->Ammo -= ammo;
+			pThis->Ammo = pThis->Ammo < 0 ? 0 : pThis->Ammo;
+
+			if (pThis->Ammo >= ammo)
+				pThis->MissionStatus = 0;
+
+			if (!pThis->ReloadTimer.InProgress())
+				pThis->ReloadTimer.Start(pThis->Type->Reload);
+
+			if (pThis->Ammo == 0 && pThis->Type->EmptyReload >= 0 && pThis->ReloadTimer.GetTimeLeft() > pThis->Type->EmptyReload)
+				pThis->ReloadTimer.Start(pThis->Type->EmptyReload);
+
+			return 1;
+		}
+
+		pThis->MissionStatus = 3;
+		return 1;
+	}
+	case EMPulseFiringState::RestoreFacing:
+	{
+		DirStruct resetFacing((int)0x4000);
+		pThis->BarrelFacing.Set_Desired(resetFacing);
+
+		// Return to idle
+		pThis->BeginMode(BStateType::Idle);
+		pThis->QueueMission(Mission::Guard, 0);
+		return TIMER_SECOND;
+	}
+	default:
+		//apply the missioncontrol rate as delay
+		return int(pThis->GetCurrentMissionControl()->Rate * TICKS_PER_MINUTE);
+	}
+}
+
+int ProcessMissionMissile(BuildingClass* pThis, SuperClass* pLinked, SWTypeExtData* pLinkedTypeExt)
+{
+	const auto pExt = TechnoExtContainer::Instance.Find(pThis);
+
+	if (!pThis->Type->EMPulseCannon)
+	{
+		const auto pTarget = pExt->SuperTarget.IsValid()
+			? pExt->SuperTarget : pThis->Owner->NukeTarget;
+
+		pThis->Fire(MapClass::Instance->GetCellAt(pTarget), 0);
+		pThis->QueueMission(Mission::Guard, false);
+
+		return 1; //ares
+	}
+	else
+	{
+		return ProcessEMPUlseCannon(pThis, pLinked, pLinkedTypeExt);
+	}
+}
+
+int FakeBuildingClass::_Mission_Missile()
+{
+	if (this->FiringSWType < 0)
+	{
+		Debug::LogInfo("Building[{}] with Mission::Missile Missing Important Linked SW data !", this->get_ID());
+		//apply the missioncontrol rate as delay
+		return int(this->GetCurrentMissionControl()->Rate * TICKS_PER_MINUTE);
+	}
+
+	auto pSW = this->Owner->Supers.Items[this->FiringSWType];
+	auto pSWTypeExt = SWTypeExtContainer::Instance.Find(pSW->Type);
+
+	if (this->Type->NukeSilo)
+	{
+		return ProcessNukeSilo(this, pSW, pSWTypeExt);
+	}
+
+	return ProcessMissionMissile(this, pSW, pSWTypeExt);
+}
+
+DEFINE_FUNCTION_JUMP(VTABLE, 0x7E410C, FakeBuildingClass::_Mission_Missile);
+DEFINE_FUNCTION_JUMP(LJMP, 0x44C980, FakeBuildingClass::_Mission_Missile);
+
+DEFINE_FUNCTION_JUMP(LJMP, 0x457DE0, FakeBuildingClass::UnloadOccupants);
+DEFINE_FUNCTION_JUMP(CALL, 0x44263B, FakeBuildingClass::UnloadOccupants);
+DEFINE_FUNCTION_JUMP(CALL, 0x44A5CA, FakeBuildingClass::UnloadOccupants);
+DEFINE_FUNCTION_JUMP(CALL, 0x44D89C, FakeBuildingClass::UnloadOccupants);
+DEFINE_FUNCTION_JUMP(CALL, 0x458229, FakeBuildingClass::UnloadOccupants);
+DEFINE_FUNCTION_JUMP(CALL, 0x501509, FakeBuildingClass::UnloadOccupants);
+DEFINE_FUNCTION_JUMP(CALL, 0x6DF77F, FakeBuildingClass::UnloadOccupants);
+DEFINE_FUNCTION_JUMP(CALL, 0x6E40F2, FakeBuildingClass::UnloadOccupants);
+
 int FakeBuildingClass::_GetAirstrikeInvulnerabilityIntensity(int currentIntensity) const
 {
 	int newIntensity = this->GetFlashingIntensity(currentIntensity);
@@ -1178,6 +1759,13 @@ ASMJIT_PATCH(0x43BCBD, BuildingClass_CTOR, 0x6)
 ASMJIT_PATCH(0x43C022, BuildingClass_DTOR, 0x6)
 {
 	GET(BuildingClass*, pItem, ESI);
+
+	FakeHouseClass* pOwner = (FakeHouseClass*)pItem->Owner;
+	auto pOwnerExt = pOwner->_GetExtData();
+
+	pOwnerExt->TunnelsBuildings.erase(pItem);
+	pOwnerExt->Academies.erase(pItem);
+	pOwnerExt->RestrictedFactoryPlants.erase(pItem);
 
 	BuildingExtContainer::Instance.Remove(pItem);
 	return 0;

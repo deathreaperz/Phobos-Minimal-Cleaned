@@ -141,7 +141,7 @@ void PhobosAttachEffectClass::AI()
 		{
 			double ROFModifier = this->Type->ROFMultiplier;
 
-			pTechno->DiskLaserTimer.Start(static_cast<int>(pTechno->DiskLaserTimer.GetTimeLeft() * ROFModifier));
+			pTechno->RearmTimer.Start(static_cast<int>(pTechno->RearmTimer.GetTimeLeft() * ROFModifier));
 
 			if (!pExt->ChargeTurretTimer.HasStarted() && pExt->LastRearmWasFullDelay)
 				pTechno->ROF = static_cast<int>(pTechno->ROF * ROFModifier);
@@ -945,13 +945,17 @@ bool PhobosAttachEffectClass::Serialize(T& Stm)
 		.Process(this->Source, true)
 		.Process(this->Animation, true)
 		.Process(this->IsAnimHidden)
+		.Process(this->IsInTunnel)
 		.Process(this->IsUnderTemporal)
 		.Process(this->IsOnline)
 		.Process(this->IsCloaked)
 		.Process(this->HasInitialized)
 		.Process(this->SelectedAnim)
 		.Process(this->NeedsDurationRefresh)
+		.Process(this->HasCumulativeAnim)
 		.Process(this->ShouldBeDiscarded)
+		.Process(this->LastDiscardCheckFrame)
+		.Process(this->LastDiscardCheckValue)
 		.Process(this->LaserTrail)
 		.Success() && Stm.RegisterChange(this);
 }

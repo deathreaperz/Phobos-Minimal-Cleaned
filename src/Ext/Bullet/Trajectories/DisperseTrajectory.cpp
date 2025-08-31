@@ -3,6 +3,7 @@
 #include <Ext/Bullet/Body.h>
 #include <Ext/BulletType/Body.h>
 #include <Ext/WeaponType/Body.h>
+#include <Ext/WarheadType/Body.h>
 #include <Ext/Techno/Body.h>
 
 #include <LaserDrawClass.h>
@@ -400,7 +401,7 @@ bool DisperseTrajectory::BulletRetargetTechno()
 							continue;
 					}
 
-					if (MapClass::GetTotalDamage(100, pBullet->WH, pTechnoType->Armor, 0) == 0)
+					if (FakeWarheadTypeClass::ModifyDamage(100, pBullet->WH, pTechnoType->Armor, 0) == 0)
 						continue;
 
 					if (pTechno->GetCoords().DistanceFrom(retargetCoords) > retargetRange)
@@ -456,7 +457,7 @@ bool DisperseTrajectory::BulletRetargetTechno()
 					continue;
 			}
 
-			if (MapClass::GetTotalDamage(100, pBullet->WH, pTechnoType->Armor, 0) == 0)
+			if (FakeWarheadTypeClass::ModifyDamage(100, pBullet->WH, pTechnoType->Armor, 0) == 0)
 				continue;
 
 			if (pTechno->GetCoords().DistanceFrom(retargetCoords) > retargetRange)
@@ -831,6 +832,7 @@ bool DisperseTrajectory::PrepareDisperseWeapon()
 
 			const auto pWeapon = pType->Weapons[curIndex];
 			const auto pWeaponExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+			const auto pWHExt = WarheadTypeExtContainer::Instance.Find(pWeapon->Warhead);
 
 			if (!pType->WeaponRetarget)
 			{
@@ -900,7 +902,7 @@ bool DisperseTrajectory::PrepareDisperseWeapon()
 								{
 									const auto pObjType = pObject->GetType();
 
-									if (pObjType && !pObjType->Immune)
+									if (pObjType && (!pObjType->Immune || pWHExt->IsFakeEngineer))
 										validObjects.push_back(pObject);
 								}
 
@@ -951,7 +953,7 @@ bool DisperseTrajectory::PrepareDisperseWeapon()
 									continue;
 							}
 
-							if (MapClass::GetTotalDamage(100, pWeapon->Warhead, pTechnoType->Armor, 0) == 0)
+							if (FakeWarheadTypeClass::ModifyDamage(100, pWeapon->Warhead, pTechnoType->Armor, 0) == 0)
 								continue;
 
 							if (!this->CheckWeaponCanTarget(pWeapon, pBullet->Owner, pTechno))
@@ -994,7 +996,7 @@ bool DisperseTrajectory::PrepareDisperseWeapon()
 							continue;
 					}
 
-					if (MapClass::GetTotalDamage(100, pWeapon->Warhead, pTechnoType->Armor, 0) == 0)
+					if (FakeWarheadTypeClass::ModifyDamage(100, pWeapon->Warhead, pTechnoType->Armor, 0) == 0)
 						continue;
 
 					if (!this->CheckWeaponCanTarget(pWeapon, pBullet->Owner, pTechno))

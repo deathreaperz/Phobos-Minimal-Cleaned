@@ -45,6 +45,9 @@ bool GeneralUtils::IsValidString(const wchar_t* str)
 
 void GeneralUtils::IntValidCheck(int* source, const char* section, const char* tag, int defaultValue, int min, int max)
 {
+	if (defaultValue < min) defaultValue = min;
+	if (defaultValue > max) defaultValue = max;
+
 	if (*source < min || *source>max)
 	{
 		//Debug::LogInfo("[Developer warning][%s]%s=%d is invalid! Reset to %d.", section, tag, *source, defaultValue);
@@ -54,6 +57,9 @@ void GeneralUtils::IntValidCheck(int* source, const char* section, const char* t
 
 void GeneralUtils::DoubleValidCheck(double* source, const char* section, const char* tag, double defaultValue, double min, double max)
 {
+	if (defaultValue < min) defaultValue = min;
+	if (defaultValue > max) defaultValue = max;
+
 	if (*source < min || *source>max)
 	{
 		//Debug::LogInfo("[Developer warning][%s]%s=%f is invalid! Reset to %f.", section, tag, *source, defaultValue);
@@ -111,7 +117,7 @@ const double GeneralUtils::GetWarheadVersusArmor(WarheadTypeClass* pWH, Armor co
 {
 	const auto& verses = WarheadTypeExtContainer::Instance.Find(pWH)->GetVerses(ArmorType);
 	return verses.Verses;
-	//return double(MapClass::GetTotalDamage(100, pWH, ArmorType, 0)) / 100.0;
+	//return double(FakeWarheadTypeClass::ModifyDamage(100, pWH, ArmorType, 0)) / 100.0;
 }
 
 const bool GeneralUtils::ProduceBuilding(HouseClass* pOwner, int idxBuilding)

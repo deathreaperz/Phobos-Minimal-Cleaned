@@ -364,11 +364,11 @@ namespace detail
 		if (parser.ReadInteger(pSection, pKey, &nBuffer))
 		{
 			const bool IsNegative = nBuffer < 0;
-			const DirType nVal = (DirType)abs(nBuffer);
+			const DirType nVal = (DirType)Math::abs(nBuffer);
 
 			if (DirType::North <= nVal && nVal <= DirType::Max)
 			{
-				value = (IsNegative ? (DirType)((int)DirType::Max - (int)nVal) : nVal);
+				value = (DirType)(!IsNegative ? (int)nVal : (int)DirType::Max + 1 - IsNegative);
 				return true;
 			}
 
@@ -434,6 +434,135 @@ namespace detail
 			Debug::INIParseFailed(pSection, pKey, parser.value(), "Expect valid ShowTimerType");
 		}
 
+		return false;
+	}
+
+	template <>
+	inline bool read<AttachmentYSortPosition>(AttachmentYSortPosition& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
+	{
+		if (parser.ReadString(pSection, pKey))
+		{
+			for (size_t i = 0; i < EnumFunctions::AttachmentYSortPosition_ToStrings.size(); ++i)
+			{
+				if (IS_SAME_STR_(parser.value(), EnumFunctions::AttachmentYSortPosition_ToStrings[i].second.data()))
+				{
+					value = EnumFunctions::AttachmentYSortPosition_ToStrings[i].first;
+					return true;
+				}
+			}
+
+			Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected an attachment YSort position");
+		}
+		return false;
+	}
+
+	template <>
+	inline bool read<AffectedTechno>(AffectedTechno& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
+	{
+		if (parser.ReadString(pSection, pKey))
+		{
+			char* context = nullptr;
+			AffectedTechno resultData = AffectedTechno::None;
+
+			for (auto cur = strtok_s(parser.value(), Phobos::readDelims, &context);
+				cur;
+				cur = strtok_s(nullptr, Phobos::readDelims, &context))
+			{
+				size_t result = 0;
+				bool found = false;
+				for (const auto& pStrings : EnumFunctions::AffectedTechno_ToStrings)
+				{
+					if (IS_SAME_STR_(cur, pStrings.second.data()))
+					{
+						found = true;
+						break;
+					}
+					++result;
+				}
+
+				if (!found)
+				{
+					if (IS_SAME_STR_(cur, "vehicle"))
+					{
+						found = true;
+						result = 2;
+					}
+				}
+
+				if (!found)
+				{
+					Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a AffectedTechno");
+					return false;
+				}
+				else
+				{
+					switch (result)
+					{
+					case 0: resultData |= AffectedTechno::None; break;
+					case 1: resultData |= AffectedTechno::Infantry; break;
+					case 2: resultData |= AffectedTechno::Unit; break;
+					case 3: resultData |= AffectedTechno::Building; break;
+					case 4: resultData |= AffectedTechno::Aircraft; break;
+						break;//switch break
+						break;//loop break
+					}
+				}
+			}
+
+			value = resultData;
+			return true;
+		}
+		return false;
+	}
+
+	template <>
+	inline bool read<DisplayShowType>(DisplayShowType& value, INI_EX& parser, const char* pSection, const char* pKey, bool allocate)
+	{
+		if (parser.ReadString(pSection, pKey))
+		{
+			char* context = nullptr;
+			DisplayShowType resultData = DisplayShowType::None;
+
+			for (auto cur = strtok_s(parser.value(), Phobos::readDelims, &context);
+				cur;
+				cur = strtok_s(nullptr, Phobos::readDelims, &context))
+			{
+				size_t result = 0;
+				bool found = false;
+				for (const auto& pStrings : EnumFunctions::DisplayShowType_ToStrings)
+				{
+					if (IS_SAME_STR_(cur, pStrings))
+					{
+						found = true;
+						break;
+					}
+					++result;
+				}
+
+				if (!found)
+				{
+					Debug::INIParseFailed(pSection, pKey, parser.value(), "Expected a DisplayShowType");
+					return false;
+				}
+				else
+				{
+					switch (result)
+					{
+					case 0: resultData |= DisplayShowType::None; break;
+					case 1: resultData |= DisplayShowType::CursorHover; break;
+					case 2: resultData |= DisplayShowType::Idle; break;
+					case 3: resultData |= DisplayShowType::Selected; break;
+					case 4: resultData |= DisplayShowType::Select; break;
+					case 5: resultData |= DisplayShowType::All; break;
+						break;//switch break
+						break;//loop break
+					}
+				}
+			}
+
+			value = resultData;
+			return true;
+		}
 		return false;
 	}
 

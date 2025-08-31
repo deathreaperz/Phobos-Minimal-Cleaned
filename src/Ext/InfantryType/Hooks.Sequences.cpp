@@ -179,7 +179,7 @@ ASMJIT_PATCH(0x523876, InfantryTypeClass_CTOR_Initialize, 6)
 	pItem->Bunkerable = 0;
 
 	pItem->Sequence = (DoControls*)GameCreate<NewDoType>();
-	pItem->Sequence->Initialize();
+	((NewDoType*)(pItem->Sequence))->Initialize();
 
 	if (auto pExt = InfantryTypeExtContainer::Instance.Allocate(pItem))
 		pExt->Type = TechnoTypeExtContainer::Instance.Find(pItem);
@@ -435,7 +435,7 @@ ASMJIT_PATCH(0x520E75, InfantryClass_SequenceAI_Sounds, 0x6)
 	const int doType = (int)pThis->SequenceAnim;
 
 	// out of bound read fix
-	if (doType == -1)
+	if (doType <= -1 || doType >= std::size(Sequences_ident))
 		return 0x520EF4;
 
 	//const auto pSeq = &pThis->Type->Sequence->Data[doType];
@@ -452,5 +452,6 @@ ASMJIT_PATCH(0x520E75, InfantryClass_SequenceAI_Sounds, 0x6)
 	//}
 	//
 	//return 0x520EF4;
-	return 0x0;
+	R->EAX(doType);
+	return 0x520E7B;
 }

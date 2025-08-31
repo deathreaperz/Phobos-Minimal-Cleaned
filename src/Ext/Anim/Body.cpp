@@ -23,6 +23,8 @@
 
 #pragma region defines
 std::list<FakeAnimClass*> FakeAnimClass::AnimsWithAttachedParticles {};
+StaticObjectPool<AnimExtData, 10000> FakeAnimClass::pools;
+
 #pragma endregion
 
 //std::vector<CellClass*> AnimExtData::AnimCellUpdater::Marked;
@@ -53,6 +55,29 @@ void AnimExtData::OnInit(AnimClass* pThis, CoordStruct* pCoord)
 	//if (auto const& pSpawns = pExt->SpawnData) {
 	//	pSpawns->OnInit(pCoord);
 	//}
+}
+
+void AnimExtData::CreateRandomAnim(Iterator<AnimTypeClass*> AnimList, CoordStruct coords, TechnoClass* pTechno, HouseClass* pHouse, bool ownedObject)
+{
+	if (AnimList.empty() || !pTechno)
+		return;
+
+	auto const pAnimType = AnimList[AnimList.size() > 1 ? ScenarioClass::Instance->Random.RandomRanged(0, AnimList.size() - 1) : 0];
+
+	if (!pAnimType)
+		return;
+
+	auto const pAnim = GameCreate<AnimClass>(pAnimType, coords);
+
+	AnimExtData::SetAnimOwnerHouseKind(pAnim,
+		pHouse ? pHouse : pTechno->Owner,
+		nullptr,
+		pTechno,
+		false, false
+	);
+
+	if (ownedObject)
+		pAnim->SetOwnerObject(pTechno);
 }
 
 bool AnimExtData::OnMiddle_SpawnSmudge(AnimClass* pThis, CellClass* pCell, Point2D nOffs)
@@ -388,6 +413,17 @@ AbstractClass* AnimExtData::GetTarget(AnimClass* pThis)
 
 	if (!pTypeExt->Damage_TargetFlag.isset())
 	{
+		if (pThis->AttachedBullet)
+			return pThis->AttachedBullet->Owner;
+
+		if (pThis->OwnerObject)
+		{
+			if (auto const pBullet = cast_to<BulletClass*, false>(pThis->OwnerObject))
+				return pBullet->Owner;
+			else
+				return pThis->OwnerObject;
+		}
+
 		return MapClass::Instance->GetCellAt(pThis->GetCoords());
 	}
 

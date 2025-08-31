@@ -55,13 +55,21 @@ namespace YRMemory {
 		JMP(0x7C93E8);
     }
 
-  //  OPTIONALINLINE void* AllocateChecked(size_t sz) {
-  //     // if (auto const ptr = YRMemory::Allocate(sz)) {
-  //     //     return ptr;
-  //     // }
-  //     // std::exit(static_cast<int>(0x30000000u | sz));
-		//return YRMemory::Allocate(sz);
-  //  }
+//annoying
+#pragma warning(push)
+#pragma warning(disable : 4702)
+
+    OPTIONALINLINE void* AllocateChecked(size_t sz) {
+        if (auto const ptr = YRMemory::Allocate(sz)) {
+            return ptr;
+        }
+
+		//OutputDebugStringA("YR OutOfMemory! \n");
+        std::exit(static_cast<int>(0x30000000u | sz));
+		return nullptr;
+    }
+
+#pragma warning(pop)
 }
 
 template<typename T>
@@ -100,7 +108,7 @@ struct GameAllocator {
 	COMPILETIMEEVAL bool operator != (const GameAllocator&) const noexcept { return false; }
 
 	T* allocate(const size_t count) const noexcept {
-		return static_cast<T*>(YRMemory::Allocate(count * sizeof(T)));
+		return static_cast<T*>(YRMemory::AllocateChecked(count * sizeof(T)));
 	}
 
 	void destroy(T* const ptr) const noexcept {

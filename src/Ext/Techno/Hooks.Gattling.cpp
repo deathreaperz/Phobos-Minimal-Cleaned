@@ -63,8 +63,13 @@ void NOINLINE CheckGattling(InfantryClass* pThis)
 			case FireError::REARM:
 			case FireError::FACING:
 			case FireError::ROTATING:
-				pThis->GattlingRateUp(1);
-				break;
+			{
+				if (pThis->IsDeployed())
+					pThis->GattlingRateDown(1);
+				else
+					pThis->GattlingRateUp(1);
+			}
+			break;
 			default:
 				pThis->GattlingRateDown(1);
 				break;
@@ -79,6 +84,47 @@ ASMJIT_PATCH(0x520AD9, InfantryClass_FiringAI_IsGattling, 0x5)
 {
 	GET(InfantryClass*, pThis, EBP);
 	CheckGattling(pThis);
+	return 0;
+}
+
+ASMJIT_PATCH(0x5209EE, InfantryClass_UpdateFiring_BurstNoDelay, 0x5)
+{
+	enum { SkipVanillaFire = 0x520A57 };
+
+	GET(InfantryClass* const, pThis, EBP);
+	GET(const int, wpIdx, ESI);
+	GET(AbstractClass* const, pTarget, EAX);
+
+	if (const auto pWeapon = pThis->GetWeapon(wpIdx)->WeaponType)
+	{
+		if (pWeapon->Burst > 1)
+		{
+			const auto pExt = WeaponTypeExtContainer::Instance.Find(pWeapon);
+
+			if (pExt->Burst_NoDelay && (!pExt->DelayedFire_Duration.isset() || pExt->DelayedFire_OnlyOnInitialBurst))
+			{
+				if (pThis->Fire(pTarget, wpIdx))
+				{
+					if (!pThis->CurrentBurstIndex)
+						return SkipVanillaFire;
+
+					auto rof = pThis->RearmTimer.TimeLeft;
+					pThis->RearmTimer.Start(0);
+
+					for (auto i = pThis->CurrentBurstIndex; i < pWeapon->Burst && pThis->GetFireError(pTarget, wpIdx, true) == FireError::OK && pThis->Fire(pTarget, wpIdx); ++i)
+					{
+						rof = pThis->RearmTimer.TimeLeft;
+						pThis->RearmTimer.Start(0);
+					}
+
+					pThis->RearmTimer.Start(rof);
+				}
+
+				return SkipVanillaFire;
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -114,12 +160,7 @@ ASMJIT_PATCH(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 		for (int i = 0; i <= pThis->CurrentBurstIndex; i++)
 		{
 			int burstDelay = WeaponTypeExtData::GetBurstDelay(pWeapon, i);
-			int delay = 0;
-
-			if (burstDelay > -1)
-				delay = burstDelay;
-			else
-				delay = ScenarioClass::Instance->Random.RandomRanged(3, 5);
+			int delay = burstDelay > -1 ? burstDelay : ScenarioClass::Instance->Random.RandomRanged(3, 5);
 
 			// Other than initial delay, treat 0 frame delays as 1 frame delay due to per-frame processing.
 			if (i != 0)
@@ -136,46 +177,8 @@ ASMJIT_PATCH(0x5209A7, InfantryClass_FiringAI_BurstDelays, 0x8)
 	if (R->AL())
 	{
 		auto const pExt = TechnoExtContainer::Instance.Find(pThis);
-		auto& timer = pExt->DelayedFireTimer;
-
-		if (pExt->DelayedFireWeaponIndex >= 0 && pExt->DelayedFireWeaponIndex != FiringAITemp::weaponIndex)
-		{
-			pExt->ResetDelayedFireTimer();
-			pExt->FiringSequencePaused = false;
-		}
-
-		if (pWeaponExt->DelayedFire_PauseFiringSequence && pWeaponExt->DelayedFire_Duration.isset() && (!pThis->Transporter || !pWeaponExt->DelayedFire_SkipInTransport))
-		{
-			if (pWeapon->Burst <= 1 || !pWeaponExt->DelayedFire_OnlyOnInitialBurst || pThis->CurrentBurstIndex == 0)
-			{
-				if (pThis->Animation.Stage == firingFrame + cumulativeDelay)
-					pExt->FiringSequencePaused = true;
-
-				if (!timer.HasStarted())
-				{
-					pExt->DelayedFireWeaponIndex = FiringAITemp::weaponIndex;
-					timer.Start(MaxImpl(GeneralUtils::GetRangedRandomOrSingleValue(pWeaponExt->DelayedFire_Duration), 0));
-					auto pAnimType = pWeaponExt->DelayedFire_Animation;
-
-					if (pThis->Transporter && pWeaponExt->DelayedFire_OpenToppedAnimation.isset())
-						pAnimType = pWeaponExt->DelayedFire_OpenToppedAnimation;
-
-					pExt->CreateDelayedFireAnim(pAnimType, FiringAITemp::weaponIndex, pWeaponExt->DelayedFire_AnimIsAttached, pWeaponExt->DelayedFire_CenterAnimOnFirer,
-						pWeaponExt->DelayedFire_RemoveAnimOnNoDelay, pWeaponExt->DelayedFire_AnimOffset.isset(), pWeaponExt->DelayedFire_AnimOffset.Get());
-
-					return ReturnFromFunction;
-				}
-				else if (timer.InProgress())
-				{
-					return ReturnFromFunction;
-				}
-
-				if (timer.Completed())
-					pExt->ResetDelayedFireTimer();
-			}
-
-			pExt->FiringSequencePaused = false;
-		}
+		if (TechnoExtData::HandleDelayedFireWithPauseSequence(pThis, FiringAITemp::weaponIndex, firingFrame + cumulativeDelay))
+			return ReturnFromFunction;
 
 		if (pThis->Animation.Stage == firingFrame + cumulativeDelay)
 		{

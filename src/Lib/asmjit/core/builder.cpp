@@ -107,7 +107,7 @@ Error BaseBuilder::newEmbedDataNode(EmbedDataNode** out, TypeId typeId, const vo
 	uint32_t typeSize = TypeUtils::sizeOf(finalTypeId);
 	Support::FastUInt8 of = 0;
 
-	size_t nodeSize = Support::maddOverflow(itemCount, size_t(typeSize), sizeof(EmbedDataNode), &of);
+	size_t nodeSize = Support::madd_overflow(itemCount, size_t(typeSize), sizeof(EmbedDataNode), &of);
 	if (ASMJIT_UNLIKELY(of))
 	{
 		return reportError(DebugUtils::errored(kErrorOutOfMemory));
@@ -115,7 +115,7 @@ Error BaseBuilder::newEmbedDataNode(EmbedDataNode** out, TypeId typeId, const vo
 
 	EmbedDataNode* node = nullptr;
 	ASMJIT_PROPAGATE(_newNodeTWithSize<EmbedDataNode>(
-		&node, Support::alignUp(nodeSize, Globals::kZoneAlignment),
+		&node, Support::align_up(nodeSize, Globals::kZoneAlignment),
 		typeId, uint8_t(typeSize), itemCount, repeatCount
 	));
 
@@ -380,13 +380,6 @@ void BaseBuilder::removeNodes(BaseNode* first, BaseNode* last) noexcept
 	}
 }
 
-BaseNode* BaseBuilder::setCursor(BaseNode* node) noexcept
-{
-	BaseNode* old = _cursor;
-	_cursor = node;
-	return old;
-}
-
 // BaseBuilder - Sections
 // ======================
 
@@ -406,7 +399,7 @@ Error BaseBuilder::sectionNodeOf(SectionNode** out, uint32_t sectionId)
 
 	if (sectionId >= _sectionNodes.size())
 	{
-		Error err = _sectionNodes.reserve(&_allocator, sectionId + 1);
+		Error err = _sectionNodes.reserve_grow(&_allocator, sectionId + 1);
 		if (ASMJIT_UNLIKELY(err != kErrorOk))
 		{
 			return reportError(err);
@@ -427,7 +420,7 @@ Error BaseBuilder::sectionNodeOf(SectionNode** out, uint32_t sectionId)
 		if (sectionId >= _sectionNodes.size())
 		{
 			// SAFETY: No need to check for error condition as we have already reserved enough space.
-			(void)_sectionNodes.resize(&_allocator, sectionId + 1);
+			(void)_sectionNodes.resize_grow(&_allocator, sectionId + 1);
 		}
 
 		_sectionNodes[sectionId] = node;
@@ -522,7 +515,7 @@ Error BaseBuilder::labelNodeOf(LabelNode** out, uint32_t labelId)
 
 	if (index >= _labelNodes.size())
 	{
-		ASMJIT_PROPAGATE(_labelNodes.resize(&_allocator, index + 1));
+		ASMJIT_PROPAGATE(_labelNodes.resize_grow(&_allocator, index + 1));
 	}
 
 	LabelNode* node = _labelNodes[index];
@@ -548,7 +541,7 @@ Error BaseBuilder::registerLabelNode(LabelNode* node)
 
 	// We just added one label so it must be true.
 	ASMJIT_ASSERT(_labelNodes.size() < labelId + 1);
-	ASMJIT_PROPAGATE(_labelNodes.resize(&_allocator, labelId + 1));
+	ASMJIT_PROPAGATE(_labelNodes.resize_grow(&_allocator, labelId + 1));
 
 	_labelNodes[labelId] = node;
 	node->_labelId = labelId;
@@ -560,7 +553,7 @@ static Error BaseBuilder_newLabelInternal(BaseBuilder* self, uint32_t labelId)
 {
 	ASMJIT_ASSERT(self->_labelNodes.size() < labelId + 1);
 
-	uint32_t growBy = labelId - self->_labelNodes.size();
+	uint32_t growBy = labelId - self->_labelNodes._size + 1u;
 	Error err = self->_labelNodes.willGrow(&self->_allocator, growBy);
 
 	if (ASMJIT_UNLIKELY(err))
@@ -571,10 +564,15 @@ static Error BaseBuilder_newLabelInternal(BaseBuilder* self, uint32_t labelId)
 	LabelNode* node = nullptr;
 	ASMJIT_PROPAGATE(self->_newNodeT<LabelNode>(&node, labelId));
 
-	// SAFETY: No need to check for error condition as we have already reserved enough space.
-	(void)self->_labelNodes.resize(&self->_allocator, labelId + 1);
-	self->_labelNodes[labelId] = node;
+	while (growBy > 1u)
+	{
+		self->_labelNodes.appendUnsafe(nullptr);
+		growBy--;
+	}
+
+	self->_labelNodes.appendUnsafe(node);
 	node->_labelId = labelId;
+
 	return kErrorOk;
 }
 
@@ -652,7 +650,7 @@ ASMJIT_FAVOR_SIZE Pass* BaseBuilder::passByName(const char* name) const noexcept
 	return nullptr;
 }
 
-ASMJIT_FAVOR_SIZE Error BaseBuilder::addPass(Pass* pass) noexcept
+ASMJIT_FAVOR_SIZE Error BaseBuilder::_addPass(Pass* pass) noexcept
 {
 	if (ASMJIT_UNLIKELY(!_code))
 	{
@@ -661,22 +659,17 @@ ASMJIT_FAVOR_SIZE Error BaseBuilder::addPass(Pass* pass) noexcept
 
 	if (ASMJIT_UNLIKELY(pass == nullptr))
 	{
-		// Since this is directly called by `addPassT()` we treat `null` argument
-		// as out-of-memory condition. Otherwise it would be API misuse.
+		// Since this is directly called by `addPass()` we treat `null` argument
+		// as out-of-memory condition. Otherwise it would be an API misuse.
 		return DebugUtils::errored(kErrorOutOfMemory);
 	}
-	else if (ASMJIT_UNLIKELY(pass->_cb))
+
+	if (ASMJIT_UNLIKELY(&pass->_cb != this))
 	{
-		// Kinda weird, but okay...
-		if (pass->_cb == this)
-		{
-			return kErrorOk;
-		}
 		return DebugUtils::errored(kErrorInvalidState);
 	}
 
 	ASMJIT_PROPAGATE(_passes.append(&_allocator, pass));
-	pass->_cb = this;
 	return kErrorOk;
 }
 
@@ -875,7 +868,7 @@ Error BaseBuilder::embedConstPool(const Label& label, const ConstPool& pool)
 
 Error BaseBuilder::embedLabel(const Label& label, size_t dataSize)
 {
-	if (ASMJIT_UNLIKELY(!Support::bool_and(_code, Support::isZeroOrPowerOf2UpTo(dataSize, 8u))))
+	if (ASMJIT_UNLIKELY(!Support::bool_and(_code, Support::is_zero_or_power_of_2_up_to(dataSize, 8u))))
 	{
 		return reportError(DebugUtils::errored(!_code ? kErrorNotInitialized : kErrorInvalidArgument));
 	}
@@ -889,7 +882,7 @@ Error BaseBuilder::embedLabel(const Label& label, size_t dataSize)
 
 Error BaseBuilder::embedLabelDelta(const Label& label, const Label& base, size_t dataSize)
 {
-	if (ASMJIT_UNLIKELY(!Support::bool_and(_code, Support::isZeroOrPowerOf2UpTo(dataSize, 8u))))
+	if (ASMJIT_UNLIKELY(!Support::bool_and(_code, Support::is_zero_or_power_of_2_up_to(dataSize, 8u))))
 	{
 		return reportError(DebugUtils::errored(!_code ? kErrorNotInitialized : kErrorInvalidArgument));
 	}
@@ -941,13 +934,13 @@ Error BaseBuilder::serializeTo(BaseEmitter* dst)
 			dst->setInstOptions(node->options());
 			dst->setExtraReg(node->extraReg());
 
-			const Operand_* op = node->operands();
+			const Operand_* op = node->operands_data();
 			const Operand_* opExt = EmitterUtils::noExt;
 
-			uint32_t opCount = node->opCount();
+			size_t opCount = node->opCount();
 			if (opCount > 3)
 			{
-				uint32_t i = 4;
+				size_t i = 4;
 				opArray[3] = op[3];
 
 				while (i < opCount)
@@ -1084,8 +1077,10 @@ Error BaseBuilder::onReinit(CodeHolder& code) noexcept
 // Pass - Construction & Destruction
 // =================================
 
-Pass::Pass(const char* name) noexcept
-	: _name(name) { }
+Pass::Pass(BaseBuilder& cb, const char* name) noexcept
+	: _cb(cb),
+	_name(name)
+{ }
 Pass::~Pass() noexcept { }
 
 // Pass - Interface
