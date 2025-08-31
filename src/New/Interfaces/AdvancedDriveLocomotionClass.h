@@ -18,6 +18,7 @@ public:
 		if (iid == __uuidof(IPiggyback))
 		{
 			*ppvObject = static_cast<IPiggyback*>(this);
+		}
 
 		if (*ppvObject)
 		{
